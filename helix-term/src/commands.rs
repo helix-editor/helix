@@ -1512,110 +1512,136 @@ fn find_char_line_ending(
     doc.set_selection(view.id, selection);
 }
 
-fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool, two_char: bool) {
+fn find_char(
+    cx: &mut Context,
+    direction: Direction,
+    inclusive: bool,
+    extend: bool,
+    two_char: bool,
+) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
 
     if two_char {
-
-    // need to wait for next key
-    // TODO: should this be done by grapheme rather than char?  For example,
-    // we can't properly handle the line-ending CRLF case here in terms of char.
-    cx.on_next_key(move |cx, event| {
-        let ch = match event {
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
-                find_char_line_ending(cx, count, direction, inclusive, extend);
-                return;
-            }
-
-            KeyEvent {
-                code: KeyCode::Tab, ..
-            } => '\t',
-
-            KeyEvent {
-                code: KeyCode::Char(ch),
-                ..
-            } => ch,
-            _ => return,
-        };
-    cx.on_next_key(move |cx, event| {
-        let ch2 = match event {
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
-                find_char_line_ending(cx, count, direction, inclusive, extend);
-                return;
-            }
-
-            KeyEvent {
-                code: KeyCode::Tab, ..
-            } => '\t',
-
-            KeyEvent {
-                code: KeyCode::Char(ch),
-                ..
-            } => ch,
-            _ => return,
-        };
-        let motion = move |editor: &mut Editor| {
-            match direction {
-                Direction::Forward => {
-                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count, Some(ch2))
+        // need to wait for next key
+        // TODO: should this be done by grapheme rather than char?  For example,
+        // we can't properly handle the line-ending CRLF case here in terms of char.
+        cx.on_next_key(move |cx, event| {
+            let ch = match event {
+                KeyEvent {
+                    code: KeyCode::Enter,
+                    ..
+                } => {
+                    find_char_line_ending(cx, count, direction, inclusive, extend);
+                    return;
                 }
-                Direction::Backward => {
-                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count, Some(ch2))
-                }
+
+                KeyEvent {
+                    code: KeyCode::Tab, ..
+                } => '\t',
+
+                KeyEvent {
+                    code: KeyCode::Char(ch),
+                    ..
+                } => ch,
+                _ => return,
             };
-        };
+            cx.on_next_key(move |cx, event| {
+                let ch2 = match event {
+                    KeyEvent {
+                        code: KeyCode::Enter,
+                        ..
+                    } => {
+                        find_char_line_ending(cx, count, direction, inclusive, extend);
+                        return;
+                    }
 
-        cx.editor.apply_motion(motion);
-    })
-    })
-        
+                    KeyEvent {
+                        code: KeyCode::Tab, ..
+                    } => '\t',
+
+                    KeyEvent {
+                        code: KeyCode::Char(ch),
+                        ..
+                    } => ch,
+                    _ => return,
+                };
+                let motion = move |editor: &mut Editor| {
+                    match direction {
+                        Direction::Forward => find_char_impl(
+                            editor,
+                            &find_next_char_impl,
+                            inclusive,
+                            extend,
+                            ch,
+                            count,
+                            Some(ch2),
+                        ),
+                        Direction::Backward => find_char_impl(
+                            editor,
+                            &find_prev_char_impl,
+                            inclusive,
+                            extend,
+                            ch,
+                            count,
+                            Some(ch2),
+                        ),
+                    };
+                };
+
+                cx.editor.apply_motion(motion);
+            })
+        })
     } else {
-
-    // need to wait for next key
-    // TODO: should this be done by grapheme rather than char?  For example,
-    // we can't properly handle the line-ending CRLF case here in terms of char.
-    cx.on_next_key(move |cx, event| {
-        let ch = match event {
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
-                find_char_line_ending(cx, count, direction, inclusive, extend);
-                return;
-            }
-
-            KeyEvent {
-                code: KeyCode::Tab, ..
-            } => '\t',
-
-            KeyEvent {
-                code: KeyCode::Char(ch),
-                ..
-            } => ch,
-            _ => return,
-        };
-        let motion = move |editor: &mut Editor| {
-            match direction {
-                Direction::Forward => {
-                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count, None)
+        // need to wait for next key
+        // TODO: should this be done by grapheme rather than char?  For example,
+        // we can't properly handle the line-ending CRLF case here in terms of char.
+        cx.on_next_key(move |cx, event| {
+            let ch = match event {
+                KeyEvent {
+                    code: KeyCode::Enter,
+                    ..
+                } => {
+                    find_char_line_ending(cx, count, direction, inclusive, extend);
+                    return;
                 }
-                Direction::Backward => {
-                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count, None)
-                }
+
+                KeyEvent {
+                    code: KeyCode::Tab, ..
+                } => '\t',
+
+                KeyEvent {
+                    code: KeyCode::Char(ch),
+                    ..
+                } => ch,
+                _ => return,
             };
-        };
+            let motion = move |editor: &mut Editor| {
+                match direction {
+                    Direction::Forward => find_char_impl(
+                        editor,
+                        &find_next_char_impl,
+                        inclusive,
+                        extend,
+                        ch,
+                        count,
+                        None,
+                    ),
+                    Direction::Backward => find_char_impl(
+                        editor,
+                        &find_prev_char_impl,
+                        inclusive,
+                        extend,
+                        ch,
+                        count,
+                        None,
+                    ),
+                };
+            };
 
-        cx.editor.apply_motion(motion);
-    })
-        
+            cx.editor.apply_motion(motion);
+        })
     }
 }
 
@@ -1646,7 +1672,15 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
             range.head
         };
 
-        search_fn(text, char_matcher, search_start_pos, count, inclusive, char_matcher_2).map_or(range, |pos| {
+        search_fn(
+            text,
+            char_matcher,
+            search_start_pos,
+            count,
+            inclusive,
+            char_matcher_2,
+        )
+        .map_or(range, |pos| {
             if extend {
                 range.put_cursor(text, pos, true)
             } else {
@@ -1666,24 +1700,24 @@ fn find_next_char_impl(
     two_char: Option<char>,
 ) -> Option<usize> {
     let pos = (pos + 1).min(text.len_chars());
-    match (inclusive, two_char) {
-        (true, Some(c)) => {
-                let n = match text.get_char(pos) {
-                    Some(next_ch) if next_ch == ch => n + 1,
-                    _ => n,
-                };
-                search::find_nth_next_pair(text, ch, c, pos, n).map(|n| n.saturating_sub(1))
-        },
-        (false, Some(c)) => search::find_nth_next_pair(text, ch, c, pos, n),
-        (true, None) => search::find_nth_next(text, ch, pos, n),
-        (false, None) => {
-                let n = match text.get_char(pos) {
-                    Some(next_ch) if next_ch == ch => n + 1,
-                    _ => n,
-                   
-                };
-                search::find_nth_next(text, ch, pos, n).map(|n| n.saturating_sub(1))
-        },
+    if let Some(c) = two_char {
+        if inclusive {
+            let n = match text.get_char(pos) {
+                Some(next_ch) if next_ch == ch => n + 1,
+                _ => n,
+            };
+            search::find_nth_next_pair(text, ch, c, pos, n).map(|n| n.saturating_sub(1))
+        } else {
+            search::find_nth_next_pair(text, ch, c, pos, n)
+        }
+    } else if inclusive {
+        search::find_nth_next(text, ch, pos, n)
+    } else {
+        let n = match text.get_char(pos) {
+            Some(next_ch) if next_ch == ch => n + 1,
+            _ => n,
+        };
+        search::find_nth_next(text, ch, pos, n).map(|n| n.saturating_sub(1))
     }
 }
 
@@ -1695,23 +1729,24 @@ fn find_prev_char_impl(
     inclusive: bool,
     two_char: Option<char>,
 ) -> Option<usize> {
-    match (inclusive, two_char) {
-        (true, Some(c)) => {
+    if let Some(c) = two_char {
+        if inclusive {
+            let n = match text.get_char(pos.saturating_sub(1)) {
+                Some(next_ch) if next_ch == ch => n + 1,
+                _ => n,
+            };
+            search::find_nth_prev_pair(text, ch, c, pos, n).map(|n| n.saturating_sub(1))
+        } else {
+            search::find_nth_prev_pair(text, ch, c, pos, n)
+        }
+    } else if inclusive {
+        search::find_nth_prev(text, ch, pos, n)
+    } else {
         let n = match text.get_char(pos.saturating_sub(1)) {
             Some(next_ch) if next_ch == ch => n + 1,
             _ => n,
         };
-                search::find_nth_prev_pair(text, ch, c, pos, n).map(|n| n.saturating_sub(1))
-        },
-        (false, Some(c)) => search::find_nth_prev_pair(text, ch, c, pos, n),
-        (true, None) => search::find_nth_prev(text, ch, pos, n),
-        (false, None) => {
-        let n = match text.get_char(pos.saturating_sub(1)) {
-            Some(next_ch) if next_ch == ch => n + 1,
-            _ => n,
-        };
-                search::find_nth_prev(text, ch, pos, n).map(|n| n.saturating_sub(1))
-        },
+        search::find_nth_prev(text, ch, pos, n).map(|n| n.saturating_sub(1))
     }
 }
 
