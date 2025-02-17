@@ -35,6 +35,50 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
     ..Theme::from(BASE16_DEFAULT_THEME_DATA.clone())
 });
 
+#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum Mode {
+    Light,
+    Dark,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Config {
+    light: String,
+    dark: String,
+}
+
+impl Config {
+    pub fn choose(&self, preference: Option<Mode>) -> &str {
+        match preference {
+            Some(Mode::Light) => &self.light,
+            Some(Mode::Dark) | None => &self.dark,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Config {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged, deny_unknown_fields)]
+        enum InnerConfig {
+            Constant(String),
+            Adaptive { dark: String, light: String },
+        }
+
+        let inner = InnerConfig::deserialize(deserializer)?;
+
+        let (light, dark) = match inner {
+            InnerConfig::Constant(theme) => (theme.clone(), theme),
+            InnerConfig::Adaptive { light, dark } => (light, dark),
+        };
+
+        Ok(Self { light, dark })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Loader {
     /// Theme directories to search from highest to lowest priority
