@@ -34,7 +34,8 @@ use helix_view::Editor;
 use tui::text::{Span, Spans};
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, MAIN_SEPARATOR};
 use std::{error::Error, path::PathBuf};
 
 use self::picker::PickerKeyHandler;
@@ -310,7 +311,7 @@ fn create_file_operation_prompt(
     prompt: &'static str,
     cx: &mut Context,
     path: &Path,
-    callback: fn(&Path, &str),
+    callback: fn(&Path, &str) -> Result<String, String>,
 ) {
     cx.editor.path_editing = Some(path.to_path_buf());
     let callback = Box::pin(async move {
@@ -320,12 +321,20 @@ fn create_file_operation_prompt(
                 prompt.into(),
                 None,
                 crate::ui::completers::none,
-                move |_cx, input: &str, event: PromptEvent| {
+                move |cx, input: &str, event: PromptEvent| {
                     if event != PromptEvent::Validate {
                         return;
                     };
 
-                    callback(path, input);
+                    if let Some(path) = &cx.editor.path_editing {
+                        match callback(path, input) {
+                            Ok(msg) => cx.editor.set_status(msg),
+                            Err(msg) => cx.editor.set_error(msg),
+                        };
+                    } else {
+                        cx.editor
+                            .set_error("Unable to determine path of selected file")
+                    }
                 },
             );
 
@@ -391,19 +400,44 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         |cx, (path, _is_dir): &(PathBuf, bool)|,
         // create
         alt!('c') => {
-            create_file_operation_prompt("create:", cx, path, |path, input| ())
+            create_file_operation_prompt("create:", cx, path, |_path, create| {
+                let path = helix_stdx::path::expand_tilde(PathBuf::from(create));
+
+                if path.exists() {
+                    return Err(format!("Path {create} already exists."))
+                };
+
+                if create.ends_with(std::path::MAIN_SEPARATOR) {
+                    fs::create_dir_all(path).map_err(|err| format!("Unable to create directory {create}: {err}"))?;
+
+                    Ok(format!("Created directory: {create}"))
+                } else {
+                    fs::File::create(path).map_err(|err| format!("Unable to create file {create}: {err}"))?;
+
+                    Ok(format!("Created file: {create}"))
+                }
+            })
         },
         // move
         alt!('m') => {
-            create_file_operation_prompt("move:", cx, path, |path, input| ())
+            create_file_operation_prompt("move:", cx, path, |path, input| {
+                Ok("".into())
+
+            })
         },
         // delete
         alt!('d') => {
-            create_file_operation_prompt("delete? (y/n):", cx, path, |path, input| ())
+            create_file_operation_prompt("delete? (y/n):", cx, path, |path, input| {
+                Ok("".into())
+
+            })
         },
         // copy
         alt!('y') => {
-            create_file_operation_prompt("copy-to:", cx, path, |path, input| ())
+            create_file_operation_prompt("copy-to:", cx, path, |path, input| {
+                Ok("".into())
+
+            })
         },
     });
 
