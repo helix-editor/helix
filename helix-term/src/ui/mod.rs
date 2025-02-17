@@ -302,11 +302,11 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     )];
 
     macro_rules! declare_key_handlers {
-        ($($op:literal $key:expr => $handler:expr),*) => {
+        ($($op:literal $key:expr => |$cx:ident, $path:ident| $handler:block),* $(,)?) => {
             hashmap!(
                 $(
-                    $key => Box::new($handler)
-                        as Box<dyn Fn(&mut Context) + 'static>
+                    $key => Box::new(|$cx: &mut Context, $path: &(PathBuf, bool)| $handler)
+                        as Box<dyn Fn(&mut Context, &(PathBuf, bool)) + 'static>
                 ),*
             )
         };
@@ -342,18 +342,18 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
     .with_key_handlers(declare_key_handlers! {
-        "Create" alt!('c') => |cx: &mut Context| {
+        "Create" alt!('c') => |cx, path| {
             log::error!("create file");
         },
-        "Delete" alt!('d') => |cx: &mut Context| {
+        "Rename" alt!('r') => |cx, path| {
+            log::error!("rename file");
+        },
+        "Delete" alt!('d') => |cx, path| {
             log::error!("delete file");
         },
-        "Copy" alt!('y') => |cx: &mut Context| {
+        "Copy" alt!('y') => |cx, path| {
             log::error!("copy file");
         },
-        "Rename" alt!('r') => |cx: &mut Context| {
-            log::error!("rename file");
-        }
     });
 
     Ok(picker)
