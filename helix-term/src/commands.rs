@@ -1561,6 +1561,7 @@ fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
+    let eof = doc!(cx.editor).line_ending.as_str();
 
     // need to wait for next key
     // TODO: should this be done by grapheme rather than char?  For example,
@@ -1570,19 +1571,16 @@ fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } => {
-                find_char_line_ending(cx, count, direction, true, false);
-                return;
-            }
+            } => search::PairMatcher::LineEnding(eof),
 
             KeyEvent {
                 code: KeyCode::Tab, ..
-            } => '\t',
+            } => search::PairMatcher::Char('\t'),
 
             KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
-            } => ch,
+            } => search::PairMatcher::Char(ch),
             _ => return,
         };
 
@@ -1591,19 +1589,16 @@ fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
                 KeyEvent {
                     code: KeyCode::Enter,
                     ..
-                } => {
-                    find_char_line_ending(cx, count, direction, true, false);
-                    return;
-                }
+                } => search::PairMatcher::LineEnding(eof),
 
                 KeyEvent {
                     code: KeyCode::Tab, ..
-                } => '\t',
+                } => search::PairMatcher::Char('\t'),
 
                 KeyEvent {
                     code: KeyCode::Char(ch),
                     ..
-                } => ch,
+                } => search::PairMatcher::Char(ch),
                 _ => return,
             };
             let motion = move |editor: &mut Editor| {
@@ -1612,7 +1607,7 @@ fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
                 let selection = doc.selection(view.id).clone();
                 let selection = match direction {
                     Direction::Forward => selection.transform(|range| {
-                        search::find_nth_next_pair(text, ch, ch_2, range.char_cursor(), count)
+                        search::find_nth_pair(text, ch, ch_2, range.char_cursor(), count, direction)
                             .map_or(range, |pos| {
                                 if extend {
                                     Range::new(range.from(), pos + 2)
@@ -1622,7 +1617,7 @@ fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
                             })
                     }),
                     Direction::Backward => selection.transform(|range| {
-                        search::find_nth_prev_pair(text, ch, ch_2, range.char_cursor(), count)
+                        search::find_nth_pair(text, ch, ch_2, range.char_cursor(), count, direction)
                             .map_or(range, |pos| {
                                 if extend {
                                     Range::new(pos + 2, range.to())
