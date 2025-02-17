@@ -1523,37 +1523,41 @@ fn find_char(
     // Would be nice to carry over.
     let count = cx.count();
 
-    if two_char {
-        // need to wait for next key
-        // TODO: should this be done by grapheme rather than char?  For example,
-        // we can't properly handle the line-ending CRLF case here in terms of char.
-        cx.on_next_key(move |cx, event| {
-            let ch = match event {
-                KeyEvent {
-                    code: KeyCode::Enter,
-                    ..
-                } => {
-                    find_char_line_ending(cx, count, direction, inclusive, extend);
-                    return;
-                }
-
-                KeyEvent {
-                    code: KeyCode::Tab, ..
-                } => '\t',
-
-                KeyEvent {
-                    code: KeyCode::Char(ch),
-                    ..
-                } => ch,
-                _ => return,
+    // need to wait for next key
+    // TODO: should this be done by grapheme rather than char?  For example,
+    // we can't properly handle the line-ending CRLF case here in terms of char.
+    cx.on_next_key(move |cx, event| {
+        let mkmotion = move |editor: &mut Editor, char_1: char, char_2: Option<char>| {
+            match direction {
+                Direction::Forward => find_char_impl(
+                    editor,
+                    &find_next_char_impl,
+                    inclusive,
+                    extend,
+                    char_1,
+                    count,
+                    char_2,
+                ),
+                Direction::Backward => find_char_impl(
+                    editor,
+                    &find_prev_char_impl,
+                    inclusive,
+                    extend,
+                    char_1,
+                    count,
+                    char_2,
+                ),
             };
-            cx.on_next_key(move |cx, event| {
-                let ch2 = match event {
+        };
+
+        macro_rules! resolve_char {
+            ($event:ident, $cx:ident) => {
+                match $event {
                     KeyEvent {
                         code: KeyCode::Enter,
                         ..
                     } => {
-                        find_char_line_ending(cx, count, direction, inclusive, extend);
+                        find_char_line_ending($cx, count, direction, inclusive, extend);
                         return;
                     }
 
@@ -1566,83 +1570,25 @@ fn find_char(
                         ..
                     } => ch,
                     _ => return,
-                };
-                let motion = move |editor: &mut Editor| {
-                    match direction {
-                        Direction::Forward => find_char_impl(
-                            editor,
-                            &find_next_char_impl,
-                            inclusive,
-                            extend,
-                            ch,
-                            count,
-                            Some(ch2),
-                        ),
-                        Direction::Backward => find_char_impl(
-                            editor,
-                            &find_prev_char_impl,
-                            inclusive,
-                            extend,
-                            ch,
-                            count,
-                            Some(ch2),
-                        ),
-                    };
-                };
+                }
+            };
+        }
+
+        let ch = resolve_char!(event, cx);
+
+        if two_char {
+            cx.on_next_key(move |cx, event| {
+                let ch2 = resolve_char!(event, cx);
+                let motion = move |editor: &mut Editor| mkmotion(editor, ch, Some(ch2));
 
                 cx.editor.apply_motion(motion);
             })
-        })
-    } else {
-        // need to wait for next key
-        // TODO: should this be done by grapheme rather than char?  For example,
-        // we can't properly handle the line-ending CRLF case here in terms of char.
-        cx.on_next_key(move |cx, event| {
-            let ch = match event {
-                KeyEvent {
-                    code: KeyCode::Enter,
-                    ..
-                } => {
-                    find_char_line_ending(cx, count, direction, inclusive, extend);
-                    return;
-                }
-
-                KeyEvent {
-                    code: KeyCode::Tab, ..
-                } => '\t',
-
-                KeyEvent {
-                    code: KeyCode::Char(ch),
-                    ..
-                } => ch,
-                _ => return,
-            };
-            let motion = move |editor: &mut Editor| {
-                match direction {
-                    Direction::Forward => find_char_impl(
-                        editor,
-                        &find_next_char_impl,
-                        inclusive,
-                        extend,
-                        ch,
-                        count,
-                        None,
-                    ),
-                    Direction::Backward => find_char_impl(
-                        editor,
-                        &find_prev_char_impl,
-                        inclusive,
-                        extend,
-                        ch,
-                        count,
-                        None,
-                    ),
-                };
-            };
+        } else {
+            let motion = move |editor: &mut Editor| mkmotion(editor, ch, None);
 
             cx.editor.apply_motion(motion);
-        })
-    }
+        }
+    })
 }
 
 //
