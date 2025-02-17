@@ -45,6 +45,7 @@ tempfile = "3.16.0"
 bitflags = "2.8"
 unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
+foldhash = "0.1"
 
 [workspace.package]
 version = "25.1.1"

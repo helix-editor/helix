@@ -1310,6 +1310,8 @@ version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
 dependencies = [
+ "allocator-api2",
+ "equivalent",
  "foldhash",
 ]
 
@@ -1371,10 +1373,10 @@ dependencies = [
 name = "helix-event"
 version = "25.1.1"
 dependencies = [
- "ahash",
  "anyhow",
+ "foldhash",
  "futures-executor",
- "hashbrown 0.14.5",
+ "hashbrown 0.15.2",
  "log",
  "once_cell",
  "parking_lot",
