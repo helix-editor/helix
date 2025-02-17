@@ -45,6 +45,10 @@
 | `extend_parent_node_start` | Extend to beginning of the parent node | select: `` <A-b> `` |
 | `find_till_char` | Move till next occurrence of char | normal: `` t `` |
 | `find_next_char` | Move to next occurrence of char | normal: `` f `` |
+| `find_next_pair` | Move to next occurrence of 2 chars | normal: `` L `` |
+| `find_prev_pair` | Move to next occurrence of 2 chars | normal: `` H `` |
+| `extend_next_pair` | Extend to next occurrence of 2 chars | select: `` L `` |
+| `extend_prev_pair` | Extend to next occurrence of 2 chars | select: `` H `` |
 | `extend_till_char` | Extend till next occurrence of char | select: `` t `` |
 | `extend_next_char` | Extend to next occurrence of char | select: `` f `` |
 | `till_prev_char` | Move till previous occurrence of char | normal: `` T `` |
