@@ -340,6 +340,8 @@ impl MappableCommand {
         find_next_char, "Move to next occurrence of char",
         find_next_pair, "Move to next occurrence of 2 chars",
         find_prev_pair, "Move to next occurrence of 2 chars",
+        extend_next_pair, "Extend to next occurrence of 2 chars",
+        extend_prev_pair, "Extend to next occurrence of 2 chars",
         extend_till_char, "Extend till next occurrence of char",
         extend_next_char, "Extend to next occurrence of char",
         till_prev_char, "Move till previous occurrence of char",
@@ -1512,13 +1514,7 @@ fn find_char_line_ending(
     doc.set_selection(view.id, selection);
 }
 
-fn find_char(
-    cx: &mut Context,
-    direction: Direction,
-    inclusive: bool,
-    extend: bool,
-    two_char: bool,
-) {
+fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
@@ -1527,71 +1523,147 @@ fn find_char(
     // TODO: should this be done by grapheme rather than char?  For example,
     // we can't properly handle the line-ending CRLF case here in terms of char.
     cx.on_next_key(move |cx, event| {
-        let mkmotion = move |editor: &mut Editor, char_1: char, char_2: Option<char>| {
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
+                find_char_line_ending(cx, count, direction, inclusive, extend);
+                return;
+            }
+
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => '\t',
+
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => ch,
+            _ => return,
+        };
+        let motion = move |editor: &mut Editor| {
             match direction {
-                Direction::Forward => find_char_impl(
-                    editor,
-                    &find_next_char_impl,
-                    inclusive,
-                    extend,
-                    char_1,
-                    count,
-                    char_2,
-                ),
-                Direction::Backward => find_char_impl(
-                    editor,
-                    &find_prev_char_impl,
-                    inclusive,
-                    extend,
-                    char_1,
-                    count,
-                    char_2,
-                ),
+                Direction::Forward => {
+                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
+                }
+                Direction::Backward => {
+                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
+                }
             };
         };
 
-        macro_rules! resolve_char {
-            ($event:ident, $cx:ident) => {
-                match $event {
-                    KeyEvent {
-                        code: KeyCode::Enter,
-                        ..
-                    } => {
-                        find_char_line_ending($cx, count, direction, inclusive, extend);
-                        return;
-                    }
-
-                    KeyEvent {
-                        code: KeyCode::Tab, ..
-                    } => '\t',
-
-                    KeyEvent {
-                        code: KeyCode::Char(ch),
-                        ..
-                    } => ch,
-                    _ => return,
-                }
-            };
-        }
-
-        let ch = resolve_char!(event, cx);
-
-        if two_char {
-            cx.on_next_key(move |cx, event| {
-                let ch2 = resolve_char!(event, cx);
-                let motion = move |editor: &mut Editor| mkmotion(editor, ch, Some(ch2));
-
-                cx.editor.apply_motion(motion);
-            })
-        } else {
-            let motion = move |editor: &mut Editor| mkmotion(editor, ch, None);
-
-            cx.editor.apply_motion(motion);
-        }
+        cx.editor.apply_motion(motion);
     })
 }
 
-//
+fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
+    // TODO: count is reset to 1 before next key so we move it into the closure here.
+    // Would be nice to carry over.
+    let count = cx.count();
+
+    // need to wait for next key
+    // TODO: should this be done by grapheme rather than char?  For example,
+    // we can't properly handle the line-ending CRLF case here in terms of char.
+    cx.on_next_key(move |cx, event| {
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
+                find_char_line_ending(cx, count, direction, true, false);
+                return;
+            }
+
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => '\t',
+
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => ch,
+            _ => return,
+        };
+
+        cx.on_next_key(move |cx, event| {
+            let ch2 = match event {
+                KeyEvent {
+                    code: KeyCode::Enter,
+                    ..
+                } => {
+                    find_char_line_ending(cx, count, direction, true, false);
+                    return;
+                }
+
+                KeyEvent {
+                    code: KeyCode::Tab, ..
+                } => '\t',
+
+                KeyEvent {
+                    code: KeyCode::Char(ch),
+                    ..
+                } => ch,
+                _ => return,
+            };
+            let motion = move |editor: &mut Editor| {
+                match direction {
+                    Direction::Forward => {
+                        let (view, doc) = current!(editor);
+                        let text = doc.text().slice(..);
+                        let selection = doc.selection(view.id).clone().transform(|range| {
+                            // TODO: use `Range::cursor()` here instead.  However, that works in terms of
+                            // graphemes, whereas this function doesn't yet.  So we're doing the same logic
+                            // here, but just in terms of chars instead.
+                            let search_start_pos = if range.anchor < range.head {
+                                range.head - 1
+                            } else {
+                                range.head
+                            };
+
+                            search::find_nth_next_pair(text, ch, ch2, search_start_pos, count)
+                                .map_or(range, |pos| {
+                                    if extend {
+                                        Range::new(range.from(), pos + 2)
+                                    } else {
+                                        Range::new(pos, pos + 2)
+                                    }
+                                })
+                        });
+                        doc.set_selection(view.id, selection);
+                    }
+                    Direction::Backward => {
+                        let (view, doc) = current!(editor);
+                        let text = doc.text().slice(..);
+                        let selection = doc.selection(view.id).clone().transform(|range| {
+                            // TODO: use `Range::cursor()` here instead.  However, that works in terms of
+                            // graphemes, whereas this function doesn't yet.  So we're doing the same logic
+                            // here, but just in terms of chars instead.
+                            let search_start_pos = if range.anchor < range.head {
+                                range.head - 1
+                            } else {
+                                range.head
+                            };
+
+                            search::find_nth_prev_pair(text, ch, ch2, search_start_pos, count)
+                                .map_or(range, |pos| {
+                                    if extend {
+                                        Range::new(range.from(), pos + 1)
+                                            .with_direction(range.direction())
+                                    } else {
+                                        Range::new(pos, pos + 1)
+                                    }
+                                })
+                        });
+                        doc.set_selection(view.id, selection);
+                    }
+                };
+            };
+
+            cx.editor.apply_motion(motion);
+        })
+    })
+}
 
 #[inline]
 fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
@@ -1601,9 +1673,8 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
     extend: bool,
     char_matcher: M,
     count: usize,
-    char_matcher_2: Option<M>,
 ) where
-    F: Fn(RopeSlice, M, usize, usize, bool, Option<M>) -> Option<usize> + 'static,
+    F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
 {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
@@ -1618,15 +1689,7 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
             range.head
         };
 
-        search_fn(
-            text,
-            char_matcher,
-            search_start_pos,
-            count,
-            inclusive,
-            char_matcher_2,
-        )
-        .map_or(range, |pos| {
+        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
             if extend {
                 range.put_cursor(text, pos, true)
             } else {
@@ -1643,20 +1706,9 @@ fn find_next_char_impl(
     pos: usize,
     n: usize,
     inclusive: bool,
-    two_char: Option<char>,
 ) -> Option<usize> {
     let pos = (pos + 1).min(text.len_chars());
-    if let Some(c) = two_char {
-        if inclusive {
-            let n = match text.get_char(pos) {
-                Some(next_ch) if next_ch == ch => n + 1,
-                _ => n,
-            };
-            search::find_nth_next_pair(text, ch, c, pos, n).map(|n| n.saturating_sub(1))
-        } else {
-            search::find_nth_next_pair(text, ch, c, pos, n)
-        }
-    } else if inclusive {
+    if inclusive {
         search::find_nth_next(text, ch, pos, n)
     } else {
         let n = match text.get_char(pos) {
@@ -1673,67 +1725,64 @@ fn find_prev_char_impl(
     pos: usize,
     n: usize,
     inclusive: bool,
-    two_char: Option<char>,
 ) -> Option<usize> {
-    if let Some(c) = two_char {
-        if inclusive {
-            let n = match text.get_char(pos.saturating_sub(1)) {
-                Some(next_ch) if next_ch == ch => n + 1,
-                _ => n,
-            };
-            search::find_nth_prev_pair(text, ch, c, pos, n).map(|n| n.saturating_sub(1))
-        } else {
-            search::find_nth_prev_pair(text, ch, c, pos, n)
-        }
-    } else if inclusive {
+    if inclusive {
         search::find_nth_prev(text, ch, pos, n)
     } else {
         let n = match text.get_char(pos.saturating_sub(1)) {
             Some(next_ch) if next_ch == ch => n + 1,
             _ => n,
         };
-        search::find_nth_prev(text, ch, pos, n).map(|n| n.saturating_sub(1))
+        search::find_nth_prev(text, ch, pos, n).map(|n| (n + 1).min(text.len_chars()))
     }
 }
 
 fn find_next_pair(cx: &mut Context) {
-    find_char(cx, Direction::Forward, true, false, true)
+    find_char_pair(cx, Direction::Forward, false)
 }
 
 fn find_prev_pair(cx: &mut Context) {
-    find_char(cx, Direction::Backward, true, false, true)
+    find_char_pair(cx, Direction::Backward, false)
+}
+
+fn extend_next_pair(cx: &mut Context) {
+    find_char_pair(cx, Direction::Forward, true)
+}
+
+fn extend_prev_pair(cx: &mut Context) {
+    find_char_pair(cx, Direction::Backward, true)
 }
 
 fn find_till_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, false, false, false);
+    find_char(cx, Direction::Forward, false, false);
 }
 
 fn find_next_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, true, false, false)
+    find_char(cx, Direction::Forward, true, false)
 }
 
 fn extend_till_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, false, true, false)
+    find_char(cx, Direction::Forward, false, true)
 }
 
 fn extend_next_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, true, true, false)
+    find_char(cx, Direction::Forward, true, true)
 }
 
 fn till_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, false, false, false)
+    find_char(cx, Direction::Backward, false, false)
 }
 
 fn find_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, true, false, false)
+    find_char(cx, Direction::Backward, true, false)
 }
 
 fn extend_till_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, false, true, false)
+    find_char(cx, Direction::Backward, false, true)
 }
 
 fn extend_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, true, true, false)
+    find_char(cx, Direction::Backward, true, true)
 }
 
 fn repeat_last_motion(cx: &mut Context) {
