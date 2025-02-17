@@ -306,6 +306,40 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
+fn create_file_operation_prompt(
+    prompt: &'static str,
+    cx: &mut Context,
+    path: &Path,
+    callback: fn(&Path, &str),
+) {
+    cx.editor.path_editing = Some(path.to_path_buf());
+    let callback = Box::pin(async move {
+        let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
+            // let path = path.clone();
+            let mut prompt = Prompt::new(
+                prompt.into(),
+                None,
+                crate::ui::completers::none,
+                move |_cx, input: &str, event: PromptEvent| {
+                    if event != PromptEvent::Validate {
+                        return;
+                    };
+
+                    callback(path, input);
+                },
+            );
+
+            if let Some(path_editing) = &editor.path_editing {
+                prompt.set_line_no_recalculate(path_editing.display().to_string());
+            }
+
+            compositor.push(Box::new(prompt));
+        }));
+        Ok(call)
+    });
+    cx.jobs.callback(callback);
+}
+
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
@@ -357,26 +391,19 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         |cx, (path, _is_dir): &(PathBuf, bool)|,
         // create
         alt!('c') => {
-            // TODO: ask user for name of file to be created
-            // Fill in with the picker's current directory
-            log::error!("create file");
+            create_file_operation_prompt("create:", cx, path, |path, input| ())
         },
         // move
         alt!('m') => {
-            // TODO: ask the user for new name of file
-            // on enter move the file to the new location
-            log::error!("rename file");
+            create_file_operation_prompt("move:", cx, path, |path, input| ())
         },
         // delete
         alt!('d') => {
-            // TODO: ask user for confirmation, while showing which file
-            // will be deleted
-            log::error!("delete file");
+            create_file_operation_prompt("delete? (y/n):", cx, path, |path, input| ())
         },
         // copy
         alt!('y') => {
-            // TODO: ask the user for new name of file
-            log::error!("copy file");
+            create_file_operation_prompt("copy-to:", cx, path, |path, input| ())
         },
     });
 
