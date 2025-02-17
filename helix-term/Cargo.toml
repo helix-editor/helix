@@ -102,7 +102,7 @@ crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc
 helix-loader = { path = "../helix-loader" }
 
 [dev-dependencies]
-smallvec = "1.13"
+smallvec = "1.14"
 indoc = "2.0.5"
 tempfile.workspace = true
 same-file = "1.0.1"
