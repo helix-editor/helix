@@ -65,11 +65,6 @@ pub struct Application {
 
     config: Arc<ArcSwap<Config>>,
 
-    #[allow(dead_code)]
-    theme_loader: Arc<theme::Loader>,
-    #[allow(dead_code)]
-    syn_loader: Arc<ArcSwap<syntax::Loader>>,
-
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
@@ -106,7 +101,7 @@ impl Application {
 
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
+        let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
@@ -124,8 +119,6 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
-        let syn_loader = Arc::new(ArcSwap::from_pointee(lang_loader));
-
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
 
@@ -139,8 +132,8 @@ impl Application {
         let handlers = handlers::setup(config.clone());
         let mut editor = Editor::new(
             area,
-            theme_loader.clone(),
-            syn_loader.clone(),
+            Arc::new(theme_loader),
+            Arc::new(ArcSwap::from_pointee(lang_loader)),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
@@ -262,12 +255,7 @@ impl Application {
             compositor,
             terminal,
             editor,
-
             config,
-
-            theme_loader,
-            syn_loader,
-
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
@@ -417,10 +405,9 @@ impl Application {
     fn refresh_language_config(&mut self) -> Result<(), Error> {
         let lang_loader = helix_core::config::user_lang_loader()?;
 
-        self.syn_loader.store(Arc::new(lang_loader));
-        self.editor.syn_loader = self.syn_loader.clone();
+        self.editor.syn_loader.store(Arc::new(lang_loader));
         for document in self.editor.documents.values_mut() {
-            document.detect_language(self.syn_loader.clone());
+            document.detect_language(self.editor.syn_loader.clone());
             let diagnostics = Editor::doc_diagnostics(
                 &self.editor.language_servers,
                 &self.editor.diagnostics,
@@ -439,7 +426,8 @@ impl Application {
             .theme
             .as_ref()
             .and_then(|theme| {
-                self.theme_loader
+                self.editor
+                    .theme_loader
                     .load(theme)
                     .map_err(|e| {
                         log::warn!("failed to load theme `{}` - {}", theme, e);
@@ -448,7 +436,7 @@ impl Application {
                     .ok()
                     .filter(|theme| (true_color || theme.is_16_color()))
             })
-            .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
+            .unwrap_or_else(|| self.editor.theme_loader.default_theme(true_color));
 
         self.editor.set_theme(theme);
         Ok(())
