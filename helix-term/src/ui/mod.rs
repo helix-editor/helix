@@ -16,7 +16,7 @@ mod text_decorations;
 
 use crate::compositor::{Compositor, Context};
 use crate::job::{self, Callback};
-use crate::{alt, ctrl, filter_picker_entry};
+use crate::{alt, ctrl, declare_key_handlers, filter_picker_entry};
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_core::hashmap;
@@ -322,17 +322,6 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
     )];
 
-    macro_rules! declare_key_handlers {
-        ($($op:literal $key:expr => |$cx:ident, $path:ident| $handler:block),* $(,)?) => {
-            hashmap!(
-                $(
-                    $key => Box::new(|$cx: &mut Context, $path: &(PathBuf, bool)| $handler)
-                        as Box<dyn Fn(&mut Context, &(PathBuf, bool)) + 'static>
-                ),*
-            )
-        };
-    }
-
     let picker = Picker::new(
         columns,
         0,
@@ -363,16 +352,30 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
     .with_key_handlers(declare_key_handlers! {
-        "Create" alt!('c') => |cx, path| {
+        // TODO: add a way to get user input in the Picker component and then
+        // execute an action based on that. Maybe re-use the existing Prompt component somehow?
+        |cx, path: &(PathBuf, bool)|,
+        // create
+        alt!('c') => {
+            // TODO: ask user for name of file to be created
+            // Fill in with the picker's current directory
             log::error!("create file");
         },
-        "Rename" alt!('r') => |cx, path| {
+        // move
+        alt!('m') => {
+            // TODO: ask the user for new name of file
+            // on enter move the file to the new location
             log::error!("rename file");
         },
-        "Delete" alt!('d') => |cx, path| {
+        // delete
+        alt!('d') => {
+            // TODO: ask user for confirmation, while showing which file
+            // will be deleted
             log::error!("delete file");
         },
-        "Copy" alt!('y') => |cx, path| {
+        // copy
+        alt!('y') => {
+            // TODO: ask the user for new name of file
             log::error!("copy file");
         },
     });
