@@ -2326,25 +2326,7 @@ fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
             let prefix = if add_boundary_prefix { "\\b" } else { "" };
             let suffix = if add_boundary_suffix { "\\b" } else { "" };
 
-            let fragment = &selection.fragment(text);
-            let escape_percent = fragment.contains('%');
-
-            let word = regex::escape(fragment);
-
-            let word = if escape_percent {
-                word.chars().fold(String::new(), |mut acc, c| {
-                    if c == '%' {
-                        acc.push('\\');
-                    }
-
-                    acc.push(c);
-
-                    acc
-                })
-            } else {
-                word
-            };
-
+            let word = regex::escape(&selection.fragment(text));
             format!("{}{}{}", prefix, word, suffix)
         })
         .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
