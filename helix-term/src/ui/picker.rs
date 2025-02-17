@@ -395,7 +395,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         }
     }
 
-    pub fn with_key_handler(mut self, handlers: PickerKeyHandler) -> Self {
+    pub fn with_key_handlers(mut self, handlers: PickerKeyHandler) -> Self {
         self.custom_key_handlers = handlers;
         self
     }
@@ -1179,4 +1179,4 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
-type PickerKeyHandler = HashMap<KeyEvent, Box<dyn Fn(&mut Context)>>;
+pub type PickerKeyHandler = HashMap<KeyEvent, Box<dyn Fn(&mut Context) + 'static>>;
