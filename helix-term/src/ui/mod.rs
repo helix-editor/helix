@@ -307,6 +307,39 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
+fn create_confirmation_prompt(
+    input: String,
+    cx: &mut Context,
+    to_create_str: String,
+    to_create: PathBuf,
+    callback: fn(&str, &Path) -> Option<Result<String, String>>,
+) {
+    let callback = Box::pin(async move {
+        let call: Callback = Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+            let prompt = Prompt::new(
+                input.into(),
+                None,
+                crate::ui::completers::none,
+                move |cx, input: &str, event: PromptEvent| {
+                    if event != PromptEvent::Validate || input != "y" {
+                        return;
+                    };
+
+                    match callback(&to_create_str, &to_create) {
+                        Some(Ok(msg)) => cx.editor.set_status(msg),
+                        Some(Err(msg)) => cx.editor.set_error(msg),
+                        None => (),
+                    };
+                },
+            );
+
+            compositor.push(Box::new(prompt));
+        }));
+        Ok(call)
+    });
+    cx.jobs.callback(callback);
+}
+
 fn create_file_operation_prompt(
     prompt: &'static str,
     cx: &mut Context,
@@ -402,42 +435,52 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         |cx, (path, _is_dir): &(PathBuf, bool)|,
         // create
         alt!('n') => {
-            create_file_operation_prompt("create:", cx, path, |_cx, _path, to_create_str| {
+            create_file_operation_prompt("create:", cx, path, |cx, _path, to_create_str| {
                 let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
-                if to_create.exists() {
-                    // TODO: confirmation prompt
-                    return Some(Err(format!("Path {} already exists", to_create.display())))
+                let create = |to_create_str: &str, to_create: &Path| {
+                    if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
+                        if let Err(err) = fs::create_dir_all(to_create).map_err(
+                            |err| format!("Unable to create directory {}: {err}", to_create.display())
+                        ) {
+                            return Some(Err(err));
+                        }
+
+                        Some(Ok(format!("Created directory: {}", to_create.display())))
+                    } else {
+                        if let Err(err) = fs::File::create(to_create).map_err(
+                            |err| format!("Unable to create file {}: {err}", to_create.display())
+                        ) {
+                            return Some(Err(err));
+                        };
+
+                        Some(Ok(format!("Created file: {}", to_create.display())))
+                    }
                 };
 
-                if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
-                    if let Err(err) = fs::create_dir_all(&to_create).map_err(
-                        |err| format!("Unable to create directory {}: {err}", to_create.display())
-                    ) {
-                        return Some(Err(err));
-                    }
+                if to_create.exists() {
+                    create_confirmation_prompt(
+                        format!(
+                            "Path {} already exists. Overwrite? (y/n):", to_create.display()
+                        ),
+                        cx,
+                        to_create_str.to_string(),
+                        to_create.to_path_buf(),
+                        create
+                    );
+                    return None;
+                };
 
-                    Some(Ok(format!("Created directory: {}", to_create.display())))
-                } else {
-                    if let Err(err) = fs::File::create(&to_create).map_err(
-                        |err| format!("Unable to create file {}: {err}", to_create.display())
-                    ) {
-                        return Some(Err(err));
-                    };
-
-                    Some(Ok(format!("Created file: {}", to_create.display())))
-                }
+                create(to_create_str, &to_create)
             })
         },
         // move
         alt!('m') => {
-            create_file_operation_prompt("move:", cx, path, |_, move_from, move_to_str| {
+            create_file_operation_prompt("move:", cx, path, |cx, move_from, move_to_str| {
                 let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
 
-                if move_to.exists() {
-                    // TODO: confirmation prompt
-                    Some(Err(format!("Path {} already exists", move_to.display())))
-                } else {
+                let move_op = |move_to_str: &str, move_from: &Path| {
+                    let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
                     if let Err(err) = fs::rename(move_from, &move_to).map_err(|err|
                         format!(
                             "Unable to move {} {} -> {}: {err}",
@@ -453,7 +496,22 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         return Some(Err(err))
                     };
                     None
-                }
+                };
+
+                if move_to.exists() {
+                    create_confirmation_prompt(
+                        format!(
+                            "Path {} already exists. Overwrite? (y/n):", move_to.display()
+                        ),
+                        cx,
+                        move_to_str.to_string(),
+                        move_from.to_path_buf(),
+                        move_op
+                    );
+                    return None;
+                };
+
+                move_op(move_to_str, move_from)
             })
         },
         // delete
@@ -493,17 +551,11 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // copy file / directory
         alt!('c') => {
-            create_file_operation_prompt("copy-to:", cx, path, |_, copy_from, copy_to_str| {
+            create_file_operation_prompt("copy-to:", cx, path, |cx, copy_from, copy_to_str| {
                 let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
-                if copy_from.is_dir() || copy_to_str.ends_with('/') {
-                    // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
-                    Some(Err(format!(
-                        "Copying directories is not supported: {} is a directory", copy_from.display()
-                    )))
-                } else if copy_to.exists() {
-                    // TODO: confirmation prompt
-                    Some(Err(format!("Path {} exists", copy_to.display())))
-                } else {
+
+                let copy_op = |copy_to_str: &str, copy_from: &Path| {
+                    let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
                     if let Err(err) = std::fs::copy(copy_from, &copy_to).map_err(
                         |err| format!("Unable to copy from file {} to {}: {err}",
                             copy_from.display(), copy_to.display()
@@ -514,6 +566,26 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     Some(Ok(format!(
                         "Copied contents of file {} to {}", copy_from.display(), copy_to.display()
                     )))
+                };
+                
+                if copy_from.is_dir() || copy_to_str.ends_with('/') {
+                    // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
+                    Some(Err(format!(
+                        "Copying directories is not supported: {} is a directory", copy_from.display()
+                    )))
+                } else if copy_to.exists() {
+                    create_confirmation_prompt(
+                        format!(
+                            "Path {} already exists. Overwrite? (y/n):", copy_to.display()
+                        ),
+                        cx,
+                        copy_to_str.to_string(),
+                        copy_from.to_path_buf(),
+                        copy_op
+                    );
+                    None
+                } else {
+                    copy_op(copy_to_str, copy_from)
                 }
             })
         },
