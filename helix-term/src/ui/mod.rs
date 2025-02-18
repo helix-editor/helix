@@ -37,6 +37,8 @@ use std::fs;
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
+use self::picker::PickerKeyHandler;
+
 struct Utf8PathBuf {
     path: String,
     is_dir: bool,
@@ -688,6 +690,8 @@ pub fn file_explorer(
         )
     };
 
+    type KeyHandler = PickerKeyHandler<(PathBuf, bool)>;
+
     let picker = Picker::new(
         columns,
         0,
@@ -710,11 +714,11 @@ pub fn file_explorer(
     .with_cursor(cursor.unwrap_or_default())
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
     .with_key_handlers(hashmap! {
-        alt!('n') => Box::new(create_file) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
-        alt!('m') => Box::new(move_file) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
-        alt!('d') => Box::new(delete_file) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
-        alt!('c') => Box::new(copy_file) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
-        alt!('y') => Box::new(copy_path) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>
+        alt!('n') => Box::new(create_file) as KeyHandler,
+        alt!('m') => Box::new(move_file) as KeyHandler,
+        alt!('d') => Box::new(delete_file) as KeyHandler,
+        alt!('c') => Box::new(copy_file) as KeyHandler,
+        alt!('y') => Box::new(copy_path) as KeyHandler,
     });
 
     Ok(picker)
