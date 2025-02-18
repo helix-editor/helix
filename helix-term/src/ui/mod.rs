@@ -283,9 +283,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
-type OnConfirm = fn(cx: &mut Context, picker_root: PathBuf, &str, &Path) -> Option<Result<String, String>>;
+type OnConfirm = fn(cursor: u32, cx: &mut Context, picker_root: PathBuf, &str, &Path) -> Option<Result<String, String>>;
 
 fn create_confirmation_prompt(
+    cursor: u32,
     input: String,
     cx: &mut Context,
     operation_input_str: String,
@@ -304,7 +305,7 @@ fn create_confirmation_prompt(
                         return;
                     };
 
-                    match on_confirm(cx, picker_root.clone(), &operation_input_str, &operation_input) {
+                    match on_confirm(cursor, cx, picker_root.clone(), &operation_input_str, &operation_input) {
                         Some(Ok(msg)) => cx.editor.set_status(msg),
                         Some(Err(msg)) => cx.editor.set_error(msg),
                         None => (),
@@ -319,12 +320,15 @@ fn create_confirmation_prompt(
     cx.jobs.callback(callback);
 }
 
+type FileOperation = fn(u32, &mut Context, &Path, &str) -> Option<Result<String, String>>;
+
 fn create_file_operation_prompt(
+    cursor: u32,
     prompt: &'static str,
     cx: &mut Context,
     path: &Path,
     compute_initial_line: fn(&Path) -> String,
-    file_op: fn(&mut Context, &Path, &str) -> Option<Result<String, String>>,
+    file_op: FileOperation,
 ) {
     cx.editor.file_explorer_selected_path = Some(path.to_path_buf());
     let callback = Box::pin(async move {
@@ -341,7 +345,7 @@ fn create_file_operation_prompt(
                     let path = cx.editor.file_explorer_selected_path.clone();
 
                     if let Some(path) = path {
-                        match file_op(cx, &path, input) {
+                        match file_op(cursor, cx, &path, input) {
                             Some(Ok(msg)) => cx.editor.set_status(msg),
                             Some(Err(msg)) => cx.editor.set_error(msg),
                             None => (),
@@ -364,11 +368,11 @@ fn create_file_operation_prompt(
     cx.jobs.callback(callback);
 }
 
-fn refresh(cx: &mut Context, root: PathBuf) {
+fn refresh(cursor: Option<u32>, cx: &mut Context, root: PathBuf) {
     let callback = Box::pin(async move {
         let call: Callback =
             Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                if let Ok(picker) = file_explorer(root, editor) {
+                if let Ok(picker) = file_explorer(cursor, root, editor) {
                     compositor.push(Box::new(overlay::overlaid(picker)));
                 }
             }));
@@ -377,7 +381,7 @@ fn refresh(cx: &mut Context, root: PathBuf) {
     cx.jobs.callback(callback);
 }
 
-pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
+pub fn file_explorer(cursor: Option<u32>, root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
 
@@ -401,7 +405,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
                 let new_root = helix_stdx::path::normalize(path);
-                refresh(cx, new_root);
+                refresh(None, cx, new_root);
             } else if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
@@ -412,27 +416,29 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
             }
         },
     )
+    .with_cursor(cursor.unwrap_or_default())
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
     .with_key_handlers(declare_key_handlers! {
-        |cx, (path, _is_dir): &(PathBuf, bool)|,
+        |cx, (path, _is_dir): &(PathBuf, bool), cursor|,
         // create
         alt!('n') => {
             create_file_operation_prompt(
+                cursor,
                 "create:",
                 cx,
                 path,
                 |path| path.parent().map(|p| p.display().to_string()).unwrap_or_default(),
-                |cx, path, to_create_str| {
+                |cursor, cx, path, to_create_str| {
                 let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
-                let create_op = |cx: &mut Context, root: PathBuf, to_create_str: &str, to_create: &Path| {
+                let create_op = |cursor: u32, cx: &mut Context, root: PathBuf, to_create_str: &str, to_create: &Path| {
                     if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
                         if let Err(err) = fs::create_dir_all(to_create).map_err(
                             |err| format!("Unable to create directory {}: {err}", to_create.display())
                         ) {
                             return Some(Err(err));
                         }
-                        refresh(cx, root);
+                        refresh(Some(cursor), cx, root);
 
                         Some(Ok(format!("Created directory: {}", to_create.display())))
                     } else {
@@ -441,7 +447,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         ) {
                             return Some(Err(err));
                         };
-                        refresh(cx, root);
+                        refresh(Some(cursor), cx, root);
 
                         Some(Ok(format!("Created file: {}", to_create.display())))
                     }
@@ -451,6 +457,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
 
                 if to_create.exists() {
                     create_confirmation_prompt(
+                        cursor,
                         format!(
                             "Path {} already exists. Overwrite? (y/n):", to_create.display()
                         ),
@@ -463,20 +470,21 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     return None;
                 };
 
-                create_op(cx, root, to_create_str, &to_create)
+                create_op(cursor, cx, root, to_create_str, &to_create)
             })
         },
         // move
         alt!('m') => {
             create_file_operation_prompt(
+                cursor,
                 "move:",
                 cx,
                 path,
                 |path| path.display().to_string(),
-                |cx, move_from, move_to_str| {
+                |cursor, cx, move_from, move_to_str| {
                 let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
 
-                let move_op = |cx: &mut Context, root: PathBuf, move_to_str: &str, move_from: &Path| {
+                let move_op = |cursor: u32, cx: &mut Context, root: PathBuf, move_to_str: &str, move_from: &Path| {
                     let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
                     if let Err(err) = fs::rename(move_from, &move_to).map_err(|err|
                         format!(
@@ -492,7 +500,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     ) {
                         return Some(Err(err))
                     };
-                    refresh(cx, root);
+                    refresh(Some(cursor), cx, root);
                     None
                 };
 
@@ -500,6 +508,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
 
                 if move_to.exists() {
                     create_confirmation_prompt(
+                        cursor,
                         format!(
                             "Path {} already exists. Overwrite? (y/n):", move_to.display()
                         ),
@@ -512,17 +521,18 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     return None;
                 };
 
-                move_op(cx, root, move_to_str, move_from)
+                move_op(cursor, cx, root, move_to_str, move_from)
             })
         },
         // delete
         alt!('d') => {
             create_file_operation_prompt(
+                cursor,
                 "delete? (y/n):",
                 cx,
                 path,
                 |_| "".to_string(),
-                |cx, to_delete, confirmation| {
+                |cursor, cx, to_delete, confirmation| {
                 if confirmation == "y" {
                     if !to_delete.exists() {
                         return Some(Err(format!("Path {} does not exist", to_delete.display())))
@@ -538,7 +548,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         ) {
                             return Some(Err(err));
                         };
-                        refresh(cx, root);
+                        refresh(Some(cursor), cx, root);
 
                         Some(Ok(format!("Deleted directory: {}", to_delete.display())))
                     } else {
@@ -549,7 +559,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         ) {
                             return Some(Err(err));
                         };
-                        refresh(cx, root);
+                        refresh(Some(cursor), cx, root);
 
                         Some(Ok(format!("Deleted file: {}", to_delete.display())))
                     }
@@ -561,14 +571,15 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         // copy file / directory
         alt!('c') => {
             create_file_operation_prompt(
+                cursor,
                 "copy-to:",
                 cx,
                 path,
                 |path| path.parent().map(|p| p.display().to_string()).unwrap_or_default(),
-                |cx, copy_from, copy_to_str| {
+                |cursor, cx, copy_from, copy_to_str| {
                 let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
 
-                let copy_op = |cx: &mut Context, root: PathBuf, copy_to_str: &str, copy_from: &Path| {
+                let copy_op = |cursor: u32, cx: &mut Context, root: PathBuf, copy_to_str: &str, copy_from: &Path| {
                     let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
                     if let Err(err) = std::fs::copy(copy_from, &copy_to).map_err(
                         |err| format!("Unable to copy from file {} to {}: {err}",
@@ -576,7 +587,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     )) {
                         return Some(Err(err));
                     };
-                    refresh(cx, root);
+                    refresh(Some(cursor), cx, root);
 
                     Some(Ok(format!(
                         "Copied contents of file {} to {}", copy_from.display(), copy_to.display()
@@ -592,6 +603,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     )))
                 } else if copy_to.exists() {
                     create_confirmation_prompt(
+                        cursor,
                         format!(
                             "Path {} already exists. Overwrite? (y/n):", copy_to.display()
                         ),
@@ -603,7 +615,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     );
                     None
                 } else {
-                    copy_op(cx, root, copy_to_str, copy_from)
+                    copy_op(cursor, cx, root, copy_to_str, copy_from)
                 }
             })
         },
