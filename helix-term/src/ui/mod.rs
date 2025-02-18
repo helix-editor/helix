@@ -417,6 +417,16 @@ fn refresh_file_explorer(cursor: u32, cx: &mut Context, root: PathBuf) {
     cx.jobs.callback(callback);
 }
 
+/// We don't have access to the file explorer's current directory directly,
+/// but we can get it by taking any of the children of the explorer
+/// and obtaining their parents.
+fn root_from_child(child: &Path) -> PathBuf {
+    child
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or(helix_stdx::env::current_working_dir())
+}
+
 pub fn file_explorer(
     cursor: Option<u32>,
     root: PathBuf,
@@ -492,10 +502,7 @@ pub fn file_explorer(
                     }
                 };
 
-                let root = path
-                    .parent()
-                    .map(|p| p.to_path_buf())
-                    .unwrap_or(helix_stdx::env::current_working_dir());
+                let root = root_from_child(path);
 
                 if to_create.exists() {
                     create_confirmation_prompt(
@@ -552,10 +559,7 @@ pub fn file_explorer(
                     None
                 };
 
-                let root = move_from
-                    .parent()
-                    .map(|p| p.to_path_buf())
-                    .unwrap_or(helix_stdx::env::current_working_dir());
+                let root = root_from_child(move_from);
 
                 if move_to.exists() {
                     create_confirmation_prompt(
@@ -591,10 +595,7 @@ pub fn file_explorer(
                         return Some(Err(format!("Path {} does not exist", to_delete.display())));
                     };
 
-                    let root = to_delete
-                        .parent()
-                        .map(|p| p.to_path_buf())
-                        .unwrap_or(helix_stdx::env::current_working_dir());
+                    let root = root_from_child(to_delete);
 
                     if confirmation.ends_with(std::path::MAIN_SEPARATOR) {
                         if let Err(err) = fs::remove_dir_all(to_delete).map_err(|err| {
@@ -660,10 +661,7 @@ pub fn file_explorer(
                     )))
                 };
 
-                let root = copy_to
-                    .parent()
-                    .map(|p| p.to_path_buf())
-                    .unwrap_or(helix_stdx::env::current_working_dir());
+                let root = root_from_child(&copy_to);
 
                 if copy_from.is_dir() || copy_to_str.ends_with(std::path::MAIN_SEPARATOR) {
                     // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
