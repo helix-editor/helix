@@ -435,7 +435,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
             create_file_operation_prompt("create:", cx, path, |cx, _path, to_create_str| {
                 let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
-                let create = |to_create_str: &str, to_create: &Path| {
+                let create_op = |to_create_str: &str, to_create: &Path| {
                     if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
                         if let Err(err) = fs::create_dir_all(to_create).map_err(
                             |err| format!("Unable to create directory {}: {err}", to_create.display())
@@ -463,12 +463,12 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         cx,
                         to_create_str.to_string(),
                         to_create.to_path_buf(),
-                        create
+                        create_op
                     );
                     return None;
                 };
 
-                create(to_create_str, &to_create)
+                create_op(to_create_str, &to_create)
             })
         },
         // move
