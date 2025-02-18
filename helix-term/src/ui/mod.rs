@@ -675,7 +675,7 @@ pub fn file_explorer(
 
     let columns = [PickerColumn::new(
         "path",
-        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
+        |(path, is_dir): &ExplorerItem, (root, directory_style): &ExplorerData| {
             let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
             if *is_dir {
                 Span::styled(format!("{}/", name), *directory_style).into()
