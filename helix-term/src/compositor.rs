@@ -15,7 +15,6 @@ pub enum EventResult {
     Consumed(Option<Callback>),
 }
 
-use crate::commands;
 use crate::job::Jobs;
 use crate::ui::picker;
 use helix_view::Editor;

@@ -16,7 +16,7 @@ mod text_decorations;
 
 use crate::compositor::{Compositor, Context};
 use crate::job::{self, Callback};
-use crate::{alt, ctrl, declare_key_handlers, filter_picker_entry};
+use crate::{alt, declare_key_handlers, filter_picker_entry};
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_core::hashmap;
@@ -33,12 +33,9 @@ pub use text::Text;
 use helix_view::Editor;
 use tui::text::Span;
 
-use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, MAIN_SEPARATOR};
+use std::path::Path;
 use std::{error::Error, path::PathBuf};
-
-use self::picker::PickerKeyHandler;
 
 struct Utf8PathBuf {
     path: String,
