@@ -320,7 +320,8 @@ fn create_file_operation_prompt(
     prompt: &'static str,
     cx: &mut Context,
     path: &Path,
-    callback: fn(&mut Context, &Path, &str) -> Option<Result<String, String>>,
+    compute_initial_line: fn(&Path) -> String,
+    file_op: fn(&mut Context, &Path, &str) -> Option<Result<String, String>>,
 ) {
     cx.editor.file_explorer_selected_path = Some(path.to_path_buf());
     let callback = Box::pin(async move {
@@ -337,7 +338,7 @@ fn create_file_operation_prompt(
                     let path = cx.editor.file_explorer_selected_path.clone();
 
                     if let Some(path) = path {
-                        match callback(cx, &path, input) {
+                        match file_op(cx, &path, input) {
                             Some(Ok(msg)) => cx.editor.set_status(msg),
                             Some(Err(msg)) => cx.editor.set_error(msg),
                             None => (),
@@ -350,7 +351,7 @@ fn create_file_operation_prompt(
             );
 
             if let Some(path_editing) = &editor.file_explorer_selected_path {
-                prompt.set_line_no_recalculate(path_editing.display().to_string());
+                prompt.set_line_no_recalculate(compute_initial_line(path_editing));
             }
 
             compositor.push(Box::new(prompt));
@@ -411,7 +412,12 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         |cx, (path, _is_dir): &(PathBuf, bool)|,
         // create
         alt!('n') => {
-            create_file_operation_prompt("create:", cx, path, |cx, _path, to_create_str| {
+            create_file_operation_prompt(
+                "create:",
+                cx,
+                path,
+                |path| path.parent().map(|p| p.display().to_string()).unwrap_or_default(),
+                |cx, _path, to_create_str| {
                 let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
                 let create_op = |to_create_str: &str, to_create: &Path| {
@@ -452,7 +458,12 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // move
         alt!('m') => {
-            create_file_operation_prompt("move:", cx, path, |cx, move_from, move_to_str| {
+            create_file_operation_prompt(
+                "move:",
+                cx,
+                path,
+                |path| path.display().to_string(),
+                |cx, move_from, move_to_str| {
                 let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
 
                 let move_op = |move_to_str: &str, move_from: &Path| {
@@ -492,7 +503,12 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // delete
         alt!('d') => {
-            create_file_operation_prompt("delete? (y/n):", cx, path, |_, _, to_delete_str| {
+            create_file_operation_prompt(
+                "delete? (y/n):",
+                cx,
+                path,
+                |_| "".to_string(),
+                |_, _, to_delete_str| {
                 let to_delete = helix_stdx::path::expand_tilde(PathBuf::from(to_delete_str));
                 if to_delete_str == "y" {
                     if !to_delete.exists() {
@@ -527,7 +543,12 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // copy file / directory
         alt!('c') => {
-            create_file_operation_prompt("copy-to:", cx, path, |cx, copy_from, copy_to_str| {
+            create_file_operation_prompt(
+                "copy-to:",
+                cx,
+                path,
+                |path| path.parent().map(|p| p.display().to_string()).unwrap_or_default(),
+                |cx, copy_from, copy_to_str| {
                 let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
 
                 let copy_op = |copy_to_str: &str, copy_from: &Path| {
