@@ -1186,16 +1186,3 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
 pub type PickerKeyHandler<T> = HashMap<KeyEvent, Box<dyn Fn(&mut Context, &T, u32) + 'static>>;
-
-/// Convenience macro to add custom keybindings per picker
-#[macro_export]
-macro_rules! declare_key_handlers {
-        (|$cx:ident, $item:tt : $t:ty, $cursor:ident|, $($key:expr => $handler:block),* $(,)?) => {
-            hashmap!(
-                $(
-                    $key => Box::new(|$cx: &mut Context, $item: $t, $cursor: u32| $handler)
-                        as Box<dyn Fn(&mut Context, $t, u32) + 'static>
-                ),*
-            )
-        };
-    }
