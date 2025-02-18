@@ -123,6 +123,7 @@ impl Prompt {
     }
 
     pub fn set_line_no_recalculate(&mut self, line: String) {
+        assert!(self.completion.is_empty());
         let cursor = line.len();
         self.line = line;
         self.cursor = cursor;

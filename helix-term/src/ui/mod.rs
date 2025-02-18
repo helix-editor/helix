@@ -311,12 +311,11 @@ fn create_file_operation_prompt(
     prompt: &'static str,
     cx: &mut Context,
     path: &Path,
-    callback: fn(&Path, &str) -> Result<String, String>,
+    callback: fn(&mut Context, &Path, &str) -> Result<String, String>,
 ) {
     cx.editor.path_editing = Some(path.to_path_buf());
     let callback = Box::pin(async move {
         let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
-            // let path = path.clone();
             let mut prompt = Prompt::new(
                 prompt.into(),
                 None,
@@ -326,8 +325,10 @@ fn create_file_operation_prompt(
                         return;
                     };
 
-                    if let Some(path) = &cx.editor.path_editing {
-                        match callback(path, input) {
+                    let path = cx.editor.path_editing.clone();
+
+                    if let Some(path) = path {
+                        match callback(cx, &path, input) {
                             Ok(msg) => cx.editor.set_status(msg),
                             Err(msg) => cx.editor.set_error(msg),
                         };
@@ -400,7 +401,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         |cx, (path, _is_dir): &(PathBuf, bool)|,
         // create
         alt!('n') => {
-            create_file_operation_prompt("create:", cx, path, |_, to_create_str| {
+            create_file_operation_prompt("create:", cx, path, |_, _, to_create_str| {
                 let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
                 if to_create.exists() {
@@ -420,7 +421,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // move
         alt!('m') => {
-            create_file_operation_prompt("move:", cx, path, |move_from, move_to_str| {
+            create_file_operation_prompt("move:", cx, path, |_, move_from, move_to_str| {
                 let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
 
                 if move_to.exists() {
@@ -445,7 +446,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // delete
         alt!('d') => {
-            create_file_operation_prompt("delete? (y/n):", cx, path, |_, to_delete_str| {
+            create_file_operation_prompt("delete? (y/n):", cx, path, |_, _, to_delete_str| {
                 let to_delete = helix_stdx::path::expand_tilde(PathBuf::from(to_delete_str));
                 if to_delete_str == "y" {
                     if !to_delete.exists() {
@@ -468,7 +469,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // copy contents
         alt!('c') => {
-            create_file_operation_prompt("copy-to:", cx, path, |copy_from, copy_to_str| {
+            create_file_operation_prompt("copy-to:", cx, path, |_, copy_from, copy_to_str| {
                 let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
                 if copy_from.is_dir() || copy_to_str.ends_with('/') {
                     // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
