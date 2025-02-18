@@ -463,6 +463,18 @@ See the documentation page on [pickers](./pickers.md) for more info.
 | `Ctrl-t`                     | Toggle preview                                             |
 | `Escape`, `Ctrl-c`           | Close picker                                               |
 
+### File Explorer
+
+There are additional keys accessible when using the File Explorer.
+
+| Key                          | Description                                                |
+| -----                        | -------------                                              |
+| `Alt-m`                      | Move (& rename) selected file or directory                 |
+| `Alt-n`                      | Create a new file or directory                             |
+| `Alt-d`                      | Delete the selected file or directory                      |
+| `Alt-c`                      | Copy the selected file                                     |
+| `Alt-y`                      | Yank the path to the selected file or directory            |
+
 ## Prompt
 
 Keys to use within prompt, Remapping currently not supported.
