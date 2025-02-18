@@ -292,7 +292,7 @@ fn create_file_operation_prompt(
     path: &Path,
     callback: fn(&mut Context, &Path, &str) -> Result<String, String>,
 ) {
-    cx.editor.path_editing = Some(path.to_path_buf());
+    cx.editor.file_explorer_selected_path = Some(path.to_path_buf());
     let callback = Box::pin(async move {
         let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
             let mut prompt = Prompt::new(
@@ -304,7 +304,7 @@ fn create_file_operation_prompt(
                         return;
                     };
 
-                    let path = cx.editor.path_editing.clone();
+                    let path = cx.editor.file_explorer_selected_path.clone();
 
                     if let Some(path) = path {
                         match callback(cx, &path, input) {
@@ -318,7 +318,7 @@ fn create_file_operation_prompt(
                 },
             );
 
-            if let Some(path_editing) = &editor.path_editing {
+            if let Some(path_editing) = &editor.file_explorer_selected_path {
                 prompt.set_line_no_recalculate(path_editing.display().to_string());
             }
 
@@ -380,7 +380,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         |cx, (path, _is_dir): &(PathBuf, bool)|,
         // create
         alt!('n') => {
-            create_file_operation_prompt("create:", cx, path, |_, _, to_create_str| {
+            create_file_operation_prompt("create:", cx, path, |_cx, _path, to_create_str| {
                 let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
                 if to_create.exists() {
@@ -388,11 +388,15 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                 };
 
                 if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
-                    fs::create_dir_all(&to_create).map_err(|err| format!("Unable to create directory {}: {err}", to_create.display()))?;
+                    fs::create_dir_all(&to_create).map_err(
+                        |err| format!("Unable to create directory {}: {err}", to_create.display())
+                    )?;
 
                     Ok(format!("Created directory: {}", to_create.display()))
                 } else {
-                    fs::File::create(&to_create).map_err(|err| format!("Unable to create file {}: {err}", to_create.display()))?;
+                    fs::File::create(&to_create).map_err(
+                        |err| format!("Unable to create file {}: {err}", to_create.display())
+                    )?;
 
                     Ok(format!("Created file: {}", to_create.display()))
                 }
@@ -433,11 +437,19 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     };
 
                     if to_delete_str.ends_with(std::path::MAIN_SEPARATOR) {
-                        fs::remove_dir_all(&to_delete).map_err(|err| format!("Unable to delete directory {}: {err}", to_delete.display()))?;
+                        fs::remove_dir_all(&to_delete).map_err(
+                            |err| format!(
+                                "Unable to delete directory {}: {err}", to_delete.display()
+                            )
+                        )?;
 
                         Ok(format!("Deleted directory: {}", to_delete.display()))
                     } else {
-                        fs::remove_file(&to_delete).map_err(|err| format!("Unable to delete file {}: {err}", to_delete.display()))?;
+                        fs::remove_file(&to_delete).map_err(
+                            |err| format!(
+                                "Unable to delete file {}: {err}", to_delete.display()
+                            )
+                        )?;
 
                         Ok(format!("Deleted file: {}", to_delete.display()))
                     }
@@ -468,7 +480,9 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // copy path
         alt!('y') => {
-            let register = cx.editor.selected_register.unwrap_or(cx.editor.config().default_yank_register);
+            let register = cx.editor.selected_register.unwrap_or(
+                cx.editor.config().default_yank_register
+            );
             let path = helix_stdx::path::get_relative_path(path);
             let path = path.to_string_lossy().to_string();
             let message = format!("Yanked {} to register {register}", path);
