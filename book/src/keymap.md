@@ -285,6 +285,8 @@ This layer is a kludge of mappings, mostly pickers.
 | -----   | -----------                                                             | -------                                    |
 | `f`     | Open file picker at LSP workspace root                                  | `file_picker`                              |
 | `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`         |
+| `e`     | Open file explorer at LSP workspace root                                | `file_explorer`                            |
+| `E`     | Open file explorer at the opened file's directory                       | `file_explorer_in_current_buffer_directory`|
 | `b`     | Open buffer picker                                                      | `buffer_picker`                            |
 | `j`     | Open jumplist picker                                                    | `jumplist_picker`                          |
 | `g`     | Open changed file picker                                                | `changed_file_picker`                      |
@@ -465,11 +467,11 @@ See the documentation page on [pickers](./pickers.md) for more info.
 
 ### File Explorer
 
-There are additional keys accessible when using the File Explorer.
+There are additional keys accessible when using the File Explorer (`Space-e` and `Space-E`).
 
 | Key                          | Description                                                |
 | -----                        | -------------                                              |
-| `Alt-m`                      | Move (& rename) selected file or directory                 |
+| `Alt-m`                      | Move selected file or directory                            |
 | `Alt-n`                      | Create a new file or directory                             |
 | `Alt-d`                      | Delete the selected file or directory                      |
 | `Alt-c`                      | Copy the selected file                                     |
