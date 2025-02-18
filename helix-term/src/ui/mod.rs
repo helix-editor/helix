@@ -401,7 +401,7 @@ fn create_file_operation_prompt(
     cx.jobs.callback(callback);
 }
 
-fn refresh(cursor: Option<u32>, cx: &mut Context, root: PathBuf) {
+fn refresh_file_explorer(cursor: Option<u32>, cx: &mut Context, root: PathBuf) {
     let callback = Box::pin(async move {
         let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
             if let Ok(picker) = file_explorer(cursor, root, editor) {
@@ -433,6 +433,261 @@ pub fn file_explorer(
         },
     )];
 
+    let copy_path = |cx: &mut Context, (path, _is_dir): &(PathBuf, bool), _cursor: u32| {
+        let register = cx
+            .editor
+            .selected_register
+            .unwrap_or(cx.editor.config().default_yank_register);
+        let path = helix_stdx::path::get_relative_path(path);
+        let path = path.to_string_lossy().to_string();
+        let message = format!("Yanked path {} to register {register}", path);
+
+        match cx.editor.registers.write(register, vec![path]) {
+            Ok(()) => cx.editor.set_status(message),
+            Err(err) => cx.editor.set_error(err.to_string()),
+        };
+    };
+
+    let create_file = |cx: &mut Context, (path, _is_dir): &(PathBuf, bool), cursor: u32| {
+        create_file_operation_prompt(
+            cursor,
+            "create:",
+            cx,
+            path,
+            |path| {
+                path.parent()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_default()
+            },
+            |cursor, cx, path, to_create_str| {
+                let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
+
+                let create_op = |cursor: u32,
+                                 cx: &mut Context,
+                                 root: PathBuf,
+                                 to_create_str: &str,
+                                 to_create: &Path| {
+                    if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
+                        if let Err(err) = fs::create_dir_all(to_create).map_err(|err| {
+                            format!("Unable to create directory {}: {err}", to_create.display())
+                        }) {
+                            return Some(Err(err));
+                        }
+                        refresh_file_explorer(Some(cursor), cx, root);
+
+                        Some(Ok(format!("Created directory: {}", to_create.display())))
+                    } else {
+                        if let Err(err) = fs::File::create(to_create).map_err(|err| {
+                            format!("Unable to create file {}: {err}", to_create.display())
+                        }) {
+                            return Some(Err(err));
+                        };
+                        refresh_file_explorer(Some(cursor), cx, root);
+
+                        Some(Ok(format!("Created file: {}", to_create.display())))
+                    }
+                };
+
+                let root = path
+                    .parent()
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or(helix_stdx::env::current_working_dir());
+
+                if to_create.exists() {
+                    create_confirmation_prompt(
+                        cursor,
+                        format!(
+                            "Path {} already exists. Overwrite? (y/n):",
+                            to_create.display()
+                        ),
+                        cx,
+                        to_create_str.to_string(),
+                        to_create.to_path_buf(),
+                        root,
+                        create_op,
+                    );
+                    return None;
+                };
+
+                create_op(cursor, cx, root, to_create_str, &to_create)
+            },
+        )
+    };
+
+    let move_file = |cx: &mut Context, (path, _is_dir): &(PathBuf, bool), cursor: u32| {
+        create_file_operation_prompt(
+            cursor,
+            "move:",
+            cx,
+            path,
+            |path| path.display().to_string(),
+            |cursor, cx, move_from, move_to_str| {
+                let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
+
+                let move_op = |cursor: u32,
+                               cx: &mut Context,
+                               root: PathBuf,
+                               move_to_str: &str,
+                               move_from: &Path| {
+                    let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
+                    if let Err(err) = fs::rename(move_from, &move_to).map_err(|err| {
+                        format!(
+                            "Unable to move {} {} -> {}: {err}",
+                            if move_to_str.ends_with(std::path::MAIN_SEPARATOR) {
+                                "directory"
+                            } else {
+                                "file"
+                            },
+                            move_from.display(),
+                            move_to.display()
+                        )
+                    }) {
+                        return Some(Err(err));
+                    };
+                    refresh_file_explorer(Some(cursor), cx, root);
+                    None
+                };
+
+                let root = move_from
+                    .parent()
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or(helix_stdx::env::current_working_dir());
+
+                if move_to.exists() {
+                    create_confirmation_prompt(
+                        cursor,
+                        format!(
+                            "Path {} already exists. Overwrite? (y/n):",
+                            move_to.display()
+                        ),
+                        cx,
+                        move_to_str.to_string(),
+                        move_from.to_path_buf(),
+                        root,
+                        move_op,
+                    );
+                    return None;
+                };
+
+                move_op(cursor, cx, root, move_to_str, move_from)
+            },
+        )
+    };
+
+    let delete_file = |cx: &mut Context, (path, _is_dir): &(PathBuf, bool), cursor: u32| {
+        create_file_operation_prompt(
+            cursor,
+            "delete? (y/n):",
+            cx,
+            path,
+            |_| "".to_string(),
+            |cursor, cx, to_delete, confirmation| {
+                if confirmation == "y" {
+                    if !to_delete.exists() {
+                        return Some(Err(format!("Path {} does not exist", to_delete.display())));
+                    };
+
+                    let root = to_delete
+                        .parent()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or(helix_stdx::env::current_working_dir());
+
+                    if confirmation.ends_with(std::path::MAIN_SEPARATOR) {
+                        if let Err(err) = fs::remove_dir_all(to_delete).map_err(|err| {
+                            format!("Unable to delete directory {}: {err}", to_delete.display())
+                        }) {
+                            return Some(Err(err));
+                        };
+                        refresh_file_explorer(Some(cursor), cx, root);
+
+                        Some(Ok(format!("Deleted directory: {}", to_delete.display())))
+                    } else {
+                        if let Err(err) = fs::remove_file(to_delete).map_err(|err| {
+                            format!("Unable to delete file {}: {err}", to_delete.display())
+                        }) {
+                            return Some(Err(err));
+                        };
+                        refresh_file_explorer(Some(cursor), cx, root);
+
+                        Some(Ok(format!("Deleted file: {}", to_delete.display())))
+                    }
+                } else {
+                    None
+                }
+            },
+        )
+    };
+
+    let copy_file = |cx: &mut Context, (path, _is_dir): &(PathBuf, bool), cursor: u32| {
+        create_file_operation_prompt(
+            cursor,
+            "copy-to:",
+            cx,
+            path,
+            |path| {
+                path.parent()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_default()
+            },
+            |cursor, cx, copy_from, copy_to_str| {
+                let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
+
+                let copy_op = |cursor: u32,
+                               cx: &mut Context,
+                               root: PathBuf,
+                               copy_to_str: &str,
+                               copy_from: &Path| {
+                    let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
+                    if let Err(err) = std::fs::copy(copy_from, &copy_to).map_err(|err| {
+                        format!(
+                            "Unable to copy from file {} to {}: {err}",
+                            copy_from.display(),
+                            copy_to.display()
+                        )
+                    }) {
+                        return Some(Err(err));
+                    };
+                    refresh_file_explorer(Some(cursor), cx, root);
+
+                    Some(Ok(format!(
+                        "Copied contents of file {} to {}",
+                        copy_from.display(),
+                        copy_to.display()
+                    )))
+                };
+
+                let root = copy_to
+                    .parent()
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or(helix_stdx::env::current_working_dir());
+
+                if copy_from.is_dir() || copy_to_str.ends_with('/') {
+                    // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
+                    Some(Err(format!(
+                        "Copying directories is not supported: {} is a directory",
+                        copy_from.display()
+                    )))
+                } else if copy_to.exists() {
+                    create_confirmation_prompt(
+                        cursor,
+                        format!(
+                            "Path {} already exists. Overwrite? (y/n):",
+                            copy_to.display()
+                        ),
+                        cx,
+                        copy_to_str.to_string(),
+                        copy_from.to_path_buf(),
+                        root,
+                        copy_op,
+                    );
+                    None
+                } else {
+                    copy_op(cursor, cx, root, copy_to_str, copy_from)
+                }
+            },
+        )
+    };
+
     let picker = Picker::new(
         columns,
         0,
@@ -441,7 +696,7 @@ pub fn file_explorer(
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
                 let new_root = helix_stdx::path::normalize(path);
-                refresh(None, cx, new_root);
+                refresh_file_explorer(None, cx, new_root);
             } else if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
@@ -455,227 +710,11 @@ pub fn file_explorer(
     .with_cursor(cursor.unwrap_or_default())
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
     .with_key_handlers(hashmap! {
-        // create
-        alt!('n') => Box::new(|cx: &mut Context, (path, _is_dir): &(PathBuf, bool), cursor: u32| {
-            create_file_operation_prompt(
-                cursor,
-                "create:",
-                cx,
-                path,
-                |path| path.parent().map(|p| p.display().to_string()).unwrap_or_default(),
-                |cursor, cx, path, to_create_str| {
-                let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
-
-                let create_op = |cursor: u32, cx: &mut Context, root: PathBuf, to_create_str: &str, to_create: &Path| {
-                    if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
-                        if let Err(err) = fs::create_dir_all(to_create).map_err(
-                            |err| format!("Unable to create directory {}: {err}", to_create.display())
-                        ) {
-                            return Some(Err(err));
-                        }
-                        refresh(Some(cursor), cx, root);
-
-                        Some(Ok(format!("Created directory: {}", to_create.display())))
-                    } else {
-                        if let Err(err) = fs::File::create(to_create).map_err(
-                            |err| format!("Unable to create file {}: {err}", to_create.display())
-                        ) {
-                            return Some(Err(err));
-                        };
-                        refresh(Some(cursor), cx, root);
-
-                        Some(Ok(format!("Created file: {}", to_create.display())))
-                    }
-                };
-
-                let root = path.parent().map(
-                    |p| p.to_path_buf()
-                ).unwrap_or(helix_stdx::env::current_working_dir());
-
-                if to_create.exists() {
-                    create_confirmation_prompt(
-                        cursor,
-                        format!(
-                            "Path {} already exists. Overwrite? (y/n):", to_create.display()
-                        ),
-                        cx,
-                        to_create_str.to_string(),
-                        to_create.to_path_buf(),
-                        root,
-                        create_op
-                    );
-                    return None;
-                };
-
-                create_op(cursor, cx, root, to_create_str, &to_create)
-            })
-        }) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
-        // move
-        alt!('m') => Box::new(|cx: &mut Context, (path, _is_dir): &(PathBuf, bool), cursor: u32|{
-            create_file_operation_prompt(
-                cursor,
-                "move:",
-                cx,
-                path,
-                |path| path.display().to_string(),
-                |cursor, cx, move_from, move_to_str| {
-                let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
-
-                let move_op = |cursor: u32, cx: &mut Context, root: PathBuf, move_to_str: &str, move_from: &Path| {
-                    let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
-                    if let Err(err) = fs::rename(move_from, &move_to).map_err(|err|
-                        format!(
-                            "Unable to move {} {} -> {}: {err}",
-                            if move_to_str.ends_with(std::path::MAIN_SEPARATOR) {
-                                "directory"
-                            } else {
-                                "file"
-                            },
-                            move_from.display(),
-                            move_to.display()
-                        )
-                    ) {
-                        return Some(Err(err))
-                    };
-                    refresh(Some(cursor), cx, root);
-                    None
-                };
-
-                let root = move_from.parent().map(
-                    |p| p.to_path_buf()
-                ).unwrap_or(helix_stdx::env::current_working_dir());
-
-                if move_to.exists() {
-                    create_confirmation_prompt(
-                        cursor,
-                        format!(
-                            "Path {} already exists. Overwrite? (y/n):", move_to.display()
-                        ),
-                        cx,
-                        move_to_str.to_string(),
-                        move_from.to_path_buf(),
-                        root,
-                        move_op
-                    );
-                    return None;
-                };
-
-                move_op(cursor, cx, root, move_to_str, move_from)
-            })
-        }) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
-        // delete
-        alt!('d') => Box::new(|cx: &mut Context, (path, _is_dir): &(PathBuf, bool), cursor: u32|{
-            create_file_operation_prompt(
-                cursor,
-                "delete? (y/n):",
-                cx,
-                path,
-                |_| "".to_string(),
-                |cursor, cx, to_delete, confirmation| {
-                if confirmation == "y" {
-                    if !to_delete.exists() {
-                        return Some(Err(format!("Path {} does not exist", to_delete.display())))
-                    };
-
-                    let root = to_delete.parent().map(
-                        |p| p.to_path_buf()
-                    ).unwrap_or(helix_stdx::env::current_working_dir());
-
-                    if confirmation.ends_with(std::path::MAIN_SEPARATOR) {
-                        if let Err(err) = fs::remove_dir_all(to_delete).map_err(
-                            |err| format!(
-                                "Unable to delete directory {}: {err}", to_delete.display()
-                            )
-                        ) {
-                            return Some(Err(err));
-                        };
-                        refresh(Some(cursor), cx, root);
-
-                        Some(Ok(format!("Deleted directory: {}", to_delete.display())))
-                    } else {
-                        if let Err(err) = fs::remove_file(to_delete).map_err(
-                            |err| format!(
-                                "Unable to delete file {}: {err}", to_delete.display()
-                            )
-                        ) {
-                            return Some(Err(err));
-                        };
-                        refresh(Some(cursor), cx, root);
-
-                        Some(Ok(format!("Deleted file: {}", to_delete.display())))
-                    }
-                } else {
-                    None
-                }
-            })
-        }) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
-        // copy file / directory
-        alt!('c') => Box::new(|cx: &mut Context, (path, _is_dir): &(PathBuf, bool), cursor: u32|{
-            create_file_operation_prompt(
-                cursor,
-                "copy-to:",
-                cx,
-                path,
-                |path| path.parent().map(|p| p.display().to_string()).unwrap_or_default(),
-                |cursor, cx, copy_from, copy_to_str| {
-                let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
-
-                let copy_op = |cursor: u32, cx: &mut Context, root: PathBuf, copy_to_str: &str, copy_from: &Path| {
-                    let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
-                    if let Err(err) = std::fs::copy(copy_from, &copy_to).map_err(
-                        |err| format!("Unable to copy from file {} to {}: {err}",
-                            copy_from.display(), copy_to.display()
-                    )) {
-                        return Some(Err(err));
-                    };
-                    refresh(Some(cursor), cx, root);
-
-                    Some(Ok(format!(
-                        "Copied contents of file {} to {}", copy_from.display(), copy_to.display()
-                    )))
-                };
-
-                let root = copy_to.parent().map(
-                    |p| p.to_path_buf()
-                ).unwrap_or(helix_stdx::env::current_working_dir());
-                
-                if copy_from.is_dir() || copy_to_str.ends_with('/') {
-                    // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
-                    Some(Err(format!(
-                        "Copying directories is not supported: {} is a directory", copy_from.display()
-                    )))
-                } else if copy_to.exists() {
-                    create_confirmation_prompt(
-                        cursor,
-                        format!(
-                            "Path {} already exists. Overwrite? (y/n):", copy_to.display()
-                        ),
-                        cx,
-                        copy_to_str.to_string(),
-                        copy_from.to_path_buf(),
-                        root,
-                        copy_op
-                    );
-                    None
-                } else {
-                    copy_op(cursor, cx, root, copy_to_str, copy_from)
-                }
-            })
-        }) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
-        // copy path into register
-        alt!('y') => Box::new(|cx: &mut Context, (path, _is_dir): &(PathBuf, bool), _cursor: u32|{
-            let register = cx.editor.selected_register.unwrap_or(
-                cx.editor.config().default_yank_register
-            );
-            let path = helix_stdx::path::get_relative_path(path);
-            let path = path.to_string_lossy().to_string();
-            let message = format!("Yanked path {} to register {register}", path);
-
-            match cx.editor.registers.write(register, vec![path]) {
-                Ok(()) => cx.editor.set_status(message),
-                Err(err) => cx.editor.set_error(err.to_string())
-            };
-        }) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>
+        alt!('n') => Box::new(create_file) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
+        alt!('m') => Box::new(move_file) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
+        alt!('d') => Box::new(delete_file) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
+        alt!('c') => Box::new(copy_file) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>,
+        alt!('y') => Box::new(copy_path) as Box<dyn Fn(&mut Context, &(PathBuf, bool), u32) + 'static>
     });
 
     Ok(picker)
