@@ -33,9 +33,9 @@ pub use text::Text;
 use helix_view::Editor;
 use tui::text::Span;
 
+use std::fs;
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
-use std::{fs, path};
 
 use self::picker::PickerKeyHandler;
 
@@ -382,9 +382,17 @@ fn create_file_operation_prompt(
     cx.jobs.callback(callback);
 }
 
-fn refresh_file_explorer(cursor: Option<u32>, cx: &mut Context, root: PathBuf) {
+fn refresh_file_explorer(
+    remove_previous: bool,
+    cursor: Option<u32>,
+    cx: &mut Context,
+    root: PathBuf,
+) {
     let callback = Box::pin(async move {
         let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
+            if remove_previous {
+                compositor.pop();
+            }
             if let Ok(picker) = file_explorer(cursor, root, editor) {
                 compositor.push(Box::new(overlay::overlaid(picker)));
             }
@@ -454,7 +462,7 @@ pub fn file_explorer(
                         }) {
                             return Some(Err(err));
                         }
-                        refresh_file_explorer(Some(cursor), cx, root);
+                        refresh_file_explorer(true, Some(cursor), cx, root);
 
                         Some(Ok(format!("Created directory: {}", to_create.display())))
                     } else {
@@ -463,7 +471,7 @@ pub fn file_explorer(
                         }) {
                             return Some(Err(err));
                         };
-                        refresh_file_explorer(Some(cursor), cx, root);
+                        refresh_file_explorer(true, Some(cursor), cx, root);
 
                         Some(Ok(format!("Created file: {}", to_create.display())))
                     }
@@ -525,7 +533,7 @@ pub fn file_explorer(
                     }) {
                         return Some(Err(err));
                     };
-                    refresh_file_explorer(Some(cursor), cx, root);
+                    refresh_file_explorer(true, Some(cursor), cx, root);
                     None
                 };
 
@@ -579,7 +587,7 @@ pub fn file_explorer(
                         }) {
                             return Some(Err(err));
                         };
-                        refresh_file_explorer(Some(cursor), cx, root);
+                        refresh_file_explorer(true, Some(cursor), cx, root);
 
                         Some(Ok(format!("Deleted directory: {}", to_delete.display())))
                     } else {
@@ -588,7 +596,7 @@ pub fn file_explorer(
                         }) {
                             return Some(Err(err));
                         };
-                        refresh_file_explorer(Some(cursor), cx, root);
+                        refresh_file_explorer(true, Some(cursor), cx, root);
 
                         Some(Ok(format!("Deleted file: {}", to_delete.display())))
                     }
@@ -628,7 +636,7 @@ pub fn file_explorer(
                     }) {
                         return Some(Err(err));
                     };
-                    refresh_file_explorer(Some(cursor), cx, root);
+                    refresh_file_explorer(true, Some(cursor), cx, root);
 
                     Some(Ok(format!(
                         "Copied contents of file {} to {}",
@@ -679,7 +687,7 @@ pub fn file_explorer(
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
                 let new_root = helix_stdx::path::normalize(path);
-                refresh_file_explorer(None, cx, new_root);
+                refresh_file_explorer(false, None, cx, new_root);
             } else if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
