@@ -399,22 +399,22 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         // execute an action based on that. Maybe re-use the existing Prompt component somehow?
         |cx, (path, _is_dir): &(PathBuf, bool)|,
         // create
-        alt!('c') => {
+        alt!('n') => {
             create_file_operation_prompt("create:", cx, path, |_, to_create_str| {
                 let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
                 if to_create.exists() {
-                    return Err(format!("Path {to_create_str} already exists"))
+                    return Err(format!("Path {} already exists", to_create.display()))
                 };
 
                 if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
-                    fs::create_dir_all(to_create).map_err(|err| format!("Unable to create directory {to_create_str}: {err}"))?;
+                    fs::create_dir_all(&to_create).map_err(|err| format!("Unable to create directory {}: {err}", to_create.display()))?;
 
-                    Ok(format!("Created directory: {to_create_str}"))
+                    Ok(format!("Created directory: {}", to_create.display()))
                 } else {
-                    fs::File::create(to_create).map_err(|err| format!("Unable to create file {to_create_str}: {err}"))?;
+                    fs::File::create(&to_create).map_err(|err| format!("Unable to create file {}: {err}", to_create.display()))?;
 
-                    Ok(format!("Created file: {to_create_str}"))
+                    Ok(format!("Created file: {}", to_create.display()))
                 }
             })
         },
@@ -428,14 +428,14 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // delete
         alt!('d') => {
-            create_file_operation_prompt("delete? (y/n):", cx, path, |_, input| {
-                let to_delete = helix_stdx::path::expand_tilde(PathBuf::from(input));
-                if matches!(input, "y" | "n") {
-                    if to_delete.exists() {
+            create_file_operation_prompt("delete? (y/n):", cx, path, |_, to_delete_str| {
+                let to_delete = helix_stdx::path::expand_tilde(PathBuf::from(to_delete_str));
+                if to_delete_str == "y" {
+                    if !to_delete.exists() {
                         return Err(format!("Path {} does not exist", to_delete.display()))
                     };
 
-                    if input.ends_with(std::path::MAIN_SEPARATOR) {
+                    if to_delete_str.ends_with(std::path::MAIN_SEPARATOR) {
                         fs::remove_dir_all(&to_delete).map_err(|err| format!("Unable to delete directory {}: {err}", to_delete.display()))?;
 
                         Ok(format!("Deleted directory: {}", to_delete.display()))
@@ -445,29 +445,37 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         Ok(format!("Deleted file: {}", to_delete.display()))
                     }
                 } else {
-                    Ok(format!("Did not delete: {}", to_delete.display()))
+                    Ok("".into())
                 }
             })
         },
-        // copy
-        alt!('y') => {
+        // copy contents
+        alt!('c') => {
             create_file_operation_prompt("copy-to:", cx, path, |copy_from, copy_to_str| {
                 let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
-                if copy_to_str.ends_with('/') {
+                if copy_from.is_dir() || copy_to_str.ends_with('/') {
+                    // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
                     Err(format!("Copying directories is not supported: {} is a directory", copy_from.display()))
                 } else if copy_to.exists() {
                     // TODO: confirmation prompt when overwriting
-                    Err(format!("Path {copy_to_str} exists"))
+                    Err(format!("Path {} exists", copy_to.display()))
                 } else {
-                    std::fs::copy(copy_from, copy_to).map_err(
-                        |err| format!("Unable to copy from file {} to {copy_to_str}: {err}",
-                            copy_from.display()
+                    std::fs::copy(copy_from, &copy_to).map_err(
+                        |err| format!("Unable to copy from file {} to {}: {err}",
+                            copy_from.display(), copy_to.display()
                     ))?;
 
-                    Ok(format!("Copied contents of file {} to {copy_to_str}", copy_from.display()))
+                    Ok(format!("Copied contents of file {} to {}", copy_from.display(), copy_to.display()))
                 }
             })
         },
+        // copy path
+        alt!('y') => {
+            // TODO
+            // cx.
+            // cx.editor.registers
+            //             .unwrap_or(cx.editor.config().default_yank_register)
+        }
     });
 
     Ok(picker)
