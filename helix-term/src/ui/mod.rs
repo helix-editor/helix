@@ -488,7 +488,9 @@ pub fn file_explorer(
                     }
                 };
 
-                let root = path.parent().unwrap().to_path_buf();
+                let root = path.parent().map(
+                    |p| p.to_path_buf()
+                ).unwrap_or(helix_stdx::env::current_working_dir());
 
                 if to_create.exists() {
                     create_confirmation_prompt(
@@ -539,7 +541,9 @@ pub fn file_explorer(
                     None
                 };
 
-                let root = move_from.parent().unwrap().to_path_buf();
+                let root = move_from.parent().map(
+                    |p| p.to_path_buf()
+                ).unwrap_or(helix_stdx::env::current_working_dir());
 
                 if move_to.exists() {
                     create_confirmation_prompt(
@@ -573,7 +577,9 @@ pub fn file_explorer(
                         return Some(Err(format!("Path {} does not exist", to_delete.display())))
                     };
 
-                    let root = to_delete.parent().unwrap().to_path_buf();
+                    let root = to_delete.parent().map(
+                        |p| p.to_path_buf()
+                    ).unwrap_or(helix_stdx::env::current_working_dir());
 
                     if confirmation.ends_with(std::path::MAIN_SEPARATOR) {
                         if let Err(err) = fs::remove_dir_all(to_delete).map_err(
@@ -629,7 +635,9 @@ pub fn file_explorer(
                     )))
                 };
 
-                let root = copy_from.parent().unwrap().to_path_buf();
+                let root = copy_to.parent().map(
+                    |p| p.to_path_buf()
+                ).unwrap_or(helix_stdx::env::current_working_dir());
                 
                 if copy_from.is_dir() || copy_to_str.ends_with('/') {
                     // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
