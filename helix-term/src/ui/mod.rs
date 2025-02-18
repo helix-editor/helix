@@ -283,12 +283,15 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
+type OnConfirm = fn(cx: &mut Context, picker_root: PathBuf, &str, &Path) -> Option<Result<String, String>>;
+
 fn create_confirmation_prompt(
     input: String,
     cx: &mut Context,
-    to_create_str: String,
-    to_create: PathBuf,
-    callback: fn(&str, &Path) -> Option<Result<String, String>>,
+    operation_input_str: String,
+    operation_input: PathBuf,
+    picker_root: PathBuf,
+    on_confirm: OnConfirm,
 ) {
     let callback = Box::pin(async move {
         let call: Callback = Callback::EditorCompositor(Box::new(move |_editor, compositor| {
@@ -301,7 +304,7 @@ fn create_confirmation_prompt(
                         return;
                     };
 
-                    match callback(&to_create_str, &to_create) {
+                    match on_confirm(cx, picker_root.clone(), &operation_input_str, &operation_input) {
                         Some(Ok(msg)) => cx.editor.set_status(msg),
                         Some(Err(msg)) => cx.editor.set_error(msg),
                         None => (),
@@ -361,6 +364,19 @@ fn create_file_operation_prompt(
     cx.jobs.callback(callback);
 }
 
+fn refresh(cx: &mut Context, root: PathBuf) {
+    let callback = Box::pin(async move {
+        let call: Callback =
+            Callback::EditorCompositor(Box::new(move |editor, compositor| {
+                if let Ok(picker) = file_explorer(root, editor) {
+                    compositor.push(Box::new(overlay::overlaid(picker)));
+                }
+            }));
+        Ok(call)
+    });
+    cx.jobs.callback(callback);
+}
+
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
@@ -385,16 +401,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
                 let new_root = helix_stdx::path::normalize(path);
-                let callback = Box::pin(async move {
-                    let call: Callback =
-                        Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                            if let Ok(picker) = file_explorer(new_root, editor) {
-                                compositor.push(Box::new(overlay::overlaid(picker)));
-                            }
-                        }));
-                    Ok(call)
-                });
-                cx.jobs.callback(callback);
+                refresh(cx, new_root);
             } else if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
@@ -417,16 +424,17 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                 cx,
                 path,
                 |path| path.parent().map(|p| p.display().to_string()).unwrap_or_default(),
-                |cx, _path, to_create_str| {
+                |cx, path, to_create_str| {
                 let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
-                let create_op = |to_create_str: &str, to_create: &Path| {
+                let create_op = |cx: &mut Context, root: PathBuf, to_create_str: &str, to_create: &Path| {
                     if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
                         if let Err(err) = fs::create_dir_all(to_create).map_err(
                             |err| format!("Unable to create directory {}: {err}", to_create.display())
                         ) {
                             return Some(Err(err));
                         }
+                        refresh(cx, root);
 
                         Some(Ok(format!("Created directory: {}", to_create.display())))
                     } else {
@@ -435,10 +443,13 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         ) {
                             return Some(Err(err));
                         };
+                        refresh(cx, root);
 
                         Some(Ok(format!("Created file: {}", to_create.display())))
                     }
                 };
+
+                let root = path.parent().unwrap().to_path_buf();
 
                 if to_create.exists() {
                     create_confirmation_prompt(
@@ -448,12 +459,13 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         cx,
                         to_create_str.to_string(),
                         to_create.to_path_buf(),
+                        root,
                         create_op
                     );
                     return None;
                 };
 
-                create_op(to_create_str, &to_create)
+                create_op(cx, root, to_create_str, &to_create)
             })
         },
         // move
@@ -466,7 +478,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                 |cx, move_from, move_to_str| {
                 let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
 
-                let move_op = |move_to_str: &str, move_from: &Path| {
+                let move_op = |cx: &mut Context, root: PathBuf, move_to_str: &str, move_from: &Path| {
                     let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
                     if let Err(err) = fs::rename(move_from, &move_to).map_err(|err|
                         format!(
@@ -482,8 +494,11 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     ) {
                         return Some(Err(err))
                     };
+                    refresh(cx, root);
                     None
                 };
+
+                let root = move_from.parent().unwrap().to_path_buf();
 
                 if move_to.exists() {
                     create_confirmation_prompt(
@@ -493,12 +508,13 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         cx,
                         move_to_str.to_string(),
                         move_from.to_path_buf(),
+                        root,
                         move_op
                     );
                     return None;
                 };
 
-                move_op(move_to_str, move_from)
+                move_op(cx, root, move_to_str, move_from)
             })
         },
         // delete
@@ -508,11 +524,13 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                 cx,
                 path,
                 |_| "".to_string(),
-                |_, to_delete, confirmation| {
+                |cx, to_delete, confirmation| {
                 if confirmation == "y" {
                     if !to_delete.exists() {
                         return Some(Err(format!("Path {} does not exist", to_delete.display())))
                     };
+
+                    let root = to_delete.parent().unwrap().to_path_buf();
 
                     if confirmation.ends_with(std::path::MAIN_SEPARATOR) {
                         if let Err(err) = fs::remove_dir_all(to_delete).map_err(
@@ -522,6 +540,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         ) {
                             return Some(Err(err));
                         };
+                        refresh(cx, root);
 
                         Some(Ok(format!("Deleted directory: {}", to_delete.display())))
                     } else {
@@ -532,6 +551,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         ) {
                             return Some(Err(err));
                         };
+                        refresh(cx, root);
 
                         Some(Ok(format!("Deleted file: {}", to_delete.display())))
                     }
@@ -550,7 +570,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                 |cx, copy_from, copy_to_str| {
                 let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
 
-                let copy_op = |copy_to_str: &str, copy_from: &Path| {
+                let copy_op = |cx: &mut Context, root: PathBuf, copy_to_str: &str, copy_from: &Path| {
                     let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
                     if let Err(err) = std::fs::copy(copy_from, &copy_to).map_err(
                         |err| format!("Unable to copy from file {} to {}: {err}",
@@ -558,11 +578,14 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     )) {
                         return Some(Err(err));
                     };
+                    refresh(cx, root);
 
                     Some(Ok(format!(
                         "Copied contents of file {} to {}", copy_from.display(), copy_to.display()
                     )))
                 };
+
+                let root = copy_from.parent().unwrap().to_path_buf();
                 
                 if copy_from.is_dir() || copy_to_str.ends_with('/') {
                     // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
@@ -577,11 +600,12 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                         cx,
                         copy_to_str.to_string(),
                         copy_from.to_path_buf(),
+                        root,
                         copy_op
                     );
                     None
                 } else {
-                    copy_op(copy_to_str, copy_from)
+                    copy_op(cx, root, copy_to_str, copy_from)
                 }
             })
         },
