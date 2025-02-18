@@ -33,9 +33,9 @@ pub use text::Text;
 use helix_view::Editor;
 use tui::text::{Span, Spans};
 
-use std::fs;
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
+use std::{fs, path};
 
 use self::picker::PickerKeyHandler;
 
@@ -435,7 +435,7 @@ pub fn file_explorer(
         },
     )];
 
-    let copy_path = |cx: &mut Context, (path, _is_dir): &(PathBuf, bool), _cursor: u32| {
+    let yank_path = |cx: &mut Context, (path, _is_dir): &(PathBuf, bool), _cursor: u32| {
         let register = cx
             .editor
             .selected_register
@@ -663,7 +663,7 @@ pub fn file_explorer(
                     .map(|p| p.to_path_buf())
                     .unwrap_or(helix_stdx::env::current_working_dir());
 
-                if copy_from.is_dir() || copy_to_str.ends_with('/') {
+                if copy_from.is_dir() || copy_to_str.ends_with(std::path::MAIN_SEPARATOR) {
                     // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
                     Some(Err(format!(
                         "Copying directories is not supported: {} is a directory",
@@ -718,7 +718,7 @@ pub fn file_explorer(
         alt!('m') => Box::new(move_file) as KeyHandler,
         alt!('d') => Box::new(delete_file) as KeyHandler,
         alt!('c') => Box::new(copy_file) as KeyHandler,
-        alt!('y') => Box::new(copy_path) as KeyHandler,
+        alt!('y') => Box::new(yank_path) as KeyHandler,
     });
 
     Ok(picker)
