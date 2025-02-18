@@ -536,7 +536,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     };
 
                     if confirmation.ends_with(std::path::MAIN_SEPARATOR) {
-                        if let Err(err) = fs::remove_dir_all(&to_delete).map_err(
+                        if let Err(err) = fs::remove_dir_all(to_delete).map_err(
                             |err| format!(
                                 "Unable to delete directory {}: {err}", to_delete.display()
                             )
@@ -546,7 +546,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
 
                         Some(Ok(format!("Deleted directory: {}", to_delete.display())))
                     } else {
-                        if let Err(err) = fs::remove_file(&to_delete).map_err(
+                        if let Err(err) = fs::remove_file(to_delete).map_err(
                             |err| format!(
                                 "Unable to delete file {}: {err}", to_delete.display()
                             )
