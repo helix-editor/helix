@@ -420,31 +420,32 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // move
         alt!('m') => {
-            create_file_operation_prompt("move:", cx, path, |path, input| {
+            create_file_operation_prompt("move:", cx, path, |move_from, move_to| {
+                let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to));
                 Ok("".into())
 
             })
         },
         // delete
         alt!('d') => {
-            create_file_operation_prompt("delete? (y/n):", cx, path, |_, to_delete_str| {
-                let to_delete = helix_stdx::path::expand_tilde(PathBuf::from(to_delete_str));
-                if matches!(to_delete_str, "y" | "n") {
+            create_file_operation_prompt("delete? (y/n):", cx, path, |_, input| {
+                let to_delete = helix_stdx::path::expand_tilde(PathBuf::from(input));
+                if matches!(input, "y" | "n") {
                     if to_delete.exists() {
-                        return Err(format!("Path {to_delete_str} does not exist"))
+                        return Err(format!("Path {} does not exist", to_delete.display()))
                     };
 
-                    if to_delete_str.ends_with(std::path::MAIN_SEPARATOR) {
-                        fs::remove_dir_all(to_delete).map_err(|err| format!("Unable to delete directory {to_delete_str}: {err}"))?;
+                    if input.ends_with(std::path::MAIN_SEPARATOR) {
+                        fs::remove_dir_all(&to_delete).map_err(|err| format!("Unable to delete directory {}: {err}", to_delete.display()))?;
 
-                        Ok(format!("Deleted directory: {to_delete_str}"))
+                        Ok(format!("Deleted directory: {}", to_delete.display()))
                     } else {
-                        fs::remove_file(to_delete).map_err(|err| format!("Unable to delete file {to_delete_str}: {err}"))?;
+                        fs::remove_file(&to_delete).map_err(|err| format!("Unable to delete file {}: {err}", to_delete.display()))?;
 
-                        Ok(format!("Deleted file: {to_delete_str}"))
+                        Ok(format!("Deleted file: {}", to_delete.display()))
                     }
                 } else {
-                    Ok(format!("Did not delete: {to_delete_str}"))
+                    Ok(format!("Did not delete: {}", to_delete.display()))
                 }
             })
         },
