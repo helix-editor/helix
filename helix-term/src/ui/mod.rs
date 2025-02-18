@@ -508,14 +508,13 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                 cx,
                 path,
                 |_| "".to_string(),
-                |_, _, to_delete_str| {
-                let to_delete = helix_stdx::path::expand_tilde(PathBuf::from(to_delete_str));
-                if to_delete_str == "y" {
+                |_, to_delete, confirmation| {
+                if confirmation == "y" {
                     if !to_delete.exists() {
                         return Some(Err(format!("Path {} does not exist", to_delete.display())))
                     };
 
-                    if to_delete_str.ends_with(std::path::MAIN_SEPARATOR) {
+                    if confirmation.ends_with(std::path::MAIN_SEPARATOR) {
                         if let Err(err) = fs::remove_dir_all(&to_delete).map_err(
                             |err| format!(
                                 "Unable to delete directory {}: {err}", to_delete.display()
