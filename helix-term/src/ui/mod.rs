@@ -434,18 +434,6 @@ pub fn file_explorer(
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
 
-    let columns = [PickerColumn::new(
-        "path",
-        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
-            let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
-            if *is_dir {
-                Span::styled(format!("{}/", name), *directory_style).into()
-            } else {
-                name.into()
-            }
-        },
-    )];
-
     let yank_path: KeyHandler = Box::new(|cx, (path, _), _, _| {
         let register = cx
             .editor
@@ -684,6 +672,18 @@ pub fn file_explorer(
             },
         )
     });
+
+    let columns = [PickerColumn::new(
+        "path",
+        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
+            let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
+            if *is_dir {
+                Span::styled(format!("{}/", name), *directory_style).into()
+            } else {
+                name.into()
+            }
+        },
+    )];
 
     let picker = Picker::new(
         columns,
