@@ -33,11 +33,9 @@
         ./book
         ./docs
         ./flake.lock
-        (fs.maybeMissing ./.github)
-        (fs.maybeMissing ./.ignore)
-        (fs.fileFilter (file: file.hasExt ".svg") ./.)
-        (fs.fileFilter (file: file.hasExt ".md") ./.)
-        (fs.fileFilter (file: file.hasExt ".nix") ./.)
+        (fs.fileFilter (file: file.hasExt "svg") ./.)
+        (fs.fileFilter (file: file.hasExt "md") ./.)
+        (fs.fileFilter (file: file.hasExt "nix") ./.)
       ]);
       
       # Next we actually need to build the grammars and the runtime directory
