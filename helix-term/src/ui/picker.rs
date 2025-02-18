@@ -491,6 +491,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .saturating_sub(1);
     }
 
+    pub fn with_cursor(mut self, cursor: u32) -> Self {
+        self.cursor = cursor;
+        self
+    }
+
     pub fn selection(&self) -> Option<&T> {
         self.matcher
             .snapshot()
@@ -521,7 +526,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         if let (Some(callback), Some(selected)) =
             (self.custom_key_handlers.get(event), self.selection())
         {
-            callback(cx, selected);
+            callback(cx, selected, self.cursor);
             EventResult::Consumed(None)
         } else {
             EventResult::Ignored(None)
@@ -1192,16 +1197,16 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
-pub type PickerKeyHandler<T> = HashMap<KeyEvent, Box<dyn Fn(&mut Context, &T) + 'static>>;
+pub type PickerKeyHandler<T> = HashMap<KeyEvent, Box<dyn Fn(&mut Context, &T, u32) + 'static>>;
 
 /// Convenience macro to add custom keybindings per picker
 #[macro_export]
 macro_rules! declare_key_handlers {
-        (|$cx:ident, $item:tt : $t:ty|, $($key:expr => $handler:block),* $(,)?) => {
+        (|$cx:ident, $item:tt : $t:ty, $cursor:ident|, $($key:expr => $handler:block),* $(,)?) => {
             hashmap!(
                 $(
-                    $key => Box::new(|$cx: &mut Context, $item: $t| $handler)
-                        as Box<dyn Fn(&mut Context, $t) + 'static>
+                    $key => Box::new(|$cx: &mut Context, $item: $t, $cursor: u32| $handler)
+                        as Box<dyn Fn(&mut Context, $t, u32) + 'static>
                 ),*
             )
         };
