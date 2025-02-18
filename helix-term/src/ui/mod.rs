@@ -399,10 +399,27 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // move
         alt!('m') => {
-            create_file_operation_prompt("move:", cx, path, |move_from, move_to| {
-                let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to));
-                Ok("".into())
+            create_file_operation_prompt("move:", cx, path, |move_from, move_to_str| {
+                let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
 
+                if move_to.exists() {
+                    // TODO: overwrite prompt
+                    Err(format!("Path {} already exists", move_to.display()))
+                } else {
+                    fs::rename(move_from, &move_to).map_err(|err|
+                        format!(
+                            "Unable to move {} {} -> {}: {err}",
+                            if move_to_str.ends_with(std::path::MAIN_SEPARATOR) {
+                                "directory"
+                            } else {
+                                "file"
+                            },
+                            move_from.display(),
+                            move_to.display()
+                        )
+                    )?;
+                    Ok("".into())
+                }
             })
         },
         // delete
@@ -450,10 +467,15 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // copy path
         alt!('y') => {
-            // TODO
-            // cx.
-            // cx.editor.registers
-            //             .unwrap_or(cx.editor.config().default_yank_register)
+            let register = cx.editor.selected_register.unwrap_or(cx.editor.config().default_yank_register);
+            let path = helix_stdx::path::get_relative_path(path);
+            let path = path.to_string_lossy().to_string();
+            let message = format!("Yanked {} to register {register}", path);
+
+            match cx.editor.registers.write(register, vec![path]) {
+                Ok(_) => cx.editor.set_status(message),
+                Err(err) => cx.editor.set_error(err.to_string())
+            };
         }
     });
 
