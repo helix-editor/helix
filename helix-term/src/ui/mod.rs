@@ -464,7 +464,9 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                 let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
                 if copy_from.is_dir() || copy_to_str.ends_with('/') {
                     // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
-                    Err(format!("Copying directories is not supported: {} is a directory", copy_from.display()))
+                    Err(format!(
+                        "Copying directories is not supported: {} is a directory", copy_from.display()
+                    ))
                 } else if copy_to.exists() {
                     // TODO: confirmation prompt when overwriting
                     Err(format!("Path {} exists", copy_to.display()))
@@ -474,7 +476,9 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                             copy_from.display(), copy_to.display()
                     ))?;
 
-                    Ok(format!("Copied contents of file {} to {}", copy_from.display(), copy_to.display()))
+                    Ok(format!(
+                        "Copied contents of file {} to {}", copy_from.display(), copy_to.display()
+                    ))
                 }
             })
         },
@@ -485,10 +489,10 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
             );
             let path = helix_stdx::path::get_relative_path(path);
             let path = path.to_string_lossy().to_string();
-            let message = format!("Yanked {} to register {register}", path);
+            let message = format!("Yanked path {} to register {register}", path);
 
             match cx.editor.registers.write(register, vec![path]) {
-                Ok(_) => cx.editor.set_status(message),
+                Ok(()) => cx.editor.set_status(message),
                 Err(err) => cx.editor.set_error(err.to_string())
             };
         }
