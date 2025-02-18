@@ -259,7 +259,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     widths: Vec<Constraint>,
 
     callback_fn: PickerCallback<T>,
-    custom_key_handlers: PickerKeyHandler<T>,
+    custom_key_handlers: PickerKeyHandlers<T>,
 
     pub truncate_start: bool,
     /// Caches paths to documents
@@ -395,7 +395,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         }
     }
 
-    pub fn with_key_handlers(mut self, handlers: PickerKeyHandler<T>) -> Self {
+    pub fn with_key_handlers(mut self, handlers: PickerKeyHandlers<T>) -> Self {
         self.custom_key_handlers = handlers;
         self
     }
@@ -1185,4 +1185,5 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
-pub type PickerKeyHandler<T> = HashMap<KeyEvent, Box<dyn Fn(&mut Context, &T, u32) + 'static>>;
+pub type PickerKeyHandler<T> = Box<dyn Fn(&mut Context, &T, u32) + 'static>;
+pub type PickerKeyHandlers<T> = HashMap<KeyEvent, PickerKeyHandler<T>>;
