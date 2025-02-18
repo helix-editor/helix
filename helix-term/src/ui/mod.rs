@@ -304,7 +304,13 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
-type OnConfirm = fn(cursor: u32, cx: &mut Context, picker_root: PathBuf, &str, &Path) -> Option<Result<String, String>>;
+type OnConfirm = fn(
+    cursor: u32,
+    cx: &mut Context,
+    picker_root: PathBuf,
+    &str,
+    &Path,
+) -> Option<Result<String, String>>;
 
 fn create_confirmation_prompt(
     cursor: u32,
@@ -326,7 +332,13 @@ fn create_confirmation_prompt(
                         return;
                     };
 
-                    match on_confirm(cursor, cx, picker_root.clone(), &operation_input_str, &operation_input) {
+                    match on_confirm(
+                        cursor,
+                        cx,
+                        picker_root.clone(),
+                        &operation_input_str,
+                        &operation_input,
+                    ) {
                         Some(Ok(msg)) => cx.editor.set_status(msg),
                         Some(Err(msg)) => cx.editor.set_error(msg),
                         None => (),
@@ -391,18 +403,21 @@ fn create_file_operation_prompt(
 
 fn refresh(cursor: Option<u32>, cx: &mut Context, root: PathBuf) {
     let callback = Box::pin(async move {
-        let call: Callback =
-            Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                if let Ok(picker) = file_explorer(cursor, root, editor) {
-                    compositor.push(Box::new(overlay::overlaid(picker)));
-                }
-            }));
+        let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
+            if let Ok(picker) = file_explorer(cursor, root, editor) {
+                compositor.push(Box::new(overlay::overlaid(picker)));
+            }
+        }));
         Ok(call)
     });
     cx.jobs.callback(callback);
 }
 
-pub fn file_explorer(cursor: Option<u32>, root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
+pub fn file_explorer(
+    cursor: Option<u32>,
+    root: PathBuf,
+    editor: &Editor,
+) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
 
