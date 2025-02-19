@@ -29,5 +29,5 @@
   name: (identifier) @definition.module
   body: (declaration_list))
 
-(macro_invocation
+(macro_definition
   macro: (identifier) @definition.macro)
