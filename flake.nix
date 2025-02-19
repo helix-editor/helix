@@ -27,12 +27,12 @@
 
       src = fs.difference (fs.gitTracked ./.) (fs.unions [
         ./.envrc
-        ./.gitignore
         ./rustfmt.toml
         ./screenshot.png
         ./book
         ./docs
         ./flake.lock
+        (fs.fileFilter (file: pkgs.lib.strings.hasInfix ".git" file.name) ./.)
         (fs.fileFilter (file: file.hasExt "svg") ./.)
         (fs.fileFilter (file: file.hasExt "md") ./.)
         (fs.fileFilter (file: file.hasExt "nix") ./.)
