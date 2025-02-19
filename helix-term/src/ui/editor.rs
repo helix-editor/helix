@@ -188,9 +188,12 @@ impl EditorView {
         }
         let width = view.inner_width(doc);
         let config = doc.config.load();
-        let enable_cursor_line = view
-            .diagnostics_handler
-            .show_cursorline_diagnostics(doc, view.id);
+        let enable_cursor_line = match (editor.mode, config.hide_diag_when_inserting) {
+            (Mode::Insert, true) => false,
+            (_, _) => view
+                .diagnostics_handler
+                .show_cursorline_diagnostics(doc, view.id),
+        };
         let inline_diagnostic_config = config.inline_diagnostics.prepare(width, enable_cursor_line);
         decorations.add_decoration(InlineDiagnostics::new(
             doc,
@@ -198,6 +201,7 @@ impl EditorView {
             primary_cursor,
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
+            editor.mode,
         ));
         render_document(
             surface,
@@ -226,6 +230,8 @@ impl EditorView {
 
         if config.inline_diagnostics.disabled()
             && config.end_of_line_diagnostics == DiagnosticFilter::Disable
+            && !config.hide_diag_when_inserting
+            && editor.mode != Mode::Insert
         {
             Self::render_diagnostics(doc, view, inner, surface, theme);
         }
@@ -663,7 +669,7 @@ impl EditorView {
     pub fn render_gutter<'d>(
         editor: &'d Editor,
         doc: &'d Document,
-        view: &View,
+        view: &'d View,
         viewport: Rect,
         theme: &Theme,
         is_focused: bool,
