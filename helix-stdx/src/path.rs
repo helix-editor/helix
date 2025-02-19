@@ -297,6 +297,20 @@ pub fn expand<T: AsRef<Path> + ?Sized>(path: &T) -> Cow<'_, Path> {
     }
 }
 
+/// trims absolute path if there is an overlap or returns the given path
+pub fn trim_absolute_to_cwd(path: impl AsRef<Path>, cwd: impl AsRef<Path>) -> PathBuf {
+    let path = path.as_ref();
+    let cwd = cwd.as_ref();
+
+    if path.is_absolute() {
+        if let Ok(stripped) = path.strip_prefix(cwd) {
+            return stripped.to_path_buf();
+        }
+    }
+
+    path.to_path_buf()
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
