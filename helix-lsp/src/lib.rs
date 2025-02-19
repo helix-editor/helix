@@ -871,7 +871,7 @@ fn start_client(
         &ls_config.command,
         &ls_config.args,
         ls_config.config.clone(),
-        ls_config.environment.clone(),
+        &ls_config.environment,
         root_path,
         root_uri,
         id,

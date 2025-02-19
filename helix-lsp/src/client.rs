@@ -16,11 +16,14 @@ use helix_stdx::path;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::Value;
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc,
-};
 use std::{collections::HashMap, path::PathBuf};
+use std::{
+    ffi::OsStr,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+};
 use std::{future::Future, sync::OnceLock};
 use std::{path::Path, process::Stdio};
 use tokio::{
@@ -178,7 +181,7 @@ impl Client {
         cmd: &str,
         args: &[String],
         config: Option<Value>,
-        server_environment: HashMap<String, String>,
+        server_environment: impl IntoIterator<Item = (impl AsRef<OsStr>, impl AsRef<OsStr>)>,
         root_path: PathBuf,
         root_uri: Option<lsp::Url>,
         id: LanguageServerId,
