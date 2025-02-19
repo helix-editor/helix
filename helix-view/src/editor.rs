@@ -1742,14 +1742,8 @@ impl Editor {
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
-        let path = if path.is_absolute() {
-            match &self.last_cwd {
-                None => path,
-                Some(cwd) => helix_stdx::path::trim_absolute_to_cwd(path, cwd),
-            }
-        } else {
-            path
-        };
+        let path =
+            helix_stdx::path::attempt_truncate_to_cwd(path, helix_stdx::env::current_working_dir());
         let id = self.document_id_by_path(&path);
 
         let id = if let Some(id) = id {

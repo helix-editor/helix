@@ -297,8 +297,9 @@ pub fn expand<T: AsRef<Path> + ?Sized>(path: &T) -> Cow<'_, Path> {
     }
 }
 
-/// trims absolute path if there is an overlap or returns the given path
-pub fn trim_absolute_to_cwd(path: impl AsRef<Path>, cwd: impl AsRef<Path>) -> PathBuf {
+/// Attempts to trim the path to the current working directory if possible, otherwise return the
+/// original path
+pub fn attempt_truncate_to_cwd(path: impl AsRef<Path>, cwd: impl AsRef<Path>) -> PathBuf {
     let path = path.as_ref();
     let cwd = cwd.as_ref();
 
