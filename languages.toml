@@ -2776,7 +2776,9 @@ file-types = [
   "glif",
   "ui",
   "sublime-snippet",
-  "xsl"
+  "xsl",
+  "mpd",
+  "smil"
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
