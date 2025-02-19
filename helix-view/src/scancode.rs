@@ -160,6 +160,298 @@ mod keyboard_state {
     }
 }
 
+#[cfg(feature = "scancode-hidapi")]
+mod keyboard_state {
+    use hidapi::HidApi;
+    use std::sync::atomic::{AtomicU16, Ordering};
+    use std::sync::Arc;
+
+    pub struct KeyboardState {
+        codes: [Arc<AtomicU16>; 2],
+        _handles: Vec<std::thread::JoinHandle<()>>,
+    }
+    const HID_KEYBOARD_USAGE_PAGE: u16 = 0x01;
+    const HID_KEYBOARD_USAGE_ID: u16 = 0x06;
+    const HID_MODIFIERS_MASK: [(u8, u16); 4] = [
+        (0x01, 29), // Left Control
+        (0x02, 42), // Left Shift
+        (0x04, 56), // Left Alt
+        (0x20, 54), // Right Shift
+    ];
+
+    // https://usb.org/sites/default/files/hut1_22.pdf
+    // 10 Keyboard/Keypad Page (0x07)
+    fn hid_keycode_to_scancode(hid_keycode: &u8) -> Option<u16> {
+        Some(match hid_keycode {
+            4 => 30,    // A
+            5 => 48,    // B
+            6 => 46,    // C
+            7 => 32,    // D
+            8 => 18,    // E
+            9 => 33,    // F
+            10 => 34,   // G
+            11 => 35,   // H
+            12 => 23,   // I
+            13 => 36,   // J
+            14 => 37,   // K
+            15 => 38,   // L
+            16 => 50,   // M
+            17 => 49,   // N
+            18 => 24,   // O
+            19 => 25,   // P
+            20 => 16,   // Q
+            21 => 19,   // R
+            22 => 31,   // S
+            23 => 20,   // T
+            24 => 22,   // U
+            25 => 47,   // V
+            26 => 17,   // W
+            27 => 45,   // X
+            28 => 21,   // Y
+            29 => 44,   // Z
+            30 => 2,    // 1
+            31 => 3,    // 2
+            32 => 4,    // 3
+            33 => 5,    // 4
+            34 => 6,    // 5
+            35 => 7,    // 6
+            36 => 8,    // 7
+            37 => 9,    // 8
+            38 => 10,   // 9
+            39 => 11,   // 0
+            40 => 28,   // Enter
+            41 => 1,    // Escape
+            42 => 14,   // Backspace
+            43 => 15,   // Tab
+            44 => 57,   // Space
+            45 => 12,   // Minus (-)
+            46 => 13,   // Equal (=)
+            47 => 26,   // Left Bracket ([)
+            48 => 27,   // Right Bracket (])
+            49 => 43,   // Backslash (\)
+            50 => 43,   // Non-US Hash (#)
+            51 => 39,   // Semicolon (;)
+            52 => 40,   // Apostrophe (')
+            53 => 41,   // Grave (`)
+            54 => 51,   // Comma (,)
+            55 => 52,   // Period (.)
+            56 => 53,   // Slash (/)
+            57 => 58,   // Caps Lock
+            58 => 59,   // F1
+            59 => 60,   // F2
+            60 => 61,   // F3
+            61 => 62,   // F4
+            62 => 63,   // F5
+            63 => 64,   // F6
+            64 => 65,   // F7
+            65 => 66,   // F8
+            66 => 67,   // F9
+            67 => 68,   // F10
+            68 => 87,   // F11
+            69 => 88,   // F12
+            70 => 99,   // Print Screen
+            71 => 70,   // Scroll Lock
+            72 => 119,  // Pause
+            73 => 110,  // Insert
+            74 => 102,  // Home
+            75 => 104,  // Page Up
+            76 => 111,  // Delete
+            77 => 107,  // End
+            78 => 109,  // Page Down
+            79 => 106,  // Right Arrow
+            80 => 105,  // Left Arrow
+            81 => 108,  // Down Arrow
+            82 => 103,  // Up Arrow
+            83 => 69,   // Num Lock
+            84 => 98,   // Keypad Slash (/)
+            85 => 55,   // Keypad Asterisk (*)
+            86 => 74,   // Keypad Minus (-)
+            87 => 78,   // Keypad Plus (+)
+            88 => 96,   // Keypad Enter
+            89 => 79,   // Keypad 1
+            90 => 80,   // Keypad 2
+            91 => 81,   // Keypad 3
+            92 => 75,   // Keypad 4
+            93 => 76,   // Keypad 5
+            94 => 77,   // Keypad 6
+            95 => 71,   // Keypad 7
+            96 => 72,   // Keypad 8
+            97 => 73,   // Keypad 9
+            98 => 82,   // Keypad 0
+            99 => 83,   // Keypad Period (.)
+            100 => 127, // Non-US Backslash (|)
+            101 => 115, // Application
+            102 => 128, // Power
+            103 => 129, // Keypad Equal (=)
+            104 => 130, // F13
+            105 => 131, // F14
+            106 => 132, // F15
+            107 => 133, // F16
+            108 => 134, // F17
+            109 => 135, // F18
+            110 => 136, // F19
+            111 => 137, // F20
+            112 => 138, // F21
+            113 => 139, // F22
+            114 => 140, // F23
+            115 => 141, // F24
+            116 => 142, // Execute
+            117 => 143, // Help
+            118 => 144, // Menu
+            119 => 145, // Select
+            120 => 146, // Stop
+            121 => 147, // Again
+            122 => 148, // Undo
+            123 => 149, // Cut
+            124 => 150, // Copy
+            125 => 151, // Paste
+            126 => 152, // Find
+            127 => 153, // Mute
+            128 => 154, // Volume Up
+            129 => 155, // Volume Down
+            130 => 156, // Locking Caps Lock
+            131 => 157, // Locking Num Lock
+            132 => 158, // Locking Scroll Lock
+            133 => 159, // Keypad Comma (,)
+            134 => 160, // Keypad Equal Sign (=)
+            135 => 161, // International1 (Ro)
+            136 => 162, // International2 (Katakana/Hiragana)
+            137 => 163, // International3 (Yen)
+            138 => 164, // International4 (Henkan)
+            139 => 165, // International5 (Muhenkan)
+            140 => 166, // International6 (PC9800 Keypad ,)
+            141 => 167, // International7
+            142 => 168, // International8
+            143 => 169, // International9
+            144 => 170, // Lang1 (Hangul/English)
+            145 => 171, // Lang2 (Hanja)
+            146 => 172, // Lang3 (Katakana)
+            147 => 173, // Lang4 (Hiragana)
+            148 => 174, // Lang5 (Zenkaku/Hankaku)
+            149 => 175, // Lang6
+            150 => 176, // Lang7
+            151 => 177, // Lang8
+            152 => 178, // Lang9
+            153 => 179, // Alternate Erase
+            154 => 180, // SysReq/Attention
+            155 => 181, // Cancel
+            156 => 182, // Clear
+            157 => 183, // Prior
+            158 => 184, // Return
+            159 => 185, // Separator
+            160 => 186, // Out
+            161 => 187, // Oper
+            162 => 188, // Clear/Again
+            163 => 189, // CrSel/Props
+            164 => 190, // ExSel
+            _ => return None,
+        })
+    }
+
+    fn hid_modifier_to_scancode(modifier_byte: &u8) -> Option<u16> {
+        for (mask, scancode) in HID_MODIFIERS_MASK {
+            if modifier_byte & mask != 0 {
+                return Some(scancode);
+            }
+        }
+        None
+    }
+
+    impl KeyboardState {
+        pub fn new() -> Self {
+            let key1 = Arc::new(AtomicU16::new(0));
+            let key2 = Arc::new(AtomicU16::new(0));
+
+            let mut handles = Vec::new();
+
+            match HidApi::new() {
+                Ok(api) => {
+                    for device in api.device_list() {
+                        let device_name = format!(
+                            "{:?} ({:04x}:{:04x}) {} {}",
+                            device.path(),
+                            device.vendor_id(),
+                            device.product_id(),
+                            device.manufacturer_string().unwrap_or("-"),
+                            device.product_string().unwrap_or("-")
+                        );
+
+                        if !(device.usage_page() == HID_KEYBOARD_USAGE_PAGE
+                            && device.usage() == HID_KEYBOARD_USAGE_ID)
+                        {
+                            log::trace!("{device_name} isn't keyboard. skip");
+                            continue;
+                        }
+
+                        let device = match device.open_device(&api) {
+                            Ok(device) => {
+                                log::info!("{device_name} start listen input reports");
+                                device
+                            }
+                            Err(e) => {
+                                log::error!("{device_name} error on open device: {e}");
+                                continue;
+                            }
+                        };
+
+                        let k1 = Arc::clone(&key1);
+                        let k2 = Arc::clone(&key2);
+                        handles.push(std::thread::spawn(move || {
+                            let mut report = [0, 0, 0, 0, 0, 0, 0, 0];
+                            loop {
+                                match device.read(&mut report) {
+                                    Ok(read) if read < 8 => {
+                                        log::warn!("{device_name} partial read of input report");
+                                        continue;
+                                    }
+                                    Err(e) => {
+                                        log::error!("{device_name} read event error: {e}");
+                                        continue;
+                                    }
+                                    _ => (),
+                                };
+
+                                for i in 2..8 {
+                                    let hid_keycode = report[i];
+                                    if hid_keycode == 0 {
+                                        continue;
+                                    };
+                                    let Some(scancode) = hid_keycode_to_scancode(&hid_keycode)
+                                    else {
+                                        continue;
+                                    };
+                                    log::trace!(
+                                        "{device_name} hid_keycode: {hid_keycode} scancode: {scancode}"
+                                    );
+                                    k1.store(scancode, Ordering::Relaxed);
+                                    break;
+                                }
+
+                                k2.store(hid_modifier_to_scancode(&report[0]).unwrap_or(0), Ordering::Relaxed);
+                            }
+                        }));
+                    }
+                }
+                Err(e) => {
+                    log::error!("Error on initialize hidapi: {e}");
+                }
+            }
+
+            Self {
+                _handles: handles,
+                codes: [key1, key2],
+            }
+        }
+
+        pub fn get_scancodes(&mut self) -> [u16; 2] {
+            [
+                self.codes[0].swap(0, Ordering::Relaxed), // key
+                self.codes[1].swap(0, Ordering::Relaxed), // modifier
+            ]
+        }
+    }
+}
+
 impl ScanCodeMap {
     pub fn new(map: HashMap<u16, (KeyCode, Option<KeyCode>)>) -> Self {
         let modifiers = map
@@ -196,12 +488,13 @@ impl ScanCodeMap {
 
     pub fn apply(&self, event: KeyEvent, keyboard: &mut KeyboardState) -> KeyEvent {
         let codes = keyboard.get_scancodes();
-        if codes.is_empty() {
-            return event;
-        }
 
-        // get fist non modifier key code
-        let Some(scancode) = codes.iter().find(|c| !self.modifiers.contains(c)).cloned() else {
+        // get first non modifier key code
+        let Some(scancode) = codes
+            .iter()
+            .find(|c| **c != 0 || !self.modifiers.contains(c))
+            .cloned()
+        else {
             return event;
         };
 

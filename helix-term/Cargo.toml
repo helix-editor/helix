@@ -37,6 +37,7 @@ integration = ["helix-event/integration_test"]
 git = ["helix-vcs/git"]
 scancode-query = ["helix-view/scancode-query"]
 scancode-evdev = ["helix-view/scancode-evdev"]
+scancode-hidapi = ["helix-view/scancode-hidapi"]
 
 [[bin]]
 name = "hx"

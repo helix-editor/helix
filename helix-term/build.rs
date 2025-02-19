@@ -11,7 +11,7 @@ fn main() {
     windows_rc::link_icon_in_windows_exe("../contrib/helix-256p.ico");
 
     // alias scancode feature flag
-    #[cfg(any(feature = "scancode-query", feature = "scancode-evdev"))]
+    #[cfg(any(feature = "scancode-query", feature = "scancode-evdev", feature = "scancode-hidapi"))]
     println!("cargo:rustc-cfg=scancode")
 }
 
