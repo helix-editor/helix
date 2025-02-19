@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::path;
 use helix_core::syntax::Configuration as LangConfig;
 use helix_term::health::TsFeature;
+use serde::Deserialize;
 
 /// Get the list of languages that support a particular tree-sitter
 /// based feature.
@@ -39,6 +40,28 @@ pub fn find_files(dir: &Path, filename: &str) -> Vec<PathBuf> {
 }
 
 pub fn lang_config() -> LangConfig {
+    let text = std::fs::read_to_string(path::lang_config()).unwrap();
+    toml::from_str(&text).unwrap()
+}
+
+#[derive(Deserialize)]
+pub struct Configuration {
+    pub grammar: Vec<Grammar>,
+}
+
+#[derive(Deserialize)]
+pub struct Grammar {
+    pub name: String,
+    pub source: GitSource,
+}
+
+#[derive(Deserialize)]
+pub struct GitSource {
+    pub git: String,
+    pub rev: String,
+}
+
+pub fn lang_config_grammars() -> Configuration {
     let text = std::fs::read_to_string(path::lang_config()).unwrap();
     toml::from_str(&text).unwrap()
 }
