@@ -2585,7 +2585,8 @@ fn global_search(cx: &mut Context) {
         Some((path.as_path().into(), Some((*line_num, *line_num))))
     })
     .with_history_register(Some(reg))
-    .with_dynamic_query(get_files, Some(275));
+    .with_dynamic_query(get_files, Some(275))
+    .with_title("Search".into());
 
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -3121,7 +3122,8 @@ fn buffer_picker(cx: &mut Context) {
             (cursor_line, cursor_line)
         });
         Some((meta.id.into(), lines))
-    });
+    })
+    .with_title("Buffers".into());
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -3212,7 +3214,8 @@ fn jumplist_picker(cx: &mut Context) {
         let doc = &editor.documents.get(&meta.id)?;
         let line = meta.selection.primary().cursor_line(doc.text().slice(..));
         Some((meta.id.into(), Some((line, line))))
-    });
+    })
+    .with_title("Jump List".into());
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -3294,7 +3297,8 @@ fn changed_file_picker(cx: &mut Context) {
             }
         },
     )
-    .with_preview(|_editor, meta| Some((meta.path().into(), None)));
+    .with_preview(|_editor, meta| Some((meta.path().into(), None)))
+    .with_title("Changed Files".into());
     let injector = picker.injector();
 
     cx.editor
@@ -3386,7 +3390,8 @@ pub fn command_palette(cx: &mut Context) {
                         doc.append_changes_to_history(view);
                     }
                 }
-            });
+            })
+            .with_title("Command Palette".into());
             compositor.push(Box::new(overlaid(picker)));
         },
     ));
