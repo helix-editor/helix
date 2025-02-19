@@ -18,6 +18,7 @@ mod test {
     mod auto_indent;
     mod auto_pairs;
     mod commands;
+    mod insert_keymap_suffix;
     mod languages;
     mod movement;
     mod prompt;
