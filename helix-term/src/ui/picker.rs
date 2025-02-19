@@ -47,6 +47,7 @@ use helix_core::{
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
+    input::{MouseButton, MouseEvent, MouseEventKind},
     theme::Style,
     view::ViewPosition,
     Document, DocumentId, Editor,
@@ -247,6 +248,8 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
 
     /// Current height of the completions box
     completion_height: u16,
+    /// The area that contains the table's pickable items
+    picking_area: Rect,
 
     cursor: u32,
     prompt: Prompt,
@@ -383,6 +386,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
+            picking_area: Rect::default(),
             widths,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
@@ -565,6 +569,35 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         }
     }
 
+    fn handle_mouse_event(&mut self, event: &MouseEvent) -> EventResult {
+        let MouseEvent {
+            kind, row, column, ..
+        } = *event;
+
+        // consume event if outside of the area with pickable items
+        if !self.picking_area.intersects(Rect::new(column, row, 1, 1)) {
+            return EventResult::Consumed(None);
+        }
+
+        match kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                // picking_area.height > 0 because the mouse position is inside the area
+                let offset = self.cursor - (self.cursor % self.picking_area.height as u32);
+                let new_cursor = offset + (row - self.picking_area.y) as u32;
+
+                // move if the new cursor is in bounds, on an item
+                if new_cursor < self.matcher.snapshot().matched_item_count() {
+                    self.cursor = new_cursor;
+                }
+            }
+            MouseEventKind::ScrollUp => self.page_up(),
+            MouseEventKind::ScrollDown => self.page_down(),
+            _ => (),
+        }
+
+        EventResult::Consumed(None)
+    }
+
     /// Get (cached) preview for the currently selected item. If a document corresponding
     /// to the path is already open in the editor, it is used instead.
     fn get_preview<'picker, 'editor>(
@@ -720,6 +753,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // -- Render the contents:
         // subtract area of prompt from top
         let inner = inner.clip_top(2);
+        self.picking_area = inner.clip_top(self.header_height());
         let rows = inner.height.saturating_sub(self.header_height()) as u32;
         let offset = self.cursor - (self.cursor % std::cmp::max(1, rows));
         let cursor = self.cursor.saturating_sub(offset);
@@ -1020,6 +1054,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             Event::Key(event) => *event,
             Event::Paste(..) => return self.prompt_handle_event(event, ctx),
             Event::Resize(..) => return EventResult::Consumed(None),
+            Event::Mouse(event) => return self.handle_mouse_event(event),
             _ => return EventResult::Ignored(None),
         };
 
