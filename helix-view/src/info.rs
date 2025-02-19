@@ -57,13 +57,13 @@ impl Info {
         }
     }
 
-    pub fn from_registers(registers: &Registers) -> Self {
+    pub fn from_registers(title: impl Into<Cow<'static, str>>, registers: &Registers) -> Self {
         let body: Vec<_> = registers
             .iter_preview()
             .map(|(ch, preview)| (ch.to_string(), preview))
             .collect();
 
-        let mut infobox = Self::new("Registers", &body);
+        let mut infobox = Self::new(title, &body);
         infobox.width = 30; // copied content could be very long
         infobox
     }
