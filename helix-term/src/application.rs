@@ -733,6 +733,11 @@ impl Application {
                                 doc.text(),
                                 language_id,
                             );
+
+                            handlers::diagnostics::pull_diagnostics_for_document(
+                                doc,
+                                language_server,
+                            );
                         }
                     }
                     Notification::PublishDiagnostics(params) => {
@@ -753,6 +758,7 @@ impl Application {
                             uri,
                             params.version,
                             params.diagnostics,
+                            None,
                         );
                     }
                     Notification::ShowMessage(params) => {
@@ -1027,6 +1033,16 @@ impl Application {
 
                         let result = self.handle_show_document(params, offset_encoding);
                         Ok(json!(result))
+                    }
+                    Ok(MethodCall::WorkspaceDiagnosticRefresh) => {
+                        for document in self.editor.documents() {
+                            let language_server = language_server!();
+                            handlers::diagnostics::pull_diagnostics_for_document(
+                                document,
+                                language_server,
+                            );
+                        }
+                        Ok(serde_json::Value::Null)
                     }
                 };
 

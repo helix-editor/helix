@@ -916,6 +916,10 @@ fn goto_buffer(editor: &mut Editor, direction: Direction, count: usize) {
 
     let id = *id;
 
+    if let Some(doc) = editor.document(id) {
+        helix_event::dispatch(helix_view::events::DocumentDidOpen { doc });
+    };
+
     editor.switch(id, Action::Replace);
 }
 

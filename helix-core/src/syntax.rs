@@ -332,6 +332,7 @@ pub enum LanguageServerFeature {
     WorkspaceSymbols,
     // Symbols, use bitflags, see above?
     Diagnostics,
+    PullDiagnostics,
     RenameSymbol,
     InlayHints,
 }
@@ -355,6 +356,7 @@ impl Display for LanguageServerFeature {
             DocumentSymbols => "document-symbols",
             WorkspaceSymbols => "workspace-symbols",
             Diagnostics => "diagnostics",
+            PullDiagnostics => "pull-diagnostics",
             RenameSymbol => "rename-symbol",
             InlayHints => "inlay-hints",
         };
