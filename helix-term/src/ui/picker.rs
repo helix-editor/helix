@@ -624,7 +624,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             if content_type.is_binary() {
                                 return Ok(CachedPreview::Binary);
                             }
-                            Document::open(&path, None, None, editor.config.clone()).map_or(
+                            Document::open(
+                                &path,
+                                None,
+                                false,
+                                editor.config.clone(),
+                                editor.syn_loader.clone(),
+                            )
+                            .map_or(
                                 Err(std::io::Error::new(
                                     std::io::ErrorKind::NotFound,
                                     "Cannot open document",

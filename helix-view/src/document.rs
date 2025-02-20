@@ -209,6 +209,11 @@ pub struct Document {
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
+
+    // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
+    // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
+    // `ArcSwap` directly.
+    syn_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -679,6 +684,7 @@ impl Document {
         text: Rope,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
+        syn_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
         let line_ending = config.load().default_line_ending.into();
@@ -721,13 +727,17 @@ impl Document {
             jump_labels: HashMap::new(),
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
+            syn_loader,
         }
     }
 
-    pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
+    pub fn default(
+        config: Arc<dyn DynAccess<Config>>,
+        syn_loader: Arc<ArcSwap<syntax::Loader>>,
+    ) -> Self {
         let line_ending: LineEnding = config.load().default_line_ending.into();
         let text = Rope::from(line_ending.as_str());
-        Self::from(text, None, config)
+        Self::from(text, None, config, syn_loader)
     }
 
     // TODO: async fn?
@@ -736,8 +746,9 @@ impl Document {
     pub fn open(
         path: &Path,
         mut encoding: Option<&'static Encoding>,
-        config_loader: Option<Arc<ArcSwap<syntax::Loader>>>,
+        detect_language: bool,
         config: Arc<dyn DynAccess<Config>>,
+        syn_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> Result<Self, DocumentOpenError> {
         // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
         if path.metadata().is_ok_and(|metadata| !metadata.is_file()) {
@@ -763,12 +774,13 @@ impl Document {
             (Rope::from(line_ending.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
+        let loader = syn_loader.load();
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config, syn_loader);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
-        if let Some(loader) = config_loader {
-            doc.detect_language(loader);
+        if detect_language {
+            doc.detect_language(&loader);
         }
 
         doc.editor_config = editor_config;
@@ -1122,12 +1134,8 @@ impl Document {
     }
 
     /// Detect the programming language based on the file type.
-    pub fn detect_language(&mut self, config_loader: Arc<ArcSwap<syntax::Loader>>) {
-        let loader = config_loader.load();
-        self.set_language(
-            self.detect_language_config(&loader),
-            Some(Arc::clone(&config_loader)),
-        );
+    pub fn detect_language(&mut self, loader: &syntax::Loader) {
+        self.set_language(self.detect_language_config(loader), loader);
     }
 
     /// Detect the programming language based on the file type.
@@ -1277,20 +1285,20 @@ impl Document {
     pub fn set_language(
         &mut self,
         language_config: Option<Arc<syntax::config::LanguageConfiguration>>,
-        loader: Option<Arc<ArcSwap<syntax::Loader>>>,
+        loader: &syntax::Loader,
     ) {
-        if let (Some(language_config), Some(loader)) = (language_config, loader) {
-            if let Some(highlight_config) =
-                language_config.highlight_config(&(*loader).load().scopes())
-            {
-                self.syntax = Syntax::new(self.text.slice(..), highlight_config, loader);
-            }
-
-            self.language = Some(language_config);
-        } else {
-            self.syntax = None;
-            self.language = None;
-        };
+        self.language = language_config;
+        self.syntax = self
+            .language
+            .as_ref()
+            .and_then(|config| config.highlight_config(&loader.scopes()))
+            .and_then(|highlight_config| {
+                Syntax::new(
+                    self.text.slice(..),
+                    highlight_config,
+                    self.syn_loader.clone(),
+                )
+            });
     }
 
     /// Set the programming language for the file if you know the language but don't have the
@@ -1298,13 +1306,12 @@ impl Document {
     pub fn set_language_by_language_id(
         &mut self,
         language_id: &str,
-        config_loader: Arc<ArcSwap<syntax::Loader>>,
+        loader: &syntax::Loader,
     ) -> anyhow::Result<()> {
-        let language_config = (*config_loader)
-            .load()
+        let language_config = loader
             .language_config_for_language_id(language_id)
             .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
-        self.set_language(Some(language_config), Some(config_loader));
+        self.set_language(Some(language_config), loader);
         Ok(())
     }
 
@@ -2319,6 +2326,7 @@ mod test {
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
@@ -2357,6 +2365,7 @@ mod test {
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
@@ -2470,9 +2479,12 @@ mod test {
     #[test]
     fn test_line_ending() {
         assert_eq!(
-            Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
-                .text()
-                .to_string(),
+            Document::default(
+                Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+                Arc::new(ArcSwap::from_pointee(syntax::Loader::default()))
+            )
+            .text()
+            .to_string(),
             helix_core::NATIVE_LINE_ENDING.as_str()
         );
     }
