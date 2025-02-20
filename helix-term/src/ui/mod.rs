@@ -560,7 +560,7 @@ pub fn file_explorer(
                         return Some(Err(format!("Path {} does not exist", to_delete.display())));
                     };
 
-                    if confirmation.ends_with(std::path::MAIN_SEPARATOR) {
+                    if to_delete.is_dir() {
                         if let Err(err) = fs::remove_dir_all(to_delete).map_err(|err| {
                             format!("Unable to delete directory {}: {err}", to_delete.display())
                         }) {
