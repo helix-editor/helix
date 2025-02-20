@@ -13,6 +13,7 @@ mod spinner;
 mod statusline;
 mod text;
 mod text_decorations;
+mod trailing_whitespace;
 
 use crate::compositor::Compositor;
 use crate::filter_picker_entry;
