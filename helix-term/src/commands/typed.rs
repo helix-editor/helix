@@ -10,7 +10,7 @@ use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
-use helix_stdx::path::home_dir;
+use helix_stdx::path::{canonicalize, home_dir};
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
@@ -2458,15 +2458,49 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         return Ok(());
     }
 
-    let doc = doc!(cx.editor);
-    let old_path = doc
-        .path()
-        .context("Scratch buffer cannot be moved. Use :write instead")?
-        .clone();
-    let new_path = args.first().unwrap().to_string();
-    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
-        bail!("Could not move file: {err}");
+    let mut new_path = canonicalize(&args[args.len() - 1]);
+    let is_dir = new_path.is_dir();
+
+    let mut do_move = |old_path: PathBuf, editor: &mut Editor| {
+        let Some(file_name) = old_path.file_name() else {
+            bail!("Cannot move this path: {}", old_path.to_string_lossy());
+        };
+        // Allow moving files into directories without repeating the file name in the new path.
+        if is_dir {
+            new_path.push(file_name);
+        }
+        if let Err(err) = editor.move_path(old_path.as_path(), new_path.as_ref()) {
+            bail!("Could not move file: {err}");
+        }
+        if is_dir {
+            new_path.pop();
+        }
+        Ok(())
+    };
+
+    // Move the current buffer.
+    if args.len() == 1 {
+        let doc = doc!(cx.editor);
+        let old_path = doc
+            .path()
+            .context("Scratch buffer cannot be moved. Use :write instead")?
+            .clone();
+        return do_move(old_path, cx.editor);
     }
+
+    // Move multiple files to one destination, like `mv foo bar baz` where "baz" is a directory.
+    // If we have multiple source files, the destination must be a directory.
+    if !is_dir && args.len() > 2 {
+        bail!("Cannot move files: not a directory");
+    }
+    for old_path in args
+        .iter()
+        .take(args.len() - 1)
+        .map(|arg| canonicalize(arg.to_string()))
+    {
+        do_move(old_path, cx.editor)?;
+    }
+
     Ok(())
 }
 
@@ -3513,11 +3547,11 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "move",
         aliases: &["mv"],
-        doc: "Move the current buffer and its corresponding file to a different path",
+        doc: "Move files, updating any affected open buffers. A single argument moves the current buffer's file, multiple arguments move multiple source files to a target (same as the Unix `mv` command)",
         fun: move_buffer,
-        completer: CommandCompleter::positional(&[completers::filename]),
+        completer: CommandCompleter::all(completers::filename),
         signature: Signature {
-            positionals: (1, Some(1)),
+            positionals: (1, None),
             ..Signature::DEFAULT
         },
     },
