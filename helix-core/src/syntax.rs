@@ -274,6 +274,15 @@ struct FileTypeGlobMatcher {
     file_types: Vec<FileTypeGlob>,
 }
 
+impl Default for FileTypeGlobMatcher {
+    fn default() -> Self {
+        Self {
+            matcher: globset::GlobSet::empty(),
+            file_types: Default::default(),
+        }
+    }
+}
+
 impl FileTypeGlobMatcher {
     fn new(file_types: Vec<FileTypeGlob>) -> Result<Self, globset::Error> {
         let mut builder = globset::GlobSetBuilder::new();
@@ -299,7 +308,7 @@ impl FileTypeGlobMatcher {
 
 // Expose loader as Lazy<> global since it's always static?
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
