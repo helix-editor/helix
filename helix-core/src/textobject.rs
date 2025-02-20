@@ -7,7 +7,7 @@ use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
-use crate::syntax::LanguageConfiguration;
+use crate::syntax::config::LanguageConfiguration;
 use crate::Range;
 use crate::{surround, Syntax};
 

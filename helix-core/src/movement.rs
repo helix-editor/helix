@@ -13,7 +13,7 @@ use crate::{
     },
     line_ending::rope_is_line_ending,
     position::char_idx_at_visual_block_offset,
-    syntax::LanguageConfiguration,
+    syntax::config::LanguageConfiguration,
     text_annotations::TextAnnotations,
     textobject::TextObject,
     visual_offset_from_block, Range, RopeSlice, Selection, Syntax,
