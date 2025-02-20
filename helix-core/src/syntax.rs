@@ -334,6 +334,7 @@ pub enum LanguageServerFeature {
     Diagnostics,
     RenameSymbol,
     InlayHints,
+    ColorProvider,
 }
 
 impl Display for LanguageServerFeature {
@@ -357,6 +358,7 @@ impl Display for LanguageServerFeature {
             Diagnostics => "diagnostics",
             RenameSymbol => "rename-symbol",
             InlayHints => "inlay-hints",
+            ColorProvider => "color-provider",
         };
         write!(f, "{feature}",)
     }
@@ -1770,7 +1772,12 @@ const CANCELLATION_CHECK_INTERVAL: usize = 100;
 
 /// Indicates which highlight should be applied to a region of source code.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Highlight(pub usize);
+pub enum Highlight {
+    /// When we use this type of highlight, we index into the Theme's scopes to get the Style
+    Indexed(usize),
+    /// A custom color, not dependent on the theme. Represents (red, green, blue)
+    Rgb(u8, u8, u8),
+}
 
 /// Represents the reason why syntax highlighting failed.
 #[derive(Debug, PartialEq, Eq)]
@@ -2029,7 +2036,7 @@ impl HighlightConfiguration {
                         best_match_len = len;
                     }
                 }
-                best_index.map(Highlight)
+                best_index.map(Highlight::Indexed)
             })
             .collect();
 
@@ -2561,10 +2568,10 @@ const SHEBANG: &str = r"#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
 
 pub struct Merge<I> {
     iter: I,
-    spans: Box<dyn Iterator<Item = (usize, std::ops::Range<usize>)>>,
+    spans: Box<dyn Iterator<Item = (Highlight, std::ops::Range<usize>)>>,
 
     next_event: Option<HighlightEvent>,
-    next_span: Option<(usize, std::ops::Range<usize>)>,
+    next_span: Option<(Highlight, std::ops::Range<usize>)>,
 
     queue: Vec<HighlightEvent>,
 }
@@ -2572,7 +2579,7 @@ pub struct Merge<I> {
 /// Merge a list of spans into the highlight event stream.
 pub fn merge<I: Iterator<Item = HighlightEvent>>(
     iter: I,
-    spans: Vec<(usize, std::ops::Range<usize>)>,
+    spans: Vec<(Highlight, std::ops::Range<usize>)>,
 ) -> Merge<I> {
     let spans = Box::new(spans.into_iter());
     let mut merge = Merge {
@@ -2638,9 +2645,9 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
 
                 Some(event)
             }
-            (Some(Source { start, end }), Some((span, range))) if start == range.start => {
+            (Some(Source { start, end }), Some((highlight, range))) if start == range.start => {
                 let intersect = range.end.min(end);
-                let event = HighlightStart(Highlight(*span));
+                let event = HighlightStart(*highlight);
 
                 // enqueue in reverse order
                 self.queue.push(HighlightEnd);
@@ -2663,7 +2670,7 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
                 if intersect == range.end {
                     self.next_span = self.spans.next();
                 } else {
-                    self.next_span = Some((*span, intersect..range.end));
+                    self.next_span = Some((*highlight, intersect..range.end));
                 }
 
                 Some(event)
@@ -2677,8 +2684,8 @@ impl<I: Iterator<Item = HighlightEvent>> Iterator for Merge<I> {
             // even though the range is past the end of the text.  This needs to be
             // handled appropriately by the drawing code by not assuming that
             // all `Source` events point to valid indices in the rope.
-            (None, Some((span, range))) => {
-                let event = HighlightStart(Highlight(*span));
+            (None, Some((highlight, range))) => {
+                let event = HighlightStart(*highlight);
                 self.queue.push(HighlightEnd);
                 self.queue.push(Source {
                     start: range.start,
