@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use helix_core::syntax::LanguageServerFeature;
+use helix_core::syntax::config::LanguageServerFeature;
 
 use crate::{
     editor::GutterType,

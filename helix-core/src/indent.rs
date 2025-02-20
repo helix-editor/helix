@@ -6,7 +6,10 @@ use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
     graphemes::{grapheme_width, tab_width_at},
-    syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
+    syntax::{
+        config::{IndentationHeuristic, LanguageConfiguration},
+        RopeProvider, Syntax,
+    },
     tree_sitter::Node,
     Position, Rope, RopeSlice, Tendril,
 };

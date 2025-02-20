@@ -10,7 +10,7 @@ use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
-use helix_core::syntax::{Highlight, LanguageServerFeature};
+use helix_core::syntax::{config::LanguageServerFeature, Highlight};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
@@ -39,7 +39,7 @@ use helix_core::{
     history::{History, State, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
-    syntax::{self, LanguageConfiguration},
+    syntax::{self, config::LanguageConfiguration},
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
@@ -1134,7 +1134,7 @@ impl Document {
     pub fn detect_language_config(
         &self,
         config_loader: &syntax::Loader,
-    ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
+    ) -> Option<Arc<syntax::config::LanguageConfiguration>> {
         config_loader
             .language_config_for_file_name(self.path.as_ref()?)
             .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
@@ -1276,8 +1276,8 @@ impl Document {
     /// if it exists.
     pub fn set_language(
         &mut self,
-        language_config: Option<Arc<helix_core::syntax::LanguageConfiguration>>,
-        loader: Option<Arc<ArcSwap<helix_core::syntax::Loader>>>,
+        language_config: Option<Arc<syntax::config::LanguageConfiguration>>,
+        loader: Option<Arc<ArcSwap<syntax::Loader>>>,
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
             if let Some(highlight_config) =
@@ -1294,7 +1294,7 @@ impl Document {
     }
 
     /// Set the programming language for the file if you know the language but don't have the
-    /// [`syntax::LanguageConfiguration`] for it.
+    /// [`syntax::config::LanguageConfiguration`] for it.
     pub fn set_language_by_language_id(
         &mut self,
         language_id: &str,

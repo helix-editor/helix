@@ -1,7 +1,7 @@
 use arc_swap::ArcSwap;
 use helix_core::{
     indent::{indent_level_for_line, treesitter_indent_for_pos, IndentStyle},
-    syntax::{Configuration, Loader},
+    syntax::{config::Configuration, Loader},
     Syntax,
 };
 use helix_stdx::rope::RopeSliceExt;

@@ -2,7 +2,7 @@
 mod test {
     mod helpers;
 
-    use helix_core::{syntax::AutoPairConfig, Selection};
+    use helix_core::{syntax::config::AutoPairConfig, Selection};
     use helix_term::config::Config;
 
     use indoc::indoc;
