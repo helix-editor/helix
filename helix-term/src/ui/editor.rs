@@ -212,8 +212,8 @@ impl EditorView {
         );
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
-        // if we're not at the edge of the screen, draw a right border
-        if viewport.right() != view.area.right() {
+        // if we're not at the edge of the screen or zoomed, draw a right border
+        if viewport.right() != view.area.right() && !editor.tree.zoom {
             let x = area.right();
             let border_style = theme.get("ui.window");
             for y in area.top()..area.bottom() {
@@ -1151,8 +1151,13 @@ impl EditorView {
             ..
         } = *event;
 
+        // In zoom, only the focused view is interactable.
+        let zoom = cxt.editor.tree.zoom;
         let pos_and_view = |editor: &Editor, row, column, ignore_virtual_text| {
-            editor.tree.views().find_map(|(view, _focus)| {
+            editor.tree.views().find_map(|(view, focus)| {
+                if zoom && !focus {
+                    return None;
+                }
                 view.pos_at_screen_coords(
                     &editor.documents[&view.doc],
                     row,
@@ -1164,7 +1169,10 @@ impl EditorView {
         };
 
         let gutter_coords_and_view = |editor: &Editor, row, column| {
-            editor.tree.views().find_map(|(view, _focus)| {
+            editor.tree.views().find_map(|(view, focus)| {
+                if zoom && !focus {
+                    return None;
+                }
                 view.gutter_coords_at_screen_coords(row, column)
                     .map(|coords| (coords, view.id))
             })
@@ -1564,8 +1572,12 @@ impl Component for EditorView {
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
-            let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(cx.editor, doc, view, area, surface, is_focused);
+            // If in zoom, only the focused document is rendered, with the unfocused ones being
+            // positioned off-screen.
+            if !cx.editor.tree.zoom || is_focused {
+                let doc = cx.editor.document(view.doc).unwrap();
+                self.render_view(cx.editor, doc, view, area, surface, is_focused);
+            }
         }
 
         if config.auto_info {
