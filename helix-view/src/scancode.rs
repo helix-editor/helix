@@ -410,9 +410,9 @@ mod keyboard_state {
                                     }
                                     _ => (),
                                 };
-
-                                for i in 2..8 {
-                                    let hid_keycode = report[i];
+                                let mut key = 0;
+                                for i in 0..6  {
+                                    let hid_keycode = report[7 - i];
                                     if hid_keycode == 0 {
                                         continue;
                                     };
@@ -423,9 +423,11 @@ mod keyboard_state {
                                     log::trace!(
                                         "{device_name} hid_keycode: {hid_keycode} scancode: {scancode}"
                                     );
-                                    k1.store(scancode, Ordering::Relaxed);
+                                    key = scancode;
                                     break;
                                 }
+
+                                k1.store(key, Ordering::Relaxed);
 
                                 k2.store(hid_modifier_to_scancode(&report[0]).unwrap_or(0), Ordering::Relaxed);
                             }
@@ -445,8 +447,8 @@ mod keyboard_state {
 
         pub fn get_scancodes(&mut self) -> [u16; 2] {
             [
-                self.codes[0].swap(0, Ordering::Relaxed), // key
-                self.codes[1].swap(0, Ordering::Relaxed), // modifier
+                self.codes[0].load(Ordering::Relaxed), // key
+                self.codes[1].load(Ordering::Relaxed), // modifier
             ]
         }
     }
