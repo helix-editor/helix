@@ -699,7 +699,7 @@ mod tests {
 
     use super::*;
     use arc_swap::ArcSwap;
-    use helix_core::Rope;
+    use helix_core::{syntax, Rope};
 
     // 1 diagnostic + 1 spacer + 3 linenr (< 1000 lines) + 1 spacer + 1 diff
     const DEFAULT_GUTTER_OFFSET: u16 = 7;
@@ -719,6 +719,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
 
@@ -894,6 +895,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
         assert_eq!(
@@ -924,6 +926,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
         assert_eq!(
@@ -948,6 +951,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
 
@@ -1032,6 +1036,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
 

@@ -1478,9 +1478,9 @@ impl Editor {
     }
 
     pub fn refresh_doc_language(&mut self, doc_id: DocumentId) {
-        let loader = self.syn_loader.clone();
+        let loader = self.syn_loader.load();
         let doc = doc_mut!(self, &doc_id);
-        doc.detect_language(loader);
+        doc.detect_language(&loader);
         doc.detect_editor_config();
         doc.detect_indent_and_line_ending();
         self.refresh_language_servers(doc_id);
@@ -1740,7 +1740,10 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        self.new_file_from_document(action, Document::default(self.config.clone()))
+        self.new_file_from_document(
+            action,
+            Document::default(self.config.clone(), self.syn_loader.clone()),
+        )
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
@@ -1749,6 +1752,7 @@ impl Editor {
             helix_core::Rope::default(),
             Some((encoding, has_bom)),
             self.config.clone(),
+            self.syn_loader.clone(),
         );
         let doc_id = self.new_file_from_document(action, doc);
         let doc = doc_mut!(self, &doc_id);
@@ -1777,8 +1781,9 @@ impl Editor {
             let mut doc = Document::open(
                 &path,
                 None,
-                Some(self.syn_loader.clone()),
+                true,
                 self.config.clone(),
+                self.syn_loader.clone(),
             )?;
 
             let diagnostics =
@@ -1874,7 +1879,12 @@ impl Editor {
                 .iter()
                 .map(|(&doc_id, _)| doc_id)
                 .next()
-                .unwrap_or_else(|| self.new_document(Document::default(self.config.clone())));
+                .unwrap_or_else(|| {
+                    self.new_document(Document::default(
+                        self.config.clone(),
+                        self.syn_loader.clone(),
+                    ))
+                });
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
