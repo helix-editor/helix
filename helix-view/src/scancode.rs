@@ -410,7 +410,10 @@ mod keyboard_state {
                                     }
                                     _ => (),
                                 };
-                                let mut key = 0;
+
+                                let mut pressed= 0;
+
+                                // use last pressed key
                                 for i in 0..6  {
                                     let hid_keycode = report[7 - i];
                                     if hid_keycode == 0 {
@@ -423,12 +426,11 @@ mod keyboard_state {
                                     log::trace!(
                                         "{device_name} hid_keycode: {hid_keycode} scancode: {scancode}"
                                     );
-                                    key = scancode;
+                                    pressed = scancode;
                                     break;
                                 }
 
-                                k1.store(key, Ordering::Relaxed);
-
+                                k1.store(pressed, Ordering::Relaxed);
                                 k2.store(hid_modifier_to_scancode(&report[0]).unwrap_or(0), Ordering::Relaxed);
                             }
                         }));
