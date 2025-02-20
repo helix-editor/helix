@@ -68,19 +68,10 @@
 	"->"
 ] @operator
 
-(multi_line_string_literal
+(string_literal
 	"$" @punctuation
   (interpolated_identifier) @none)
-(multi_line_string_literal
-	"${" @punctuation
-	(interpolated_expression) @none
-	"}" @punctuation.)
-
-; NOTE: `interpolated_identifier`s can be highlighted in any way
-(line_string_literal
-	"$" @punctuation
-	(interpolated_identifier) @none)
-(line_string_literal
+(string_literal
 	"${" @punctuation
 	(interpolated_expression) @none
 	"}" @punctuation)
@@ -108,6 +99,7 @@
 	"class"
 	"object"
 	"interface"
+	"companion"
 ;	"typeof" ; NOTE: It is reserved for future use
 ] @keyword
 
@@ -156,17 +148,14 @@
 
 ;;; Literals
 ; NOTE: Escapes not allowed in multi-line strings
-(line_string_literal (character_escape_seq) @constant.character.escape)
+(character_literal (character_escape_seq) @constant.character.escape)
 
-[
-	(line_string_literal)
-	(multi_line_string_literal)
-] @string
+(string_literal) @string
 
 (character_literal) @constant.character
 
 [
-	"null" ; should be highlighted the same as booleans
+	(null_literal) ; should be highlighted the same as booleans
 	(boolean_literal)
 ] @constant.builtin.boolean
 
@@ -180,7 +169,8 @@
 ] @constant.numeric.integer
 
 [
-	(comment)
+	(line_comment)
+	(multiline_comment)
 	(shebang_line)
 ] @comment
 
