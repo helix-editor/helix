@@ -30,7 +30,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
 dependencies = [
  "cfg-if",
- "getrandom 0.3.1",
  "once_cell",
  "version_check",
  "zerocopy",
@@ -1400,14 +1399,13 @@ dependencies = [
 name = "helix-core"
 version = "25.1.1"
 dependencies = [
- "ahash",
  "anyhow",
  "arc-swap",
  "bitflags",
  "chrono",
  "encoding_rs",
+ "foldhash",
  "globset",
- "hashbrown 0.14.5",
  "helix-loader",
  "helix-parsec",
  "helix-stdx",
@@ -1428,7 +1426,7 @@ dependencies = [
  "smartstring",
  "textwrap",
  "toml",
- "tree-sitter",
+ "tree-house",
  "unicode-general-category",
  "unicode-segmentation",
  "unicode-width 0.1.12",
@@ -1472,14 +1470,13 @@ dependencies = [
  "cc",
  "etcetera",
  "helix-stdx",
- "libloading",
  "log",
  "once_cell",
  "serde",
  "tempfile",
  "threadpool",
  "toml",
- "tree-sitter",
+ "tree-house",
 ]
 
 [[package]]
@@ -2802,13 +2799,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfb942dfe1d8e29a7ee7fcbde5bd2b9a25fb89aa70caea2eba3bee836ff41076"
 
 [[package]]
-name = "tree-sitter"
-version = "0.22.6"
+name = "tree-house"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df7cc499ceadd4dcdf7ec6d4cbc34ece92c3fa07821e287aedecd4416c516dca"
+checksum = "803311306ba3279e87699f7fa16ea18fbcc8889d0ff0c20dc0652317f8b58117"
+dependencies = [
+ "arc-swap",
+ "hashbrown 0.15.2",
+ "kstring",
+ "once_cell",
+ "regex",
+ "regex-cursor",
+ "ropey",
+ "slab",
+ "tree-house-bindings",
+]
+
+[[package]]
+name = "tree-house-bindings"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2f6894df414648c56f1f5b129830447140ff1017867773694ba882d093aa140"
 dependencies = [
  "cc",
- "regex",
+ "libloading",
+ "regex-cursor",
+ "ropey",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
