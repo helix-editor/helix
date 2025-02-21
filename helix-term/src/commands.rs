@@ -372,7 +372,8 @@ impl MappableCommand {
         search_selection, "Use current selection as search pattern",
         search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
-        global_search, "Global search in workspace folder",
+        global_search, "Global search in workspace folder (regex)",
+        global_search_fixed_strings, "Global search in workspace folder (fixed strings)",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
@@ -2385,6 +2386,14 @@ fn make_search_word_bounded(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
+    global_search_impl(cx, false)
+}
+
+fn global_search_fixed_strings(cx: &mut Context) {
+    global_search_impl(cx, true)
+}
+
+fn global_search_impl(cx: &mut Context, fixed_strings: bool) {
     #[derive(Debug)]
     struct FileResult {
         path: PathBuf,
@@ -2403,12 +2412,14 @@ fn global_search(cx: &mut Context) {
 
     struct GlobalSearchConfig {
         smart_case: bool,
+        fixed_strings: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
     }
 
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
+        fixed_strings,
         file_picker_config: config.file_picker.clone(),
     };
 
@@ -2441,6 +2452,7 @@ fn global_search(cx: &mut Context) {
 
         let matcher = match RegexMatcherBuilder::new()
             .case_smart(config.smart_case)
+            .fixed_strings(config.fixed_strings)
             .build(query)
         {
             Ok(matcher) => {
