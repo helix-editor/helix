@@ -10,7 +10,7 @@ use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
-use helix_core::syntax::{config::LanguageServerFeature, Highlight};
+use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
@@ -219,7 +219,7 @@ pub struct Document {
 #[derive(Debug, Clone, Default)]
 pub struct DocumentColorSwatches {
     pub color_swatches: Vec<InlineAnnotation>,
-    pub colors: Vec<Highlight>,
+    pub colors: Vec<syntax::Highlight>,
     pub color_swatches_padding: Vec<InlineAnnotation>,
 }
 
@@ -1141,11 +1141,13 @@ impl Document {
     /// Detect the programming language based on the file type.
     pub fn detect_language_config(
         &self,
-        config_loader: &syntax::Loader,
+        loader: &syntax::Loader,
     ) -> Option<Arc<syntax::config::LanguageConfiguration>> {
-        config_loader
-            .language_config_for_file_name(self.path.as_ref()?)
-            .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
+        let language = loader
+            .language_for_filename(self.path.as_ref()?)
+            .or_else(|| loader.language_for_shebang(self.text().slice(..)))?;
+
+        Some(loader.language(language).config().clone())
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
@@ -1288,17 +1290,18 @@ impl Document {
         loader: &syntax::Loader,
     ) {
         self.language = language_config;
-        self.syntax = self
-            .language
-            .as_ref()
-            .and_then(|config| config.highlight_config(&loader.scopes()))
-            .and_then(|highlight_config| {
-                Syntax::new(
-                    self.text.slice(..),
-                    highlight_config,
-                    self.syn_loader.clone(),
-                )
-            });
+        self.syntax = self.language.as_ref().and_then(|config| {
+            Syntax::new(self.text.slice(..), config.language(), loader)
+                .map_err(|err| {
+                    // `NoRootConfig` means that there was an issue loading the language/syntax
+                    // config for the root language of the document. An error must have already
+                    // been logged by `LanguageData::syntax_config`.
+                    if err != syntax::HighlighterError::NoRootConfig {
+                        log::warn!("Error building syntax for '{}': {err}", self.display_name());
+                    }
+                })
+                .ok()
+        });
     }
 
     /// Set the programming language for the file if you know the language but don't have the
@@ -1308,10 +1311,11 @@ impl Document {
         language_id: &str,
         loader: &syntax::Loader,
     ) -> anyhow::Result<()> {
-        let language_config = loader
-            .language_config_for_language_id(language_id)
+        let language = loader
+            .language_for_name(language_id)
             .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
-        self.set_language(Some(language_config), loader);
+        let config = loader.language(language).config().clone();
+        self.set_language(Some(config), loader);
         Ok(())
     }
 
@@ -1430,14 +1434,14 @@ impl Document {
 
         // update tree-sitter syntax tree
         if let Some(syntax) = &mut self.syntax {
-            // TODO: no unwrap
-            let res = syntax.update(
+            let loader = self.syn_loader.load();
+            if let Err(err) = syntax.update(
                 old_doc.slice(..),
                 self.text.slice(..),
                 transaction.changes(),
-            );
-            if res.is_err() {
-                log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
+                &loader,
+            ) {
+                log::error!("TS parser failed, disabling TS for the current buffer: {err}");
                 self.syntax = None;
             }
         }
@@ -2245,8 +2249,7 @@ impl Document {
             viewport_width,
             wrap_indicator: wrap_indicator.into_boxed_str(),
             wrap_indicator_highlight: theme
-                .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
-                .map(Highlight),
+                .and_then(|theme| theme.find_highlight("ui.virtual.wrap")),
             soft_wrap_at_text_width,
         }
     }

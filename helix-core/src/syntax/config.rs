@@ -1,8 +1,7 @@
-use crate::{auto_pairs::AutoPairs, diagnostic::Severity};
+use crate::{auto_pairs::AutoPairs, diagnostic::Severity, Language};
 
 use globset::GlobSet;
 use helix_stdx::rope;
-use once_cell::sync::OnceCell;
 use serde::{ser::SerializeSeq as _, Deserialize, Serialize};
 
 use std::{
@@ -10,7 +9,6 @@ use std::{
     fmt::{self, Display},
     path::PathBuf,
     str::FromStr,
-    sync::Arc,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -24,6 +22,9 @@ pub struct Configuration {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
+    #[serde(skip)]
+    pub(super) language: Option<Language>,
+
     #[serde(rename = "name")]
     pub language_id: String, // c-sharp, rust, tsx
     #[serde(rename = "language-id")]
@@ -70,9 +71,6 @@ pub struct LanguageConfiguration {
     pub injection_regex: Option<rope::Regex>,
     // first_line_regex
     //
-    #[serde(skip)]
-    pub(crate) highlight_config: OnceCell<Option<Arc<super::HighlightConfiguration>>>,
-    // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
     #[serde(
         default,
         skip_serializing_if = "Vec::is_empty",
@@ -83,10 +81,6 @@ pub struct LanguageConfiguration {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub indent: Option<IndentationConfiguration>,
 
-    #[serde(skip)]
-    pub(crate) indent_query: OnceCell<Option<tree_sitter::Query>>,
-    #[serde(skip)]
-    pub(crate) textobject_query: OnceCell<Option<super::TextObjectQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debugger: Option<DebugAdapterConfig>,
 
@@ -104,6 +98,13 @@ pub struct LanguageConfiguration {
     pub workspace_lsp_roots: Option<Vec<PathBuf>>,
     #[serde(default)]
     pub persistent_diagnostic_sources: Vec<String>,
+}
+
+impl LanguageConfiguration {
+    pub fn language(&self) -> Language {
+        // This value must be set by `super::Loader::new`.
+        self.language.unwrap()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

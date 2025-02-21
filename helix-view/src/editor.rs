@@ -1362,7 +1362,7 @@ impl Editor {
 
     fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
-        if theme.find_scope_index_exact("ui.selection").is_none() {
+        if theme.find_highlight_exact("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
             return;
         }
@@ -1516,12 +1516,12 @@ impl Editor {
                         if let helix_lsp::Error::ExecutableNotFound(err) = err {
                             // Silence by default since some language servers might just not be installed
                             log::debug!(
-                                "Language server not found for `{}` {} {}", language.scope(), lang, err,
+                                "Language server not found for `{}` {} {}", language.scope, lang, err,
                             );
                         } else {
                             log::error!(
                                 "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
-                                language.scope(),
+                                language.scope,
                                 lang,
                                 err
                             );
