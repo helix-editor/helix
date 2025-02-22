@@ -477,17 +477,17 @@ pub fn file_explorer(
                         }
                         refresh_file_explorer(cursor, cx, root);
 
-                        Some(Ok(format!("Created directory: {}", to_create.display())))
-                    } else {
-                        if let Err(err) = fs::File::create(to_create).map_err(|err| {
-                            format!("Unable to create file {}: {err}", to_create.display())
-                        }) {
-                            return Some(Err(err));
-                        };
-                        refresh_file_explorer(cursor, cx, root);
-
-                        Some(Ok(format!("Created file: {}", to_create.display())))
+                        return Some(Ok(format!("Created directory: {}", to_create.display())));
                     }
+
+                    if let Err(err) = fs::File::create(to_create).map_err(|err| {
+                        format!("Unable to create file {}: {err}", to_create.display())
+                    }) {
+                        return Some(Err(err));
+                    };
+                    refresh_file_explorer(cursor, cx, root);
+
+                    Some(Ok(format!("Created file: {}", to_create.display())))
                 };
 
                 if to_create.exists() {
@@ -576,33 +576,33 @@ pub fn file_explorer(
             data,
             |_| "".to_string(),
             |root, cursor, cx, to_delete, confirmation| {
-                if confirmation == "y" {
-                    if !to_delete.exists() {
-                        return Some(Err(format!("Path {} does not exist", to_delete.display())));
-                    };
-
-                    if to_delete.is_dir() {
-                        if let Err(err) = fs::remove_dir_all(to_delete).map_err(|err| {
-                            format!("Unable to delete directory {}: {err}", to_delete.display())
-                        }) {
-                            return Some(Err(err));
-                        };
-                        refresh_file_explorer(cursor, cx, root);
-
-                        Some(Ok(format!("Deleted directory: {}", to_delete.display())))
-                    } else {
-                        if let Err(err) = fs::remove_file(to_delete).map_err(|err| {
-                            format!("Unable to delete file {}: {err}", to_delete.display())
-                        }) {
-                            return Some(Err(err));
-                        };
-                        refresh_file_explorer(cursor, cx, root);
-
-                        Some(Ok(format!("Deleted file: {}", to_delete.display())))
-                    }
-                } else {
-                    None
+                if confirmation != "y" {
+                    return None;
                 }
+
+                if !to_delete.exists() {
+                    return Some(Err(format!("Path {} does not exist", to_delete.display())));
+                };
+
+                if to_delete.is_dir() {
+                    if let Err(err) = fs::remove_dir_all(to_delete).map_err(|err| {
+                        format!("Unable to delete directory {}: {err}", to_delete.display())
+                    }) {
+                        return Some(Err(err));
+                    };
+                    refresh_file_explorer(cursor, cx, root);
+
+                    return Some(Ok(format!("Deleted directory: {}", to_delete.display())));
+                }
+
+                if let Err(err) = fs::remove_file(to_delete)
+                    .map_err(|err| format!("Unable to delete file {}: {err}", to_delete.display()))
+                {
+                    return Some(Err(err));
+                };
+                refresh_file_explorer(cursor, cx, root);
+
+                Some(Ok(format!("Deleted file: {}", to_delete.display())))
             },
         )
     });
@@ -648,11 +648,13 @@ pub fn file_explorer(
 
                 if copy_from.is_dir() || copy_to_str.ends_with(std::path::MAIN_SEPARATOR) {
                     // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
-                    Some(Err(format!(
+                    return Some(Err(format!(
                         "Copying directories is not supported: {} is a directory",
                         copy_from.display()
-                    )))
-                } else if copy_to.exists() {
+                    )));
+                }
+
+                if copy_to.exists() {
                     create_confirmation_prompt(
                         cursor,
                         format!(
@@ -665,10 +667,10 @@ pub fn file_explorer(
                         root,
                         do_copy,
                     );
-                    None
-                } else {
-                    do_copy(cursor, cx, root, copy_to_str, copy_from)
+                    return None;
                 }
+
+                do_copy(cursor, cx, root, copy_to_str, copy_from)
             },
         )
     });
