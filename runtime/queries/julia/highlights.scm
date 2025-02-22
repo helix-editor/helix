@@ -242,12 +242,10 @@
     "VersionNumber" "WeakKeyDict" "WeakRef"))
 
 ((identifier) @variable.builtin
-  (#any-of? @variable.builtin "begin" "end")
-  (#has-ancestor? @variable.builtin index_expression))
+  (#any-of? @variable.builtin "begin" "end"))
 
 ((identifier) @variable.builtin
-  (#any-of? @variable.builtin "begin" "end")
-  (#has-ancestor? @variable.builtin range_expression))
+  (#any-of? @variable.builtin "begin" "end"))
 
 
 ; --------
