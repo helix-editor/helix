@@ -5472,49 +5472,65 @@ fn reverse_selection_contents(cx: &mut Context) {
 // tree sitter node selection
 
 fn expand_selection(cx: &mut Context) {
-    let motion = |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
-        let (view, doc) = current!(editor);
+    selection_motion(cx, Direction::Forward);
+}
 
-        if let Some(syntax) = doc.syntax() {
-            let text = doc.text().slice(..);
+fn shrink_selection(cx: &mut Context) {
+    selection_motion(cx, Direction::Backward);
+}
 
-            let current_selection = doc.selection(view.id);
-            let selection = object::expand_selection(syntax, text, current_selection.clone());
-
-            // check if selection is different from the last one
-            if *current_selection != selection {
-                // save current selection so it can be restored using shrink_selection
-                view.object_selections.push(current_selection.clone());
-
-                doc.set_selection(view.id, selection);
-            }
+fn selection_motion(cx: &mut Context, direction: Direction) {
+    let motion = move |editor: &mut Editor, mode: MotionMode, _move_override: Option<Movement>| {
+        let direction = match mode {
+            MotionMode::Normal => direction,
+            MotionMode::Reverse => direction.reverse(),
+        };
+        match direction {
+            Direction::Forward => expand_selection_impl(editor),
+            Direction::Backward => shrink_selection_impl(editor),
         }
     };
     cx.editor.apply_motion(motion);
 }
 
-fn shrink_selection(cx: &mut Context) {
-    let motion = |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
-        let (view, doc) = current!(editor);
+fn expand_selection_impl(editor: &mut Editor) {
+    let (view, doc) = current!(editor);
+
+    if let Some(syntax) = doc.syntax() {
+        let text = doc.text().slice(..);
+
         let current_selection = doc.selection(view.id);
-        // try to restore previous selection
-        if let Some(prev_selection) = view.object_selections.pop() {
-            if current_selection.contains(&prev_selection) {
-                doc.set_selection(view.id, prev_selection);
-                return;
-            } else {
-                // clear existing selection as they can't be shrunk to anyway
-                view.object_selections.clear();
-            }
-        }
-        // if not previous selection, shrink to first child
-        if let Some(syntax) = doc.syntax() {
-            let text = doc.text().slice(..);
-            let selection = object::shrink_selection(syntax, text, current_selection.clone());
+        let selection = object::expand_selection(syntax, text, current_selection.clone());
+
+        // check if selection is different from the last one
+        if *current_selection != selection {
+            // save current selection so it can be restored using shrink_selection
+            view.object_selections.push(current_selection.clone());
+
             doc.set_selection(view.id, selection);
         }
-    };
-    cx.editor.apply_motion(motion);
+    }
+}
+
+fn shrink_selection_impl(editor: &mut Editor) {
+    let (view, doc) = current!(editor);
+    let current_selection = doc.selection(view.id);
+    if let Some(prev_selection) = view.object_selections.pop() {
+        if current_selection.contains(&prev_selection) {
+            doc.set_selection(view.id, prev_selection);
+            return;
+        } else {
+            // clear existing selection as they can't be shrunk to anyway
+            view.object_selections.clear();
+        }
+    }
+    // try to restore previous selection
+    // if not previous selection, shrink to first child
+    if let Some(syntax) = doc.syntax() {
+        let text = doc.text().slice(..);
+        let selection = object::shrink_selection(syntax, text, current_selection.clone());
+        doc.set_selection(view.id, selection);
+    }
 }
 
 fn select_sibling_impl(cx: &mut Context, direction: Direction) {
