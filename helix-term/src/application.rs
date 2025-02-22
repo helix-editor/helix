@@ -1,6 +1,9 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
+use helix_core::{
+    diagnostic::{DiagnosticProvider, Severity},
+    pos_at_coords, syntax, Range, Selection,
+};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -749,8 +752,12 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
+
+                        let diagnostic_provider =
+                            DiagnosticProvider::PublishDiagnosticProvider(language_server.id());
+
                         self.editor.handle_lsp_diagnostics(
-                            language_server.id(),
+                            diagnostic_provider,
                             uri,
                             params.version,
                             params.diagnostics,
@@ -864,14 +871,16 @@ impl Application {
                         // we need to clear those and remove the entries from the list if this leads to
                         // an empty diagnostic list for said files
                         for diags in self.editor.diagnostics.values_mut() {
-                            diags.retain(|(_, lsp_id)| *lsp_id != server_id);
+                            diags.retain(|(_, diagnostic_provider)| {
+                                Into::<LanguageServerId>::into(*diagnostic_provider) != server_id
+                            });
                         }
 
                         self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
 
                         // Clear any diagnostics for documents with this server open.
                         for doc in self.editor.documents_mut() {
-                            doc.clear_diagnostics(Some(server_id));
+                            doc.clear_all_language_server_diagnostics(Some(server_id));
                         }
 
                         // Remove the language server from the registry.

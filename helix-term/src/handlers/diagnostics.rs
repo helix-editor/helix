@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
+use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::syntax::LanguageServerFeature;
 use helix_core::Uri;
 use helix_event::{register_hook, send_blocking};
-use helix_lsp::{lsp, LanguageServerId};
+use helix_lsp::lsp;
 use helix_view::document::Mode;
 use helix_view::events::{DiagnosticsDidChange, DocumentDidChange, DocumentDidOpen};
 use helix_view::handlers::diagnostics::DiagnosticEvent;
@@ -133,7 +134,7 @@ pub fn pull_diagnostics_for_document(
         return;
     };
 
-    let server_id = language_server.id();
+    let provider = DiagnosticProvider::PullDiagnosticProvider(language_server.id());
     let document_id = doc.id();
 
     tokio::spawn(async move {
@@ -145,7 +146,7 @@ pub fn pull_diagnostics_for_document(
                         Err(_) => return,
                     };
 
-                    handle_pull_diagnostics_response(editor, response, server_id, uri, document_id)
+                    handle_pull_diagnostics_response(editor, response, provider, uri, document_id)
                 })
                 .await
             }
@@ -157,7 +158,7 @@ pub fn pull_diagnostics_for_document(
 fn handle_pull_diagnostics_response(
     editor: &mut Editor,
     response: lsp::DocumentDiagnosticReport,
-    server_id: LanguageServerId,
+    provider: DiagnosticProvider,
     uri: Uri,
     document_id: DocumentId,
 ) {
@@ -169,7 +170,7 @@ fn handle_pull_diagnostics_response(
         lsp::DocumentDiagnosticReport::Full(report) => {
             // Diagnostic for requested file
             editor.handle_lsp_diagnostics(
-                server_id,
+                provider,
                 uri,
                 None,
                 report.full_document_diagnostic_report.items,
@@ -181,7 +182,7 @@ fn handle_pull_diagnostics_response(
                 editor,
                 document_id,
                 report.related_documents,
-                server_id,
+                provider,
             );
         }
         lsp::DocumentDiagnosticReport::Unchanged(report) => {
@@ -192,7 +193,7 @@ fn handle_pull_diagnostics_response(
                 editor,
                 document_id,
                 report.related_documents,
-                server_id,
+                provider,
             );
         }
     }
@@ -202,7 +203,7 @@ fn handle_document_diagnostic_report_kind(
     editor: &mut Editor,
     document_id: DocumentId,
     report: Option<HashMap<lsp::Url, lsp::DocumentDiagnosticReportKind>>,
-    server_id: LanguageServerId,
+    provider: DiagnosticProvider,
 ) {
     for (url, report) in report.into_iter().flatten() {
         match report {
@@ -211,7 +212,7 @@ fn handle_document_diagnostic_report_kind(
                     return;
                 };
 
-                editor.handle_lsp_diagnostics(server_id, uri, None, report.items, report.result_id);
+                editor.handle_lsp_diagnostics(provider, uri, None, report.items, report.result_id);
             }
             lsp::DocumentDiagnosticReportKind::Unchanged(report) => {
                 let Some(doc) = editor.document_mut(document_id) else {
