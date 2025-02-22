@@ -428,7 +428,7 @@ pub fn file_explorer(
         };
     });
 
-    let create_file: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
+    let create: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
             "create:",
@@ -443,7 +443,7 @@ pub fn file_explorer(
             |root, cursor, cx, _, to_create_str| {
                 let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
-                let create_op = |cursor: u32,
+                let do_create = |cursor: u32,
                                  cx: &mut Context,
                                  root: PathBuf,
                                  to_create_str: &str,
@@ -480,17 +480,17 @@ pub fn file_explorer(
                         to_create_str.to_string(),
                         to_create.to_path_buf(),
                         root,
-                        create_op,
+                        do_create,
                     );
                     return None;
                 };
 
-                create_op(cursor, cx, root, to_create_str, &to_create)
+                do_create(cursor, cx, root, to_create_str, &to_create)
             },
         )
     });
 
-    let move_file: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
+    let move_: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
             "move:",
@@ -501,7 +501,7 @@ pub fn file_explorer(
             |root, cursor, cx, move_from, move_to_str| {
                 let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
 
-                let move_op = |cursor: u32,
+                let do_move = |cursor: u32,
                                cx: &mut Context,
                                root: PathBuf,
                                move_to_str: &str,
@@ -536,17 +536,17 @@ pub fn file_explorer(
                         move_to_str.to_string(),
                         move_from.to_path_buf(),
                         root,
-                        move_op,
+                        do_move,
                     );
                     return None;
                 };
 
-                move_op(cursor, cx, root, move_to_str, move_from)
+                do_move(cursor, cx, root, move_to_str, move_from)
             },
         )
     });
 
-    let delete_file: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
+    let delete: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
             "delete? (y/n):",
@@ -586,7 +586,7 @@ pub fn file_explorer(
         )
     });
 
-    let copy_file: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
+    let copy: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
             "copy-to:",
@@ -601,7 +601,7 @@ pub fn file_explorer(
             |root, cursor, cx, copy_from, copy_to_str| {
                 let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
 
-                let copy_op = |cursor: u32,
+                let do_copy = |cursor: u32,
                                cx: &mut Context,
                                root: PathBuf,
                                copy_to_str: &str,
@@ -642,11 +642,11 @@ pub fn file_explorer(
                         copy_to_str.to_string(),
                         copy_from.to_path_buf(),
                         root,
-                        copy_op,
+                        do_copy,
                     );
                     None
                 } else {
-                    copy_op(cursor, cx, root, copy_to_str, copy_from)
+                    do_copy(cursor, cx, root, copy_to_str, copy_from)
                 }
             },
         )
@@ -695,10 +695,10 @@ pub fn file_explorer(
     .with_cursor(cursor.unwrap_or_default())
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
     .with_key_handlers(hashmap! {
-        alt!('n') => create_file,
-        alt!('m') => move_file,
-        alt!('d') => delete_file,
-        alt!('c') => copy_file,
+        alt!('n') => create,
+        alt!('m') => move_,
+        alt!('d') => delete,
+        alt!('c') => copy,
         alt!('y') => yank_path,
     });
 
