@@ -175,7 +175,7 @@
 | powershell | ✓ |  |  |  |
 | prisma | ✓ | ✓ |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
-| protobuf | ✓ | ✓ | ✓ | `buf`, `pbkit`, `protols` |
+| protobuf | ✓ | ✓ | ✓ | `buf`, `pb`, `protols` |
 | prql | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
