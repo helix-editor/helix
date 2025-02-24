@@ -1,1 +1,0 @@
-(fields (variable)) @local.definition
