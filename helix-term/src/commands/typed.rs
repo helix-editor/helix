@@ -238,10 +238,11 @@ fn align_text_impl(
 
     for line_idx in lines {
         let line = doc.text().line(line_idx);
-        let line = line.to_string();
+        let old_line = line.to_string();
 
-        let line = format(text_width, line.trim());
-        let tendril = Tendril::from(line);
+        let aligned_line = format(text_width, old_line.trim());
+        let aligned_line = aligned_line.trim_end();
+        let tendril = Tendril::from(aligned_line);
 
         changes.push((
             text.line_to_char(line_idx),
