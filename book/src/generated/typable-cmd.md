@@ -88,3 +88,6 @@
 | `:move`, `:mv` | Move the current buffer and its corresponding file to a different path |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |
+| `:left` | Align text to the left, optionally pass a number overriding the current document's text width |
+| `:center` | Center-align text, optionally pass a number overriding the current document's text width |
+| `:right` | Align text to the right, optionally pass a number overriding the current document's text width |
