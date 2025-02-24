@@ -240,14 +240,13 @@ fn align_text_impl(
         let line = doc.text().line(line_idx);
         let line = line.to_string();
 
-        // pad with spaces
-        // let line = format!("{:^text_width$}", line.trim());
         let line = format(text_width, line.trim());
+        let tendril = Tendril::from(line);
 
         changes.push((
             text.line_to_char(line_idx),
             text.line_to_char(line_idx + 1) - doc.line_ending.len_chars(),
-            Some(Tendril::from(line)),
+            Some(tendril),
         ))
     }
 
@@ -260,7 +259,9 @@ fn align_text_impl(
 
 fn left(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     ensure!(args.len() <= 1, ":left takes at most 1 argument");
-    align_text_impl(cx, args, event, |a, b| format!("{:<a$}", b))
+    align_text_impl(cx, args, event, |text_width, text| {
+        format!("{:<text_width$}", text)
+    })
 }
 
 fn center(
@@ -269,7 +270,9 @@ fn center(
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     ensure!(args.len() <= 1, ":center takes at most 1 argument");
-    align_text_impl(cx, args, event, |a, b| format!("{:^a$}", b))
+    align_text_impl(cx, args, event, |text_width, text| {
+        format!("{:^text_width$}", text)
+    })
 }
 
 fn right(
@@ -278,7 +281,9 @@ fn right(
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     ensure!(args.len() <= 1, ":right takes at most 1 argument");
-    align_text_impl(cx, args, event, |a, b| format!("{:>a$}", b))
+    align_text_impl(cx, args, event, |text_width, text| {
+        format!("{:>text_width$}", text)
+    })
 }
 
 fn buffer_close(
