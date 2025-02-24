@@ -2377,6 +2377,14 @@ fn pipe_to(
     pipe_impl(cx, args, event, &ShellBehavior::Ignore)
 }
 
+fn pipe_execute(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Execute)
+}
+
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     pipe_impl(cx, args, event, &ShellBehavior::Replace)
 }
@@ -3205,6 +3213,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Pipe each selection to the shell command, ignoring output.",
         fun: pipe_to,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "pipe-execute",
+        aliases: &[],
+        doc: "Pipe each selection to the shell command, execute output as command.",
+        fun: pipe_execute,
         signature: CommandSignature::none(),
     },
     TypableCommand {

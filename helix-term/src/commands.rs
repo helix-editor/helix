@@ -63,6 +63,7 @@ use crate::{
 };
 
 use crate::job::{self, Jobs};
+use std::str::FromStr;
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -577,6 +578,7 @@ impl MappableCommand {
         dap_disable_exceptions, "Disable exception breakpoints",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command ignoring output",
+        shell_pipe_execute, "Pipe selections into shell command, execute output as command",
         shell_insert_output, "Insert shell command output before selections",
         shell_append_output, "Append shell command output after selections",
         shell_keep_pipe, "Filter selections with shell predicate",
@@ -6037,6 +6039,7 @@ enum ShellBehavior {
     Ignore,
     Insert,
     Append,
+    Execute,
 }
 
 fn shell_pipe(cx: &mut Context) {
@@ -6045,6 +6048,10 @@ fn shell_pipe(cx: &mut Context) {
 
 fn shell_pipe_to(cx: &mut Context) {
     shell_prompt(cx, "pipe-to:".into(), ShellBehavior::Ignore);
+}
+
+fn shell_pipe_execute(cx: &mut Context) {
+    shell_prompt(cx, "pipe-execute:".into(), ShellBehavior::Execute);
 }
 
 fn shell_insert_output(cx: &mut Context) {
@@ -6173,7 +6180,7 @@ async fn shell_impl_async(
 
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let pipe = match behavior {
-        ShellBehavior::Replace | ShellBehavior::Ignore => true,
+        ShellBehavior::Replace | ShellBehavior::Ignore | ShellBehavior::Execute => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
     };
 
@@ -6220,6 +6227,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             ShellBehavior::Replace => (range.from(), range.to(), range.len()),
             ShellBehavior::Insert => (range.from(), range.from(), 0),
             ShellBehavior::Append => (range.to(), range.to(), 0),
+            ShellBehavior::Execute => (range.from(), range.from(), 0),
             _ => (range.from(), range.from(), 0),
         };
 
@@ -6240,16 +6248,43 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
         changes.push((from, to, Some(output)));
     }
 
-    if behavior != &ShellBehavior::Ignore {
-        let transaction = Transaction::change(doc.text(), changes.into_iter())
-            .with_selection(Selection::new(ranges, selection.primary_index()));
-        doc.apply(&transaction, view.id);
-        doc.append_changes_to_history(view);
-    }
+    let mut commands = Vec::with_capacity(changes.len());
+    match behavior {
+        ShellBehavior::Ignore => (),
+        ShellBehavior::Execute => {
+            for (_, _, command_text) in changes {
+                if let Some(command_text) = command_text {
+                    if let Ok(command) = MappableCommand::from_str(&command_text[..]) {
+                        commands.push(command)
+                    }
+                }
+            }
+        }
+        _ => {
+            let transaction = Transaction::change(doc.text(), changes.into_iter())
+                .with_selection(Selection::new(ranges, selection.primary_index()));
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view);
+        }
+    };
 
     // after replace cursor may be out of bounds, do this to
     // make sure cursor is in view and update scroll as well
     view.ensure_cursor_in_view(doc, config.scrolloff);
+
+    if behavior == &ShellBehavior::Execute {
+        for command in commands {
+            let mut ctx = Context {
+                register: None,
+                count: None,
+                editor: cx.editor,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs: cx.jobs,
+            };
+            command.execute(&mut ctx);
+        }
+    }
 }
 
 fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {

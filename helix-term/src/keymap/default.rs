@@ -331,6 +331,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "!" => shell_insert_output,
         "A-!" => shell_append_output,
         "$" => shell_keep_pipe,
+        "A-$" => shell_pipe_execute,
         "C-z" => suspend,
 
         "C-a" => increment,
