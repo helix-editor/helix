@@ -1,5 +1,5 @@
-(rule_definition) @local.definition
-(string_identifier) @local.definition
+(rule_definition name: (identifier) @local.definition.string.special)
+(string_identifier) @local.definition.string.special.symbol
 
 (for_expression
   (string_identifier) @local.reference)

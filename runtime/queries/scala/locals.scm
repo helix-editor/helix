@@ -3,27 +3,12 @@
 
 
 (function_declaration
-      name: (identifier) @local.definition) @local.scope
+      name: (identifier) @local.definition.function) @local.scope
 
 (function_definition
-      name: (identifier) @local.definition)
+      name: (identifier) @local.definition.function)
 
 (parameter
-  name: (identifier) @local.definition)
-
-(binding
-  name: (identifier) @local.definition)
-
-(val_definition
-  pattern: (identifier) @local.definition)
-
-(var_definition
-  pattern: (identifier) @local.definition)
-
-(val_declaration
-  name: (identifier) @local.definition)
-
-(var_declaration
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.parameter)
 
 (identifier) @local.reference
