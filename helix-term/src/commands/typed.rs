@@ -210,6 +210,77 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
     document_ids
 }
 
+fn align_text_impl(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+    format: fn(usize, &str) -> String,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let editor_text_width = cx.editor.config().text_width;
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let custom_text_width = args.first().map(|arg| {
+        arg.parse::<usize>()
+            .map_err(|_| anyhow!("Could not parse argument as a number: {arg}"))
+    });
+
+    let text_width = custom_text_width.unwrap_or(Ok(doc
+        .language_config()
+        .and_then(|c| c.text_width)
+        .unwrap_or(editor_text_width)))?;
+
+    let lines = get_lines(doc, view.id);
+    let mut changes = Vec::with_capacity(lines.len());
+
+    for line_idx in lines {
+        let line = doc.text().line(line_idx);
+        let line = line.to_string();
+
+        // pad with spaces
+        // let line = format!("{:^text_width$}", line.trim());
+        let line = format(text_width, line.trim());
+
+        changes.push((
+            text.line_to_char(line_idx),
+            text.line_to_char(line_idx + 1) - doc.line_ending.len_chars(),
+            Some(Tendril::from(line)),
+        ))
+    }
+
+    let transaction = Transaction::change(doc.text(), changes.into_iter());
+
+    doc.apply(&transaction, view.id);
+
+    Ok(())
+}
+
+fn left(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    ensure!(args.len() <= 1, ":left takes at most 1 argument");
+    align_text_impl(cx, args, event, |a, b| format!("{:<a$}", b))
+}
+
+fn center(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    ensure!(args.len() <= 1, ":center takes at most 1 argument");
+    align_text_impl(cx, args, event, |a, b| format!("{:^a$}", b))
+}
+
+fn right(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    ensure!(args.len() <= 1, ":right takes at most 1 argument");
+    align_text_impl(cx, args, event, |a, b| format!("{:>a$}", b))
+}
+
 fn buffer_close(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -3255,6 +3326,27 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Load a file into buffer",
         fun: read,
         signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "left",
+        aliases: &[],
+        doc: "Align text to the left",
+        fun: left,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "center",
+        aliases: &[],
+        doc: "Center-align text",
+        fun: center,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "right",
+        aliases: &[],
+        doc: "Align text to the right",
+        fun: right,
+        signature: CommandSignature::none(),
     },
 ];
 
