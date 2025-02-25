@@ -110,6 +110,18 @@ fn softwrap_multichar_grapheme() {
     )
 }
 
+#[test]
+fn softwrap_punctuation() {
+    assert_eq!(
+        softwrap_text("asdfasdfasdfasd ...\n"),
+        "asdfasdfasdfasd \n.... \n "
+    );
+    assert_eq!(
+        softwrap_text("asdfasdfasdf a(bc)\n"),
+        "asdfasdfasdf a(\n.bc) \n "
+    );
+}
+
 fn softwrap_text_at_text_width(text: &str) -> String {
     let mut text_fmt = TextFormat::new_test(true);
     text_fmt.soft_wrap_at_text_width = true;
