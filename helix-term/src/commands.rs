@@ -209,7 +209,7 @@ use helix_view::{align_view, Align};
 pub enum MappableCommand {
     Typable {
         name: String,
-        args: String,
+        args: Vec<String>,
         doc: String,
     },
     Static {
@@ -250,9 +250,12 @@ impl MappableCommand {
                         jobs: cx.jobs,
                         scroll: None,
                     };
-                    if let Err(e) =
-                        typed::execute_command(&mut cx, command, args, PromptEvent::Validate)
-                    {
+                    if let Err(e) = typed::execute_command(
+                        &mut cx,
+                        command,
+                        &args.join(" "),
+                        PromptEvent::Validate,
+                    ) {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {
@@ -280,11 +283,11 @@ impl MappableCommand {
         }
     }
 
-    pub fn name(&self) -> &str {
-        match &self {
-            Self::Typable { name, .. } => name,
+    pub fn name<'a>(&'a self) -> &'a str {
+        match self {
+            Self::Typable { name, .. } => name.as_str(),
             Self::Static { name, .. } => name,
-            Self::Macro { name, .. } => name,
+            Self::Macro { name, .. } => name.as_str(),
         }
     }
 
@@ -606,6 +609,37 @@ impl MappableCommand {
     );
 }
 
+/* const _: () = {
+    let mut i = 1usize;
+    let arr = MappableCommand::STATIC_COMMAND_LIST;
+    loop {
+        if i >= arr.len() {
+            break;
+        }
+        match (&arr[i - 1], &arr[i]) {
+            (MappableCommand::Static { name: a, .. }, MappableCommand::Static { name: b, .. }) => {
+                // assert!(a.len() <= b.len(), "Unsorted static command list");
+                let n = if a.len() < b.len() { a.len() } else { b.len() };
+                let mut j = 0;
+                loop {
+                    if j >= n {
+                        break;
+                    }
+                    assert!(
+                        a.as_bytes()[j] <= b.as_bytes()[j],
+                        "Unsorted static command list"
+                    );
+                    j += 1;
+                }
+            }
+            _ => {
+                panic!("nonstatic in static command list")
+            }
+        }
+        i += 1;
+    }
+}; */
+
 impl fmt::Debug for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -650,7 +684,7 @@ impl std::str::FromStr for MappableCommand {
                     MappableCommand::Typable {
                         name: cmd.name.to_owned(),
                         doc,
-                        args: args.to_string(),
+                        args: vec![args.to_string()],
                     }
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
@@ -3403,7 +3437,7 @@ pub fn command_palette(cx: &mut Context) {
                     .iter()
                     .map(|cmd| MappableCommand::Typable {
                         name: cmd.name.to_owned(),
-                        args: String::new(),
+                        args: Vec::new(),
                         doc: cmd.doc.to_owned(),
                     }),
             );
@@ -6255,9 +6289,6 @@ async fn shell_impl_async(
     ensure!(!shell.is_empty(), "No shell set");
 
     let mut process = Command::new(&shell[0]);
-    if let Some(file_path) = file_path {
-        process.env("HELIX_FILE_PATH", file_path.display().to_string());
-    }
     process
         .args(&shell[1..])
         .arg(cmd)
@@ -6268,6 +6299,19 @@ async fn shell_impl_async(
         process.stdin(Stdio::piped());
     } else {
         process.stdin(Stdio::null());
+    }
+
+    if let Some(file_path) = file_path {
+        process.env("HELIX_FILE_PATH", file_path);
+    }
+
+    {
+        // TODO get this as an arg.
+        let command_socket_path = {
+            let pid = std::process::id();
+            std::env::temp_dir().join(format!("helix.{pid}.sock"))
+        };
+        process.env("HELIX_SOCKET_PATH", command_socket_path);
     }
 
     let mut process = match process.spawn() {
