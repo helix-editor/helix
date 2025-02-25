@@ -139,6 +139,7 @@ impl Application {
             })),
             handlers,
         );
+        editor.set_theme(theme);
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -236,8 +237,6 @@ impl Application {
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
-
-        editor.set_theme(theme);
 
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
