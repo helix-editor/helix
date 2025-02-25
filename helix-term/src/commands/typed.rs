@@ -2330,8 +2330,11 @@ fn run_shell_command(
     let shell = cx.editor.config().shell.clone();
     let args = args.join(" ");
 
+    let (_view, doc) = current!(cx.editor);
+    let current_file_path = doc.path().cloned();
     let callback = async move {
-        let output = shell_impl_async(&shell, &args, None).await?;
+        let path = current_file_path.as_ref().map(|x| x.as_path());
+        let output = shell_impl_async(&shell, &args, None, path).await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.is_empty() {

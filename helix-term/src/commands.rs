@@ -6207,7 +6207,12 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                if let Err(err) = shell_impl(shell, input, Some(fragment.into())) {
+                if let Err(err) = shell_impl(
+                    shell,
+                    input,
+                    Some(fragment.into()),
+                    doc.path().map(|x| x.as_path()),
+                ) {
                     log::debug!("Shell command failed: {}", err);
                 } else {
                     ranges.push(*range);
@@ -6228,20 +6233,31 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
-fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<Tendril> {
-    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
+fn shell_impl(
+    shell: &[String],
+    cmd: &str,
+    input: Option<Rope>,
+    file_path: Option<&Path>,
+) -> anyhow::Result<Tendril> {
+    tokio::task::block_in_place(|| {
+        helix_lsp::block_on(shell_impl_async(shell, cmd, input, file_path))
+    })
 }
 
 async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
     input: Option<Rope>,
+    file_path: Option<&Path>,
 ) -> anyhow::Result<Tendril> {
     use std::process::Stdio;
     use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
 
     let mut process = Command::new(&shell[0]);
+    if let Some(file_path) = file_path {
+        process.env("HELIX_FILE_PATH", file_path.display().to_string());
+    }
     process
         .args(&shell[1..])
         .arg(cmd)
@@ -6321,7 +6337,12 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             output.clone()
         } else {
             let input = range.slice(text);
-            match shell_impl(shell, cmd, pipe.then(|| input.into())) {
+            match shell_impl(
+                shell,
+                cmd,
+                pipe.then(|| input.into()),
+                doc.path().map(|x| x.as_path()),
+            ) {
                 Ok(mut output) => {
                     if !input.ends_with("\n") && output.ends_with('\n') {
                         output.pop();
