@@ -1,5 +1,5 @@
 (function_definition
-  (imperative_block) @funtion.inside) @function.around
+  (imperative_block) @function.inside) @function.around
 
 (callback_event
   (imperative_block) @function.inside) @function.around

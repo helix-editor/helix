@@ -1,3 +1,13 @@
+(comment) @comment
+(string) @string
+(raw_string) @string
+(number) @constant.numeric.integer
+(name) @variable
+(field) @variable
+(static_field) @variable
+(null) @constant.builtin
+(boolean) @constant.builtin.boolean
+
 ((name) @variable.builtin
  (#match? @variable.builtin "^(Bool|Class|Fiber|Fn|List|Map|Null|Num|Object|Range|Sequence|String|System)$"))
 
@@ -9,15 +19,6 @@
 
 ((parameter) @variable.parameter)
 
-(comment) @comment
-(string) @string
-(raw_string) @string
-(number) @constant.numeric.integer
-(name) @variable
-(field) @variable
-(static_field) @variable
-(null) @constant.builtin
-(boolean) @constant.builtin.boolean
 
 (if_statement
 [

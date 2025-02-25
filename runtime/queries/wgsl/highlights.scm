@@ -89,6 +89,8 @@
   "~"
 ] @operator
 
+(identifier) @variable
+
 (function_declaration
   (identifier) @function)
 
@@ -111,7 +113,5 @@
 
 (attribute
   (identifier) @attribute)
-
-(identifier) @variable
 
 (comment) @comment

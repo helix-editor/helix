@@ -178,7 +178,7 @@ pub fn line_numbers<'doc>(
                     && current_line != line;
 
                 let display_num = if relative {
-                    abs_diff(current_line, line)
+                    current_line.abs_diff(line)
                 } else {
                     line + 1
                 };
@@ -224,15 +224,6 @@ pub fn padding<'doc>(
     _is_focused: bool,
 ) -> GutterFn<'doc> {
     Box::new(|_line: usize, _selected: bool, _first_visual_line: bool, _out: &mut String| None)
-}
-
-#[inline(always)]
-const fn abs_diff(a: usize, b: usize) -> usize {
-    if a > b {
-        a - b
-    } else {
-        b - a
-    }
 }
 
 pub fn breakpoints<'doc>(

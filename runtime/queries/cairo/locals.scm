@@ -7,6 +7,7 @@
   (type_item)
   (trait_item)
   (impl_item)
+  (closure_expression)
   (block)
 ] @local.scope
 
@@ -19,6 +20,8 @@
   (type_identifier) @local.definition)
 (constrained_type_parameter
   left: (type_identifier) @local.definition)
+
+(closure_parameters (identifier) @local.definition)
 
 ; References
 (identifier) @local.reference

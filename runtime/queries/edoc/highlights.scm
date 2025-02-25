@@ -16,8 +16,8 @@
    (section_marker) @markup.heading.marker)
  (#eq? @markup.heading.marker "===="))
 
-(macro (tag) @function.macro)
 (tag) @keyword
+(macro (tag) @function.macro)
 (macro_escape) @constant.character.escape
 (inline_quote) @markup.raw.inline
 (email_address) @markup.link.url

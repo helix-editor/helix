@@ -40,7 +40,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 
-slotmap = "1"
+slotmap.workspace = true
 
 chardetng = "0.1"
 

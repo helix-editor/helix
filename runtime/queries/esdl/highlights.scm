@@ -18,6 +18,8 @@
   "function"
 ] @keyword
 
+(identifier) @variable
+
 (modifier) @keyword
 (extending) @keyword
 
@@ -31,7 +33,6 @@
 (link) @variable.other.member
 (annotation) @variable.other.member
 
-(identifier) @variable
 (string) @string
 (edgeql_fragment) @string
 ; Builtins
@@ -56,8 +57,8 @@
   "anytype"
 ] @type.builtin
 
-(true) @constant.builtin
-(false) @constant.builtin
+(true) @constant.builtin.boolean
+(false) @constant.builtin.boolean
 (null) @constant.builtin
 
 ; Delimiters

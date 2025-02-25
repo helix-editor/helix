@@ -7,7 +7,7 @@
 
 'property' = { fg = "red" } # Regex group names.
 "warning" = { fg ="yellow", modifiers = ["bold"] } # Editor warnings.
-"error" = { fg = "red", modifiers = ["bold"] } # Editor errors, like mis-typing a command.
+"error" = { fg = "red", modifiers = ["bold"] } # Editor errors, like mistyping a command.
 "info" = { fg = "mid-blue" } # Code diagnostic info in gutter (LSP).
 # ? Difference between info and hint ?
 "hint" = { fg = "light-green", modifiers = ["bold"] } # Code diagnostics hint in gutter (LSP).

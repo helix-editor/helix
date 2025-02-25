@@ -1,34 +1,38 @@
-; Keywords
 [
-    "if"
-    "then"
-    "else"
-    "let"
-    "in"
- ] @keyword.control
-(when) @keyword.control
-(is) @keyword.control
+  (module)
+  (as)
+  (exposing)
+  (backslash)
+] @keyword
 
-(colon) @keyword.operator
-(backslash) @keyword
-(as) @keyword
-(port) @keyword
-(exposing) @keyword
-(alias) @keyword
-(infix) @keyword
+(import) @keyword.control.import
 
-(arrow) @keyword.operator
-(dot) @keyword.operator
+[
+  "if"
+  "then"
+  "else"
+  (when)
+  (is)
+] @keyword.control.conditional
 
-(type_annotation(lower_case_identifier) @function)
-(port_annotation(lower_case_identifier) @function)
-(file (value_declaration (function_declaration_left(lower_case_identifier) @function)))
+[
+  (type)
+  (alias)
+  (infix)
+  (port)
+  "let"
+  "in"
+] @keyword.storage.type
 
-(field name: (lower_case_identifier) @attribute)
-(field_access_expr(lower_case_identifier) @attribute)
+(dot) @operator
 
-(operator_identifier) @keyword.operator
-(eq) @keyword.operator.assignment
+[
+  (colon)
+  (arrow)
+  (eq)
+  (operator_identifier)
+  "|"
+] @keyword.operator
 
 [
   "("
@@ -39,43 +43,69 @@
   "}"
 ] @punctuation.bracket
 
-"|" @keyword
 "," @punctuation.delimiter
 
-[
-  "|>"
-] @keyword
+; modules
 
+(module_declaration(upper_case_qid) @namespace)
+(import_clause(upper_case_qid) @namespace)
+(import_clause(as_clause(upper_case_identifier) @namespace))
+(exposing_list(exposed_type(upper_case_identifier) @type))
+(exposing_list(exposed_value) @variable)
 
-(import) @keyword.control.import
-(module) @keyword.other
+; functions
 
-(number_constant_expr) @constant.numeric
+(type_annotation(lower_case_identifier) @function)
+(port_annotation(lower_case_identifier) @function)
+(file (value_declaration (function_declaration_left(lower_case_identifier) @function)))
 
-(type) @type
+; types
+
+(field name: (lower_case_identifier) @variable.other.member)
+(field_type name: (lower_case_identifier) @variable.other.member)
+(field_access_expr(lower_case_identifier) @variable)
 
 (type_declaration(upper_case_identifier) @type)
-(type_ref) @type
+(type_declaration typeName: (lower_type_name) @type.parameter)
+
 (type_alias_declaration name: (upper_case_identifier) @type)
+(type_alias_declaration typeVariable: (lower_type_name) @type.parameter)
 
-(union_pattern constructor: (upper_case_qid (upper_case_identifier) @label (dot) (upper_case_identifier) @variable.other.member)) 
-(union_pattern constructor: (upper_case_qid (upper_case_identifier) @variable.other.member)) 
+(type_ref(upper_case_qid) @type)
+(type_ref(upper_case_qid(upper_case_identifier) @namespace (dot) (upper_case_identifier) @type))
 
-(union_variant(upper_case_identifier) @variable.other.member)
-(value_expr name: (value_qid (upper_case_identifier) @label))
-(value_expr (upper_case_qid (upper_case_identifier) @label (dot) (upper_case_identifier) @variable.other.member))
-(value_expr(upper_case_qid(upper_case_identifier)) @variable.other.member)
+(type_variable(lower_case_identifier) @type.parameter)
+
+; variables
+
+(union_pattern constructor: (upper_case_qid (upper_case_identifier) @namespace (dot) (upper_case_identifier) @constructor)) 
+(union_pattern constructor: (upper_case_qid (upper_case_identifier) @constructor)) 
+
+(union_variant(upper_case_identifier) @constructor)
+
+(value_expr name: (value_qid (upper_case_identifier) @namespace))
+(value_expr(upper_case_qid(upper_case_identifier) @namespace (dot) (upper_case_identifier) @constructor))
+(value_expr(upper_case_qid(upper_case_identifier)) @constructor)
+
+(value_expr(value_qid(upper_case_identifier) @namespace (dot) (lower_case_identifier) @variable))
+(value_expr(value_qid(lower_case_identifier) @variable))
+
+(let_in_expr(value_declaration(function_declaration_left(lower_case_identifier) @variable)))
+
+(function_declaration_left(lower_pattern(lower_case_identifier) @variable.parameter))
 
 ; comments
+
 (line_comment) @comment
 (block_comment) @comment
 
+; numbers
+
+(number_constant_expr) @constant.numeric
+
 ; strings
+
 (string_escape) @constant.character.escape
 
-(open_quote) @string
-(close_quote) @string
-(regular_string_part) @string
-
-(open_char) @constant.character
-(close_char) @constant.character
+(string_constant_expr) @string
+(char_constant_expr) @constant.character

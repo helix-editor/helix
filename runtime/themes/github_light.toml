@@ -62,6 +62,7 @@ label = "scale.red.5"
 "ui.text.directory" = { fg = "scale.blue.4" }
 "ui.virtual" = { fg = "scale.gray.2" }
 "ui.virtual.ruler" = { bg = "canvas.subtle" }
+"ui.virtual.jump-label" = { modifiers = ["reversed"] }
 
 "ui.selection" = { bg = "scale.blue.0" }
 "ui.selection.primary" = { bg = "scale.blue.1" }

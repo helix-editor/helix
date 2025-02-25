@@ -2,6 +2,9 @@
 
 ;; variables
 
+(identifier) @variable
+
+(operator_identifier) @operator
 
 ((identifier) @variable.builtin
  (#match? @variable.builtin "^this$"))
@@ -262,7 +265,3 @@
 
 (case_block
   (case_clause ("case") @keyword.control.conditional))
-
-(identifier) @variable
-
-(operator_identifier) @operator

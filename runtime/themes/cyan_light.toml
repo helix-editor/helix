@@ -87,24 +87,25 @@
     "bold",
 ] }
 
-"ui.statusline" = { fg = "shade06", bg = "shade02" }
-"ui.statusline.inactive" = { fg = "shade04", bg = "shade01" }
+"ui.statusline" = { fg = "shade06", bg = "shade01" }
+"ui.statusline.inactive" = { fg = "shade04", bg = "shade00" }
 "ui.statusline.normal" = { fg = "shade00", bg = "blue" }
 "ui.statusline.insert" = { fg = "shade00", bg = "green" }
 "ui.statusline.select" = { fg = "shade00", bg = "purple" }
 
-"ui.popup" = { bg = "shade01", fg = "shade04" }
-"ui.window" = { bg = "shade00", fg = "shade04" }
-"ui.help" = { fg = "shade06", bg = "shade01" }
+"ui.popup" = { fg = "shade04", bg = "shade01_lighter" }
+"ui.window" = { fg = "shade04", bg = "shade00" }
+"ui.help" = { fg = "shade06", bg = "shade00" }
 "ui.text" = "shade05"
 "ui.text.focus" = { fg = "shade07", bg = "light_blue" }
+"ui.text.directory" = "blue"
 
 "ui.virtual" = "shade03"
 "ui.virtual.ruler" = { bg = "shade01" }
 "ui.virtual.inlay-hint" = { fg = "shade03_darker" }
 "ui.virtual.jump-label" = { fg = "shade07", bg = "shade01", modifiers = ["bold" ] }
 
-"ui.menu" = { fg = "shade05", bg = "shade01" }
+"ui.menu" = { fg = "shade05", bg = "shade01_lighter" }
 "ui.menu.selected" = { fg = "shade07", bg = "light_blue" }
 
 "hint" = "shade04"
@@ -130,6 +131,7 @@ shade05 = "#434b6c"
 shade06 = "#343a54"
 shade07 = "#25293c"
 
+shade01_lighter = "#e6e8f0"
 shade03_darker = "#9199bb"
 shade04_lighter = "#616d9d"
 

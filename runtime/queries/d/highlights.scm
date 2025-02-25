@@ -217,6 +217,8 @@
     (cfloat)
 ] @warning ; these types are deprecated
 
+(identifier) @variable
+
 (label (identifier) @label)
 (goto_statement (goto) @keyword (identifier) @label)
 
@@ -224,7 +226,6 @@
 (int_literal) @constant.numeric.integer
 (float_literal) @constant.numeric.float
 (char_literal) @constant.character
-(identifier) @variable
 (at_attribute) @attribute
 
 ; everything after __EOF_ is plain text

@@ -20,7 +20,7 @@ var config = [ "--config" "-c" ]
 set edit:completion:arg-completer[hx] = {|@args|
   var n = (count $args)
   if (>= $n 3) {
-    # Stop completions if passed arg will take presedence
+    # Stop completions if passed arg will take precedence
     # and invalidate further input
     if (has-value $skips $args[-2]) {
       return

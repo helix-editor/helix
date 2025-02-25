@@ -122,11 +122,11 @@
   }) grammarsToBuild;
   extensibleGrammars =
     lib.makeExtensible (self: builtins.listToAttrs builtGrammars);
-  overlayedGrammars = lib.pipe extensibleGrammars
+  overlaidGrammars = lib.pipe extensibleGrammars
     (builtins.map (overlay: grammar: grammar.extend overlay) grammarOverlays);
   grammarLinks = lib.mapAttrsToList
     (name: artifact: "ln -s ${artifact}/${name}.so $out/${name}.so")
-    (lib.filterAttrs (n: v: lib.isDerivation v) overlayedGrammars);
+    (lib.filterAttrs (n: v: lib.isDerivation v) overlaidGrammars);
 in
   runCommand "consolidated-helix-grammars" {} ''
     mkdir -p $out

@@ -94,6 +94,8 @@
 
 ;; Commands
 
+(command name: (word) @function)
+
 (command
   name: (word) @function.builtin (#match? @function.builtin "^test$")
   argument: (word) @operator (#match? @operator "^(!?=|-[a-zA-Z]+)$"))
@@ -115,9 +117,6 @@
     (#any-of? @function.builtin "abbr" "alias" "and" "argparse" "begin" "bg" "bind" "block" "break" "breakpoint" "builtin" "case" "cd" "command" "commandline" "complete" "contains" "continue" "count" "disown" "echo" "else" "emit" "end" "eval" "exec" "exit" "false" "fg" "for" "function" "functions" "history" "if" "isatty" "jobs" "math" "not" "or" "path" "printf" "pwd" "random" "read" "realpath" "return" "set" "set_color" "source" "status" "string" "switch" "test" "time" "true" "type" "ulimit" "wait" "while")
   ]
 )
-
-; non-builtin command names
-(command name: (word) @function)
 
 ;; Functions
 
@@ -154,7 +153,3 @@
 
 ((word) @constant.builtin.boolean
 (#match? @constant.builtin.boolean "^(true|false)$"))
-
-;; Error
-
-(ERROR) @error
