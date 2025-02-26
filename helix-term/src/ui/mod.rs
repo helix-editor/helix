@@ -352,7 +352,6 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::LanguageServerFeature;
-    use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
@@ -369,7 +368,7 @@ pub mod completers {
         let names = editor.documents.values().map(|doc| {
             doc.relative_path()
                 .map(|p| p.display().to_string().into())
-                .unwrap_or_else(|| Cow::from(SCRATCH_BUFFER_NAME))
+                .unwrap_or_else(|| Cow::from(doc.default_name()))
         });
 
         fuzzy_match(input, names, true)
