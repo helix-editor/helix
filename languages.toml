@@ -1677,6 +1677,16 @@ name = "tablegen"
 source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "3e9c4822ab5cdcccf4f8aa9dcd42117f736d51d9" }
 
 [[language]]
+name = "mail"
+scope = "text.mail"
+file-types = ["eml"]
+injection-regex = "mail|eml|email"
+
+[[grammar]]
+name = "mail"
+source = { git = "https://github.com/ficcdaf/tree-sitter-mail", rev = "8e60f38efbae1cc5f22833ae13c5500dd0f3b12f" }
+
+[[language]]
 name = "markdown"
 scope = "source.md"
 injection-regex = "md|markdown"
