@@ -139,6 +139,11 @@ wasm-language-tools = { command = "wat_server" }
 command = "ansible-language-server"
 args = ["--stdio"]
 
+[language-server.astro-ls]
+command = "astro-ls"
+args = [ "--stdio" ]
+config = { typescript = { tsdk = "node_modules/typescript/lib" } }
+
 [language-server.lua-language-server]
 command = "lua-language-server"
 
@@ -2632,6 +2637,7 @@ injection-regex = "astro"
 file-types = ["astro"]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
+language-servers = [ "astro-ls" ]
 
 [[grammar]]
 name = "astro"

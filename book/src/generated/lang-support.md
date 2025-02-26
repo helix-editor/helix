@@ -4,7 +4,7 @@
 | adl | ✓ | ✓ | ✓ |  |
 | agda | ✓ |  |  |  |
 | amber | ✓ |  |  |  |
-| astro | ✓ |  |  |  |
+| astro | ✓ |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | `bash-language-server` |
 | bass | ✓ |  |  | `bass` |
