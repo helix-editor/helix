@@ -136,10 +136,6 @@ impl<'a> GraphemeWithSource<'a> {
     fn width(&self) -> usize {
         self.grapheme.width()
     }
-
-    fn is_word_boundary(&self) -> bool {
-        self.grapheme.is_word_boundary()
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -153,6 +149,7 @@ pub struct TextFormat {
     pub viewport_width: u16,
     pub soft_wrap_at_text_width: bool,
     pub continue_comments: Vec<String>,
+    pub is_word_boundary: fn(&Grapheme) -> bool,
 }
 
 // test implementation is basically only used for testing or when softwrap is always disabled
@@ -168,6 +165,7 @@ impl Default for TextFormat {
             wrap_indicator_highlight: None,
             soft_wrap_at_text_width: false,
             continue_comments: Vec::new(),
+            is_word_boundary: |g| g.is_word_boundary(),
         }
     }
 }
@@ -418,7 +416,7 @@ impl<'t> DocumentFormatter<'t> {
                 self.indent_level = None;
             }
 
-            let is_word_boundary = grapheme.is_word_boundary();
+            let is_word_boundary = (self.text_fmt.is_word_boundary)(&grapheme.grapheme);
             word_width += grapheme.width();
             self.word_buf.push(grapheme);
 
