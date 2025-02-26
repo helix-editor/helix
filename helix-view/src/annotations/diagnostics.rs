@@ -103,6 +103,7 @@ impl InlineDiagnosticsConfig {
             viewport_width: width,
             soft_wrap_at_text_width: true,
             continue_comments: Vec::new(),
+            is_word_boundary: |g| g.is_word_boundary(),
         }
     }
 }
