@@ -169,7 +169,7 @@
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  |  |
 | pkgbuild | ✓ | ✓ | ✓ | `termux-language-server`, `bash-language-server` |
-| pkl | ✓ |  | ✓ |  |
+| pkl | ✓ |  | ✓ | `pkl-lsp` |
 | po | ✓ | ✓ |  |  |
 | pod | ✓ |  |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |

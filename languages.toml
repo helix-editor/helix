@@ -83,6 +83,7 @@ pasls = { command = "pasls", args = [] }
 pbkit = { command = "pb", args = [ "lsp" ] }
 perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
 pest-language-server = { command = "pest-language-server" }
+pkl-lsp = { command = "pkl-lsp" }
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
@@ -3615,6 +3616,7 @@ scope = "source.pkl"
 injection-regex = "pkl"
 file-types = ["pkl", "pcf"]
 comment-token = "//"
+language-servers = ["pkl-lsp"]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
