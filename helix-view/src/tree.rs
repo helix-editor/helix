@@ -8,8 +8,13 @@ pub struct Tree {
     root: ViewId,
     // (container, index inside the container)
     pub focus: ViewId,
-    // fullscreen: bool,
     area: Rect,
+    // Maximum width the views will take up. If 0 then they will take up the
+    // entire width regardless of state.
+    pub max_width: u16,
+    // If true, the focused view gets all the available space and the rest are
+    // not rendered.
+    pub zoom: bool,
 
     nodes: HopSlotMap<ViewId, Node>,
 
@@ -96,8 +101,9 @@ impl Tree {
         Self {
             root,
             focus: root,
-            // fullscreen: false,
             area,
+            max_width: 0,
+            zoom: false,
             nodes,
             stack: Vec::new(),
         }
@@ -360,7 +366,27 @@ impl Tree {
             return;
         }
 
-        self.stack.push((self.root, self.area));
+        let area = if self.max_width > 0 {
+            let width = std::cmp::min(self.max_width, self.area.width);
+            Rect::new(
+                self.area.width / 2 - width / 2,
+                self.area.y,
+                width,
+                self.area.height,
+            )
+        } else {
+            self.area
+        };
+
+        if self.zoom {
+            for (view, _focused) in self.views_mut() {
+                view.area = area;
+            }
+
+            return;
+        }
+
+        self.stack.push((self.root, area));
 
         // take the area
         // fetch the node
