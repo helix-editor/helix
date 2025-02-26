@@ -43,6 +43,8 @@
 "@warn" @constant.builtin
 "@while" @keyword.control.repeat
 
+(property_name) @variable.other.member
+
 ((property_name) @variable
  (#match? @variable "^--"))
 ((plain_value) @variable
@@ -59,7 +61,6 @@
 (class_name) @variable
 (id_name) @variable
 (namespace_name) @variable
-(property_name) @variable.other.member
 (feature_name) @variable
 (variable) @variable
 (variable_name) @variable.other.member

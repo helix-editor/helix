@@ -9,6 +9,7 @@
 (character) @constant.character
 
 ;; strings and docstring
+(string) @string
 (source_file docstring: (string) @string.special)
 (entity docstring: (string) @string.special)
 (method docstring: (string) @string.special) ; docstring for methods without body
@@ -18,7 +19,6 @@
 (behavior body: (block . (string) @string.special))
 (constructor body: (block . (string) @string.special))
 (field docstring: (string) @string.special)
-(string) @string
 
 ;; Punctuation
 [
@@ -137,6 +137,14 @@
   "<="
 ] @operator
 
+;; variables
+;; references to upper case things are considered constructors
+(identifier) @variable
+(
+  (identifier) @constructor
+  (#match? @constructor "^[A-Z]")
+)
+
 ;; Types
 (entity name: (identifier) @type)
 (nominal_type name: (identifier) @type)
@@ -165,12 +173,4 @@
 
 ;; annotations
 (annotations (identifier) @attribute)
-
-;; variables
-;; references to upper case things are considered constructors
-(
-  (identifier) @constructor
-  (#match @constructor "^[A-Z]")
-)
-(identifier) @variable
 

@@ -1,3 +1,81 @@
+; Operators
+[
+":"
+"?"
+"~"
+"=>"
+"->"
+"!"
+] @operator
+
+(assignment
+  "=" @operator)
+
+(operator_assignment
+  operator: ["+=" "-=" "*=" "**=" "/=" "||=" "|=" "&&=" "&=" "%=" ">>=" "<<=" "^="] @operator)
+
+(binary
+  operator: ["/" "|" "==" "===" "||" "&&" ">>" "<<" "<" ">" "<=" ">=" "&" "^" "!~" "=~" "<=>" "**" "*" "!=" "%" "-" "+"] @operator)
+
+(range
+  operator: [".." "..."] @operator)
+
+[
+  ","
+  ";"
+  "."
+  "&."
+] @punctuation.delimiter
+
+[
+  "|"
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+  "%w("
+  "%i("
+] @punctuation.bracket
+
+; Identifiers
+
+[
+  (identifier)
+] @variable
+((identifier) @function.method
+ (#is-not? local))
+
+[
+  (class_variable)
+  (instance_variable)
+] @variable.other.member
+
+((identifier) @constant.builtin
+ (#match? @constant.builtin "^(__FILE__|__LINE__|__ENCODING__)$"))
+
+((constant) @constant.builtin
+ (#match? @constant.builtin "^(ENV|ARGV|ARGF|RUBY_PLATFORM|RUBY_RELEASE_DATE|RUBY_VERSION|STDERR|STDIN|STDOUT|TOPLEVEL_BINDING)$"))
+
+((constant) @constant
+ (#match? @constant "^[A-Z\\d_]+$"))
+
+(constant) @constructor
+
+(self) @variable.builtin
+(super) @function.builtin
+
+[(forward_parameter)(forward_argument)] @variable.parameter
+(keyword_parameter name:((_)":" @variable.parameter) @variable.parameter)
+(optional_parameter name:((_)"=" @operator) @variable.parameter)
+(optional_parameter name: (identifier) @variable.parameter)
+(splat_parameter name: (identifier) @variable.parameter) @variable.parameter
+(hash_splat_parameter name: (identifier) @variable.parameter) @variable.parameter
+(method_parameters (identifier) @variable.parameter)
+(block_parameter (identifier) @variable.parameter)
+(block_parameters (identifier) @variable.parameter)
+
 ; Keywords
 
 [
@@ -73,43 +151,6 @@
 (method name: [(identifier) (constant)] @function.method)
 (singleton_method name: [(identifier) (constant)] @function.method)
 
-; Identifiers
-
-[
-  (class_variable)
-  (instance_variable)
-] @variable.other.member
-
-((identifier) @constant.builtin
- (#match? @constant.builtin "^(__FILE__|__LINE__|__ENCODING__)$"))
-
-((constant) @constant.builtin
- (#match? @constant.builtin "^(ENV|ARGV|ARGF|RUBY_PLATFORM|RUBY_RELEASE_DATE|RUBY_VERSION|STDERR|STDIN|STDOUT|TOPLEVEL_BINDING)$"))
-
-((constant) @constant
- (#match? @constant "^[A-Z\\d_]+$"))
-
-(constant) @constructor
-
-(self) @variable.builtin
-(super) @function.builtin
-
-[(forward_parameter)(forward_argument)] @variable.parameter
-(keyword_parameter name:((_)":" @variable.parameter) @variable.parameter)
-(optional_parameter name:((_)"=" @operator) @variable.parameter)
-(optional_parameter name: (identifier) @variable.parameter)
-(splat_parameter name: (identifier) @variable.parameter) @variable.parameter
-(hash_splat_parameter name: (identifier) @variable.parameter) @variable.parameter
-(method_parameters (identifier) @variable.parameter)
-(block_parameter (identifier) @variable.parameter)
-(block_parameters (identifier) @variable.parameter)
-
-((identifier) @function.method
- (#is-not? local))
-[
-  (identifier)
-] @variable
-
 ; Literals
 
 [
@@ -147,44 +188,3 @@
   "}" @punctuation.special) @embedded
 
 (comment) @comment
-
-; Operators
-[
-":"
-"?"
-"~"
-"=>"
-"->"
-"!"
-] @operator
-
-(assignment
-  "=" @operator)
-
-(operator_assignment
-  operator: ["+=" "-=" "*=" "**=" "/=" "||=" "|=" "&&=" "&=" "%=" ">>=" "<<=" "^="] @operator)
-
-(binary
-  operator: ["/" "|" "==" "===" "||" "&&" ">>" "<<" "<" ">" "<=" ">=" "&" "^" "!~" "=~" "<=>" "**" "*" "!=" "%" "-" "+"] @operator)
-
-(range
-  operator: [".." "..."] @operator)
-
-[
-  ","
-  ";"
-  "."
-  "&."
-] @punctuation.delimiter
-
-[
-  "|"
-  "("
-  ")"
-  "["
-  "]"
-  "{"
-  "}"
-  "%w("
-  "%i("
-] @punctuation.bracket

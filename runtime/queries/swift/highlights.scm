@@ -6,7 +6,48 @@
 ["." ";" ":" "," ] @punctuation.delimiter
 ["(" ")" "[" "]" "{" "}" "<" ">"] @punctuation.bracket
 
+; Operators
+[
+  "!"
+  "?"
+  "+"
+  "-"
+  "\\"
+  "*"
+  "/"
+  "%"
+  "="
+  "+="
+  "-="
+  "*="
+  "/="
+  "<"
+  ">"
+  "<="
+  ">="
+  "++"
+  "--"
+  "&"
+  "~"
+  "%="
+  "!="
+  "!=="
+  "=="
+  "==="
+  "??"
+
+  "->"
+
+  "..<"
+  "..."
+  (custom_operator)
+] @operator
+
+"?" @type
+(type_annotation "!" @type)
+
 ; Identifiers
+(simple_identifier) @variable
 (attribute) @variable
 (type_identifier) @type
 (self_expression) @variable.builtin
@@ -152,48 +193,6 @@
 (real_literal) @constant.numeric.float
 (boolean_literal) @constant.builtin.boolean
 "nil" @constant.builtin
-
-"?" @type
-(type_annotation "!" @type)
-
-(simple_identifier) @variable
-
-; Operators
-[
-  "!"
-  "?"
-  "+"
-  "-"
-  "\\"
-  "*"
-  "/"
-  "%"
-  "="
-  "+="
-  "-="
-  "*="
-  "/="
-  "<"
-  ">"
-  "<="
-  ">="
-  "++"
-  "--"
-  "&"
-  "~"
-  "%="
-  "!="
-  "!=="
-  "=="
-  "==="
-  "??"
-
-  "->"
-
-  "..<"
-  "..."
-  (custom_operator)
-] @operator
 
 (value_parameter_pack ["each" @keyword])
 (value_pack_expansion ["repeat" @keyword])

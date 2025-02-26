@@ -107,9 +107,9 @@
 ; Types
 ; -----
 
+(type_identifier) @type
 (type_parameter
   name: (type_identifier) @type.parameter)
-(type_identifier) @type
 (predefined_type) @type.builtin
 
 ; Type arguments and parameters
@@ -133,10 +133,3 @@
 [
   (template_literal_type)
 ] @string
-
-; Tokens
-; ------
-
-(template_type
-  "${" @punctuation.special
-  "}" @punctuation.special) @embedded

@@ -30,7 +30,7 @@
 
 ; == Mustache Statements ===
 
-; Hightlight the whole statement, to color brackets and separators
+; Highlight the whole statement, to color brackets and separators
 (mustache_statement) @punctuation.delimiter
 
 ; An identifier in a mustache expression is a variable

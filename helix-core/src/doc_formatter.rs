@@ -19,11 +19,12 @@ mod test;
 
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 
+use helix_stdx::rope::{RopeGraphemes, RopeSliceExt};
+
 use crate::graphemes::{Grapheme, GraphemeStr};
 use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
-use crate::{movement, Change, LineEnding, Position, Rope, RopeGraphemes, RopeSlice, Tendril};
-use helix_stdx::rope::RopeSliceExt;
+use crate::{movement, Change, LineEnding, Position, Rope, RopeSlice, Tendril};
 
 /// TODO make Highlight a u32 to reduce the size of this enum to a single word.
 #[derive(Debug, Clone, Copy)]
@@ -222,7 +223,7 @@ impl<'t> DocumentFormatter<'t> {
             text_fmt,
             annotations,
             visual_pos: Position { row: 0, col: 0 },
-            graphemes: RopeGraphemes::new(text.slice(block_char_idx..)),
+            graphemes: text.slice(block_char_idx..).graphemes(),
             char_pos: block_char_idx,
             exhausted: false,
             indent_level: None,

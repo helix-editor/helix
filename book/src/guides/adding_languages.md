@@ -38,12 +38,6 @@ below.
    for more information on writing queries.
 4. A list of highlight captures can be found [on the themes page](https://docs.helix-editor.com/themes.html#scopes).
 
-> 💡 In Helix, the first matching query takes precedence when evaluating
-> queries, which is different from other editors such as Neovim where the last
-> matching query supersedes the ones before it. See
-> [this issue](https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090)
-> for an example.
-
 ## Common issues
 
 - If you encounter errors when running Helix after switching branches, you may

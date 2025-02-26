@@ -20,7 +20,7 @@
 
 ; Modified for Helix from https://github.com/nvim-treesitter/nvim-treesitter/blob/master/queries/yaml/injections.scm
 
-;; Github actions: run
+;; GitHub actions: run
 ;; Gitlab CI: scripts, before_script, after_script
 ;; Buildkite: command, commands
 (block_mapping_pair

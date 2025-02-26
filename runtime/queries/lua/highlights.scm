@@ -115,6 +115,18 @@
  "}"
 ] @punctuation.bracket
 
+;; Variables
+(identifier) @variable
+
+((identifier) @variable.builtin
+ (#eq? @variable.builtin "self"))
+
+(variable_list
+  (attribute
+    "<" @punctuation.bracket
+    (identifier) @attribute
+    ">" @punctuation.bracket))
+
 ; ;; Constants
 [
 (false)
@@ -207,18 +219,3 @@
 
 ;; Property
 (dot_index_expression field: (identifier) @variable.other.member)
-
-;; Variables
-((identifier) @variable.builtin
- (#eq? @variable.builtin "self"))
-
-(variable_list
-  (attribute
-    "<" @punctuation.bracket
-    (identifier) @attribute
-    ">" @punctuation.bracket))
-
-(identifier) @variable
-
-;; Error
-(ERROR) @error

@@ -28,6 +28,9 @@
  "or"
 ] @keyword.operator
 
+(property_name) @variable.other.member
+(plain_value) @constant
+
 ((property_name) @variable
  (#match? @variable "^--"))
 ((plain_value) @variable
@@ -39,7 +42,6 @@
 (function_name) @function
 (id_name) @label
 (namespace_name) @namespace
-(property_name) @variable.other.member
 
 [
  "@charset"
@@ -81,5 +83,3 @@
  ":"
  "::"
 ] @punctuation.delimiter
-
-(plain_value) @constant

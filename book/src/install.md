@@ -8,7 +8,7 @@ Note that:
 
 - To take full advantage of Helix, install the language servers for your
   preferred programming languages. See the
-  [wiki](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
+  [wiki](https://github.com/helix-editor/helix/wiki/Language-Server-Configurations)
   for instructions.
 
 ## Pre-built binaries

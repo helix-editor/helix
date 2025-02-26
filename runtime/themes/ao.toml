@@ -39,7 +39,7 @@
 "diff.minus" = { fg = "red" }
 "diff.delta" = { fg = "brown" }
 
-# MARKUP, SYNAX HIGHLIGHTING AND INTERFACE HYBRID
+# MARKUP, SYNTAX HIGHLIGHTING AND INTERFACE HYBRID
 "markup.heading" = { fg = "blaze_orange" }
 "markup.heading.1" = { fg = "crystal_blue", modifiers = ["bold"] }
 "markup.heading.2" = { fg = "sky_blue", modifiers = ["bold"] }

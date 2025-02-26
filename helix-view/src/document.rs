@@ -796,17 +796,21 @@ impl Document {
                         command: fmt_cmd.to_string_lossy().into(),
                         error: e.kind(),
                     })?;
-                {
-                    let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                    to_writer(&mut stdin, (encoding::UTF_8, false), &text)
-                        .await
-                        .map_err(|_| FormatterError::BrokenStdin)?;
-                }
 
-                let output = process
-                    .wait_with_output()
-                    .await
-                    .map_err(|_| FormatterError::WaitForOutputFailed)?;
+                let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                let input_text = text.clone();
+                let input_task = tokio::spawn(async move {
+                    to_writer(&mut stdin, (encoding::UTF_8, false), &input_text).await
+                    // Note that `stdin` is dropped here, causing the pipe to close. This can
+                    // avoid a deadlock with `wait_with_output` below if the process is waiting on
+                    // stdin to close before exiting.
+                });
+                let (input_result, output_result) = tokio::join! {
+                    input_task,
+                    process.wait_with_output(),
+                };
+                let _ = input_result.map_err(|_| FormatterError::BrokenStdin)?;
+                let output = output_result.map_err(|_| FormatterError::WaitForOutputFailed)?;
 
                 if !output.status.success() {
                     if !output.stderr.is_empty() {
@@ -1052,13 +1056,8 @@ impl Document {
                 if !language_server.is_initialized() {
                     continue;
                 }
-                if let Some(notification) = identifier
-                    .clone()
-                    .and_then(|id| language_server.text_document_did_save(id, &text))
-                {
-                    if let Err(err) = notification.await {
-                        log::error!("Failed to send textDocument/didSave: {err}");
-                    }
+                if let Some(id) = identifier.clone() {
+                    language_server.text_document_did_save(id, &text);
                 }
             }
 
@@ -1458,16 +1457,12 @@ impl Document {
             // TODO: move to hook
             // emit lsp notification
             for language_server in self.language_servers() {
-                let notify = language_server.text_document_did_change(
+                let _ = language_server.text_document_did_change(
                     self.versioned_identifier(),
                     &old_doc,
                     self.text(),
                     changes,
                 );
-
-                if let Some(notify) = notify {
-                    tokio::spawn(notify);
-                }
             }
         }
 

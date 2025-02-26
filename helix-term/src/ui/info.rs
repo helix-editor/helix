@@ -24,7 +24,7 @@ impl Component for Info {
         surface.clear_with(area, popup_style);
 
         let block = Block::bordered()
-            .title(self.title.as_str())
+            .title(self.title.as_ref())
             .border_style(popup_style);
 
         let margin = Margin::horizontal(1);

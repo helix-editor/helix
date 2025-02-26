@@ -2,7 +2,7 @@
 #
 # NOTE: the `+N` syntax is not supported in Nushell (https://github.com/nushell/nushell/issues/13418)
 #       so it has not been specified here and will not be proposed in the autocompletion of Nushell.
-#       The help message won't be overriden though, so it will still be present here
+#       The help message won't be overridden though, so it will still be present here
 
 def health_categories [] {
     let languages = ^hx --health languages | detect columns | get Language | filter { $in != null }

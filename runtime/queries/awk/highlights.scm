@@ -107,14 +107,15 @@
 (number) @constant.numeric
 (string) @string
 
-(func_call name: (identifier) @function)
-(func_def name: (identifier) @function)
-
-(field_ref (_) @variable)
 [
   (identifier)
   (field_ref)
 ] @variable
+
+(func_call name: (identifier) @function)
+(func_def name: (identifier) @function)
+
+(field_ref (_) @variable)
 
 (ns_qualified_name "::" @operator)
 (ns_qualified_name (namespace) @namespace)
