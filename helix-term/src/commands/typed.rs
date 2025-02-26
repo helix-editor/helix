@@ -2547,7 +2547,6 @@ fn move_buffer(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     ensure!(args.len() == 1, format!(":move takes one argument"));
     let doc = doc!(cx.editor);
     let old_path = doc
@@ -2633,6 +2632,116 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
+}
+
+fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    const STATIC_HELP_DIR: &str = "static-commands";
+    const TYPABLE_HELP_DIR: &str = "typable-commands";
+
+    let args_msg = args.join(" ");
+    let open_help =
+        move |help_dir: &str, command: &str, editor: &mut Editor| -> anyhow::Result<()> {
+            let path = Path::new("help").join(help_dir).join(command);
+            let path = helix_loader::runtime_file(&path);
+            ensure!(path.is_file(), "No help available for '{args_msg}'");
+            let id = editor.open(&path, Action::HorizontalSplit)?;
+            editor.document_mut(id).unwrap().set_path(None);
+
+            Ok(())
+        };
+
+    if args.is_empty() {
+        return open_help(TYPABLE_HELP_DIR, "help", cx.editor);
+    }
+
+    if args[0] == "topics" {
+        let dir_path = helix_loader::runtime_file(Path::new("help/topics"));
+
+        let callback = async move {
+            let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = ui::file_picker(dir_path, &editor.config());
+                    compositor.push(Box::new(overlaid(picker)));
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+
+        return Ok(());
+    }
+
+    let (help_dir, command): (&str, &str) = {
+        let arg = &args[0];
+        if let Some(command) = arg.strip_prefix(':').and_then(|arg| {
+            TYPABLE_COMMAND_LIST.iter().find_map(|command| {
+                (command.name == arg || command.aliases.contains(&arg)).then_some(command.name)
+            })
+        }) {
+            (TYPABLE_HELP_DIR, command)
+        } else if MappableCommand::STATIC_COMMAND_LIST
+            .iter()
+            .any(|command| command.name() == arg)
+        {
+            (STATIC_HELP_DIR, arg)
+        } else {
+            let arg = arg.clone().into_owned();
+            let keys = arg
+                .parse::<KeyEvent>()
+                .map(|key| vec![key])
+                .or_else(|_| helix_view::input::parse_macro(&arg))?;
+            let callback = async move {
+                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
+                        use crate::keymap::KeymapResult;
+                        let editor_view = compositor.find::<ui::EditorView>().unwrap();
+                        let mode = editor.mode;
+                        let keymaps = &mut editor_view.keymaps;
+                        let (keys, last_key) = (&keys[..keys.len() - 1], keys.last().unwrap());
+                        keys.iter().for_each(|key| {
+                            keymaps.get(mode, *key);
+                        });
+                        let key_result = keymaps.get(mode, *last_key);
+                        let result: anyhow::Result<(&str, &str)> = match &key_result {
+                            KeymapResult::Matched(command) => match command {
+                                MappableCommand::Static { name, .. } => Ok((STATIC_HELP_DIR, name)),
+                                MappableCommand::Typable { name, .. } => {
+                                    Ok((TYPABLE_HELP_DIR, name))
+                                }
+                            },
+                            KeymapResult::NotFound | KeymapResult::Cancelled(_) => {
+                                Err(anyhow!("No command found for '{}'", arg))
+                            }
+                            KeymapResult::Pending(_) => {
+                                // Clear pending keys
+                                keymaps.get(mode, crate::keymap::macros::key!(Esc));
+                                Err(anyhow!(
+                                    "`:help` for branching keybinds is not yet supported."
+                                ))
+                            }
+                            KeymapResult::MatchedSequence(_) => Err(anyhow!(
+                                "`:help` for sequence bindings is not yet supported."
+                            )),
+                        };
+                        if let Err(e) = result
+                            .and_then(|(help_dir, command)| open_help(help_dir, command, editor))
+                        {
+                            editor.set_error(e.to_string());
+                        }
+                    },
+                ));
+                Ok(call)
+            };
+            cx.jobs.callback(callback);
+            return Ok(());
+        }
+    };
+
+    open_help(help_dir, command, cx.editor)
 }
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
@@ -3255,6 +3364,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Load a file into buffer",
         fun: read,
         signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "help",
+        aliases: &["h"],
+        doc: "Open documentation for a command or keybind.",
+        fun: help,
+        signature: CommandSignature::positional(&[completers::help]),
     },
 ];
 

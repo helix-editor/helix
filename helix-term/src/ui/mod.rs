@@ -520,6 +520,42 @@ pub mod completers {
         })
     }
 
+    pub fn help(_editor: &Editor, input: &str) -> Vec<Completion> {
+        use std::path::Path;
+        let static_cmds_path = helix_loader::runtime_file(Path::new("help/static-commands"));
+        let typable_cmds_path = helix_loader::runtime_file(Path::new("help/typable-commands"));
+
+        let static_cmds = std::fs::read_dir(static_cmds_path)
+            .into_iter()
+            .flat_map(|entries| {
+                entries.filter_map(|entry| {
+                    let path = entry.ok()?.path();
+                    path.extension()
+                        .is_none()
+                        .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
+                })
+            });
+        let typable_cmds = std::fs::read_dir(typable_cmds_path)
+            .into_iter()
+            .flat_map(|entries| {
+                entries.filter_map(|entry| {
+                    let path = entry.ok()?.path();
+                    path.extension()
+                        .is_none()
+                        .then(|| format!(":{}", path.file_stem().unwrap().to_string_lossy()))
+                })
+            });
+
+        let items = std::iter::once("topics".to_owned())
+            .chain(static_cmds)
+            .chain(typable_cmds);
+
+        fuzzy_match(input, items, false)
+            .into_iter()
+            .map(|(name, _)| (0.., name.into()))
+            .collect()
+    }
+
     #[derive(Copy, Clone, PartialEq, Eq)]
     enum FileMatch {
         /// Entry should be ignored
