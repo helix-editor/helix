@@ -2149,6 +2149,7 @@ impl Document {
                 .map(Highlight),
             soft_wrap_at_text_width,
             continue_comments: Vec::new(),
+            is_word_boundary: |g| g.is_word_boundary(),
         }
     }
 

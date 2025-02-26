@@ -2248,6 +2248,7 @@ fn reflow(
                 .and_then(|config| config.comment_tokens.as_deref())
                 .unwrap_or(&[]),
         ),
+        is_word_boundary: |g| g.is_whitespace(),
     };
     let annotations = TextAnnotations::default();
 
