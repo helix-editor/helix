@@ -1,4 +1,3 @@
-(ERROR) @diagnostic.error
 ; header fields
 [
   (header_field_email)
