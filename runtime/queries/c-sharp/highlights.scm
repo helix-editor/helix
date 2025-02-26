@@ -12,10 +12,10 @@
 (enum_declaration name: (identifier) @type)
 (struct_declaration (identifier) @type)
 (record_declaration (identifier) @type)
-(namespace_declaration name: (identifier) @module)
+(namespace_declaration name: (identifier) @namespace)
 
 (generic_name (identifier) @type)
-(type_parameter (identifier) @property.definition)
+(type_parameter (identifier) @type.parameter)
 (parameter type: (identifier) @type)
 (type_argument_list (identifier) @type)
 (as_expression right: (identifier) @type)
@@ -31,17 +31,15 @@
 (predefined_type) @type.builtin
 
 ;; Enum
-(enum_member_declaration (identifier) @property.definition)
+(enum_member_declaration (identifier) @type.enum.variant)
 
 ;; Literals
 
-[
-  (real_literal)
-  (integer_literal)
-] @number
+(real_literal) @constant.numeric.float
+(integer_literal) @constant.numeric.integer
+(character_literal) @constant.character
 
 [
-  (character_literal)
   (string_literal)
   (raw_string_literal)
   (verbatim_string_literal)
@@ -50,12 +48,10 @@
   (interpolation_quote)
  ] @string
 
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 
-[
-  (boolean_literal)
-  (null_literal)
-] @constant.builtin
+(boolean_literal) @constant.builtin.boolean
+(null_literal) @constant.builtin
 
 ;; Comments
 
@@ -205,7 +201,7 @@
 
 ;; Type constraints
 
-(type_parameter_constraints_clause (identifier) @property.definition)
+(type_parameter_constraints_clause (identifier) @type.parameter)
 
 ;; Method calls
 
