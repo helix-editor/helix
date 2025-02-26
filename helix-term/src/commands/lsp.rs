@@ -32,7 +32,6 @@ use crate::{
 };
 
 use std::{
-    borrow::Cow,
     cmp::Ordering,
     collections::{BTreeMap, HashSet},
     fmt::Display,
@@ -409,7 +408,11 @@ pub fn symbol_picker(cx: &mut Context) {
                     item.symbol.name.as_str().into()
                 }),
                 ui::PickerColumn::new("container", |item: &SymbolInformationItem, _| {
-                    Cow::from(item.symbol.container_name.clone().unwrap_or_default()).into()
+                    item.symbol
+                        .container_name
+                        .as_deref()
+                        .unwrap_or_default()
+                        .into()
                 }),
             ];
 
@@ -513,7 +516,11 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         })
         .without_filtering(),
         ui::PickerColumn::new("container", |item: &SymbolInformationItem, _| {
-            Cow::from(item.symbol.container_name.clone().unwrap_or_default()).into()
+            item.symbol
+                .container_name
+                .as_deref()
+                .unwrap_or_default()
+                .into()
         }),
         ui::PickerColumn::new("path", |item: &SymbolInformationItem, _| {
             if let Some(path) = item.location.uri.as_path() {
