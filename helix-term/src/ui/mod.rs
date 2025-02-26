@@ -410,8 +410,24 @@ pub mod completers {
         }
     }
 
-    pub fn language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+    /// Completes names of language servers which are running for the current document.
+    pub fn active_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
         let language_servers = doc!(editor).language_servers().map(|ls| ls.name());
+
+        fuzzy_match(input, language_servers, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), Span::raw(name.to_string())))
+            .collect()
+    }
+
+    /// Completes names of language servers which are configured for the language of the current
+    /// document.
+    pub fn configured_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+        let language_servers = doc!(editor)
+            .language_config()
+            .into_iter()
+            .flat_map(|config| &config.language_servers)
+            .map(|ls| ls.name.as_str());
 
         fuzzy_match(input, language_servers, false)
             .into_iter()

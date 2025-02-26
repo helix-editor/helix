@@ -50,8 +50,7 @@
 ] @label
 
 ((heredoc_block
-  (heredoc_line) @string)
-  (#set! "priority" 90))
+  (heredoc_line) @string))
 
 (expansion
   [
