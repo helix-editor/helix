@@ -2539,6 +2539,23 @@ fn redraw(
     Ok(())
 }
 
+fn move_buffer_impl(cx: &mut compositor::Context, path: &str, force: bool) -> anyhow::Result<()> {
+    let doc = doc!(cx.editor);
+    let old_path = doc
+        .path()
+        .context("Scratch buffer cannot be moved. Use `:write` instead")?
+        .clone();
+    let new_path = Path::new(path);
+
+    if !force && new_path.exists() {
+        bail!("Destination exists. Use `:move!` to overwrite");
+    }
+
+    cx.editor
+        .move_path(&old_path, new_path)
+        .map_err(|err| anyhow!("Failed to move file: {err}"))
+}
+
 fn move_buffer(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2549,16 +2566,20 @@ fn move_buffer(
     }
 
     ensure!(args.len() == 1, format!(":move takes one argument"));
-    let doc = doc!(cx.editor);
-    let old_path = doc
-        .path()
-        .context("Scratch buffer cannot be moved. Use :write instead")?
-        .clone();
-    let new_path = args.first().unwrap().to_string();
-    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
-        bail!("Could not move file: {err}");
+    move_buffer_impl(cx, args.first().unwrap(), false)
+}
+
+fn force_move_buffer(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
     }
-    Ok(())
+
+    ensure!(args.len() == 1, format!(":move! takes one argument"));
+    move_buffer_impl(cx, args.first().unwrap(), true)
 }
 
 fn yank_diagnostic(
@@ -3238,8 +3259,15 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "move",
         aliases: &["mv"],
-        doc: "Move the current buffer and its corresponding file to a different path",
+        doc: "Move the current buffer and its corresponding file to a different path.",
         fun: move_buffer,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "move!",
+        aliases: &["mv!"],
+        doc: "Force move the current buffer and its corresponding file to a different path, overwriting the destination.",
+        fun: force_move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
     },
     TypableCommand {
