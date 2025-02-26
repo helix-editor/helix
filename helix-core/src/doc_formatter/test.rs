@@ -14,6 +14,7 @@ impl TextFormat {
             viewport_width: 17,
             soft_wrap_at_text_width: false,
             continue_comments: Vec::new(),
+            is_word_boundary: |g| g.is_word_boundary(),
         }
     }
 }

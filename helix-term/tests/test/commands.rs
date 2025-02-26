@@ -914,9 +914,9 @@ bla]#",
     .await?;
 
     test((
-        "#[|Very_long_words_should_not_be_broken_by_hard_wrap]#",
+        "#[|Very-long-words-should-not-be-broken-by-hard-wrap]#",
         ":reflow 2<ret>",
-        "#[|Very_long_words_should_not_be_broken_by_hard_wrap]#",
+        "#[|Very-long-words-should-not-be-broken-by-hard-wrap]#",
     ))
     .await?;
 
