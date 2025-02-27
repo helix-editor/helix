@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
-use helix_core::hashmap;
+use helix_core::{hashmap, syntax::Highlight};
 use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
@@ -294,8 +294,11 @@ fn build_theme_values(
 
 impl Theme {
     #[inline]
-    pub fn highlight(&self, index: usize) -> Style {
-        self.highlights[index]
+    pub fn highlight_to_style(&self, highlight: Highlight) -> Style {
+        match highlight {
+            Highlight::Indexed(idx) => self.highlights[idx],
+            Highlight::Rgb(r, g, b) => Style::default().fg(Color::Rgb(r, g, b)),
+        }
     }
 
     #[inline]

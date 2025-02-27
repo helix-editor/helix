@@ -56,8 +56,8 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
                     let style = self
                         .active_highlights
                         .iter()
-                        .fold(self.text_style, |acc, span| {
-                            acc.patch(self.theme.highlight(span.0))
+                        .fold(self.text_style, |acc, highlight| {
+                            acc.patch(self.theme.highlight_to_style(*highlight))
                         });
                     if self.kind == StyleIterKind::BaseHighlights {
                         // Move the end byte index to the nearest character boundary (rounding up)
@@ -221,7 +221,7 @@ pub fn render_text(
         let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
             let mut style = renderer.text_style;
             if let Some(highlight) = highlight {
-                style = style.patch(theme.highlight(highlight.0));
+                style = style.patch(theme.highlight_to_style(highlight));
             }
             GraphemeStyle {
                 syntax_style: style,

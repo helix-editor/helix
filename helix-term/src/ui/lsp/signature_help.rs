@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use helix_core::syntax;
+use helix_core::syntax::{self, Highlight};
 use helix_view::graphics::{Margin, Rect, Style};
 use helix_view::input::Event;
 use tui::buffer::Buffer;
@@ -103,10 +103,12 @@ impl Component for SignatureHelp {
 
         let active_param_span = signature.active_param_range.map(|(start, end)| {
             vec![(
-                cx.editor
-                    .theme
-                    .find_scope_index_exact("ui.selection")
-                    .unwrap(),
+                Highlight::Indexed(
+                    cx.editor
+                        .theme
+                        .find_scope_index_exact("ui.selection")
+                        .unwrap(),
+                ),
                 start..end,
             )]
         });

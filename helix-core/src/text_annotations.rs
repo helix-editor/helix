@@ -303,7 +303,7 @@ impl<'a> TextAnnotations<'a> {
     pub fn collect_overlay_highlights(
         &self,
         char_range: Range<usize>,
-    ) -> Vec<(usize, Range<usize>)> {
+    ) -> Vec<(Highlight, Range<usize>)> {
         let mut highlights = Vec::new();
         self.reset_pos(char_range.start);
         for char_idx in char_range {
@@ -311,7 +311,7 @@ impl<'a> TextAnnotations<'a> {
                 // we don't know the number of chars the original grapheme takes
                 // however it doesn't matter as highlight boundaries are automatically
                 // aligned to grapheme boundaries in the rendering code
-                highlights.push((highlight.0, char_idx..char_idx + 1))
+                highlights.push((highlight, char_idx..char_idx + 1))
             }
         }
 

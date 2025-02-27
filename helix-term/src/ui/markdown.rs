@@ -10,7 +10,7 @@ use std::sync::Arc;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use helix_core::{
-    syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
+    syntax::{self, Highlight, HighlightEvent, InjectionLanguageMarker, Syntax},
     RopeSlice,
 };
 use helix_view::{
@@ -33,7 +33,7 @@ pub fn highlighted_code_block<'a>(
     language: &str,
     theme: Option<&Theme>,
     config_loader: Arc<ArcSwap<syntax::Loader>>,
-    additional_highlight_spans: Option<Vec<(usize, std::ops::Range<usize>)>>,
+    additional_highlight_spans: Option<Vec<(Highlight, std::ops::Range<usize>)>>,
 ) -> Text<'a> {
     let mut spans = Vec::new();
     let mut lines = Vec::new();
@@ -81,9 +81,9 @@ pub fn highlighted_code_block<'a>(
                 highlights.pop();
             }
             HighlightEvent::Source { start, end } => {
-                let style = highlights
-                    .iter()
-                    .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
+                let style = highlights.iter().fold(text_style, |acc, span| {
+                    acc.patch(theme.highlight_to_style(*span))
+                });
 
                 let mut slice = &text[start..end];
                 // TODO: do we need to handle all unicode line endings
