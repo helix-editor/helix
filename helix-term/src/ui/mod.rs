@@ -274,7 +274,8 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
             cx.editor.set_error(err);
         }
     })
-    .with_preview(|_editor, path| Some((path.as_path().into(), None)));
+    .with_preview(|_editor, path| Some((path.as_path().into(), None)))
+    .with_title("Files".into());
     let injector = picker.injector();
     let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
 
@@ -305,6 +306,16 @@ type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
+    let mut title: Vec<tui::text::Span> = vec!["File Explorer".into()];
+    let path = helix_stdx::path::get_relative_path(&root);
+
+    // if Helix's working directory is the same as the File Explorer's
+    // working directory, then we don't want to render a
+    // File Explorer: <empty>, but rather only render the picker title
+    if path.to_string_lossy() != "" {
+        title.push(": ".into());
+        title.push(Span::styled(path.display().to_string(), directory_style));
+    }
 
     let columns = [PickerColumn::new(
         "path",
@@ -321,7 +332,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         columns,
         0,
         directory_content,
-        (root, directory_style),
+        (root.clone(), directory_style),
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
                 let new_root = helix_stdx::path::normalize(path);
@@ -345,7 +356,8 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
             }
         },
     )
-    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
+    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
+    .with_title(title.into());
 
     Ok(picker)
 }
