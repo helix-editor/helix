@@ -134,11 +134,11 @@
         # nixpkgs.
         #
         # This can be overridden though to add Cargo Features, flags, and different toolchains with
-        # packages.${system}.default.overrideAttrs { ... };
+        # packages.${system}.default.override { ... };
         default = helix;
       };
 
-      checks.helix = self.outputs.packages.${system}.helix.overrideAttrs {
+      checks.helix = self.outputs.packages.${system}.helix.override {
         cargoBuildType = "debug";
         rustPlatform = msrvPlatform;
       };
@@ -149,12 +149,12 @@
       in
         pkgs.mkShell
         {
+          inputsFrom = [self.checks.${system}.helix];
           nativeBuildInputs = with pkgs;
             [
               lld_13
               cargo-flamegraph
               rust-bin.nightly.latest.rust-analyzer
-              msrvToolchain
             ]
             ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) cargo-tarpaulin)
             ++ (lib.optional stdenv.isLinux lldb)
