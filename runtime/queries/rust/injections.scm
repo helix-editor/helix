@@ -17,39 +17,6 @@
  (#set! injection.language "html")
  (#set! injection.include-children))
 
-; std::fmt 
-
-((macro_invocation
-   macro:
-     [
-       (scoped_identifier
-         name: (_) @_macro_name)
-       (identifier) @_macro_name
-     ]
-   (token_tree) @injection.content)
- (#any-of? @_macro_name
-  ; std
-  "format"
-  "write"
-  "writeln"
-  "print"
-  "println"
-  "eprint"
-  "eprintln"
-  "format_args"
-  ; log
-  "crit"
-  "error"
-  "warn"
-  "info"
-  "debug"
-  "trace"
-  ; anyhow
-  "anyhow"
-  "bail")
- (#set! injection.language "rustfmt")
- (#set! injection.include-children))
-
 ((macro_invocation
    macro:
      [
@@ -112,3 +79,73 @@
     [(string_literal) (raw_string_literal)] @injection.content
   )
   (#set! injection.language "sql"))
+
+; std::fmt 
+
+; For these, only the first argument is format_args!
+((macro_invocation
+   macro:
+     [
+       (scoped_identifier
+         name: (_) @_macro_name)
+       (identifier) @_macro_name
+     ]
+   (token_tree . (string_literal) @injection.content))
+ (#any-of? @_macro_name
+  ; std
+  "format"
+  "print"
+  "println"
+  "eprint"
+  "eprintln"
+  "format_args"
+  ; log
+  "crit"
+  "error"
+  "warn"
+  "info"
+  "debug"
+  "trace"
+  ; anyhow
+  "anyhow"
+  "bail")
+ (#set! injection.language "rustfmt")
+ (#set! injection.include-children))
+
+; For these, only the second argument is format_args!
+((macro_invocation
+   macro:
+     [
+       (scoped_identifier
+         name: (_) @_macro_name)
+       (identifier) @_macro_name
+     ]
+   (token_tree . (_) (string_literal) @injection.content))
+ (#any-of? @_macro_name
+  ; std
+  "write"
+  "writeln")
+ (#set! injection.language "rustfmt")
+ (#set! injection.include-children))
+
+; Dioxus' "rsx!" macro relies heavily on string interpolation as well. The strings can be nested very deeply
+((macro_invocation
+   macro:
+     [
+       (scoped_identifier
+         name: (_) @_macro_name)
+       (identifier) @_macro_name
+     ]
+    ; TODO: This only captures 1 level of string literals. But in dioxus you can have
+    ; nested string literals. For instance:
+    ; 
+    ; rsx! { "{hello} world" }:
+    ; -> (token_tree (string_literal))
+    ; rsx! { div { "{hello} world" } }
+    ; -> (token_tree (token_tree (string_literal)))
+    ; rsx! { div { div { "{hello} world" } } }
+    ; -> (token_tree (token_tree (token_tree (string_literal))))
+   (token_tree (string_literal) @injection.content))
+ (#eq? @_macro_name "rsx")
+ (#set! injection.language "rustfmt")
+ (#set! injection.include-children))

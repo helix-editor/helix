@@ -2644,13 +2644,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter"
-version = "0.22.6"
+name = "tree-house"
+version = "0.1.0-beta.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df7cc499ceadd4dcdf7ec6d4cbc34ece92c3fa07821e287aedecd4416c516dca"
+checksum = "e4b93baffc0ff1790bbb4c69fa4c3909cff1f92012dcfaad99049b967e846644"
+dependencies = [
+ "arc-swap",
+ "hashbrown 0.15.2",
+ "kstring",
+ "once_cell",
+ "regex",
+ "regex-cursor",
+ "ropey",
+ "slab",
+ "tree-house-bindings",
+]
+
+[[package]]
+name = "tree-house-bindings"
+version = "0.1.0-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67aa746be26e7d9a85af600abba7e62a094b6e4dbf21eb281e4f481d6130b55b"
 dependencies = [
  "cc",
- "regex",
+ "libloading",
+ "regex-cursor",
+ "ropey",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
