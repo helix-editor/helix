@@ -22,13 +22,12 @@ default-members = [
 
 [profile.release]
 lto = "thin"
-debug = true
 
 [profile.opt]
 inherits = "release"
 lto = "fat"
 codegen-units = 1
-# strip = "debuginfo" # TODO: or strip = true
+strip = true
 opt-level = 3
 
 [profile.integration]
@@ -45,10 +44,14 @@ slotmap = "1.0.7"
 # steel-core = { path = "/Users/matt/code/steel/crates/steel-core", version = "0.6.0", features = ["anyhow", "dylibs", "sync"] }
 steel-core = { git = "https://github.com/mattwparas/steel.git", version = "0.6.0", features = ["anyhow", "dylibs", "sync"] }
 thiserror = "2.0"
-tempfile = "3.15.0"
+tempfile = "3.17.1"
+bitflags = "2.8"
+unicode-segmentation = "1.2"
+ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
+foldhash = "0.1"
 
 [workspace.package]
-version = "25.1.0"
+version = "25.1.1"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]

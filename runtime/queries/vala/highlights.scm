@@ -24,6 +24,7 @@
 (unqualified_type (symbol . (identifier) @type))
 (unqualified_type (symbol (symbol) @namespace (identifier) @type))
 
+(identifier) @variable
 (attribute) @variable.other.member
 (method_declaration (symbol (symbol) @type (identifier) @function))
 (method_declaration (symbol (identifier) @function))
@@ -41,7 +42,6 @@
 (parameter (identifier) @variable.parameter)
 (property_declaration (symbol (identifier) @variable.other.member))
 (field_declaration (identifier) @variable)
-(identifier) @variable
 [
  (this_access)
  (base_access)

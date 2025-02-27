@@ -1,10 +1,10 @@
 use arc_swap::{ArcSwap, ArcSwapAny};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use helix_core::{
+    command_line::Args,
     diagnostic::Severity,
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     find_workspace, graphemes,
-    shellwords::Shellwords,
     syntax::{self, AutoPairConfig, IndentationConfiguration, LanguageConfiguration, SoftWrap},
     Range, Selection, Tendril,
 };
@@ -46,6 +46,7 @@ use std::{
 use steel::{rvals::Custom, steel_vm::builtin::BuiltInModule};
 
 use crate::{
+    // args::Args,
     commands::insert,
     compositor::{self, Component, Compositor},
     config::Config,
@@ -249,7 +250,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
                 jobs: cx.jobs,
             };
 
-            (command.fun)(&mut cx, &[], PromptEvent::Validate)
+            (command.fun)(&mut cx, Args::default(), PromptEvent::Validate)
         };
 
         module.register_fn(command.name, func);
@@ -443,6 +444,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 
     // Register everything in the typable command list. Now these are all available
     for command in TYPABLE_COMMAND_LIST {
+        // TODO: This needs to get updated
         let func = |cx: &mut Context, args: &[Cow<str>]| {
             let mut cx = compositor::Context {
                 editor: cx.editor,
@@ -450,7 +452,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
                 jobs: cx.jobs,
             };
 
-            (command.fun)(&mut cx, args, PromptEvent::Validate)
+            (command.fun)(&mut cx, Args::raw(args.to_vec()), PromptEvent::Validate)
         };
 
         module.register_fn(command.name, func);
@@ -1197,8 +1199,9 @@ impl super::PluginSystem for SteelScriptingEngine {
         event: PromptEvent,
     ) -> bool {
         if enter_engine(|x| x.global_exists(parts[0])) {
-            let shellwords = Shellwords::from(input);
-            let args = shellwords.words();
+            // let shellwords = Shellwords::from(input);
+            // let args = shellwords.words();
+            let args = parts;
 
             // We're finalizing the event - we actually want to call the function
             if event == PromptEvent::Validate {

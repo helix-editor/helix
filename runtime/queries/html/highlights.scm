@@ -5,35 +5,35 @@
 (comment) @comment
 
 ((attribute
-  (attribute_name) @_attr
+  (attribute_name) @attribute
   (quoted_attribute_value (attribute_value) @markup.link.url))
- (#any-of? @_attr "href" "src"))
+ (#any-of? @attribute "href" "src"))
 
 ((element
   (start_tag
-    (tag_name) @_tag)
+    (tag_name) @tag)
   (text) @markup.link.label)
-  (#eq? @_tag "a"))
+  (#eq? @tag "a"))
 
 (attribute [(attribute_value) (quoted_attribute_value)] @string)
 
 ((element
   (start_tag
-    (tag_name) @_tag)
+    (tag_name) @tag)
   (text) @markup.bold)
-  (#any-of? @_tag "strong" "b"))
+  (#any-of? @tag "strong" "b"))
 
 ((element
   (start_tag
-    (tag_name) @_tag)
+    (tag_name) @tag)
   (text) @markup.italic)
-  (#any-of? @_tag "em" "i"))
+  (#any-of? @tag "em" "i"))
 
 ((element
   (start_tag
-    (tag_name) @_tag)
+    (tag_name) @tag)
   (text) @markup.strikethrough)
-  (#any-of? @_tag "s" "del"))
+  (#any-of? @tag "s" "del"))
 
 [
   "<"

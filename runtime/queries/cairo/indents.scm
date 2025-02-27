@@ -115,6 +115,16 @@
   (#not-same-line? @expr-start @pattern-guard)
 ) @indent
 
+; Align closure parameters if they span more than one line
+(closure_parameters
+  "|"
+  .
+  (_) @anchor
+  (_) @expr-end
+  .
+  (#not-same-line? @anchor @expr-end)
+) @align
+
 (for_expression
   "in" @in
   .
