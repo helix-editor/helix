@@ -24,7 +24,7 @@ use helix_core::{
 };
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{Mode, DEFAULT_LANGUAGE_NAME, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
@@ -646,7 +646,20 @@ impl EditorView {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let lang = doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+            let config = editor.config();
+            let icon = config.icons.mime.get(lang);
+
+            let text = if lang == icon {
+                format!(" {} {}", fname, if doc.is_modified() { "[+] " } else { "" })
+            } else {
+                format!(
+                    " {icon} {} {}",
+                    fname,
+                    if doc.is_modified() { "[+] " } else { "" }
+                )
+            };
+
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 

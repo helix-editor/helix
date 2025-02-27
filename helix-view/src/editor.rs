@@ -7,6 +7,7 @@ use crate::{
     events::DocumentFocusLost,
     graphics::{CursorKind, Rect},
     handlers::Handlers,
+    icons,
     info::Info,
     input::KeyEvent,
     register::Registers,
@@ -17,6 +18,7 @@ use crate::{
 use dap::StackFrame;
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
+use icons::Icons;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
@@ -360,6 +362,8 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+    /// Centralized location for icons that can be used throughout the UI  
+    pub icons: Icons,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1001,6 +1005,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
+            icons: Icons::default(),
         }
     }
 }
