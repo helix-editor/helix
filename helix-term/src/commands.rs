@@ -1726,9 +1726,9 @@ where
 }
 
 enum CaseSwitcher {
-    ToUppercase(ToUppercase),
-    ToLowercase(ToLowercase),
-    Nothing(Option<char>),
+    Upper(ToUppercase),
+    Lower(ToLowercase),
+    Keep(Option<char>),
 }
 
 impl Iterator for CaseSwitcher {
@@ -1736,18 +1736,18 @@ impl Iterator for CaseSwitcher {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            CaseSwitcher::ToUppercase(upper) => upper.next(),
-            CaseSwitcher::ToLowercase(lower) => lower.next(),
-            CaseSwitcher::Nothing(nothing) => nothing.take(),
+            CaseSwitcher::Upper(upper) => upper.next(),
+            CaseSwitcher::Lower(lower) => lower.next(),
+            CaseSwitcher::Keep(ch) => ch.take(),
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self {
-            CaseSwitcher::ToUppercase(upper) => upper.size_hint(),
-            CaseSwitcher::ToLowercase(lower) => lower.size_hint(),
-            CaseSwitcher::Nothing(nothing) => {
-                let n = usize::from(nothing.is_some());
+            CaseSwitcher::Upper(upper) => upper.size_hint(),
+            CaseSwitcher::Lower(lower) => lower.size_hint(),
+            CaseSwitcher::Keep(ch) => {
+                let n = if ch.is_some() { 1 } else { 0 };
                 (n, Some(n))
             }
         }
@@ -1762,11 +1762,11 @@ fn switch_case(cx: &mut Context) {
             .chars()
             .flat_map(|ch| {
                 if ch.is_lowercase() {
-                    CaseSwitcher::ToUppercase(ch.to_uppercase())
+                    CaseSwitcher::Upper(ch.to_uppercase())
                 } else if ch.is_uppercase() {
-                    CaseSwitcher::ToLowercase(ch.to_lowercase())
+                    CaseSwitcher::Lower(ch.to_lowercase())
                 } else {
-                    CaseSwitcher::Nothing(Some(ch))
+                    CaseSwitcher::Keep(Some(ch))
                 }
             })
             .collect()
