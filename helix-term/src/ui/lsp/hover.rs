@@ -30,16 +30,15 @@ impl Hover {
             .into_iter()
             .enumerate()
             .map(|(idx, (server_name, hover))| {
-                let header = (n_hovers > 1).then(|| {
-                    Markdown::new(
-                        format!("**[{}/{}] {}**", idx + 1, n_hovers, server_name),
-                        config_loader.clone(),
-                    )
-                });
+                let header = (n_hovers > 1)
+                    .then(|| format!("**[{}/{}] {}**\n", idx + 1, n_hovers, server_name))
+                    .map(|h| Markdown::new(h, Arc::clone(&config_loader)));
+
                 let body = Markdown::new(
                     hover_contents_to_string(hover.contents),
-                    config_loader.clone(),
+                    Arc::clone(&config_loader),
                 );
+
                 (header, body)
             })
             .collect();
@@ -54,8 +53,24 @@ impl Hover {
         self.contents.len() > 1
     }
 
-    fn content(&self) -> &(Option<Markdown>, Markdown) {
+    fn content_markdown(&self) -> &(Option<Markdown>, Markdown) {
         &self.contents[self.active_index]
+    }
+
+    pub fn content_string(&self) -> String {
+        self.contents
+            .iter()
+            .map(|(header, body)| {
+                let header: String = header
+                    .iter()
+                    .map(|header| header.contents.clone())
+                    .collect();
+
+                format!("{}{}", header, body.contents)
+            })
+            .collect::<Vec<String>>()
+            .join("\n\n---\n\n")
+            + "\n"
     }
 
     fn set_index(&mut self, index: usize) {
@@ -75,7 +90,7 @@ impl Component for Hover {
         let margin = Margin::all(1);
         let area = area.inner(margin);
 
-        let (header, contents) = self.content();
+        let (header, contents) = self.content_markdown();
 
         // show header and border only when more than one results
         if let Some(header) = header {
@@ -110,7 +125,7 @@ impl Component for Hover {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let max_text_width = viewport.0.saturating_sub(PADDING_HORIZONTAL).clamp(10, 120);
 
-        let (header, contents) = self.content();
+        let (header, contents) = self.content_markdown();
 
         let header_width = header
             .as_ref()
