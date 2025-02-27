@@ -2417,7 +2417,7 @@ fn global_search(cx: &mut Context) {
         smart_case: config.search.smart_case,
         file_picker_config: config.file_picker.clone(),
         directory_style: cx.editor.theme.get("ui.text.directory"),
-        number_style: cx.editor.theme.get("constant.numeric"),
+        number_style: cx.editor.theme.get("constant.numeric.integer"),
         colon_style: cx.editor.theme.get("punctuation"),
     };
 
@@ -2431,10 +2431,11 @@ fn global_search(cx: &mut Context) {
                 .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
                 .unwrap_or_default();
 
-            let filename = path
+            let filename = item
+                .path
                 .file_name()
-                .map(|f| f.to_string_lossy().to_string())
-                .unwrap_or_default();
+                .expect("global search paths are normalized (can't end in `..`)")
+                .to_string_lossy();
 
             Cell::from(Spans::from(vec![
                 Span::styled(directories, config.directory_style),
