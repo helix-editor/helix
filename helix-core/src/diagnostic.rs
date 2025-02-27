@@ -50,8 +50,21 @@ pub struct Diagnostic {
     pub data: Option<serde_json::Value>,
 }
 
-// TODO turn this into an enum + feature flag when lsp becomes optional
-pub type DiagnosticProvider = LanguageServerId;
+// TODO turn this into a feature flag when lsp becomes optional
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DiagnosticProvider {
+    PublishDiagnosticProvider(LanguageServerId),
+    PullDiagnosticProvider(LanguageServerId),
+}
+
+impl From<DiagnosticProvider> for LanguageServerId {
+    fn from(value: DiagnosticProvider) -> Self {
+        match value {
+            DiagnosticProvider::PublishDiagnosticProvider(id) => id,
+            DiagnosticProvider::PullDiagnosticProvider(id) => id,
+        }
+    }
+}
 
 // while I would prefer having this in helix-lsp that necessitates a bunch of
 // conversions I would rather not add. I think its fine since this just a very
