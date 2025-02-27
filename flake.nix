@@ -81,7 +81,7 @@
 
         # Use Helix's opt profile for the build.
         # TODO: s/cargoBuildType/buildType
-        cargoBuildType = "opt";
+        cargoBuildType = "release";
         # END: Funny attrs to reevaluate
 
         name = with builtins; (fromTOML (readFile ./helix-term/Cargo.toml)).package.name;
