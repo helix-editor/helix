@@ -1,12 +1,12 @@
 use crate::{
     buffer::Buffer,
-    layout::{Corner, Rect},
-    style::Style,
+    layout::Corner,
     text::Text,
-    widgets::{Block, StatefulWidget, Widget},
+    widgets::{Block, Widget},
 };
+use helix_core::unicode::width::UnicodeWidthStr;
+use helix_view::graphics::{Rect, Style};
 use std::iter::{self, Iterator};
-use unicode_width::UnicodeWidthStr;
 
 #[derive(Debug, Clone)]
 pub struct ListState {
@@ -131,10 +131,8 @@ impl<'a> List<'a> {
     }
 }
 
-impl<'a> StatefulWidget for List<'a> {
-    type State = ListState;
-
-    fn render(mut self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+impl<'a> List<'a> {
+    fn render_list(mut self, area: Rect, buf: &mut Buffer, state: &mut ListState) {
         buf.set_style(area, self.style);
         let list_area = match self.block.take() {
             Some(b) => {
@@ -244,6 +242,6 @@ impl<'a> StatefulWidget for List<'a> {
 impl<'a> Widget for List<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut state = ListState::default();
-        StatefulWidget::render(self, area, buf, &mut state);
+        Self::render_list(self, area, buf, &mut state);
     }
 }

@@ -68,6 +68,25 @@
           # filter out unnecessary paths
           filter = ignorePaths;
         };
+
+      helix-cogs = craneLibStable.buildPackage (commonArgs // {
+        pname = "helix-cogs";
+        version = "0.1.0";
+        cargoArtifacts = craneLibStable.buildDepsOnly commonArgs;
+
+        buildPhase = ''
+          export HOME=$PWD/build_home  # code-gen will write files relative to $HOME
+          cargoBuildLog=$(mktemp cargoBuildLogXXXX.json)
+          cargo run --package xtask -- code-gen --message-format json-render-diagnostics >"$cargoBuildLog"
+        '';
+
+        postInstall = ''
+          mkdir -p $out/cogs
+          cp -r build_home/.config/helix/* "$out/cogs"
+        '';
+
+      });
+
       makeOverridableHelix = old: config: let
         grammars = pkgs.callPackage ./grammars.nix config;
         runtimeDir = pkgs.runCommand "helix-runtime" {} ''
@@ -142,6 +161,7 @@
             HELIX_NIX_BUILD_REV = self.rev or self.dirtyRev or null;
           });
         helix = makeOverridableHelix self.packages.${system}.helix-unwrapped {};
+        helix-cogs = helix-cogs;
         default = self.packages.${system}.helix;
       };
 
@@ -174,7 +194,8 @@
           [lld_13 cargo-flamegraph rust-analyzer]
           ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) pkgs.cargo-tarpaulin)
           ++ (lib.optional stdenv.isLinux pkgs.lldb)
-          ++ (lib.optional stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.CoreFoundation);
+          ++ (lib.optional stdenv.isDarwin (with pkgs.darwin.apple_sdk.frameworks;
+            [CoreFoundation Security]));
         shellHook = ''
           export HELIX_RUNTIME="$PWD/runtime"
           export RUST_BACKTRACE="1"
