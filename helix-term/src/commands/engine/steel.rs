@@ -1194,11 +1194,11 @@ impl super::PluginSystem for SteelScriptingEngine {
     fn call_typed_command<'a>(
         &self,
         cx: &mut compositor::Context,
-        input: &'a str,
+        command: &'a str,
         parts: &'a [&'a str],
         event: PromptEvent,
     ) -> bool {
-        if enter_engine(|x| x.global_exists(parts[0])) {
+        if enter_engine(|x| x.global_exists(command)) {
             // let shellwords = Shellwords::from(input);
             // let args = shellwords.words();
             let args = parts;
@@ -1206,9 +1206,9 @@ impl super::PluginSystem for SteelScriptingEngine {
             // We're finalizing the event - we actually want to call the function
             if event == PromptEvent::Validate {
                 if let Err(e) = enter_engine(|guard| {
-                    let args = args[1..]
+                    let args = args
                         .iter()
-                        .map(|x| x.clone().into_steelval().unwrap())
+                        .map(|x| x.into_steelval().unwrap())
                         .collect::<Vec<_>>();
 
                     let res = {
@@ -1230,7 +1230,7 @@ impl super::PluginSystem for SteelScriptingEngine {
                                     let context = arguments[0].clone();
                                     engine.update_value("*helix.cx*", context);
                                     // TODO: Fix this clone
-                                    engine.call_function_by_name_with_args(&parts[0], args.clone())
+                                    engine.call_function_by_name_with_args(command, args.clone())
                                 })
                         }) {
                             Ok(res) => {

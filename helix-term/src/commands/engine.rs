@@ -108,12 +108,12 @@ impl ScriptingEngine {
 
     pub fn call_typed_command<'a>(
         cx: &mut compositor::Context,
-        input: &'a str,
+        command: &'a str,
         parts: &'a [&'a str],
         event: PromptEvent,
     ) -> bool {
         for kind in PLUGIN_PRECEDENCE {
-            if manual_dispatch!(kind, call_typed_command(cx, input, parts, event)) {
+            if manual_dispatch!(kind, call_typed_command(cx, command, parts, event)) {
                 return true;
             }
         }
