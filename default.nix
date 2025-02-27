@@ -34,36 +34,20 @@ in
   # Currently rustPlatform.buildRustPackage doesn't have the finalAttrs pattern
   # hooked up. To get around this while having good customization, mkDerivation is
   # used instead.
-  stdenv.mkDerivation (self: {
+  rustPlatform.buildRustPackage (self: {
     # START: Reevaluate the below attrs when
     # https://github.com/NixOS/nixpkgs/pull/354999
     # or
     # https://github.com/NixOS/nixpkgs/pull/194475
     # Are merged.
-
-    # TODO: Probably change to cargoLock
-    cargoDeps = rustPlatform.importCargoLock {
-      lockFile = ./Cargo.lock;
-    };
+    cargoLock.lockFile = ./Cargo.lock;
 
     nativeBuildInputs = [
-      rustPlatform.rust.rustc # TODO: Remove
-      rustPlatform.rust.cargo # TODO: Remove
       pkgs.installShellFiles
       pkgs.git
     ];
 
-    # TODO: Remove entire attr
-    buildInputs = with rustPlatform; [
-      cargoSetupHook
-      cargoBuildHook
-      cargoInstallHook
-    ];
-
-    # Use Helix's opt profile for the build.
-    # TODO: s/cargoBuildType/buildType
-    cargoBuildType = "release";
-    # END: Funny attrs to reevaluate
+    buildType = "release";
 
     name = with builtins; (fromTOML (readFile ./helix-term/Cargo.toml)).package.name;
     src = fs.toSource {

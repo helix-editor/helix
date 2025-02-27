@@ -43,7 +43,7 @@
       };
 
       checks.helix = self.outputs.packages.${system}.helix.override {
-        cargoBuildType = "debug";
+        buildType = "debug";
         rustPlatform = msrvPlatform;
       };
 
