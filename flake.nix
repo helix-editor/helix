@@ -37,7 +37,7 @@
         (fs.fileFilter (file: file.hasExt "md") ./.)
         (fs.fileFilter (file: file.hasExt "nix") ./.)
       ]);
-      
+
       # Next we actually need to build the grammars and the runtime directory
       # that they reside in. It is built by calling the derivation in the
       # grammars.nix file, then taking the runtime directory in the git repo
@@ -128,7 +128,7 @@
       };
     in {
       packages = rec {
-        helix = pkgs.callPackage mkHelix { };
+        helix = pkgs.callPackage mkHelix {};
 
         # The default Helix build. Uses the latest stable Rust toolchain, and unstable
         # nixpkgs.
@@ -149,12 +149,16 @@
       in
         pkgs.mkShell
         {
-          inputsFrom = builtins.attrValues self.checks.${system};
           nativeBuildInputs = with pkgs;
-            [lld_13 cargo-flamegraph rust-analyzer]
-            ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) pkgs.cargo-tarpaulin)
-            ++ (lib.optional stdenv.isLinux pkgs.lldb)
-            ++ (lib.optional stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.CoreFoundation);
+            [
+              lld_13
+              cargo-flamegraph
+              rust-bin.nightly.latest.rust-analyzer
+              msrvToolchain
+            ]
+            ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) cargo-tarpaulin)
+            ++ (lib.optional stdenv.isLinux lldb)
+            ++ (lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.CoreFoundation);
           shellHook = ''
             export HELIX_RUNTIME="$PWD/runtime"
             export RUST_BACKTRACE="1"
