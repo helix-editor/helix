@@ -1,11 +1,15 @@
-((comment) @injection.content
+([
+  (line_comment)
+  (multiline_comment)
+ ] @injection.content
 	(#set! injection.language "comment"))
 
 ; There are 3 ways to define a regex
 ;    - "[abc]?".toRegex()
 ((call_expression
 	(navigation_expression
-		([(line_string_literal) (multi_line_string_literal)] @injection.content)
+		(string_literal
+		   (string_content) @injection.content)
 		(navigation_suffix
 			((simple_identifier) @_function
 			(#eq? @_function "toRegex")))))
@@ -18,7 +22,8 @@
 	(call_suffix
 		(value_arguments
 			(value_argument
-				[ (line_string_literal) (multi_line_string_literal) ] @injection.content))))
+				(string_literal
+					(string_content) @injection.content)))))
 	(#set! injection.language "regex"))
 
 ;    - Regex.fromLiteral("[abc]?")
@@ -32,5 +37,6 @@
 	(call_suffix
 		(value_arguments
 			(value_argument
-				[ (line_string_literal) (multi_line_string_literal) ] @injection.content))))
+				(string_literal
+					(string_content) @injection.content)))))
 	(#set! injection.language "regex"))

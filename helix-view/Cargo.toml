@@ -24,7 +24,7 @@ helix-lsp = { path = "../helix-lsp" }
 helix-dap = { path = "../helix-dap" }
 helix-vcs = { path = "../helix-vcs" }
 
-bitflags = "2.6"
+bitflags.workspace = true
 anyhow = "1"
 crossterm = { version = "0.28", optional = true }
 
@@ -40,7 +40,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 
-slotmap = "1"
+slotmap.workspace = true
 
 chardetng = "0.1"
 

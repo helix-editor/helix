@@ -20,6 +20,59 @@ Updated languages and queries:
 Packaging:
 -->
 
+# 25.01.1 (2025-01-19)
+
+25.01.1 is a patch release focusing on fixing bugs and panics from changes in 25.01.
+
+Usability improvements:
+
+* Run external formatters from the document's directory ([#12315](https://github.com/helix-editor/helix/pull/12315))
+
+Fixes:
+
+* Fix blank buffer picker preview on doc with no views ([917174e](https://github.com/helix-editor/helix/commit/917174e))
+* Fix `join_selections` behavior on tabs ([#12452](https://github.com/helix-editor/helix/pull/12452))
+* Fix recognition for color LSP completion hex codes for some language servers ([#12501](https://github.com/helix-editor/helix/pull/12501))
+* Fix offsets to selections updated by `open_below`/`open_above` (`o`/`O`) in multi-cursor scenarios ([#12465](https://github.com/helix-editor/helix/pull/12465))
+* Fix offsets to selections updated by `insert_newline` when trimming whitespace in multi-cursor scenarios ([4bd17e5](https://github.com/helix-editor/helix/commit/4bd17e5))
+* Fix panic in path completion from resolving variables like `${HOME:-$HOME}` ([#12556](https://github.com/helix-editor/helix/pull/12556))
+* Prevent line comment continuation when using `change_selection` (`c`) on a line above a comment ([#12575](https://github.com/helix-editor/helix/pull/12575))
+
+Themes:
+
+* Update `onelight` ([#12399](https://github.com/helix-editor/helix/pull/12399))
+* Add cursorline color to iceberg themes ([#12404](https://github.com/helix-editor/helix/pull/12404))
+* Update `special`, `ui.text.directory` and `ui.virtual.wrap` in `dark_plus` ([#12530](https://github.com/helix-editor/helix/pull/12530))
+
+New languages:
+
+* CodeQL ([#12470](https://github.com/helix-editor/helix/pull/12470))
+* Gren ([#12525](https://github.com/helix-editor/helix/pull/12525))
+
+Updated languages and queries:
+
+* Fix Teal LSP name ([#12395](https://github.com/helix-editor/helix/pull/12395))
+* Highlight `:` in Rust as a delimiter ([#12408](https://github.com/helix-editor/helix/pull/12408))
+* Update Swift highlights ([#12409](https://github.com/helix-editor/helix/pull/12409))
+* Highlight JSX attributes as `@attribute` ([#12416](https://github.com/helix-editor/helix/pull/12416))
+* Improve markdown heading highlights ([#12417](https://github.com/helix-editor/helix/pull/12417))
+* Add comment tokens configuration for JSONC ([b26903c](https://github.com/helix-editor/helix/commit/b26903c))
+* Highlight the never type `!` as a type in Rust ([#12485](https://github.com/helix-editor/helix/pull/12485))
+* Expand builtin function highlights for ECMA languages, Rust and Haskell ([#12488](https://github.com/helix-editor/helix/pull/12488))
+* Recognize `.clang-tidy` as YAML ([#12498](https://github.com/helix-editor/helix/pull/12498))
+* Update MATLAB grammar and indent queries ([#12518](https://github.com/helix-editor/helix/pull/12518))
+* Recognize `rockspec` as Lua ([#12516](https://github.com/helix-editor/helix/pull/12516))
+* Add `///` to Dart comment tokens configuration ([99d33c7](https://github.com/helix-editor/helix/commit/99d33c7))
+* Update Solidity grammar and queries ([#12457](https://github.com/helix-editor/helix/pull/12457))
+* Update Spade grammar and queries ([#12583](https://github.com/helix-editor/helix/pull/12583))
+* Re-enable Hare fetching and building by default ([#11507](https://github.com/helix-editor/helix/pull/11507))
+
+Packaging:
+
+* `--version` now prints a leading zero for single-digit months, for example `25.01` (03f35af)
+* Pin the Ubuntu GitHub Actions runners used for releases to `ubuntu-22.04` ([#12464](https://github.com/helix-editor/helix/pull/12464))
+* Produce a Debian package (`.deb` file) in the release GitHub Actions workflow ([#12453](https://github.com/helix-editor/helix/pull/12453))
+
 # 25.01 (2025-01-03)
 
 As always, a big thank you to all of the contributors! This release saw changes from 171 contributors.
@@ -682,7 +735,7 @@ Updated languages and queries:
 - Recognize common Dockerfile file types ([#9772](https://github.com/helix-editor/helix/pull/9772))
 - Recognize NUON files as Nu ([#9839](https://github.com/helix-editor/helix/pull/9839))
 - Add textobjects for Java native functions and constructors ([#9806](https://github.com/helix-editor/helix/pull/9806))
-- Fix "braket" typeo in JSX highlights ([#9910](https://github.com/helix-editor/helix/pull/9910))
+- Fix "braket" typo in JSX highlights ([#9910](https://github.com/helix-editor/helix/pull/9910))
 - Update tree-sitter-hurl ([#9775](https://github.com/helix-editor/helix/pull/9775))
 - Add textobjects queries for Vala ([#8541](https://github.com/helix-editor/helix/pull/8541))
 - Update tree-sitter-git-config ([9610254](https://github.com/helix-editor/helix/commit/9610254))
@@ -889,7 +942,7 @@ Updated languages and queries:
 - Add Fortran comment injections ([#7305](https://github.com/helix-editor/helix/pull/7305))
 - Switch Vue language server to `vue-language-server` ([#7312](https://github.com/helix-editor/helix/pull/7312))
 - Update tree-sitter-sql ([#7387](https://github.com/helix-editor/helix/pull/7387), [#8464](https://github.com/helix-editor/helix/pull/8464))
-- Replace the MATLAB tre-sitter grammar ([#7388](https://github.com/helix-editor/helix/pull/7388), [#7442](https://github.com/helix-editor/helix/pull/7442), [#7491](https://github.com/helix-editor/helix/pull/7491), [#7493](https://github.com/helix-editor/helix/pull/7493), [#7511](https://github.com/helix-editor/helix/pull/7511), [#7532](https://github.com/helix-editor/helix/pull/7532), [#8040](https://github.com/helix-editor/helix/pull/8040))
+- Replace the MATLAB tree-sitter grammar ([#7388](https://github.com/helix-editor/helix/pull/7388), [#7442](https://github.com/helix-editor/helix/pull/7442), [#7491](https://github.com/helix-editor/helix/pull/7491), [#7493](https://github.com/helix-editor/helix/pull/7493), [#7511](https://github.com/helix-editor/helix/pull/7511), [#7532](https://github.com/helix-editor/helix/pull/7532), [#8040](https://github.com/helix-editor/helix/pull/8040))
 - Highlight TOML table headers ([#7441](https://github.com/helix-editor/helix/pull/7441))
 - Recognize `cppm` file-type as C++ ([#7492](https://github.com/helix-editor/helix/pull/7492))
 - Refactor ecma language queries into private and public queries ([#7207](https://github.com/helix-editor/helix/pull/7207))
@@ -1376,7 +1429,7 @@ Features:
 - Support underline styles and colors ([#4061](https://github.com/helix-editor/helix/pull/4061), [98c121c](https://github.com/helix-editor/helix/commit/98c121c))
 - Inheritance for themes ([#3067](https://github.com/helix-editor/helix/pull/3067), [#4096](https://github.com/helix-editor/helix/pull/4096))
 - Cursorcolumn ([#4084](https://github.com/helix-editor/helix/pull/4084))
-- Overhauled system for writing files and quiting ([#2267](https://github.com/helix-editor/helix/pull/2267), [#4397](https://github.com/helix-editor/helix/pull/4397))
+- Overhauled system for writing files and quitting ([#2267](https://github.com/helix-editor/helix/pull/2267), [#4397](https://github.com/helix-editor/helix/pull/4397))
 - Autosave when terminal loses focus ([#3178](https://github.com/helix-editor/helix/pull/3178))
 - Use OSC52 as a fallback for the system clipboard ([#3220](https://github.com/helix-editor/helix/pull/3220))
 - Show git diffs in the gutter ([#3890](https://github.com/helix-editor/helix/pull/3890), [#5012](https://github.com/helix-editor/helix/pull/5012), [#4995](https://github.com/helix-editor/helix/pull/4995))
@@ -1531,7 +1584,7 @@ Themes:
 - Update `pop-dark` ([#4323](https://github.com/helix-editor/helix/pull/4323))
 - Update `rose_pine` ([#4221](https://github.com/helix-editor/helix/pull/4221))
 - Add `kanagawa` ([#4300](https://github.com/helix-editor/helix/pull/4300))
-- Add `hex_steel`, `hex_toxic` and `hex_lavendar` ([#4367](https://github.com/helix-editor/helix/pull/4367), [#4990](https://github.com/helix-editor/helix/pull/4990))
+- Add `hex_steel`, `hex_toxic` and `hex_lavender` ([#4367](https://github.com/helix-editor/helix/pull/4367), [#4990](https://github.com/helix-editor/helix/pull/4990))
 - Update `tokyonight` and `tokyonight_storm` ([#4415](https://github.com/helix-editor/helix/pull/4415))
 - Update `gruvbox` ([#4626](https://github.com/helix-editor/helix/pull/4626))
 - Update `dark_plus` ([#4661](https://github.com/helix-editor/helix/pull/4661), [#4678](https://github.com/helix-editor/helix/pull/4678))
@@ -1698,7 +1751,7 @@ Usability improvements and fixes:
 - Introduce `keyword.storage` highlight scope ([#2731](https://github.com/helix-editor/helix/pull/2731))
 - Handle symlinks more consistently ([#2718](https://github.com/helix-editor/helix/pull/2718))
 - Improve markdown list rendering ([#2687](https://github.com/helix-editor/helix/pull/2687))
-- Update auto-pairs and idle-timout settings when the config is reloaded ([#2736](https://github.com/helix-editor/helix/pull/2736))
+- Update auto-pairs and idle-timeout settings when the config is reloaded ([#2736](https://github.com/helix-editor/helix/pull/2736))
 - Fix panic on closing last buffer ([#2658](https://github.com/helix-editor/helix/pull/2658))
 - Prevent modifying jumplist until jumping to a reference ([#2670](https://github.com/helix-editor/helix/pull/2670))
 - Ensure `:quit` and `:quit!` take no arguments ([#2654](https://github.com/helix-editor/helix/pull/2654))

@@ -1,7 +1,7 @@
 use helix_event::{events, register_event};
 use helix_view::document::Mode;
 use helix_view::events::{
-    DiagnosticsDidChange, DocumentDidChange, DocumentFocusLost, SelectionDidChange,
+    DiagnosticsDidChange, DocumentDidChange, DocumentFocusLost, DocumentOpened, SelectionDidChange,
 };
 
 use crate::commands;
@@ -21,4 +21,5 @@ pub fn register() {
     register_event::<DocumentFocusLost>();
     register_event::<SelectionDidChange>();
     register_event::<DiagnosticsDidChange>();
+    register_event::<DocumentOpened>();
 }

@@ -4,6 +4,7 @@ use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
+use indexmap::map::MutableKeys;
 
 fn setup_logging(verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
@@ -118,9 +119,10 @@ FLAGS:
     helix_term::commands::ScriptingEngine::initialize();
 
     // Before setting the working directory, resolve all the paths in args.files
-    for (path, _) in &mut args.files {
+    for (path, _) in args.files.iter_mut2() {
         *path = helix_stdx::path::canonicalize(&*path);
     }
+
     // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
     // Application::new() depends on this logic so it must be updated if this changes.
     if let Some(path) = &args.working_directory {

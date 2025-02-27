@@ -1,11 +1,13 @@
 ## Editor
 
 - [`[editor]` Section](#editor-section)
+- [`[editor.clipboard-provider]` Section](#editorclipboard-provider-section)
 - [`[editor.statusline]` Section](#editorstatusline-section)
 - [`[editor.lsp]` Section](#editorlsp-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
+- [`[editor.auto-save]` Section](#editorauto-save-section)
 - [`[editor.search]` Section](#editorsearch-section)
 - [`[editor.whitespace]` Section](#editorwhitespace-section)
 - [`[editor.indent-guides]` Section](#editorindent-guides-section)
@@ -68,7 +70,7 @@ For instance, setting it to use OSC 52 termcodes, the configuration would be:
 clipboard-provider = "termcode"
 ```
 
-Alternatively, Helix can be configured to use arbitary commands for clipboard integration:
+Alternatively, Helix can be configured to use arbitrary commands for clipboard integration:
 
 ```toml
 [editor.clipboard-provider.custom]

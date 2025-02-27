@@ -2,9 +2,10 @@ use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
     document::{
-        DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
+        DocumentOpenError, DocumentSavedEvent, DocumentSavedEventFuture, DocumentSavedEventResult,
+        Mode, SavePoint,
     },
-    events::DocumentFocusLost,
+    events::{DocumentClosed, DocumentFocusLost, DocumentOpened, DocumentSaved},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -363,7 +364,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SmartTabConfig {
     pub enable: bool,
     pub supersede_menu: bool,
@@ -1430,9 +1431,7 @@ impl Editor {
             if !ls.is_initialized() {
                 continue;
             }
-            if let Some(notification) = ls.did_rename(old_path, &new_path, is_dir) {
-                tokio::spawn(notification);
-            };
+            ls.did_rename(old_path, &new_path, is_dir);
         }
         self.language_servers
             .file_event_handler
@@ -1455,7 +1454,7 @@ impl Editor {
             }
             // if we are open in LSPs send did_close notification
             for language_server in doc.language_servers() {
-                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+                language_server.text_document_did_close(doc.identifier());
             }
         }
         // we need to clear the list of language servers here so that
@@ -1536,7 +1535,7 @@ impl Editor {
             });
 
         for (_, language_server) in doc_language_servers_not_in_registry {
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            language_server.text_document_did_close(doc.identifier());
         }
 
         let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
@@ -1547,12 +1546,12 @@ impl Editor {
 
         for (_, language_server) in language_servers_not_in_doc {
             // TODO: this now races with on_init code if the init happens too quickly
-            tokio::spawn(language_server.text_document_did_open(
+            language_server.text_document_did_open(
                 doc_url.clone(),
                 doc.version(),
                 doc.text(),
                 language_id.clone(),
-            ));
+            );
         }
 
         doc.language_servers = language_servers;
@@ -1784,6 +1783,11 @@ impl Editor {
             let id = self.new_document(doc);
             self.launch_language_servers(id);
 
+            dispatch(DocumentOpened {
+                editor: self,
+                doc: id,
+            });
+
             id
         };
 
@@ -1813,8 +1817,7 @@ impl Editor {
         self.saves.remove(&doc_id);
 
         for language_server in doc.language_servers() {
-            // TODO: track error
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            language_server.text_document_did_close(doc.identifier());
         }
 
         enum Action {
@@ -1874,6 +1877,11 @@ impl Editor {
 
         self._refresh();
 
+        dispatch(DocumentClosed {
+            editor: self,
+            doc: doc_id,
+        });
+
         Ok(())
     }
 
@@ -1911,6 +1919,11 @@ impl Editor {
 
         self.write_count += 1;
 
+        dispatch(DocumentSaved {
+            editor: self,
+            doc: doc_id,
+        });
+
         Ok(())
     }
 
@@ -1926,8 +1939,6 @@ impl Editor {
         // if leaving the view: mode should reset and the cursor should be
         // within view
         if prev_id != view_id {
-            log::info!("Changing focus: {:?}", view_id);
-
             // TODO: Consult map for modes to change given file type?
 
             self.enter_normal_mode();
