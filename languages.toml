@@ -784,6 +784,11 @@ roots = [ "package.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "typescript-language-server" ]
+formatter = { command = "prettier" }
+# Alternative formatters (for your own `languages.toml` file in ~/.config/helix`
+# replace the line above with one below)
+# formatter = { command = "biome", args = ["format"] }
+# formatter = { command = "deno", args = ["format"] }
 indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
@@ -812,6 +817,11 @@ roots = [ "package.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "typescript-language-server" ]
+formatter = { command = "prettier" }
+# Alternative formatters (for your own `languages.toml` file in ~/.config/helix`
+# replace the line above with one below)
+# formatter = { command = "biome", args = ["format"] }
+# formatter = { command = "deno", args = ["format"] }
 indent = { tab-width = 2, unit = "  " }
 grammar = "javascript"
 
@@ -826,6 +836,11 @@ roots = [ "package.json", "tsconfig.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "typescript-language-server" ]
+formatter = { command = 'prettier', args = ["--parser", "typescript"] }
+# Alternative formatters (for your own `languages.toml` file in ~/.config/helix`
+# replace the line above with one below)
+# formatter = { command = "biome", args = ["format"] }
+# formatter = { command = "deno", args = ["format"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -859,6 +874,11 @@ roots = [ "package.json", "tsconfig.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "typescript-language-server" ]
+formatter = { command = "prettier", args = ["--parser", "typescript"] }
+# Alternative formatters (for your own `languages.toml` file in ~/.config/helix`
+# replace the line above with one below)
+# formatter = { command = "biome", args = ["format"] }
+# formatter = { command = "deno", args = ["format"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -916,6 +936,10 @@ shebangs = ["python", "uv"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
 language-servers = ["ruff", "jedi", "pylsp"]
+formatter = { command = "ruff", args = ["format"]}
+# Alternative formatters (for your own `languages.toml` file in ~/.config/helix`
+# replace the line above with one below)
+# formatter = { command = "black", args = ["-"] }
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
@@ -1416,6 +1440,7 @@ roots = ["Setup.hs", "stack.yaml", "cabal.project"]
 comment-token = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
 language-servers = [ "haskell-language-server" ]
+formatter = { command = "ormolu" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1898,6 +1923,7 @@ auto-format = true
 comment-token = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
 language-servers = [ "elm-language-server" ]
+formatter = { command = "elm-format", args = ["--stdin"] }
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
@@ -3902,6 +3928,11 @@ language-servers = [
     "vscode-eslint-language-server",
     "ember-language-server",
 ]
+formatter = { command = "prettier" }
+# Alternative formatters (for your own `languages.toml` file in ~/.config/helix`
+# replace the line above with one below)
+# formatter = { command = "biome", args = ["format"] }
+# formatter = { command = "deno", args = ["format"] }
 indent = { tab-width = 2, unit = "  " }
 grammar = "javascript"
 
@@ -3926,6 +3957,11 @@ language-servers = [
     "vscode-eslint-language-server",
     "ember-language-server",
 ]
+formatter = { command = "prettier", args = ["--parser", "typescript"] }
+# Alternative formatters (for your own `languages.toml` file in ~/.config/helix`
+# replace the line above with one below)
+# formatter = { command = "biome", args = ["format"] }
+# formatter = { command = "deno", args = ["format"] }
 indent = { tab-width = 2, unit = "  " }
 grammar = "typescript"
 
