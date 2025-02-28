@@ -5,9 +5,9 @@
 
 ; Basic types
 (variable) @variable
+(atom) @string.special.symbol
 ((atom) @constant.builtin.boolean
  (#match? @constant.builtin.boolean "^(true|false)$"))
-(atom) @string.special.symbol
 [(string) (sigil)] @string
 (character) @constant.character
 (escape_sequence) @constant.character.escape
@@ -20,6 +20,10 @@
 ["(" ")" "#" "{" "}" "[" "]" "<<" ">>"] @punctuation.bracket
 
 ; Operators
+(binary_operator operator: _ @operator)
+(unary_operator operator: _ @operator)
+["/" ":" "->"] @operator
+
 (binary_operator
   left: (atom) @function
   operator: "/"
@@ -30,10 +34,13 @@
 ((unary_operator operator: _ @keyword.operator)
  (#match? @keyword.operator "^\\w+$"))
 
-(binary_operator operator: _ @operator)
-(unary_operator operator: _ @operator)
-["/" ":" "->"] @operator
-
+; Functions
+(function_clause name: (atom) @function)
+(call module: (atom) @namespace)
+(call function: (atom) @function)
+(stab_clause name: (atom) @function)
+(function_capture module: (atom) @namespace)
+(function_capture function: (atom) @function)
 
 ; Keywords
 (attribute name: (atom) @keyword)
@@ -107,13 +114,9 @@
   ] @comment.block.documentation)
  (#any-of? @keyword "doc" "moduledoc"))
 
-; Functions
-(function_clause name: (atom) @function)
-(call module: (atom) @namespace)
-(call function: (atom) @function)
-(stab_clause name: (atom) @function)
-(function_capture module: (atom) @namespace)
-(function_capture function: (atom) @function)
+; Ignored variables
+((variable) @comment.discard
+ (#match? @comment.discard "^_"))
 
 ; Macros
 (macro
@@ -124,10 +127,6 @@
 (macro
   "?"+ @keyword.directive
   name: (_) @keyword.directive)
-
-; Ignored variables
-((variable) @comment.discard
- (#match? @comment.discard "^_"))
 
 ; Parameters
 ; specs

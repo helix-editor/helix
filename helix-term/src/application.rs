@@ -139,6 +139,7 @@ impl Application {
             })),
             handlers,
         );
+        editor.set_theme(theme);
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -156,7 +157,7 @@ impl Application {
 
             // If the first file is a directory, skip it and open a picker
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                let picker = ui::file_picker(first, &config.load().editor);
+                let picker = ui::file_picker(&editor, first);
                 compositor.push(Box::new(overlaid(picker)));
             }
 
@@ -236,8 +237,6 @@ impl Application {
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
-
-        editor.set_theme(theme);
 
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
