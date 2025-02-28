@@ -21,7 +21,7 @@ use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
     command_line,
-    comment::{self, DEFAULT_COMMENT_TOKEN},
+    comment::{self},
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary},
