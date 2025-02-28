@@ -135,11 +135,11 @@ pub fn into_alternate_case(chars: impl Iterator<Item = char>, buf: &mut Tendril)
 }
 
 pub fn into_uppercase(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    *buf = chars.map(|ch| char::to_ascii_uppercase(&ch)).collect();
+    *buf = chars.flat_map(char::to_uppercase).collect();
 }
 
 pub fn into_lowercase(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    *buf = chars.map(|ch| char::to_ascii_lowercase(&ch)).collect();
+    *buf = chars.flat_map(char::to_lowercase).collect();
 }
 
 pub fn into_kebab_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
