@@ -1606,7 +1606,7 @@ fn tree_sitter_scopes(
 
 fn tree_sitter_injections(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -3238,7 +3238,11 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Display injected languages for the file.",
         fun: tree_sitter_injections,
-        signature: CommandSignature::none(),
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "debug-start",
