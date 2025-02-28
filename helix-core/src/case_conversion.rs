@@ -1,3 +1,5 @@
+use std::char::{ToLowercase, ToUppercase};
+
 use crate::Tendril;
 
 // todo: should this be grapheme aware?
@@ -87,24 +89,57 @@ pub fn separator_case_conversion(
     }
 }
 
-pub fn into_alternate_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    simple_case_conversion(chars, buf, |ch| {
-        if ch.is_uppercase() {
-            ch.to_ascii_lowercase()
-        } else if ch.is_lowercase() {
-            ch.to_ascii_uppercase()
-        } else {
-            *ch
+enum AlternateCase {
+    Upper(ToUppercase),
+    Lower(ToLowercase),
+    Keep(Option<char>),
+}
+
+impl Iterator for AlternateCase {
+    type Item = char;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            AlternateCase::Upper(upper) => upper.next(),
+            AlternateCase::Lower(lower) => lower.next(),
+            AlternateCase::Keep(ch) => ch.take(),
         }
-    });
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            AlternateCase::Upper(upper) => upper.size_hint(),
+            AlternateCase::Lower(lower) => lower.size_hint(),
+            AlternateCase::Keep(ch) => {
+                let n = if ch.is_some() { 1 } else { 0 };
+                (n, Some(n))
+            }
+        }
+    }
+}
+
+impl ExactSizeIterator for AlternateCase {}
+
+pub fn into_alternate_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    *buf = chars
+        .flat_map(|ch| {
+            if ch.is_lowercase() {
+                AlternateCase::Upper(ch.to_uppercase())
+            } else if ch.is_uppercase() {
+                AlternateCase::Lower(ch.to_lowercase())
+            } else {
+                AlternateCase::Keep(Some(ch))
+            }
+        })
+        .collect();
 }
 
 pub fn into_uppercase(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    simple_case_conversion(chars, buf, char::to_ascii_uppercase);
+    *buf = chars.map(|ch| char::to_ascii_uppercase(&ch)).collect();
 }
 
 pub fn into_lowercase(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    simple_case_conversion(chars, buf, char::to_ascii_lowercase);
+    *buf = chars.map(|ch| char::to_ascii_lowercase(&ch)).collect();
 }
 
 pub fn into_kebab_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {

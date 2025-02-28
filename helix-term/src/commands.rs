@@ -1739,37 +1739,6 @@ where
     exit_select_mode(cx);
 }
 
-enum CaseSwitcher {
-    Upper(ToUppercase),
-    Lower(ToLowercase),
-    Keep(Option<char>),
-}
-
-impl Iterator for CaseSwitcher {
-    type Item = char;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            CaseSwitcher::Upper(upper) => upper.next(),
-            CaseSwitcher::Lower(lower) => lower.next(),
-            CaseSwitcher::Keep(ch) => ch.take(),
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            CaseSwitcher::Upper(upper) => upper.size_hint(),
-            CaseSwitcher::Lower(lower) => lower.size_hint(),
-            CaseSwitcher::Keep(ch) => {
-                let n = if ch.is_some() { 1 } else { 0 };
-                (n, Some(n))
-            }
-        }
-    }
-}
-
-impl ExactSizeIterator for CaseSwitcher {}
-
 fn switch_case(cx: &mut Context) {
     switch_case_impl(cx, |string| {
         string
