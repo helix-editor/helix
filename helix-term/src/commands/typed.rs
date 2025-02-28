@@ -2399,9 +2399,9 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
     let is_dir = new_path.is_dir();
 
     let mut do_move = |old_path: PathBuf, editor: &mut Editor| {
-        let file_name = old_path
-            .file_name()
-            .context("Cannot move file: source is root directory")?;
+        let Some(file_name) = old_path.file_name() else {
+            bail!("Cannot move this path: {}", old_path.to_string_lossy());
+        };
         // Allow moving files into directories without repeating the file name in the new path.
         if is_dir {
             new_path.push(file_name);
