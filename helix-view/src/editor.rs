@@ -2,8 +2,8 @@ use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
     document::{
-        DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
-        WritingStrategy,
+        BackupStrategy, DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult,
+        Mode, SavePoint,
     },
     events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost},
     graphics::{CursorKind, Rect},
@@ -371,7 +371,7 @@ pub struct Config {
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
     /// `true`.
     pub editor_config: bool,
-    pub writing_strategy: WritingStrategy,
+    pub backup_strategy: BackupStrategy,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1019,7 +1019,7 @@ impl Default for Config {
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
-            writing_strategy: WritingStrategy::default(),
+            backup_strategy: BackupStrategy::default(),
         }
     }
 }

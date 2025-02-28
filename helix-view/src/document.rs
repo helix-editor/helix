@@ -68,11 +68,11 @@ pub enum Mode {
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, serde::Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub enum WritingStrategy {
+pub enum BackupStrategy {
     #[default]
-    MoveBackup,
-    CopyBackup,
-    Overwrite,
+    Move,
+    Copy,
+    None,
 }
 
 impl Display for Mode {
@@ -961,7 +961,7 @@ impl Document {
         let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
 
-        let writing_strategy_config = self.config.load().writing_strategy;
+        let backup_strategy_config = self.config.load().backup_strategy;
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::fs;
@@ -1005,19 +1005,19 @@ impl Document {
                 ));
             }
 
-            let writing_strategy = {
+            let backup_strategy = {
                 // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
                 let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
 
                 if is_hardlink {
-                    WritingStrategy::CopyBackup
+                    BackupStrategy::Copy
                 } else {
-                    writing_strategy_config
+                    backup_strategy_config
                 }
             };
 
-            let backup = match writing_strategy {
-                WritingStrategy::MoveBackup | WritingStrategy::CopyBackup if path.exists() => {
+            let backup = match backup_strategy {
+                BackupStrategy::Move | BackupStrategy::Copy if path.exists() => {
                     let path_ = write_path.clone();
                     // hacks: we use tempfile to handle the complex task of creating
                     // non clobbered temporary path for us we don't want
@@ -1029,14 +1029,14 @@ impl Document {
                             .prefix(path_.file_name()?)
                             .suffix(".bck")
                             .make_in(path_.parent()?, |backup| {
-                                match writing_strategy {
-                                    WritingStrategy::CopyBackup => {
+                                match backup_strategy {
+                                    BackupStrategy::Copy => {
                                         std::fs::copy(&path_, backup)?;
                                     }
-                                    WritingStrategy::MoveBackup => {
+                                    BackupStrategy::Move => {
                                         std::fs::rename(&path_, backup)?;
                                     }
-                                    WritingStrategy::Overwrite => unreachable!(),
+                                    BackupStrategy::None => unreachable!(),
                                 }
                                 Ok(())
                             })
@@ -1067,20 +1067,20 @@ impl Document {
 
             if let Err(err) = write_result {
                 if let Some(backup) = backup {
-                    match writing_strategy {
-                        WritingStrategy::CopyBackup => {
+                    match backup_strategy {
+                        BackupStrategy::Copy => {
                             // Restore backup
                             if let Err(e) = tokio::fs::copy(&backup, &write_path).await {
                                 log::error!("Failed to restore backup on write failure: {e}")
                             }
                         }
-                        WritingStrategy::MoveBackup => {
+                        BackupStrategy::Move => {
                             // restore backup
                             if let Err(e) = tokio::fs::rename(&backup, &write_path).await {
                                 log::error!("Failed to restore backup on write failure: {e}");
                             }
                         }
-                        WritingStrategy::Overwrite => unreachable!(),
+                        BackupStrategy::None => unreachable!(),
                     }
                 } else {
                     log::error!(
@@ -1089,7 +1089,7 @@ impl Document {
                 }
             } else if let Some(backup) = backup {
                 // backup exists & successfully saved. delete backup
-                if writing_strategy == WritingStrategy::MoveBackup {
+                if backup_strategy == BackupStrategy::Move {
                     // the file is newly created one, therefore the metadata must be copied
                     let backup = backup.clone();
                     let _ = tokio::task::spawn_blocking(move || {
