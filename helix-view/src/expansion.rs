@@ -31,6 +31,9 @@ pub enum Variable {
     ///
     /// This corresponds to `crate::Document::display_name`.
     BufferName,
+    /// The absolute path of the currently focused document. For scratch buffers this will default
+    /// to the current working directory.
+    FilePathAbsolute,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
 }
@@ -40,6 +43,7 @@ impl Variable {
         Self::CursorLine,
         Self::CursorColumn,
         Self::BufferName,
+        Self::FilePathAbsolute,
         Self::LineEnding,
     ];
 
@@ -48,6 +52,7 @@ impl Variable {
             Self::CursorLine => "cursor_line",
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
+            Self::FilePathAbsolute => "file_path_absolute",
             Self::LineEnding => "line_ending",
         }
     }
@@ -57,6 +62,7 @@ impl Variable {
             "cursor_line" => Some(Self::CursorLine),
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
+            "file_path_absolute" => Some(Self::FilePathAbsolute),
             "line_ending" => Some(Self::LineEnding),
             _ => None,
         }
@@ -213,6 +219,15 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             } else {
                 Ok(Cow::Borrowed(crate::document::SCRATCH_BUFFER_NAME))
             }
+        }
+        Variable::FilePathAbsolute => {
+            let path = match doc.path() {
+                Some(path) => path.to_owned(),
+                None => helix_stdx::env::current_working_dir(),
+            }
+            .to_string_lossy()
+            .to_string();
+            Ok(Cow::Owned(path))
         }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
     }
