@@ -1,7 +1,8 @@
-use std::{cmp::Reverse, ops::Range};
+use std::{cmp::Reverse, collections::VecDeque, ops::Range};
 
 use super::{LanguageLayer, LayerId};
 
+use ropey::RopeSlice;
 use slotmap::HopSlotMap;
 use tree_sitter::Node;
 
@@ -18,18 +19,18 @@ struct InjectionRange {
     depth: u32,
 }
 
-pub struct TreeCursor<'a> {
-    layers: &'a HopSlotMap<LayerId, LanguageLayer>,
+pub struct TreeCursor<'n> {
+    layers: &'n HopSlotMap<LayerId, LanguageLayer>,
     root: LayerId,
     current: LayerId,
     injection_ranges: Vec<InjectionRange>,
     // TODO: Ideally this would be a `tree_sitter::TreeCursor<'a>` but
     // that returns very surprising results in testing.
-    cursor: Node<'a>,
+    cursor: Node<'n>,
 }
 
-impl<'a> TreeCursor<'a> {
-    pub(super) fn new(layers: &'a HopSlotMap<LayerId, LanguageLayer>, root: LayerId) -> Self {
+impl<'n> TreeCursor<'n> {
+    pub(super) fn new(layers: &'n HopSlotMap<LayerId, LanguageLayer>, root: LayerId) -> Self {
         let mut injection_ranges = Vec::new();
 
         for (layer_id, layer) in layers.iter() {
@@ -61,7 +62,7 @@ impl<'a> TreeCursor<'a> {
         }
     }
 
-    pub fn node(&self) -> Node<'a> {
+    pub fn node(&self) -> Node<'n> {
         self.cursor
     }
 
@@ -165,6 +166,29 @@ impl<'a> TreeCursor<'a> {
         }
     }
 
+    /// Finds the first child node that is contained "inside" the given input
+    /// range, i.e. either start_new > start_old and end_new <= end old OR
+    /// start_new >= start_old and end_new < end_old
+    pub fn goto_first_contained_child(&'n mut self, range: &crate::Range, text: RopeSlice) -> bool {
+        self.first_contained_child(range, text).is_some()
+    }
+
+    /// Finds the first child node that is contained "inside" the given input
+    /// range, i.e. either start_new > start_old and end_new <= end old OR
+    /// start_new >= start_old and end_new < end_old
+    pub fn first_contained_child(
+        &'n mut self,
+        range: &crate::Range,
+        text: RopeSlice,
+    ) -> Option<Node<'n>> {
+        let (from, to) = range.into_byte_range(text);
+
+        self.into_iter().find(|&node| {
+            (node.start_byte() > from && node.end_byte() <= to)
+                || (node.start_byte() >= from && node.end_byte() < to)
+        })
+    }
+
     pub fn goto_next_sibling(&mut self) -> bool {
         self.goto_next_sibling_impl(false)
     }
@@ -217,7 +241,7 @@ impl<'a> TreeCursor<'a> {
 
     /// Returns an iterator over the children of the node the TreeCursor is on
     /// at the time this is called.
-    pub fn children(&'a mut self) -> ChildIter<'a> {
+    pub fn children(&'n mut self) -> ChildIter<'n> {
         let parent = self.node();
 
         ChildIter {
@@ -229,7 +253,7 @@ impl<'a> TreeCursor<'a> {
 
     /// Returns an iterator over the named children of the node the TreeCursor is on
     /// at the time this is called.
-    pub fn named_children(&'a mut self) -> ChildIter<'a> {
+    pub fn named_children(&'n mut self) -> ChildIter<'n> {
         let parent = self.node();
 
         ChildIter {
@@ -260,5 +284,56 @@ impl<'n> Iterator for ChildIter<'n> {
                 .goto_next_sibling_impl(self.named)
                 .then(|| self.cursor.node())
         }
+    }
+}
+
+impl<'n> IntoIterator for &'n mut TreeCursor<'n> {
+    type Item = Node<'n>;
+    type IntoIter = TreeRecursiveWalker<'n>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let mut queue = VecDeque::new();
+        let root = self.node();
+        queue.push_back(root);
+
+        TreeRecursiveWalker {
+            cursor: self,
+            queue,
+            root,
+        }
+    }
+}
+
+pub struct TreeRecursiveWalker<'n> {
+    cursor: &'n mut TreeCursor<'n>,
+    queue: VecDeque<Node<'n>>,
+    root: Node<'n>,
+}
+
+impl<'n> Iterator for TreeRecursiveWalker<'n> {
+    type Item = Node<'n>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.cursor.node();
+        log::debug!("recursive walk -- current: {current:?}");
+
+        if current != self.root && self.cursor.goto_next_named_sibling() {
+            self.queue.push_back(current);
+            log::debug!("recursive walk -- sibling: {:?}", self.cursor.node());
+            return Some(self.cursor.node());
+        }
+
+        while let Some(queued) = self.queue.pop_front() {
+            self.cursor.cursor = queued;
+
+            if !self.cursor.goto_first_named_child() {
+                continue;
+            }
+
+            log::debug!("recursive walk -- child: {:?}", self.cursor.node());
+            return Some(self.cursor.node());
+        }
+
+        None
     }
 }
