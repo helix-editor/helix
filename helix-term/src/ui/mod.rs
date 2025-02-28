@@ -507,7 +507,8 @@ pub fn file_explorer(
                                move_to_str: &str,
                                move_from: &Path| {
                     let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
-                    if let Err(err) = fs::rename(move_from, &move_to).map_err(|err| {
+
+                    if let Err(err) = cx.editor.move_path(move_from, &move_to).map_err(|err| {
                         format!(
                             "Unable to move {} {} -> {}: {err}",
                             if move_to_str.ends_with(std::path::MAIN_SEPARATOR) {
