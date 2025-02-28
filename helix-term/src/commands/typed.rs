@@ -206,7 +206,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
 
 fn align_text_impl(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
     event: PromptEvent,
     format: fn(usize, &str) -> String,
 ) -> anyhow::Result<()> {
@@ -252,30 +252,19 @@ fn align_text_impl(
     Ok(())
 }
 
-fn left(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
-    ensure!(args.len() <= 1, ":left takes at most 1 argument");
+fn left(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     align_text_impl(cx, args, event, |text_width, text| {
         format!("{:<text_width$}", text)
     })
 }
 
-fn center(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    ensure!(args.len() <= 1, ":center takes at most 1 argument");
+fn center(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     align_text_impl(cx, args, event, |text_width, text| {
         format!("{:^text_width$}", text)
     })
 }
 
-fn right(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    ensure!(args.len() <= 1, ":right takes at most 1 argument");
+fn right(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     align_text_impl(cx, args, event, |text_width, text| {
         format!("{:>text_width$}", text)
     })
@@ -3575,21 +3564,33 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Align text to the left, optionally pass a number overriding the current document's text width",
         fun: left,
-        signature: CommandSignature::none(),
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "center",
         aliases: &[],
         doc: "Center-align text, optionally pass a number overriding the current document's text width",
         fun: center,
-        signature: CommandSignature::none(),
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "right",
         aliases: &[],
         doc: "Align text to the right, optionally pass a number overriding the current document's text width",
         fun: right,
-        signature: CommandSignature::none(),
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
     },
 ];
 
