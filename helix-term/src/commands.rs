@@ -441,6 +441,7 @@ impl MappableCommand {
         goto_last_modification, "Goto last modification",
         goto_line, "Goto line",
         goto_last_line, "Goto last line",
+        extend_to_last_line, "Extend to last line",
         goto_first_diag, "Goto first diagnostic",
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
@@ -3803,6 +3804,14 @@ fn goto_line_without_jumplist(
 }
 
 fn goto_last_line(cx: &mut Context) {
+    goto_last_line_impl(cx, Movement::Move)
+}
+
+fn extend_to_last_line(cx: &mut Context) {
+    goto_last_line_impl(cx, Movement::Extend)
+}
+
+fn goto_last_line_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let line_idx = if text.line(text.len_lines() - 1).len_chars() == 0 {
@@ -3815,7 +3824,7 @@ fn goto_last_line(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| range.put_cursor(text, pos, cx.editor.mode == Mode::Select));
+        .transform(|range| range.put_cursor(text, pos, movement == Movement::Extend));
 
     push_jump(view, doc);
     doc.set_selection(view.id, selection);
