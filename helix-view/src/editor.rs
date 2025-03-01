@@ -2,8 +2,8 @@ use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
     document::{
-        BackupStrategy, DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult,
-        Mode, SavePoint,
+        BackupConfig, DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode,
+        SavePoint,
     },
     events::DocumentFocusLost,
     graphics::{CursorKind, Rect},
@@ -361,7 +361,7 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
-    pub backup_strategy: BackupStrategy,
+    pub backup: BackupConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1003,7 +1003,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
-            backup_strategy: BackupStrategy::default(),
+            backup: BackupConfig::default(),
         }
     }
 }
