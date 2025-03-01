@@ -82,7 +82,7 @@ pub fn char_is_punctuation(ch: char) -> bool {
 
 #[inline]
 pub fn char_is_word(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '_'
+    ch.is_alphanumeric() || ch == '_' || ch == '-'
 }
 
 #[cfg(test)]
