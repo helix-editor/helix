@@ -1092,6 +1092,13 @@ impl Document {
                                 log::error!(
                                     "Failed to restore backup on write failure: {restore_err}"
                                 )
+                            } else {
+                                // successfully restored. delete backup
+                                if let Err(delete_err) = tokio::fs::remove_file(backup).await {
+                                    log::error!(
+                                        "Failed to remove backup file on write: {delete_err}"
+                                    );
+                                }
                             }
                         }
                         BackupKind::Move => {
