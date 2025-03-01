@@ -103,6 +103,7 @@ hint = "waveAqua1"
 "markup.heading.marker" = "springViolet2"
 "markup.heading.1" = { fg = "carpYellow", modifiers = ["bold"] }
 "markup.heading.2" = { fg = "crystalBlue", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "waveAqua2", modifiers = ["bold"] }
 "markup.list" = "sakuraPink"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
