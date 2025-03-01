@@ -19,6 +19,7 @@ use helix_core::{
     movement::Direction,
     syntax::{self, HighlightEvent},
     text_annotations::TextAnnotations,
+    textobject::find_word_boundaries,
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
@@ -27,7 +28,7 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
-    input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
+    input::{KeyEvent, MouseButton, MouseClick, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
@@ -1177,22 +1178,42 @@ impl EditorView {
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
                     let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
+                    let text = doc.text().slice(..);
 
-                    if modifiers == KeyModifiers::ALT {
-                        let selection = doc.selection(view_id).clone();
-                        doc.set_selection(view_id, selection.push(Range::point(pos)));
-                    } else if editor.mode == Mode::Select {
-                        // Discards non-primary selections for consistent UX with normal mode
-                        let primary = doc.selection(view_id).primary().put_cursor(
-                            doc.text().slice(..),
-                            pos,
-                            true,
-                        );
-                        editor.mouse_down_range = Some(primary);
-                        doc.set_selection(view_id, Selection::single(primary.anchor, primary.head));
-                    } else {
-                        doc.set_selection(view_id, Selection::point(pos));
-                    }
+                    let selection = match editor.mouse_clicks.register_click(pos, view_id) {
+                        MouseClick::Single => {
+                            if modifiers == KeyModifiers::ALT {
+                                let selection = doc.selection(view_id).clone();
+                                selection.push(Range::point(pos))
+                            } else if editor.mode == Mode::Select {
+                                // Discards non-primary selections for consistent UX with normal mode
+                                let primary = doc.selection(view_id).primary().put_cursor(
+                                    doc.text().slice(..),
+                                    pos,
+                                    true,
+                                );
+                                editor.mouse_down_range = Some(primary);
+
+                                Selection::single(primary.anchor, primary.head)
+                            } else {
+                                Selection::point(pos)
+                            }
+                        }
+                        MouseClick::Double => {
+                            let (word_start, word_end) = find_word_boundaries(text, pos, false);
+
+                            Selection::single(word_start, word_end)
+                        }
+                        MouseClick::Triple => {
+                            let current_line = text.char_to_line(pos);
+                            let line_start = text.line_to_char(current_line);
+                            let line_end = text.line_to_char(current_line + 1);
+
+                            Selection::single(line_start, line_end)
+                        }
+                    };
+
+                    doc.set_selection(view_id, selection);
 
                     if view_id != prev_view_id {
                         self.clear_completion(editor);
