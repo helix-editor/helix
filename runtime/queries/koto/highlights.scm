@@ -91,13 +91,13 @@
 (identifier) @variable
 
 (import_module
-  (identifier) @module)
+  (identifier) @namespace)
 
 (import_item
-  (identifier) @module)
+  (identifier) @namespace)
 
 (export
-  (identifier) @module)
+  (identifier) @namespace)
 
 (call
   function: (identifier) @function.method)
