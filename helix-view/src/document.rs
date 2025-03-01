@@ -68,8 +68,19 @@ pub enum Mode {
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, serde::Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub enum BackupStrategy {
+pub struct BackupConfig {
+    pub kind: BackupConfigKind,
+}
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, serde::Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub enum BackupConfigKind {
     #[default]
+    Auto,
+    Copy,
+    None,
+}
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum BackupKind {
     Move,
     Copy,
     None,
@@ -961,7 +972,7 @@ impl Document {
         let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
 
-        let backup_strategy_config = self.config.load().backup_strategy;
+        let backup_config_kind = self.config.load().backup.kind;
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::fs;
@@ -1005,19 +1016,26 @@ impl Document {
                 ));
             }
 
-            let backup_strategy = {
-                // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
-                let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
+            let backup_kind = {
+                match backup_config_kind {
+                    BackupConfigKind::Copy => BackupKind::Copy,
+                    BackupConfigKind::None => BackupKind::None,
+                    BackupConfigKind::Auto => {
+                        // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
+                        let is_hardlink =
+                            helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
 
-                if is_hardlink {
-                    BackupStrategy::Copy
-                } else {
-                    backup_strategy_config
+                        if is_hardlink {
+                            BackupKind::Copy
+                        } else {
+                            BackupKind::Move
+                        }
+                    }
                 }
             };
 
-            let backup = match backup_strategy {
-                BackupStrategy::Move | BackupStrategy::Copy if path.exists() => {
+            let backup = match backup_kind {
+                BackupKind::Copy | BackupKind::Move if path.exists() => {
                     let path_ = write_path.clone();
                     // hacks: we use tempfile to handle the complex task of creating
                     // non clobbered temporary path for us we don't want
@@ -1029,14 +1047,14 @@ impl Document {
                             .prefix(path_.file_name()?)
                             .suffix(".bck")
                             .make_in(path_.parent()?, |backup| {
-                                match backup_strategy {
-                                    BackupStrategy::Copy => {
+                                match backup_kind {
+                                    BackupKind::Copy => {
                                         std::fs::copy(&path_, backup)?;
                                     }
-                                    BackupStrategy::Move => {
+                                    BackupKind::Move => {
                                         std::fs::rename(&path_, backup)?;
                                     }
-                                    BackupStrategy::None => unreachable!(),
+                                    BackupKind::None => unreachable!(),
                                 }
                                 Ok(())
                             })
@@ -1065,31 +1083,36 @@ impl Document {
                 .and_then(|metadata| metadata.modified())
                 .unwrap_or_else(|_| SystemTime::now());
 
-            if let Err(err) = write_result {
+            if let Err(write_err) = write_result {
                 if let Some(backup) = backup {
-                    match backup_strategy {
-                        BackupStrategy::Copy => {
+                    match backup_kind {
+                        BackupKind::Copy => {
                             // Restore backup
-                            if let Err(e) = tokio::fs::copy(&backup, &write_path).await {
-                                log::error!("Failed to restore backup on write failure: {e}")
+                            if let Err(restore_err) = tokio::fs::copy(&backup, &write_path).await {
+                                log::error!(
+                                    "Failed to restore backup on write failure: {restore_err}"
+                                )
                             }
                         }
-                        BackupStrategy::Move => {
+                        BackupKind::Move => {
                             // restore backup
-                            if let Err(e) = tokio::fs::rename(&backup, &write_path).await {
-                                log::error!("Failed to restore backup on write failure: {e}");
+                            if let Err(restore_err) = tokio::fs::rename(&backup, &write_path).await
+                            {
+                                log::error!(
+                                    "Failed to restore backup on write failure: {restore_err}"
+                                );
                             }
                         }
-                        BackupStrategy::None => unreachable!(),
+                        BackupKind::None => unreachable!(),
                     }
                 } else {
                     log::error!(
-                        "Failed to restore backup on write failure (backup doesn't exist) for write error: {err}"
+                        "Failed to restore backup on write failure (backup doesn't exist) for write error: {write_err}"
                     );
                 }
             } else if let Some(backup) = backup {
                 // backup exists & successfully saved. delete backup
-                if backup_strategy == BackupStrategy::Move {
+                if backup_kind == BackupKind::Move {
                     // the file is newly created one, therefore the metadata must be copied
                     let backup = backup.clone();
                     let _ = tokio::task::spawn_blocking(move || {
