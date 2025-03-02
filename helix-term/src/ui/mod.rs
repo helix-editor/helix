@@ -1,6 +1,7 @@
 mod completion;
 mod document;
 pub(crate) mod editor;
+mod extension;
 mod info;
 pub mod lsp;
 mod markdown;
@@ -399,13 +400,18 @@ pub mod completers {
             .collect()
     }
 
-    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn theme(editor: &Editor, input: &str) -> Vec<Completion> {
         let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
         for rt_dir in helix_loader::runtime_dirs() {
             names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
         }
+
         names.push("default".into());
         names.push("base16_default".into());
+
+        // Include any user defined themes as well
+        names.extend(editor.user_defined_themes.keys().map(|x| x.into()));
+
         names.sort();
         names.dedup();
 

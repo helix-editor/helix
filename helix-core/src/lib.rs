@@ -33,6 +33,8 @@ mod transaction;
 pub mod uri;
 pub mod wrap;
 
+pub mod extensions;
+
 pub mod unicode {
     pub use unicode_general_category as category;
     pub use unicode_segmentation as segmentation;
