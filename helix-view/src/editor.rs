@@ -4,7 +4,7 @@ use crate::{
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
-    events::DocumentFocusLost,
+    events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -1783,10 +1783,16 @@ impl Editor {
             let id = self.new_document(doc);
             self.launch_language_servers(id);
 
+            helix_event::dispatch(DocumentDidOpen {
+                editor: self,
+                doc: id,
+            });
+
             id
         };
 
         self.switch(id, action);
+
         Ok(id)
     }
 
@@ -1800,7 +1806,7 @@ impl Editor {
     }
 
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
-        let doc = match self.documents.get_mut(&doc_id) {
+        let doc = match self.documents.remove(&doc_id) {
             Some(doc) => doc,
             None => return Err(CloseError::DoesNotExist),
         };
@@ -1810,10 +1816,6 @@ impl Editor {
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
-
-        for language_server in doc.language_servers() {
-            language_server.text_document_did_close(doc.identifier());
-        }
 
         enum Action {
             Close(ViewId),
@@ -1851,8 +1853,6 @@ impl Editor {
             }
         }
 
-        self.documents.remove(&doc_id);
-
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view
         // containing either an existing document, or a brand new document.
@@ -1871,6 +1871,8 @@ impl Editor {
         }
 
         self._refresh();
+
+        helix_event::dispatch(DocumentDidClose { editor: self, doc });
 
         Ok(())
     }

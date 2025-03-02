@@ -46,3 +46,7 @@ impl Handlers {
         send_blocking(&self.signature_hints, event)
     }
 }
+
+pub fn register_hooks(handlers: &Handlers) {
+    lsp::register_hooks(handlers);
+}

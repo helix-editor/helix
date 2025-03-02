@@ -2,12 +2,17 @@ use std::collections::btree_map::Entry;
 use std::fmt::Display;
 
 use crate::editor::Action;
-use crate::events::DiagnosticsDidChange;
+use crate::events::{
+    DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
+};
 use crate::Editor;
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
+use helix_event::register_hook;
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
+
+use super::Handlers;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {
@@ -380,4 +385,51 @@ impl Editor {
             }
         });
     }
+}
+
+pub fn register_hooks(_handlers: &Handlers) {
+    register_hook!(move |event: &mut LanguageServerInitialized<'_>| {
+        let language_server = event.editor.language_server_by_id(event.server_id).unwrap();
+
+        for doc in event
+            .editor
+            .documents()
+            .filter(|doc| doc.supports_language_server(event.server_id))
+        {
+            let Some(url) = doc.url() else {
+                continue;
+            };
+
+            let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
+
+            language_server.text_document_did_open(url, doc.version(), doc.text(), language_id);
+        }
+
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut DocumentDidChange<'_>| {
+        // Send textDocument/didChange notifications.
+        if !event.ghost_transaction {
+            for language_server in event.doc.language_servers() {
+                language_server.text_document_did_change(
+                    event.doc.versioned_identifier(),
+                    event.old_text,
+                    event.doc.text(),
+                    event.changes,
+                );
+            }
+        }
+
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut DocumentDidClose<'_>| {
+        // Send textDocument/didClose notifications.
+        for language_server in event.doc.language_servers() {
+            language_server.text_document_did_close(event.doc.identifier());
+        }
+
+        Ok(())
+    });
 }

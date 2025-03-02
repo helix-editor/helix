@@ -29,6 +29,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
         auto_save,
     };
 
+    helix_view::handlers::register_hooks(&handlers);
     completion::register_hooks(&handlers);
     signature_help::register_hooks(&handlers);
     auto_save::register_hooks(&handlers);

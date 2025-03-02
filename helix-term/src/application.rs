@@ -704,28 +704,10 @@ impl Application {
                             language_server.did_change_configuration(config.clone());
                         }
 
-                        let docs = self
-                            .editor
-                            .documents()
-                            .filter(|doc| doc.supports_language_server(server_id));
-
-                        // trigger textDocument/didOpen for docs that are already open
-                        for doc in docs {
-                            let url = match doc.url() {
-                                Some(url) => url,
-                                None => continue, // skip documents with no path
-                            };
-
-                            let language_id =
-                                doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
-
-                            language_server.text_document_did_open(
-                                url,
-                                doc.version(),
-                                doc.text(),
-                                language_id,
-                            );
-                        }
+                        helix_event::dispatch(helix_view::events::LanguageServerInitialized {
+                            editor: &mut self.editor,
+                            server_id,
+                        });
                     }
                     Notification::PublishDiagnostics(params) => {
                         let uri = match helix_core::Uri::try_from(params.uri) {
@@ -869,6 +851,11 @@ impl Application {
                         for doc in self.editor.documents_mut() {
                             doc.clear_diagnostics_for_language_server(server_id);
                         }
+
+                        helix_event::dispatch(helix_view::events::LanguageServerExited {
+                            editor: &mut self.editor,
+                            server_id,
+                        });
 
                         // Remove the language server from the registry.
                         self.editor.language_servers.remove_by_id(server_id);

@@ -1489,19 +1489,6 @@ impl Document {
             });
         }
 
-        if emit_lsp_notification {
-            // TODO: move to hook
-            // emit lsp notification
-            for language_server in self.language_servers() {
-                let _ = language_server.text_document_did_change(
-                    self.versioned_identifier(),
-                    &old_doc,
-                    self.text(),
-                    changes,
-                );
-            }
-        }
-
         true
     }
 
