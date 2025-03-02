@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use helix_core::syntax;
+use helix_core::syntax::{self, OverlayHighlights};
 use helix_view::graphics::{Margin, Rect, Style};
 use helix_view::input::Event;
 use tui::buffer::Buffer;
@@ -102,13 +102,12 @@ impl Component for SignatureHelp {
             .unwrap_or_else(|| &self.signatures[0]);
 
         let active_param_span = signature.active_param_range.map(|(start, end)| {
-            vec![(
-                cx.editor
-                    .theme
-                    .find_scope_index_exact("ui.selection")
-                    .unwrap(),
-                start..end,
-            )]
+            let highlight = cx
+                .editor
+                .theme
+                .find_highlight_exact("ui.selection")
+                .unwrap();
+            OverlayHighlights::single(highlight, start..end)
         });
 
         let signature = self
@@ -120,7 +119,7 @@ impl Component for SignatureHelp {
             signature.signature.as_str(),
             &self.language,
             Some(&cx.editor.theme),
-            Arc::clone(&self.config_loader),
+            &self.config_loader.load(),
             active_param_span,
         );
 
@@ -178,7 +177,7 @@ impl Component for SignatureHelp {
             signature.signature.as_str(),
             &self.language,
             None,
-            Arc::clone(&self.config_loader),
+            &self.config_loader.load(),
             None,
         );
         let (sig_width, sig_height) =

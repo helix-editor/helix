@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
-use helix_core::hashmap;
+use helix_core::{hashmap, syntax::Highlight};
 use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
@@ -294,13 +294,13 @@ fn build_theme_values(
 
 impl Theme {
     #[inline]
-    pub fn highlight(&self, index: usize) -> Style {
-        self.highlights[index]
+    pub fn highlight(&self, highlight: Highlight) -> Style {
+        self.highlights[highlight.idx()]
     }
 
     #[inline]
-    pub fn scope(&self, index: usize) -> &str {
-        &self.scopes[index]
+    pub fn scope(&self, highlight: Highlight) -> &str {
+        &self.scopes[highlight.idx()]
     }
 
     pub fn name(&self) -> &str {
@@ -331,13 +331,16 @@ impl Theme {
         &self.scopes
     }
 
-    pub fn find_scope_index_exact(&self, scope: &str) -> Option<usize> {
-        self.scopes().iter().position(|s| s == scope)
+    pub fn find_highlight_exact(&self, scope: &str) -> Option<Highlight> {
+        self.scopes()
+            .iter()
+            .position(|s| s == scope)
+            .map(|idx| Highlight::new(idx as u32))
     }
 
-    pub fn find_scope_index(&self, mut scope: &str) -> Option<usize> {
+    pub fn find_highlight(&self, mut scope: &str) -> Option<Highlight> {
         loop {
-            if let Some(highlight) = self.find_scope_index_exact(scope) {
+            if let Some(highlight) = self.find_highlight_exact(scope) {
                 return Some(highlight);
             }
             if let Some(new_end) = scope.rfind('.') {
