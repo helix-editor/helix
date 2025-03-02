@@ -1,10 +1,15 @@
 {
   pkgs,
+  lib,
   rustPlatform,
   stdenv,
+  callPackage,
+  runCommand,
+  installShellFiles,
+  git,
   ...
 }: let
-  fs = pkgs.lib.fileset;
+  fs = lib.fileset;
 
   src = fs.difference (fs.gitTracked ./.) (fs.unions [
     ./.envrc
@@ -13,7 +18,7 @@
     ./book
     ./docs
     ./flake.lock
-    (fs.fileFilter (file: pkgs.lib.strings.hasInfix ".git" file.name) ./.)
+    (fs.fileFilter (file: lib.strings.hasInfix ".git" file.name) ./.)
     (fs.fileFilter (file: file.hasExt "svg") ./.)
     (fs.fileFilter (file: file.hasExt "md") ./.)
     (fs.fileFilter (file: file.hasExt "nix") ./.)
@@ -23,8 +28,8 @@
   # that they reside in. It is built by calling the derivation in the
   # grammars.nix file, then taking the runtime directory in the git repo
   # and hooking symlinks up to it.
-  grammars = pkgs.callPackage ./grammars.nix {};
-  runtimeDir = pkgs.runCommand "helix-runtime" {} ''
+  grammars = callPackage ./grammars.nix {};
+  runtimeDir = runCommand "helix-runtime" {} ''
     mkdir -p $out
     ln -s ${./runtime}/* $out
     rm -r $out/grammars
@@ -35,16 +40,11 @@ in
   # hooked up. To get around this while having good customization, mkDerivation is
   # used instead.
   rustPlatform.buildRustPackage (self: {
-    # START: Reevaluate the below attrs when
-    # https://github.com/NixOS/nixpkgs/pull/354999
-    # or
-    # https://github.com/NixOS/nixpkgs/pull/194475
-    # Are merged.
     cargoLock.lockFile = ./Cargo.lock;
 
     nativeBuildInputs = [
-      pkgs.installShellFiles
-      pkgs.git
+      installShellFiles
+      git
     ];
 
     buildType = "release";
