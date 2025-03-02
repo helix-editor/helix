@@ -6,13 +6,14 @@ use helix_event::AsyncHook;
 use crate::config::Config;
 use crate::events;
 use crate::handlers::auto_save::AutoSaveHandler;
+use crate::handlers::diagnostics::PullDiagnosticsHandler;
 use crate::handlers::signature_help::SignatureHelpHandler;
 
 pub use helix_view::handlers::Handlers;
 
 mod auto_save;
 pub mod completion;
-mod diagnostics;
+pub mod diagnostics;
 mod signature_help;
 mod snippet;
 
@@ -22,11 +23,13 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     let event_tx = completion::CompletionHandler::new(config).spawn();
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
+    let pull_diagnostics = PullDiagnosticsHandler::new().spawn();
 
     let handlers = Handlers {
         completions: helix_view::handlers::completion::CompletionHandler::new(event_tx),
         signature_hints,
         auto_save,
+        pull_diagnostics,
     };
 
     completion::register_hooks(&handlers);
