@@ -768,7 +768,6 @@ impl Application {
                             uri,
                             params.version,
                             params.diagnostics,
-                            None,
                         );
                     }
                     Notification::ShowMessage(params) => {
