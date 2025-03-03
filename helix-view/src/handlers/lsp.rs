@@ -285,7 +285,6 @@ impl Editor {
         uri: Uri,
         version: Option<i32>,
         mut diagnostics: Vec<lsp::Diagnostic>,
-        report_id: Option<String>,
     ) {
         let doc = self
             .documents
@@ -366,10 +365,6 @@ impl Editor {
                 &unchanged_diag_sources,
                 Some(diagnostic_provider),
             );
-
-            if report_id.is_some() {
-                doc.previous_diagnostic_id = report_id;
-            }
 
             let doc = doc.id();
             helix_event::dispatch(DiagnosticsDidChange { editor: self, doc });
