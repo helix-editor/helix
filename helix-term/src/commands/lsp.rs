@@ -14,7 +14,8 @@ use tui::{text::Span, widgets::Row};
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection, Uri,
+    diagnostic::DiagnosticProvider, syntax::LanguageServerFeature,
+    text_annotations::InlineAnnotation, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -209,7 +210,7 @@ type DiagnosticsPicker = Picker<PickerDiagnostic, DiagnosticStyles>;
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+    diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>,
     format: DiagnosticsFormat,
 ) -> DiagnosticsPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
@@ -219,8 +220,8 @@ fn diag_picker(
     for (uri, diags) in diagnostics {
         flat_diag.reserve(diags.len());
 
-        for (diag, ls) in diags {
-            if let Some(ls) = cx.editor.language_server_by_id(ls) {
+        for (diag, provider) in diags {
+            if let Some(ls) = cx.editor.language_server_by_id(provider.into()) {
                 flat_diag.push(PickerDiagnostic {
                     location: Location {
                         uri: uri.clone(),
