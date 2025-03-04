@@ -73,8 +73,9 @@ in
     postInstall = ''
       mkdir -p $out/lib
       installShellCompletion ${./contrib/completion}/hx.{bash,fish,zsh}
-      mkdir -p $out/share/{applications,icons/hicolor/256x256/apps}
+      mkdir -p $out/share/{applications,icons/hicolor/{256x256,scalable}/apps}
       cp ${./contrib/Helix.desktop} $out/share/applications
+      cp ${./logo.svg} $out/share/icons/hicolor/scalable/apps/helix.svg
       cp ${./contrib/helix.png} $out/share/icons/hicolor/256x256/apps
     '';
 
