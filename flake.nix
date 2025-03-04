@@ -16,7 +16,9 @@
     flake-utils,
     rust-overlay,
     ...
-  }:
+  }: let
+    gitRev = self.rev or self.dirtyRev or null;
+  in
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {
         inherit system;
@@ -31,13 +33,20 @@
       };
     in {
       packages = rec {
-        helix = pkgs.callPackage ./default.nix {};
+        helix = pkgs.callPackage ./default.nix {inherit gitRev;};
 
-        # The default Helix build. Uses the latest stable Rust toolchain, and unstable
-        # nixpkgs.
-        #
-        # This can be overridden though to add Cargo Features, flags, and different toolchains with
-        # packages.${system}.default.override { ... };
+        /**
+        The default Helix build. Uses the latest stable Rust toolchain, and unstable
+        nixpkgs.
+        
+        The build inputs can be overriden with the following:
+         
+        packages.${system}.default.override { rustPlatform = newPlatform; };
+         
+        Overriding a derivation attribute can be done as well:
+        
+        packages.${system}.default.overrideAttrs { buildType = "debug"; };
+        */ 
         default = helix;
       };
 
@@ -71,7 +80,7 @@
     })
     // {
       overlays.default = final: prev: {
-        helix = final.callPackage ./default.nix {};
+        helix = final.callPackage ./default.nix {inherit gitRev;};
       };
     };
 

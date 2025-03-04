@@ -5,6 +5,7 @@
   runCommand,
   installShellFiles,
   git,
+  gitRev ? null,
   ...
 }: let
   fs = lib.fileset;
@@ -34,9 +35,6 @@
     ln -s ${grammars} $out/grammars
   '';
 in
-  # Currently rustPlatform.buildRustPackage doesn't have the finalAttrs pattern
-  # hooked up. To get around this while having good customization, mkDerivation is
-  # used instead.
   rustPlatform.buildRustPackage (self: {
     cargoLock = {
       lockFile = ./Cargo.lock;
@@ -63,7 +61,7 @@ in
     HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
 
     # So Helix knows what rev it is.
-    HELIX_NIX_BUILD_REV = self.rev or self.dirtyRev or null;
+    HELIX_NIX_BUILD_REV = gitRev;
 
     doCheck = false;
     strictDeps = true;
