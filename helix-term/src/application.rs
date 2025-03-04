@@ -761,7 +761,7 @@ impl Application {
                         }
 
                         let diagnostic_provider =
-                            DiagnosticProvider::PublishDiagnosticProvider(language_server.id());
+                            DiagnosticProvider::from_server_id(language_server.id());
 
                         self.editor.handle_lsp_diagnostics(
                             &diagnostic_provider,
