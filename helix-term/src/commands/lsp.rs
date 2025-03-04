@@ -1415,7 +1415,7 @@ fn compute_color_swatches_for_view(
     let doc_id = view.doc;
 
     let language_server = doc
-        .language_servers_with_feature(LanguageServerFeature::ColorProvider)
+        .language_servers_with_feature(LanguageServerFeature::DocumentColors)
         .next()?;
 
     let (first_line, last_line) = doc.inline_annotations_line_range(view.inner_height(), view.id);
