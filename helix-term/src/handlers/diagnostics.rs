@@ -122,7 +122,18 @@ pub fn pull_diagnostics_for_document(
         return;
     };
 
-    let provider = DiagnosticProvider::PullDiagnosticProvider(language_server.id());
+    let identifier = language_server
+        .capabilities()
+        .diagnostic_provider
+        .as_ref()
+        .and_then(|diagnostic_provider| match diagnostic_provider {
+            lsp::DiagnosticServerCapabilities::Options(options) => options.identifier.clone(),
+            lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
+                options.diagnostic_options.identifier.clone()
+            }
+        });
+
+    let provider = DiagnosticProvider::from_server_and_identifier(language_server.id(), identifier);
     let document_id = doc.id();
 
     tokio::spawn(async move {
