@@ -38,7 +38,13 @@ in
   # hooked up. To get around this while having good customization, mkDerivation is
   # used instead.
   rustPlatform.buildRustPackage (self: {
-    cargoLock.lockFile = ./Cargo.lock;
+    cargoLock = {
+      lockFile = ./Cargo.lock;
+      # This is not allowed in nixpkgs but is very convenient here: it allows us to
+      # avoid specifying `outputHashes` here for any git dependencies we might take
+      # on temporarily.
+      allowBuiltinFetchGit = true;
+    };
 
     nativeBuildInputs = [
       installShellFiles
