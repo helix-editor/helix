@@ -1,8 +1,6 @@
 {
-  pkgs,
   lib,
   rustPlatform,
-  stdenv,
   callPackage,
   runCommand,
   installShellFiles,

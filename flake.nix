@@ -16,8 +16,7 @@
     flake-utils,
     rust-overlay,
     ...
-  }: let
-  in
+  }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {
         inherit system;
