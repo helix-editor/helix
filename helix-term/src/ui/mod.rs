@@ -35,7 +35,6 @@ use tui::text::Span;
 
 use std::fs;
 use std::path::Path;
-use std::sync::Arc;
 use std::{error::Error, path::PathBuf};
 
 use self::picker::PickerKeyHandler;
@@ -293,32 +292,22 @@ type FileExplorer = Picker<ExplorerItem, ExplorerData>;
 
 type KeyHandler = PickerKeyHandler<ExplorerItem, ExplorerData>;
 
-type OverwritePath = fn(
-    cursor: u32,
-    cx: &mut Context,
-    picker_root: PathBuf,
-    &str,
-    &Path,
-) -> Option<Result<String, String>>;
-
-fn confirm_before_overwriting(
+/// Create a prompt that asks for the user's confirmation before overwriting a path
+fn confirm_before_overwriting<F>(
+    // Path that we are overwriting
     overwriting: PathBuf,
-    cursor: u32,
+    // Overwrite this path with
+    overwrite_with: PathBuf,
     cx: &mut Context,
-    operation_input_str: String,
-    operation_input: PathBuf,
     picker_root: PathBuf,
-    overwrite: OverwritePath,
-) -> Option<Result<String, String>> {
+    overwrite: F,
+) -> Option<Result<String, String>>
+where
+    F: Fn(&mut Context, PathBuf, &Path) -> Option<Result<String, String>> + Send + 'static,
+{
     // No need for confirmation, as the path does not exist. We can freely write to it
     if !overwriting.exists() {
-        return overwrite(
-            cursor,
-            cx,
-            picker_root,
-            &operation_input_str,
-            &operation_input,
-        );
+        return overwrite(cx, picker_root, &overwrite_with);
     }
     let callback = Box::pin(async move {
         let call: Callback = Callback::EditorCompositor(Box::new(move |_editor, compositor| {
@@ -335,13 +324,7 @@ fn confirm_before_overwriting(
                         return;
                     };
 
-                    match overwrite(
-                        cursor,
-                        cx,
-                        picker_root.clone(),
-                        &operation_input_str,
-                        &operation_input,
-                    ) {
+                    match overwrite(cx, picker_root.clone(), &overwrite_with) {
                         Some(Ok(msg)) => cx.editor.set_status(msg),
                         Some(Err(msg)) => cx.editor.set_error(msg),
                         None => (),
@@ -358,17 +341,19 @@ fn confirm_before_overwriting(
     None
 }
 
-type FileOperation = fn(PathBuf, u32, &mut Context, &Path, &str) -> Option<Result<String, String>>;
-
-fn create_file_operation_prompt(
-    cursor: u32,
-    prompt: fn(&Path) -> String,
+fn create_file_operation_prompt<F>(
     cx: &mut Context,
+    // Currently selected path of the picker
     path: &Path,
-    data: Arc<ExplorerData>,
-    compute_initial_line: fn(&Path) -> String,
-    file_op: FileOperation,
-) {
+    // Text value of the prompt
+    prompt: fn(&Path) -> String,
+    // What to fill user's input with
+    prefill: fn(&Path) -> String,
+    // Action to take when the operation runs
+    file_op: F,
+) where
+    F: Fn(&mut Context, &PathBuf, String) -> Option<Result<String, String>> + Send + 'static,
+{
     cx.editor.file_explorer_selected_path = Some(path.to_path_buf());
     let callback = Box::pin(async move {
         let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
@@ -389,7 +374,7 @@ fn create_file_operation_prompt(
                     let path = cx.editor.file_explorer_selected_path.clone();
 
                     if let Some(path) = path {
-                        match file_op(data.0.clone(), cursor, cx, &path, input) {
+                        match file_op(cx, &path, input.to_owned()) {
                             Some(Ok(msg)) => cx.editor.set_status(msg),
                             Some(Err(msg)) => cx.editor.set_error(msg),
                             None => cx.editor.clear_status(),
@@ -402,7 +387,7 @@ fn create_file_operation_prompt(
             );
 
             if let Some(path_editing) = &editor.file_explorer_selected_path {
-                prompt.set_line_no_recalculate(compute_initial_line(path_editing));
+                prompt.set_line_no_recalculate(prefill(path_editing));
             }
 
             compositor.push(Box::new(prompt));
@@ -451,32 +436,25 @@ pub fn file_explorer(
 
     let create: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
-            cursor,
-            |_| "Create: ".into(),
             cx,
             path,
-            data,
+            |_| "Create: ".into(),
             |path| {
                 path.parent()
                     .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
                     .unwrap_or_default()
             },
-            |root, cursor, cx, _, to_create_str| {
-                let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
+            move |cx, _, to_create_string| {
+                let root = data.0.clone();
+                let to_create = helix_stdx::path::expand_tilde(PathBuf::from(&to_create_string));
 
                 confirm_before_overwriting(
                     to_create.to_path_buf(),
-                    cursor,
-                    cx,
-                    to_create_str.to_string(),
                     to_create.to_path_buf(),
+                    cx,
                     root,
-                    |cursor: u32,
-                     cx: &mut Context,
-                     root: PathBuf,
-                     to_create_str: &str,
-                     to_create: &Path| {
-                        if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
+                    move |cx: &mut Context, root: PathBuf, to_create: &Path| {
+                        if to_create_string.ends_with(std::path::MAIN_SEPARATOR) {
                             if let Err(err_create_dir) =
                                 fs::create_dir_all(to_create).map_err(|err| {
                                     format!(
@@ -523,33 +501,27 @@ pub fn file_explorer(
 
     let move_: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
-            cursor,
-            |path| format!("Move {} -> ", path.display()),
             cx,
             path,
-            data,
+            |path| format!("Move {} -> ", path.display()),
             |path| path.display().to_string(),
-            |root, cursor, cx, move_from, move_to_str| {
-                let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
+            move |cx, move_from, move_to_string| {
+                let root = data.0.clone();
+                let move_to = helix_stdx::path::expand_tilde(PathBuf::from(&move_to_string));
 
                 confirm_before_overwriting(
                     move_to.to_path_buf(),
-                    cursor,
-                    cx,
-                    move_to_str.to_string(),
                     move_from.to_path_buf(),
+                    cx,
                     root,
-                    |cursor: u32,
-                     cx: &mut Context,
-                     root: PathBuf,
-                     move_to_str: &str,
-                     move_from: &Path| {
-                        let move_to = helix_stdx::path::expand_tilde(PathBuf::from(move_to_str));
+                    move |cx: &mut Context, root: PathBuf, move_from: &Path| {
+                        let move_to =
+                            helix_stdx::path::expand_tilde(PathBuf::from(&move_to_string));
 
                         if let Err(err) = cx.editor.move_path(move_from, &move_to).map_err(|err| {
                             format!(
                                 "Unable to move {} {} -> {}: {err}",
-                                if move_to_str.ends_with(std::path::MAIN_SEPARATOR) {
+                                if move_to_string.ends_with(std::path::MAIN_SEPARATOR) {
                                     "directory"
                                 } else {
                                     "file"
@@ -570,13 +542,12 @@ pub fn file_explorer(
 
     let delete: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
-            cursor,
-            |path| format!("Delete {}? (y/n): ", path.display()),
             cx,
             path,
-            data,
+            |path| format!("Delete {}? (y/n): ", path.display()),
             |_| "".to_string(),
-            |root, cursor, cx, to_delete, confirmation| {
+            move |cx, to_delete, confirmation| {
+                let root = data.0.clone();
                 if confirmation != "y" {
                     return None;
                 }
@@ -610,20 +581,19 @@ pub fn file_explorer(
 
     let copy: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
-            cursor,
-            |path| format!("Copy {} -> ", path.display()),
             cx,
             path,
-            data,
+            |path| format!("Copy {} -> ", path.display()),
             |path| {
                 path.parent()
                     .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
                     .unwrap_or_default()
             },
-            |root, cursor, cx, copy_from, copy_to_str| {
-                let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
+            move |cx, copy_from, copy_to_string| {
+                let root = data.0.clone();
+                let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(&copy_to_string));
 
-                if copy_from.is_dir() || copy_to_str.ends_with(std::path::MAIN_SEPARATOR) {
+                if copy_from.is_dir() || copy_to_string.ends_with(std::path::MAIN_SEPARATOR) {
                     // TODO: support copying directories (recursively)?. This isn't built-in to the standard library
                     return Some(Err(format!(
                         "Copying directories is not supported: {} is a directory",
@@ -631,19 +601,15 @@ pub fn file_explorer(
                     )));
                 }
 
+                let copy_to_str = copy_to_string.to_string();
+
                 confirm_before_overwriting(
                     copy_to.to_path_buf(),
-                    cursor,
-                    cx,
-                    copy_to_str.to_string(),
                     copy_from.to_path_buf(),
+                    cx,
                     root,
-                    |cursor: u32,
-                     cx: &mut Context,
-                     root: PathBuf,
-                     copy_to_str: &str,
-                     copy_from: &Path| {
-                        let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
+                    move |cx: &mut Context, picker_root: PathBuf, copy_from: &Path| {
+                        let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(&copy_to_str));
                         if let Err(err) = std::fs::copy(copy_from, &copy_to).map_err(|err| {
                             format!(
                                 "Unable to copy from file {} to {}: {err}",
@@ -653,7 +619,7 @@ pub fn file_explorer(
                         }) {
                             return Some(Err(err));
                         };
-                        refresh_file_explorer(cursor, cx, root);
+                        refresh_file_explorer(cursor, cx, picker_root);
 
                         Some(Ok(format!(
                             "Copied contents of file {} to {}",
