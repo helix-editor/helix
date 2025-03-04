@@ -367,7 +367,7 @@ type FileOperation = fn(PathBuf, u32, &mut Context, &Path, &str) -> Option<Resul
 
 fn create_file_operation_prompt(
     cursor: u32,
-    prompt: &'static str,
+    prompt: fn(&Path) -> String,
     cx: &mut Context,
     path: &Path,
     data: Arc<ExplorerData>,
@@ -378,7 +378,12 @@ fn create_file_operation_prompt(
     let callback = Box::pin(async move {
         let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
             let mut prompt = Prompt::new(
-                prompt.into(),
+                editor
+                    .file_explorer_selected_path
+                    .as_ref()
+                    .map(|p| prompt(p))
+                    .unwrap_or_default()
+                    .into(),
                 None,
                 crate::ui::completers::none,
                 move |cx, input: &str, event: PromptEvent| {
@@ -452,7 +457,7 @@ pub fn file_explorer(
     let create: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
-            "create:",
+            |_| "create:".into(),
             cx,
             path,
             data,
@@ -514,7 +519,7 @@ pub fn file_explorer(
     let move_: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
-            "move:",
+            |path| format!("Move {} to:", path.display()),
             cx,
             path,
             data,
@@ -571,7 +576,7 @@ pub fn file_explorer(
     let delete: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
-            "delete? (y/n):",
+            |path| format!("Delete {}? (y/n):", path.display()),
             cx,
             path,
             data,
@@ -611,7 +616,7 @@ pub fn file_explorer(
     let copy: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
-            "copy-to:",
+            |path| format!("Copy {} to:", path.display()),
             cx,
             path,
             data,
