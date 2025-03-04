@@ -436,7 +436,7 @@ pub fn file_explorer(
     let create: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
-            |_| "create:".into(),
+            |_| "Create:".into(),
             cx,
             path,
             data,
@@ -498,7 +498,7 @@ pub fn file_explorer(
     let move_: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
-            |path| format!("Move {} to:", path.display()),
+            |path| format!("Move {} -> ", path.display()),
             cx,
             path,
             data,
@@ -595,7 +595,7 @@ pub fn file_explorer(
     let copy: KeyHandler = Box::new(|cx, (path, _), data, cursor| {
         create_file_operation_prompt(
             cursor,
-            |path| format!("Copy {} to:", path.display()),
+            |path| format!("Copy {} -> ", path.display()),
             cx,
             path,
             data,
