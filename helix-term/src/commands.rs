@@ -449,10 +449,14 @@ impl MappableCommand {
         goto_last_change, "Goto last change",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
-        goto_next_buffer, "Goto next buffer",
-        goto_previous_buffer, "Goto previous buffer",
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        goto_next_buffer, "Goto next buffer",
+        goto_previous_buffer, "Goto previous buffer",
+        move_buffer_left, "Move focused buffer to the left",
+        move_buffer_right, "Move focused buffer to the right",
+        move_buffer_start, "Move focused buffer to the start of the buffer list",
+        move_buffer_end, "Move focused buffer to the end of the buffer list",
         trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
@@ -896,28 +900,42 @@ fn goto_previous_buffer(cx: &mut Context) {
 }
 
 fn goto_buffer(editor: &mut Editor, direction: Direction, count: usize) {
-    let current = view!(editor).doc;
+    let index = editor.focused_document_index();
+    let len = editor.documents.len();
 
-    let id = match direction {
-        Direction::Forward => {
-            let iter = editor.documents.keys();
-            // skip 'count' times past current buffer
-            iter.cycle().skip_while(|id| *id != &current).nth(count)
-        }
-        Direction::Backward => {
-            let iter = editor.documents.keys();
-            // skip 'count' times past current buffer
-            iter.rev()
-                .cycle()
-                .skip_while(|id| *id != &current)
-                .nth(count)
-        }
-    }
-    .unwrap();
+    let index = match direction {
+        Direction::Forward => (index + count) % len,
+        // Equivalent to `(i - count).rem_euclid(len)` but avoids overflow.
+        Direction::Backward => (index + len - count % len) % len,
+    };
 
-    let id = *id;
+    let id = *editor.documents.get_index(index).unwrap().0;
 
+    // This could've probably been faster with an `editor.switch_by_index()` but
+    // the document indices are not integrated enough to implement that easily.
     editor.switch(id, Action::Replace);
+}
+
+fn move_buffer_left(cx: &mut Context) {
+    let count = cx.count();
+    move_buffer(cx.editor, |i, len| (i + len - count % len) % len)
+}
+fn move_buffer_right(cx: &mut Context) {
+    let count = cx.count();
+    move_buffer(cx.editor, |i, len| (i + count) % len)
+}
+fn move_buffer_start(cx: &mut Context) {
+    move_buffer(cx.editor, |_, _| 0)
+}
+fn move_buffer_end(cx: &mut Context) {
+    move_buffer(cx.editor, |_, len| len - 1)
+}
+
+#[inline]
+fn move_buffer(editor: &mut Editor, index_transform: impl FnOnce(usize, usize) -> usize) {
+    let index = editor.focused_document_index();
+    let new_index = index_transform(index, editor.documents.len());
+    editor.documents.move_index(index, new_index);
 }
 
 fn extend_to_line_start(cx: &mut Context) {
