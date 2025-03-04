@@ -1076,11 +1076,7 @@ pub fn hover(cx: &mut Context) {
                 .text_document_hover(doc.identifier(), pos, None)
                 .unwrap();
 
-            async move {
-                let json = request.await?;
-                let response = serde_json::from_value::<Option<lsp::Hover>>(json)?;
-                anyhow::Ok((server_name, response))
-            }
+            async move { anyhow::Ok((server_name, request.await?)) }
         })
         .collect();
 
