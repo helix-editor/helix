@@ -397,7 +397,7 @@ fn create_file_operation_prompt(
                         match file_op(data.0.clone(), cursor, cx, &path, input) {
                             Some(Ok(msg)) => cx.editor.set_status(msg),
                             Some(Err(msg)) => cx.editor.set_error(msg),
-                            None => (),
+                            None => cx.editor.clear_status(),
                         };
                     } else {
                         cx.editor
