@@ -15,7 +15,9 @@
   - [Command line](./command-line.md)
   - [Commands](./commands.md)
   - [Language support](./lang-support.md)
-- [Migrating from Vim](./from-vim.md)
+- [Migrating from other editors]
+  - [Vim](./from-vim.md)
+  - [Emacs](./from-emacs.md)
 - [Configuration](./configuration.md)
   - [Editor](./editor.md)
   - [Themes](./themes.md)
