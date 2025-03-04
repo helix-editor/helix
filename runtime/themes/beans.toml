@@ -61,9 +61,9 @@
 
 # ui specific
 "ui.background" = { bg = "background" }
-"ui.cursor" = { bg = "purple", fg = "selectionFG" }
+"ui.cursor" = { bg = "purple", fg = "selectionfg" }
 "ui.cursor.primary" = { bg = "dark_blue", fg = "white" }
-"ui.cursor.normal" = { bg = "purple", fg = "selectionFG" }
+"ui.cursor.normal" = { bg = "purple", fg = "selectionfg" }
 "ui.cursor.insert" = { bg = "light_yellow", fg = "background" }
 "ui.cursor.match" = { fg = "background", bg = "dark_orange" }
 "ui.cursorline" = { bg = "darker" }
@@ -73,7 +73,7 @@
 "ui.statusline.inactive" = { fg = "dark", bg = "darker" }
 "ui.statusline.normal" = { fg = "light_yellow", bg = "darker" }
 "ui.statusline.insert" = { fg = "darker", bg = "purple" }
-"ui.statusline.select" = { fg = "selectionFG", bg = "selection" }
+"ui.statusline.select" = { fg = "selectionfg", bg = "selection" }
 "ui.popup" = { fg = "light_yellow", bg = "darkest" }
 "ui.window" = { fg = "dark", bg = "darkest" }
 "ui.help" = { fg = "light_yellow", bg = "darkest" }
