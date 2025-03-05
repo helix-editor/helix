@@ -1,9 +1,79 @@
 ; -------
-; Tree-Sitter doesn't allow overrides in regards to captures,
-; though it is possible to affect the child node of a captured
-; node. Thus, the approach here is to flip the order so that
-; overrides are unnecessary.
+; Basic identifiers
 ; -------
+
+; We do not style ? as an operator on purpose as it allows styling ? differently, as many highlighters do. @operator.special might have been a better scope, but @special is already documented so the change would break themes (including the intent of the default theme)
+"?" @special
+
+(type_identifier) @type
+(identifier) @variable
+(field_identifier) @variable.other.member
+
+; -------
+; Operators
+; -------
+
+[
+  "*"
+  "'"
+  "->"
+  "=>"
+  "<="
+  "="
+  "=="
+  "!"
+  "!="
+  "%"
+  "%="
+  "&"
+  "&="
+  "&&"
+  "|"
+  "|="
+  "||"
+  "^"
+  "^="
+  "*"
+  "*="
+  "-"
+  "-="
+  "+"
+  "+="
+  "/"
+  "/="
+  ">"
+  "<"
+  ">="
+  ">>"
+  "<<"
+  ">>="
+  "<<="
+  "@"
+  ".."
+  "..="
+  "'"
+] @operator
+
+; -------
+; Paths
+; -------
+
+(use_declaration
+  argument: (identifier) @namespace)
+(use_wildcard
+  (identifier) @namespace)
+(extern_crate_declaration
+  name: (identifier) @namespace
+  alias: (identifier)? @namespace)
+(mod_item
+  name: (identifier) @namespace)
+(scoped_use_list
+  path: (identifier)? @namespace)
+(use_list
+  (identifier) @namespace)
+(use_as_clause
+  path: (identifier)? @namespace
+  alias: (identifier) @namespace)
 
 ; -------
 ; Types
@@ -15,6 +85,12 @@
   left: (type_identifier) @type.parameter)
 (optional_type_parameter
   name: (type_identifier) @type.parameter)
+((type_arguments (type_identifier) @constant)
+ (#match? @constant "^[A-Z_]+$"))
+(type_arguments (type_identifier) @type)
+(tuple_struct_pattern "_" @comment.unused)
+((type_arguments (type_identifier) @comment.unused)
+ (#eq? @comment.unused "_"))
 
 ; ---
 ; Primitives
@@ -42,7 +118,6 @@
 ; ---
 
 (self) @variable.builtin
-(enum_variant (identifier) @type.enum.variant)
 
 (field_initializer
   (field_identifier) @variable.other.member)
@@ -56,63 +131,6 @@
 (label
   "'" @label
   (identifier) @label)
-
-; ---
-; Prelude
-; ---
-
-((identifier) @type.enum.variant.builtin
- (#any-of? @type.enum.variant.builtin "Some" "None" "Ok" "Err"))
-
-
-(call_expression
-  (identifier) @function.builtin
-  (#any-of? @function.builtin
-    "drop"
-    "size_of"
-    "size_of_val"
-    "align_of"
-    "align_of_val"))
-
-((type_identifier) @type.builtin
- (#any-of?
-    @type.builtin
-    "Send"
-    "Sized"
-    "Sync"
-    "Unpin"
-    "Drop"
-    "Fn"
-    "FnMut"
-    "FnOnce"
-    "AsMut"
-    "AsRef"
-    "From"
-    "Into"
-    "DoubleEndedIterator"
-    "ExactSizeIterator"
-    "Extend"
-    "IntoIterator"
-    "Iterator"
-    "Option"
-    "Result"
-    "Clone"
-    "Copy"
-    "Debug"
-    "Default"
-    "Eq"
-    "Hash"
-    "Ord"
-    "PartialEq"
-    "PartialOrd"
-    "ToOwned"
-    "Box"
-    "String"
-    "ToString"
-    "Vec"
-    "FromIterator"
-    "TryFrom"
-    "TryInto"))
 
 ; ---
 ; Punctuation
@@ -145,8 +163,10 @@
     "<"
     ">"
   ] @punctuation.bracket)
+(for_lifetimes ["<" ">"] @punctuation.bracket)
 (closure_parameters
   "|" @punctuation.bracket)
+(bracketed_type ["<" ">"] @punctuation.bracket)
 
 ; ---
 ; Variables
@@ -255,36 +275,52 @@
 
 ; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
-; -------
-; Constructors
-; -------
-; TODO: this is largely guesswork, remove it once we get actual info from locals.scm or r-a
+; ---
+; Remaining Paths
+; ---
 
-(struct_expression
-  name: (type_identifier) @constructor)
+(scoped_identifier
+  path: (identifier)? @namespace
+  name: (identifier) @namespace)
+(scoped_type_identifier
+  path: (identifier) @namespace)
 
-(tuple_struct_pattern
-  type: [
-    (identifier) @constructor
+; -------
+; Functions
+; -------
+
+(call_expression
+  function: [
+    ((identifier) @function)
     (scoped_identifier
-      name: (identifier) @constructor)
+      name: (identifier) @function)
+    (field_expression
+      field: (field_identifier) @function)
   ])
-(struct_pattern
-  type: [
-    ((type_identifier) @constructor)
-    (scoped_type_identifier
-      name: (type_identifier) @constructor)
+(generic_function
+  function: [
+    ((identifier) @function)
+    (scoped_identifier
+      name: (identifier) @function)
+    (field_expression
+      field: (field_identifier) @function.method)
   ])
-(match_pattern
-  ((identifier) @constructor) (#match? @constructor "^[A-Z]"))
-(or_pattern
-  ((identifier) @constructor)
-  ((identifier) @constructor)
-  (#match? @constructor "^[A-Z]"))
+
+(function_item
+  name: (identifier) @function)
+
+(function_signature_item
+  name: (identifier) @function)
 
 ; -------
 ; Guess Other Types
 ; -------
+; Other PascalCase identifiers are assumed to be structs.
+
+((identifier) @type
+  (#match? @type "^[A-Z]"))
+
+(never_type "!" @type)
 
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
@@ -319,54 +355,43 @@
       (#match? @type "^[A-Z]")
       (#match? @constructor "^[A-Z]")))
 
-; ---
-; Other PascalCase identifiers are assumed to be structs.
-; ---
+(enum_variant (identifier) @type.enum.variant)
 
-((identifier) @type
-  (#match? @type "^[A-Z]"))
-
-(never_type "!" @type)
 
 ; -------
-; Functions
+; Constructors
 ; -------
+; TODO: this is largely guesswork, remove it once we get actual info from locals.scm or r-a
 
-(call_expression
-  function: [
-    ((identifier) @function)
+(struct_expression
+  name: (type_identifier) @constructor)
+
+(tuple_struct_pattern
+  type: [
+    (identifier) @constructor
     (scoped_identifier
-      name: (identifier) @function)
-    (field_expression
-      field: (field_identifier) @function)
+      name: (identifier) @constructor)
   ])
-(generic_function
-  function: [
-    ((identifier) @function)
-    (scoped_identifier
-      name: (identifier) @function)
-    (field_expression
-      field: (field_identifier) @function.method)
+(struct_pattern
+  type: [
+    ((type_identifier) @constructor)
+    (scoped_type_identifier
+      name: (type_identifier) @constructor)
   ])
-
-(function_item
-  name: (identifier) @function)
-
-(function_signature_item
-  name: (identifier) @function)
+(match_pattern
+  ((identifier) @constructor) (#match? @constructor "^[A-Z]"))
+(or_pattern
+  ((identifier) @constructor)
+  ((identifier) @constructor)
+  (#match? @constructor "^[A-Z]"))
 
 ; ---
 ; Macros
 ; ---
 
 (attribute
-  (identifier) @special
-  arguments: (token_tree (identifier) @type)
-  (#eq? @special "derive")
-)
-
-(attribute
   (identifier) @function.macro)
+(inner_attribute_item "!" @punctuation)
 (attribute
   [
     (identifier) @function.macro
@@ -390,89 +415,68 @@
 (metavariable) @variable.parameter
 (fragment_specifier) @type
 
-; -------
-; Operators
-; -------
+(attribute
+  (identifier) @special
+  arguments: (token_tree (identifier) @type)
+  (#eq? @special "derive")
+)
 
-[
-  "*"
-  "'"
-  "->"
-  "=>"
-  "<="
-  "="
-  "=="
-  "!"
-  "!="
-  "%"
-  "%="
-  "&"
-  "&="
-  "&&"
-  "|"
-  "|="
-  "||"
-  "^"
-  "^="
-  "*"
-  "*="
-  "-"
-  "-="
-  "+"
-  "+="
-  "/"
-  "/="
-  ">"
-  "<"
-  ">="
-  ">>"
-  "<<"
-  ">>="
-  "<<="
-  "@"
-  ".."
-  "..="
-  "'"
-] @operator
-
-; -------
-; Paths
-; -------
-
-(use_declaration
-  argument: (identifier) @namespace)
-(use_wildcard
-  (identifier) @namespace)
-(extern_crate_declaration
-  name: (identifier) @namespace
-  alias: (identifier)? @namespace)
-(mod_item
-  name: (identifier) @namespace)
-(scoped_use_list
-  path: (identifier)? @namespace)
-(use_list
-  (identifier) @namespace)
-(use_as_clause
-  path: (identifier)? @namespace
-  alias: (identifier) @namespace)
+(token_repetition_pattern [")" "(" "$"] @punctuation.special)
+(token_repetition_pattern "?" @operator)
 
 ; ---
-; Remaining Paths
+; Prelude
 ; ---
 
-(scoped_identifier
-  path: (identifier)? @namespace
-  name: (identifier) @namespace)
-(scoped_type_identifier
-  path: (identifier) @namespace)
+((identifier) @type.enum.variant.builtin
+ (#any-of? @type.enum.variant.builtin "Some" "None" "Ok" "Err"))
 
-; -------
-; Remaining Identifiers
-; -------
 
-; We do not style ? as an operator on purpose as it allows styling ? differently, as many highlighters do. @operator.special might have been a better scope, but @special is already documented so the change would break themes (including the intent of the default theme)
-"?" @special
+(call_expression
+  (identifier) @function.builtin
+  (#any-of? @function.builtin
+    "drop"
+    "size_of"
+    "size_of_val"
+    "align_of"
+    "align_of_val"))
 
-(type_identifier) @type
-(identifier) @variable
-(field_identifier) @variable.other.member
+((type_identifier) @type.builtin
+ (#any-of?
+    @type.builtin
+    "Send"
+    "Sized"
+    "Sync"
+    "Unpin"
+    "Drop"
+    "Fn"
+    "FnMut"
+    "FnOnce"
+    "AsMut"
+    "AsRef"
+    "From"
+    "Into"
+    "DoubleEndedIterator"
+    "ExactSizeIterator"
+    "Extend"
+    "IntoIterator"
+    "Iterator"
+    "Option"
+    "Result"
+    "Clone"
+    "Copy"
+    "Debug"
+    "Default"
+    "Eq"
+    "Hash"
+    "Ord"
+    "PartialEq"
+    "PartialOrd"
+    "ToOwned"
+    "Box"
+    "String"
+    "ToString"
+    "Vec"
+    "FromIterator"
+    "TryFrom"
+    "TryInto"))
