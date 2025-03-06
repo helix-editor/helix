@@ -2058,10 +2058,11 @@ fn select_regex(cx: &mut Context) {
                 return;
             }
             let text = doc.text().slice(..);
-            if let Some(selection) =
+            if let Some((selection, captures)) =
                 selection::select_on_matches(text, doc.selection(view.id), &regex)
             {
                 doc.set_selection(view.id, selection);
+                cx.editor.registers.write_search_results(captures);
             } else {
                 cx.editor.set_error("nothing selected");
             }
@@ -2142,20 +2143,31 @@ fn search_impl(
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
-    let mut mat = match direction {
-        Direction::Forward => regex.find(doc.regex_input_at_bytes(start..)),
-        Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(..start)).last(),
-    };
+    let mut cap = regex.create_captures();
+    match direction {
+        Direction::Forward => regex.captures(doc.regex_input_at_bytes(start..), &mut cap),
+        Direction::Backward => {
+            cap = regex
+                .captures_iter(doc.regex_input_at_bytes(..start))
+                .last()
+                .unwrap_or(cap)
+        }
+    }
 
-    if mat.is_none() {
+    if !cap.is_match() {
         if wrap_around {
-            mat = match direction {
-                Direction::Forward => regex.find(doc.regex_input()),
-                Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(start..)).last(),
+            match direction {
+                Direction::Forward => regex.captures(doc.regex_input(), &mut cap),
+                Direction::Backward => {
+                    cap = regex
+                        .captures_iter(doc.regex_input_at_bytes(start..))
+                        .last()
+                        .unwrap_or(cap)
+                }
             };
         }
         if show_warnings {
-            if wrap_around && mat.is_some() {
+            if wrap_around && cap.is_match() {
                 editor.set_status("Wrapped around document");
             } else {
                 editor.set_error("No more matches");
@@ -2167,7 +2179,7 @@ fn search_impl(
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
 
-    if let Some(mat) = mat {
+    if let Some(mat) = cap.get_match() {
         let start = text.byte_to_char(mat.start());
         let end = text.byte_to_char(mat.end());
 
@@ -2180,10 +2192,48 @@ fn search_impl(
         let primary = selection.primary();
         let range = Range::new(start, end).with_direction(primary.direction());
 
+        let should_update_search_results =
+            selection.len() == editor.registers.search_result_count();
         let selection = match movement {
             Movement::Extend => selection.clone().push(range),
-            Movement::Move => selection.clone().replace(selection.primary_index(), range),
+            Movement::Move => {
+                if should_update_search_results {
+                    editor
+                        .registers
+                        .remove_search_result(selection.primary_index());
+                }
+                selection.clone().replace(selection.primary_index(), range)
+            }
         };
+
+        let capture_groups = cap
+            .iter()
+            .map(|span| {
+                span.map(|span| text.slice(span.range()).to_string())
+                    .unwrap_or_default()
+            })
+            .collect();
+        if should_update_search_results {
+            if selection.len() == editor.registers.search_result_count() {
+                editor
+                    .registers
+                    .remove_search_result(selection.primary_index());
+            }
+            editor
+                .registers
+                .insert_search_result(selection.primary_index(), capture_groups);
+        } else {
+            editor.registers.write_search_results(vec![
+                vec!["".to_string(); selection.len()];
+                regex.captures_len()
+            ]);
+            editor
+                .registers
+                .remove_search_result(selection.primary_index());
+            editor
+                .registers
+                .insert_search_result(selection.primary_index(), capture_groups);
+        }
 
         doc.set_selection(view.id, selection);
         view.ensure_cursor_in_view_center(doc, scrolloff);
@@ -5027,12 +5077,20 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
             }
             let text = doc.text().slice(..);
 
-            if let Some(selection) =
-                selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
-            {
+            let selection = doc.selection(view.id);
+            let should_update_search_results =
+                selection.len() == cx.editor.registers.search_result_count();
+            let (selection, to_remove) =
+                selection::keep_or_remove_matches(text, selection, &regex, remove);
+            if let Some(selection) = selection {
                 doc.set_selection(view.id, selection);
             } else {
                 cx.editor.set_error("no selections remaining");
+            }
+            if should_update_search_results {
+                for idx in to_remove.into_iter().rev() {
+                    cx.editor.registers.remove_search_result(idx);
+                }
             }
         },
     )
@@ -5072,6 +5130,9 @@ fn remove_primary_selection(cx: &mut Context) {
         return;
     }
     let index = selection.primary_index();
+    if selection.len() == cx.editor.registers.search_result_count() {
+        cx.editor.registers.remove_search_result(index);
+    }
     let selection = selection.clone().remove(index);
 
     doc.set_selection(view.id, selection);
