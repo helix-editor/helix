@@ -2412,7 +2412,7 @@ indent = { tab-width = 2, unit = "\t" }
 
 [[grammar]]
 name = "openscad"
-source = { git = "https://github.com/bollian/tree-sitter-openscad", rev = "5c3ce93df0ac1da7197cf6ae125aade26d6b8972" }
+source = { git = "https://github.com/openscad/tree-sitter-openscad", rev = "654280c0ea7beaa81c402f199a13f25379535f89" }
 
 [[language]]
 name = "prisma"
@@ -4030,12 +4030,12 @@ block-comment-tokens = [
 language-servers = [ "spade-language-server" ]
 indent = { tab-width = 4, unit = "    " }
 
-[language.auto-pairs] 
-'(' = ')' 
-'{' = '}' 
-'[' = ']' 
-'"' = '"' 
-'<' = '>' 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'<' = '>'
 
 [[grammar]]
 name = "spade"
@@ -4099,7 +4099,7 @@ file-types = [
   { glob = "sites-available/*.conf" },
   { glob = "sites-enabled/*.conf" },
   { glob = "nginx.conf" },
-  { glob = "conf.d/*.conf" } 
+  { glob = "conf.d/*.conf" }
 ]
 roots = ["nginx.conf"]
 comment-token = "#"
