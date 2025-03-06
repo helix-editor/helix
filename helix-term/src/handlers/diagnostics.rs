@@ -177,7 +177,8 @@ pub fn pull_diagnostics_for_document(
             }
         });
 
-    let provider = DiagnosticProvider::from_server_and_identifier(language_server.id(), identifier);
+    let language_server_id = language_server.id();
+    let provider = DiagnosticProvider::from_server_and_identifier(language_server_id, identifier);
     let document_id = doc.id();
 
     tokio::spawn(async move {
@@ -193,7 +194,32 @@ pub fn pull_diagnostics_for_document(
                 })
                 .await
             }
-            Err(err) => log::error!("Pull diagnostic request failed: {err}"),
+            Err(err) => {
+                let parsed_cancellation_data = if let helix_lsp::Error::Rpc(error) = err {
+                    error.data.and_then(|data| {
+                        serde_json::from_value::<lsp::DiagnosticServerCancellationData>(data).ok()
+                    })
+                } else {
+                    log::error!("Pull diagnostic request failed: {err}");
+                    return;
+                };
+
+                if let Some(parsed_cancellation_data) = parsed_cancellation_data {
+                    if parsed_cancellation_data.retrigger_request {
+                        tokio::time::sleep(Duration::from_millis(500)).await;
+
+                        job::dispatch(move |editor, _| {
+                            if let (Some(doc), Some(language_server)) = (
+                                editor.document(document_id),
+                                editor.language_server_by_id(language_server_id),
+                            ) {
+                                pull_diagnostics_for_document(doc, language_server);
+                            }
+                        })
+                        .await;
+                    }
+                }
+            }
         }
     });
 }
