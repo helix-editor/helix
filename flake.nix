@@ -72,7 +72,6 @@
             ++ (lib.optional stdenv.isLinux lldb)
             ++ (lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.CoreFoundation);
           shellHook = ''
-            export HELIX_RUNTIME="$PWD/runtime"
             export RUST_BACKTRACE="1"
             export RUSTFLAGS="''${RUSTFLAGS:-""} ${rustFlagsEnv}"
           '';

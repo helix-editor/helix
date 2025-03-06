@@ -16,6 +16,7 @@
     ./screenshot.png
     ./book
     ./docs
+    ./runtime
     ./flake.lock
     (fs.fileFilter (file: lib.strings.hasInfix ".git" file.name) ./.)
     (fs.fileFilter (file: file.hasExt "svg") ./.)
@@ -66,7 +67,7 @@ in
     doCheck = false;
     strictDeps = true;
 
-    # Sets the Helix runtimedir to the grammars
+    # Sets the Helix runtime dir to the grammars
     env.HELIX_DEFAULT_RUNTIME = "${runtimeDir}";
 
     # Get all the application stuff in the output directory.
