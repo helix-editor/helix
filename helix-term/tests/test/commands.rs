@@ -793,3 +793,30 @@ fn foo() {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn macro_play_within_macro_record() -> anyhow::Result<()> {
+    // <https://github.com/helix-editor/helix/issues/12697>
+    //
+    // * `"aQihello<esc>Q` record a macro to register 'a' which inserts "hello"
+    // * `Q"aq<space>world<esc>Q` record a macro to the default macro register which plays the
+    //   macro in register 'a' and then inserts " world"
+    // * `%d` clear the buffer
+    // * `q` replay the macro in the default macro register
+    // * `i<ret>` add a newline at the end
+    //
+    // The inner macro in register 'a' should replay within the outer macro exactly once to insert
+    // "hello world".
+    test((
+        indoc! {"\
+            #[|]#
+        "},
+        r#""aQihello<esc>QQ"aqi<space>world<esc>Q%dqi<ret>"#,
+        indoc! {"\
+            hello world
+            #[|]#"},
+    ))
+    .await?;
+
+    Ok(())
+}

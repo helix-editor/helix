@@ -224,8 +224,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
         for cmd in cmds {
             write!(stdout, "{}", fit(""))?;
-            check_binary(Some(cmd));
-            writeln!(stdout)?;
+            writeln!(stdout, "{}", check_binary(Some(cmd)))?;
         }
     }
 

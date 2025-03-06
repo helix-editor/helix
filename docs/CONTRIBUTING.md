@@ -15,6 +15,8 @@ Some suggestions to get started:
 - If your preferred language is missing, integrating a tree-sitter grammar for
     it and defining syntax highlight queries for it is straight forward and
     doesn't require much knowledge of the internals.
+- If you don't use the Nix development shell and are getting your rust-analyzer binary from rustup, you may need to run `rustup component add rust-analyzer`.
+  This is because `rust-toolchain.toml` selects our MSRV for the development toolchain but doesn't download the matching rust-analyzer automatically.
 
 We provide an [architecture.md][architecture.md] that should give you
 a good overview of the internals.
