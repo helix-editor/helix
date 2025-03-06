@@ -47,6 +47,7 @@ fsharp-ls = { command = "fsautocomplete", config = { AutomaticWorkspaceInit = tr
 gleam = { command = "gleam", args = ["lsp"] }
 glsl_analyzer = { command = "glsl_analyzer" }
 graphql-language-service = { command = "graphql-lsp", args = ["server", "-m", "stream"] }
+harper-ls = { command = "harper-ls", args = ["--stdio"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 hyprls = { command = "hyprls" }
 idris2-lsp = { command = "idris2-lsp" }
