@@ -80,6 +80,10 @@ fn default_timeout() -> u64 {
     20
 }
 
+fn default_as_true() -> bool {
+    true
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Configuration {
@@ -150,6 +154,9 @@ pub struct LanguageConfiguration {
     pub language_servers: Vec<LanguageServerFeatures>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub indent: Option<IndentationConfiguration>,
+
+    #[serde(default = "default_as_true")]
+    pub auto_detect_indent: bool,
 
     #[serde(skip)]
     pub(crate) indent_query: OnceCell<Option<Query>>,
