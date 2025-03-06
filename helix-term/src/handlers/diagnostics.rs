@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::time::Duration;
 
 use helix_core::diagnostic::DiagnosticProvider;
@@ -58,15 +57,11 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 }
 
 #[derive(Debug)]
-pub(super) struct PullDiagnosticsHandler {
-    document_ids: HashSet<DocumentId>,
-}
+pub(super) struct PullDiagnosticsHandler {}
 
 impl PullDiagnosticsHandler {
     pub fn new() -> PullDiagnosticsHandler {
-        PullDiagnosticsHandler {
-            document_ids: [].into(),
-        }
+        PullDiagnosticsHandler {}
     }
 }
 
@@ -82,14 +77,11 @@ impl helix_event::AsyncHook for PullDiagnosticsHandler {
             dispatch_pull_diagnostic_for_document(event.document_id);
         }
 
-        self.document_ids.insert(event.document_id);
         Some(Instant::now() + Duration::from_millis(500))
     }
 
     fn finish_debounce(&mut self) {
-        for document_id in self.document_ids.clone() {
-            dispatch_pull_diagnostic_for_document(document_id);
-        }
+        dispatch_pull_diagnostic_for_open_documents();
     }
 }
 
@@ -104,6 +96,21 @@ fn dispatch_pull_diagnostic_for_document(document_id: DocumentId) {
 
         for language_server in language_servers {
             pull_diagnostics_for_document(doc, language_server);
+        }
+    })
+}
+
+fn dispatch_pull_diagnostic_for_open_documents() {
+    job::dispatch_blocking(move |editor, _| {
+        let documents = editor.documents.values();
+
+        for document in documents {
+            let language_servers =
+                document.language_servers_with_feature(LanguageServerFeature::PullDiagnostics);
+
+            for language_server in language_servers {
+                pull_diagnostics_for_document(document, language_server);
+            }
         }
     })
 }
