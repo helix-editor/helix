@@ -203,7 +203,7 @@
 | sml | ✓ |  |  |  |
 | snakemake | ✓ |  | ✓ | `pylsp` |
 | solidity | ✓ | ✓ |  | `solc` |
-| sourcepawn | ✓ | ✓ | ✓ | `sourcepawn-studio` |
+| sourcepawn | ✓ | ✓ |  | `sourcepawn-studio` |
 | spade | ✓ |  | ✓ | `spade-language-server` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ | ✓ |  |  |
