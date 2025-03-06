@@ -2121,9 +2121,9 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
 /// returning the position of the first match if the cursor position is within a node's range.
 fn find_position_of_node<'tree>(
     node_kind: &str,
-    node: Node<'tree>,
+    node: helix_core::tree_sitter::Node<'tree>,
     cursor_pos: usize,
-    seen: &mut Vec<Node<'tree>>,
+    seen: &mut Vec<helix_core::tree_sitter::Node<'tree>>,
 ) -> Option<usize> {
     let range = node.range();
 
@@ -2147,7 +2147,7 @@ fn find_position_of_node<'tree>(
 
 fn tree_sitter_tree(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2222,7 +2222,7 @@ fn tree_sitter_tree(
                 &mut syntax_tree,
                 full_file_node,
                 &mut appearance_count
-                    .map(|count| NodeSearch::new(count, kind.to_owned()))
+                    .map(|count| helix_core::syntax::NodeSearch::new(count, kind.to_owned()))
                     .as_mut(),
             )?;
 
@@ -2233,13 +2233,13 @@ fn tree_sitter_tree(
                     Document::from(
                         Rope::from(syntax_tree.clone()),
                         None,
-                        Arc::clone(&editor.config),
+                        std::sync::Arc::clone(&editor.config),
                     ),
                 );
 
                 let (view, doc) = current!(editor);
 
-                doc.set_language_by_language_id("tsq", Arc::clone(&editor.syn_loader))?;
+                doc.set_language_by_language_id("tsq", std::sync::Arc::clone(&editor.syn_loader))?;
                 doc.unmodifiable();
                 doc.tree_sitter_tree();
 
@@ -3520,7 +3520,11 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["ts-tree"],
         doc: "Display the full tree-sitter tree that spans the full document, primarily for debugging queries.",
         fun: tree_sitter_tree,
-        signature: CommandSignature::none(),
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "config-reload",
