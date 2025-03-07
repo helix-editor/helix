@@ -57,7 +57,8 @@
 
       # Devshell behavior is preserved.
       devShells.default = let
-        rustFlagsEnv = pkgs.lib.optionalString pkgs.stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment --cfg tokio_unstable";
+        commonRustFlagsEnv = "-C link-arg=-fuse-ld=lld -C target-cpu=native --cfg tokio_unstable";
+        platformRustFlagsEnv = pkgs.lib.optionalString pkgs.stdenv.isLinux "-Clink-arg=-Wl,--no-rosegment";
       in
         pkgs.mkShell
         {
@@ -73,7 +74,7 @@
             ++ (lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.CoreFoundation);
           shellHook = ''
             export RUST_BACKTRACE="1"
-            export RUSTFLAGS="''${RUSTFLAGS:-""} ${rustFlagsEnv}"
+            export RUSTFLAGS="''${RUSTFLAGS:-""} ${commonRustFlagsEnv} ${platformRustFlagsEnv}"
           '';
         };
     })
