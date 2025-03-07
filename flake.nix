@@ -57,7 +57,7 @@
 
       # Devshell behavior is preserved.
       devShells.default = let
-        commonRustFlagsEnv = "-C link-arg=-fuse-ld=lld -C target-cpu=native --cfg tokio_unstable";
+        commonRustFlagsEnv = "-C link-arg=-fuse-ld=mold -C target-cpu=native --cfg tokio_unstable";
         platformRustFlagsEnv = pkgs.lib.optionalString pkgs.stdenv.isLinux "-Clink-arg=-Wl,--no-rosegment";
       in
         pkgs.mkShell
@@ -65,7 +65,7 @@
           inputsFrom = [self.checks.${system}.helix];
           nativeBuildInputs = with pkgs;
             [
-              lld_13
+              mold
               cargo-flamegraph
               rust-bin.nightly.latest.rust-analyzer
             ]
