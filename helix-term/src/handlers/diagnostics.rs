@@ -153,7 +153,7 @@ fn handle_pull_diagnostics_response(
     let (result_id, related_documents) = match response {
         lsp::DocumentDiagnosticReport::Full(report) => {
             editor.handle_lsp_diagnostics(
-                provider,
+                &provider,
                 uri,
                 None,
                 report.full_document_diagnostic_report.items,
@@ -181,7 +181,7 @@ fn handle_pull_diagnostics_response(
                     continue;
                 };
 
-                editor.handle_lsp_diagnostics(provider, uri, None, report.items);
+                editor.handle_lsp_diagnostics(&provider, uri, None, report.items);
                 report.result_id
             }
             lsp::DocumentDiagnosticReportKind::Unchanged(report) => Some(report.result_id),

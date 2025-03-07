@@ -764,7 +764,7 @@ impl Application {
                             DiagnosticProvider::PublishDiagnosticProvider(language_server.id());
 
                         self.editor.handle_lsp_diagnostics(
-                            diagnostic_provider,
+                            &diagnostic_provider,
                             uri,
                             params.version,
                             params.diagnostics,
@@ -878,7 +878,7 @@ impl Application {
                         // an empty diagnostic list for said files
                         for diags in self.editor.diagnostics.values_mut() {
                             diags.retain(|(_, diagnostic_provider)| {
-                                Into::<LanguageServerId>::into(*diagnostic_provider) != server_id
+                                !diagnostic_provider.has_server_id(&server_id)
                             });
                         }
 
