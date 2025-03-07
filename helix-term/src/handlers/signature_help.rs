@@ -347,9 +347,9 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
 
     let tx = handlers.signature_hints.clone();
-    register_hook!(
-        move |event: &mut PostInsertChar<'_, '_>| signature_help_post_insert_char_hook(&tx, event)
-    );
+    register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
+        signature_help_post_insert_char_hook(&tx, event)
+    });
 
     let tx = handlers.signature_hints.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
