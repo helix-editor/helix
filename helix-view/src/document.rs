@@ -1407,8 +1407,13 @@ impl Document {
             true
         });
 
-        self.diagnostics
-            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider.clone(),
+            )
+        });
 
         // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
         let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
@@ -2028,13 +2033,16 @@ impl Document {
         &mut self,
         diagnostics: impl IntoIterator<Item = Diagnostic>,
         unchanged_sources: &[String],
-        diagnostic_provider: Option<DiagnosticProvider>,
+        diagnostic_provider: Option<&DiagnosticProvider>,
     ) {
         if unchanged_sources.is_empty() {
             self.clear_diagnostics(diagnostic_provider);
         } else {
             self.diagnostics.retain(|d| {
-                if diagnostic_provider.is_some_and(|provider| provider != d.provider) {
+                if diagnostic_provider
+                    .as_ref()
+                    .is_some_and(|provider| !provider.equals(&d.provider))
+                {
                     return true;
                 }
 
@@ -2046,14 +2054,19 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics
-            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider.clone(),
+            )
+        });
     }
 
     /// clears diagnostics for a given diagnostic provider if set, otherwise all diagnostics are cleared
-    pub fn clear_diagnostics(&mut self, provider: Option<DiagnosticProvider>) {
+    pub fn clear_diagnostics(&mut self, provider: Option<&DiagnosticProvider>) {
         if let Some(provider) = provider {
-            self.diagnostics.retain(|d| d.provider != provider);
+            self.diagnostics.retain(|d| !d.provider.equals(provider));
         } else {
             self.diagnostics.clear();
         }
@@ -2062,7 +2075,8 @@ impl Document {
     /// clears diagnostics for a given language_server if set, otherwise all diagnostics are cleared
     pub fn clear_all_language_server_diagnostics(&mut self, server_id: Option<LanguageServerId>) {
         if let Some(server_id) = server_id {
-            self.diagnostics.retain(|d| server_id != d.provider.into());
+            self.diagnostics
+                .retain(|d| !d.provider.has_server_id(&server_id));
         } else {
             self.diagnostics.clear();
         }

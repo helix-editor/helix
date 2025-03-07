@@ -71,7 +71,7 @@ pub fn diagnostic<'doc>(
                     d.line == line
                         && doc
                             .language_servers_with_feature(LanguageServerFeature::Diagnostics)
-                            .any(|ls| ls.id() == d.provider.into())
+                            .any(|ls| d.provider.has_server_id(&ls.id()))
                 });
             diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
                 write!(out, "●").ok();

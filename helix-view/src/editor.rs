@@ -2030,8 +2030,7 @@ impl Editor {
                 diags
                     .iter()
                     .filter_map(move |(diagnostic, diagnostic_provider)| {
-                        let ls = language_servers
-                            .get_by_id(Into::<LanguageServerId>::into(*diagnostic_provider))?;
+                        let ls = language_servers.get_by_id(*diagnostic_provider.server_id())?;
                         language_config
                             .as_ref()
                             .and_then(|c| {
@@ -2041,12 +2040,12 @@ impl Editor {
                                 })
                             })
                             .and_then(|_| {
-                                if filter(diagnostic, *diagnostic_provider) {
+                                if filter(diagnostic, diagnostic_provider.clone()) {
                                     Document::lsp_diagnostic_to_diagnostic(
                                         &text,
                                         language_config.as_deref(),
                                         diagnostic,
-                                        *diagnostic_provider,
+                                        diagnostic_provider.clone(),
                                         ls.offset_encoding(),
                                     )
                                 } else {
