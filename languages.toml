@@ -4216,7 +4216,6 @@ source = { git = "https://github.com/rhizoome/tree-sitter-ink", rev = "8486e9b16
 
 [[language]]
 name = "sourcepawn"
-language-id = "sourcepawn"
 scope = "source.sourcepawn"
 file-types = ["sp", "inc"]
 comment-token = "//"

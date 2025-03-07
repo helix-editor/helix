@@ -104,7 +104,7 @@
 (methodmap_native
   name: (identifier) @function.method)
 (methodmap_property
-  name: (identifier) @variable.other.parameter)
+  name: (identifier) @variable.other.member)
 (methodmap_property_getter) @function.method
 (methodmap_property_setter) @function.method
 
