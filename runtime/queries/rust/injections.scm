@@ -99,18 +99,27 @@
   "eprint"
   "eprintln"
   "format_args"
+  "todo"
+  "unreachable"
+  "unimplemented"
+  "compile_error"
   ; log
   "crit"
-  "error"
-  "warn"
-  "info"
-  "debug"
   "trace"
+  "debug"
+  "info"
+  "warn"
+  "error"
   ; anyhow
   "anyhow"
   "bail"
   ; syn
-  "format_ident")
+  "format_ident"
+  ; indoc
+  "formatdoc"
+  "printdoc"
+  "eprintdoc"
+  "writedoc")
  (#set! injection.language "rustfmt")
  (#set! injection.include-children))
 
@@ -122,11 +131,31 @@
          name: (_) @_macro_name)
        (identifier) @_macro_name
      ]
-   (token_tree . (_) (string_literal) @injection.content))
+   (token_tree . (_) . (string_literal) @injection.content))
  (#any-of? @_macro_name
   ; std
   "write"
-  "writeln")
+  "writeln"
+  "assert"
+  "debug_assert")
+ (#set! injection.language "rustfmt")
+ (#set! injection.include-children))
+
+; For these, only the third argument is format_args!
+((macro_invocation
+   macro:
+     [
+       (scoped_identifier
+         name: (_) @_macro_name)
+       (identifier) @_macro_name
+     ]
+   (token_tree . (_) . (_) . (string_literal) @injection.content))
+ (#any-of? @_macro_name
+  ; std
+  "assert_eq"
+  "debug_assert_eq"
+  "assert_ne"
+  "debug_assert_ne")
  (#set! injection.language "rustfmt")
  (#set! injection.include-children))
 
