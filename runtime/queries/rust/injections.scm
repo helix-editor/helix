@@ -108,7 +108,9 @@
   "trace"
   ; anyhow
   "anyhow"
-  "bail")
+  "bail"
+  ; syn
+  "format_ident")
  (#set! injection.language "rustfmt")
  (#set! injection.include-children))
 
