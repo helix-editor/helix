@@ -330,6 +330,18 @@ impl Range {
     // Block-cursor methods.
 
     /// Gets the left-side position of the block cursor.
+    /// Not grapheme-aware. For the grapheme-aware version, use [`Range::cursor`]
+    #[must_use]
+    #[inline]
+    pub fn char_cursor(self) -> usize {
+        if self.head > self.anchor {
+            self.head - 1
+        } else {
+            self.head
+        }
+    }
+
+    /// Gets the left-side position of the block cursor.
     #[must_use]
     #[inline]
     pub fn cursor(self, text: RopeSlice) -> usize {
