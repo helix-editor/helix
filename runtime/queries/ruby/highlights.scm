@@ -79,11 +79,12 @@
 
 ; Identifiers
 
+((identifier) @function.method
+ (#is-not? local))
+
 [
   (identifier)
 ] @variable
-((identifier) @function.method
- (#is-not? local))
 
 [
   (class_variable)
