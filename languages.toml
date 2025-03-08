@@ -4212,3 +4212,13 @@ soft-wrap = { enable = true }
 [[grammar]]
 name = "ink"
 source = { git = "https://github.com/rhizoome/tree-sitter-ink", rev = "8486e9b1627b0bc6b2deb9ee8102277a7c1281ac" }
+
+[[language]]
+name = "rustfmt"
+scope = "source.rustfmt"
+file-types = []
+injection-regex = "rustfmt"
+
+[[grammar]]
+name = "rustfmt"
+source = { git = "https://github.com/nik-rev/tree-sitter-rustfmt", rev = "d8e517d9aca1905261a378b25688e4500ae4dd22" }
