@@ -14,7 +14,7 @@ use tui::{text::Span, widgets::Row};
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection, Uri,
+    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Rope, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -37,6 +37,7 @@ use std::{
     fmt::Display,
     future::Future,
     path::Path,
+    sync::Arc,
 };
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
@@ -1050,7 +1051,12 @@ pub fn signature_help(cx: &mut Context) {
         .trigger_signature_help(SignatureHelpInvoked::Manual, cx.editor)
 }
 
-pub fn hover(cx: &mut Context) {
+enum HoverDisplay {
+    Popup,
+    File,
+}
+
+fn hover_impl(cx: &mut Context, hover_action: HoverDisplay) {
     use ui::lsp::hover::Hover;
 
     let (view, doc) = current!(cx.editor);
@@ -1095,13 +1101,39 @@ pub fn hover(cx: &mut Context) {
                 return;
             }
 
-            // create new popup
-            let contents = Hover::new(hovers, editor.syn_loader.clone());
-            let popup = Popup::new(Hover::ID, contents).auto_close(true);
-            compositor.replace_or_push(Hover::ID, popup);
+            let hover = Hover::new(hovers, editor.syn_loader.clone());
+
+            match hover_action {
+                HoverDisplay::Popup => {
+                    let popup = Popup::new(Hover::ID, hover).auto_close(true);
+                    compositor.replace_or_push(Hover::ID, popup);
+                }
+                HoverDisplay::File => {
+                    editor.new_file_from_document(
+                        Action::VerticalSplit,
+                        Document::from(
+                            Rope::from(hover.content_string()),
+                            None,
+                            Arc::clone(&editor.config),
+                        ),
+                    );
+                    let hover_doc = doc_mut!(editor);
+
+                    let _ = hover_doc
+                        .set_language_by_language_id("markdown", editor.syn_loader.clone());
+                }
+            }
         };
         Ok(Callback::EditorCompositor(Box::new(call)))
     });
+}
+
+pub fn hover(cx: &mut Context) {
+    hover_impl(cx, HoverDisplay::Popup)
+}
+
+pub fn hover_dump(cx: &mut Context) {
+    hover_impl(cx, HoverDisplay::File)
 }
 
 pub fn rename_symbol(cx: &mut Context) {
