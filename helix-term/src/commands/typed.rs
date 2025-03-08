@@ -326,6 +326,12 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
 
+    if config.trim_trailing_whitespace {
+        trim_trailing_whitespace(doc, view.id);
+    }
+    if config.trim_final_newlines {
+        trim_final_newlines(doc, view.id);
+    }
     if config.insert_final_newline {
         insert_final_newline(doc, view.id);
     }
@@ -357,6 +363,56 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     Ok(())
 }
 
+/// Trim all whitespace preceding line-endings in a document.
+fn trim_trailing_whitespace(doc: &mut Document, view_id: ViewId) {
+    let text = doc.text();
+    let mut pos = 0;
+    let transaction = Transaction::delete(
+        text,
+        text.lines().filter_map(|line| {
+            let line_end_len_chars = line_ending::get_line_ending(&line)
+                .map(|le| le.len_chars())
+                .unwrap_or_default();
+            // Char after the last non-whitespace character or the beginning of the line if the
+            // line is all whitespace:
+            let first_trailing_whitespace =
+                pos + line.last_non_whitespace_char().map_or(0, |idx| idx + 1);
+            pos += line.len_chars();
+            // Char before the line ending character(s), or the final char in the text if there
+            // is no line-ending on this line:
+            let line_end = pos - line_end_len_chars;
+            if first_trailing_whitespace != line_end {
+                Some((first_trailing_whitespace, line_end))
+            } else {
+                None
+            }
+        }),
+    );
+    doc.apply(&transaction, view_id);
+}
+
+/// Trim any extra line-endings after the final line-ending.
+fn trim_final_newlines(doc: &mut Document, view_id: ViewId) {
+    let rope = doc.text();
+    let mut text = rope.slice(..);
+    let mut total_char_len = 0;
+    let mut final_char_len = 0;
+    while let Some(line_ending) = line_ending::get_line_ending(&text) {
+        total_char_len += line_ending.len_chars();
+        final_char_len = line_ending.len_chars();
+        text = text.slice(..text.len_chars() - line_ending.len_chars());
+    }
+    let chars_to_delete = total_char_len - final_char_len;
+    if chars_to_delete != 0 {
+        let transaction = Transaction::delete(
+            rope,
+            [(rope.len_chars() - chars_to_delete, rope.len_chars())].into_iter(),
+        );
+        doc.apply(&transaction, view_id);
+    }
+}
+
+/// Ensure that the document is terminated with a line ending.
 fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
     if line_ending::get_line_ending(&text.slice(..)).is_none() {
@@ -682,6 +738,12 @@ pub fn write_all_impl(
         let doc = doc_mut!(cx.editor, &doc_id);
         let view = view_mut!(cx.editor, target_view);
 
+        if config.trim_trailing_whitespace {
+            trim_trailing_whitespace(doc, target_view);
+        }
+        if config.trim_final_newlines {
+            trim_final_newlines(doc, target_view);
+        }
         if config.insert_final_newline {
             insert_final_newline(doc, target_view);
         }

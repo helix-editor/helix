@@ -53,6 +53,8 @@
 | `workspace-lsp-roots` | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml` | `[]` |
 | `default-line-ending` | The line ending to use for new documents. Can be `native`, `lf`, `crlf`, `ff`, `cr` or `nel`. `native` uses the platform's native line ending (`crlf` on Windows, otherwise `lf`). | `native` |
 | `insert-final-newline` | Whether to automatically insert a trailing line-ending on write if missing | `true` |
+| `trim-final-newlines` | Whether to automatically remove line-endings after the final one on write | `false` |
+| `trim-trailing-whitespace` | Whether to automatically remove whitespace preceding line endings on write | `false` |
 | `popup-border` | Draw border around `popup`, `menu`, `all`, or `none` | `none` |
 | `indent-heuristic` | How the indentation for a newly inserted line is computed: `simple` just copies the indentation level from the previous line, `tree-sitter` computes the indentation based on the syntax tree and `hybrid` combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being `hybrid` -> `tree-sitter` -> `simple`). | `hybrid`
 | `jump-label-alphabet` | The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. | `"abcdefghijklmnopqrstuvwxyz"`
