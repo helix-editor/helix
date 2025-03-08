@@ -5,6 +5,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
+use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
@@ -196,6 +197,8 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+
+    pub previous_diagnostic_id: Option<String>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -698,6 +701,7 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            previous_diagnostic_id: None,
         }
     }
 
@@ -1403,8 +1407,13 @@ impl Document {
             true
         });
 
-        self.diagnostics
-            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider.clone(),
+            )
+        });
 
         // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
         let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
@@ -1931,7 +1940,7 @@ impl Document {
         text: &Rope,
         language_config: Option<&LanguageConfiguration>,
         diagnostic: &helix_lsp::lsp::Diagnostic,
-        language_server_id: LanguageServerId,
+        language_server_id: DiagnosticProvider,
         offset_encoding: helix_lsp::OffsetEncoding,
     ) -> Option<Diagnostic> {
         use helix_core::diagnostic::{Range, Severity::*};
@@ -2024,13 +2033,16 @@ impl Document {
         &mut self,
         diagnostics: impl IntoIterator<Item = Diagnostic>,
         unchanged_sources: &[String],
-        language_server_id: Option<LanguageServerId>,
+        diagnostic_provider: Option<&DiagnosticProvider>,
     ) {
         if unchanged_sources.is_empty() {
-            self.clear_diagnostics(language_server_id);
+            self.clear_diagnostics(diagnostic_provider);
         } else {
             self.diagnostics.retain(|d| {
-                if language_server_id.is_some_and(|id| id != d.provider) {
+                if diagnostic_provider
+                    .as_ref()
+                    .is_some_and(|provider| !provider.equals(&d.provider))
+                {
                     return true;
                 }
 
@@ -2042,14 +2054,29 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics
-            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider.clone(),
+            )
+        });
     }
 
-    /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
-    pub fn clear_diagnostics(&mut self, language_server_id: Option<LanguageServerId>) {
-        if let Some(id) = language_server_id {
-            self.diagnostics.retain(|d| d.provider != id);
+    /// clears diagnostics for a given diagnostic provider if set, otherwise all diagnostics are cleared
+    pub fn clear_diagnostics(&mut self, provider: Option<&DiagnosticProvider>) {
+        if let Some(provider) = provider {
+            self.diagnostics.retain(|d| !d.provider.equals(provider));
+        } else {
+            self.diagnostics.clear();
+        }
+    }
+
+    /// clears diagnostics for a given language_server if set, otherwise all diagnostics are cleared
+    pub fn clear_all_language_server_diagnostics(&mut self, server_id: Option<LanguageServerId>) {
+        if let Some(server_id) = server_id {
+            self.diagnostics
+                .retain(|d| !d.provider.has_server_id(&server_id));
         } else {
             self.diagnostics.clear();
         }
@@ -2173,6 +2200,10 @@ impl Document {
     /// (since it often means inlay hints have been fully deactivated).
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
+    }
+
+    pub fn has_language_server_with_feature(&self, feature: LanguageServerFeature) -> bool {
+        self.language_servers_with_feature(feature).next().is_some()
     }
 }
 

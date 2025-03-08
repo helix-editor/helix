@@ -3,10 +3,11 @@ use std::fmt::Display;
 
 use crate::editor::Action;
 use crate::events::DiagnosticsDidChange;
-use crate::Editor;
+use crate::{DocumentId, Editor};
+use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
 use helix_lsp::util::generate_transaction_from_edits;
-use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
+use helix_lsp::{lsp, OffsetEncoding};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {
@@ -20,6 +21,10 @@ pub enum SignatureHelpEvent {
     ReTrigger,
     Cancel,
     RequestComplete { open: bool },
+}
+
+pub struct PullDiagnosticsEvent {
+    pub document_id: DocumentId,
 }
 
 #[derive(Debug)]
@@ -276,7 +281,7 @@ impl Editor {
 
     pub fn handle_lsp_diagnostics(
         &mut self,
-        server_id: LanguageServerId,
+        diagnostic_provider: &DiagnosticProvider,
         uri: Uri,
         version: Option<i32>,
         mut diagnostics: Vec<lsp::Diagnostic>,
@@ -309,8 +314,8 @@ impl Editor {
                     .filter(|d| d.source.as_ref() == Some(source));
                 let old_diagnostics = old_diagnostics
                     .iter()
-                    .filter(|(d, d_server)| {
-                        *d_server == server_id && d.source.as_ref() == Some(source)
+                    .filter(|(d, d_provider)| {
+                        diagnostic_provider.equals(d_provider) && d.source.as_ref() == Some(source)
                     })
                     .map(|(d, _)| d);
                 if new_diagnostics.eq(old_diagnostics) {
@@ -319,7 +324,9 @@ impl Editor {
             }
         }
 
-        let diagnostics = diagnostics.into_iter().map(|d| (d, server_id));
+        let diagnostics = diagnostics
+            .into_iter()
+            .map(|d| (d, diagnostic_provider.clone()));
 
         // Insert the original lsp::Diagnostics here because we may have no open document
         // for diagnostic message and so we can't calculate the exact position.
@@ -328,7 +335,8 @@ impl Editor {
             Entry::Occupied(o) => {
                 let current_diagnostics = o.into_mut();
                 // there may entries of other language servers, which is why we can't overwrite the whole entry
-                current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
+                current_diagnostics
+                    .retain(|(_, ls_provider)| !diagnostic_provider.equals(ls_provider));
                 current_diagnostics.extend(diagnostics);
                 current_diagnostics
                 // Sort diagnostics first by severity and then by line numbers.
@@ -338,12 +346,13 @@ impl Editor {
 
         // Sort diagnostics first by severity and then by line numbers.
         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-        diagnostics.sort_by_key(|(d, server_id)| (d.severity, d.range.start, *server_id));
+        diagnostics
+            .sort_by_key(|(d, ls_provider)| (d.severity, d.range.start, ls_provider.clone()));
 
         if let Some(doc) = doc {
             let diagnostic_of_language_server_and_not_in_unchanged_sources =
-                |diagnostic: &lsp::Diagnostic, ls_id| {
-                    ls_id == server_id
+                |diagnostic: &lsp::Diagnostic, ls_provider| {
+                    diagnostic_provider.equals(&ls_provider)
                         && diagnostic
                             .source
                             .as_ref()
@@ -355,7 +364,11 @@ impl Editor {
                 doc,
                 diagnostic_of_language_server_and_not_in_unchanged_sources,
             );
-            doc.replace_diagnostics(diagnostics, &unchanged_diag_sources, Some(server_id));
+            doc.replace_diagnostics(
+                diagnostics,
+                &unchanged_diag_sources,
+                Some(diagnostic_provider),
+            );
 
             let doc = doc.id();
             helix_event::dispatch(DiagnosticsDidChange { editor: self, doc });
