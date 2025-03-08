@@ -25,8 +25,16 @@
  (#set! injection.language "slint")
  (#set! injection.include-children))
 
-((macro_invocation
-  (token_tree) @injection.content)
+(macro_invocation
+  macro:
+    [
+      (identifier)
+      (scoped_identifier
+        path: (identifier) @_path (#not-eq? @_path "sqlx"))
+      (scoped_identifier
+        name: (identifier) @_name (#not-match? @_name "^query((_scalar|_as)(_unchecked)?)?$"))
+    ]
+  (token_tree) @injection.content
  (#set! injection.language "rust")
  (#set! injection.include-children))
 
@@ -57,7 +65,10 @@
   (token_tree
     ; Only the first argument is SQL
     .
-    [(string_literal) (raw_string_literal)] @injection.content
+    [
+      (string_literal (string_content) @injection.content)
+      (raw_string_literal (string_content)  @injection.content)
+    ]
   )
   (#set! injection.language "sql"))
 
@@ -72,6 +83,9 @@
     ; Allow anything as the first argument in case the user has lower case type
     ; names for some reason
     (_)
-    [(string_literal) (raw_string_literal)] @injection.content
+    [
+      (string_literal (string_content) @injection.content)
+      (raw_string_literal (string_content) @injection.content)
+    ]
   )
   (#set! injection.language "sql"))
