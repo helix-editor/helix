@@ -53,6 +53,7 @@ impl Serialize for DiagnosticFilter {
 pub struct InlineDiagnosticsConfig {
     pub cursor_line: DiagnosticFilter,
     pub other_lines: DiagnosticFilter,
+    pub hide_diag_when_inserting: bool,
     pub min_diagnostic_width: u16,
     pub prefix_len: u16,
     pub max_wrap: u16,
@@ -115,6 +116,7 @@ impl Default for InlineDiagnosticsConfig {
             prefix_len: 1,
             max_wrap: 20,
             max_diagnostics: 10,
+            hide_diag_when_inserting: false,
         }
     }
 }
