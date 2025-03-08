@@ -326,7 +326,7 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
 
-    if config.insert_final_newline {
+    if doc.insert_final_newline() {
         insert_final_newline(doc, view.id);
     }
 
@@ -682,7 +682,7 @@ pub fn write_all_impl(
         let doc = doc_mut!(cx.editor, &doc_id);
         let view = view_mut!(cx.editor, target_view);
 
-        if config.insert_final_newline {
+        if doc.insert_final_newline() {
             insert_final_newline(doc, target_view);
         }
 
