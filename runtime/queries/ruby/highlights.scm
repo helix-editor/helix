@@ -91,6 +91,8 @@
   (instance_variable)
 ] @variable.other.member
 
+(constant) @constructor
+
 ((identifier) @constant.builtin
  (#match? @constant.builtin "^(__FILE__|__LINE__|__ENCODING__)$"))
 
@@ -99,8 +101,6 @@
 
 ((constant) @constant
  (#match? @constant "^[A-Z\\d_]+$"))
-
-(constant) @constructor
 
 (self) @variable.builtin
 (super) @function.builtin
