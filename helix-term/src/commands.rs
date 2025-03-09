@@ -2667,42 +2667,25 @@ fn local_search(cx: &mut Context) {
     struct LocalSearchConfig {
         smart_case: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
-        directory_style: Style,
         number_style: Style,
-        colon_style: Style,
     }
 
     let editor_config = cx.editor.config();
     let config = LocalSearchConfig {
         smart_case: editor_config.search.smart_case,
         file_picker_config: editor_config.file_picker.clone(),
-        directory_style: cx.editor.theme.get("ui.text.directory"),
         number_style: cx.editor.theme.get("constant.numeric.integer"),
-        colon_style: cx.editor.theme.get("punctuation"),
     };
 
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &LocalSearchConfig| {
-            let path = helix_stdx::path::get_relative_path(&item.path);
-
-            let directories = path
-                .parent()
-                .filter(|p| !p.as_os_str().is_empty())
-                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
-                .unwrap_or_default();
-
-            let filename = item
-                .path
-                .file_name()
-                .expect("local search paths are normalized (can't end in `..`)")
-                .to_string_lossy();
-
-            Cell::from(Spans::from(vec![
-                Span::styled(directories, config.directory_style),
-                Span::raw(filename),
-                Span::styled(":", config.colon_style),
-                Span::styled((item.line_num + 1).to_string(), config.number_style),
-            ]))
+            Cell::from(Spans::from(
+                // only show line numbers in the left picker column
+                vec![Span::styled(
+                    (item.line_num + 1).to_string(),
+                    config.number_style,
+                )],
+            ))
         }),
         PickerColumn::hidden("contents"),
     ];
