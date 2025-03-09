@@ -4032,12 +4032,12 @@ block-comment-tokens = [
 language-servers = [ "spade-language-server" ]
 indent = { tab-width = 4, unit = "    " }
 
-[language.auto-pairs] 
-'(' = ')' 
-'{' = '}' 
-'[' = ']' 
-'"' = '"' 
-'<' = '>' 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'<' = '>'
 
 [[grammar]]
 name = "spade"
@@ -4101,7 +4101,7 @@ file-types = [
   { glob = "sites-available/*.conf" },
   { glob = "sites-enabled/*.conf" },
   { glob = "nginx.conf" },
-  { glob = "conf.d/*.conf" } 
+  { glob = "conf.d/*.conf" }
 ]
 roots = ["nginx.conf"]
 comment-token = "#"
