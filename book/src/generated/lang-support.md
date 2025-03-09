@@ -242,6 +242,7 @@
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vhdl | ✓ |  |  | `vhdl_ls` |
 | vhs | ✓ |  |  |  |
+| vim | ✓ |  |  |  |
 | vue | ✓ |  |  | `vue-language-server` |
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  | `wat_server` |
