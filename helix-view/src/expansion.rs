@@ -33,6 +33,10 @@ pub enum Variable {
     BufferName,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
+    /// Curreng working directory
+    CurrentWorkingDirectory,
+    /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
+    WorkspaceDirectory,
 }
 
 impl Variable {
@@ -49,6 +53,8 @@ impl Variable {
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
             Self::LineEnding => "line_ending",
+            Self::CurrentWorkingDirectory => "current_working_directory",
+            Self::WorkspaceDirectory => "workspace_directory",
         }
     }
 
@@ -215,5 +221,16 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             }
         }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
+        Variable::CurrentWorkingDirectory => Ok(std::borrow::Cow::Owned(
+            helix_stdx::env::current_working_dir()
+                .to_string_lossy()
+                .to_string(),
+        )),
+        Variable::WorkspaceDirectory => Ok(std::borrow::Cow::Owned(
+            helix_loader::find_workspace()
+                .0
+                .to_string_lossy()
+                .to_string(),
+        )),
     }
 }
