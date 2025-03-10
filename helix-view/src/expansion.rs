@@ -45,6 +45,8 @@ impl Variable {
         Self::CursorColumn,
         Self::BufferName,
         Self::LineEnding,
+        Self::CurrentWorkingDirectory,
+        Self::WorkspaceDirectory,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -64,6 +66,8 @@ impl Variable {
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
             "line_ending" => Some(Self::LineEnding),
+            "workspace_directory" => Some(Self::WorkspaceDirectory),
+            "current_working_directory" => Some(Self::CurrentWorkingDirectory),
             _ => None,
         }
     }
