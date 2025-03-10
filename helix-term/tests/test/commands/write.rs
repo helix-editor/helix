@@ -483,6 +483,21 @@ async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_write_insert_final_newline_unchanged_if_empty() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("#[|]#")
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(&mut file, "")?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()

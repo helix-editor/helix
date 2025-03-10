@@ -415,7 +415,7 @@ fn trim_final_newlines(doc: &mut Document, view_id: ViewId) {
 /// Ensure that the document is terminated with a line ending.
 fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
-    if line_ending::get_line_ending(&text.slice(..)).is_none() {
+    if text.len_chars() > 0 && line_ending::get_line_ending(&text.slice(..)).is_none() {
         let eof = Selection::point(text.len_chars());
         let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
         doc.apply(&insert, view_id);
