@@ -7,22 +7,24 @@
 ;       <p>hello, tree-sitter!</p>
 ;     <% end %>
 ((directive
-    [
-      (partial_expression_value)
-      (ending_expression_value)
-    ] @injection.content)
- (#set! injection.language "elixir")
- (#set! injection.include-children)
- (#set! injection.combined))
+  [
+    (partial_expression_value)
+    (ending_expression_value)
+  ] @injection.content)
+  (#set! injection.language "elixir")
+  (#set! injection.include-children)
+  (#set! injection.combined))
 
 ; Regular expression_values do not need to be combined
-((directive (expression_value) @injection.content)
- (#set! injection.language "elixir"))
+((directive
+  (expression_value) @injection.content)
+  (#set! injection.language "elixir"))
 
 ; expressions live within HTML tags, and do not need to be combined
 ;     <link href={ Routes.static_path(..) } />
-((expression (expression_value) @injection.content)
- (#set! injection.language "elixir"))
+((expression
+  (expression_value) @injection.content)
+  (#set! injection.language "elixir"))
 
-((comment) @injection.content 
- (#set! injection.language "comment"))
+((comment) @injection.content
+  (#set! injection.language "comment"))

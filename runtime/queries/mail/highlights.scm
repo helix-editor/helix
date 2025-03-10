@@ -7,11 +7,13 @@
 
 ; delimited punctuation
 (header_separator) @punctuation.delimiter
+
 (email_delimiter) @punctuation.delimiter
 
 ; email subject contents
 (header_subject
   (subject) @markup.bold)
+
 ; extra metadata headers
 (header_other
   (header_unstructured) @comment)
@@ -24,5 +26,5 @@
 
 ; Quoted Reply
 (quote_marker) @punctuation.special
-(quote_contents) @markup.quote
 
+(quote_contents) @markup.quote

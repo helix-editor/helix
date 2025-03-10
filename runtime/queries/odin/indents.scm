@@ -11,13 +11,22 @@
 ] @indent
 
 [
- ")"
- "]"
+  ")"
+  "]"
 ] @outdent
 
 ; Have to do all closing brackets separately because the one for switch statements shouldn't end.
-(block "}" @outdent)
-(enum_declaration "}" @outdent)
-(union_declaration "}" @outdent)
-(struct_declaration "}" @outdent)
-(struct "}" @outdent)
+(block
+  "}" @outdent)
+
+(enum_declaration
+  "}" @outdent)
+
+(union_declaration
+  "}" @outdent)
+
+(struct_declaration
+  "}" @outdent)
+
+(struct
+  "}" @outdent)

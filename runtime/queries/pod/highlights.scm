@@ -1,8 +1,9 @@
 ; A highlight file for nvim-treesitter to use
-
-[(pod_command)
- (command)
- (cut_command)] @keyword
+[
+  (pod_command)
+  (command)
+  (cut_command)
+] @keyword
 
 (command_paragraph
   (command) @keyword
@@ -54,12 +55,15 @@
   (#not-match? @keyword "^=(head|over|item|encoding)")
   (content) @string)
 
-(verbatim_paragraph (content) @markup.raw)
+(verbatim_paragraph
+  (content) @markup.raw)
 
 (interior_sequence
   (sequence_letter) @constant.character
-  ["<" ">"] @punctuation.delimiter
-)
+  [
+    "<"
+    ">"
+  ] @punctuation.delimiter)
 
 (interior_sequence
   (sequence_letter) @character

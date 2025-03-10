@@ -4,13 +4,18 @@
 ; --------------------
 (super) @function.builtin
 
-(function_expression_body (identifier) @function.method)
-((identifier)(selector (argument_part)) @function.method)
+(function_expression_body
+  (identifier) @function.method)
+
+((identifier)
+  (selector
+    (argument_part)) @function.method)
 
 ; Annotations
 ; --------------------
 (annotation
   name: (identifier) @attribute)
+
 (marker_annotation
   name: (identifier) @attribute)
 
@@ -18,7 +23,7 @@
 ; --------------------
 (class_definition
   name: (identifier) @type)
-  
+
 (constructor_signature
   name: (identifier) @function.method)
 
@@ -41,12 +46,12 @@
 
 ((scoped_identifier
   scope: (identifier) @type)
- (#match? @type "^[a-zA-Z]"))
- 
+  (#match? @type "^[a-zA-Z]"))
+
 ((scoped_identifier
   scope: (identifier) @type
   name: (identifier) @type)
- (#match? @type "^[a-zA-Z]"))
+  (#match? @type "^[a-zA-Z]"))
 
 ; the DisabledDrawerButtons in : const DisabledDrawerButtons(history: true),
 (type_identifier) @type.builtin
@@ -55,9 +60,10 @@
 ; --------------------
 ; the "File" in var file = File();
 ((identifier) @namespace
- (#match? @namespace "^_?[A-Z].*[a-z]")) ; catch Classes or IClasses not CLASSES
+  (#match? @namespace "^_?[A-Z].*[a-z]")) ; catch Classes or IClasses not CLASSES
 
-("Function" @type.builtin)
+"Function" @type.builtin
+
 (inferred_type) @type.builtin
 
 ; properties
@@ -78,10 +84,11 @@
 ; Parameters
 ; --------------------
 (formal_parameter
-    name: (identifier) @variable)
+  name: (identifier) @variable)
 
 (named_argument
-  (label (identifier) @variable))
+  (label
+    (identifier) @variable))
 
 ; Literals
 ; --------------------
@@ -94,6 +101,7 @@
 ] @constant.numeric.integer
 
 (symbol_literal) @string.special.symbol
+
 (string_literal) @string
 
 [
@@ -109,6 +117,7 @@
 (null_literal) @constant.builtin
 
 (comment) @comment.line
+
 (documentation_comment) @comment.block.documentation
 
 ; Tokens
@@ -116,13 +125,11 @@
 (template_substitution
   "$" @punctuation.special
   "{" @punctuation.special
-  "}" @punctuation.special
-) @embedded
+  "}" @punctuation.special) @embedded
 
 (template_substitution
   "$" @punctuation.special
-  (identifier_dollar_escaped) @variable
-) @embedded
+  (identifier_dollar_escaped) @variable) @embedded
 
 (escape_sequence) @constant.character.escape
 
@@ -135,7 +142,7 @@
   "]"
   "{"
   "}"
-]  @punctuation.bracket
+] @punctuation.bracket
 
 [
   ";"
@@ -143,37 +150,56 @@
   ","
   ":"
 ] @punctuation.delimiter
-  
+
 ; Operators
 ;---------------------
 [
- "@"
- "?"
- "=>"
- ".."
- "=="
- "&&"
- "%"
- "<"
- ">"
- "="
- ">="
- "<="
- "||"
- (multiplicative_operator)
- (increment_operator)
- (is_operator)
- (prefix_operator)
- (equality_operator)
- (additive_operator)
+  "@"
+  "?"
+  "=>"
+  ".."
+  "=="
+  "&&"
+  "%"
+  "<"
+  ">"
+  "="
+  ">="
+  "<="
+  "||"
+  (multiplicative_operator)
+  (increment_operator)
+  (is_operator)
+  (prefix_operator)
+  (equality_operator)
+  (additive_operator)
 ] @operator
 
 ; Keywords
 ; --------------------
-["import" "library" "export"] @keyword.control.import
-["do" "while" "continue" "for"] @keyword.control.repeat
-["return" "yield"] @keyword.control.return
-["as" "in" "is"] @keyword.operator
+[
+  "import"
+  "library"
+  "export"
+] @keyword.control.import
+
+[
+  "do"
+  "while"
+  "continue"
+  "for"
+] @keyword.control.repeat
+
+[
+  "return"
+  "yield"
+] @keyword.control.return
+
+[
+  "as"
+  "in"
+  "is"
+] @keyword.operator
 
 [
   "?."
@@ -195,41 +221,42 @@
 
 ; Reserved words (cannot be used as identifiers)
 [
-    (case_builtin)
-    "abstract"
-    "async"
-    "async*"
-    "await"
-    "base"
-    "class"
-    "covariant"
-    "deferred"
-    "dynamic"
-    "enum"
-    "extends"
-    "extension"
-    "external"
-    "factory"
-    "Function"
-    "get"
-    "implements"
-    "interface"
-    "mixin"
-    "new"
-    "on"
-    "operator"
-    "part"
-    "required"
-    "sealed"
-    "set"
-    "show"
-    "static"
-    "super"
-    "sync*"
-    "typedef"
-    "with"
+  (case_builtin)
+  "abstract"
+  "async"
+  "async*"
+  "await"
+  "base"
+  "class"
+  "covariant"
+  "deferred"
+  "dynamic"
+  "enum"
+  "extends"
+  "extension"
+  "external"
+  "factory"
+  "Function"
+  "get"
+  "implements"
+  "interface"
+  "mixin"
+  "new"
+  "on"
+  "operator"
+  "part"
+  "required"
+  "sealed"
+  "set"
+  "show"
+  "static"
+  "super"
+  "sync*"
+  "typedef"
+  "with"
 ] @keyword
 
 ; when used as an identifier:
 ((identifier) @variable.builtin
- (#match? @variable.builtin "^(abstract|as|base|covariant|deferred|dynamic|export|external|factory|Function|get|implements|import|interface|library|operator|mixin|part|sealed|set|static|typedef)$"))
+  (#match? @variable.builtin
+    "^(abstract|as|base|covariant|deferred|dynamic|export|external|factory|Function|get|implements|import|interface|library|operator|mixin|part|sealed|set|static|typedef)$"))

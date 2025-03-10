@@ -1,5 +1,4 @@
 ; Keywords
-
 [
   "is"
   "extends"
@@ -60,16 +59,13 @@
 "?" @punctuation.special
 
 ; Identifiers
-
 (identifier_or_member_expression) @type
 
 ; Imports
-
 (import_statement
   (quoted_string_literal) @string.special.path)
 
 ; Namespaces
-
 (using_statement
   module: (identifier_or_member_expression) @namespace)
 
@@ -77,17 +73,11 @@
   name: (identifier_or_member_expression) @namespace)
 
 ; Comments
+(single_line_comment) @comment.line
 
-[
-  (single_line_comment)
-] @comment.line
-
-[
-  (multi_line_comment)
-] @comment.block
+(multi_line_comment) @comment.block
 
 ; Decorators
-
 (decorator
   "@" @attribute
   name: (identifier_or_member_expression) @attribute)
@@ -99,12 +89,10 @@
   (decorator_arguments) @variable.parameter)
 
 ; Scalars
-
 (scalar_statement
   name: (identifier) @type)
 
 ; Models
-
 (model_statement
   name: (identifier) @type)
 
@@ -112,7 +100,6 @@
   name: (identifier) @variable.other.member)
 
 ; Operations
-
 (operation_statement
   name: (identifier) @function.method)
 
@@ -127,7 +114,6 @@
   name: (identifier) @variable.parameter)
 
 ; Interfaces
-
 (interface_statement
   name: (identifier) @type)
 
@@ -137,7 +123,6 @@
       (identifier) @function.method)))
 
 ; Enums
-
 (enum_statement
   name: (identifier) @type.enum)
 
@@ -145,7 +130,6 @@
   name: (identifier) @constant)
 
 ; Unions
-
 (union_statement
   name: (identifier) @type)
 
@@ -153,12 +137,10 @@
   name: (identifier) @type.enum.variant)
 
 ; Aliases
-
 (alias_statement
   name: (identifier) @type)
 
 ; Built-in types
-
 [
   (quoted_string_literal)
   (triple_quoted_string_literal)

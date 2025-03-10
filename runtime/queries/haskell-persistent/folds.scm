@@ -1,3 +1,1 @@
-[
- (entity_definition)
-] @fold
+(entity_definition) @fold

@@ -1,12 +1,12 @@
 (template_body) @local.scope
+
 (lambda_expression) @local.scope
 
-
 (function_declaration
-      name: (identifier) @local.definition) @local.scope
+  name: (identifier) @local.definition) @local.scope
 
 (function_definition
-      name: (identifier) @local.definition)
+  name: (identifier) @local.definition)
 
 (parameter
   name: (identifier) @local.definition)

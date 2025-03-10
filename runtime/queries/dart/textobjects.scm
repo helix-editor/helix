@@ -13,18 +13,15 @@
 (type_alias) @class.around
 
 (_
-  (
-    [
-      (getter_signature)
-      (setter_signature)
-      (function_signature)
-      (method_signature)
-      (constructor_signature)
-    ]
+  ([
+    (getter_signature)
+    (setter_signature)
+    (function_signature)
+    (method_signature)
+    (constructor_signature)
+  ]
     .
-    (function_body) @function.inside @function.around
-  )  @function.around
-)
+    (function_body) @function.inside @function.around) @function.around)
 
 (declaration
   [
@@ -36,16 +33,13 @@
     (setter_signature)
     (operator_signature)
     (function_signature)
-  ]
-) @function.around
+  ]) @function.around
 
 (lambda_expression
-    body: (_) @function.inside
-) @function.around
+  body: (_) @function.inside) @function.around
 
 (function_expression
-    body: (_) @function.inside
-) @function.around
+  body: (_) @function.inside) @function.around
 
 [
   (comment)
@@ -57,37 +51,43 @@
 (documentation_comment)+ @comment.around
 
 (formal_parameter_list
-  (
-    (formal_parameter) @parameter.inside . ","? @parameter.around
-  ) @parameter.around
-)
+  ((formal_parameter) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (optional_formal_parameters
-  (
-    (formal_parameter) @parameter.inside . ","? @parameter.around
-  ) @parameter.around
-)
+  ((formal_parameter) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (arguments
-  (
-    [
-      (argument) @parameter.inside
-      (named_argument (label) . (_)* @parameter.inside)
-    ]
-    . ","? @parameter.around
-  ) @parameter.around
-)
+  ([
+    (argument) @parameter.inside
+    (named_argument
+      (label)
+      .
+      (_)* @parameter.inside)
+  ]
+    .
+    ","? @parameter.around) @parameter.around)
 
 (type_arguments
-  (
-    ((_) . ("." . (_) @parameter.inside @parameter.around)?) @parameter.inside
-    . ","? @parameter.around
-  ) @parameter.around
-)
+  (((_)
+    .
+    ("."
+      .
+      (_) @parameter.inside @parameter.around)?) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (expression_statement
-  ((identifier) @_name (#any-of? @_name "test" "testWidgets"))
+  ((identifier) @_name
+    (#any-of? @_name "test" "testWidgets"))
   .
-  (selector (argument_part (arguments . (_) . (argument) @test.inside)))
-) @test.around
-
+  (selector
+    (argument_part
+      (arguments
+        .
+        (_)
+        .
+        (argument) @test.inside)))) @test.around

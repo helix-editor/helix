@@ -1,6 +1,4 @@
-[
-  (expression)
-] @indent
+(expression) @indent
 
 [
   "]"

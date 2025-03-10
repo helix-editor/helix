@@ -1,51 +1,86 @@
-[ "abstract" "all" "at"
+[
+  "abstract"
+  "all"
+  "at"
   "case"
-  "end" "extends" "external" "external_as_list"
+  "end"
+  "extends"
+  "external"
+  "external_as_list"
   "for"
   "is"
   "limited"
   "null"
   "others"
   "package"
-  ;; "project"
+  ; "project"
   "renames"
   "type"
   "use"
   "when"
   "with"
-  ] @keyword
+] @keyword
 
-;; Avoid highlighting Project in Project'Project_Dir
-(project_declaration "project" @keyword)
+; Avoid highlighting Project in Project'Project_Dir
+(project_declaration
+  "project" @keyword)
 
-;; highlight qualifiers as keywords (not all qualifiers are actual keywords)
-(project_qualifier _ @keyword)
+; highlight qualifiers as keywords (not all qualifiers are actual keywords)
+(project_qualifier
+  _ @keyword)
 
-[":=" "&" "|" "=>"] @operator
+[
+  ":="
+  "&"
+  "|"
+  "=>"
+] @operator
 
 (comment) @comment
+
 (string_literal) @string
+
 (numeric_literal) @constant.numeric
 
-;; Type
-(typed_string_declaration name: (identifier) @type)
-(variable_declaration type: (name (identifier) @type .))
+; Type
+(typed_string_declaration
+  name: (identifier) @type)
 
-;; Variable
-(variable_declaration name: (identifier) @variable)
-(variable_reference (name (identifier) @variable .) .)
+(variable_declaration
+  type: (name
+    (identifier) @type .))
 
-;; Function
-(builtin_function_call name: _ @function.builtin)
+; Variable
+(variable_declaration
+  name: (identifier) @variable)
 
-;; Attribute
-(attribute_declaration name: (identifier) @attribute)
-(attribute_reference (identifier) @attribute)
+(variable_reference
+  (name
+    (identifier) @variable .) .)
 
-;; Package
-(variable_reference (name (identifier) @function .) "'")
+; Function
+(builtin_function_call
+  name: _ @function.builtin)
+
+; Attribute
+(attribute_declaration
+  name: (identifier) @attribute)
+
+(attribute_reference
+  (identifier) @attribute)
+
+; Package
+(variable_reference
+  (name
+    (identifier) @function .)
+  "'")
+
 (package_declaration
- [ name: (identifier) @function
-   endname: (identifier) @function
-   origname: (name (identifier) @function .)
-   basename: (name (identifier) @function .)])
+  [
+    name: (identifier) @function
+    endname: (identifier) @function
+    origname: (name
+      (identifier) @function .)
+    basename: (name
+      (identifier) @function .)
+  ])

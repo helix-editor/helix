@@ -1,27 +1,34 @@
-
 ; Identifiers
-
 (field_identifier) @variable.other.member
 
 (identifier) @variable
 
 (package_identifier) @namespace
 
-(parameter_declaration (identifier) @variable.parameter)
-(variadic_parameter_declaration (identifier) @variable.parameter)
+(parameter_declaration
+  (identifier) @variable.parameter)
+
+(variadic_parameter_declaration
+  (identifier) @variable.parameter)
 
 (const_spec
   name: (identifier) @constant)
 
-(type_spec 
+(type_spec
   name: (type_identifier) @constructor)
 
-(keyed_element (literal_element (identifier) @variable.other.member))
+(keyed_element
+  (literal_element
+    (identifier) @variable.other.member))
+
 (field_declaration
   name: (field_identifier) @variable.other.member)
 
-(parameter_declaration (identifier) @variable.parameter)
-(variadic_parameter_declaration (identifier) @variable.parameter)
+(parameter_declaration
+  (identifier) @variable.parameter)
+
+(variadic_parameter_declaration
+  (identifier) @variable.parameter)
 
 (label_name) @label
 
@@ -29,7 +36,6 @@
   name: (identifier) @constant)
 
 ; Function calls
-
 (call_expression
   function: (identifier) @function)
 
@@ -39,10 +45,10 @@
 
 (call_expression
   function: (identifier) @function.builtin
-  (#match? @function.builtin "^(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)$"))
+  (#match? @function.builtin
+    "^(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)$"))
 
 ; Types
-
 (type_identifier) @type
 
 (type_parameter_list
@@ -50,22 +56,20 @@
     name: (identifier) @type.parameter))
 
 ((type_identifier) @type.builtin
-  (#match? @type.builtin "^(any|bool|byte|comparable|complex128|complex64|error|float32|float64|int|int16|int32|int64|int8|rune|string|uint|uint16|uint32|uint64|uint8|uintptr)$"))
+  (#match? @type.builtin
+    "^(any|bool|byte|comparable|complex128|complex64|error|float32|float64|int|int16|int32|int64|int8|rune|string|uint|uint16|uint32|uint64|uint8|uintptr)$"))
 
 ; Function definitions
-
 (function_declaration
   name: (identifier) @function)
 
 (method_declaration
   name: (field_identifier) @function.method)
 
-(method_spec 
-  name: (field_identifier) @function.method) 
-
+(method_spec
+  name: (field_identifier) @function.method)
 
 ; Operators
-
 [
   "--"
   "-"
@@ -107,14 +111,13 @@
 ] @operator
 
 ; Keywords
-
 [
   "default"
   "type"
 ] @keyword
 
 [
-  "if"  
+  "if"
   "else"
   "switch"
   "select"
@@ -138,9 +141,7 @@
   "fallthrough"
 ] @keyword.control.return
 
-[
-  "func"
-] @keyword.function
+"func" @keyword.function
 
 [
   "var"
@@ -150,9 +151,7 @@
   "struct"
 ] @keyword.storage.type
 
-[
-  "const"
-] @keyword.storage.modifier
+"const" @keyword.storage.modifier
 
 [
   "defer"
@@ -161,7 +160,6 @@
 ] @function.macro
 
 ; Delimiters
-
 [
   ":"
   "."
@@ -179,7 +177,6 @@
 ] @punctuation.bracket
 
 ; Literals
-
 [
   (interpreted_string_literal)
   (raw_string_literal)
@@ -188,9 +185,7 @@
 
 (escape_sequence) @constant.character.escape
 
-[
-  (int_literal)
-] @constant.numeric.integer
+(int_literal) @constant.numeric.integer
 
 [
   (float_literal)
@@ -208,7 +203,6 @@
 ] @constant.builtin
 
 ; Comments
-
 (comment) @comment
 
 ; Doc Comments

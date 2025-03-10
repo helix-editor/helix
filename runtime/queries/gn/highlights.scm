@@ -11,32 +11,59 @@
 ; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
-
 (identifier) @variable.builtin
 
-(scope_access field: (_) @variable.other.member)
+(scope_access
+  field: (_) @variable.other.member)
 
-(call target: (_) @function)
-
-[ "if" "else" ] @keyword.control.conditional
+(call
+  target: (_) @function)
 
 [
-    (assign_op)
-    (arithmetic_binary_op)
-    (comparison_binary_op)
-    (equivalence_binary_op)
-    (logical_and_binary_op)
-    (logical_or_binary_op)
-    (negation_unary_op)
+  "if"
+  "else"
+] @keyword.control.conditional
+
+[
+  (assign_op)
+  (arithmetic_binary_op)
+  (comparison_binary_op)
+  (equivalence_binary_op)
+  (logical_and_binary_op)
+  (logical_or_binary_op)
+  (negation_unary_op)
 ] @operator
 
-[ "(" ")" "[" "]" "{" "}" ] @punctuation.bracket
-[ "." "," ] @punctuation.delimiter
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
+
+[
+  "."
+  ","
+] @punctuation.delimiter
 
 (string) @string
+
 (string_escape) @constant.character.escape
-(string_expansion [ "$" "${" "}" ] @constant.character.escape)
-[ (integer) (hex) ] @constant.numeric
+
+(string_expansion
+  [
+    "$"
+    "${"
+    "}"
+  ] @constant.character.escape)
+
+[
+  (integer)
+  (hex)
+] @constant.numeric
+
 (boolean) @constant.builtin.boolean
 
 (comment) @comment

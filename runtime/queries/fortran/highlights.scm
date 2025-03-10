@@ -22,8 +22,8 @@
 ] @keyword.directive
 
 [
-"implicit"
-(none)
+  "implicit"
+  (none)
 ] @attribute
 
 [
@@ -69,7 +69,7 @@
 ] @keyword
 
 [
-  "if" 
+  "if"
   "then"
   "else"
   "elseif"
@@ -114,20 +114,20 @@
 
 (identifier) @variable
 
- ;; Brackets
- [
+; Brackets
+[
   "("
   ")"
   "["
   "]"
- ] @punctuation.bracket
+] @punctuation.bracket
 
- ;; Delimiter
- [
+; Delimiter
+[
   "::"
   ","
   "%"
- ] @punctuation.delimiter
+] @punctuation.delimiter
 
 (parameters
   (identifier) @variable.parameter)
@@ -157,7 +157,7 @@
   (name) @function)
 
 (subroutine_call
-	(name) @function)
+  (name) @function)
 
 (keyword_argument
   name: (identifier) @keyword)
@@ -166,7 +166,9 @@
   (type_member) @variable.other.member)
 
 (string_literal) @string
-(number_literal) @constant.numeric
-(boolean_literal) @constant.builtin.boolean
-(comment) @comment
 
+(number_literal) @constant.numeric
+
+(boolean_literal) @constant.builtin.boolean
+
+(comment) @comment

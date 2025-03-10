@@ -1,5 +1,4 @@
 ; Operators
-
 [
   "-"
   "!"
@@ -17,13 +16,9 @@
 ] @operator
 
 ; Keywords
-
-[
-"in"
-] @keyword
+"in" @keyword
 
 ; Identifiers
-
 (identifier) @variable.other.member
 
 (select_expression
@@ -34,7 +29,6 @@
     member: (identifier) @type))
 
 ; Function calls
-
 (call_expression
   function: (identifier) @function)
 
@@ -42,7 +36,6 @@
   function: (identifier) @function)
 
 ; Literals
-
 [
   (double_quote_string_literal)
   (single_quoted_string_literal)
@@ -54,6 +47,7 @@
   (int_literal)
   (uint_literal)
 ] @constant.numeric.integer
+
 (float_literal) @constant.numeric.float
 
 [

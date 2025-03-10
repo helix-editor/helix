@@ -1,65 +1,75 @@
 ; Types
-
 (class_identifier
   (identifier) @type)
 
 (primitive_type) @type.builtin
 
 ((class_identifier
-   . (identifier) @_first @type.builtin
-   (identifier) @type.builtin)
+  .
+  (identifier) @_first @type.builtin
+  (identifier) @type.builtin)
   (#match? @_first "^(android|dalvik|java|kotlinx)$"))
 
 ((class_identifier
-   . (identifier) @_first @type.builtin
-   . (identifier) @_second @type.builtin
-   (identifier) @type.builtin)
+  .
+  (identifier) @_first @type.builtin
+  .
+  (identifier) @_second @type.builtin
+  (identifier) @type.builtin)
   (#eq? @_first "com")
   (#match? @_second "^(android|google)$"))
 
 ; Methods
-
 (method_definition
-  (method_signature (method_identifier) @function.method))
+  (method_signature
+    (method_identifier) @function.method))
 
 (expression
   (opcode) @_invoke
-	(body
-	  (full_method_signature
-      (method_signature (method_identifier) @function.method)))
+  (body
+    (full_method_signature
+      (method_signature
+        (method_identifier) @function.method)))
   (#match? @_invoke "^invoke"))
 
 (expression
   (opcode) @_field_access
-	(body
-	  (field_identifier) @variable.other.member)
+  (body
+    (field_identifier) @variable.other.member)
   (#match? @_field_access "^[is](get|put)-"))
 
 (method_handle
   (full_method_signature
-	(method_signature (method_identifier) @function.method)))
+    (method_signature
+      (method_identifier) @function.method)))
 
 (custom_invoke
-  . (identifier) @function.method
-  (method_signature (method_identifier) @function.method))
+  .
+  (identifier) @function.method
+  (method_signature
+    (method_identifier) @function.method))
 
 (annotation_value
   (body
-    (method_signature (method_identifier) @function.method)))
+    (method_signature
+      (method_identifier) @function.method)))
 
 (annotation_value
   (body
     (full_method_signature
-      (method_signature (method_identifier) @function.method))))
+      (method_signature
+        (method_identifier) @function.method))))
 
 (field_definition
-	(body
-		(method_signature (method_identifier) @function.method)))
+  (body
+    (method_signature
+      (method_identifier) @function.method)))
 
 (field_definition
-	(body
-	  (full_method_signature
-		  (method_signature (method_identifier) @function.method))))
+  (body
+    (full_method_signature
+      (method_signature
+        (method_identifier) @function.method))))
 
 ((method_identifier) @constructor
   (#match? @constructor "^(<init>|<clinit>)$"))
@@ -67,7 +77,6 @@
 "constructor" @constructor
 
 ; Fields
-
 [
   (field_identifier)
   (annotation_key)
@@ -77,28 +86,24 @@
   (#match? @constant "^[%u_]*$"))
 
 ; Variables
-
 (variable) @variable.builtin
 
 (local_directive
   (identifier) @variable)
 
 ; Parameters
-
 (parameter) @variable.parameter
+
 (param_identifier) @variable.parameter
 
 ; Labels
-
 [
   (label)
   (jmp_label)
 ] @label
 
 ; Operators
-
 ; (opcode) @keyword.operator
-
 ((opcode) @keyword.control.return
   (#match? @keyword.control.return "^return"))
 
@@ -117,7 +122,6 @@
 ] @operator
 
 ; Keywords
-
 [
   ".class"
   ".super"
@@ -147,9 +151,7 @@
   (epilogue_directive)
 ] @keyword
 
-[
-  ".source"
-] @keyword.directive
+".source" @keyword.directive
 
 [
   ".method"
@@ -162,24 +164,32 @@
 ] @keyword.control.exception
 
 ; Literals
-
 (string) @string
-(source_directive (string "\"" _ @string.special.url "\""))
+
+(source_directive
+  (string
+    "\""
+    _ @string.special.url
+    "\""))
+
 (escape_sequence) @constant.character.escape
 
 (character) @constant.character
 
 "L" @punctuation
 
-(line_directive (number) @comment) @comment
-(".locals" (number) @comment) @comment
+(line_directive
+  (number) @comment) @comment
+
+(".locals"
+  (number) @comment) @comment
 
 (number) @constant.numeric.integer
 
 [
- (float)
- (NaN)
- (Infinity)
+  (float)
+  (NaN)
+  (Infinity)
 ] @constant.numeric.float
 
 (boolean) @constant.builtin.boolean
@@ -187,7 +197,6 @@
 (null) @constant.builtin
 
 ; Misc
-
 (annotation_visibility) @keyword.storage.modifier
 
 (access_modifier) @keyword.storage.type
@@ -195,9 +204,15 @@
 (array_type
   "[" @punctuation.special)
 
-["{" "}"] @punctuation.bracket
+[
+  "{"
+  "}"
+] @punctuation.bracket
 
-["(" ")"] @punctuation.bracket
+[
+  "("
+  ")"
+] @punctuation.bracket
 
 [
   "->"
@@ -209,7 +224,6 @@
 ] @punctuation.delimiter
 
 ; Comments
-
 (comment) @comment
 
 (class_definition

@@ -1,5 +1,4 @@
 ; Classes
-
 (enum_statement
   (enum_body) @class.inside) @class.around
 
@@ -10,13 +9,11 @@
   (union_body) @class.inside) @class.around
 
 ; Interfaces
-
 (interface_statement
   (interface_body
     (interface_member) @function.around) @class.inside) @class.around
 
 ; Comments
-
 [
   (single_line_comment)
   (multi_line_comment)
@@ -28,7 +25,6 @@
 ]+ @comment.around
 
 ; Functions
-
 [
   (decorator)
   (decorator_declaration_statement)

@@ -1,6 +1,5 @@
 ; Types
 ;------
-
 (scalar_type_definition
   (name) @type)
 
@@ -50,7 +49,6 @@
 
 ; Properties
 ;-----------
-
 (field
   (name) @variable.other.member)
 
@@ -68,9 +66,8 @@
 (enum_value
   (name) @variable.other.member)
 
-; Variable Definitions and Arguments 
+; Variable Definitions and Arguments
 ;-----------------------------------
-
 (operation_definition
   (name) @variable)
 
@@ -97,7 +94,6 @@
 
 ; Constants
 ;----------
-
 (string_value) @string
 
 (int_value) @constants.numeric.integer
@@ -108,7 +104,6 @@
 
 ; Literals
 ;---------
-
 (description) @comment
 
 (comment) @comment
@@ -121,7 +116,6 @@
 
 ; Keywords
 ;----------
-
 [
   "query"
   "mutation"
@@ -143,21 +137,23 @@
 
 ; Punctuation
 ;------------
-
 [
- "("
- ")"
- "["
- "]"
- "{"
- "}"
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
 ] @punctuation.bracket
 
 "=" @operator
 
 "|" @punctuation.delimiter
+
 "&" @punctuation.delimiter
+
 ":" @punctuation.delimiter
 
 "..." @punctuation.special
+
 "!" @punctuation.special

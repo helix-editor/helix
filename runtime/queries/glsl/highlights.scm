@@ -31,7 +31,5 @@
 
 (extension_storage_class) @attribute
 
-(
-  (identifier) @variable.builtin
-  (#match? @variable.builtin "^gl_")
-)
+((identifier) @variable.builtin
+  (#match? @variable.builtin "^gl_"))

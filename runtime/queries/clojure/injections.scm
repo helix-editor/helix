@@ -1,2 +1,2 @@
 ((regex_lit) @injection.content
- (#set! injection.language "regex"))
+  (#set! injection.language "regex"))

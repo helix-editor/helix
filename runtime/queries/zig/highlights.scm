@@ -1,9 +1,7 @@
 ; Variables
-
 (identifier) @variable
 
 ; Parameters
-
 (parameter
   name: (identifier) @variable.parameter)
 
@@ -11,7 +9,6 @@
   (identifier) @variable.parameter)
 
 ; Types
-
 (parameter
   type: (identifier) @type)
 
@@ -34,7 +31,6 @@
 ] @type.builtin
 
 ; Constants
-
 ((identifier) @constant
   (#match? @constant "^[A-Z][A-Z_0-9]+$"))
 
@@ -53,7 +49,6 @@
     type: (identifier) @constant))
 
 ; Labels
-
 (block_label
   (identifier) @label)
 
@@ -61,7 +56,6 @@
   (identifier) @label)
 
 ; Fields
-
 (field_initializer
   .
   (identifier) @variable.other.member)
@@ -72,23 +66,24 @@
 
 (field_expression
   (_)
-  member: (identifier) @type (#match? @type "^[A-Z_][a-zA-Z0-9_]*"))
+  member: (identifier) @type
+  (#match? @type "^[A-Z_][a-zA-Z0-9_]*"))
 
 (field_expression
   (_)
-  member: (identifier) @constant (#match? @constant "^[A-Z][A-Z_0-9]+$"))
+  member: (identifier) @constant
+  (#match? @constant "^[A-Z][A-Z_0-9]+$"))
 
 (container_field
   name: (identifier) @variable.other.member)
 
 (initializer_list
   (assignment_expression
-      left: (field_expression
-              .
-              member: (identifier) @variable.other.member)))
+    left: (field_expression
+      .
+      member: (identifier) @variable.other.member)))
 
 ; Functions
-
 (builtin_identifier) @function.builtin
 
 (call_expression
@@ -102,7 +97,6 @@
   name: (identifier) @function)
 
 ; Modules
-
 (variable_declaration
   (_)
   (builtin_function
@@ -117,7 +111,6 @@
       (#any-of? @keyword.control.import "@import" "@cImport"))))
 
 ; Builtins
-
 [
   "c"
   "..."
@@ -130,7 +123,6 @@
   (identifier) @variable.builtin)
 
 ; Keywords
-
 [
   "asm"
   "test"
@@ -211,7 +203,6 @@
 ] @keyword.storage.modifier
 
 ; Operator
-
 [
   "="
   "*="
@@ -268,7 +259,6 @@
 ] @operator
 
 ; Literals
-
 (character) @constant.character
 
 [
@@ -285,7 +275,6 @@
 (escape_sequence) @constant.character.escape
 
 ; Punctuation
-
 [
   "["
   "]"
@@ -304,10 +293,10 @@
   "->"
 ] @punctuation.delimiter
 
-(payload "|" @punctuation.bracket)
+(payload
+  "|" @punctuation.bracket)
 
 ; Comments
-
 (comment) @comment.line
 
 ((comment) @comment.block.documentation

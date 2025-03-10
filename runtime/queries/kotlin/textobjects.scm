@@ -21,22 +21,34 @@
 (multiline_comment) @comment.around
 
 (enum_entry) @entry.around
+
 (lambda_literal) @entry.around
+
 (property_declaration) @entry.around
+
 (object_declaration) @entry.around
+
 (assignment) @entry.around
 
 ; TODO: This doesn't work with annotations yet, but fixing it without breaking
 ; the case of multiple parameters is non-trivial.
 (function_value_parameters
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 ; secondary constructor uses function_value_parameters above
 (primary_constructor
-  ((_)@parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (function_type_parameters
-  ((_)@parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (value_arguments
-  ((_)@parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)

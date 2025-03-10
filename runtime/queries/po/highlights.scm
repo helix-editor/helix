@@ -3,11 +3,18 @@
   (msgid)
   (msgid_plural)
   (msgstr)
-]@keyword
+] @keyword
 
 (comment) @comment
-(comment (comment_reference (text) @string.special.path))
-(comment (comment_flag (text) @label))
+
+(comment
+  (comment_reference
+    (text) @string.special.path))
+
+(comment
+  (comment_flag
+    (text) @label))
 
 (number) @constant.numeric
+
 (string) @string

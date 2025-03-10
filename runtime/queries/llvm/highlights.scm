@@ -1,14 +1,17 @@
 (type) @type
+
 (type_keyword) @type.builtin
 
-(type [
+(type
+  [
     (local_var)
     (global_var)
   ] @type)
 
 (argument) @variable.parameter
 
-(_ inst_name: _ @keyword.operator)
+(_
+  inst_name: _ @keyword.operator)
 
 [
   "catch"
@@ -34,8 +37,11 @@
   (fast_math)
 ] @keyword.control
 
-(_ callee: _ @function)
-(function_header name: _ @function)
+(_
+  callee: _ @function)
+
+(function_header
+  name: _ @function)
 
 [
   "declare"
@@ -90,8 +96,8 @@
   (attribute_name)
 ] @keyword
 
-
-(function_header [
+(function_header
+  [
     (linkage)
     (calling_conv)
     (unnamed_addr)
@@ -103,9 +109,14 @@
 ] @string
 
 (number) @constant.numeric.integer
+
 (comment) @comment
+
 (label) @label
-(_ inst_name: "ret" @keyword.control.return)
+
+(_
+  inst_name: "ret" @keyword.control.return)
+
 (float) @constant.numeric.float
 
 [

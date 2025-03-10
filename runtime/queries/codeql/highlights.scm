@@ -36,7 +36,6 @@
   "sum"
   "then"
   "where"
-
   (false)
   (predicate)
   (result)
@@ -90,11 +89,14 @@
 (varName) @variable
 
 (integer) @constant.numeric.integer
+
 (float) @constant.numeric.float
 
 (string) @string
 
-(aritylessPredicateExpr (literalId) @function)
+(aritylessPredicateExpr
+  (literalId) @function)
+
 (predicateName) @function
 
 [

@@ -38,21 +38,23 @@
   "false"
 ] @constant.builtin.boolean
 
-[
-  "?"
-] @constant.builtin
+"?" @constant.builtin
 
 (var) @variable
 
-(template_arg (identifier) @variable.parameter)
+(template_arg
+  (identifier) @variable.parameter)
 
-(_ argument: (value (identifier) @variable.parameter))
+(_
+  argument: (value
+    (identifier) @variable.parameter))
 
 (type) @type
 
 "code" @type.builtin
 
 (number) @constant.numeric.integer
+
 [
   (string_string)
   (code_string)

@@ -1,15 +1,24 @@
 (number) @constant.numeric
+
 (string) @string
+
 (boolean) @constant.builtin.boolean
+
 (include_path) @string.special.path
 
 (identifier) @variable
 
-(parameters_declaration (identifier) @variable.parameter)
-(function_declaration name: (identifier) @function)
+(parameters_declaration
+  (identifier) @variable.parameter)
 
-(function_call function: (identifier) @function)
-(module_call name: (identifier) @function)
+(function_declaration
+  name: (identifier) @function)
+
+(function_call
+  function: (identifier) @function)
+
+(module_call
+  name: (identifier) @function)
 
 (special_variable) @variable.builtin
 
@@ -25,9 +34,7 @@
   "intersection_for"
 ] @keyword.control.repeat
 
-[
-  "if"
-] @keyword.control.conditional
+"if" @keyword.control.conditional
 
 [
   "module"

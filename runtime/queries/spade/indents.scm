@@ -1,4 +1,3 @@
-
 [
   (unit_definition)
   (struct_definition)
@@ -24,4 +23,3 @@
   "]"
   ")"
 ] @outdent
-

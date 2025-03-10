@@ -14,16 +14,12 @@
 ; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
-
 ; Punctuation
+"%" @punctuation
 
 [
- "%"
-] @punctuation
-
-[
- ","
- ";"
+  ","
+  ";"
 ] @punctuation.delimiter
 
 [
@@ -38,37 +34,35 @@
 ] @punctuation.bracket
 
 ; Literals
-
 (boolean) @constant.builtin.boolean
+
 (nil) @constant.builtin
+
 (integer) @constant.numeric.integer
+
 (float) @constant.numeric.float
+
 (char) @constant.character
 
 ; Identifiers
-
 ; * regular
 (identifier) @variable
 
 ; * unused
-(
-  (identifier) @comment.unused
-  (#match? @comment.unused "^_")
-)
+((identifier) @comment.unused
+  (#match? @comment.unused "^_"))
 
 ; * special
-(
-  (identifier) @constant.builtin
-  (#any-of? @constant.builtin "__MODULE__" "__DIR__" "__ENV__" "__CALLER__" "__STACKTRACE__")
-)
+((identifier) @constant.builtin
+  (#any-of? @constant.builtin "__MODULE__" "__DIR__" "__ENV__" "__CALLER__" "__STACKTRACE__"))
 
 ; Comment
-
 (comment) @comment
 
 ; Quoted content
-
-(interpolation "#{" @punctuation.special "}" @punctuation.special) @embedded
+(interpolation
+  "#{" @punctuation.special
+  "}" @punctuation.special) @embedded
 
 (escape_sequence) @constant.character.escape
 
@@ -85,7 +79,6 @@
 ] @string.special.symbol
 
 ; Note that we explicitly target sigil quoted start/end, so they are not overridden by delimiters
-
 (sigil
   (sigil_name) @__name__
   quoted_start: _ @string.special
@@ -104,7 +97,6 @@
   (#match? @__name__ "^[rR]$")) @string.regex
 
 ; Calls
-
 ; * local function call
 (call
   target: (identifier) @function)
@@ -117,8 +109,7 @@
 ; * field without parentheses or block
 (call
   target: (dot
-    right: (identifier) @variable.other.member)
-  .)
+    right: (identifier) @variable.other.member) .)
 
 ; * remote call without parentheses or block (overrides above)
 (call
@@ -127,18 +118,21 @@
       (alias)
       (atom)
     ]
-    right: (identifier) @function)
-  .)
+    right: (identifier) @function) .)
 
 ; * definition keyword
 (call
   target: (identifier) @keyword
-  (#any-of? @keyword "def" "defdelegate" "defexception" "defguard" "defguardp" "defimpl" "defmacro" "defmacrop" "defmodule" "defn" "defnp" "defoverridable" "defp" "defprotocol" "defstruct"))
+  (#any-of? @keyword
+    "def" "defdelegate" "defexception" "defguard" "defguardp" "defimpl" "defmacro" "defmacrop"
+    "defmodule" "defn" "defnp" "defoverridable" "defp" "defprotocol" "defstruct"))
 
 ; * kernel or special forms keyword
 (call
   target: (identifier) @keyword
-  (#any-of? @keyword "alias" "case" "cond" "for" "if" "import" "quote" "raise" "receive" "require" "reraise" "super" "throw" "try" "unless" "unquote" "unquote_splicing" "use" "with"))
+  (#any-of? @keyword
+    "alias" "case" "cond" "for" "if" "import" "quote" "raise" "receive" "require" "reraise" "super"
+    "throw" "try" "unless" "unquote" "unquote_splicing" "use" "with"))
 
 ; * just identifier in function definition
 (call
@@ -150,7 +144,8 @@
         left: (identifier) @function
         operator: "when")
     ])
-  (#any-of? @keyword "def" "defdelegate" "defguard" "defguardp" "defmacro" "defmacrop" "defn" "defnp" "defp"))
+  (#any-of? @keyword
+    "def" "defdelegate" "defguard" "defguardp" "defmacro" "defmacrop" "defn" "defnp" "defp"))
 
 ; * pipe into identifier (function call)
 (binary_operator
@@ -164,7 +159,8 @@
     (binary_operator
       operator: "|>"
       right: (identifier) @variable))
-  (#any-of? @keyword "def" "defdelegate" "defguard" "defguardp" "defmacro" "defmacrop" "defn" "defnp" "defp"))
+  (#any-of? @keyword
+    "def" "defdelegate" "defguard" "defguardp" "defmacro" "defmacrop" "defn" "defnp" "defp"))
 
 ; * pipe into field without parentheses (function call)
 (binary_operator
@@ -174,7 +170,6 @@
       right: (identifier) @function)))
 
 ; Operators
-
 ; * capture operand
 (unary_operator
   operator: "&"
@@ -182,9 +177,14 @@
     (integer) @operator
     (binary_operator
       left: [
-        (call target: (dot left: (_) right: (identifier) @function))
+        (call
+          target: (dot
+            left: (_)
+            right: (identifier) @function))
         (identifier) @function
-      ] operator: "/" right: (integer) @operator)
+      ]
+      operator: "/"
+      right: (integer) @operator)
   ])
 
 (operator_identifier) @operator
@@ -229,7 +229,6 @@
   (#any-of? @comment.block.documentation.__attribute__ "moduledoc" "typedoc" "doc"))
 
 ; Module
-
 (alias) @namespace
 
 (call
@@ -237,5 +236,18 @@
     left: (atom) @namespace))
 
 ; Reserved keywords
-
-["when" "and" "or" "not" "in" "not in" "fn" "do" "end" "catch" "rescue" "after" "else"] @keyword
+[
+  "when"
+  "and"
+  "or"
+  "not"
+  "in"
+  "not in"
+  "fn"
+  "do"
+  "end"
+  "catch"
+  "rescue"
+  "after"
+  "else"
+] @keyword

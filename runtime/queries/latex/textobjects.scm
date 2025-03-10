@@ -1,6 +1,4 @@
-[
-  (generic_command)
-] @function.around
+(generic_command) @function.around
 
 [
   (chapter)

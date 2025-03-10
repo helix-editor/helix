@@ -1,5 +1,6 @@
 ; Scopes
-(module (_) @local.scope)
+(module
+  (_) @local.scope)
 
 (function
   body: (_) @local.scope)
@@ -15,7 +16,8 @@
   (identifier) @local.definition)
 
 (arg
-  (variable (identifier)) @local.definition)
+  (variable
+    (identifier)) @local.definition)
 
 (import_item
   (identifier) @local.definition)

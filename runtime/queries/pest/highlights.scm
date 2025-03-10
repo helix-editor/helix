@@ -1,4 +1,5 @@
 (line_comment) @comment
+
 (block_comment) @comment
 
 [
@@ -10,9 +11,11 @@
   "}"
 ] @punctuation.bracket
 
-((identifier) @variable)
-((builtin) @type.builtin)
-((const) @constant)
+(identifier) @variable
+
+(builtin) @type.builtin
+
+(const) @constant
 
 [
   (string)
@@ -23,7 +26,7 @@
   "_"
   "@"
   "$"
-]@keyword.storage.modifier
+] @keyword.storage.modifier
 
 [
   "~"
@@ -46,4 +49,3 @@
   "EOI"
   "ANY"
 ] @keyword
-

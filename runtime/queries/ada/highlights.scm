@@ -1,170 +1,263 @@
 [
-   "abort"
-   "abs"
-   "abstract"
-   "accept"
-   "access"
-   "all"
-   "array"
-   "at"
-   "begin"
-   "declare"
-   "delay"
-   "delta"
-   "digits"
-   "do"
-   "end"
-   "entry"
-   "exit"
-   "generic"
-   "interface"
-   "is"
-   "limited"
-   "of"
-   "others"
-   "out"
-   "pragma"
-   "private"
-   "range"
-   "synchronized"
-   "tagged"
-   "task"
-   "terminate"
-   "until"
-   "when"
+  "abort"
+  "abs"
+  "abstract"
+  "accept"
+  "access"
+  "all"
+  "array"
+  "at"
+  "begin"
+  "declare"
+  "delay"
+  "delta"
+  "digits"
+  "do"
+  "end"
+  "entry"
+  "exit"
+  "generic"
+  "interface"
+  "is"
+  "limited"
+  "of"
+  "others"
+  "out"
+  "pragma"
+  "private"
+  "range"
+  "synchronized"
+  "tagged"
+  "task"
+  "terminate"
+  "until"
+  "when"
 ] @keyword
+
+"null" @constant.builtin
+
 [
-   "null"
-] @constant.builtin
-[
-   "aliased"
-   "constant"
-   "renames"
+  "aliased"
+  "constant"
+  "renames"
 ] @keyword.storage
+
 [
-   "mod"
-   "new"
-   "protected"
-   "record"
-   "subtype"
-   "type"
+  "mod"
+  "new"
+  "protected"
+  "record"
+  "subtype"
+  "type"
 ] @type.builtin
+
 [
-   "with"
-   "use"
+  "with"
+  "use"
 ] @keyword.control.import
+
 [
-   "body"
-   "function"
-   "overriding"
-   "procedure"
-   "package"
-   "separate"
+  "body"
+  "function"
+  "overriding"
+  "procedure"
+  "package"
+  "separate"
 ] @keyword.function
+
 [
-   "and"
-   "in"
-   "not"
-   "or"
-   "xor"
+  "and"
+  "in"
+  "not"
+  "or"
+  "xor"
 ] @operator
+
 [
-   "while"
-   "loop"
-   "for"
-   "parallel"
-   "reverse"
-   "some"
+  "while"
+  "loop"
+  "for"
+  "parallel"
+  "reverse"
+  "some"
 ] @kewyord.control.repeat
+
+"return" @keyword.control.return
+
 [
-   "return"
-] @keyword.control.return
-[
-   "case"
-   "if"
-   "else"
-   "then"
-   "elsif"
-   "select"
+  "case"
+  "if"
+  "else"
+  "then"
+  "elsif"
+  "select"
 ] @keyword.control.conditional
+
 [
-   "exception"
-   "raise"
+  "exception"
+  "raise"
 ] @keyword.control.exception
-(comment)         @comment
-(string_literal)  @string
+
+(comment) @comment
+
+(string_literal) @string
+
 (character_literal) @string
+
 (numeric_literal) @constant.numeric
 
-;; Highlight the name of subprograms
-(procedure_specification name: (_) @function.builtin)
-(function_specification name: (_) @function.builtin)
-(package_declaration name: (_) @function.builtin)
-(package_body name: (_) @function.builtin)
-(generic_instantiation name: (_) @function.builtin)
-(entry_declaration . (identifier) @function.builtin)
+; Highlight the name of subprograms
+(procedure_specification
+  name: (_) @function.builtin)
 
-;; Some keywords should take different categories depending on the context
-(use_clause "use"  @keyword.control.import "type" @keyword.control.import)
-(with_clause "private" @keyword.control.import)
-(with_clause "limited" @keyword.control.import)
-(use_clause (_) @namespace)
-(with_clause (_) @namespace)
+(function_specification
+  name: (_) @function.builtin)
 
-(loop_statement "end" @keyword.control.repeat)
-(if_statement "end" @keyword.control.conditional)
-(loop_parameter_specification "in" @keyword.control.repeat)
-(loop_parameter_specification "in" @keyword.control.repeat)
-(iterator_specification ["in" "of"] @keyword.control.repeat)
-(range_attribute_designator "range" @keyword.control.repeat)
+(package_declaration
+  name: (_) @function.builtin)
 
-(raise_statement "with" @keyword.control.exception)
+(package_body
+  name: (_) @function.builtin)
 
-(gnatprep_declarative_if_statement)  @keyword.directive
-(gnatprep_if_statement)              @keyword.directive
-(gnatprep_identifier)                @keyword.directive
+(generic_instantiation
+  name: (_) @function.builtin)
 
-(subprogram_declaration "is" @keyword.function "abstract"  @keyword.function)
-(aspect_specification "with" @keyword.function)
+(entry_declaration
+  .
+  (identifier) @function.builtin)
 
-(full_type_declaration "is" @type.builtin)
-(subtype_declaration "is" @type.builtin)
-(record_definition "end" @type.builtin)
-(full_type_declaration (_ "access" @type.builtin))
-(array_type_definition "array" @type.builtin "of" @type.builtin)
-(access_to_object_definition "access" @type.builtin)
-(access_to_object_definition "access" @type.builtin
-   [
-      (general_access_modifier "constant" @type.builtin)
-      (general_access_modifier "all" @type.builtin)
-   ]
-)
-(range_constraint "range" @type.builtin)
-(signed_integer_type_definition "range" @type.builtin)
-(index_subtype_definition "range" @type.builtin)
-(record_type_definition "abstract" @type.builtin)
-(record_type_definition "tagged" @type.builtin)
-(record_type_definition "limited" @type.builtin)
-(record_type_definition (record_definition "null" @type.builtin))
-(private_type_declaration "is" @type.builtin "private" @type.builtin)
-(private_type_declaration "tagged" @type.builtin)
-(private_type_declaration "limited" @type.builtin)
-(task_type_declaration "task" @type.builtin "is" @type.builtin)
+; Some keywords should take different categories depending on the context
+(use_clause
+  "use" @keyword.control.import
+  "type" @keyword.control.import)
 
-;; Gray the body of expression functions
+(with_clause
+  "private" @keyword.control.import)
+
+(with_clause
+  "limited" @keyword.control.import)
+
+(use_clause
+  (_) @namespace)
+
+(with_clause
+  (_) @namespace)
+
+(loop_statement
+  "end" @keyword.control.repeat)
+
+(if_statement
+  "end" @keyword.control.conditional)
+
+(loop_parameter_specification
+  "in" @keyword.control.repeat)
+
+(loop_parameter_specification
+  "in" @keyword.control.repeat)
+
+(iterator_specification
+  [
+    "in"
+    "of"
+  ] @keyword.control.repeat)
+
+(range_attribute_designator
+  "range" @keyword.control.repeat)
+
+(raise_statement
+  "with" @keyword.control.exception)
+
+(gnatprep_declarative_if_statement) @keyword.directive
+
+(gnatprep_if_statement) @keyword.directive
+
+(gnatprep_identifier) @keyword.directive
+
+(subprogram_declaration
+  "is" @keyword.function
+  "abstract" @keyword.function)
+
+(aspect_specification
+  "with" @keyword.function)
+
+(full_type_declaration
+  "is" @type.builtin)
+
+(subtype_declaration
+  "is" @type.builtin)
+
+(record_definition
+  "end" @type.builtin)
+
+(full_type_declaration
+  (_
+    "access" @type.builtin))
+
+(array_type_definition
+  "array" @type.builtin
+  "of" @type.builtin)
+
+(access_to_object_definition
+  "access" @type.builtin)
+
+(access_to_object_definition
+  "access" @type.builtin
+  [
+    (general_access_modifier
+      "constant" @type.builtin)
+    (general_access_modifier
+      "all" @type.builtin)
+  ])
+
+(range_constraint
+  "range" @type.builtin)
+
+(signed_integer_type_definition
+  "range" @type.builtin)
+
+(index_subtype_definition
+  "range" @type.builtin)
+
+(record_type_definition
+  "abstract" @type.builtin)
+
+(record_type_definition
+  "tagged" @type.builtin)
+
+(record_type_definition
+  "limited" @type.builtin)
+
+(record_type_definition
+  (record_definition
+    "null" @type.builtin))
+
+(private_type_declaration
+  "is" @type.builtin
+  "private" @type.builtin)
+
+(private_type_declaration
+  "tagged" @type.builtin)
+
+(private_type_declaration
+  "limited" @type.builtin)
+
+(task_type_declaration
+  "task" @type.builtin
+  "is" @type.builtin)
+
+; Gray the body of expression functions
 (expression_function_declaration
-   (function_specification)
-   "is"
-   (_) @attribute
-)
-(subprogram_declaration (aspect_specification) @attribute)
+  (function_specification)
+  "is"
+  (_) @attribute)
 
-;; Highlight full subprogram specifications
+(subprogram_declaration
+  (aspect_specification) @attribute)
+
+; Highlight full subprogram specifications
 ; (subprogram_body
 ;     [
 ;        (procedure_specification)
 ;        (function_specification)
 ;     ] @function.builtin.spec
 ; )
-
-

@@ -20,19 +20,27 @@
   body: (_) @function.inside) @function.around
 
 (arguments
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (type_arguments
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (line_comment) @comment.inside
 
 (line_comment)+ @comment.around
 
-(array (_) @entry.around)
+(array
+  (_) @entry.around)
 
-(tuple (_) @entry.around)
+(tuple
+  (_) @entry.around)
 
-(tuple_pattern (_) @entry.around)
+(tuple_pattern
+  (_) @entry.around)
 
-(define_field (_) @entry.inside) @entry.around
+(define_field
+  (_) @entry.inside) @entry.around

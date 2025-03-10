@@ -23,63 +23,56 @@
 ] @indent
 
 ; control flow statement which accept one line as body
-
 (for_statement
   body: _ @indent
   (#not-kind-eq? @indent block)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
 
 (while_statement
   body: _ @indent
   (#not-kind-eq? @indent block)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
 
 (do_statement
   body: _ @indent
   (#not-kind-eq? @indent block)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
 
 (if_statement
   consequence: _ @indent
   (#not-kind-eq? @indent block)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (if_statement
   alternative: _ @indent
   (#not-kind-eq? @indent if_statement)
   (#not-kind-eq? @indent block)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (if_statement
   "else" @else
   alternative: (if_statement) @indent
   (#not-same-line? @indent @else)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
 
 (if_element
   consequence: _ @indent
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (if_element
   alternative: _ @indent
   (#not-kind-eq? @indent if_element)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (if_element
   "else" @else
   alternative: (if_element) @indent
   (#not-same-line? @indent @else)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
 
 (for_element
   body: _ @indent
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
 
 ; simple statements
 [
@@ -97,4 +90,3 @@
   "]"
   ")"
 ] @outdent
-

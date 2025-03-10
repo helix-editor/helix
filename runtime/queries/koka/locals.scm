@@ -27,4 +27,5 @@
     (identifier
       (varid) @local.definition)))
 
-(identifier (varid) @local.reference)
+(identifier
+  (varid) @local.reference)

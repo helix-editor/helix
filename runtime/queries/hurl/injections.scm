@@ -1,5 +1,5 @@
 ((comment) @injection.content
- (#set! injection.language "comment"))
+  (#set! injection.language "comment"))
 
 ((json_value) @injection.content
   (#set! injection.language "json"))

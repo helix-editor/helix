@@ -1,10 +1,6 @@
-[
-  (import)
-] @keyword.control.import
+(import) @keyword.control.import
 
-[
-  (package)
-] @namespace
+(package) @namespace
 
 [
   (with)
@@ -23,9 +19,7 @@
   (else)
 ] @keyword.control.conditional
 
-[
-  (boolean)
-] @constant.builtin.boolean
+(boolean) @constant.builtin.boolean
 
 [
   (assignment_operator)
@@ -39,17 +33,24 @@
   (raw_string)
 ] @string
 
-(term (ref (var))) @variable
+(term
+  (ref
+    (var))) @variable
 
 (comment) @comment.line
 
 (number) @constant.numeric.integer
 
-(expr_call func_name: (fn_name (var) @function .))
+(expr_call
+  func_name: (fn_name
+    (var) @function .))
 
-(expr_call func_arguments: (fn_args (expr) @variable.parameter))
+(expr_call
+  func_arguments: (fn_args
+    (expr) @variable.parameter))
 
-(rule_args (term) @variable.parameter)
+(rule_args
+  (term) @variable.parameter)
 
 [
   (open_paren)
@@ -60,9 +61,22 @@
   (close_curly)
 ] @punctuation.bracket
 
-(rule (rule_head (var) @function.method))
+(rule
+  (rule_head
+    (var) @function.method))
 
 (rule
-  (rule_head (term (ref (var) @namespace)))
-  (rule_body (query (literal (expr (expr_infix (expr (term (ref (var)) @_output)))))) (#eq? @_output @namespace))
-)
+  (rule_head
+    (term
+      (ref
+        (var) @namespace)))
+  (rule_body
+    (query
+      (literal
+        (expr
+          (expr_infix
+            (expr
+              (term
+                (ref
+                  (var)) @_output))))))
+    (#eq? @_output @namespace)))

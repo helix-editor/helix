@@ -2,7 +2,8 @@
   (#set! injection.language "python")
   (#set! injection.include-children))
 
-((anonymous_python_function (block) @injection.content)
+((anonymous_python_function
+  (block) @injection.content)
   (#set! injection.language "python")
   (#set! injection.include-children))
 

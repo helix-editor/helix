@@ -4,15 +4,15 @@
   (while_statement)
   (match_statement)
   (pattern_section)
-
   (function_definition)
   (lambda)
   (constructor_definition)
   (class_definition)
   (enum_definition)
-
-  (dictionary (_))
-  (array (_))
+  (dictionary
+    (_))
+  (array
+    (_))
   (setget)
 ] @indent
 
@@ -22,7 +22,6 @@
   (while_statement)
   (match_statement)
   (pattern_section)
-
   (function_definition)
   (class_definition)
 ] @extend
@@ -33,4 +32,3 @@
   (continue_statement)
   (pass_statement)
 ] @extend.prevent-once
-

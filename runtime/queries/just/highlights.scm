@@ -1,5 +1,4 @@
 ; This file specifies how matched syntax patterns should be highlighted
-
 [
   "export"
   "import"
@@ -25,7 +24,6 @@
 ] @operator
 
 ; Variables
-
 (value
   (identifier) @variable)
 
@@ -41,7 +39,6 @@
   name: (identifier) @variable)
 
 ; Functions
-
 (recipe
   name: (identifier) @function)
 
@@ -52,17 +49,14 @@
   name: (identifier) @function.builtin)
 
 ; Parameters
-
 (recipe_parameter
   name: (identifier) @variable.parameter)
 
 ; Namespaces
-
 (mod
   name: (identifier) @namespace)
 
 ; Paths
-
 (mod
   (path) @string.special.path)
 
@@ -70,11 +64,10 @@
   (path) @string.special.path)
 
 ; Shebangs
-
 (shebang_line) @keyword.directive
+
 (shebang_line
   (shebang_shell) @string.special)
-
 
 (shell_expanded_string
   [
@@ -85,7 +78,6 @@
   ] @punctuation.special)
 
 ; Operators
-
 [
   ":="
   "?"
@@ -107,7 +99,6 @@
 ] @operator
 
 ; Punctuation
-
 "," @punctuation.delimiter
 
 [
@@ -121,10 +112,12 @@
   "}}"
 ] @punctuation.bracket
 
-[ "`" "```" ] @punctuation.special
+[
+  "`"
+  "```"
+] @punctuation.special
 
 ; Literals
-
 ; Booleans are not allowed anywhere except in settings
 (setting
   (boolean) @constant.builtin.boolean)
@@ -140,7 +133,6 @@
 ] @constant.character.escape
 
 ; Comments
-
 (comment) @comment.line
 
 ; highlight known settings

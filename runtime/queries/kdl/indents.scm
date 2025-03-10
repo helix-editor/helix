@@ -1,3 +1,3 @@
 (node_children) @indent
 
- "}" @outdent
+"}" @outdent

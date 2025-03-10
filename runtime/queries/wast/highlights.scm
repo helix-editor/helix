@@ -8,14 +8,11 @@
   "assert_invalid"
   "assert_unlinkable"
   "assert_trap"
-
   "invoke"
   "get"
-
   "script"
   "input"
   "output"
-
   "binary"
   "quote"
 ] @keyword

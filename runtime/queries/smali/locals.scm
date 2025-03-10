@@ -31,7 +31,8 @@
 (annotation_key) @local.definition
 
 (method_definition
-  (method_signature (method_identifier) @local.definition))
+  (method_signature
+    (method_identifier) @local.definition))
 
 (param_identifier) @local.definition
 

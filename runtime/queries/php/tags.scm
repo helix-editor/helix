@@ -9,14 +9,18 @@
 
 (object_creation_expression
   [
-    (qualified_name (name) @name)
-    (variable_name (name) @name)
+    (qualified_name
+      (name) @name)
+    (variable_name
+      (name) @name)
   ]) @reference.class
 
 (function_call_expression
   function: [
-    (qualified_name (name) @name)
-    (variable_name (name)) @name
+    (qualified_name
+      (name) @name)
+    (variable_name
+      (name)) @name
   ]) @reference.call
 
 (scoped_call_expression

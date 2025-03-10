@@ -1,9 +1,11 @@
 (term_declaration) @function.around
 
 (type_declaration) @class.inside
+
 (record) @class.inside
 
 (comment) @comment.inside
+
 (comment)+ @comment.around
 
 (doc_block) @comment.around

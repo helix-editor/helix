@@ -1,6 +1,5 @@
 ; Scopes
 ;-------
-
 [
   (statement_block)
   (function)
@@ -11,7 +10,6 @@
 
 ; Definitions
 ;------------
-
 ; ...i
 (rest_pattern
   (identifier) @local.definition)
@@ -39,5 +37,4 @@
 
 ; References
 ;------------
-
 (identifier) @local.reference

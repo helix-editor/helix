@@ -3,6 +3,4 @@
   (rule)
 ] @indent
 
-[
-  "endef"
-] @outdent
+"endef" @outdent

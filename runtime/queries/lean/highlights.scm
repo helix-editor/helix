@@ -2,23 +2,24 @@
 (identifier) @variable
 
 ; Namespaces
-
 (open
   namespace: (identifier) @namespace)
+
 (namespace
   name: (identifier) @namespace)
+
 (section
   name: (identifier) @namespace)
 
-;; Identifier naming conventions
+; Identifier naming conventions
 ((identifier) @type
- (#match? @type "^[A-Z]"))
+  (#match? @type "^[A-Z]"))
 
 (arrow) @type
+
 (product) @type
 
-;; Declarations
-
+; Declarations
 [
   "abbrev"
   "def"
@@ -30,9 +31,7 @@
   "inductive"
   "structure"
   "class"
-
   "deriving"
-
   "section"
   "namespace"
 ] @keyword
@@ -42,20 +41,28 @@
 
 (abbrev
   name: (identifier) @type)
+
 (def
   name: (identifier) @function)
+
 (theorem
   name: (identifier) @function)
+
 (constant
   name: (identifier) @type)
+
 (instance
   name: (identifier) @function)
+
 (instance
   type: (identifier) @type)
+
 (axiom
   name: (identifier) @function)
+
 (structure
   name: (identifier) @type)
+
 (structure
   extends: (identifier) @type)
 
@@ -68,14 +75,21 @@
 (binders
   type: (identifier) @type)
 
-["if" "then" "else"] @keyword.control.conditional
+[
+  "if"
+  "then"
+  "else"
+] @keyword.control.conditional
 
-["for" "in" "do"] @keyword.control.repeat
+[
+  "for"
+  "in"
+  "do"
+] @keyword.control.repeat
 
 (import) @include
 
 ; Tokens
-
 [
   "!"
   "$"
@@ -120,9 +134,7 @@
   "≥"
 ] @operator
 
-[
-  "@&"
-] @operator
+"@&" @operator
 
 [
   "attribute"
@@ -184,24 +196,31 @@
 
 ((apply
   name: (identifier) @exception)
- (#match? @exception "throw"))
+  (#match? @exception "throw"))
 
 [
   "unless"
   "mut"
 ] @keyword
 
-[(true) (false)] @boolean
+[
+  (true)
+  (false)
+] @boolean
 
 (number) @constant.numeric.integer
+
 (float) @constant.numeric.float
 
 (comment) @comment
-(char) @character
-(string) @string
-(interpolated_string) @string
-; (escape_sequence) @string.escape
 
+(char) @character
+
+(string) @string
+
+(interpolated_string) @string
+
+; (escape_sequence) @string.escape
 ; Reset highlighting in string interpolation
 (interpolation) @none
 
@@ -209,8 +228,23 @@
   "{" @punctuation.special
   "}" @punctuation.special)
 
-["(" ")" "[" "]" "{" "}" "⟨" "⟩"] @punctuation.bracket
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+  "⟨"
+  "⟩"
+] @punctuation.bracket
 
-["|" "," "." ":" ";"] @punctuation.delimiter
+[
+  "|"
+  ","
+  "."
+  ":"
+  ";"
+] @punctuation.delimiter
 
 (sorry) @error

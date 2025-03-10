@@ -15,11 +15,15 @@
   (key_string)
   (json_key_string)
 ] @variable.other.member
- 
+
 (value_string) @string
+
 (quoted_string) @string
+
 (json_string) @string
+
 (file_value) @string.special.path
+
 (regex) @string.regex
 
 [
@@ -35,6 +39,7 @@
 ] @constant.character.escape
 
 (method) @type.builtin
+
 (multiline_string_type) @type
 
 [
@@ -70,6 +75,7 @@
 (filter) @attribute
 
 (version) @string.special
+
 [
   "null"
   "cacert"
@@ -82,7 +88,8 @@
   "retry"
   "retry-interval"
   "retry-max-count"
-  (variable_option "variable")
+  (variable_option
+    "variable")
   "verbose"
   "very-verbose"
 ] @constant.builtin
@@ -119,8 +126,11 @@
 ] @keyword.operator
 
 (integer) @constant.numeric.integer
+
 (float) @constant.numeric.float
+
 (status) @constant.numeric
+
 (json_number) @constant.numeric.float
 
 [

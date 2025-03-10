@@ -22,20 +22,24 @@
 (export_statement
   declaration: [
     (function_declaration) @function.around
-    (class_declaration) @class.around 
+    (class_declaration) @class.around
   ])
 
 (formal_parameters
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (arguments
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (comment) @comment.inside
 
 (comment)+ @comment.around
 
-(array 
+(array
   (_) @entry.around)
 
 (pair

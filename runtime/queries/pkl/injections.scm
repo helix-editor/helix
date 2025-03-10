@@ -11,20 +11,21 @@
 ; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
-
-; this definition is imprecise in that 
+; this definition is imprecise in that
 ; * any qualified or unqualified call to a method named "Regex" is considered a regex
 ; * string delimiters are considered part of the regex
-(
-  ((methodCallExpr (identifier) @methodName (argumentList (slStringLiteral) @injection.content))
-    (#set! injection.language "regex"))
+(((methodCallExpr
+  (identifier) @methodName
+  (argumentList
+    (slStringLiteral) @injection.content))
+  (#set! injection.language "regex"))
   (#eq? @methodName "Regex"))
- 
+
 ((lineComment) @injection.content
- (#set! injection.language "comment"))
+  (#set! injection.language "comment"))
 
 ((blockComment) @injection.content
- (#set! injection.language "comment"))
+  (#set! injection.language "comment"))
 
 ((docComment) @injection.content
- (#set! injection.language "markdown"))
+  (#set! injection.language "markdown"))

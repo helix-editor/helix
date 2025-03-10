@@ -7,6 +7,4 @@
   (switch_statement)
 ] @indent
 
-[
-  "end"
-] @outdent
+"end" @outdent

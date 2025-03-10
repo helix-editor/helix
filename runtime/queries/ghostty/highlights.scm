@@ -1,4 +1,5 @@
 ; extends
+
 ; Comments
 (comment) @comment
 
@@ -8,61 +9,69 @@
 ; Values
 (boolean) @constant.builtin.boolean
 
-
 [
- (number)
- (adjustment)
+  (number)
+  (adjustment)
 ] @constant.numeric
 
 [
- "+"
- "="
- (keybind_trigger ">")
+  "+"
+  "="
+  (keybind_trigger
+    ">")
 ] @operator
 
-(":") @punctuation.delimiter
+":" @punctuation.delimiter
 
 [
- (string)
- (color)
+  (string)
+  (color)
 ] @string
 
 ; (color) are hex values
-(color "#" @punctuation.special
- (#eq? @punctuation.special "#"))
+(color
+  "#" @punctuation.special
+  (#eq? @punctuation.special "#"))
 
-(path_value "?" @keyword.control.conditional
-    (#eq? @keyword.control.conditional "?"))
+(path_value
+  "?" @keyword.control.conditional
+  (#eq? @keyword.control.conditional "?"))
 
 ; `palette`
 (palette_index) @variable.other.member
 
 ; `path_directive`
-(path_directive (property) @keyword.import)
-(path_directive (path_value (string) @string.special.path ))
+(path_directive
+  (property) @keyword.import)
 
+(path_directive
+  (path_value
+    (string) @string.special.path))
 
 (action_name) @function.builtin
-(action_argument (string) @variable.parameter ) 
+
+(action_argument
+  (string) @variable.parameter)
 
 ; (tuple)
-(tuple "," @punctuation.delimiter.special
-       (#eq? @punctuation.delimiter.special ","))
+(tuple
+  "," @punctuation.delimiter.special
+  (#eq? @punctuation.delimiter.special ","))
 
 ; `keybind`
 (keybind_value) @string.special
 
 ; clear is a special keyword that clear all existing keybind up to that point
-((keybind_value) @keyword 
- (#eq? @keyword "clear"))
+((keybind_value) @keyword
+  (#eq? @keyword "clear"))
 
 ; NOTE: The order here matters!
 [
- (key_qualifier)
- (keybind_modifier)
+  (key_qualifier)
+  (keybind_modifier)
 ] @attribute
 
 [
- (modifier_key)
- (key)
+  (modifier_key)
+  (key)
 ] @constant.builtin

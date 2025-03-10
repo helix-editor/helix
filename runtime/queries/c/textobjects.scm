@@ -10,11 +10,15 @@
 (union_specifier
   body: (_) @class.inside) @class.around
 
-(parameter_list 
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+(parameter_list
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (argument_list
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (comment) @comment.inside
 

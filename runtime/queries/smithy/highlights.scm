@@ -6,12 +6,11 @@
 (namespace) @namespace
 
 ; Includes
-[
-  "use"
-] @keyword.control.import
+"use" @keyword.control.import
 
 ; Builtins
 (primitive) @type.builtin
+
 [
   "enum"
   "intEnum"
@@ -22,11 +21,13 @@
 
 ; Fields (Members)
 ; (field) @variable.other.member
-
 (key_identifier) @variable.other.member
+
 (shape_member
   (field) @variable.other.member)
+
 (operation_field) @variable.other.member
+
 (operation_error_field) @variable.other.member
 
 ; Constants
@@ -35,12 +36,14 @@
 
 ; Types
 (identifier) @type
+
 (structure_resource
   (shape_id) @type)
 
 ; Attributes
 (mixins
   (shape_id) @attribute)
+
 (trait_statement
   (shape_id) @attribute)
 
@@ -68,6 +71,7 @@
 
 ; Literals
 (string) @string
+
 (escape_sequence) @constant.character.escape
 
 (number) @constant.numeric
@@ -84,11 +88,20 @@
   "#"
 ] @punctuation.special
 
-["{" "}"] @punctuation.bracket
+[
+  "{"
+  "}"
+] @punctuation.bracket
 
-["(" ")"] @punctuation.bracket
+[
+  "("
+  ")"
+] @punctuation.bracket
 
-["[" "]"] @punctuation.bracket
+[
+  "["
+  "]"
+] @punctuation.bracket
 
 [
   ":"

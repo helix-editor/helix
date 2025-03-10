@@ -1,7 +1,3 @@
-[
-  (block)
-] @indent
+(block) @indent
 
-[
- "}"
-] @outdent
+"}" @outdent

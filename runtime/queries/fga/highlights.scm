@@ -1,5 +1,4 @@
-; Expressions 
-
+; Expressions
 (call_expression
   function: (identifier) @function)
 
@@ -7,46 +6,50 @@
   function: (selector_expression
     field: (identifier) @function.method))
 
-
 ; Type Definitions
+(type_declaration
+  (identifier) @type)
 
-(type_declaration (identifier) @type)
-
-(definition 
+(definition
   relation: (identifier) @variable)
 
+; Relation Definitions
+(relation_def
+  (identifier) @variable.other.member)
 
-; Relation Definitions 
+(direct_relationship
+  (identifier) @type)
 
-(relation_def (identifier) @variable.other.member)
+(direct_relationship
+  (conditional
+    (identifier) @function))
 
-(direct_relationship (identifier) @type)
-(direct_relationship (conditional (identifier) @function))
-
-(relation_ref 
-  . (identifier) @type
+(relation_ref
+  .
+  (identifier) @type
   (identifier) @variable.other.member)
 
 (indirect_relation
-  . (identifier) @variable.other.member
-    (identifier) @variable)
-
+  .
+  (identifier) @variable.other.member
+  (identifier) @variable)
 
 ; Condition Defintions
-
 (condition_declaration
   name: (identifier) @function)
 
-(condition_declaration (param (identifier) @variable.parameter))
+(condition_declaration
+  (param
+    (identifier) @variable.parameter))
 
-(binary_expression (identifier) @variable)
+(binary_expression
+  (identifier) @variable)
 
 ((type_identifier) @type.builtin
-  (#any-of? @type.builtin "string" "int" "map" "uint" "list" "timestamp" "bool" "duration" "double" "ipaddress"))
-
+  (#any-of? @type.builtin
+    "string" "int" "map" "uint" "list" "timestamp" "bool" "duration" "double" "ipaddress"))
 
 ; Operators
-
 [
   "!="
   "%"
@@ -78,7 +81,6 @@
 ] @keyword.operator
 
 ; Keywords
-
 [
   "model"
   "schema"
@@ -87,11 +89,9 @@
   "define"
 ] @keyword
 
-[
-  "condition"
-] @keyword.function
+"condition" @keyword.function
 
 ; Misc
-
 (version) @constant.numeric
+
 (comment) @comment

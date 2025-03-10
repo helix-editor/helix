@@ -30,6 +30,7 @@
 alias: (identifier) @variable.other.member
 
 (f_string) @string.special
+
 (s_string) @string.special
 
 (comment) @comment
@@ -102,16 +103,16 @@ alias: (identifier) @variable.other.member
 ] @function
 
 [
- (keyword_side)
- (keyword_version)
- (keyword_target)
- (keyword_null)
- (keyword_format)
+  (keyword_side)
+  (keyword_version)
+  (keyword_target)
+  (keyword_null)
+  (keyword_format)
 ] @attribute
 
 (target) @function.builtin
 
- [
+[
   (date)
   (time)
   (timestamp)

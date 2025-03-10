@@ -8,9 +8,7 @@
   "private"
 ] @constant.builtin
 
-[
-  "rule"
-] @function
+"rule" @function
 
 [
   "meta"
@@ -58,21 +56,28 @@
 
 ; Numbers and sizes
 (integer_literal) @constant.numeric
+
 (size_unit) @constant.numeric
 
 ; Strings
 (double_quoted_string) @string
+
 (single_quoted_string) @string
+
 (escape_sequence) @constant.character.escape
 
 ; Hex strings
 (hex_string) @string.special
+
 (hex_byte) @constant.numeric
+
 (hex_wildcard) @constant.builtin
+
 (hex_jump) @constant.numeric
 
 ; Regular expressions
 (regex_string) @string.regexp
+
 (pattern) @string.regexp
 
 ; Boolean literals
@@ -89,10 +94,11 @@
   "none"
 ] @keyword.operator
 
-
 ; String identifiers
 "$" @string.special.symbol
+
 (identifier) @string
+
 (string_identifier) @string.special.symbol
 
 ; Built-ins
@@ -103,7 +109,10 @@
 
 ; Tags
 (tag_list
-  [(identifier) (tag)] @tag)
+  [
+    (identifier)
+    (tag)
+  ] @tag)
 
 ; Punctuation and delimiters
 [

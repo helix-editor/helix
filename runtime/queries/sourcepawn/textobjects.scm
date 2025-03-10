@@ -23,7 +23,9 @@
 
 (methodmap) @class.around
 
-(parameter_declarations 
-  ((parameter_declaration) @parameter.inside . ","? @parameter.around) @parameter.around)
+(parameter_declarations
+  ((parameter_declaration) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (comment) @comment.around

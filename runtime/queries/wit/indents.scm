@@ -10,4 +10,7 @@
   (resource_items)
 ] @indent
 
-[ "}" ")" ] @outdent
+[
+  "}"
+  ")"
+] @outdent

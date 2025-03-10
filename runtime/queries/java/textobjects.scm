@@ -17,16 +17,24 @@
   body: (_) @class.inside) @class.around
 
 (formal_parameters
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (type_parameters
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (type_arguments
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (argument_list
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 [
   (line_comment)

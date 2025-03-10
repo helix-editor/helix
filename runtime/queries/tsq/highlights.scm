@@ -36,12 +36,16 @@
 (named_node
   name: (identifier) @tag)
 
-(predicate name: (identifier) @error)
+(predicate
+  name: (identifier) @error)
+
 ((predicate
-   "#" @function.builtin
-   name: (identifier) @function.builtin @_name
-   type: (predicate_type) @function.builtin)
- (#any-of? @_name "eq" "not-eq" "match" "not-match" "any-of" "not-any-of" "is" "is-not" "not-same-line" "not-kind-eq" "set" "select-adjacent" "strip"))
+  "#" @function.builtin
+  name: (identifier) @function.builtin @_name
+  type: (predicate_type) @function.builtin)
+  (#any-of? @_name
+    "eq" "not-eq" "match" "not-match" "any-of" "not-any-of" "is" "is-not" "not-same-line"
+    "not-kind-eq" "set" "select-adjacent" "strip"))
 
 (capture) @label
 

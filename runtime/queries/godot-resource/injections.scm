@@ -1,51 +1,46 @@
 ((comment) @injection.content
- (#set! injection.language "comment"))
+  (#set! injection.language "comment"))
 
 ; ((section) @injection.content
 ;  (#set! injection.language "comment"))
-
-((section 
-  (attribute 
+((section
+  (attribute
     (identifier) @_type
     (string) @_is_shader)
-  (property 
+  (property
     (path) @_is_code
     (string) @injection.content))
   (#eq? @_type "type")
   (#match? @_is_shader "Shader")
   (#eq? @_is_code "code")
-  (#set! injection.language "glsl")
-)
+  (#set! injection.language "glsl"))
 
-((section 
+((section
   (identifier) @_is_resource
-  (property 
+  (property
     (path) @_is_code
     (string) @injection.content))
   (#eq? @_is_resource "resource")
   (#eq? @_is_code "code")
-  (#set! injection.language "glsl")
-)
+  (#set! injection.language "glsl"))
 
-((section 
+((section
   (identifier) @_id
-  (property 
+  (property
     (path) @_is_expression
     (string) @injection.content))
   (#eq? @_id "sub_resource")
   (#eq? @_is_expression "expression")
-  (#set! injection.language "glsl")
-)
+  (#set! injection.language "glsl"))
 
-((section 
-  (attribute 
+((section
+  (attribute
     (identifier) @_type
     (string) @_is_shader)
-  (property 
+  (property
     (path) @_is_code
     (string) @injection.content))
   (#eq? @_type "type")
   (#match? @_is_shader "GDScript")
   (#eq? @_is_code "script/source")
-  (#set! injection.language "gdscript")
-)
+  (#set! injection.language "gdscript"))

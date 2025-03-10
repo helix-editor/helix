@@ -1,18 +1,17 @@
-(section 
-  (identifier) 
+(section
+  (identifier)
   (_)
-  (property) @class.inside
-) @class.around
+  (property) @class.inside) @class.around
 
-(attribute 
+(attribute
   (identifier)
   (_) @parameter.inside) @parameter.around
 
-(property 
+(property
   (path)
   (_) @entry.inside) @entry.around
 
-(pair 
+(pair
   (_) @entry.inside) @entry.around
 
 (array

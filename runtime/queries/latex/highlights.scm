@@ -1,5 +1,6 @@
-;; General syntax
+; General syntax
 (command_name) @function
+
 (caption
   command: _ @function)
 
@@ -19,66 +20,90 @@
   (brack_group_argc)
 ] @variable.parameter
 
-[(operator) "="] @operator
+[
+  (operator)
+  "="
+] @operator
 
 "\\item" @punctuation.special
 
 ((word) @punctuation.delimiter
   (#eq? @punctuation.delimiter "&"))
 
-["[" "]" "{" "}"] @punctuation.bracket ; "(" ")" has no syntactical meaning in LaTeX
+[
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket ; "(" ")" has no syntactical meaning in LaTeX
+
 (math_delimiter
   left_command: _ @punctuation.delimiter
   left_delimiter: _ @punctuation.delimiter
   right_command: _ @punctuation.delimiter
-  right_delimiter: _ @punctuation.delimiter
-)
+  right_delimiter: _ @punctuation.delimiter)
 
-;; General environments
+; General environments
 (begin
   command: _ @function.builtin
-  name: (curly_group_text (text) @function.macro))
+  name: (curly_group_text
+    (text) @function.macro))
 
 (end
   command: _ @function.builtin
-  name: (curly_group_text (text) @function.macro))
+  name: (curly_group_text
+    (text) @function.macro))
 
-;; Definitions and references
+; Definitions and references
 (new_command_definition
   command: _ @function.macro
-  declaration: (curly_group_command_name (_) @function))
+  declaration: (curly_group_command_name
+    (_) @function))
+
 (old_command_definition
   command: _ @function.macro
   declaration: (_) @function)
+
 (let_command_definition
   command: _ @function.macro
   declaration: (_) @function)
 
 (environment_definition
   command: _ @function.macro
-  name: (curly_group_text (_) @constant))
+  name: (curly_group_text
+    (_) @constant))
 
 (theorem_definition
   command: _ @function.macro
-  name: (curly_group_text (_) @constant))
+  name: (curly_group_text
+    (_) @constant))
 
 (paired_delimiter_definition
   command: _ @function.macro
-  declaration: (curly_group_command_name (_) @function))
+  declaration: (curly_group_command_name
+    (_) @function))
 
 (label_definition
   command: _ @function.macro
-  name: (curly_group_text (_) @label))
+  name: (curly_group_text
+    (_) @label))
+
 (label_reference_range
   command: _ @function.macro
-  from: (curly_group_text (_) @label)
-  to: (curly_group_text (_) @label))
+  from: (curly_group_text
+    (_) @label)
+  to: (curly_group_text
+    (_) @label))
+
 (label_reference
   command: _ @function.macro
-  names: (curly_group_text_list (_) @label))
+  names: (curly_group_text_list
+    (_) @label))
+
 (label_number
   command: _ @function.macro
-  name: (curly_group_text (_) @label)
+  name: (curly_group_text
+    (_) @label)
   number: (_) @markup.link.label)
 
 (citation
@@ -87,34 +112,44 @@
 
 (glossary_entry_definition
   command: _ @function.macro
-  name: (curly_group_text (_) @string))
+  name: (curly_group_text
+    (_) @string))
+
 (glossary_entry_reference
   command: _ @function.macro
-  name: (curly_group_text (_) @string))
+  name: (curly_group_text
+    (_) @string))
 
 (acronym_definition
   command: _ @function.macro
-  name: (curly_group_text (_) @string))
+  name: (curly_group_text
+    (_) @string))
+
 (acronym_reference
   command: _ @function.macro
-  name: (curly_group_text (_) @string))
+  name: (curly_group_text
+    (_) @string))
 
 (color_definition
   command: _ @function.macro
-  name: (curly_group_text (_) @string))
+  name: (curly_group_text
+    (_) @string))
+
 (color_reference
   command: _ @function.macro
-  name: (curly_group_text (_) @string))
+  name: (curly_group_text
+    (_) @string))
 
-;; Math
-
+; Math
 (displayed_equation) @markup.raw.block
+
 (inline_formula) @markup.raw.inline
 
 (math_environment
   (begin
     command: _ @function.builtin
-    name: (curly_group_text (text) @markup.raw)))
+    name: (curly_group_text
+      (text) @markup.raw)))
 
 (math_environment
   (text) @markup.raw)
@@ -122,92 +157,114 @@
 (math_environment
   (end
     command: _ @function.builtin
-    name: (curly_group_text (text) @markup.raw)))
+    name: (curly_group_text
+      (text) @markup.raw)))
 
-;; Sectioning
+; Sectioning
 (title_declaration
   command: _ @namespace
-  options: (brack_group (_) @markup.heading)?
-  text: (curly_group (_) @markup.heading))
+  options: (brack_group
+    (_) @markup.heading)?
+  text: (curly_group
+    (_) @markup.heading))
 
 (author_declaration
   command: _ @namespace
   authors: (curly_group_author_list
-             ((author)+ @markup.heading)))
+    (author)+ @markup.heading))
 
 (chapter
   command: _ @namespace
-  toc: (brack_group (_) @markup.heading)?
-  text: (curly_group (_) @markup.heading))
+  toc: (brack_group
+    (_) @markup.heading)?
+  text: (curly_group
+    (_) @markup.heading))
 
 (part
   command: _ @namespace
-  toc: (brack_group (_) @markup.heading)?
-  text: (curly_group (_) @markup.heading))
+  toc: (brack_group
+    (_) @markup.heading)?
+  text: (curly_group
+    (_) @markup.heading))
 
 (section
   command: _ @namespace
-  toc: (brack_group (_) @markup.heading)?
-  text: (curly_group (_) @markup.heading))
+  toc: (brack_group
+    (_) @markup.heading)?
+  text: (curly_group
+    (_) @markup.heading))
 
 (subsection
   command: _ @namespace
-  toc: (brack_group (_) @markup.heading)?
-  text: (curly_group (_) @markup.heading))
+  toc: (brack_group
+    (_) @markup.heading)?
+  text: (curly_group
+    (_) @markup.heading))
 
 (subsubsection
   command: _ @namespace
-  toc: (brack_group (_) @markup.heading)?
-  text: (curly_group (_) @markup.heading))
+  toc: (brack_group
+    (_) @markup.heading)?
+  text: (curly_group
+    (_) @markup.heading))
 
 (paragraph
   command: _ @namespace
-  toc: (brack_group (_) @markup.heading)?
-  text: (curly_group (_) @markup.heading))
+  toc: (brack_group
+    (_) @markup.heading)?
+  text: (curly_group
+    (_) @markup.heading))
 
 (subparagraph
   command: _ @namespace
-  toc: (brack_group (_) @markup.heading)?
-  text: (curly_group (_) @markup.heading))
+  toc: (brack_group
+    (_) @markup.heading)?
+  text: (curly_group
+    (_) @markup.heading))
 
-;; Beamer frames
+; Beamer frames
 (generic_environment
   (begin
     name: (curly_group_text
-            (text) @markup.heading)
+      (text) @markup.heading)
     (#any-of? @markup.heading "frame"))
   .
-  (curly_group (_) @markup.heading))
+  (curly_group
+    (_) @markup.heading))
 
 ((generic_command
   command: (command_name) @_name
   arg: (curly_group
-          (text) @markup.heading))
+    (text) @markup.heading))
   (#eq? @_name "\\frametitle"))
 
-;; Formatting
+; Formatting
 ((generic_command
   command: (command_name) @_name
-  arg: (curly_group (_) @markup.italic))
+  arg: (curly_group
+    (_) @markup.italic))
   (#eq? @_name "\\emph"))
 
 ((generic_command
   command: (command_name) @_name
-  arg: (curly_group (_) @markup.italic))
+  arg: (curly_group
+    (_) @markup.italic))
   (#match? @_name "^(\\\\textit|\\\\mathit)$"))
 
 ((generic_command
   command: (command_name) @_name
-  arg: (curly_group (_) @markup.bold))
+  arg: (curly_group
+    (_) @markup.bold))
   (#match? @_name "^(\\\\textbf|\\\\mathbf)$"))
 
 ((generic_command
   command: (command_name) @_name
   .
-  arg: (curly_group (_) @markup.link.uri))
+  arg: (curly_group
+    (_) @markup.link.uri))
   (#match? @_name "^(\\\\url|\\\\href)$"))
 
-;; File inclusion commands
+; File inclusion commands
 (class_include
   command: _ @keyword.storage.type
   path: (curly_group_path) @string)
@@ -219,6 +276,7 @@
 (latex_include
   command: _ @keyword.control.import
   path: (curly_group_path) @string)
+
 (import_include
   command: _ @keyword.control.import
   directory: (curly_group_path) @string
@@ -227,6 +285,7 @@
 (bibtex_include
   command: _ @keyword.control.import
   path: (curly_group_path) @string)
+
 (biblatex_include
   "\\addbibresource" @include
   glob: (curly_group_glob_pattern) @string.regex)
@@ -234,6 +293,7 @@
 (graphics_include
   command: _ @keyword.control.import
   path: (curly_group_path) @string)
+
 (tikz_library_import
   command: _ @keyword.control.import
   paths: (curly_group_path_list) @string)

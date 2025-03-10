@@ -7,4 +7,8 @@
   (type_signature)
 ] @indent
 
-[(kw_then) (kw_else) (cases)] @indent.always @extend
+[
+  (kw_then)
+  (kw_else)
+  (cases)
+] @indent.always @extend

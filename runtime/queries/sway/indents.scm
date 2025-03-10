@@ -17,7 +17,6 @@
   (tuple_expression)
   (array_expression)
   (where_clause)
-
   (token_tree)
 ] @indent
 
@@ -35,30 +34,29 @@
   (_) @expr-start
   right: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (compound_assignment_expr
   .
   (_) @expr-start
   right: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (let_declaration
   .
   (_) @expr-start
   value: (_) @indent
   alternative: (_)? @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (if_expression
   .
   (_) @expr-start
   condition: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
 
 ; Some field expressions where the left part is a multiline expression are not
 ; indented by cargo fmt.
@@ -67,5 +65,4 @@
 (field_expression
   value: (_) @val
   "." @outdent
-  (#match? @val "(\\A[^\\n\\r]+\\([\\t ]*(\\n|\\r).*)|(\\A[^\\n\\r]*\\{[\\t ]*(\\n|\\r))")
-)
+  (#match? @val "(\\A[^\\n\\r]+\\([\\t ]*(\\n|\\r).*)|(\\A[^\\n\\r]*\\{[\\t ]*(\\n|\\r))"))

@@ -2,10 +2,10 @@
 
 ; Different types:
 (string_value) @string
+
 (bool_value) @constant.builtin.boolean
 
 ; Constants
-
 (escape_sequence) @constant.character.escape
 
 (color_value) @constant

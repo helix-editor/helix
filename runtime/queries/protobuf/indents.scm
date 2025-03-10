@@ -8,4 +8,3 @@
 ] @indent
 
 "}" @outdent
-

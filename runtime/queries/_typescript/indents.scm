@@ -1,5 +1,5 @@
 [
-  (enum_declaration) 
+  (enum_declaration)
   (interface_declaration)
   (object_type)
 ] @indent

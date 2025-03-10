@@ -19,7 +19,6 @@
   (array_expression)
   (where_clause)
   (type_cast_expression)
-
   (token_tree)
   (macro_definition)
   (token_tree_pattern)
@@ -40,50 +39,50 @@
   (_) @expr-start
   right: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (compound_assignment_expr
   .
   (_) @expr-start
   right: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (let_declaration
   "let" @expr-start
   value: (_) @indent
   alternative: (_)? @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (let_condition
   .
   (_) @expr-start
   value: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (if_expression
   .
   (_) @expr-start
   condition: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (static_item
   .
   (_) @expr-start
   value: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 (field_pattern
   .
   (_) @expr-start
   pattern: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
+
 ; Indent type aliases that span multiple lines, similar to
 ; regular assignment expressions
 (type_item
@@ -91,8 +90,7 @@
   (_) @expr-start
   type: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
-)
+  (#set! "scope" "all"))
 
 ; Some field expressions where the left part is a multiline expression are not
 ; indented by cargo fmt.
@@ -102,19 +100,16 @@
   value: (_) @val
   "." @outdent
   ; Check whether the first line ends with `(`, `{` or `[` (up to whitespace).
-  (#match? @val "(\\A[^\\n\\r]+(\\(|\\{|\\[)[\\t ]*(\\n|\\r))")
-)
+  (#match? @val "(\\A[^\\n\\r]+(\\(|\\{|\\[)[\\t ]*(\\n|\\r))"))
+
 ; Same as above, but with an additional `call_expression`. This is required since otherwise
 ; the arguments of the function call won't be outdented.
 (call_expression
   function: (field_expression
     value: (_) @val
     "." @outdent
-    (#match? @val "(\\A[^\\n\\r]+(\\(|\\{|\\[)[\\t ]*(\\n|\\r))")
-  )
-  arguments: (_) @outdent
-)
-
+    (#match? @val "(\\A[^\\n\\r]+(\\(|\\{|\\[)[\\t ]*(\\n|\\r))"))
+  arguments: (_) @outdent)
 
 ; Indent if guards in patterns.
 ; Since the tree-sitter grammar doesn't create a node for the if expression,
@@ -125,8 +120,7 @@
   .
   (_) @expr-start
   "if" @pattern-guard
-  (#not-same-line? @expr-start @pattern-guard)
-) @indent
+  (#not-same-line? @expr-start @pattern-guard)) @indent
 
 ; Align closure parameters if they span more than one line
 (closure_parameters
@@ -135,14 +129,11 @@
   (_) @anchor
   (_) @expr-end
   .
-  (#not-same-line? @anchor @expr-end)
-) @align
+  (#not-same-line? @anchor @expr-end)) @align
 
 (for_expression
   "in" @in
   .
   (_) @indent
   (#not-same-line? @in @indent)
-  (#set! "scope" "all")
-)
-  
+  (#set! "scope" "all"))

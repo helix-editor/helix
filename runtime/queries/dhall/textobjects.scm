@@ -1,16 +1,13 @@
 (lambda_expression
   (label) @parameter.inside
-  (expression) @function.inside
-) @function.around
+  (expression) @function.inside) @function.around
 
 (forall_expression
   (label) @parameter.inside
-  (expression) @function.inside
-) @function.around
+  (expression) @function.inside) @function.around
 
 (assert_expression
-  (expression) @test.inside
-) @test.around
+  (expression) @test.inside) @test.around
 
 [
   (block_comment_content)

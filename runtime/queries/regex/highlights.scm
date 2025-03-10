@@ -1,5 +1,4 @@
 ; upstream: https://github.com/tree-sitter/tree-sitter-regex/blob/e1cfca3c79896ff79842f057ea13e529b66af636/queries/highlights.scm
-
 [
   "("
   ")"
@@ -46,7 +45,8 @@
 (character_class
   [
     "^" @operator
-    (class_range "-" @operator)
+    (class_range
+      "-" @operator)
   ])
 
 (class_character) @constant.character

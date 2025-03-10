@@ -1,6 +1,5 @@
 ; Scopes
 ;-------
-
 [
   (let_binding)
   (class_binding)
@@ -15,10 +14,10 @@
 
 ; Definitions
 ;------------
-
 (value_pattern) @local.definition
 
 ; References
 ;-----------
-
-(value_path . (value_name) @local.reference)
+(value_path
+  .
+  (value_name) @local.reference)

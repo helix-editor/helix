@@ -1,2 +1,5 @@
-([(comment) (note)] @injection.content
- (#set! injection.language "comment"))
+([
+  (comment)
+  (note)
+] @injection.content
+  (#set! injection.language "comment"))

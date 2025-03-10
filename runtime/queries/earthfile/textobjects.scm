@@ -1,1 +1,2 @@
-(target (block) @function.inside) @function.around
+(target
+  (block) @function.inside) @function.around

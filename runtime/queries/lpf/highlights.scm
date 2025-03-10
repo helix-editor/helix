@@ -8,12 +8,12 @@
   "IOBUF"
 ] @keyword
 
-["SITE"] @keyword.storage
+"SITE" @keyword.storage
 
-["="] @operator
+"=" @operator
 
-((number) @constant.numeric)
+(number) @constant.numeric
 
-((string) @string)
-((line_comment) @comment)
+(string) @string
 
+(line_comment) @comment

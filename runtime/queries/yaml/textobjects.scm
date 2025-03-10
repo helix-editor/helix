@@ -4,4 +4,3 @@
 
 (block_mapping_pair
   (_) @entry.inside) @entry.around
-

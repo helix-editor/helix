@@ -9,7 +9,9 @@
   body: (_) @function.inside) @function.around
 
 (parameter_list
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (comment) @comment.inside
 

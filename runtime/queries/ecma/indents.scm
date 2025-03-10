@@ -3,13 +3,11 @@
   (object)
   (arguments)
   (formal_parameters)
-
   (statement_block)
   (switch_statement)
   (object_pattern)
   (class_body)
   (named_imports)
-
   (binary_expression)
   (return_statement)
   (template_substitution)

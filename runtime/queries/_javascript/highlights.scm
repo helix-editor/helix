@@ -1,12 +1,10 @@
 ; Function and method parameters
 ;-------------------------------
-
 ; Javascript and Typescript Treesitter grammars deviate when defining the
 ; tree structure for parameters, so we need to address them in each specific
 ; language instead of ecma.
-
 ; (p)
-(formal_parameters 
+(formal_parameters
   (identifier) @variable.parameter)
 
 ; (...p)

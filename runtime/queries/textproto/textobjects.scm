@@ -1,7 +1,7 @@
-(message_field 
+(message_field
   (_) @entry.inside) @entry.around
 
-(scalar_field 
+(scalar_field
   (_) @entry.inside) @entry.around
 
 (message_list
@@ -9,4 +9,3 @@
 
 (scalar_list
   (_) @entry.around)
-

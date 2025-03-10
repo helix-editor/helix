@@ -1,5 +1,7 @@
 (int_literal) @constant.numeric.integer
+
 (float_literal) @constant.numeric.float
+
 (bool_literal) @constant.builtin.boolean
 
 [
@@ -27,11 +29,27 @@
 
 "return" @keyword.control.return
 
-["," "." ":" ";"] @punctuation.delimiter
+[
+  ","
+  "."
+  ":"
+  ";"
+] @punctuation.delimiter
 
-["(" ")" "[" "]" "{" "}"] @punctuation.bracket
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
 
-(type_declaration ["<" ">"] @punctuation.bracket)
+(type_declaration
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
 
 [
   "break"
@@ -107,9 +125,11 @@
       (identifier) @variable.other.member)))
 
 (type_constructor_or_function_call_expression
-  (type_declaration (identifier) @function))
+  (type_declaration
+    (identifier) @function))
 
-(type_declaration _ @type)
+(type_declaration
+  _ @type)
 
 (attribute
   (identifier) @attribute)

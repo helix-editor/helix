@@ -1,20 +1,23 @@
 ; Namespaces
 ; ----------
-
 (internal_module
-  [((identifier) @namespace) ((nested_identifier (identifier) @namespace))])
+  [
+    (identifier) @namespace
+    (nested_identifier
+      (identifier) @namespace)
+  ])
 
-(ambient_declaration "global" @namespace)
+(ambient_declaration
+  "global" @namespace)
 
 ; Parameters
 ; ----------
 ; Javascript and Typescript Treesitter grammars deviate when defining the
 ; tree structure for parameters, so we need to address them in each specific
 ; language instead of ecma.
-
 ; (p: t)
 ; (p: t = 1)
-(required_parameter 
+(required_parameter
   (identifier) @variable.parameter)
 
 ; (...p: t)
@@ -40,7 +43,7 @@
 
 ; (p?: t)
 ; (p?: t = 1) // Invalid but still possible to highlight.
-(optional_parameter 
+(optional_parameter
   (identifier) @variable.parameter)
 
 ; (...p?: t) // Invalid but still possible to highlight.
@@ -66,19 +69,22 @@
 
 ; Punctuation
 ; -----------
+":" @punctuation.delimiter
 
-[
-  ":"
-] @punctuation.delimiter
+(optional_parameter
+  "?" @punctuation.special)
 
-(optional_parameter "?" @punctuation.special)
-(property_signature "?" @punctuation.special)
+(property_signature
+  "?" @punctuation.special)
 
-(conditional_type ["?" ":"] @operator)
+(conditional_type
+  [
+    "?"
+    ":"
+  ] @operator)
 
 ; Keywords
 ; --------
-
 [
   "abstract"
   "declare"
@@ -106,15 +112,15 @@
 
 ; Types
 ; -----
-
 (type_identifier) @type
+
 (type_parameter
   name: (type_identifier) @type.parameter)
+
 (predefined_type) @type.builtin
 
 ; Type arguments and parameters
 ; -----------------------------
-
 (type_arguments
   [
     "<"
@@ -129,7 +135,4 @@
 
 ; Literals
 ; --------
-
-[
-  (template_literal_type)
-] @string
+(template_literal_type) @string

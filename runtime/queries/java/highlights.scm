@@ -1,40 +1,45 @@
 (identifier) @variable
 
 ; Methods
-
 (method_declaration
   name: (identifier) @function.method)
+
 (method_invocation
   name: (identifier) @function.method)
+
 (super) @function.builtin
 
 ; Annotations
-
 (annotation
   name: (identifier) @attribute)
+
 (marker_annotation
   name: (identifier) @attribute)
 
 ; Types
-
 (interface_declaration
   name: (identifier) @type)
+
 (class_declaration
   name: (identifier) @type)
+
 (record_declaration
   name: (identifier) @type)
+
 (enum_declaration
   name: (identifier) @type)
 
 ((field_access
   object: (identifier) @type)
- (#match? @type "^[A-Z]"))
+  (#match? @type "^[A-Z]"))
+
 ((scoped_identifier
   scope: (identifier) @type)
- (#match? @type "^[A-Z]"))
+  (#match? @type "^[A-Z]"))
 
 (constructor_declaration
   name: (identifier) @type)
+
 (compact_constructor_declaration
   name: (identifier) @type)
 
@@ -49,17 +54,16 @@
 ] @type.builtin
 
 (type_arguments
-  (wildcard "?" @type.builtin))
+  (wildcard
+    "?" @type.builtin))
 
 ; Variables
-
 ((identifier) @constant
- (#match? @constant "^_*[A-Z][A-Z\\d_]+$"))
+  (#match? @constant "^_*[A-Z][A-Z\\d_]+$"))
 
 (this) @variable.builtin
 
 ; Literals
-
 [
   (hex_integer_literal)
   (decimal_integer_literal)
@@ -86,10 +90,10 @@
 ] @constant.builtin
 
 (line_comment) @comment
+
 (block_comment) @comment
 
 ; Punctuation
-
 [
   "::"
   "."
@@ -124,7 +128,6 @@
   ] @punctuation.bracket)
 
 ; Operators
-
 [
   "="
   ">"
@@ -167,7 +170,6 @@
 ] @operator
 
 ; Keywords
-
 [
   "abstract"
   "assert"

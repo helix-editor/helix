@@ -1,12 +1,14 @@
 (comment) @comment.inside
+
 (comment)+ @comment.around
 
 (formals
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (function_expression
   body: (_) @function.inside) @function.around
 
 (binding
   (_) @entry.inside) @entry.around
-

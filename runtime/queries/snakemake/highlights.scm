@@ -44,8 +44,11 @@
   "with" @keyword)
 
 ; Wildcard names
-(wildcard (identifier) @variable)
-(wildcard (flag) @variable.parameter.builtin)
+(wildcard
+  (identifier) @variable)
+
+(wildcard
+  (flag) @variable.parameter.builtin)
 
 ; builtin variables
 ((identifier) @variable.builtin

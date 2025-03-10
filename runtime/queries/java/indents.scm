@@ -25,10 +25,12 @@
   consequence: (_) @indent
   (#not-kind-eq? @indent "block")
   (#set! "scope" "all"))
+
 (while_statement
   body: (_) @indent
   (#not-kind-eq? @indent "block")
   (#set! "scope" "all"))
+
 (for_statement
   (_) @indent
   (#not-kind-eq? @indent "block")

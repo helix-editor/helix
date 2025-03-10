@@ -1,5 +1,4 @@
 ; Identifiers
-
 (qconid) @namespace
 
 (qidop) @namespace
@@ -11,11 +10,13 @@
 (puredecl
   (binder
     (identifier
-      [(varid) (idop)] @constant)))
+      [
+        (varid)
+        (idop)
+      ] @constant)))
 
 ; TODO: Highlight vars differently once helix has an appropriate highlight query
 ; for that purpose.
-
 (pparameter
   (pattern
     (identifier
@@ -41,10 +42,10 @@
 (qvarid
   (qid) @namespace)
 
-(modulepath (varid) @namespace)
+(modulepath
+  (varid) @namespace)
 
 ; Function calls
-
 (appexpr
   function: (appexpr
     (atom
@@ -53,9 +54,16 @@
           (qvarid) @function
           (qidop) @function
           (identifier
-            [(varid) (idop)] @function)
+            [
+              (varid)
+              (idop)
+            ] @function)
         ])))
-  ["(" (block) (fnexpr)])
+  [
+    "("
+    (block)
+    (fnexpr)
+  ])
 
 (appexpr
   field: (atom
@@ -64,7 +72,10 @@
         (qvarid) @function
         (qidop) @function
         (identifier
-          [(varid) (idop)] @function)
+          [
+            (varid)
+            (idop)
+          ] @function)
       ])))
 
 (appexpr
@@ -75,7 +86,10 @@
           (qvarid) @variable
           (qidop) @variable
           (identifier
-            [(varid) (idop)] @variable)
+            [
+              (varid)
+              (idop)
+            ] @variable)
         ])))
   "[")
 
@@ -85,23 +99,30 @@
 ] @function.special
 
 ; Function definitions
-
 (puredecl
   (funid
     (identifier
-      [(varid) (idop)] @function)))
+      [
+        (varid)
+        (idop)
+      ] @function)))
 
 (fundecl
   (funid
     (identifier
-      [(varid) (idop)] @function)))
+      [
+        (varid)
+        (idop)
+      ] @function)))
 
 (operation
   (identifier
-    [(varid) (idop)] @function))
+    [
+      (varid)
+      (idop)
+    ] @function))
 
 ; Operators
-
 [
   "!"
   "~"
@@ -113,7 +134,6 @@
 ] @operator
 
 ; Keywords
-
 [
   "as"
   "behind"
@@ -194,8 +214,8 @@
 "return" @keyword.control.return
 
 ; Delimiters
-
-(matchrule "|" @punctuation.delimiter)
+(matchrule
+  "|" @punctuation.delimiter)
 
 [
   ","
@@ -219,7 +239,6 @@
 ] @punctuation.bracket
 
 ; Literals
-
 [
   (string)
   (char)
@@ -228,10 +247,10 @@
 (escape) @constant.character.escape
 
 (float) @constant.numeric.float
+
 (int) @constant.numeric.integer
 
 ; Comment
-
 [
   (linecomment)
   (blockcomment)

@@ -22,6 +22,6 @@
 (port_comment) @label
 
 [
-("[") 
-("]")
+  "["
+  "]"
 ] @punctuation.bracket

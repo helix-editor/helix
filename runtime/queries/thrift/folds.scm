@@ -7,6 +7,5 @@
   (service_definition)
   (struct_definition)
   (union_definition)
-
   (comment)
 ] @fold

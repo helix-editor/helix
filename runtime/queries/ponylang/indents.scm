@@ -9,19 +9,26 @@
   (tuple)
   (grouped)
 ] @indent
-(match_case body: (block) @indent)
+
+(match_case
+  body: (block) @indent)
+
 ; ffi_call and call
-(_ arguments: (_) @indent)
-(assignment right: (_) @indent
- (#set! "scope" "all")
-)
+(_
+  arguments: (_) @indent)
+
+(assignment
+  right: (_) @indent
+  (#set! "scope" "all"))
 
 [
   (params)
   (object)
-  ("if")
+  "if"
 ] @extend
-(lambda params: (_) @extend)
+
+(lambda
+  params: (_) @extend)
 
 [
   "end"

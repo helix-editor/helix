@@ -21,23 +21,30 @@
 (identifier) @variable
 
 (modifier) @keyword
+
 (extending) @keyword
 
-(module name: (identifier) @namespace)
+(module
+  name: (identifier) @namespace)
+
 (object_type) @type
 
 (comment) @comment
 
 ; Properties
 (property) @variable.other.member
+
 (link) @variable.other.member
+
 (annotation) @variable.other.member
 
 (string) @string
-(edgeql_fragment) @string
-; Builtins
 
+(edgeql_fragment) @string
+
+; Builtins
 (type) @type
+
 [
   "str"
   "bool"
@@ -58,7 +65,9 @@
 ] @type.builtin
 
 (true) @constant.builtin.boolean
+
 (false) @constant.builtin.boolean
+
 (null) @constant.builtin
 
 ; Delimiters
@@ -72,4 +81,3 @@
   "->"
   ":="
 ] @operator
-

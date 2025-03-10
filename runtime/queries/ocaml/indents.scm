@@ -9,4 +9,3 @@
 ] @indent
 
 "}" @outdent
-

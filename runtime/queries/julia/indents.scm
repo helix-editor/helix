@@ -28,13 +28,16 @@
 ] @outdent
 
 (argument_list
-  . (_) @anchor
+  .
+  (_) @anchor
   (#set! "scope" "tail")) @align
 
 (parameter_list
-  . (_) @anchor
+  .
+  (_) @anchor
   (#set! "scope" "tail")) @align
 
 (curly_expression
-  . (_) @anchor
+  .
+  (_) @anchor
   (#set! "scope" "tail")) @align

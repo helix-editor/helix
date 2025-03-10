@@ -11,8 +11,7 @@
 ; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
-
-; this definition is imprecise in that 
+; this definition is imprecise in that
 ; * any qualified or unqualified call to a method named "Regex" is considered a regex
 ; * string delimiters are considered part of the regex
 [

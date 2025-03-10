@@ -7,13 +7,12 @@
   ")"
   "["
   "]"
-]  @punctuation.bracket
+] @punctuation.bracket
 
 [
   (coreTerminator)
   (seriesTerminator)
 ] @punctuation.delimiter
-
 
 (rune) @keyword
 
@@ -26,7 +25,11 @@
 (boolean) @constant.builtin
 
 (date) @constant.builtin
+
 (mold) @constant.builtin
+
 (specialIndex) @constant.builtin
+
 (lark) @operator
+
 (fullContext) @constant.builtin

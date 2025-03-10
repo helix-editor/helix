@@ -12,6 +12,9 @@
 ] @keyword
 
 (tag) @function
+
 (doc_string) @string
+
 (data_table) @special
+
 (comment) @comment

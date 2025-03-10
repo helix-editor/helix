@@ -21,8 +21,8 @@
   (macro_declaration)
   (symbol_declaration)
 ] @indent
-;; increase the indentation level
 
+; increase the indentation level
 [
   (if)
   (when)
@@ -46,8 +46,8 @@
   (macro_declaration)
   (symbol_declaration)
 ] @extend
-;; ???
 
+; ???
 [
   (return_statement)
   (raise_statement)
@@ -55,11 +55,12 @@
   (break_statement)
   (continue_statement)
 ] @extend.prevent-once
-;; end a level of indentation while staying indented
 
+; end a level of indentation while staying indented
 [
   ")" ; tuples
   "]" ; arrays, seqs
   "}" ; sets
 ] @outdent
-;; end a level of indentation and unindent the line
+
+; end a level of indentation and unindent the line

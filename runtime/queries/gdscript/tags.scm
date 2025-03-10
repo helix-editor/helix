@@ -1,5 +1,8 @@
-(class_definition (name) @name) @definition.class
+(class_definition
+  (name) @name) @definition.class
 
-(function_definition (name) @name) @definition.function
+(function_definition
+  (name) @name) @definition.function
 
-(call (name) @name) @reference.call
+(call
+  (name) @name) @reference.call

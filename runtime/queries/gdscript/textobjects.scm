@@ -1,21 +1,22 @@
-
 (class_definition
   (body) @class.inside) @class.around
 
 (function_definition
   (body) @function.inside) @function.around
 
-(lambda (body) @function.inside) @function.around
+(lambda
+  (body) @function.inside) @function.around
 
-(parameters 
+(parameters
   [
     (identifier)
     (typed_parameter)
-    (default_parameter)    
-    (typed_default_parameter)  
+    (default_parameter)
+    (typed_default_parameter)
   ] @parameter.inside @parameter.around)
 
-(arguments (_expression) @parameter.inside @parameter.around)
+(arguments
+  (_expression) @parameter.inside @parameter.around)
 
 [
   (const_statement)
@@ -25,4 +26,5 @@
 ] @entry.around
 
 (comment) @comment.inside
+
 (comment)+ @comment.around

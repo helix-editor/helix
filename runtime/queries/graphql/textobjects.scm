@@ -9,15 +9,19 @@
   (argument) @parameter.inside @parameter.movement)
 
 (selection
-  [(field) (fragment_spread)] @entry.around)
+  [
+    (field)
+    (fragment_spread)
+  ] @entry.around)
 
 (selection
-  (field (selection_set) @entry.inside))
+  (field
+    (selection_set) @entry.inside))
 
 (field_definition
   (_) @entry.inside) @entry.around
 
 (input_fields_definition
-  (input_value_definition ) @entry.around)
+  (input_value_definition) @entry.around)
 
 (enum_value) @entry.around

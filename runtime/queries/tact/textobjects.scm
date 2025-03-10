@@ -1,6 +1,5 @@
 ; function.inside & around
 ; ------------------------
-
 (static_function
   body: (_) @function.inside) @function.around
 
@@ -21,7 +20,6 @@
 
 ; class.inside & around
 ; ---------------------
-
 (struct
   body: (_) @class.inside) @class.around
 
@@ -37,22 +35,25 @@
 
 ; parameter.inside & around
 ; -------------------------
-
 (parameter_list
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (argument_list
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 (instance_argument_list
-  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+  ((_) @parameter.inside
+    .
+    ","? @parameter.around) @parameter.around)
 
 ; comment.inside
 ; --------------
-
 (comment) @comment.inside
 
 ; comment.around
 ; --------------
-
 (comment)+ @comment.around

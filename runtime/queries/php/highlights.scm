@@ -1,20 +1,20 @@
 (php_tag) @tag
+
 "?>" @tag
 
 ; Variables
-
 (relative_scope) @variable.builtin
 
 (variable_name) @variable
 
 ((name) @constant
- (#match? @constant "^_?[A-Z][A-Z\\d_]+$"))
+  (#match? @constant "^_?[A-Z][A-Z\\d_]+$"))
 
 ((name) @constructor
- (#match? @constructor "^[A-Z]"))
+  (#match? @constructor "^[A-Z]"))
 
 ((name) @variable.builtin
- (#eq? @variable.builtin "this"))
+  (#eq? @variable.builtin "this"))
 
 ; Types
 [
@@ -23,12 +23,18 @@
 ] @type.builtin
 
 (named_type
-  [ (name) @type
-    (qualified_name (name) @type)])
+  [
+    (name) @type
+    (qualified_name
+      (name) @type)
+  ])
 
 (base_clause
-  [ (name) @type
-    (qualified_name (name) @type)])
+  [
+    (name) @type
+    (qualified_name
+      (name) @type)
+  ])
 
 (enum_declaration
   name: (name) @type.enum)
@@ -40,49 +46,72 @@
   name: (name) @constructor)
 
 (trait_declaration
-  name:(name) @constructor)
+  name: (name) @constructor)
 
 (namespace_definition
-  name: (namespace_name (name) @namespace))
+  name: (namespace_name
+    (name) @namespace))
 
-(namespace_name_as_prefix 
-  (namespace_name (name) @namespace))
+(namespace_name_as_prefix
+  (namespace_name
+    (name) @namespace))
 
 (namespace_use_clause
-  [ (name) @namespace
-    (qualified_name (name) @type) ])
+  [
+    (name) @namespace
+    (qualified_name
+      (name) @type)
+  ])
 
-(namespace_aliasing_clause (name) @namespace)
+(namespace_aliasing_clause
+  (name) @namespace)
 
 (class_interface_clause
-  [(name) @type
-   (qualified_name (name) @type)])
+  [
+    (name) @type
+    (qualified_name
+      (name) @type)
+  ])
 
 (scoped_call_expression
-  scope: [(name) @type
-          (qualified_name (name) @type)])
+  scope: [
+    (name) @type
+    (qualified_name
+      (name) @type)
+  ])
 
 (class_constant_access_expression
-  . [(name) @constructor
-     (qualified_name (name) @constructor)]
+  .
+  [
+    (name) @constructor
+    (qualified_name
+      (name) @constructor)
+  ]
   (name) @constant)
 
-(use_declaration (name) @type)
+(use_declaration
+  (name) @type)
 
 (binary_expression
   operator: "instanceof"
-  right: [(name) @type
-          (qualified_name (name) @type)])
+  right: [
+    (name) @type
+    (qualified_name
+      (name) @type)
+  ])
 
 ; Superglobals
 (subscript_expression
-  (variable_name(name) @constant.builtin
+  (variable_name
+    (name) @constant.builtin
     (#match? @constant.builtin "^_?[A-Z][A-Z\\d_]+$")))
 
 ; Functions
+(array_creation_expression
+  "array" @function.builtin)
 
-(array_creation_expression "array" @function.builtin)
-(list_literal "list" @function.builtin)
+(list_literal
+  "list" @function.builtin)
 
 (method_declaration
   name: (name) @function.method)
@@ -100,11 +129,14 @@
   name: (name) @function)
 
 (nullsafe_member_call_expression
-    name: (name) @function.method)
+  name: (name) @function.method)
 
 (object_creation_expression
-  [(name) @constructor
-   (qualified_name (name) @constructor)])
+  [
+    (name) @constructor
+    (qualified_name
+      (name) @constructor)
+  ])
 
 ; Parameters
 [
@@ -113,15 +145,16 @@
 ] @variable.parameter
 
 (argument
-    (name) @variable.parameter)
+  (name) @variable.parameter)
 
 ; Member
-
 (property_element
   (variable_name) @variable.other.member)
 
 (member_access_expression
-  name: (variable_name (name)) @variable.other.member)
+  name: (variable_name
+    (name)) @variable.other.member)
+
 (member_access_expression
   name: (name) @variable.other.member)
 
@@ -129,94 +162,99 @@
 (attribute_list) @attribute
 
 ; Basic tokens
-
 [
   (string)
   (encapsed_string)
   (heredoc_body)
   (nowdoc_body)
-  (shell_command_expression) 
+  (shell_command_expression)
 ] @string
+
 (escape_sequence) @constant.character.escape
 
 (boolean) @constant.builtin.boolean
+
 (null) @constant.builtin
+
 (integer) @constant.numeric.integer
+
 (float) @constant.numeric.float
+
 (comment) @comment
 
-(goto_statement (name) @label)
-(named_label_statement (name) @label)
+(goto_statement
+  (name) @label)
+
+(named_label_statement
+  (name) @label)
 
 ; Keywords
-
 [
-  "default" 
-  "echo" 
-  "enum" 
-  "extends" 
-  "final" 
+  "default"
+  "echo"
+  "enum"
+  "extends"
+  "final"
   "goto"
-  "global" 
-  "implements" 
-  "insteadof" 
-  "new" 
-  "private" 
-  "protected" 
-  "public" 
+  "global"
+  "implements"
+  "insteadof"
+  "new"
+  "private"
+  "protected"
+  "public"
   "clone"
   "unset"
 ] @keyword
 
 [
-  "if" 
-  "else" 
-  "elseif" 
-  "endif" 
-  "switch" 
-  "endswitch" 
-  "case" 
-  "match" 
-  "declare" 
-  "enddeclare" 
+  "if"
+  "else"
+  "elseif"
+  "endif"
+  "switch"
+  "endswitch"
+  "case"
+  "match"
+  "declare"
+  "enddeclare"
   "??"
 ] @keyword.control.conditional
 
 [
   "for"
   "endfor"
-  "foreach" 
-  "endforeach" 
-  "while" 
-  "endwhile" 
+  "foreach"
+  "endforeach"
+  "while"
+  "endwhile"
   "do"
 ] @keyword.control.repeat
 
 [
-  
-  "include_once" 
-  "include" 
-  "require_once" 
-  "require" 
+  "include_once"
+  "include"
+  "require_once"
+  "require"
   "use"
 ] @keyword.control.import
 
 [
-  "return" 
-  "break" 
-  "continue" 
+  "return"
+  "break"
+  "continue"
   "yield"
 ] @keyword.control.return
 
 [
-  "throw" 
-  "try" 
-  "catch" 
+  "throw"
+  "try"
+  "catch"
   "finally"
 ] @keyword.control.exception
 
 [
-  "as" 
+  "as"
   "or"
   "xor"
   "and"
@@ -224,16 +262,16 @@
 ] @keyword.operator
 
 [
-  "fn" 
-  "function" 
+  "fn"
+  "function"
 ] @keyword.function
 
 [
-  "namespace" 
-  "class" 
-  "interface" 
-  "trait" 
-  "abstract" 
+  "namespace"
+  "class"
+  "interface"
+  "trait"
+  "abstract"
 ] @keyword.storage.type
 
 [
@@ -246,7 +284,7 @@
   ";"
   ":"
   "\\"
- ] @punctuation.delimiter
+] @punctuation.delimiter
 
 [
   (php_tag)
@@ -262,7 +300,6 @@
 
 [
   "="
-
   "."
   "-"
   "*"
@@ -270,19 +307,15 @@
   "+"
   "%"
   "**"
-
   "~"
   "|"
   "^"
   "&"
   "<<"
   ">>"
-
   "->"
   "?->"
-
   "=>"
-
   "<"
   "<="
   ">="
@@ -292,11 +325,9 @@
   "!="
   "==="
   "!=="
-
   "!"
   "&&"
   "||"
-
   ".="
   "-="
   "+="
@@ -312,7 +343,6 @@
   "??="
   "--"
   "++"
-
   "@"
   "::"
 ] @operator

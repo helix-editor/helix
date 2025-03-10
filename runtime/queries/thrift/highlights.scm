@@ -1,50 +1,53 @@
 ; Variables
-
-((identifier) @variable)
+(identifier) @variable
 
 ; Includes
-
 [
   "include"
   "cpp_include"
 ] @keyword
 
 ; Function
-
 (function_definition
   (identifier) @function)
 
 ; Fields
-
-(field (identifier) @variable.other.member)
+(field
+  (identifier) @variable.other.member)
 
 ; Parameters
-
 (function_definition
   (parameters
-    (parameter (identifier) @variable.parameter)))
+    (parameter
+      (identifier) @variable.parameter)))
 
 (throws
   (parameters
-    (parameter (identifier) @keyword.control.exception)))
+    (parameter
+      (identifier) @keyword.control.exception)))
 
 ; Types
-
 (typedef_identifier) @type
+
 (struct_definition
-  "struct" (identifier) @type)
+  "struct"
+  (identifier) @type)
 
 (union_definition
-  "union" (identifier) @type)
+  "union"
+  (identifier) @type)
 
 (exception_definition
-  "exception" (identifier) @type)
+  "exception"
+  (identifier) @type)
 
 (service_definition
-  "service" (identifier) @type)
+  "service"
+  (identifier) @type)
 
 (interaction_definition
-  "interaction" (identifier) @type)
+  "interaction"
+  (identifier) @type)
 
 (type
   type: (identifier) @type)
@@ -53,15 +56,18 @@
   type: (identifier) @type)
 
 ; Constants
+(const_definition
+  (identifier) @constant)
 
-(const_definition (identifier) @constant)
-
-(enum_definition "enum"
-  . (identifier) @type
-  "{" (identifier) @constant "}")
+(enum_definition
+  "enum"
+  .
+  (identifier) @type
+  "{"
+  (identifier) @constant
+  "}")
 
 ; Builtin Types
-
 (primitive) @type.builtin
 
 [
@@ -74,35 +80,38 @@
 ] @type.builtin
 
 ; Namespace
-
 (namespace_declaration
   (namespace_scope) @tag
-  [(namespace) @namespace (_ (identifier) @namespace)])
+  [
+    (namespace) @namespace
+    (_
+      (identifier) @namespace)
+  ])
 
 ; Attributes
-
 (annotation_definition
-  (annotation_identifier (identifier) @attribute))
+  (annotation_identifier
+    (identifier) @attribute))
+
 (fb_annotation_definition
-  "@" @attribute (annotation_identifier (identifier) @attribute)
+  "@" @attribute
+  (annotation_identifier
+    (identifier) @attribute)
   (identifier)? @attribute)
-(namespace_uri (string) @attribute)
+
+(namespace_uri
+  (string) @attribute)
 
 ; Operators
-
 [
   "="
   "&"
 ] @operator
 
 ; Exceptions
-
-[
-  "throws"
-] @keyword.control.exception
+"throws" @keyword.control.exception
 
 ; Keywords
-
 [
   "enum"
   "exception"
@@ -118,7 +127,6 @@
 ] @keyword
 
 ; Deprecated Keywords
-
 [
   "cocoa_prefix"
   "cpp_namespace"
@@ -150,7 +158,6 @@
 ] @keyword
 
 ; Qualifiers
-
 [
   "client"
   "const"
@@ -166,7 +173,6 @@
 ] @type.directive
 
 ; Literals
-
 (string) @string
 
 (escape_sequence) @constant.character.escape
@@ -181,22 +187,30 @@
 (boolean) @constant.builtin.boolean
 
 ; Typedefs
-
 (typedef_identifier) @type.definition
 
 ; Punctuation
+"*" @punctuation.special
 
 [
-  "*"
-] @punctuation.special
+  "{"
+  "}"
+] @punctuation.bracket
 
-["{" "}"] @punctuation.bracket
+[
+  "("
+  ")"
+] @punctuation.bracket
 
-["(" ")"] @punctuation.bracket
+[
+  "["
+  "]"
+] @punctuation.bracket
 
-["[" "]"] @punctuation.bracket
-
-["<" ">"] @punctuation.bracket
+[
+  "<"
+  ">"
+] @punctuation.bracket
 
 [
   "."
@@ -206,6 +220,4 @@
 ] @punctuation.delimiter
 
 ; Comments
-
 (comment) @comment
-

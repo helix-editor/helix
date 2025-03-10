@@ -1,14 +1,30 @@
-
 ; variables
-(variable_assignment (identifier) @variable.other.member)
-(variable_assignment (concatenation (identifier) @variable.other.member))
-(unset_statement (identifier) @variable.other.member)
-(export_statement (identifier) @variable.other.member)
-(variable_expansion (identifier) @variable.other.member)
-(python_function_definition (parameters (python_identifier) @variable.other.member))
+(variable_assignment
+  (identifier) @variable.other.member)
 
-(variable_assignment (override) @keyword.storage.modifier)
-(overrides_statement (identifier) @keyword.storage.modifier)
+(variable_assignment
+  (concatenation
+    (identifier) @variable.other.member))
+
+(unset_statement
+  (identifier) @variable.other.member)
+
+(export_statement
+  (identifier) @variable.other.member)
+
+(variable_expansion
+  (identifier) @variable.other.member)
+
+(python_function_definition
+  (parameters
+    (python_identifier) @variable.other.member))
+
+(variable_assignment
+  (override) @keyword.storage.modifier)
+
+(overrides_statement
+  (identifier) @keyword.storage.modifier)
+
 (flag) @keyword.storage.modifier
 
 [
@@ -20,11 +36,22 @@
   "+="
   ".="
   "=."
-
 ] @operator
 
-[ "(" ")" "{" "}" "[" "]" ] @punctuation.bracket
-(variable_expansion [ "${" "}" ] @punctuation.special)
+[
+  "("
+  ")"
+  "{"
+  "}"
+  "["
+  "]"
+] @punctuation.bracket
+
+(variable_expansion
+  [
+    "${"
+    "}"
+  ] @punctuation.special)
 
 [
   "noexec"
@@ -35,15 +62,29 @@
 ] @variable.builtin
 
 ; functions
+(python_function_definition
+  (python_identifier) @function)
 
-(python_function_definition (python_identifier) @function)
-(anonymous_python_function (identifier) @function)
-(function_definition (identifier) @function)
-(export_functions_statement (identifier) @function)
-(addtask_statement (identifier) @function)
-(deltask_statement (identifier) @function)
-(addhandler_statement (identifier) @function)
-(function_definition (override) @keyword.storage.modifier)
+(anonymous_python_function
+  (identifier) @function)
+
+(function_definition
+  (identifier) @function)
+
+(export_functions_statement
+  (identifier) @function)
+
+(addtask_statement
+  (identifier) @function)
+
+(deltask_statement
+  (identifier) @function)
+
+(addhandler_statement
+  (identifier) @function)
+
+(function_definition
+  (override) @keyword.storage.modifier)
 
 [
   "addtask"
@@ -59,13 +100,11 @@
   "append"
   "prepend"
   "remove"
-
   "before"
   "after"
 ] @keyword.operator
 
 ; imports
-
 [
   "inherit"
   "include"
@@ -75,8 +114,9 @@
 ] @keyword.control.import
 
 (inherit_path) @namespace
+
 (include_path) @namespace
 
-
 (string) @string
+
 (comment) @comment

@@ -1,5 +1,4 @@
-;; From nvim-treesitter, contributed by @ObserverOfTime et al.
-
+; From nvim-treesitter, contributed by @ObserverOfTime et al.
 ((comment) @injection.content
   (#set! injection.language "comment"))
 

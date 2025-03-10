@@ -1,13 +1,14 @@
 ; Identifiers
-
-[(NAME) (SYMBOLNAME)] @variable
+[
+  (NAME)
+  (SYMBOLNAME)
+] @variable
 
 (section
   .
   (NAME) @namespace)
 
 ; Operators
-
 [
   "="
   "+="
@@ -41,7 +42,6 @@
 ] @operator
 
 ; Keywords
-
 [
   "ABSOLUTE"
   "ADDR"
@@ -146,7 +146,6 @@
 ] @keyword
 
 ; Delimiters
-
 [
   ","
   ";"
@@ -165,9 +164,7 @@
 ] @punctuation.bracket
 
 ; Literals
-
 (INT) @constant.numeric.integer
 
 ; Comment
-
 (comment) @comment

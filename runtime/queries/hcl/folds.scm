@@ -1,6 +1,6 @@
 [
- (comment)
- (block)
- (heredoc_template)
- (object)
+  (comment)
+  (block)
+  (heredoc_template)
+  (object)
 ] @fold

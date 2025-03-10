@@ -31,5 +31,8 @@
   arguments: (_) @parameter.inside)
 
 (string_value
-  "\"" . (_) @text.inside . "\"") @text.around
-
+  "\""
+  .
+  (_) @text.inside
+  .
+  "\"") @text.around

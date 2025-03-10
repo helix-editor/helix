@@ -7,6 +7,4 @@
   (pipeline)
 ] @indent
 
-[
-  "}"
-] @outdent
+"}" @outdent

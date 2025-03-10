@@ -16,43 +16,39 @@
 
 (assign
   "=" @indent @extend
-  !rhs
-)
+  !rhs)
+
 (assign
   "=" @indent @extend
   rhs: (_) @anchor
-  (#not-same-line? @indent @anchor)
-)
+  (#not-same-line? @indent @anchor))
 
 (if
   condition: (_) @indent @extend
-  !then
-)
+  !then)
+
 (if
   condition: (_) @indent @extend
   then: (_) @anchor
-  (#not-same-line? @indent @anchor)
-)
+  (#not-same-line? @indent @anchor))
 
 (function
   (args) @indent @extend
-  !body
-)
+  !body)
+
 (function
   (args) @indent @extend
   body: (_) @anchor
-  (#not-same-line? @indent @anchor)
-)
+  (#not-same-line? @indent @anchor))
 
 (match_arm
   "then" @indent @extend
-  !then
-)
+  !then)
+
 (match_arm
   "then" @indent @extend
   then: (_) @anchor
-  (#not-same-line? @indent @anchor)
-)
+  (#not-same-line? @indent @anchor))
 
 [
   "}"

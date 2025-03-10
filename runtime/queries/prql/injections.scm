@@ -1,5 +1,5 @@
 ((s_string) @injection.content
- (#set! injection.language "sql"))
+  (#set! injection.language "sql"))
 
 (from_text
   (keyword_from_text)

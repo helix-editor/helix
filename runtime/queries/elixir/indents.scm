@@ -8,6 +8,4 @@
   (stab_clause)
 ] @indent
 
-[
-  "end"
-] @outdent
+"end" @outdent

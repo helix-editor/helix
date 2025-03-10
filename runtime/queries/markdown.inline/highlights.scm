@@ -1,4 +1,4 @@
-;; From nvim-treesitter/nvim-treesitter
+; From nvim-treesitter/nvim-treesitter
 [
   (code_span)
   (link_title)
@@ -32,8 +32,27 @@
   (hard_line_break)
 ] @constant.character.escape
 
-(image ["[" "]" "(" ")"] @punctuation.bracket)
-(image "!" @punctuation.special)
-(inline_link ["[" "]" "(" ")"] @punctuation.bracket)
-(shortcut_link ["[" "]"] @punctuation.bracket)
+(image
+  [
+    "["
+    "]"
+    "("
+    ")"
+  ] @punctuation.bracket)
 
+(image
+  "!" @punctuation.special)
+
+(inline_link
+  [
+    "["
+    "]"
+    "("
+    ")"
+  ] @punctuation.bracket)
+
+(shortcut_link
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)

@@ -11,8 +11,9 @@
   method: (identifier) @class_method
   (#match? @class_const "Class")
   (#match? @class_method "new")
-  (do_block (_)+ @class.inside)) @class.around
-  
+  (do_block
+    (_)+ @class.inside)) @class.around
+
 (module
   body: (_)? @class.inside) @class.around
 
@@ -29,18 +30,19 @@
 (block
   body: (_)? @function.inside) @function.around
 
-; Parameters      
+; Parameters
 (method_parameters
   (_) @parameter.inside) @parameter.around
-        
-(block_parameters 
+
+(block_parameters
   (_) @parameter.inside) @parameter.around
-        
-(lambda_parameters 
+
+(lambda_parameters
   (_) @parameter.inside) @parameter.around
 
 ; Comments
-(comment) @comment.inside 
+(comment) @comment.inside
+
 (comment)+ @comment.around
 
 (pair

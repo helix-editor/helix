@@ -3,60 +3,70 @@
 (identifier) @variable
 
 [
-    (assignment_operator)
-    (additive_operator)
-    (multiplicative_operator)
-    (equality_operator)
-    ">="
-    "<="
-    "<"
-    ">"
-    "+"
-    "-"
+  (assignment_operator)
+  (additive_operator)
+  (multiplicative_operator)
+  (equality_operator)
+  ">="
+  "<="
+  "<"
+  ">"
+  "+"
+  "-"
 ] @operator
 
 [
-    (and)
-    (or)
-    (not)
-    (in)
+  (and)
+  (or)
+  (not)
+  (in)
 ] @keyword.operator
 
 [
-    "(" ")" "[" "]" "{" "}"
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
 ] @punctuation.bracket
 
 [
-    (if)
-    (elif)
-    (else)
-    (endif)
+  (if)
+  (elif)
+  (else)
+  (endif)
 ] @keyword.control.conditional
 
 [
-    (foreach)
-    (endforeach)
-    (break)
-    (continue)
+  (foreach)
+  (endforeach)
+  (break)
+  (continue)
 ] @keyword.control.repeat
 
 (boolean_literal) @constant.builtin.boolean
+
 (int_literal) @constant.numeric.integer
 
-(keyword_argument keyword: (identifier) @variable.parameter)
+(keyword_argument
+  keyword: (identifier) @variable.parameter)
+
 (escape_sequence) @constant.character.escape
+
 (bad_escape) @warning
 
 [
-"."
-","
-":"
+  "."
+  ","
+  ":"
 ] @punctuation.delimiter
 
 [
-    (string_literal)
-    (fstring_literal)
+  (string_literal)
+  (fstring_literal)
 ] @string
 
 ; these are listed last, because they override keyword queries
-(function_expression (identifier) @function)
+(function_expression
+  (identifier) @function)

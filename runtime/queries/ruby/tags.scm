@@ -1,7 +1,5 @@
 ; Method definitions
-
-(
-  (comment)* @doc
+((comment)* @doc
   .
   [
     (method
@@ -10,8 +8,7 @@
       name: (_) @name) @definition.method
   ]
   (#strip! @doc "^#\\s*")
-  (#select-adjacent! @doc @definition.method)
-)
+  (#select-adjacent! @doc @definition.method))
 
 (alias
   name: (_) @name) @definition.method
@@ -20,9 +17,7 @@
   (identifier) @ignore)
 
 ; Class definitions
-
-(
-  (comment)* @doc
+((comment)* @doc
   .
   [
     (class
@@ -39,26 +34,23 @@
       ]) @definition.class
   ]
   (#strip! @doc "^#\\s*")
-  (#select-adjacent! @doc @definition.class)
-)
+  (#select-adjacent! @doc @definition.class))
 
 ; Module definitions
-
-(
-  (module
-    name: [
-      (constant) @name
-      (scope_resolution
-        name: (_) @name)
-    ]) @definition.module
-)
+(module
+  name: [
+    (constant) @name
+    (scope_resolution
+      name: (_) @name)
+  ]) @definition.module
 
 ; Calls
+(call
+  method: (identifier) @name) @reference.call
 
-(call method: (identifier) @name) @reference.call
-
-(
-  [(identifier) (constant)] @name @reference.call
+([
+  (identifier)
+  (constant)
+] @name @reference.call
   (#is-not? local)
-  (#not-match? @name "^(lambda|load|require|require_relative|__FILE__|__LINE__)$")
-)
+  (#not-match? @name "^(lambda|load|require|require_relative|__FILE__|__LINE__)$"))

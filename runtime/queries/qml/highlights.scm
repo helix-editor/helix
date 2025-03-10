@@ -13,8 +13,7 @@
   "@" @punctuation
   type_name: _ @type)
 
-;;; Declarations
-
+; Declarations
 (enum_declaration
   name: (identifier) @type)
 
@@ -48,15 +47,13 @@
 
 (ui_signal_parameter
   type: _ @type
-  name: (identifier) @variable.parameter);;; Properties and bindings
+  name: (identifier) @variable.parameter) ; Properties and bindings
 
-;;; Bindings
-
+; Bindings
 (ui_binding
   name: _ @variable.other.member)
 
-;;; Other
-
+; Other
 [
   "("
   ")"
@@ -64,10 +61,11 @@
   "}"
 ] @punctuation.bracket
 
-(ui_list_property_type [
-  "<"
-  ">"
-] @punctuation.bracket)
+(ui_list_property_type
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
 
 [
   ","

@@ -1,12 +1,17 @@
-;; Primitives
+; Primitives
 (comment) @comment
+
 (nat) @constant.numeric
+
 (unit) @constant.builtin
+
 (literal_char) @constant.character
+
 (literal_text) @string
+
 (literal_boolean) @constant.builtin.boolean
 
-;; Keywords
+; Keywords
 [
   (kw_forall)
   (kw_equals)
@@ -17,9 +22,13 @@
 ] @keyword
 
 (kw_let) @keyword.function
+
 (type_kw) @keyword.storage.modifier
+
 (structural) @keyword.storage.modifier
-("use") @keyword.control.import
+
+"use" @keyword.control.import
+
 (unique) @keyword.storage.modifier
 
 [
@@ -45,7 +54,7 @@
 
 (use_clause) @keyword.import
 
-;; Types
+; Types
 (record_field
   (field_name) @variable.other.member
   type: (regular_identifier) @type)
@@ -98,7 +107,7 @@
 (term_definition
   param: (regular_identifier) @variable.parameter)
 
-;; Punctuation
+; Punctuation
 [
   (type_signature_colon)
   ":"

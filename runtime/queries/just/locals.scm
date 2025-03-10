@@ -1,12 +1,9 @@
 ; This file tells us about the scope of variables so e.g. local
 ; variables override global functions with the same name
-
 ; Scope
-
 (recipe) @local.scope
 
 ; Definitions
-
 (alias
   name: (identifier) @local.definition)
 
@@ -23,7 +20,6 @@
   name: (identifier) @local.definition)
 
 ; References
-
 (alias
   name: (identifier) @local.reference)
 

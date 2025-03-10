@@ -1,4 +1,5 @@
 (rule_definition) @local.definition
+
 (string_identifier) @local.definition
 
 (for_expression

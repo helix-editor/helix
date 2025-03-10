@@ -21,4 +21,4 @@
   (catch_clause)
 ] @indent @extend
 
-[ "end" ] @outdent
+"end" @outdent

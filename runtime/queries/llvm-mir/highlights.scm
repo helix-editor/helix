@@ -64,10 +64,13 @@
 ] @type.builtin
 
 (number) @constant.numeric.integer
+
 (float) @constant.numeric.float
+
 (string) @string
 
-(instruction name: _ @keyword.operator)
+(instruction
+  name: _ @keyword.operator)
 
 [
   "successors"
@@ -133,7 +136,6 @@
   "bbsections"
   "Exception"
   "Cold"
-
   (intpred)
   (floatpred)
   (memory_operand_flag)

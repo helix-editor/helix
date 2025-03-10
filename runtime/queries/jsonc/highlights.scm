@@ -1,2 +1,3 @@
 ; inherits: json
+
 (comment) @comment

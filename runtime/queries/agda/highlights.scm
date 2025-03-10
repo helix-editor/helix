@@ -1,45 +1,83 @@
-;; Punctuation
-[ "." ";" ":"] @punctuation.delimiter
-[ "(" ")" "{" "}" ] @punctuation.bracket
+; Punctuation
+[
+  "."
+  ";"
+  ":"
+] @punctuation.delimiter
 
-;; Constants
+[
+  "("
+  ")"
+  "{"
+  "}"
+] @punctuation.bracket
+
+; Constants
 (integer) @constant.numeric.integer
+
 ; (float) @constant.numeric.float
 (literal) @string
 
-;; Pragmas and comments
+; Pragmas and comments
 (comment) @comment
+
 (pragma) @attribute
+
 (macro) @function.macro
 
-;; Imports
+; Imports
 (module_name) @namespace
-(import_directive (id) @namespace)
-[(module) (import) (open)] @keyword.control.import
 
-;; Types
-(typed_binding (expr) @type)
-(record        (expr) @type)
-(data          (expr) @type)
-(signature     (expr) @type)
-(function (rhs (expr) @type))
+(import_directive
+  (id) @namespace)
+
+[
+  (module)
+  (import)
+  (open)
+] @keyword.control.import
+
+; Types
+(typed_binding
+  (expr) @type)
+
+(record
+  (expr) @type)
+
+(data
+  (expr) @type)
+
+(signature
+  (expr) @type)
+
+(function
+  (rhs
+    (expr) @type))
+
 ; todo: these are too general. ideally, any nested (atom)
 ; https://github.com/tree-sitter/tree-sitter/issues/880
+; Variables
+(untyped_binding
+  (atom) @variable)
 
-;; Variables
-(untyped_binding (atom) @variable)
-(typed_binding   (atom) @variable)
+(typed_binding
+  (atom) @variable)
+
 (field_name) @variable.other.member
 
-;; Functions
+; Functions
 (function_name) @function
+
 ;(function (lhs
 ;  . (atom) @function
 ;    (atom) @variable.parameter))
 ; todo: currently fails to parse, upstream tree-sitter bug
+; Data
+[
+  (data_name)
+  (record_name)
+] @constructor
 
-;; Data
-[(data_name) (record_name)] @constructor
 ((atom) @constant.builtin.boolean
   (#any-of? @constant.builtin.boolean "true" "false" "True" "False"))
 
@@ -68,8 +106,7 @@
 ; syntax
 ; hole_name
 ; data_signature
-
-;; Keywords
+; Keywords
 [
   "where"
   "data"
@@ -97,9 +134,7 @@
   "do"
 ] @keyword
 
-[
-  "="
-] @operator
+"=" @operator
 
 ; = | -> : ? \ .. ... λ ∀ →
 ; (_LAMBDA) (_FORALL) (_ARROW)
@@ -121,4 +156,3 @@
 ; "using"
 ; "variable"
 ; "with"
-

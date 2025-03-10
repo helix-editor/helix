@@ -1,27 +1,30 @@
-(type (_) @test.inside) @test.around
+(type
+  (_) @test.inside) @test.around
 
 (node
-	children: (node_children)? @class.inside) @class.around
+  children: (node_children)? @class.inside) @class.around
 
 (node
-	children: (node_children)? @function.inside) @function.around
+  children: (node_children)? @function.inside) @function.around
 
-(node (identifier) @function.movement)
+(node
+  (identifier) @function.movement)
 
 [
-	(single_line_comment)
-	(multi_line_comment)
+  (single_line_comment)
+  (multi_line_comment)
 ] @comment.inside
 
 [
-	(single_line_comment)+
-	(multi_line_comment)+
+  (single_line_comment)+
+  (multi_line_comment)+
 ] @comment.around
 
 [
-	(prop)
-	(value)
+  (prop)
+  (value)
 ] @parameter.inside
 
-(value (type) ? (_) @parameter.inside @parameter.movement . ) @parameter.around
-
+(value
+  (type)?
+  (_) @parameter.inside @parameter.movement .) @parameter.around

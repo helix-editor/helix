@@ -139,6 +139,7 @@
 (string_literal) @string
 
 (integer_literal) @constant.numeric
+
 (real_literal) @constant.numeric
 
 (command

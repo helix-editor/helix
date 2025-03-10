@@ -1,20 +1,23 @@
-;; ----------------------------------------------------------------------------
-;; Literals and comments
-
+; ----------------------------------------------------------------------------
+; Literals and comments
 (integer) @constant.numeric.integer
+
 (float) @constant.numeric.float
+
 (char) @constant.character
+
 (string) @string
+
 (attribute_name) @attribute
+
 (attribute_exclamation_mark) @attribute
 
 (con_unit) @constant.builtin ; unit, as in ()
 
 (comment) @comment
 
-;; ----------------------------------------------------------------------------
-;; Keywords, operators, includes
-
+; ----------------------------------------------------------------------------
+; Keywords, operators, includes
 [
   "Id"
   "Primary"
@@ -24,14 +27,12 @@
 
 "=" @operator
 
-;; ----------------------------------------------------------------------------
-;; Functions and variables
-
+; ----------------------------------------------------------------------------
+; Functions and variables
 (variable) @variable
 
-;; ----------------------------------------------------------------------------
-;; Types
-
+; ----------------------------------------------------------------------------
+; Types
 (type) @type
 
 (constructor) @constructor

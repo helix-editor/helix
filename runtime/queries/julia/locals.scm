@@ -1,7 +1,6 @@
 ; -----------
 ; Definitions
 ; -----------
-
 ; Variables
 (assignment
   (identifier) @local.definition)
@@ -13,7 +12,8 @@
 ; Constants
 (const_statement
   (assignment
-    . (identifier) @local.definition))
+    .
+    (identifier) @local.definition))
 
 ; let/const bindings
 (let_binding
@@ -81,13 +81,11 @@
 ; ----------
 ; References
 ; ----------
-
 (identifier) @local.reference
- 
+
 ; ------
 ; Scopes
 ; ------
-
 [
   (for_statement)
   (while_statement)
@@ -97,5 +95,4 @@
   (let_statement)
   (quote_statement)
   (do_clause)
-] @local.scope 
-
+] @local.scope

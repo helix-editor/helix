@@ -1,22 +1,20 @@
 ; ------------
 ; Variables identifiers
 ; ------------
-
 (identifier) @variable
 
 ; Remaining identifiers that start with capital letters should be types (PascalCase)
-(
-  (identifier) @type
+((identifier) @type
   (#match? @type "^[A-Z]"))
 
 ; SCREAMING_SNAKE_CASE
-(
-  (identifier) @constant
+((identifier) @constant
   (#match? @constant "^[A-Z][A-Z0-9_]*$"))
 
 (const_statement
   (assignment
-    . (identifier) @constant))
+    .
+    (identifier) @constant))
 
 ; Field expressions are either module content or struct fields.
 ; Module types and constants should already be captured, so this
@@ -35,7 +33,6 @@
 ; ------
 ; Macros
 ; ------
-
 (macro_definition
   name: (identifier) @function.macro)
 
@@ -46,15 +43,15 @@
 ; -------------------
 ; Modules and Imports
 ; -------------------
-
 (module_definition
   name: (identifier) @namespace)
-  
+
 (import_statement
   (identifier) @namespace)
-  
+
 (selected_import
-  . (identifier) @namespace)
+  .
+  (identifier) @namespace)
 
 (scoped_identifier
   (identifier) @namespace)
@@ -62,59 +59,51 @@
 ; -------------------
 ; Function definition
 ; -------------------
-
-(
-  (function_definition
-    name: [
-      (identifier) @function
-      (scoped_identifier
-        (identifier) @namespace
-        (identifier) @function)
-    ])
+((function_definition
+  name: [
+    (identifier) @function
+    (scoped_identifier
+      (identifier) @namespace
+      (identifier) @function)
+  ])
   ; prevent constructors (PascalCase) to be highlighted as functions
   (#match? @function "^[^A-Z]"))
 
-(
-  (short_function_definition
-    name: [
-      (identifier) @function
-      (scoped_identifier
-        (identifier) @namespace
-        (identifier) @function)
-    ])
+((short_function_definition
+  name: [
+    (identifier) @function
+    (scoped_identifier
+      (identifier) @namespace
+      (identifier) @function)
+  ])
   ; prevent constructors (PascalCase) to be highlighted as functions
   (#match? @function "^[^A-Z]"))
 
 ; ---------------
 ; Functions calls
 ; ---------------
-
-(
-  (call_expression
-    (identifier) @function)
+((call_expression
+  (identifier) @function)
   ; prevent constructors (PascalCase) to be highlighted as functions
   (#match? @function "^[^A-Z]"))
 
-(
-  (call_expression
-    (field_expression (identifier) @function .))
+((call_expression
+  (field_expression
+    (identifier) @function .))
   (#match? @function "^[^A-Z]"))
 
-(
-  (broadcast_call_expression
-    (identifier) @function)
+((broadcast_call_expression
+  (identifier) @function)
   (#match? @function "^[^A-Z]"))
 
-(
-  (broadcast_call_expression
-    (field_expression (identifier) @function .))
+((broadcast_call_expression
+  (field_expression
+    (identifier) @function .))
   (#match? @function "^[^A-Z]"))
-
 
 ; -------------------
 ; Functions builtins
 ; -------------------
-
 ((identifier) @function.builtin
   (#any-of? @function.builtin
     "_abstracttype" "_apply_iterate" "_apply_pure" "_call_in_world" "_call_in_world_total"
@@ -127,12 +116,12 @@
 ; -----------
 ; Parameters
 ; -----------
-
 (parameter_list
   (identifier) @variable.parameter)
 
 (optional_parameter
-  . (identifier) @variable.parameter)
+  .
+  (identifier) @variable.parameter)
 
 (slurp_parameter
   (identifier) @variable.parameter)
@@ -142,12 +131,12 @@
   type: (_) @type)
 
 (function_expression
-  . (identifier) @variable.parameter) ; Single parameter arrow functions
+  .
+  (identifier) @variable.parameter) ; Single parameter arrow functions
 
 ; -----
 ; Types
 ; -----
-
 ; Definitions
 (abstract_definition
   name: (identifier) @type.definition) @keyword
@@ -159,13 +148,16 @@
   name: (identifier) @type)
 
 (struct_definition
-  . (_)
-    (identifier) @variable.other.member)
+  .
+  (_)
+  (identifier) @variable.other.member)
 
 (struct_definition
-  . (_)
+  .
+  (_)
   (typed_expression
-    . (identifier) @variable.other.member))
+    .
+    (identifier) @variable.other.member))
 
 (type_clause
   [
@@ -184,7 +176,7 @@
   (identifier) @type)
 
 (typed_expression
-  (identifier) @type . )
+  (identifier) @type .)
 
 (function_definition
   return_type: (identifier) @type)
@@ -202,7 +194,6 @@
 ; ---------
 ; Builtins
 ; ---------
-
 ; This list was generated with:
 ;
 ;  istype(x) = typeof(x) === DataType || typeof(x) === UnionAll
@@ -247,11 +238,9 @@
 ((identifier) @variable.builtin
   (#any-of? @variable.builtin "begin" "end"))
 
-
 ; --------
 ; Keywords
 ; --------
-
 [
   "global"
   "local"
@@ -385,7 +374,6 @@
 ; ---------
 ; Operators
 ; ---------
-
 [
   (operator)
   "="
@@ -419,10 +407,9 @@
 ; ------------
 ; Punctuations
 ; ------------
-
 [
   "."
-  "," 
+  ","
   ";"
   "::"
   "->"
@@ -432,29 +419,26 @@
 
 [
   "("
-  ")" 
+  ")"
   "["
   "]"
-  "{" 
+  "{"
   "}"
 ] @punctuation.bracket
 
 ; ---------
 ; Literals
 ; ---------
-
 (boolean_literal) @constant.builtin.boolean
 
 (integer_literal) @constant.numeric.integer
 
 (float_literal) @constant.numeric.float
 
-(
-  ((identifier) @constant.numeric.float)
+((identifier) @constant.numeric.float
   (#match? @constant.numeric.float "^((Inf|NaN)(16|32|64)?)$"))
 
-(
-  ((identifier) @constant.builtin)
+((identifier) @constant.builtin
   (#match? @constant.builtin "^(nothing|missing|undef)$"))
 
 (character_literal) @constant.character
@@ -474,7 +458,6 @@
 ; ---------
 ; Comments
 ; ---------
-
 [
   (line_comment)
   (block_comment)

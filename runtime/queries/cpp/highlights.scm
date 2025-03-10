@@ -1,33 +1,65 @@
 ; inherits: c
 
 ; Constants
-
 (this) @variable.builtin
+
 (nullptr) @constant.builtin
 
 ; Types
+(using_declaration
+  ("using"
+    "namespace"
+    (identifier) @namespace))
 
-(using_declaration ("using" "namespace" (identifier) @namespace))
-(using_declaration ("using" "namespace" (qualified_identifier name: (identifier) @namespace)))
-(namespace_definition name: (namespace_identifier) @namespace)
+(using_declaration
+  ("using"
+    "namespace"
+    (qualified_identifier
+      name: (identifier) @namespace)))
+
+(namespace_definition
+  name: (namespace_identifier) @namespace)
+
 (namespace_identifier) @namespace
 
-(qualified_identifier name: (identifier) @type.enum.variant)
+(qualified_identifier
+  name: (identifier) @type.enum.variant)
 
 (auto) @type
+
 "decltype" @type
 
-(ref_qualifier ["&" "&&"] @type.builtin)
-(reference_declarator ["&" "&&"] @type.builtin)
-(abstract_reference_declarator ["&" "&&"] @type.builtin)
+(ref_qualifier
+  [
+    "&"
+    "&&"
+  ] @type.builtin)
+
+(reference_declarator
+  [
+    "&"
+    "&&"
+  ] @type.builtin)
+
+(abstract_reference_declarator
+  [
+    "&"
+    "&&"
+  ] @type.builtin)
 
 ; Functions
-
 ; These casts are parsed as function calls, but are not.
-((identifier) @keyword (#eq? @keyword "static_cast"))
-((identifier) @keyword (#eq? @keyword "dynamic_cast"))
-((identifier) @keyword (#eq? @keyword "reinterpret_cast"))
-((identifier) @keyword (#eq? @keyword "const_cast"))
+((identifier) @keyword
+  (#eq? @keyword "static_cast"))
+
+((identifier) @keyword
+  (#eq? @keyword "dynamic_cast"))
+
+((identifier) @keyword
+  (#eq? @keyword "reinterpret_cast"))
+
+((identifier) @keyword
+  (#eq? @keyword "const_cast"))
 
 (call_expression
   function: (qualified_identifier
@@ -52,17 +84,28 @@
   declarator: (field_identifier) @function)
 
 ; Parameters
-
 (parameter_declaration
-  declarator: (reference_declarator (identifier) @variable.parameter))
+  declarator: (reference_declarator
+    (identifier) @variable.parameter))
+
 (optional_parameter_declaration
   declarator: (identifier) @variable.parameter)
 
 ; Keywords
+(template_argument_list
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
 
-(template_argument_list (["<" ">"] @punctuation.bracket))
-(template_parameter_list (["<" ">"] @punctuation.bracket))
-(default_method_clause "default" @keyword)
+(template_parameter_list
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+(default_method_clause
+  "default" @keyword)
 
 "static_assert" @function.special
 
@@ -91,7 +134,6 @@
   "try"
 ] @keyword.control.exception
 
-
 [
   "and"
   "and_eq"
@@ -106,7 +148,7 @@
 ] @keyword.operator
 
 [
-  "class"  
+  "class"
   "namespace"
   "typename"
   "template"
@@ -132,5 +174,4 @@
 ] @keyword
 
 ; Strings
-
 (raw_string_literal) @string

@@ -1,5 +1,4 @@
-;; From nvim-treesitter, contributed by @ObserverOfTime et al.
-
+; From nvim-treesitter, contributed by @ObserverOfTime et al.
 (funcdef
   (identifier) @local.definition)
 

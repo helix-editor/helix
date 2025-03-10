@@ -2,17 +2,17 @@
 
 (attributeType) @type.parameter
 
-((distinguishedName
+(distinguishedName
   (name
     (name_componet
       (attributeTypeAndValue
         (attributeType) @comment
-        (string) @type.parameter
-          )))) @comment)
-
+        (string) @type.parameter)))) @comment
 
 (dn_spec) @constant
+
 (changerecord) @constant
+
 (mod_spec) @constant
 
 (change_modify) @string

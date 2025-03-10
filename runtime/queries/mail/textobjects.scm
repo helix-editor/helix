@@ -2,6 +2,7 @@
   (atom) @entry.inside) @entry.around
 
 (email_address) @entry.around
+
 (header_other
   (header_unstructured) @entry.around)
 

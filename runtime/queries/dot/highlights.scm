@@ -1,7 +1,9 @@
 (identifier) @variable
 
 (keyword) @keyword
+
 (string_literal) @string
+
 (number_literal) @constant.numeric
 
 [
@@ -25,15 +27,13 @@
 
 (subgraph
   id: (id
-    (identifier) @namespace)
-)
+    (identifier) @namespace))
 
 (attribute
   name: (id
     (identifier) @type)
   value: (id
-    (identifier) @constant)
-)
+    (identifier) @constant))
 
 (comment) @comment
 

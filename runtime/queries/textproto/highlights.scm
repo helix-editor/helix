@@ -5,10 +5,14 @@
 (comment) @comment
 
 (number) @constant.numeric
+
 ; covers e.g. booleans and "inf"
-(scalar_value (identifier)) @constant
+(scalar_value
+  (identifier)) @constant
+
 ; Covers "-inf"
-(scalar_value (signed_identifier)) @constant.numeric
+(scalar_value
+  (signed_identifier)) @constant.numeric
 
 [
   (open_squiggly)

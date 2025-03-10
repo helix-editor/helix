@@ -1,21 +1,50 @@
 (comment) @comment
 
 (null) @constant.builtin
-[(true) (false)] @constant.builtin.boolean
+
+[
+  (true)
+  (false)
+] @constant.builtin.boolean
+
 (number) @constant.numeric
+
 (string) @string
+
 (multiline_string) @string
-(string (escape_sequence) @constant.character.escape)
+
+(string
+  (escape_sequence) @constant.character.escape)
+
 (unquoted_string) @string
 
-(value [":" "=" "+=" ] @operator)
+(value
+  [
+    ":"
+    "="
+    "+="
+  ] @operator)
 
-[ "(" ")" "[" "]" "{" "}" ]  @punctuation.bracket
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
 
-(substitution (_) @string)
-(substitution ["${" "${?" "}"] @punctuation.special)
+(substitution
+  (_) @string)
 
-[ 
+(substitution
+  [
+    "${"
+    "${?"
+    "}"
+  ] @punctuation.special)
+
+[
   "url"
   "file"
   "classpath"
@@ -25,7 +54,11 @@
 (include) @keyword.directive
 
 (unit) @keyword
-(path (_) @keyword)
-(unquoted_path "." @punctuation.delimiter)
-[ "," ] @punctuation.delimiter
 
+(path
+  (_) @keyword)
+
+(unquoted_path
+  "." @punctuation.delimiter)
+
+"," @punctuation.delimiter

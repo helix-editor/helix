@@ -114,6 +114,16 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
 
+      - name: Download ts_query_ls v1.10.0
+        run: |
+          mkdir -p ./.ts_query_ls
+          curl -L https://github.com/ribru17/ts_query_ls/releases/download/v1.10.0/ts_query_ls-x86_64-unknown-linux-gnu.tar.gz -o ./.ts_query_ls/ts_query_ls.tar.gz
+          tar -xzf ./.ts_query_ls/ts_query_ls.tar.gz -C ./.ts_query_ls
+          chmod +x ./.ts_query_ls/ts_query_ls
+
+      - name: Run ts_query_ls format
+        run: ./.ts_query_ls/ts_query_ls format runtime/queries --mode check
+
   docs:
     name: Docs
     runs-on: ubuntu-latest

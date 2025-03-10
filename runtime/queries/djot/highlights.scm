@@ -46,7 +46,8 @@
 
 (language) @type.enum.variant
 
-(inline_attribute _ @attribute)
+(inline_attribute
+  _ @attribute)
 
 (language_marker) @punctuation.delimiter
 
@@ -57,13 +58,16 @@
 
 (table_header) @markup.heading
 
-(table_header "|" @punctuation.special)
+(table_header
+  "|" @punctuation.special)
 
-(table_row "|" @punctuation.special)
+(table_row
+  "|" @punctuation.special)
 
 (table_separator) @punctuation.special
 
-(table_caption (marker) @punctuation.special)
+(table_caption
+  (marker) @punctuation.special)
 
 (table_caption) @label
 
@@ -111,7 +115,8 @@
   (quotation_marks)
 ] @punctuation.special
 
-(list_item (term) @constructor)
+(list_item
+  (term) @constructor)
 
 (quotation_marks) @markup.quote
 
@@ -200,11 +205,14 @@
 ; NOTE: Not perfectly semantically accurate, but a fair approximation.
 (identifier) @string.special.symbol
 
-(key_value "=" @operator)
+(key_value
+  "=" @operator)
 
-(key_value (key) @attribute)
+(key_value
+  (key) @attribute)
 
-(key_value (value) @string)
+(key_value
+  (value) @string)
 
 (link_text
   [
@@ -218,15 +226,20 @@
     ">"
   ] @punctuation.bracket)
 
-(inline_link (inline_link_destination) @markup.link.url)
+(inline_link
+  (inline_link_destination) @markup.link.url)
 
-(link_reference_definition ":" @punctuation.delimiter)
+(link_reference_definition
+  ":" @punctuation.delimiter)
 
-(full_reference_link (link_text) @markup.link.text)
+(full_reference_link
+  (link_text) @markup.link.text)
 
-(full_reference_link (link_label) @markup.link.label)
+(full_reference_link
+  (link_label) @markup.link.label)
 
-(collapsed_reference_link "[]" @punctuation.bracket)
+(collapsed_reference_link
+  "[]" @punctuation.bracket)
 
 (full_reference_link
   [
@@ -234,11 +247,14 @@
     "]"
   ] @punctuation.bracket)
 
-(collapsed_reference_link (link_text) @markup.link.text)
+(collapsed_reference_link
+  (link_text) @markup.link.text)
 
-(inline_link (link_text) @markup.link.text)
+(inline_link
+  (link_text) @markup.link.text)
 
-(full_reference_image (link_label) @markup.link.label)
+(full_reference_image
+  (link_label) @markup.link.label)
 
 (full_reference_image
   [
@@ -246,7 +262,8 @@
     "]"
   ] @punctuation.bracket)
 
-(collapsed_reference_image "[]" @punctuation.bracket)
+(collapsed_reference_image
+  "[]" @punctuation.bracket)
 
 (image_description
   [
@@ -262,7 +279,8 @@
     "]"
   ] @punctuation.bracket)
 
-(link_reference_definition (link_label) @markup.link.label)
+(link_reference_definition
+  (link_label) @markup.link.label)
 
 (inline_link_destination
   [
@@ -276,9 +294,11 @@
   (link_destination)
 ] @markup.link.url
 
-(footnote (reference_label) @markup.link.label)
+(footnote
+  (reference_label) @markup.link.label)
 
-(footnote_reference (reference_label) @markup.link.label)
+(footnote_reference
+  (reference_label) @markup.link.label)
 
 [
   (footnote_marker_begin)

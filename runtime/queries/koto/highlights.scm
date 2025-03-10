@@ -22,9 +22,7 @@
   (null_check)
 ] @operator
 
-[
-  "let"
-] @keyword
+"let" @keyword
 
 [
   "and"
@@ -80,7 +78,12 @@
   "|"
 ] @punctuation.bracket
 
-(string (interpolation ["{" "}"] @punctuation.special))
+(string
+  (interpolation
+    [
+      "{"
+      "}"
+    ] @punctuation.special))
 
 [
   ";"
@@ -143,7 +146,8 @@
   type: (identifier) @type)
 
 (arg
-  (_ (identifier) @variable.parameter))
+  (_
+    (identifier) @variable.parameter))
 
 (ellipsis) @variable.parameter
 

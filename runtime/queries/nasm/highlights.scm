@@ -5,8 +5,10 @@
 (preproc_expression) @keyword.directive
 
 (word) @variable
+
 ((word) @constant
   (#match? @constant "^[A-Z_][?A-Z_0-9]+$"))
+
 ((word) @constant.builtin
   (#match? @constant.builtin "^__\\?[A-Z_a-z0-9]+\\?__$"))
 
@@ -17,8 +19,10 @@
 
 (unary_expression
   operator: _ @operator)
+
 (binary_expression
   operator: _ @operator)
+
 (conditional_expression
   "?" @operator
   ":" @operator)
@@ -38,6 +42,7 @@
 ] @punctuation.bracket
 
 (instruction_prefix) @keyword
+
 (actual_instruction
   instruction: (word) @function)
 
@@ -45,21 +50,27 @@
   base: (word) @function)
 
 (size_hint) @type
+
 (struc_declaration
   name: (word) @type)
+
 (struc_instance
   name: (word) @type)
 
 (effective_address
- hint: _ @type)
+  hint: _ @type)
+
 (effective_address
- segment: _ @constant.builtin)
+  segment: _ @constant.builtin)
 
 (register) @constant.builtin
 
 (number_literal) @constant.numeric.integer
+
 (string_literal) @string
+
 (float_literal) @constant.numeric.float
+
 (packed_bcd_literal) @constant.numeric.integer
 
 (preproc_arg) @keyword.directive
@@ -89,6 +100,7 @@
   (preproc_line)
   (preproc_clear)
 ] @keyword.directive
+
 [
   (pseudo_instruction_dx)
   (pseudo_instruction_resx)
@@ -97,6 +109,7 @@
   (pseudo_instruction_times_prefix)
   (pseudo_instruction_alignx_macro)
 ] @function.special
+
 [
   (assembl_directive_target)
   (assembl_directive_defaults)
@@ -109,7 +122,6 @@
   (assembl_directive_floathandling)
   (assembl_directive_org)
   (assembl_directive_sectalign)
-
   (assembl_directive_primitive_target)
   (assembl_directive_primitive_defaults)
   (assembl_directive_primitive_sections)

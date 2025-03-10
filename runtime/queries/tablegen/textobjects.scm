@@ -4,7 +4,8 @@
 (multiclass
   body: (_) @class.inside) @class.around
 
-(_ argument: _ @parameter.inside)
+(_
+  argument: _ @parameter.inside)
 
 [
   (comment)

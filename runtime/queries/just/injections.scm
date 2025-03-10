@@ -1,7 +1,5 @@
 ; Specify nested languages that live within a `justfile`
-
 ; ================ Always applicable ================
-
 ((comment) @injection.content
   (#set! injection.language "comment"))
 
@@ -11,7 +9,6 @@
   (#set! injection.language "regex"))
 
 ; ================ Global defaults ================
-
 ; Default everything to be bash
 (recipe_body
   !shebang
@@ -40,9 +37,12 @@
 ; expression without getting _really_ annoying. Should at least look fine since
 ; they default to bash. Limitations...
 ; See https://github.com/tree-sitter/tree-sitter/issues/880 for more on that.
-
 (file
-  (setting "shell" ":=" "[" (string) @_langstr
+  (setting
+    "shell"
+    ":="
+    "["
+    (string) @_langstr
     (#match? @_langstr ".*(powershell|pwsh|cmd).*")
     (#set! injection.language "powershell"))
   [
@@ -50,7 +50,6 @@
       (recipe_body
         !shebang
         (#set! injection.include-children)) @injection.content)
-
     (assignment
       (expression
         (value
@@ -59,14 +58,17 @@
   ])
 
 (file
-  (setting "shell" ":=" "[" (string) @injection.language
+  (setting
+    "shell"
+    ":="
+    "["
+    (string) @injection.language
     (#not-match? @injection.language ".*(powershell|pwsh|cmd).*"))
   [
     (recipe
       (recipe_body
         !shebang
         (#set! injection.include-children)) @injection.content)
-
     (assignment
       (expression
         (value
@@ -75,7 +77,6 @@
   ])
 
 ; ================ Recipe language specified - Helix only ================
-
 ; Set highlighting for recipes that specify a language using builtin shebang matching
 (recipe_body
   (shebang_line) @injection.shebang

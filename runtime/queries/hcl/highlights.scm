@@ -1,4 +1,4 @@
-[ 
+[
   "if"
   "else"
   "endif"
@@ -57,26 +57,47 @@
 (identifier) @variable
 
 ; { key: val }
+(object_elem
+  val: (expression
+    (variable_expr
+      (identifier) @type.builtin
+      (#match? @type.builtin "^(bool|string|number|object|tuple|list|map|set|any)$"))))
 
-(object_elem val: (expression
-  (variable_expr
-      (identifier) @type.builtin (#match? @type.builtin "^(bool|string|number|object|tuple|list|map|set|any)$"))))
+(get_attr
+  (identifier) @variable.builtin
+  (#match? @variable.builtin "^(root|cwd|module)$"))
 
-(get_attr (identifier) @variable.builtin (#match? @variable.builtin  "^(root|cwd|module)$"))
-(variable_expr (identifier) @variable.builtin (#match? @variable.builtin "^(var|local|path)$"))
-((identifier) @type.builtin (#match? @type.builtin "^(bool|string|number|object|tuple|list|map|set|any)$"))
-((identifier) @keyword (#match? @keyword "^(module|root|cwd|resource|variable|data|locals|terraform|provider|output)$"))
+(variable_expr
+  (identifier) @variable.builtin
+  (#match? @variable.builtin "^(var|local|path)$"))
+
+((identifier) @type.builtin
+  (#match? @type.builtin "^(bool|string|number|object|tuple|list|map|set|any)$"))
+
+((identifier) @keyword
+  (#match? @keyword "^(module|root|cwd|resource|variable|data|locals|terraform|provider|output)$"))
 
 ; highlight identifier keys as though they were block attributes
-(object_elem key: (expression (variable_expr (identifier) @variable.other.member)))
+(object_elem
+  key: (expression
+    (variable_expr
+      (identifier) @variable.other.member)))
 
-(attribute (identifier) @variable.other.member)
-(function_call (identifier) @function.method)
-(block (identifier) @type.builtin)
+(attribute
+  (identifier) @variable.other.member)
+
+(function_call
+  (identifier) @function.method)
+
+(block
+  (identifier) @type.builtin)
 
 (comment) @comment
+
 (null_lit) @constant.builtin
+
 (numeric_lit) @constant.numeric
+
 (bool_lit) @constant.builtin.boolean
 
 [
@@ -94,6 +115,6 @@
 
 [
   (quoted_template_start) ; "
-  (quoted_template_end); "
+  (quoted_template_end) ; "
   (template_literal) ; non-interpolation/directive content
 ] @string
