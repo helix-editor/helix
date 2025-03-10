@@ -125,7 +125,7 @@ vscode-css-language-server = { command = "vscode-css-language-server", args = ["
 vscode-html-language-server = { command = "vscode-html-language-server", args = ["--stdio"], config = { provideFormatter = true } }
 vscode-json-language-server = { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true, json = { validate = { enable = true } } } }
 vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
-wgsl_analyzer = { command = "wgsl_analyzer" }
+wgsl-analyzer = { command = "wgsl-analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
@@ -1626,7 +1626,7 @@ scope = "source.wgsl"
 file-types = ["wgsl"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = [ "wgsl_analyzer" ]
+language-servers = [ "wgsl-analyzer" ]
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
