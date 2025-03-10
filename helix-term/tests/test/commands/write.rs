@@ -432,7 +432,7 @@ async fn test_write_trim_trailing_whitespace() -> anyhow::Result<()> {
             ..Default::default()
         })
         .with_file(file.path(), None)
-        .with_input_text("#[f|]#oo      \n\n \nbar      ")
+        .with_input_text(LineFeedHandling::Native.apply("#[f|]#oo      \n\n \nbar      "))
         .build()?;
 
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
@@ -454,7 +454,7 @@ async fn test_write_trim_final_newlines() -> anyhow::Result<()> {
             ..Default::default()
         })
         .with_file(file.path(), None)
-        .with_input_text("#[f|]#oo\n \n\n\n")
+        .with_input_text(LineFeedHandling::Native.apply("#[f|]#oo\n \n\n\n"))
         .build()?;
 
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
