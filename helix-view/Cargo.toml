@@ -57,7 +57,7 @@ clipboard-win = { version = "5.4", features = ["std"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-rustix = { version = "0.38", features = ["fs"] }
+rustix = { version = "1.0", features = ["fs"] }
 
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }
