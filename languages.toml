@@ -2904,7 +2904,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "ini"
-source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "1b0498a89a1a4c0a3705846699f0b0bad887dd04" }
+source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "32b31863f222bf22eb43b07d4e9be8017e36fb31" }
 
 [[language]]
 name = "inko"
