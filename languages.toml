@@ -47,6 +47,7 @@ fsharp-ls = { command = "fsautocomplete", config = { AutomaticWorkspaceInit = tr
 gleam = { command = "gleam", args = ["lsp"] }
 glsl_analyzer = { command = "glsl_analyzer" }
 graphql-language-service = { command = "graphql-lsp", args = ["server", "-m", "stream"] }
+harper-ls = { command = "harper-ls", args = ["--stdio"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 hyprls = { command = "hyprls" }
 idris2-lsp = { command = "idris2-lsp" }
@@ -124,7 +125,7 @@ vscode-css-language-server = { command = "vscode-css-language-server", args = ["
 vscode-html-language-server = { command = "vscode-html-language-server", args = ["--stdio"], config = { provideFormatter = true } }
 vscode-json-language-server = { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true, json = { validate = { enable = true } } } }
 vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
-wgsl_analyzer = { command = "wgsl_analyzer" }
+wgsl-analyzer = { command = "wgsl-analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
@@ -136,6 +137,7 @@ helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
 teal-language-server = { command = "teal-language-server" }
 wasm-language-tools = { command = "wat_server" }
+sourcepawn-studio = { command = "sourcepawn-studio" }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -1624,7 +1626,7 @@ scope = "source.wgsl"
 file-types = ["wgsl"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = [ "wgsl_analyzer" ]
+language-servers = [ "wgsl-analyzer" ]
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
@@ -4030,12 +4032,12 @@ block-comment-tokens = [
 language-servers = [ "spade-language-server" ]
 indent = { tab-width = 4, unit = "    " }
 
-[language.auto-pairs] 
-'(' = ')' 
-'{' = '}' 
-'[' = ']' 
-'"' = '"' 
-'<' = '>' 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'<' = '>'
 
 [[grammar]]
 name = "spade"
@@ -4099,7 +4101,7 @@ file-types = [
   { glob = "sites-available/*.conf" },
   { glob = "sites-enabled/*.conf" },
   { glob = "nginx.conf" },
-  { glob = "conf.d/*.conf" } 
+  { glob = "conf.d/*.conf" }
 ]
 roots = ["nginx.conf"]
 comment-token = "#"
@@ -4212,3 +4214,15 @@ soft-wrap = { enable = true }
 [[grammar]]
 name = "ink"
 source = { git = "https://github.com/rhizoome/tree-sitter-ink", rev = "8486e9b1627b0bc6b2deb9ee8102277a7c1281ac" }
+
+[[language]]
+name = "sourcepawn"
+scope = "source.sourcepawn"
+file-types = ["sp", "inc"]
+comment-token = "//"
+indent = {tab-width = 4, unit = "  "}
+language-servers = ["sourcepawn-studio"]
+
+[[grammar]]
+name = "sourcepawn"
+source = { git = "https://github.com/nilshelmig/tree-sitter-sourcepawn", rev = "f2af8d0dc14c6790130cceb2a20027eb41a8297c" }
