@@ -225,6 +225,7 @@
 | textproto | ✓ | ✓ | ✓ |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
 | thrift | ✓ |  |  |  |
+| tlaplus | ✓ |  |  |  |
 | todotxt | ✓ |  |  |  |
 | toml | ✓ | ✓ |  | `taplo` |
 | tsq | ✓ |  |  | `ts_query_ls` |
