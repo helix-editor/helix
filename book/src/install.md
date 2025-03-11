@@ -1,6 +1,6 @@
 # Installing Helix
 
-The typical way to install helix is via [your operating system's package manager](./package-managers.md).
+The typical way to install Helix is via [your operating system's package manager](./package-managers.md).
 
 Note that:
 
