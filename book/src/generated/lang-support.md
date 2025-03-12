@@ -203,6 +203,7 @@
 | sml | ✓ |  |  |  |
 | snakemake | ✓ |  | ✓ | `pylsp` |
 | solidity | ✓ | ✓ |  | `solc` |
+| sourcepawn | ✓ | ✓ |  | `sourcepawn-studio` |
 | spade | ✓ |  | ✓ | `spade-language-server` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ | ✓ |  |  |
@@ -245,7 +246,7 @@
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  | `wat_server` |
 | webc | ✓ |  |  |  |
-| wgsl | ✓ |  |  | `wgsl_analyzer` |
+| wgsl | ✓ |  |  | `wgsl-analyzer` |
 | wit | ✓ |  | ✓ |  |
 | wren | ✓ | ✓ | ✓ |  |
 | xit | ✓ |  |  |  |
