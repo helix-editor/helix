@@ -441,7 +441,17 @@ impl Application {
                         e
                     })
                     .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
+                    .filter(|theme| {
+                        let colors_ok = true_color || theme.is_16_color();
+                        if !colors_ok {
+                            log::warn!(
+                                "loaded theme `{}` but cannot use it because true color \
+                                support is not enabled",
+                                theme.name()
+                            );
+                        }
+                        colors_ok
+                    })
             })
             .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
         editor.set_theme(theme);
