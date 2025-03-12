@@ -1507,6 +1507,7 @@ file-types = [{ glob = "queries/*.scm" }, { glob = "injections.scm" },  { glob =
 comment-token = ";"
 injection-regex = "tsq"
 language-servers = ["ts_query_ls"]
+auto-format = true
 grammar = "query"
 indent = { tab-width = 2, unit = "  " }
 
