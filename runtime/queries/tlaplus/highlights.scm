@@ -107,27 +107,27 @@
 
 ; Literals
 (binary_number (format) @keyword)
-(binary_number (value) @number)
-(boolean) @number
+(binary_number (value) @constant.numeric)
+(boolean) @constant.builtin.boolean
 (boolean_set) @type
 (hex_number (format) @keyword)
-(hex_number (value) @number)
+(hex_number (value) @constant.numeric)
 (int_number_set) @type
-(nat_number) @number
+(nat_number) @constant.numeric.integer
 (nat_number_set) @type
 (octal_number (format) @keyword)
-(octal_number (value) @number)
-(real_number) @number
+(octal_number (value) @constant.numeric)
+(real_number) @constant.numeric.integer
 (real_number_set) @type
 (string) @string
-(escape_char) @string.special
+(escape_char) @string.special.symbol
 (string_set) @type
 
 ; Namespaces and includes
-(extends (identifier_ref) @module)
-(instance (identifier_ref) @module)
-(module name: (_) @module)
-(pcal_algorithm name: (identifier) @module)
+(extends (identifier_ref) @namespace)
+(instance (identifier_ref) @namespace)
+(module name: (_) @namespace)
+(pcal_algorithm name: (identifier) @namespace)
 
 ; Constants and variables
 (constant_declaration (identifier) @constant)
@@ -155,7 +155,7 @@
 
 ; Operators, functions, and macros
 (function_definition name: (identifier) @function)
-(module_definition name: (_) @module)
+(module_definition name: (_) @namespace)
 (operator_definition name: (_) @operator)
 (pcal_macro_decl name: (identifier) @function)
 (pcal_macro_call name: (identifier) @function)
@@ -206,9 +206,9 @@
 (theorem name: (identifier) @constant)
 
 ; Comments and tags
-(block_comment "(*" @comment)
-(block_comment "*)" @comment)
-(block_comment_text) @comment
+(block_comment "(*" @comment.block)
+(block_comment "*)" @comment.block)
+(block_comment_text) @comment.block
 (comment) @comment
 (single_line) @comment
 (_ label: (identifier) @tag)

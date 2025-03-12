@@ -4235,6 +4235,7 @@ file-types = ["tla"]
 comment-tokens = "\\*"
 block-comment-tokens = {start = "(*", end="*)"}
 indent = {tab-width = 4, unit = " "}
+formatter = {command = "tlafmt", args = ["--stdin"]}
 
 [[grammar]]
 name = "tlaplus"
