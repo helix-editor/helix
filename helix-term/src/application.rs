@@ -103,22 +103,6 @@ impl Application {
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| theme_loader.default_theme(true_color));
-
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
 
@@ -139,7 +123,7 @@ impl Application {
             })),
             handlers,
         );
-        editor.set_theme(theme);
+        Self::load_configured_theme(&mut editor, &config.load());
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -418,35 +402,13 @@ impl Application {
         Ok(())
     }
 
-    /// Refresh theme after config change
-    fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                self.editor
-                    .theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| self.editor.theme_loader.default_theme(true_color));
-
-        self.editor.set_theme(theme);
-        Ok(())
-    }
-
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
-            self.refresh_theme(&default_config)?;
+            // Refresh theme after config change
+            Self::load_configured_theme(&mut self.editor, &default_config);
             self.terminal
                 .reconfigure(default_config.editor.clone().into())?;
             // Store new config
@@ -462,6 +424,27 @@ impl Application {
                 self.editor.set_error(err.to_string());
             }
         }
+    }
+
+    /// Load the theme set in configuration
+    fn load_configured_theme(editor: &mut Editor, config: &Config) {
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                editor
+                    .theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+            })
+            .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
+        editor.set_theme(theme);
     }
 
     #[cfg(windows)]
