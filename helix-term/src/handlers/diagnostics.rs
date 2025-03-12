@@ -114,6 +114,7 @@ fn dispatch_pull_diagnostic_for_document(
 
         let language_servers = doc
             .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
+            .filter(|ls| ls.is_initialized())
             .filter(|ls| {
                 if !exclude_language_servers_without_inter_file_dependency {
                     return true;
@@ -142,8 +143,9 @@ fn dispatch_pull_diagnostic_for_open_documents() {
         let documents = editor.documents.values();
 
         for document in documents {
-            let language_servers =
-                document.language_servers_with_feature(LanguageServerFeature::PullDiagnostics);
+            let language_servers = document
+                .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
+                .filter(|ls| ls.is_initialized());
 
             for language_server in language_servers {
                 pull_diagnostics_for_document(document, language_server);
