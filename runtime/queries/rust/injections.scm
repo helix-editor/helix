@@ -37,16 +37,16 @@
 
 (call_expression
   function: (scoped_identifier
-    path: (identifier) @_regex (#eq? @_regex "Regex")
+    path: (identifier) @_regex (#any-of? @_regex "Regex" "RegexBuilder")
     name: (identifier) @_new (#eq? @_new "new"))
-  arguments: (arguments (raw_string_literal) @injection.content)
+  arguments: (arguments (raw_string_literal (string_content) @injection.content))
   (#set! injection.language "regex"))
 
 (call_expression
   function: (scoped_identifier
-    path: (scoped_identifier (identifier) @_regex (#eq? @_regex "Regex") .)
+    path: (scoped_identifier (identifier) @_regex (#any-of? @_regex "Regex" "RegexBuilder") .)
     name: (identifier) @_new (#eq? @_new "new"))
-  arguments: (arguments (raw_string_literal) @injection.content)
+  arguments: (arguments (raw_string_literal (string_content) @injection.content))
   (#set! injection.language "regex"))
 
 ; Highlight SQL in `sqlx::query!()`, `sqlx::query_scalar!()`, and `sqlx::query_scalar_unchecked!()`
@@ -57,7 +57,10 @@
   (token_tree
     ; Only the first argument is SQL
     .
-    [(string_literal) (raw_string_literal)] @injection.content
+    [
+      (string_literal (string_content) @injection.content)
+      (raw_string_literal (string_content) @injection.content)
+    ]
   )
   (#set! injection.language "sql"))
 
@@ -72,6 +75,9 @@
     ; Allow anything as the first argument in case the user has lower case type
     ; names for some reason
     (_)
-    [(string_literal) (raw_string_literal)] @injection.content
+    [
+      (string_literal (string_content) @injection.content)
+      (raw_string_literal (string_content) @injection.content)
+    ]
   )
   (#set! injection.language "sql"))
