@@ -1,7 +1,7 @@
 ; Includes
 (identifier) @variable
 
-"include" @keyword.import
+"include" @keyword.control.import
 
 (include_path) @string.special.path
 
@@ -13,7 +13,7 @@
 (function_item
   parameters: (parameters (parameter (assignment value: (_) @constant)))
 )
-(function_call name: (identifier) @function.call)
+(function_call name: (identifier) @function)
 (function_call
   arguments: (arguments (assignment name: _ @variable.parameter))
 )
@@ -22,7 +22,7 @@
 (module_item
   parameters: (parameters (parameter (assignment value: (_) @constant)))
 )
-(module_call name: (identifier) @function.method.call)
+(module_call name: (identifier) @function.method)
 (module_call
   arguments: (arguments (assignment name: _ @variable.parameter))
 )
@@ -48,7 +48,7 @@
 (undef) @constant.builtin
 
 ; Types/Properties/
-(dot_index_expression index: (_) @variable.member)
+(dot_index_expression index: (_) @variable.other.member)
 
 ; Keywords
 [
@@ -124,23 +124,23 @@
 [
   "if"
   "else"
-] @keyword.conditional
+] @keyword.control.conditional
 (ternary_expression
-  ["?" ":"] @keyword.conditional.ternary
+  ["?" ":"] @keyword.control.conditional
 )
 
 ; Repeats
 [
   "for"
   "intersection_for"
-] @keyword.repeat
+] @keyword.control.repeat
 
 ; Literals
-(integer) @number
-(float) @number.float
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 (string) @string
-(escape_sequence) @string.escape
-(boolean) @boolean
+(escape_sequence) @constant.character.escape
+(boolean) @constant.builtin.boolean
 
 ; Misc
 (modifier
@@ -149,7 +149,7 @@
     "!"
     "#"
     "%"
-  ] @keyword.modifier
+  ] @keyword.storage.modifier
 )
 ["{" "}"] @punctuation.bracket
 ["(" ")"] @punctuation.bracket
@@ -161,4 +161,4 @@
 ] @punctuation.delimiter
 
 ; Comments
-[(line_comment) (block_comment)] @comment @spell
+[(line_comment) (block_comment)] @comment
