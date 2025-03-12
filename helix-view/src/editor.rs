@@ -262,6 +262,8 @@ pub struct Config {
     pub cursorcolumn: bool,
     #[serde(deserialize_with = "deserialize_gutter_seq_or_struct")]
     pub gutters: GutterConfig,
+    /// Whether .gitignore should be read when listing paths in the command prompt. Defaults to true.
+    pub command_git_ignore: bool,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
@@ -965,6 +967,7 @@ impl Default for Config {
             cursorline: false,
             cursorcolumn: false,
             gutters: GutterConfig::default(),
+            command_git_ignore: true,
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
