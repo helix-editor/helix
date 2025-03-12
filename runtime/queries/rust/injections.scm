@@ -35,6 +35,18 @@
  (#set! injection.language "rust")
  (#set! injection.include-children))
 
+((macro_invocation
+   macro:
+     [
+       (scoped_identifier name: (_) @_macro_name)
+       (identifier) @_macro_name
+     ]
+   (token_tree
+     (token_tree . "{" "}" .) @injection.content))
+ (#eq? @_macro_name "json")
+ (#set! injection.language "json")
+ (#set! injection.include-children))
+
 (call_expression
   function: (scoped_identifier
     path: (identifier) @_regex (#any-of? @_regex "Regex" "RegexBuilder")
