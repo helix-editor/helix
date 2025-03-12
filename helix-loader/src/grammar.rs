@@ -1,6 +1,8 @@
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::Write;
+use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use std::{
     collections::HashSet,
@@ -97,8 +99,25 @@ pub fn fetch_grammars() -> Result<()> {
     let mut grammars = get_grammar_configs()?;
     grammars.retain(|grammar| !matches!(grammar.source, GrammarSource::Local { .. }));
 
-    println!("Fetching {} grammars", grammars.len());
-    let results = run_parallel(grammars, fetch_grammar);
+    let total = grammars.len();
+    println!("Fetching {} grammars", total);
+
+    let remaining = Arc::new(Mutex::new(total));
+
+    let results = run_parallel(grammars, move |grammar| {
+        let result = fetch_grammar(grammar);
+
+        if let Ok(mut count) = remaining.lock() {
+            *count -= 1;
+
+            if !matches!(result, Ok(FetchStatus::GitUpToDate)) {
+                print!("\rRemaining: {:<5}", *count);
+                let _ = std::io::stdout().flush();
+            }
+        }
+
+        result
+    });
 
     let mut errors = Vec::new();
     let mut git_updated = Vec::new();
@@ -155,9 +174,23 @@ pub fn build_grammars(target: Option<String>) -> Result<()> {
     ensure_git_is_available()?;
 
     let grammars = get_grammar_configs()?;
-    println!("Building {} grammars", grammars.len());
+    let total = grammars.len();
+    let remaining = Arc::new(Mutex::new(total));
+    println!("Building {} grammars", total);
+
     let results = run_parallel(grammars, move |grammar| {
-        build_grammar(grammar, target.as_deref())
+        let result = build_grammar(grammar, target.as_deref());
+
+        if let Ok(mut count) = remaining.lock() {
+            *count -= 1;
+
+            if !matches!(result, Ok(BuildStatus::AlreadyBuilt)) {
+                print!("\rRemaining: {:<5}", *count);
+                std::io::stdout().flush().unwrap_or(());
+            }
+        }
+
+        result
     });
 
     let mut errors = Vec::new();
