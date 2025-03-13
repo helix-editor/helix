@@ -2682,9 +2682,9 @@ fn local_search(cx: &mut Context) {
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &LocalSearchConfig| {
             let line_num = (item.line_num + 1).to_string();
-            // files can never contain more than 999_999_999_999 lines
-            // thus using maximum line length to be 12 for this formatter is valid
-            let max_line_num_length = 12;
+            // files can never contain more than 99_999_999 lines
+            // thus using maximum line length to be 8 for this formatter is valid
+            let max_line_num_length = 8;
             // whitespace padding to align results after the line number
             let padding_length = max_line_num_length - line_num.len();
             let padding = " ".repeat(padding_length);
@@ -2777,12 +2777,22 @@ fn local_search(cx: &mut Context) {
                         };
 
                         let mut stop = false;
+
+                        // Maximum line length of the content displayed within the result picker.
+                        // User should be allowed to control this to accomodate their monitor width.
+                        // TODO: Expose this setting to the user so they can control it.
+                        let local_search_result_line_length = 80;
+
                         let sink = sinks::UTF8(|line_num, line_content| {
                             stop = injector
                                 .push(FileResult::new(
                                     entry.path(),
                                     line_num as usize - 1,
-                                    line_content.to_string(),
+                                    line_content[0..std::cmp::min(
+                                        local_search_result_line_length,
+                                        line_content.len(),
+                                    )]
+                                        .to_string(),
                                 ))
                                 .is_err();
 
