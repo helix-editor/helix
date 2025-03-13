@@ -223,13 +223,3 @@
 ((prefix_op_symbol) @function.builtin)
 ((infix_op_symbol) @function.builtin)
 ((postfix_op_symbol) @function.builtin)
-
-; Reference highlighting
-(identifier_ref) @variable.reference
-((prefix_op_symbol) @variable.reference)
-(bound_prefix_op symbol: (_) @variable.reference)
-((infix_op_symbol) @variable.reference)
-(bound_infix_op symbol: (_) @variable.reference)
-((postfix_op_symbol) @variable.reference)
-(bound_postfix_op symbol: (_) @variable.reference)
-(bound_nonfix_op symbol: (_) @variable.reference)
