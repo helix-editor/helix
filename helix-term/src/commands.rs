@@ -2680,7 +2680,7 @@ fn local_search(cx: &mut Context) {
     };
 
     let columns = [
-        PickerColumn::new("path", |item: &FileResult, config: &LocalSearchConfig| {
+        PickerColumn::new("line", |item: &FileResult, config: &LocalSearchConfig| {
             let line_num = (item.line_num + 1).to_string();
             // files can never contain more than 99_999_999 lines
             // thus using maximum line length to be 8 for this formatter is valid
@@ -2688,16 +2688,18 @@ fn local_search(cx: &mut Context) {
             // whitespace padding to align results after the line number
             let padding_length = max_line_num_length - line_num.len();
             let padding = " ".repeat(padding_length);
-            // extract line content to be displayed in the picker
-            let line_content = item.line_content.clone();
             // create column value to be displayed in the picker
             Cell::from(Spans::from(vec![
                 Span::styled(line_num, config.number_style),
                 Span::raw(padding),
-                Span::raw(line_content),
             ]))
         }),
-        PickerColumn::hidden("contents"),
+        PickerColumn::new("", |item: &FileResult, _config: &LocalSearchConfig| {
+            // extract line content to be displayed in the picker
+            let line_content = item.line_content.clone();
+            // create column value to be displayed in the picker
+            Cell::from(Spans::from(vec![Span::raw(line_content)]))
+        }),
     ];
 
     let get_files = |query: &str,
