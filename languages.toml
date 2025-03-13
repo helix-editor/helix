@@ -4226,3 +4226,18 @@ language-servers = ["sourcepawn-studio"]
 [[grammar]]
 name = "sourcepawn"
 source = { git = "https://github.com/nilshelmig/tree-sitter-sourcepawn", rev = "f2af8d0dc14c6790130cceb2a20027eb41a8297c" }
+
+[[language]]
+name = "tlaplus"
+scope = "scope.tlaplus"
+injection-regex = "tla"
+file-types = ["tla"]
+comment-tokens = "\\*"
+block-comment-tokens = {start = "(*", end="*)"}
+indent = {tab-width = 4, unit = " "}
+formatter = {command = "tlafmt", args = ["--stdin"]}
+
+[[grammar]]
+name = "tlaplus"
+source = { git = "https://github.com/tlaplus-community/tree-sitter-tlaplus", rev = "4ba91b07b97741a67f61221d0d50e6d962e4987e"}
+
