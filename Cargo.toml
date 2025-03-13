@@ -46,6 +46,7 @@ bitflags = "2.9"
 unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 foldhash = "0.1"
+parking_lot = "0.12"
 
 [workspace.package]
 version = "25.1.1"

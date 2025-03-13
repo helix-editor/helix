@@ -56,7 +56,7 @@ chrono = { version = "0.4", default-features = false, features = ["alloc", "std"
 textwrap = "0.16.2"
 
 nucleo.workspace = true
-parking_lot = "0.12"
+parking_lot.workspace = true
 globset = "0.4.16"
 regex-cursor = "0.1.5"
 
