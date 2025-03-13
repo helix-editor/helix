@@ -2653,13 +2653,15 @@ fn local_search(cx: &mut Context) {
     struct FileResult {
         path: PathBuf,
         line_num: usize,
+        line_content: String,
     }
 
     impl FileResult {
-        fn new(path: &Path, line_num: usize) -> Self {
+        fn new(path: &Path, line_num: usize, line_content: String) -> Self {
             Self {
                 path: path.to_path_buf(),
                 line_num,
+                line_content,
             }
         }
     }
@@ -2686,8 +2688,8 @@ fn local_search(cx: &mut Context) {
             // whitespace padding to align results after the line number
             let padding_length = max_line_num_length - line_num.len();
             let padding = " ".repeat(padding_length);
-            // extract line content from the editor
-            let line_content = "<insert line content here>";
+            // extract line content to be displayed in the picker
+            let line_content = item.line_content.clone();
             // create column value to be displayed in the picker
             Cell::from(Spans::from(vec![
                 Span::styled(line_num, config.number_style),
@@ -2775,9 +2777,13 @@ fn local_search(cx: &mut Context) {
                         };
 
                         let mut stop = false;
-                        let sink = sinks::UTF8(|line_num, _line_content| {
+                        let sink = sinks::UTF8(|line_num, line_content| {
                             stop = injector
-                                .push(FileResult::new(entry.path(), line_num as usize - 1))
+                                .push(FileResult::new(
+                                    entry.path(),
+                                    line_num as usize - 1,
+                                    line_content.to_string(),
+                                ))
                                 .is_err();
 
                             Ok(!stop)
