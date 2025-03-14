@@ -51,8 +51,8 @@ mod imp {
     }
 
     fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
-        let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
-        let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+        let uid = uid.map(rustix::fs::Uid::from_raw);
+        let gid = gid.map(rustix::fs::Gid::from_raw);
         rustix::fs::chown(p, uid, gid)?;
         Ok(())
     }

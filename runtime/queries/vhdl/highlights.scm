@@ -1,134 +1,377 @@
+(line_comment) @comment.line
+
+(block_comment) @comment.block
+
+(identifier) @variable
+
 [
-  "alias" "package" "file" "entity" "architecture" "type" "subtype"
-  "attribute" "to" "downto" "signal" "variable" "record" "array"
-  "others" "process" "component" "shared" "constant" "port" "generic"
-  "generate" "range" "map" "in" "inout" "of" "out" "configuration"
-  "pure" "impure" "is" "begin" "end" "context" "wait" "until" "after"
-  "report" "open" "exit" "assert" "next" "null" "force" "property"
-  "release" "sequence" "transport" "unaffected" "select" "severity"
-  "register" "reject" "postponed" "on" "new" "literal" "linkage"
-  "inertial" "guarded" "group" "disconnect" "bus" "buffer" "body"
-  "all" "block" "access"
+  "access"
+  "after"
+  "alias"
+  "architecture"
+  "array"
+  "attribute"
+  "block"
+  "body"
+  "component"
+  "configuration"
+  "context"
+  "disconnect"
+  "entity"
+  "file"
+  "force"
+  "generate"
+  "generic"
+  "group"
+  "label"
+  "literal"
+  "map"
+  "new"
+  "package"
+  "parameter"
+  "port"
+  "property"
+  "range"
+  "reject"
+  "release"
+  "sequence"
+  "transport"
+  "unaffected"
+  "view"
+  "vunit"
 ] @keyword
 
 [
-  "function" "procedure"
+  (ALL)
+  (OTHERS)
+  "<>"
+  (DEFAULT)
+  (OPEN)
+] @constant.builtin
+
+[
+  "is"
+  "begin"
+  "end"
+] @keyword
+
+(parameter_specification
+  "in" @keyword)
+
+[
+  "process"
+  "wait"
+  "on"
+  "until"
+] @keyword
+
+(timeout_clause
+  "for" @keyword)
+
+[
+  "function"
+  "procedure"
 ] @keyword.function
 
 [
-  "return"
-] @keyword.control.return
-
-[
-  "for" "loop" "while"
-] @keyword.control.repeat
-
-[ 
-  "if" "elsif" "else" "case" "then" "when"
-] @keyword.control.conditional
-
-[ 
-  "library" "use"
-] @keyword.control.import
-
-(comment) @comment
-
-(type_mark) @type
-
-[
-  "(" ")" "[" "]"
-] @punctuation.bracket
-
-[
-  "." ";" "," ":"
-] @punctuation.delimiter
-
-[
-  "=>" "<=" "+" ":=" "=" "/=" "<" ">" "-" "*"
-  "**" "/" "?>" "?<" "?<=" "?>=" "?=" "?/="
-; "?/" errors, maybe due to escape character
-  (attribute_name "'")
-  (index_subtype_definition (any))
-] @operator
-
-[
-  "not" "xor" "xnor" "and" "nand" "or" "nor" "mod" "rem"
-  (attribute_name "'")
-  (index_subtype_definition (any))
+  "to"
+  "downto"
+  "of"
 ] @keyword.operator
 
 [
-  (real_decimal)
-  (integer_decimal)
-] @constant.numeric
+  "library"
+  "use"
+] @keyword.control.import
+
+[
+  "subtype"
+  "type"
+  "record"
+  "units"
+  "constant"
+  "signal"
+  "variable"
+] @keyword.storage.type
+
+[
+  "protected"
+  "private"
+  "pure"
+  "impure"
+  "inertial"
+  "postponed"
+  "guarded"
+  "out"
+  "inout"
+  "linkage"
+  "buffer"
+  "register"
+  "bus"
+  "shared"
+] @keyword.storage.modifier
+
+(mode
+  "in" @keyword.storage.modifier)
+
+(force_mode
+  "in" @keyword.storage.modifier)
+
+[
+  "while"
+  "loop"
+  "next"
+  "exit"
+] @keyword.control.repeat
+
+(for_loop
+  "for" @keyword.control.repeat)
+
+(block_configuration
+  "for" @keyword)
+
+(configuration_specification
+  "for" @keyword)
+
+(component_configuration
+  "for" @keyword)
+
+(end_for
+  "for" @keyword)
+
+"return" @keyword.control.return
+
+[
+  "assert"
+  "report"
+  "severity"
+] @keyword
+
+[
+  "if"
+  "then"
+  "elsif"
+  "case"
+] @keyword.control.conditional
+
+(when_element
+  "when" @keyword.control.conditional)
+
+(case_generate_alternative
+  "when" @keyword.control.conditional)
+
+(else_statement
+  "else" @keyword.control.conditional)
+
+(else_generate
+  "else" @keyword.control.conditional)
+
+[
+  "with"
+  "select"
+] @keyword.control.conditional
+
+(when_expression
+  "when" @keyword.control.conditional)
+
+(else_expression
+  "else" @keyword.control.conditional)
+
+(else_waveform
+  "else" @keyword.control.conditional)
+
+(else_expression_or_unaffected
+  "else" @keyword.control.conditional)
+
+"null" @constant.builtin
+
+(user_directive) @keyword.directive
+
+(protect_directive) @keyword.directive
+
+(warning_directive) @keyword.directive
+
+(error_directive) @keyword.directive
+
+(if_conditional_analysis
+  "if" @keyword.directive)
+
+(if_conditional_analysis
+  "then" @keyword.directive)
+
+(elsif_conditional_analysis
+  "elsif" @keyword.directive)
+
+(else_conditional_analysis
+  "else" @keyword.directive)
+
+(end_conditional_analysis
+  "end" @keyword.directive)
+
+(end_conditional_analysis
+  "if" @keyword.directive)
+
+(directive_body) @keyword.directive
+
+(directive_constant_builtin) @constant.builtin
+
+(directive_error) @keyword.directive
+
+(directive_protect) @keyword.directive
+
+(directive_warning) @keyword.directive
+
+[
+  (condition_conversion)
+  (relational_operator)
+  (sign)
+  (adding_operator)
+  (exponentiate)
+  (variable_assignment)
+  (signal_assignment)
+  "*"
+  "/"
+  ":"
+  "=>"
+] @operator
+
+[
+  (unary_operator)
+  (logical_operator)
+  (shift_operator)
+  "mod"
+  "not"
+  "rem"
+] @keyword.operator
+
+[
+  "'"
+  ","
+  "."
+  ";"
+] @punctuation.delimiters
+
+[
+  "("
+  ")"
+  "["
+  "]"
+  "<<"
+  ">>"
+] @punctuation.bracket
+
+"@" @punctuation.special
+
+[
+  (decimal_integer)
+  (string_literal_std_logic)
+] @constant.numeric.integer
+
+(decimal_float) @constant.numeric.float
+
+(bit_string_length) @type.parameter
+
+(bit_string_base) @type.builtin
+
+(bit_string_value) @constant.numeric.integer
+
+(based_literal
+  (based_base) @type.builtin
+  (based_integer) @constant.numeric.integer)
+
+(based_literal
+  (based_base) @type.builtin
+  (based_float) @constant.numeric.float)
+
+(string_literal) @string
 
 (character_literal) @constant.character
 
-[
-  (string_literal)
-  (bit_string_literal)
-] @string
+(library_constant_std_logic) @constant.builtin
 
-(physical_literal
-  unit: (simple_name) @attribute)
+(library_constant) @constant.builtin
 
-(attribute_name
-  prefix: (_) @variable
-  designator: (_) @attribute)
+(library_function) @function.builtin
 
-((simple_name) @variable.builtin (#any-of? @variable.builtin
-  "true" "false" "now"))
+(library_constant_boolean) @constant.builtin.boolean
 
-(severity_expression) @constant.builtin
+(library_constant_character) @constant.character
 
-(procedure_call_statement
-  procedure: (simple_name) @function)
+(unit) @keyword.storage.modifier
 
-(ambiguous_name
-  prefix: (simple_name) @function.builtin (#any-of? @function.builtin
-    "rising_edge" "falling_edge" "find_rightmost" "find_leftmost"
-    "maximum" "minimum" "shift_left" "shift_right" "rotate_left"
-    "rotate_right" "sll" "srl" "rol" "ror" "sla" "sra" "resize"
-    "mod" "rem" "abs" "saturate"
-    "to_sfixed" "to_ufixed" "to_signed" "to_unsigned" "to_real"
-    "to_integer" "sfixed_low" "ufixed_low" "sfixed_high"
-    "ufixed_high" "to_slv" "to_stdulogicvector" "to_sulv"
-    "to_float" "std_logic" "std_logic_vector" "integer" "signed"
-    "unsigned" "real" "std_ulogic_vector"
-    "std_ulogic" "x01" "x01z" "ux01" "ux01Z"
-;math_real
-    "sign" "ceil" "floor" "round" "fmax" "fmin" "uniform" "srand"
-    "rand" "get_rand_max" "sqrt" "cbrt" "exp" "log" "log2" "log10"
-    "sin" "cos" "tan" "asin" "acos" "atan" "atan2" "sinh" "cosh"
-    "tanh" "asinh" "acosh" "atanh" "realmax" "realmin" "trunc"
-    "conj" "arg" "polar_to_complex" "complex_to_polar"
-    "get_principal_value" "cmplx"
-;std_textio
-    "read" "write" "hread" "hwrite" "to_hstring" "to_string"
-    "from_hstring" "from_string"
-    "justify" "readline" "sread" "string_read" " bread"
-    "binary_read" "oread" "octal_read" "hex_read"
-    "writeline" "swrite" "string_write" "bwrite"
-    "binary_write" "owrite" "octal_write" "hex_write"
-    "synthesis_return"
-;std_logic_1164
-    "resolved" "logic_type_encoding" "is_signed" "to_bit"
-    "to_bitvector" "to_stdulogic" "to_stdlogicvector"
-    "to_bit_vector" "to_bv" "to_std_logic_vector"
-    "to_std_ulogic_vector" "to_01" "to_x01" "to_x01z" "to_ux01"
-    "is_x" "to_bstring" "to_binary_string" "to_ostring"
-    "to_octal_string" "to_hex_string"
-;float_pkg
-    "add" "subtract" "multiply" "divide" "remainder" "modulo"
-    "reciprocal" "dividebyp2" "mac" "eq" "ne" "lt" "gt" "le" "ge"
-    "to_float32" "to_float64" "to_float128" "realtobits" "bitstoreal"
-    "break_number" "normalize" "copysign" "scalb" "logb" "nextafter"
-    "unordered" "finite" "isnan" "zerofp" "nanfp" "qnanfp"
-    "pos_inffp" "neg_inffp" "neg_zerofp" "from_bstring"
-    "from_binary_string" "from_ostring" "from_octal_string"
-    "from_hex_string"
-;fixed_pkg
-    "add_carry" "to_ufix" "to_sfix" "ufix_high"
-    "ufix_low" "sfix_high" "sfix_low"
-))
+(library_constant_unit) @keyword.storage.modifier
+
+(label) @label
+
+(generic_map_aspect
+  "generic" @constructor
+  "map" @constructor)
+
+(port_map_aspect
+  "port" @constructor
+  "map" @constructor)
+
+(selection
+  (identifier) @variable.other.member)
+
+(_
+  view: (_) @type)
+
+(_
+  type: (_) @type)
+
+(_
+  library: (_) @namespace)
+
+(_
+  package: (_) @namespace)
+
+(_
+  entity: (_) @namespace)
+
+(_
+  component: (_) @namespace)
+
+(_
+  configuration: (_) @type.parameter)
+
+(_
+  architecture: (_) @type.parameter)
+
+(_
+  function: (_) @function)
+
+(_
+  procedure: (_) @function.method)
+
+(_
+  attribute: (_) @attribute)
+
+(_
+  constant: (_) @constant)
+
+(_
+  generic: (_) @variable.parameter)
+
+(_
+  view: (name
+    (_)) @type)
+
+(_
+  type: (name
+    (_)) @type)
+
+(_
+  entity: (name
+    (_)) @namespace)
+
+(_
+  component: (name
+    (_)) @namespace)
+
+(_
+  configuration: (name
+    (_)) @namespace)
+
+(library_type) @type.builtin
 

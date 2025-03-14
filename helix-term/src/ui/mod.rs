@@ -31,7 +31,7 @@ pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_view::Editor;
-use tui::text::Span;
+use tui::text::{Span, Spans};
 
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
@@ -173,11 +173,22 @@ pub fn raw_regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-type FilePicker = Picker<PathBuf, PathBuf>;
+#[derive(Debug)]
+pub struct FilePickerData {
+    root: PathBuf,
+    directory_style: Style,
+}
+type FilePicker = Picker<PathBuf, FilePickerData>;
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker {
+pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
+
+    let config = editor.config();
+    let data = FilePickerData {
+        root: root.clone(),
+        directory_style: editor.theme.get("ui.text.directory"),
+    };
 
     let now = Instant::now();
 
@@ -224,14 +235,24 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     let columns = [PickerColumn::new(
         "path",
-        |item: &PathBuf, root: &PathBuf| {
-            item.strip_prefix(root)
-                .unwrap_or(item)
-                .to_string_lossy()
-                .into()
+        |item: &PathBuf, data: &FilePickerData| {
+            let path = item.strip_prefix(&data.root).unwrap_or(item);
+            let mut spans = Vec::with_capacity(3);
+            if let Some(dirs) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+                spans.extend([
+                    Span::styled(dirs.to_string_lossy(), data.directory_style),
+                    Span::styled(std::path::MAIN_SEPARATOR_STR, data.directory_style),
+                ]);
+            }
+            let filename = path
+                .file_name()
+                .expect("normalized paths can't end in `..`")
+                .to_string_lossy();
+            spans.push(Span::raw(filename));
+            Spans::from(spans).into()
         },
     )];
-    let picker = Picker::new(columns, 0, [], root, move |cx, path: &PathBuf, action| {
+    let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
         if let Err(e) = cx.editor.open(path, action) {
             let err = if let Some(err) = e.source() {
                 format!("{}", err)

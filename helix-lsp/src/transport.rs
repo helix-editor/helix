@@ -223,10 +223,7 @@ impl Transport {
         language_server_name: &str,
     ) -> Result<()> {
         let (id, result) = match output {
-            jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
-                info!("{language_server_name} <- {}", result);
-                (id, Ok(result))
-            }
+            jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => (id, Ok(result)),
             jsonrpc::Output::Failure(jsonrpc::Failure { id, error, .. }) => {
                 error!("{language_server_name} <- {error}");
                 (id, Err(error.into()))

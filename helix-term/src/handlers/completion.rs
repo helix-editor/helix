@@ -57,7 +57,7 @@ async fn replace_completions(
                 return;
             };
             if handle.is_canceled() {
-                log::error!("dropping outdated completion response");
+                log::info!("dropping outdated completion response");
                 return;
             }
 

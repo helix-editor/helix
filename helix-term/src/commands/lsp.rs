@@ -407,6 +407,13 @@ pub fn symbol_picker(cx: &mut Context) {
                 ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
                     item.symbol.name.as_str().into()
                 }),
+                ui::PickerColumn::new("container", |item: &SymbolInformationItem, _| {
+                    item.symbol
+                        .container_name
+                        .as_deref()
+                        .unwrap_or_default()
+                        .into()
+                }),
             ];
 
             let picker = Picker::new(
@@ -508,6 +515,13 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             item.symbol.name.as_str().into()
         })
         .without_filtering(),
+        ui::PickerColumn::new("container", |item: &SymbolInformationItem, _| {
+            item.symbol
+                .container_name
+                .as_deref()
+                .unwrap_or_default()
+                .into()
+        }),
         ui::PickerColumn::new("path", |item: &SymbolInformationItem, _| {
             if let Some(path) = item.location.uri.as_path() {
                 path::get_relative_path(path)
@@ -1062,11 +1076,7 @@ pub fn hover(cx: &mut Context) {
                 .text_document_hover(doc.identifier(), pos, None)
                 .unwrap();
 
-            async move {
-                let json = request.await?;
-                let response = serde_json::from_value::<Option<lsp::Hover>>(json)?;
-                anyhow::Ok((server_name, response))
-            }
+            async move { anyhow::Ok((server_name, request.await?)) }
         })
         .collect();
 

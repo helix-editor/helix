@@ -342,6 +342,12 @@ pub struct Config {
     pub default_line_ending: LineEndingConfig,
     /// Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`.
     pub insert_final_newline: bool,
+    /// Whether to automatically remove all trailing line-endings after the final one on write.
+    /// Defaults to `false`.
+    pub trim_final_newlines: bool,
+    /// Whether to automatically remove all whitespace characters preceding line-endings on write.
+    /// Defaults to `false`.
+    pub trim_trailing_whitespace: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
     /// Draw border around popups.
@@ -994,6 +1000,8 @@ impl Default for Config {
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
+            trim_final_newlines: false,
+            trim_trailing_whitespace: false,
             smart_tab: Some(SmartTabConfig::default()),
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
