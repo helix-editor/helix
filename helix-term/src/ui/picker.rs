@@ -1079,7 +1079,15 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     .first_history_completion(ctx.editor)
                     .filter(|_| self.prompt.line().is_empty())
                 {
-                    self.prompt.set_line(completion.to_string(), ctx.editor);
+                    // The percent character is used by the query language and needs to be
+                    // escaped with a backslash.
+                    let completion = if completion.contains('%') {
+                        completion.replace('%', "\\%")
+                    } else {
+                        completion.into_owned()
+                    };
+                    self.prompt.set_line(completion, ctx.editor);
+
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 } else {
