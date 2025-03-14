@@ -69,7 +69,7 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     // canonicalize the path in case the executable is symlinked
     let exe_rt_dir = std::env::current_exe()
         .ok()
-        .and_then(|path| std::fs::canonicalize(path).ok())
+        .and_then(|path| Some(std::fs::canonicalize(&path).unwrap_or(path)))
         .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
         .unwrap();
     rt_dirs.push(exe_rt_dir);
