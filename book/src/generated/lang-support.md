@@ -138,6 +138,7 @@
 | make | ✓ |  | ✓ |  |
 | markdoc | ✓ |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | `marksman`, `markdown-oxide` |
+| markdown-rustdoc | ✓ |  |  |  |
 | markdown.inline | ✓ |  |  |  |
 | matlab | ✓ | ✓ | ✓ |  |
 | mermaid | ✓ |  |  |  |
