@@ -33,7 +33,14 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, DocumentId, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc, sync::LazyLock};
+use std::{
+    mem::take,
+    num::NonZeroUsize,
+    ops,
+    path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR},
+    rc::Rc,
+    sync::LazyLock,
+};
 
 use tui::{
     buffer::Buffer as Surface,
@@ -835,7 +842,6 @@ impl EditorView {
 
     /// Render bufferline at the top
     pub fn render_bufferline(&mut self, editor: &Editor, viewport: Rect, surface: &mut Surface) {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
             viewport,
             editor
@@ -860,13 +866,7 @@ impl EditorView {
         self.bufferline_info.clear();
 
         for (idx, doc) in editor.documents().enumerate() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+            let fname = Self::make_document_name(doc, editor);
 
             let style = if current_doc == doc.id() {
                 bufferline_active
@@ -911,6 +911,63 @@ impl EditorView {
             if x >= surface.area.right() {
                 break;
             }
+        }
+    }
+
+    fn make_document_name(doc: &Document, editor: &Editor) -> String {
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+
+        let paths: Vec<String> = editor
+            .documents()
+            .map(|d| {
+                d.path()
+                    .unwrap_or(&scratch)
+                    .to_str()
+                    .unwrap_or_default()
+                    .to_string()
+            })
+            .collect();
+
+        let components: Vec<Vec<String>> = paths
+            .iter()
+            .map(|p| p.split(MAIN_SEPARATOR).map(String::from).collect())
+            .collect();
+
+        let doc_path = doc
+            .path()
+            .unwrap_or(&scratch)
+            .to_str()
+            .unwrap_or_default()
+            .to_string();
+
+        let doc_index = paths.iter().position(|p| p == &doc_path).unwrap();
+        let doc_components_len = components[doc_index].len();
+
+        let mut k = 1;
+
+        loop {
+            let start = doc_components_len.saturating_sub(k);
+            let curr_doc: Vec<&str> = components[doc_index][start..]
+                .iter()
+                .map(|s| s.as_str())
+                .collect();
+
+            let count = components
+                .iter()
+                .enumerate()
+                .filter(|&(index, _)| index != doc_index)
+                .filter(|&(_, parts)| {
+                    let len = parts.len();
+                    let start = len.saturating_sub(k);
+                    parts[start..] == curr_doc
+                })
+                .count();
+
+            if count == 0 {
+                return curr_doc.join(MAIN_SEPARATOR_STR);
+            }
+
+            k += 1;
         }
     }
 
