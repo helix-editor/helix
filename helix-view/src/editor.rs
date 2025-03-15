@@ -21,6 +21,7 @@ use helix_vcs::DiffProviderRegistry;
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
+use indexmap::IndexMap;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -1042,7 +1043,7 @@ pub struct Editor {
     pub mode: Mode,
     pub tree: Tree,
     pub next_document_id: DocumentId,
-    pub documents: BTreeMap<DocumentId, Document>,
+    pub documents: IndexMap<DocumentId, Document>,
 
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
     // https://stackoverflow.com/a/66875668
@@ -1193,7 +1194,7 @@ impl Editor {
             mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
-            documents: BTreeMap::new(),
+            documents: IndexMap::new(),
             saves: HashMap::new(),
             save_queue: SelectAll::new(),
             write_count: 0,
@@ -1626,7 +1627,7 @@ impl Editor {
                     // Copy `doc.id` into a variable before calling `self.documents.remove`, which requires a mutable
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
-                    self.documents.remove(&id);
+                    self.documents.shift_remove(&id);
 
                     // Remove the scratch buffer from any jumplists
                     for (view, _) in self.tree.views_mut() {
@@ -1842,7 +1843,7 @@ impl Editor {
             }
         }
 
-        self.documents.remove(&doc_id);
+        self.documents.shift_remove(&doc_id);
 
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view
@@ -1986,6 +1987,13 @@ impl Editor {
     #[inline]
     pub fn documents_mut(&mut self) -> impl Iterator<Item = &mut Document> {
         self.documents.values_mut()
+    }
+
+    #[inline]
+    pub fn focused_document_index(&self) -> usize {
+        self.documents
+            .get_index_of(&view!(self).doc)
+            .expect("focused document should always be present")
     }
 
     pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
