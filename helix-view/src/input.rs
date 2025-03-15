@@ -1,5 +1,6 @@
 //! Input event handling, currently backed by crossterm.
 use anyhow::{anyhow, Error};
+use bitflags::Flags;
 use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;
@@ -435,6 +436,10 @@ impl std::str::FromStr for KeyEvent {
         // Normalize character keys so that characters like C-S-r and C-R
         // are represented by equal KeyEvents.
         match code {
+            KeyCode::Char('[') if modifiers.contains(KeyModifiers::CONTROL) => {
+                code = KeyCode::Esc;
+                modifiers.clear();
+            }
             KeyCode::Char(ch)
                 if ch.is_ascii_lowercase() && modifiers.contains(KeyModifiers::SHIFT) =>
             {
@@ -763,6 +768,17 @@ mod test {
             KeyEvent {
                 code: KeyCode::Char('d'),
                 modifiers: KeyModifiers::SUPER
+            }
+        );
+    }
+
+    #[test]
+    fn parsing_escape_key() {
+        assert_eq!(
+            str::parse::<KeyEvent>("C-[").unwrap(),
+            KeyEvent {
+                code: KeyCode::Esc,
+                modifiers: KeyModifiers::NONE
             }
         );
     }
