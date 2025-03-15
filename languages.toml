@@ -1710,8 +1710,6 @@ scope = "source.markdown-rustdoc"
 grammar = "markdown"
 injection-regex = "markdown-rustdoc"
 file-types = []
-roots = []
-language-servers = []
 indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "<!--", end = "-->" }
 
