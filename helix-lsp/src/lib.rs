@@ -12,7 +12,7 @@ pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::{
+use helix_core::syntax::config::{
     LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
 };
 use helix_stdx::path;
