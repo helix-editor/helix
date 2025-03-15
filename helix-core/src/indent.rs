@@ -73,9 +73,12 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
     // Build a histogram of the indentation *increases* between
     // subsequent lines, ignoring lines that are all whitespace.
     //
-    // Index 0 is for tabs, the rest are 1-MAX_INDENT spaces.
-    let histogram: [usize; MAX_INDENT as usize + 1] = {
-        let mut histogram = [0; MAX_INDENT as usize + 1];
+    // Index 1 is for tabs, the rest are 1-MAX_INDENT spaces.
+    const NO_INDENT_IX: usize = 0;
+    const TAB_IX: usize = 1;
+    const MAX_HISTOGRAM_SIZE: usize = MAX_INDENT as usize + 2;
+    let histogram: [usize; MAX_HISTOGRAM_SIZE] = {
+        let mut histogram = [0; MAX_HISTOGRAM_SIZE];
         let mut prev_line_is_tabs = false;
         let mut prev_line_leading_count = 0usize;
 
@@ -95,6 +98,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
                 _ => {
                     prev_line_is_tabs = false;
                     prev_line_leading_count = 0;
+                    histogram[NO_INDENT_IX] += 1;
                     continue;
                 }
             };
@@ -131,11 +135,11 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
                 && prev_line_leading_count < leading_count
             {
                 if is_tabs {
-                    histogram[0] += 1;
+                    histogram[TAB_IX] += 1;
                 } else {
                     let amount = leading_count - prev_line_leading_count;
                     if amount <= MAX_INDENT as usize {
-                        histogram[amount] += 1;
+                        histogram[amount + TAB_IX] += 1;
                     }
                 }
             }
@@ -148,7 +152,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
 
         // Give more weight to tabs, because their presence is a very
         // strong indicator.
-        histogram[0] *= 2;
+        histogram[TAB_IX] *= 2;
 
         histogram
     };
@@ -173,10 +177,11 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
     // Return the the auto-detected result if we're confident enough in its
     // accuracy, based on some heuristics.
     if indent_freq >= 1 && (indent_freq_2 as f64 / indent_freq as f64) < 0.66 {
-        Some(match indent {
-            0 => IndentStyle::Tabs,
-            _ => IndentStyle::Spaces(indent as u8),
-        })
+        match indent {
+            0 => None,
+            TAB_IX => Some(IndentStyle::Tabs),
+            _ => Some(IndentStyle::Spaces((indent - TAB_IX) as u8)),
+        }
     } else {
         None
     }
@@ -1202,6 +1207,24 @@ mod test {
                 IndentCaptureType::Outdent
             )
         );
+    }
+
+    #[test]
+    fn test_auto_detect_indent_style() {
+        let tabs = RopeSlice::from("tabs\n\tare strong");
+        assert_eq!(
+            auto_detect_indent_style(&tabs.into()),
+            Some(IndentStyle::Tabs)
+        );
+
+        let spaces = RopeSlice::from("three\n  levels\n    ok");
+        assert_eq!(
+            auto_detect_indent_style(&spaces.into()),
+            Some(IndentStyle::Spaces(2))
+        );
+
+        let text = RopeSlice::from("  Simple text. With indented paragraphs.\n Some lines follow same paragraphs.\n  Some don't.\nAnd that's fine");
+        assert_eq!(auto_detect_indent_style(&text.into()), None);
     }
 
     #[test]
