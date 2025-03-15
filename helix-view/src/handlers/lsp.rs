@@ -1,12 +1,16 @@
-use std::collections::btree_map::Entry;
+use std::collections::{btree_map::Entry, HashMap};
 use std::fmt::Display;
 
 use crate::editor::Action;
-use crate::events::DiagnosticsDidChange;
-use crate::Editor;
+use crate::events::{
+    DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
+};
+use crate::{DocumentId, Editor, ViewId};
 use helix_core::Uri;
+use helix_event::{register_hook, TaskController};
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
+use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {
@@ -20,6 +24,38 @@ pub enum SignatureHelpEvent {
     ReTrigger,
     Cancel,
     RequestComplete { open: bool },
+}
+
+#[derive(Debug)]
+pub enum InlayHintEvent {
+    /// The contents of a document changed.
+    /// This event should request annotations after a long debounce.
+    DocumentChanged(DocumentId),
+    /// The viewport was scrolled and/or the selection changed.
+    /// This event should request annotations after a short debounce.
+    ViewportScrolled(ViewId),
+}
+
+pub struct InlayHintHandler {
+    event_tx: Sender<InlayHintEvent>,
+    pub active_requests: HashMap<ViewId, TaskController>,
+}
+
+impl InlayHintHandler {
+    pub fn new(event_tx: Sender<InlayHintEvent>) -> Self {
+        Self {
+            event_tx,
+            active_requests: HashMap::new(),
+        }
+    }
+
+    pub fn tx(&self) -> &Sender<InlayHintEvent> {
+        &self.event_tx
+    }
+
+    pub fn event(&self, event: InlayHintEvent) {
+        helix_event::send_blocking(&self.event_tx, event);
+    }
 }
 
 #[derive(Debug)]
@@ -361,4 +397,51 @@ impl Editor {
             helix_event::dispatch(DiagnosticsDidChange { editor: self, doc });
         }
     }
+}
+
+pub fn register_hooks() {
+    register_hook!(move |event: &mut LanguageServerInitialized<'_>| {
+        let language_server = event.editor.language_server_by_id(event.server_id).unwrap();
+
+        for doc in event
+            .editor
+            .documents()
+            .filter(|doc| doc.supports_language_server(event.server_id))
+        {
+            let Some(url) = doc.url() else {
+                continue;
+            };
+
+            let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
+
+            language_server.text_document_did_open(url, doc.version(), doc.text(), language_id);
+        }
+
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut DocumentDidChange<'_>| {
+        // Send textDocument/didChange notifications.
+        if !event.ghost_transaction {
+            for language_server in event.doc.language_servers() {
+                language_server.text_document_did_change(
+                    event.doc.versioned_identifier(),
+                    event.old_text,
+                    event.doc.text(),
+                    event.changes,
+                );
+            }
+        }
+
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut DocumentDidClose<'_>| {
+        // Send textDocument/didClose notifications.
+        for language_server in event.doc.language_servers() {
+            language_server.text_document_did_close(event.doc.identifier());
+        }
+
+        Ok(())
+    });
 }

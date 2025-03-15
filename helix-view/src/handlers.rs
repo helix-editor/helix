@@ -20,6 +20,7 @@ pub struct Handlers {
     // only public because most of the actual implementation is in helix-term right now :/
     pub completions: CompletionHandler,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
+    pub inlay_hints: lsp::InlayHintHandler,
     pub auto_save: Sender<AutoSaveEvent>,
 }
 
@@ -45,4 +46,8 @@ impl Handlers {
         };
         send_blocking(&self.signature_hints, event)
     }
+}
+
+pub fn register_hooks(_handlers: &Handlers) {
+    lsp::register_hooks();
 }
