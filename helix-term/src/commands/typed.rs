@@ -2084,7 +2084,7 @@ fn language(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
     if &args[0] == DEFAULT_LANGUAGE_NAME {
         doc.set_language(None, None)
     } else {
-        doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
+        doc.set_language_by_human_name(&args[0], cx.editor.syn_loader.clone())?;
     }
     doc.detect_indent_and_line_ending();
 

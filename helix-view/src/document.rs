@@ -1225,15 +1225,18 @@ impl Document {
 
     /// Set the programming language for the file if you know the language but don't have the
     /// [`syntax::LanguageConfiguration`] for it.
-    pub fn set_language_by_language_id(
+    pub fn set_language_by_human_name(
         &mut self,
-        language_id: &str,
+        name: &str,
         config_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> anyhow::Result<()> {
-        let language_config = (*config_loader)
-            .load()
-            .language_config_for_language_id(language_id)
-            .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
+        let language_config = {
+            let config = (*config_loader).load();
+            config
+                .language_config_for_language_id(name)
+                .or_else(|| config.language_config_for_extension(name))
+                .ok_or_else(|| anyhow!("unknown language: {}", name))?
+        };
         self.set_language(Some(language_config), Some(config_loader));
         Ok(())
     }
