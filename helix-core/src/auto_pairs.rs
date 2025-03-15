@@ -120,7 +120,13 @@ impl Default for AutoPairs {
 //   middle of triple quotes, and more exotic pairs like Jinja's {% %}
 
 #[must_use]
-pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> Option<Transaction> {
+pub fn hook(
+    doc: &Rope,
+    selection: &Selection,
+    ch: char,
+    pairs: &AutoPairs,
+    auto_pairs_overtype: bool,
+) -> Option<Transaction> {
     log::trace!("autopairs hook selection: {:#?}", selection);
 
     if let Some(pair) = pairs.get(ch) {
@@ -130,7 +136,7 @@ pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> O
             return Some(handle_open(doc, selection, pair));
         } else if pair.close == ch {
             // && char_at pos == close
-            return Some(handle_close(doc, selection, pair));
+            return Some(handle_close(doc, selection, pair, auto_pairs_overtype));
         }
     }
 
@@ -301,7 +307,12 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     t
 }
 
-fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
+fn handle_close(
+    doc: &Rope,
+    selection: &Selection,
+    pair: &Pair,
+    auto_pairs_overtype: bool,
+) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
     let mut offs = 0;
 
@@ -309,8 +320,9 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
         let cursor = start_range.cursor(doc.slice(..));
         let next_char = doc.get_char(cursor);
         let mut len_inserted = 0;
+        // let len_inserted = 1;
 
-        let change = if next_char == Some(pair.close) {
+        let change = if auto_pairs_overtype && next_char == Some(pair.close) {
             // return transaction that moves past close
             (cursor, cursor, None) // no-op
         } else {
