@@ -1,6 +1,9 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
+use helix_core::{
+    diagnostic::{DiagnosticProvider, Severity},
+    pos_at_coords, syntax, Range, Selection,
+};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -725,6 +728,15 @@ impl Application {
                                 doc.text(),
                                 language_id,
                             );
+
+                            if language_server
+                                .supports_feature(syntax::LanguageServerFeature::PullDiagnostics)
+                            {
+                                handlers::diagnostics::pull_diagnostics_for_document(
+                                    doc,
+                                    language_server,
+                                );
+                            }
                         }
                     }
                     Notification::PublishDiagnostics(params) => {
@@ -740,8 +752,12 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
+
+                        let diagnostic_provider =
+                            DiagnosticProvider::from_server_id(language_server.id());
+
                         self.editor.handle_lsp_diagnostics(
-                            language_server.id(),
+                            &diagnostic_provider,
                             uri,
                             params.version,
                             params.diagnostics,
@@ -854,14 +870,16 @@ impl Application {
                         // we need to clear those and remove the entries from the list if this leads to
                         // an empty diagnostic list for said files
                         for diags in self.editor.diagnostics.values_mut() {
-                            diags.retain(|(_, lsp_id)| *lsp_id != server_id);
+                            diags.retain(|(_, diagnostic_provider)| {
+                                !diagnostic_provider.has_server_id(&server_id)
+                            });
                         }
 
                         self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
 
                         // Clear any diagnostics for documents with this server open.
                         for doc in self.editor.documents_mut() {
-                            doc.clear_diagnostics(Some(server_id));
+                            doc.clear_all_language_server_diagnostics(Some(server_id));
                         }
 
                         // Remove the language server from the registry.
@@ -1019,6 +1037,16 @@ impl Application {
 
                         let result = self.handle_show_document(params, offset_encoding);
                         Ok(json!(result))
+                    }
+                    Ok(MethodCall::WorkspaceDiagnosticRefresh) => {
+                        for document in self.editor.documents() {
+                            let language_server = language_server!();
+                            handlers::diagnostics::pull_diagnostics_for_document(
+                                document,
+                                language_server,
+                            );
+                        }
+                        Ok(serde_json::Value::Null)
                     }
                 };
 

@@ -4,7 +4,7 @@ use crate::{
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
-    events::DocumentFocusLost,
+    events::{DocumentDidOpen, DocumentFocusLost},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -45,6 +45,7 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
+    diagnostic::DiagnosticProvider,
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
@@ -1056,7 +1057,7 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
-    pub diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+    pub diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -1778,6 +1779,11 @@ impl Editor {
         };
 
         self.switch(id, action);
+
+        if let Some(doc) = self.document_mut(id) {
+            helix_event::dispatch(DocumentDidOpen { doc });
+        };
+
         Ok(id)
     }
 
@@ -2001,7 +2007,7 @@ impl Editor {
     /// Returns all supported diagnostics for the document
     pub fn doc_diagnostics<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>,
         document: &Document,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         Editor::doc_diagnostics_with_filter(language_servers, diagnostics, document, |_, _| true)
@@ -2011,9 +2017,9 @@ impl Editor {
     /// filtered by `filter` which is invocated with the raw `lsp::Diagnostic` and the language server id it came from
     pub fn doc_diagnostics_with_filter<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>,
         document: &Document,
-        filter: impl Fn(&lsp::Diagnostic, LanguageServerId) -> bool + 'a,
+        filter: impl Fn(&lsp::Diagnostic, DiagnosticProvider) -> bool + 'a,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         let text = document.text().clone();
         let language_config = document.language.clone();
@@ -2021,30 +2027,32 @@ impl Editor {
             .uri()
             .and_then(|uri| diagnostics.get(&uri))
             .map(|diags| {
-                diags.iter().filter_map(move |(diagnostic, lsp_id)| {
-                    let ls = language_servers.get_by_id(*lsp_id)?;
-                    language_config
-                        .as_ref()
-                        .and_then(|c| {
-                            c.language_servers.iter().find(|features| {
-                                features.name == ls.name()
-                                    && features.has_feature(LanguageServerFeature::Diagnostics)
+                diags
+                    .iter()
+                    .filter_map(move |(diagnostic, diagnostic_provider)| {
+                        let ls = language_servers.get_by_id(*diagnostic_provider.server_id())?;
+                        language_config
+                            .as_ref()
+                            .and_then(|c| {
+                                c.language_servers.iter().find(|features| {
+                                    features.name == ls.name()
+                                        && features.has_feature(LanguageServerFeature::Diagnostics)
+                                })
                             })
-                        })
-                        .and_then(|_| {
-                            if filter(diagnostic, *lsp_id) {
-                                Document::lsp_diagnostic_to_diagnostic(
-                                    &text,
-                                    language_config.as_deref(),
-                                    diagnostic,
-                                    *lsp_id,
-                                    ls.offset_encoding(),
-                                )
-                            } else {
-                                None
-                            }
-                        })
-                })
+                            .and_then(|_| {
+                                if filter(diagnostic, diagnostic_provider.clone()) {
+                                    Document::lsp_diagnostic_to_diagnostic(
+                                        &text,
+                                        language_config.as_deref(),
+                                        diagnostic,
+                                        diagnostic_provider.clone(),
+                                        ls.offset_encoding(),
+                                    )
+                                } else {
+                                    None
+                                }
+                            })
+                    })
             })
             .into_iter()
             .flatten()
