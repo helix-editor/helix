@@ -366,6 +366,9 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+    /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
+    /// `true`.
+    pub editor_config: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1009,6 +1012,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
+            editor_config: true,
         }
     }
 }
@@ -1456,6 +1460,7 @@ impl Editor {
         // we have fully unregistered this document from its LS
         doc.language_servers.clear();
         doc.set_path(Some(path));
+        doc.detect_editor_config();
         self.refresh_doc_language(doc_id)
     }
 
@@ -1463,6 +1468,7 @@ impl Editor {
         let loader = self.syn_loader.clone();
         let doc = doc_mut!(self, &doc_id);
         doc.detect_language(loader);
+        doc.detect_editor_config();
         doc.detect_indent_and_line_ending();
         self.refresh_language_servers(doc_id);
         let doc = doc_mut!(self, &doc_id);

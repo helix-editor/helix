@@ -31,6 +31,7 @@ use std::sync::{Arc, Weak};
 use std::time::SystemTime;
 
 use helix_core::{
+    editor_config::EditorConfig,
     encoding,
     history::{History, State, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
@@ -50,6 +51,7 @@ use crate::{
 const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
+const DEFAULT_TAB_WIDTH: usize = 4;
 
 pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 
@@ -157,6 +159,7 @@ pub struct Document {
 
     /// Current indent style.
     pub indent_style: IndentStyle,
+    editor_config: EditorConfig,
 
     /// The document's default line ending.
     pub line_ending: LineEnding,
@@ -678,6 +681,7 @@ impl Document {
             inlay_hints_oudated: false,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
+            editor_config: EditorConfig::default(),
             line_ending,
             restore_cursor: false,
             syntax: None,
@@ -712,7 +716,7 @@ impl Document {
     /// overwritten with the `encoding` parameter.
     pub fn open(
         path: &Path,
-        encoding: Option<&'static Encoding>,
+        mut encoding: Option<&'static Encoding>,
         config_loader: Option<Arc<ArcSwap<syntax::Loader>>>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, DocumentOpenError> {
@@ -721,12 +725,21 @@ impl Document {
             return Err(DocumentOpenError::IrregularFile);
         }
 
+        let editor_config = if config.load().editor_config {
+            EditorConfig::find(path)
+        } else {
+            EditorConfig::default()
+        };
+        encoding = encoding.or(editor_config.encoding);
+
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding, has_bom) = if path.exists() {
             let mut file = std::fs::File::open(path)?;
             from_reader(&mut file, encoding)?
         } else {
-            let line_ending: LineEnding = config.load().default_line_ending.into();
+            let line_ending = editor_config
+                .line_ending
+                .unwrap_or_else(|| config.load().default_line_ending.into());
             let encoding = encoding.unwrap_or(encoding::UTF_8);
             (Rope::from(line_ending.as_str()), encoding, false)
         };
@@ -739,6 +752,7 @@ impl Document {
             doc.detect_language(loader);
         }
 
+        doc.editor_config = editor_config;
         doc.detect_indent_and_line_ending();
 
         Ok(doc)
@@ -1090,13 +1104,29 @@ impl Document {
     /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
     /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
-        self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            self.language_config()
-                .and_then(|config| config.indent.as_ref())
-                .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
-        });
-        if let Some(line_ending) = auto_detect_line_ending(&self.text) {
+        self.indent_style = if let Some(indent_style) = self.editor_config.indent_style {
+            indent_style
+        } else {
+            auto_detect_indent_style(&self.text).unwrap_or_else(|| {
+                self.language_config()
+                    .and_then(|config| config.indent.as_ref())
+                    .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
+            })
+        };
+        if let Some(line_ending) = self
+            .editor_config
+            .line_ending
+            .or_else(|| auto_detect_line_ending(&self.text))
+        {
             self.line_ending = line_ending;
+        }
+    }
+
+    pub(crate) fn detect_editor_config(&mut self) {
+        if self.config.load().editor_config {
+            if let Some(path) = self.path.as_ref() {
+                self.editor_config = EditorConfig::find(path);
+            }
         }
     }
 
@@ -1819,14 +1849,33 @@ impl Document {
 
     /// The width that the tab character is rendered at
     pub fn tab_width(&self) -> usize {
-        self.language_config()
-            .and_then(|config| config.indent.as_ref())
-            .map_or(4, |config| config.tab_width) // fallback to 4 columns
+        self.editor_config
+            .tab_width
+            .map(|n| n.get() as usize)
+            .unwrap_or_else(|| {
+                self.language_config()
+                    .and_then(|config| config.indent.as_ref())
+                    .map_or(DEFAULT_TAB_WIDTH, |config| config.tab_width)
+            })
     }
 
     // The width (in spaces) of a level of indentation.
     pub fn indent_width(&self) -> usize {
         self.indent_style.indent_width(self.tab_width())
+    }
+
+    /// Whether the document should have a trailing line ending appended on save.
+    pub fn insert_final_newline(&self) -> bool {
+        self.editor_config
+            .insert_final_newline
+            .unwrap_or_else(|| self.config.load().insert_final_newline)
+    }
+
+    /// Whether the document should trim whitespace preceding line endings on save.
+    pub fn trim_trailing_whitespace(&self) -> bool {
+        self.editor_config
+            .trim_trailing_whitespace
+            .unwrap_or_else(|| self.config.load().trim_trailing_whitespace)
     }
 
     pub fn changes(&self) -> &ChangeSet {
@@ -2087,12 +2136,17 @@ impl Document {
         }
     }
 
+    pub fn text_width(&self) -> usize {
+        self.editor_config
+            .max_line_length
+            .map(|n| n.get() as usize)
+            .or_else(|| self.language_config().and_then(|config| config.text_width))
+            .unwrap_or_else(|| self.config.load().text_width)
+    }
+
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
         let config = self.config.load();
-        let text_width = self
-            .language_config()
-            .and_then(|config| config.text_width)
-            .unwrap_or(config.text_width);
+        let text_width = self.text_width();
         let mut soft_wrap_at_text_width = self
             .language_config()
             .and_then(|config| {
