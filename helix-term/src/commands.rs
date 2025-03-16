@@ -2716,10 +2716,9 @@ fn local_search(cx: &mut Context) {
                 .boxed();
         }
 
-        let documents: Vec<_> = editor
-            .documents()
-            .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
-            .collect();
+        // Only read the current document (not other documents opened in the buffer)
+        let doc = doc!(editor);
+        let documents = vec![(doc.path().cloned(), doc.text().to_owned())];
 
         let matcher = match RegexMatcherBuilder::new()
             .case_smart(config.smart_case)
