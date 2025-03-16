@@ -1456,7 +1456,7 @@ fn lsp_workspace_command(
                         commands,
                         (),
                         move |cx, (ls_id, command), _action| {
-                            execute_lsp_command(cx.editor, *ls_id, command.clone());
+                            cx.editor.execute_lsp_command(command.clone(), *ls_id);
                         },
                     );
                     compositor.push(Box::new(overlaid(picker)))
@@ -1484,14 +1484,13 @@ fn lsp_workspace_command(
                     .transpose()?
                     .filter(|args| !args.is_empty());
 
-                execute_lsp_command(
-                    cx.editor,
-                    *ls_id,
+                cx.editor.execute_lsp_command(
                     helix_lsp::lsp::Command {
                         title: command.clone(),
                         arguments,
                         command,
                     },
+                    *ls_id,
                 );
             }
             [] => {

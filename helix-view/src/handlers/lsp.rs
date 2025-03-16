@@ -361,4 +361,22 @@ impl Editor {
             helix_event::dispatch(DiagnosticsDidChange { editor: self, doc });
         }
     }
+
+    pub fn execute_lsp_command(&mut self, command: lsp::Command, server_id: LanguageServerId) {
+        // the command is executed on the server and communicated back
+        // to the client asynchronously using workspace edits
+        let Some(future) = self
+            .language_server_by_id(server_id)
+            .and_then(|server| server.command(command))
+        else {
+            self.set_error("Language server does not support executing commands");
+            return;
+        };
+
+        tokio::spawn(async move {
+            if let Err(err) = future.await {
+                log::error!("Error executing LSP command: {err}");
+            }
+        });
+    }
 }
