@@ -4047,7 +4047,7 @@ source = { git = "https://gitlab.com/spade-lang/tree-sitter-spade", rev = "78bf0
 name = "amber"
 scope = "source.ab"
 file-types = ["ab"]
-comment-token = "//"
+comment-token = ["//", "///"]
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
