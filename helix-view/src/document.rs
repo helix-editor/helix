@@ -126,7 +126,7 @@ pub struct SavePoint {
 
 #[derive(Debug, thiserror::Error)]
 pub enum DocumentOpenError {
-    #[error("path must be a regular file, simlink, or directory")]
+    #[error("path must be a regular file, symlink, or directory")]
     IrregularFile,
     #[error(transparent)]
     IoError(#[from] io::Error),
