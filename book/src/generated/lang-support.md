@@ -185,7 +185,7 @@
 | spicedb | ✓ |  |  |  |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
-| starlark | ✓ | ✓ |  |  |
+| starlark | ✓ | ✓ | ✓ |  |
 | strace | ✓ |  |  |  |
 | supercollider | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
