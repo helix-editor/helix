@@ -1552,6 +1552,7 @@ dependencies = [
  "helix-stdx",
  "helix-tui",
  "helix-vcs",
+ "indexmap",
  "libc",
  "log",
  "once_cell",
