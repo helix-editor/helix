@@ -112,6 +112,8 @@
   "\\.neqv\\."
 ] @keyword.operator
 
+(identifier) @variable
+
  ;; Brackets
  [
   "("
@@ -163,7 +165,6 @@
 (derived_type_member_expression
   (type_member) @variable.other.member)
 
-(identifier) @variable
 (string_literal) @string
 (number_literal) @constant.numeric
 (boolean_literal) @constant.builtin.boolean

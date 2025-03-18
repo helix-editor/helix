@@ -118,6 +118,8 @@
 ] @constant.builtin
 (literal "void") @constant.builtin
 
+(identifier) @variable
+
 (string_literal) @string
 (escape_sequence) @constant.character.escape
 (rune_literal) @string
@@ -138,5 +140,4 @@
 (decl_attr) @special
 (fndec_attrs) @special
 
-(identifier) @variable
 (struct_union_field (name)) @variable

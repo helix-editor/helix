@@ -1,3 +1,48 @@
+; Identifiers
+
+(qconid) @namespace
+
+(qidop) @namespace
+
+(varid) @variable
+
+(conid) @constructor
+
+(puredecl
+  (binder
+    (identifier
+      [(varid) (idop)] @constant)))
+
+; TODO: Highlight vars differently once helix has an appropriate highlight query
+; for that purpose.
+
+(pparameter
+  (pattern
+    (identifier
+      (varid) @variable.parameter)))
+
+(paramid
+  (identifier
+    (varid) @variable.parameter))
+
+(typedecl
+  "effect"
+  (varid) @type)
+
+(typeid
+  (varid) @type)
+
+(tbinder
+  (varid) @type)
+
+(typecon
+  (varid) @type)
+
+(qvarid
+  (qid) @namespace)
+
+(modulepath (varid) @namespace)
+
 ; Function calls
 
 (appexpr
@@ -54,51 +99,6 @@
 (operation
   (identifier
     [(varid) (idop)] @function))
-
-; Identifiers
-
-(puredecl
-  (binder
-    (identifier
-      [(varid) (idop)] @constant)))
-
-; TODO: Highlight vars differently once helix has an appropriate highlight query
-; for that purpose.
-
-(pparameter
-  (pattern
-    (identifier
-      (varid) @variable.parameter)))
-
-(paramid
-  (identifier
-    (varid) @variable.parameter))
-
-(typedecl
-  "effect"
-  (varid) @type)
-
-(typeid
-  (varid) @type)
-
-(tbinder
-  (varid) @type)
-
-(typecon
-  (varid) @type)
-
-(qvarid
-  (qid) @namespace)
-
-(modulepath (varid) @namespace)
-
-(qconid) @namespace
-
-(qidop) @namespace
-
-(varid) @variable
-
-(conid) @constructor
 
 ; Operators
 
