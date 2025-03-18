@@ -53,20 +53,34 @@ impl Loader {
 
     /// Loads a theme searching directories in priority order.
     pub fn load(&self, name: &str) -> Result<Theme> {
+        let (theme, warnings) = self.load_with_warnings(name)?;
+
+        for warning in warnings {
+            warn!("Theme '{}': {}", name, warning);
+        }
+
+        Ok(theme)
+    }
+
+    /// Loads a theme searching directories in priority order, returning any warnings
+    pub fn load_with_warnings(&self, name: &str) -> Result<(Theme, Vec<String>)> {
         if name == "default" {
-            return Ok(self.default());
+            return Ok((self.default(), Vec::new()));
         }
         if name == "base16_default" {
-            return Ok(self.base16_default());
+            return Ok((self.base16_default(), Vec::new()));
         }
 
         let mut visited_paths = HashSet::new();
-        let theme = self.load_theme(name, &mut visited_paths).map(Theme::from)?;
+        let (theme, warnings) = self
+            .load_theme(name, &mut visited_paths)
+            .map(Theme::from_toml)?;
 
-        Ok(Theme {
+        let theme = Theme {
             name: name.into(),
             ..theme
-        })
+        };
+        Ok((theme, warnings))
     }
 
     /// Recursively load a theme, merging with any inherited parent themes.
@@ -87,10 +101,7 @@ impl Loader {
 
         let theme_toml = if let Some(parent_theme_name) = inherits {
             let parent_theme_name = parent_theme_name.as_str().ok_or_else(|| {
-                anyhow!(
-                    "Theme: expected 'inherits' to be a string: {}",
-                    parent_theme_name
-                )
+                anyhow!("Expected 'inherits' to be a string: {}", parent_theme_name)
             })?;
 
             let parent_theme_toml = match parent_theme_name {
@@ -181,9 +192,9 @@ impl Loader {
             })
             .ok_or_else(|| {
                 if cycle_found {
-                    anyhow!("Theme: cycle found in inheriting: {}", name)
+                    anyhow!("Cycle found in inheriting: {}", name)
                 } else {
-                    anyhow!("Theme: file not found for: {}", name)
+                    anyhow!("File not found for: {}", name)
                 }
             })
     }
@@ -220,19 +231,11 @@ pub struct Theme {
 
 impl From<Value> for Theme {
     fn from(value: Value) -> Self {
-        if let Value::Table(table) = value {
-            let (styles, scopes, highlights) = build_theme_values(table);
-
-            Self {
-                styles,
-                scopes,
-                highlights,
-                ..Default::default()
-            }
-        } else {
-            warn!("Expected theme TOML value to be a table, found {:?}", value);
-            Default::default()
+        let (theme, warnings) = Theme::from_toml(value);
+        for warning in warnings {
+            warn!("{}", warning);
         }
+        theme
     }
 }
 
@@ -242,31 +245,29 @@ impl<'de> Deserialize<'de> for Theme {
         D: Deserializer<'de>,
     {
         let values = Map::<String, Value>::deserialize(deserializer)?;
-
-        let (styles, scopes, highlights) = build_theme_values(values);
-
-        Ok(Self {
-            styles,
-            scopes,
-            highlights,
-            ..Default::default()
-        })
+        let (theme, warnings) = Theme::from_keys(values);
+        for warning in warnings {
+            warn!("{}", warning);
+        }
+        Ok(theme)
     }
 }
 
 fn build_theme_values(
     mut values: Map<String, Value>,
-) -> (HashMap<String, Style>, Vec<String>, Vec<Style>) {
+) -> (HashMap<String, Style>, Vec<String>, Vec<Style>, Vec<String>) {
     let mut styles = HashMap::new();
     let mut scopes = Vec::new();
     let mut highlights = Vec::new();
+
+    let mut warnings = Vec::new();
 
     // TODO: alert user of parsing failures in editor
     let palette = values
         .remove("palette")
         .map(|value| {
             ThemePalette::try_from(value).unwrap_or_else(|err| {
-                warn!("{}", err);
+                warnings.push(err);
                 ThemePalette::default()
             })
         })
@@ -279,7 +280,7 @@ fn build_theme_values(
     for (name, style_value) in values {
         let mut style = Style::default();
         if let Err(err) = palette.parse_style(&mut style, style_value) {
-            warn!("{}", err);
+            warnings.push(format!("Failed to parse style for key {name:?}. {err}"));
         }
 
         // these are used both as UI and as highlights
@@ -288,7 +289,7 @@ fn build_theme_values(
         highlights.push(style);
     }
 
-    (styles, scopes, highlights)
+    (styles, scopes, highlights, warnings)
 }
 
 impl Theme {
@@ -354,6 +355,27 @@ impl Theme {
                 .all(|color| !matches!(color, Some(Color::Rgb(..))))
         })
     }
+
+    fn from_toml(value: Value) -> (Self, Vec<String>) {
+        if let Value::Table(table) = value {
+            Theme::from_keys(table)
+        } else {
+            warn!("Expected theme TOML value to be a table, found {:?}", value);
+            Default::default()
+        }
+    }
+
+    fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
+        let (styles, scopes, highlights, load_errors) = build_theme_values(toml_keys);
+
+        let theme = Self {
+            styles,
+            scopes,
+            highlights,
+            ..Default::default()
+        };
+        (theme, load_errors)
+    }
 }
 
 struct ThemePalette {
@@ -408,7 +430,7 @@ impl ThemePalette {
         if let Ok(index) = s.parse::<u8>() {
             return Ok(Color::Indexed(index));
         }
-        Err(format!("Theme: malformed ANSI: {}", s))
+        Err(format!("Malformed ANSI: {}", s))
     }
 
     fn hex_string_to_rgb(s: &str) -> Result<Color, String> {
@@ -422,13 +444,13 @@ impl ThemePalette {
             }
         }
 
-        Err(format!("Theme: malformed hexcode: {}", s))
+        Err(format!("Malformed hexcode: {}", s))
     }
 
     fn parse_value_as_str(value: &Value) -> Result<&str, String> {
         value
             .as_str()
-            .ok_or(format!("Theme: unrecognized value: {}", value))
+            .ok_or(format!("Unrecognized value: {}", value))
     }
 
     pub fn parse_color(&self, value: Value) -> Result<Color, String> {
@@ -445,14 +467,14 @@ impl ThemePalette {
         value
             .as_str()
             .and_then(|s| s.parse().ok())
-            .ok_or(format!("Theme: invalid modifier: {}", value))
+            .ok_or(format!("Invalid modifier: {}", value))
     }
 
     pub fn parse_underline_style(value: &Value) -> Result<UnderlineStyle, String> {
         value
             .as_str()
             .and_then(|s| s.parse().ok())
-            .ok_or(format!("Theme: invalid underline style: {}", value))
+            .ok_or(format!("Invalid underline style: {}", value))
     }
 
     pub fn parse_style(&self, style: &mut Style, value: Value) -> Result<(), String> {
@@ -462,9 +484,7 @@ impl ThemePalette {
                     "fg" => *style = style.fg(self.parse_color(value)?),
                     "bg" => *style = style.bg(self.parse_color(value)?),
                     "underline" => {
-                        let table = value
-                            .as_table_mut()
-                            .ok_or("Theme: underline must be table")?;
+                        let table = value.as_table_mut().ok_or("Underline must be table")?;
                         if let Some(value) = table.remove("color") {
                             *style = style.underline_color(self.parse_color(value)?);
                         }
@@ -473,26 +493,21 @@ impl ThemePalette {
                         }
 
                         if let Some(attr) = table.keys().next() {
-                            return Err(format!("Theme: invalid underline attribute: {attr}"));
+                            return Err(format!("Invalid underline attribute: {attr}"));
                         }
                     }
                     "modifiers" => {
-                        let modifiers = value
-                            .as_array()
-                            .ok_or("Theme: modifiers should be an array")?;
+                        let modifiers = value.as_array().ok_or("Modifiers should be an array")?;
 
                         for modifier in modifiers {
-                            if modifier
-                                .as_str()
-                                .map_or(false, |modifier| modifier == "underlined")
-                            {
+                            if modifier.as_str() == Some("underlined") {
                                 *style = style.underline_style(UnderlineStyle::Line);
                             } else {
                                 *style = style.add_modifier(Self::parse_modifier(modifier)?);
                             }
                         }
                     }
-                    _ => return Err(format!("Theme: invalid style attribute: {}", name)),
+                    _ => return Err(format!("Invalid style attribute: {}", name)),
                 }
             }
         } else {

@@ -7,6 +7,7 @@
   - [Note to packagers](#note-to-packagers)
 - [Validating the installation](#validating-the-installation)
 - [Configure the desktop shortcut](#configure-the-desktop-shortcut)
+- [Building the Debian package](#building-the-debian-package)
 
 Requirements:
 
@@ -63,10 +64,8 @@ export HELIX_RUNTIME=~/src/helix/runtime
 Or, create a symbolic link:
 
 ```sh
-ln -Ts $PWD/runtime ~/.config/helix/runtime
+ln -Tsf $PWD/runtime ~/.config/helix/runtime
 ```
-
-If the above command fails to create a symbolic link because the file exists either move `~/.config/helix/runtime` to a new location or delete it, then run the symlink command above again.
 
 #### Windows
 
@@ -75,7 +74,7 @@ Either set the `HELIX_RUNTIME` environment variable to point to the runtime file
 Cmd:
 
 ```sh
-setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
+setx HELIX_RUNTIME "%userprofile%\src\helix\runtime"
 ```
 
 > 💡 `%userprofile%` resolves to your user directory like
@@ -117,7 +116,7 @@ to package the runtime into `/usr/lib/helix/runtime`. The rough steps a build
 script could follow are:
 
 1. `export HELIX_DEFAULT_RUNTIME=/usr/lib/helix/runtime`
-1. `cargo build --profile opt --locked --path helix-term`
+1. `cargo build --profile opt --locked`
 1. `cp -r runtime $BUILD_DIR/usr/lib/helix/`
 1. `cp target/opt/hx $BUILD_DIR/usr/bin/hx`
 
@@ -162,3 +161,39 @@ file. For example, to use `kitty`:
 sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
+
+### Building the Debian package
+
+If the `.deb` file provided on the release page uses a `libc` version higher
+than that used by your Debian, Ubuntu, or Mint system, you can build the package
+from source to match your system's dependencies.
+
+Install `cargo-deb`, the tool used for building the `.deb` file:
+
+```sh
+cargo install cargo-deb
+```
+
+After cloning and entering the Helix repository as previously described,
+use the following command to build the release binary and package it into a `.deb` file in a single step.
+
+```sh
+cargo deb -- --locked
+```
+
+> 💡 This locks you into the `--release` profile. But you can also build helix in any way you like.
+> As long as you leave a `target/release/hx` file, it will get packaged with `cargo deb --no-build` 
+
+> 💡 Don't worry about the repeated
+> ```
+> warning: Failed to find dependency specification
+> ```
+> warnings. Cargo deb just reports which packaged files it didn't derive dependencies for. But
+> so far the dependency deriving seams very good, even if some of the grammar files are skipped.
+
+You can find the resulted `.deb` in `target/debian/`. It should contain everything it needs, including the
+
+- completions for bash, fish, zsh
+- .desktop file
+- icon (though desktop environments might use their own since the name of the package is correctly `helix`)
+- launcher to the binary with the runtime

@@ -421,6 +421,50 @@ async fn test_write_utf_bom_file() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_write_trim_trailing_whitespace() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                trim_trailing_whitespace: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_file(file.path(), None)
+        .with_input_text(LineFeedHandling::Native.apply("#[f|]#oo      \n\n \nbar      "))
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("foo\n\n\nbar"))?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_trim_final_newlines() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                trim_final_newlines: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_file(file.path(), None)
+        .with_input_text(LineFeedHandling::Native.apply("#[f|]#oo\n \n\n\n"))
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("foo\n \n"))?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
@@ -434,6 +478,21 @@ async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()
         &mut file,
         &LineFeedHandling::Native.apply("have you tried chamomile tea?\n"),
     )?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_insert_final_newline_unchanged_if_empty() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("#[|]#")
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(&mut file, "")?;
 
     Ok(())
 }
@@ -645,6 +704,41 @@ async fn test_symlink_write_relative() -> anyhow::Result<()> {
         file_content
     );
     assert!(symlink_path.is_symlink());
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[cfg(not(target_os = "android"))]
+async fn test_hardlink_write() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+
+    let mut file = tempfile::NamedTempFile::new_in(&dir)?;
+    let hardlink_path = dir.path().join("linked");
+    std::fs::hard_link(file.path(), &hardlink_path)?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(&hardlink_path, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ithe gostak distims the doshes<ret><esc>:w<ret>"),
+        None,
+        false,
+    )
+    .await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        LineFeedHandling::Native.apply("the gostak distims the doshes"),
+        file_content
+    );
+    assert!(helix_stdx::faccess::hardlink_count(&hardlink_path)? > 1);
+    assert!(same_file::is_same_file(file.path(), &hardlink_path)?);
 
     Ok(())
 }

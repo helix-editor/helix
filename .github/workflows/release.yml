@@ -61,17 +61,17 @@ jobs:
         build: [x86_64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
         include:
         - build: x86_64-linux
-          os: ubuntu-latest
+          os: ubuntu-22.04
           rust: stable
           target: x86_64-unknown-linux-gnu
           cross: false
         - build: aarch64-linux
-          os: ubuntu-latest
+          os: ubuntu-22.04
           rust: stable
           target: aarch64-unknown-linux-gnu
           cross: true
         # - build: riscv64-linux
-        #   os: ubuntu-latest
+        #   os: ubuntu-22.04
         #   rust: stable
         #   target: riscv64gc-unknown-linux-gnu
         #   cross: true
@@ -147,16 +147,8 @@ jobs:
         if: "!matrix.skip_tests"
         run: ${{ env.CARGO }} test --release --locked --target ${{ matrix.target }} --workspace
 
-      - name: Set profile.release.strip = true
-        shell: bash
-        run: |
-          cat >> .cargo/config.toml <<EOF
-          [profile.release]
-          strip = true
-          EOF
-
       - name: Build release binary
-        run: ${{ env.CARGO }} build --release --locked --target ${{ matrix.target }}
+        run: ${{ env.CARGO }} build --profile opt --locked --target ${{ matrix.target }}
 
       - name: Build AppImage
         shell: bash
@@ -183,7 +175,7 @@ jobs:
 
           mkdir -p "$APP.AppDir"/usr/{bin,lib/helix}
 
-          cp "target/${{ matrix.target }}/release/hx" "$APP.AppDir/usr/bin/hx"
+          cp "target/${{ matrix.target }}/opt/hx" "$APP.AppDir/usr/bin/hx"
           rm -rf runtime/grammars/sources
           cp -r runtime "$APP.AppDir/usr/lib/helix/runtime"
 
@@ -206,14 +198,25 @@ jobs:
           mv "$APP-$VERSION-$ARCH.AppImage" \
               "$APP-$VERSION-$ARCH.AppImage.zsync" dist
 
+      - name: Build Deb
+        shell: bash
+        if: matrix.build == 'x86_64-linux'
+        run: |
+          cargo install cargo-deb
+          mkdir -p target/release
+          cp target/${{ matrix.target }}/opt/hx target/release/
+          cargo deb --no-build
+          mkdir -p dist
+          mv target/debian/*.deb dist/
+
       - name: Build archive
         shell: bash
         run: |
           mkdir -p dist
           if [ "${{ matrix.os }}" = "windows-2019" ]; then
-            cp "target/${{ matrix.target }}/release/hx.exe" "dist/"
+            cp "target/${{ matrix.target }}/opt/hx.exe" "dist/"
           else
-            cp "target/${{ matrix.target }}/release/hx" "dist/"
+            cp "target/${{ matrix.target }}/opt/hx" "dist/"
           fi
           if [ -d runtime/grammars/sources ]; then
             rm -rf runtime/grammars/sources
@@ -241,6 +244,7 @@ jobs:
           set -ex
 
           source="$(pwd)"
+          tag=${GITHUB_REF_NAME//\//}
           mkdir -p runtime/grammars/sources
           tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
           rm -rf grammars
@@ -254,7 +258,7 @@ jobs:
               if [[ $platform =~ "windows" ]]; then
                   exe=".exe"
               fi
-              pkgname=helix-$GITHUB_REF_NAME-$platform
+              pkgname=helix-$tag-$platform
               mkdir -p $pkgname
               cp $source/LICENSE $source/README.md $pkgname
               mkdir $pkgname/contrib
@@ -265,6 +269,7 @@ jobs:
 
               if [[ "$platform" = "x86_64-linux" ]]; then
                   mv bins-$platform/helix-*.AppImage* dist/
+                  mv bins-$platform/*.deb dist/
               fi
 
               if [ "$exe" = "" ]; then
@@ -274,7 +279,7 @@ jobs:
               fi
           done
 
-          tar cJf dist/helix-$GITHUB_REF_NAME-source.tar.xz -C $source .
+          tar cJf dist/helix-$tag-source.tar.xz -C $source .
           mv dist $source/
 
       - name: Upload binaries to release

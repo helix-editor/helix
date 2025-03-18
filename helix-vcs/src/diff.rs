@@ -5,7 +5,7 @@ use std::sync::Arc;
 use helix_core::Rope;
 use helix_event::RenderLockGuard;
 use imara_diff::Algorithm;
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::{RwLock, RwLockReadGuard};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
@@ -37,7 +37,7 @@ struct DiffInner {
 #[derive(Clone, Debug)]
 pub struct DiffHandle {
     channel: UnboundedSender<Event>,
-    diff: Arc<Mutex<DiffInner>>,
+    diff: Arc<RwLock<DiffInner>>,
     inverted: bool,
 }
 
@@ -48,7 +48,7 @@ impl DiffHandle {
 
     fn new_with_handle(diff_base: Rope, doc: Rope) -> (DiffHandle, JoinHandle<()>) {
         let (sender, receiver) = unbounded_channel();
-        let diff: Arc<Mutex<DiffInner>> = Arc::default();
+        let diff: Arc<RwLock<DiffInner>> = Arc::default();
         let worker = DiffWorker {
             channel: receiver,
             diff: diff.clone(),
@@ -70,7 +70,7 @@ impl DiffHandle {
 
     pub fn load(&self) -> Diff {
         Diff {
-            diff: self.diff.lock(),
+            diff: self.diff.read(),
             inverted: self.inverted,
         }
     }
@@ -164,7 +164,7 @@ impl Hunk {
 /// non-overlapping order
 #[derive(Debug)]
 pub struct Diff<'a> {
-    diff: MutexGuard<'a, DiffInner>,
+    diff: RwLockReadGuard<'a, DiffInner>,
     inverted: bool,
 }
 

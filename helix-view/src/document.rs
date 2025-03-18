@@ -7,11 +7,13 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
+use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
+use once_cell::sync::OnceCell;
 use thiserror;
 
 use ::parking_lot::Mutex;
@@ -37,9 +39,12 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::editor::Config;
-use crate::events::{DocumentDidChange, SelectionDidChange};
-use crate::{DocumentId, Editor, Theme, View, ViewId};
+use crate::{
+    editor::Config,
+    events::{DocumentDidChange, SelectionDidChange},
+    view::ViewPosition,
+    DocumentId, Editor, Theme, View, ViewId,
+};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -103,6 +108,7 @@ impl Serialize for Mode {
 #[derive(Debug, Clone)]
 pub struct DocumentSavedEvent {
     pub revision: usize,
+    pub save_time: SystemTime,
     pub doc_id: DocumentId,
     pub path: PathBuf,
     pub text: Rope,
@@ -120,7 +126,7 @@ pub struct SavePoint {
 
 #[derive(Debug, thiserror::Error)]
 pub enum DocumentOpenError {
-    #[error("path must be a regular file, simlink, or directory")]
+    #[error("path must be a regular file, symlink, or directory")]
     IrregularFile,
     #[error(transparent)]
     IoError(#[from] io::Error),
@@ -130,6 +136,8 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
+    view_data: HashMap<ViewId, ViewData>,
+    pub active_snippet: Option<ActiveSnippet>,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -141,6 +149,7 @@ pub struct Document {
     pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
+    relative_path: OnceCell<Option<PathBuf>>,
     encoding: &'static encoding::Encoding,
     has_bom: bool,
 
@@ -265,6 +274,7 @@ impl fmt::Debug for Document {
             .field("selections", &self.selections)
             .field("inlay_hints_oudated", &self.inlay_hints_oudated)
             .field("text_annotations", &self.inlay_hints)
+            .field("view_data", &self.view_data)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
             .field("restore_cursor", &self.restore_cursor)
@@ -289,6 +299,14 @@ impl fmt::Debug for DocumentInlayHintsId {
         f.debug_struct("DocumentInlayHintsId")
             .field("lines", &(self.first_line..self.last_line))
             .finish()
+    }
+}
+
+impl Editor {
+    pub(crate) fn clear_doc_relative_paths(&mut self) {
+        for doc in self.documents_mut() {
+            doc.relative_path.take();
+        }
     }
 }
 
@@ -649,13 +667,16 @@ impl Document {
 
         Self {
             id: DocumentId::default(),
+            active_snippet: None,
             path: None,
+            relative_path: OnceCell::new(),
             encoding,
             has_bom,
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
+            view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             line_ending,
             restore_cursor: false,
@@ -696,10 +717,7 @@ impl Document {
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, DocumentOpenError> {
         // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
-        if path
-            .metadata()
-            .map_or(false, |metadata| !metadata.is_file())
-        {
+        if path.metadata().is_ok_and(|metadata| !metadata.is_file()) {
             return Err(DocumentOpenError::IrregularFile);
         }
 
@@ -751,9 +769,20 @@ impl Document {
                 ))
             })
         {
+            log::debug!(
+                "formatting '{}' with command '{}', args {fmt_args:?}",
+                self.display_name(),
+                fmt_cmd.display(),
+            );
             use std::process::Stdio;
             let text = self.text().clone();
+
             let mut process = tokio::process::Command::new(&fmt_cmd);
+
+            if let Some(doc_dir) = self.path.as_ref().and_then(|path| path.parent()) {
+                process.current_dir(doc_dir);
+            }
+
             process
                 .args(fmt_args)
                 .stdin(Stdio::piped())
@@ -767,17 +796,21 @@ impl Document {
                         command: fmt_cmd.to_string_lossy().into(),
                         error: e.kind(),
                     })?;
-                {
-                    let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                    to_writer(&mut stdin, (encoding::UTF_8, false), &text)
-                        .await
-                        .map_err(|_| FormatterError::BrokenStdin)?;
-                }
 
-                let output = process
-                    .wait_with_output()
-                    .await
-                    .map_err(|_| FormatterError::WaitForOutputFailed)?;
+                let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                let input_text = text.clone();
+                let input_task = tokio::spawn(async move {
+                    to_writer(&mut stdin, (encoding::UTF_8, false), &input_text).await
+                    // Note that `stdin` is dropped here, causing the pipe to close. This can
+                    // avoid a deadlock with `wait_with_output` below if the process is waiting on
+                    // stdin to close before exiting.
+                });
+                let (input_result, output_result) = tokio::join! {
+                    input_task,
+                    process.wait_with_output(),
+                };
+                let _ = input_result.map_err(|_| FormatterError::BrokenStdin)?;
+                let output = output_result.map_err(|_| FormatterError::WaitForOutputFailed)?;
 
                 if !output.status.success() {
                     if !output.stderr.is_empty() {
@@ -927,6 +960,9 @@ impl Document {
                     "Path is read only"
                 ));
             }
+
+            // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
+            let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
             let backup = if path.exists() {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
@@ -935,14 +971,22 @@ impl Document {
                 // since the path doesn't exist yet, we just want
                 // the path
                 tokio::task::spawn_blocking(move || -> Option<PathBuf> {
-                    tempfile::Builder::new()
-                        .prefix(path_.file_name()?)
-                        .suffix(".bck")
-                        .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
-                        .ok()?
-                        .into_temp_path()
-                        .keep()
-                        .ok()
+                    let mut builder = tempfile::Builder::new();
+                    builder.prefix(path_.file_name()?).suffix(".bck");
+
+                    let backup_path = if is_hardlink {
+                        builder
+                            .make_in(path_.parent()?, |backup| std::fs::copy(&path_, backup))
+                            .ok()?
+                            .into_temp_path()
+                    } else {
+                        builder
+                            .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
+                            .ok()?
+                            .into_temp_path()
+                    };
+
+                    backup_path.keep().ok()
                 })
                 .await
                 .ok()
@@ -959,8 +1003,29 @@ impl Document {
             }
             .await;
 
+            let save_time = match fs::metadata(&write_path).await {
+                Ok(metadata) => metadata.modified().map_or(SystemTime::now(), |mtime| mtime),
+                Err(_) => SystemTime::now(),
+            };
+
             if let Some(backup) = backup {
-                if write_result.is_err() {
+                if is_hardlink {
+                    let mut delete = true;
+                    if write_result.is_err() {
+                        // Restore backup
+                        let _ = tokio::fs::copy(&backup, &write_path).await.map_err(|e| {
+                            delete = false;
+                            log::error!("Failed to restore backup on write failure: {e}")
+                        });
+                    }
+
+                    if delete {
+                        // Delete backup
+                        let _ = tokio::fs::remove_file(backup)
+                            .await
+                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
+                    }
+                } else if write_result.is_err() {
                     // restore backup
                     let _ = tokio::fs::rename(&backup, &write_path)
                         .await
@@ -981,6 +1046,7 @@ impl Document {
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
+                save_time,
                 doc_id,
                 path,
                 text: text.clone(),
@@ -990,13 +1056,8 @@ impl Document {
                 if !language_server.is_initialized() {
                     continue;
                 }
-                if let Some(notification) = identifier
-                    .clone()
-                    .and_then(|id| language_server.text_document_did_save(id, &text))
-                {
-                    if let Err(err) = notification.await {
-                        log::error!("Failed to send textDocument/didSave: {err}");
-                    }
+                if let Some(id) = identifier.clone() {
+                    language_server.text_document_did_save(id, &text);
                 }
             }
 
@@ -1039,6 +1100,25 @@ impl Document {
         }
     }
 
+    pub fn pickup_last_saved_time(&mut self) {
+        self.last_saved_time = match self.path() {
+            Some(path) => match path.metadata() {
+                Ok(metadata) => match metadata.modified() {
+                    Ok(mtime) => mtime,
+                    Err(err) => {
+                        log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
+                        SystemTime::now()
+                    }
+                },
+                Err(err) => {
+                    log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
+                    SystemTime::now()
+                }
+            },
+            None => SystemTime::now(),
+        };
+    }
+
     // Detect if the file is readonly and change the readonly field if necessary (unix only)
     pub fn detect_readonly(&mut self) {
         // Allows setting the flag for files the user cannot modify, like root files
@@ -1076,9 +1156,7 @@ impl Document {
         self.apply(&transaction, view.id);
         self.append_changes_to_history(view);
         self.reset_modified();
-
-        self.last_saved_time = SystemTime::now();
-
+        self.pickup_last_saved_time();
         self.detect_indent_and_line_ending();
 
         match provider_registry.get_diff_base(&path) {
@@ -1112,11 +1190,16 @@ impl Document {
     pub fn set_path(&mut self, path: Option<&Path>) {
         let path = path.map(helix_stdx::path::canonicalize);
 
+        // `take` to remove any prior relative path that may have existed.
+        // This will get set in `relative_path()`.
+        self.relative_path.take();
+
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
         self.path = path;
 
         self.detect_readonly();
+        self.pickup_last_saved_time();
     }
 
     /// Set the programming language for the file and load associated data (e.g. highlighting)
@@ -1184,12 +1267,14 @@ impl Document {
         self.set_selection(view_id, Selection::single(origin.anchor, origin.head));
     }
 
-    /// Initializes a new selection for the given view if it does not
-    /// already have one.
+    /// Initializes a new selection and view_data for the given view
+    /// if it does not already have them.
     pub fn ensure_view_init(&mut self, view_id: ViewId) {
-        if self.selections.get(&view_id).is_none() {
+        if !self.selections.contains_key(&view_id) {
             self.reset_selection(view_id);
         }
+
+        self.view_data_mut(view_id);
     }
 
     /// Mark document as recent used for MRU sorting
@@ -1214,28 +1299,12 @@ impl Document {
         use helix_core::Assoc;
 
         let old_doc = self.text().clone();
+        let changes = transaction.changes();
+        if !changes.apply(&mut self.text) {
+            return false;
+        }
 
-        let success = transaction.changes().apply(&mut self.text);
-
-        if success {
-            if emit_lsp_notification {
-                helix_event::dispatch(DocumentDidChange {
-                    doc: self,
-                    view: view_id,
-                    old_text: &old_doc,
-                });
-            }
-
-            for selection in self.selections.values_mut() {
-                *selection = selection
-                    .clone()
-                    // Map through changes
-                    .map(transaction.changes())
-                    // Ensure all selections across all views still adhere to invariants.
-                    .ensure_invariants(self.text.slice(..));
-            }
-
-            // if specified, the current selection should instead be replaced by transaction.selection
+        if changes.is_empty() {
             if let Some(selection) = transaction.selection() {
                 self.selections.insert(
                     view_id,
@@ -1246,129 +1315,158 @@ impl Document {
                     view: view_id,
                 });
             }
-
-            self.modified_since_accessed = true;
+            return true;
         }
 
-        if !transaction.changes().is_empty() {
-            self.version += 1;
-            // start computing the diff in parallel
-            if let Some(diff_handle) = &self.diff_handle {
-                diff_handle.update_document(self.text.clone(), false);
-            }
+        self.modified_since_accessed = true;
+        self.version += 1;
 
-            // generate revert to savepoint
-            if !self.savepoints.is_empty() {
-                let revert = transaction.invert(&old_doc);
-                self.savepoints
-                    .retain_mut(|save_point| match save_point.upgrade() {
-                        Some(savepoint) => {
-                            let mut revert_to_savepoint = savepoint.revert.lock();
-                            *revert_to_savepoint =
-                                revert.clone().compose(mem::take(&mut revert_to_savepoint));
-                            true
-                        }
-                        None => false,
-                    })
-            }
+        for selection in self.selections.values_mut() {
+            *selection = selection
+                .clone()
+                // Map through changes
+                .map(transaction.changes())
+                // Ensure all selections across all views still adhere to invariants.
+                .ensure_invariants(self.text.slice(..));
+        }
 
-            // update tree-sitter syntax tree
-            if let Some(syntax) = &mut self.syntax {
-                // TODO: no unwrap
-                let res = syntax.update(
-                    old_doc.slice(..),
-                    self.text.slice(..),
-                    transaction.changes(),
-                );
-                if res.is_err() {
-                    log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
-                    self.syntax = None;
-                }
-            }
+        for view_data in self.view_data.values_mut() {
+            view_data.view_position.anchor = transaction
+                .changes()
+                .map_pos(view_data.view_position.anchor, Assoc::Before);
+        }
 
-            let changes = transaction.changes();
-
-            // map diagnostics over changes too
-            changes.update_positions(self.diagnostics.iter_mut().map(|diagnostic| {
-                let assoc = if diagnostic.starts_at_word {
-                    Assoc::BeforeWord
-                } else {
-                    Assoc::After
-                };
-                (&mut diagnostic.range.start, assoc)
-            }));
-            changes.update_positions(self.diagnostics.iter_mut().filter_map(|diagnostic| {
-                if diagnostic.zero_width {
-                    // for zero width diagnostics treat the diagnostic as a point
-                    // rather than a range
-                    return None;
-                }
-                let assoc = if diagnostic.ends_at_word {
-                    Assoc::AfterWord
-                } else {
-                    Assoc::Before
-                };
-                Some((&mut diagnostic.range.end, assoc))
-            }));
-            self.diagnostics.retain_mut(|diagnostic| {
-                if diagnostic.zero_width {
-                    diagnostic.range.end = diagnostic.range.start
-                } else if diagnostic.range.start >= diagnostic.range.end {
-                    return false;
-                }
-                diagnostic.line = self.text.char_to_line(diagnostic.range.start);
-                true
-            });
-
-            self.diagnostics.sort_by_key(|diagnostic| {
-                (diagnostic.range, diagnostic.severity, diagnostic.provider)
-            });
-
-            // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
-            let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
-                changes.update_positions(
-                    annotations
-                        .iter_mut()
-                        .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
-                );
-            };
-
-            self.inlay_hints_oudated = true;
-            for text_annotation in self.inlay_hints.values_mut() {
-                let DocumentInlayHints {
-                    id: _,
-                    type_inlay_hints,
-                    parameter_inlay_hints,
-                    other_inlay_hints,
-                    padding_before_inlay_hints,
-                    padding_after_inlay_hints,
-                } = text_annotation;
-
-                apply_inlay_hint_changes(padding_before_inlay_hints);
-                apply_inlay_hint_changes(type_inlay_hints);
-                apply_inlay_hint_changes(parameter_inlay_hints);
-                apply_inlay_hint_changes(other_inlay_hints);
-                apply_inlay_hint_changes(padding_after_inlay_hints);
-            }
-
-            if emit_lsp_notification {
-                // TODO: move to hook
-                // emit lsp notification
-                for language_server in self.language_servers() {
-                    let notify = language_server.text_document_did_change(
-                        self.versioned_identifier(),
-                        &old_doc,
-                        self.text(),
-                        changes,
-                    );
-
-                    if let Some(notify) = notify {
-                        tokio::spawn(notify);
+        // generate revert to savepoint
+        if !self.savepoints.is_empty() {
+            let revert = transaction.invert(&old_doc);
+            self.savepoints
+                .retain_mut(|save_point| match save_point.upgrade() {
+                    Some(savepoint) => {
+                        let mut revert_to_savepoint = savepoint.revert.lock();
+                        *revert_to_savepoint =
+                            revert.clone().compose(mem::take(&mut revert_to_savepoint));
+                        true
                     }
-                }
+                    None => false,
+                })
+        }
+
+        // update tree-sitter syntax tree
+        if let Some(syntax) = &mut self.syntax {
+            // TODO: no unwrap
+            let res = syntax.update(
+                old_doc.slice(..),
+                self.text.slice(..),
+                transaction.changes(),
+            );
+            if res.is_err() {
+                log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
+                self.syntax = None;
             }
         }
-        success
+
+        // TODO: all of that should likely just be hooks
+        // start computing the diff in parallel
+        if let Some(diff_handle) = &self.diff_handle {
+            diff_handle.update_document(self.text.clone(), false);
+        }
+
+        // map diagnostics over changes too
+        changes.update_positions(self.diagnostics.iter_mut().map(|diagnostic| {
+            let assoc = if diagnostic.starts_at_word {
+                Assoc::BeforeWord
+            } else {
+                Assoc::After
+            };
+            (&mut diagnostic.range.start, assoc)
+        }));
+        changes.update_positions(self.diagnostics.iter_mut().filter_map(|diagnostic| {
+            if diagnostic.zero_width {
+                // for zero width diagnostics treat the diagnostic as a point
+                // rather than a range
+                return None;
+            }
+            let assoc = if diagnostic.ends_at_word {
+                Assoc::AfterWord
+            } else {
+                Assoc::Before
+            };
+            Some((&mut diagnostic.range.end, assoc))
+        }));
+        self.diagnostics.retain_mut(|diagnostic| {
+            if diagnostic.zero_width {
+                diagnostic.range.end = diagnostic.range.start
+            } else if diagnostic.range.start >= diagnostic.range.end {
+                return false;
+            }
+            diagnostic.line = self.text.char_to_line(diagnostic.range.start);
+            true
+        });
+
+        self.diagnostics
+            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+
+        // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
+        let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
+            changes.update_positions(
+                annotations
+                    .iter_mut()
+                    .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
+            );
+        };
+
+        self.inlay_hints_oudated = true;
+        for text_annotation in self.inlay_hints.values_mut() {
+            let DocumentInlayHints {
+                id: _,
+                type_inlay_hints,
+                parameter_inlay_hints,
+                other_inlay_hints,
+                padding_before_inlay_hints,
+                padding_after_inlay_hints,
+            } = text_annotation;
+
+            apply_inlay_hint_changes(padding_before_inlay_hints);
+            apply_inlay_hint_changes(type_inlay_hints);
+            apply_inlay_hint_changes(parameter_inlay_hints);
+            apply_inlay_hint_changes(other_inlay_hints);
+            apply_inlay_hint_changes(padding_after_inlay_hints);
+        }
+
+        helix_event::dispatch(DocumentDidChange {
+            doc: self,
+            view: view_id,
+            old_text: &old_doc,
+            changes,
+            ghost_transaction: !emit_lsp_notification,
+        });
+
+        // if specified, the current selection should instead be replaced by transaction.selection
+        if let Some(selection) = transaction.selection() {
+            self.selections.insert(
+                view_id,
+                selection.clone().ensure_invariants(self.text.slice(..)),
+            );
+            helix_event::dispatch(SelectionDidChange {
+                doc: self,
+                view: view_id,
+            });
+        }
+
+        if emit_lsp_notification {
+            // TODO: move to hook
+            // emit lsp notification
+            for language_server in self.language_servers() {
+                let _ = language_server.text_document_did_change(
+                    self.versioned_identifier(),
+                    &old_doc,
+                    self.text(),
+                    changes,
+                );
+            }
+        }
+
+        true
     }
 
     fn apply_inner(
@@ -1580,7 +1678,7 @@ impl Document {
     }
 
     /// Set the document's latest saved revision to the given one.
-    pub fn set_last_saved_revision(&mut self, rev: usize) {
+    pub fn set_last_saved_revision(&mut self, rev: usize, save_time: SystemTime) {
         log::debug!(
             "doc {} revision updated {} -> {}",
             self.id,
@@ -1588,7 +1686,7 @@ impl Document {
             rev
         );
         self.last_saved_revision = rev;
-        self.last_saved_time = SystemTime::now();
+        self.last_saved_time = save_time;
     }
 
     /// Get the document's latest saved revision.
@@ -1636,6 +1734,12 @@ impl Document {
     /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version
+    }
+
+    pub fn path_completion_enabled(&self) -> bool {
+        self.language_config()
+            .and_then(|lang_config| lang_config.path_completion)
+            .unwrap_or_else(|| self.config.load().path_completion)
     }
 
     /// maintains the order as configured in the language_servers TOML array
@@ -1759,16 +1863,41 @@ impl Document {
         &self.selections
     }
 
-    pub fn relative_path(&self) -> Option<Cow<Path>> {
-        self.path
-            .as_deref()
-            .map(helix_stdx::path::get_relative_path)
+    fn view_data(&self, view_id: ViewId) -> &ViewData {
+        self.view_data
+            .get(&view_id)
+            .expect("This should only be called after ensure_view_init")
     }
 
-    pub fn display_name(&self) -> Cow<'static, str> {
+    fn view_data_mut(&mut self, view_id: ViewId) -> &mut ViewData {
+        self.view_data.entry(view_id).or_default()
+    }
+
+    pub(crate) fn get_view_offset(&self, view_id: ViewId) -> Option<ViewPosition> {
+        Some(self.view_data.get(&view_id)?.view_position)
+    }
+
+    pub fn view_offset(&self, view_id: ViewId) -> ViewPosition {
+        self.view_data(view_id).view_position
+    }
+
+    pub fn set_view_offset(&mut self, view_id: ViewId, new_offset: ViewPosition) {
+        self.view_data_mut(view_id).view_position = new_offset;
+    }
+
+    pub fn relative_path(&self) -> Option<&Path> {
+        self.relative_path
+            .get_or_init(|| {
+                self.path
+                    .as_ref()
+                    .map(|path| helix_stdx::path::get_relative_path(path).to_path_buf())
+            })
+            .as_deref()
+    }
+
+    pub fn display_name(&self) -> Cow<'_, str> {
         self.relative_path()
-            .map(|path| path.to_string_lossy().to_string().into())
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
+            .map_or_else(|| SCRATCH_BUFFER_NAME.into(), |path| path.to_string_lossy())
     }
 
     // transact(Fn) ?
@@ -1823,12 +1952,15 @@ impl Document {
             return None;
         };
 
-        let severity = diagnostic.severity.map(|severity| match severity {
-            lsp::DiagnosticSeverity::ERROR => Error,
-            lsp::DiagnosticSeverity::WARNING => Warning,
-            lsp::DiagnosticSeverity::INFORMATION => Info,
-            lsp::DiagnosticSeverity::HINT => Hint,
-            severity => unreachable!("unrecognized diagnostic severity: {:?}", severity),
+        let severity = diagnostic.severity.and_then(|severity| match severity {
+            lsp::DiagnosticSeverity::ERROR => Some(Error),
+            lsp::DiagnosticSeverity::WARNING => Some(Warning),
+            lsp::DiagnosticSeverity::INFORMATION => Some(Info),
+            lsp::DiagnosticSeverity::HINT => Some(Hint),
+            severity => {
+                log::error!("unrecognized diagnostic severity: {:?}", severity);
+                None
+            }
         });
 
         if let Some(lang_conf) = language_config {
@@ -1864,8 +1996,8 @@ impl Document {
         };
 
         let ends_at_word =
-            start != end && end != 0 && text.get_char(end - 1).map_or(false, char_is_word);
-        let starts_at_word = start != end && text.get_char(start).map_or(false, char_is_word);
+            start != end && end != 0 && text.get_char(end - 1).is_some_and(char_is_word);
+        let starts_at_word = start != end && text.get_char(start).is_some_and(char_is_word);
 
         Some(Diagnostic {
             range: Range { start, end },
@@ -1898,7 +2030,7 @@ impl Document {
             self.clear_diagnostics(language_server_id);
         } else {
             self.diagnostics.retain(|d| {
-                if language_server_id.map_or(false, |id| id != d.provider) {
+                if language_server_id.is_some_and(|id| id != d.provider) {
                     return true;
                 }
 
@@ -1942,6 +2074,16 @@ impl Document {
         match &self.language {
             Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
             None => global_config,
+        }
+    }
+
+    pub fn snippet_ctx(&self) -> SnippetRenderCtx {
+        SnippetRenderCtx {
+            // TODO snippet variable resolution
+            resolve_var: Box::new(|_| None),
+            tab_width: self.tab_width(),
+            indent_style: self.indent_style,
+            line_ending: self.line_ending.as_str(),
         }
     }
 
@@ -2034,6 +2176,11 @@ impl Document {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct ViewData {
+    view_position: ViewPosition,
+}
+
 #[derive(Clone, Debug)]
 pub enum FormatterError {
     SpawningFailed {
@@ -2043,7 +2190,6 @@ pub enum FormatterError {
     BrokenStdin,
     WaitForOutputFailed,
     InvalidUtf8Output,
-    DiskReloadError(String),
     NonZeroExitStatus(Option<String>),
 }
 
@@ -2058,7 +2204,6 @@ impl Display for FormatterError {
             Self::BrokenStdin => write!(f, "Could not write to formatter stdin"),
             Self::WaitForOutputFailed => write!(f, "Waiting for formatter output failed"),
             Self::InvalidUtf8Output => write!(f, "Invalid UTF-8 formatter output"),
-            Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
             Self::NonZeroExitStatus(Some(output)) => write!(f, "Formatter error: {}", output),
             Self::NonZeroExitStatus(None) => {
                 write!(f, "Formatter exited with non zero exit status")

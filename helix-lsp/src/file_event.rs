@@ -113,17 +113,13 @@ impl Handler {
                             "Sending didChangeWatchedFiles notification to client '{}'",
                             client.name()
                         );
-                        if let Err(err) = crate::block_on(client
-                            .did_change_watched_files(vec![lsp::FileEvent {
-                                uri,
-                                // We currently always send the CHANGED state
-                                // since we don't actually have more context at
-                                // the moment.
-                                typ: lsp::FileChangeType::CHANGED,
-                            }]))
-                        {
-                            log::warn!("Failed to send didChangeWatchedFiles notification to client: {err}");
-                        }
+                        client.did_change_watched_files(vec![lsp::FileEvent {
+                            uri,
+                            // We currently always send the CHANGED state
+                            // since we don't actually have more context at
+                            // the moment.
+                            typ: lsp::FileChangeType::CHANGED,
+                        }]);
                         true
                     });
                 }

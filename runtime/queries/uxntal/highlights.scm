@@ -11,5 +11,4 @@
 (relative_pad) @constant
 (label) @label
 (sub_label) @label
-(ERROR) @error
 ["[" "]" "{" "}"] @punctuation.bracket

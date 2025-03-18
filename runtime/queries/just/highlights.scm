@@ -1,33 +1,155 @@
-(assignment (NAME) @variable)
-(alias (NAME) @variable)
-(value (NAME) @variable)
-(parameter (NAME) @variable)
-(setting (NAME) @keyword)
-(setting "shell" @keyword)
+; This file specifies how matched syntax patterns should be highlighted
 
-(call (NAME) @function)
-(dependency (NAME) @function)
-(depcall (NAME) @function)
-(recipeheader (NAME) @function)
+[
+  "export"
+  "import"
+  "unexport"
+] @keyword.control.import
 
-(depcall (expression) @variable.parameter)
-(parameter) @variable.parameter
-(variadic_parameters) @variable.parameter
+"mod" @keyword.directive
 
-["if" "else"] @keyword.control.conditional
+[
+  "alias"
+  "set"
+  "shell"
+] @keyword
 
-(string) @string
+[
+  "if"
+  "else"
+] @keyword.control.conditional
 
-(boolean ["true" "false"]) @constant.builtin.boolean
+[
+  "&&"
+  "||"
+] @operator
 
-(comment) @comment
+; Variables
 
-; (interpolation) @string
+(value
+  (identifier) @variable)
 
-(shebang interpreter:(TEXT) @keyword ) @comment
+(alias
+  name: (identifier) @variable)
 
-["export" "alias" "set"] @keyword
+(assignment
+  name: (identifier) @variable)
 
-["@" "==" "!=" "+" ":="] @operator
+(shell_variable_name) @variable
 
-[ "(" ")" "[" "]" "{{" "}}" "{" "}"] @punctuation.bracket
+(unexport
+  name: (identifier) @variable)
+
+; Functions
+
+(recipe
+  name: (identifier) @function)
+
+(recipe_dependency
+  name: (identifier) @function.call)
+
+(function_call
+  name: (identifier) @function.builtin)
+
+; Parameters
+
+(recipe_parameter
+  name: (identifier) @variable.parameter)
+
+; Namespaces
+
+(mod
+  name: (identifier) @namespace)
+
+; Paths
+
+(mod
+  (path) @string.special.path)
+
+(import
+  (path) @string.special.path)
+
+; Shebangs
+
+(shebang_line) @keyword.directive
+(shebang_line
+  (shebang_shell) @string.special)
+
+
+(shell_expanded_string
+  [
+    (expansion_short_start)
+    (expansion_long_start)
+    (expansion_long_middle)
+    (expansion_long_end)
+  ] @punctuation.special)
+
+; Operators
+
+[
+  ":="
+  "?"
+  "=="
+  "!="
+  "=~"
+  "!~"
+  "@"
+  "="
+  "$"
+  "*"
+  "+"
+  "&&"
+  "@-"
+  "-@"
+  "-"
+  "/"
+  ":"
+] @operator
+
+; Punctuation
+
+"," @punctuation.delimiter
+
+[
+  "{"
+  "}"
+  "["
+  "]"
+  "("
+  ")"
+  "{{"
+  "}}"
+] @punctuation.bracket
+
+[ "`" "```" ] @punctuation.special
+
+; Literals
+
+; Booleans are not allowed anywhere except in settings
+(setting
+  (boolean) @constant.builtin.boolean)
+
+[
+  (string)
+  (external_command)
+] @string
+
+[
+  (escape_sequence)
+  (escape_variable_end)
+] @constant.character.escape
+
+; Comments
+
+(comment) @comment.line
+
+; highlight known settings
+(setting
+  name: (_) @keyword.function)
+
+; highlight known attributes
+(attribute
+  name: (identifier) @attribute)
+
+; Numbers are part of the syntax tree, even if disallowed
+(numeric_error) @error
