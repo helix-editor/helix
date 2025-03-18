@@ -36,6 +36,9 @@ menu_scroll_bg = "#1E1E2E"
 popup_fg = "#D9E0EE"
 popup_bg = "#1E1E2E"
 
+# UI virtual
+virtual_ruler_bg = "#2A2A3C"  # Slightly lighter than background, close to comment color
+
 # Syntax highlighting
 match_paren_fg = "#F28FAD"
 match_paren_bg = "#1E1E2E"

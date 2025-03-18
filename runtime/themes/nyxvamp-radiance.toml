@@ -16,6 +16,8 @@
 "ui.menu.scroll"              = { fg = "menu_scroll_fg", bg = "menu_scroll_bg" }
 "ui.popup"                    = { fg = "popup_fg", bg = "popup_bg" }
 "ui.match_paren"              = { fg = "match_paren_fg", bg = "match_paren_bg", modifiers = ["bold"] }
+"ui.virtual"                  = { fg = "comment_fg" }
+"ui.virtual.ruler"            = { bg = "virtual_ruler_bg" }
 
 # Syntax Highlighting
 "comment"                     = { fg = "comment_fg", modifiers = ["italic"] }
@@ -82,6 +84,7 @@ popup_fg                      = "#1E1E2E"  # Deep navy
 popup_bg                      = "#E8E8F0"  # Light gray
 match_paren_fg                = "#1E1E2E"  # Deep navy
 match_paren_bg                = "#FEF5BC"  # Soft yellow
+virtual_ruler_bg              = "#EAEAF0"  # Slightly lighter than comment color background
 
 comment_fg                    = "#6E6A86"  # Medium gray comments
 string_fg                     = "#FEF5BC"  # Soft yellow strings (from your visual identity)
