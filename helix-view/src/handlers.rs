@@ -16,12 +16,24 @@ pub enum AutoSaveEvent {
     LeftInsertMode,
 }
 
+#[derive(Debug)]
+pub struct BlameEvent {
+    /// The path for which we request blame
+    pub path: std::path::PathBuf,
+    /// Document for which the blame is requested
+    pub doc_id: DocumentId,
+    /// If this field is set, when we obtain the blame for the file we will
+    /// show blame for this line in the status line
+    pub line: Option<u32>,
+}
+
 pub struct Handlers {
     // only public because most of the actual implementation is in helix-term right now :/
     pub completions: CompletionHandler,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
     pub document_colors: Sender<lsp::DocumentColorsEvent>,
+    pub blame: Sender<BlameEvent>,
 }
 
 impl Handlers {

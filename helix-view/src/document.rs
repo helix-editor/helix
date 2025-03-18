@@ -42,6 +42,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
+use crate::editor::InlineBlameBehaviour;
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
@@ -196,6 +197,10 @@ pub struct Document {
 
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
+    /// Contains blame information for each line in the file
+    /// We store the Result because when we access the blame directly we want to log the error
+    /// But if it is in the background we are just going to ignore the error
+    pub file_blame: Option<anyhow::Result<helix_vcs::FileBlame>>,
 
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
@@ -207,6 +212,8 @@ pub struct Document {
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
+    // when fetching blame on-demand, if this field is `true` we request the blame for this document again
+    pub is_blame_potentially_out_of_date: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -281,6 +288,16 @@ pub struct DocumentInlayHintsId {
     pub first_line: usize,
     /// Last line for which the inlay hints were requested.
     pub last_line: usize,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum LineBlameError<'a> {
+    #[error("Not committed yet")]
+    NotCommittedYet,
+    #[error("Unable to get blame for line {0}: {1}")]
+    NoFileBlame(u32, &'a anyhow::Error),
+    #[error("The blame for this file is not ready yet. Try again in a few seconds")]
+    NotReadyYet,
 }
 
 use std::{fmt, mem};
@@ -719,6 +736,19 @@ impl Document {
             jump_labels: HashMap::new(),
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
+            file_blame: None,
+            is_blame_potentially_out_of_date: false,
+        }
+    }
+
+    pub fn should_request_full_file_blame(
+        &mut self,
+        blame_behaviour: InlineBlameBehaviour,
+    ) -> bool {
+        if blame_behaviour == InlineBlameBehaviour::Disabled {
+            self.is_blame_potentially_out_of_date
+        } else {
+            true
         }
     }
 
@@ -1310,6 +1340,13 @@ impl Document {
         Range::new(0, 1).grapheme_aligned(self.text().slice(..))
     }
 
+    /// Get the line of cursor for the primary selection
+    pub fn cursor_line(&self, view_id: ViewId) -> usize {
+        let text = self.text();
+        let selection = self.selection(view_id);
+        text.char_to_line(selection.primary().cursor(text.slice(..)))
+    }
+
     /// Reset the view's selection on this document to the
     /// [origin](Document::origin) cursor.
     pub fn reset_selection(&mut self, view_id: ViewId) {
@@ -1539,6 +1576,19 @@ impl Document {
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         self.apply_inner(transaction, view_id, true)
+    }
+
+    /// Get the line blame for this view
+    pub fn line_blame(&self, cursor_line: u32, format: &str) -> Result<String, LineBlameError> {
+        Ok(self
+            .file_blame
+            .as_ref()
+            .ok_or(LineBlameError::NotReadyYet)?
+            .as_ref()
+            .map_err(|err| LineBlameError::NoFileBlame(cursor_line.saturating_add(1), err))?
+            .blame_for_line(cursor_line, self.diff_handle())
+            .ok_or(LineBlameError::NotCommittedYet)?
+            .parse_format(format))
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text

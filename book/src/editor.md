@@ -4,6 +4,7 @@
 - [`[editor.clipboard-provider]` Section](#editorclipboard-provider-section)
 - [`[editor.statusline]` Section](#editorstatusline-section)
 - [`[editor.lsp]` Section](#editorlsp-section)
+- [`[editor.inline-blame]` Section](#editorinlineblame-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
@@ -160,6 +161,41 @@ The following statusline elements can be configured:
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
 
 [^2]: You may also have to activate them in the language server config for them to appear, not just in Helix. Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances. Please report any bugs you see so we can fix them!
+
+### `[editor.inline-blame]` Section
+
+| Key     | Description                                | Default |
+| ------- | ------------------------------------------ | ------- |
+| `behaviour` | Choose the behaviour of inline blame | `"disabled"` |
+| `format` | The format in which to show the inline blame | `"{author}, {time-ago} • {message} • {commit}"` |
+
+The `behaviour` can be one of the following:
+- `"visible"`: Inline blame is turned on. Virtual text will appear at the end of each non-empty line, showing information about the latest commit for that line.
+- `"background"`: Inline blame is turned off, but the blame is still requested in the background when opening and reloading files. This will have zero impact on performance, but will use slightly more resources in the background. This allows blame for line (`space + B`) to be retrieved instantaneously with zero delay.
+- `"disabled"`: Inline blame is turned off, with no requests happening in the background. When you run `space + B` for the first time in a file, it will load the blame for this file. You may have to wait a little bit for the blame to become available, depending on the size of your repository. After it becomes available, for this file `space + B` will retrieve the blame for any line in this file with zero delay. If the file is reloaded, the process will repeat as the blame is potentially out of date and needs to be refreshed.
+
+`inline-blame-format` allows customization of the blame message, and can be set to any string. Variables can be used like so: `{variable}`. These are the available variables:
+
+- `author`: The author of the commit
+- `date`: When the commit was made
+- `time-ago`: How long ago the commit was made
+- `message`: The message of the commit, excluding the body
+- `body`: The body of the commit
+- `commit`: The short hex SHA1 hash of the commit
+- `email`: The email of the author of the commit
+
+Any of the variables can potentially be empty.
+In this case, the content before the variable will not be included in the string.
+If the variable is at the beginning of the string, the content after the variable will not be included.
+
+Some examples, using the default value `format` value:
+
+- If `author` is empty: `"{time-ago} • {message} • {commit}"`
+- If `time-ago` is empty: `"{author} • {message} • {commit}"`
+- If `message` is empty: `"{author}, {time-ago} • {commit}"`
+- If `commit` is empty: `"{author}, {time-ago} • {message}"`
+- If `time-ago` and `message` is empty: `"{author} • {commit}"`
+- If `author` and `message` is empty: `"{time-ago} • {commit}"`
 
 ### `[editor.cursor-shape]` Section
 
