@@ -1,7 +1,8 @@
 ## Package managers
 
 - [Linux](#linux)
-  - [Ubuntu](#ubuntu)
+  - [Ubuntu/Debian](#ubuntudebian)
+  - [Ubuntu (PPA)](#ubuntu-ppa)
   - [Fedora/RHEL](#fedorarhel)
   - [Arch Linux extra](#arch-linux-extra)
   - [NixOS](#nixos)
@@ -17,13 +18,20 @@
   - [Chocolatey](#chocolatey)
   - [MSYS2](#msys2)
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg)](https://repology.org/project/helix-editor/versions)
 
 ## Linux
 
 The following third party repositories are available:
 
-### Ubuntu
+### Ubuntu/Debian
+
+Install the Debian package from the release page.
+
+If you are running a system older than Ubuntu 22.04, Mint 21, or Debian 12, you can build the `.deb` file locally
+[from source](./building-from-source.md#building-the-debian-package).
+
+### Ubuntu (PPA)
 
 Add the `PPA` for Helix:
 
@@ -101,7 +109,15 @@ Download the official Helix AppImage from the [latest releases](https://github.c
 chmod +x helix-*.AppImage # change permission for executable mode
 ./helix-*.AppImage # run helix
 ```
- 
+
+You can optionally [add the `.desktop` file](./building-from-source.md#configure-the-desktop-shortcut). Helix must be installed in `PATH` with the name `hx`. For example:
+```sh
+mkdir -p "$HOME/.local/bin"
+mv helix-*.AppImage "$HOME/.local/bin/hx"
+```
+
+and make sure `~/.local/bin` is in your `PATH`.
+
 ## macOS
 
 ### Homebrew Core
@@ -113,7 +129,7 @@ brew install helix
 ### MacPorts
 
 ```sh
-port install helix
+sudo port install helix
 ```
 
 ## Windows

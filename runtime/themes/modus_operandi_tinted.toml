@@ -1,6 +1,6 @@
 # Author: Alexis Mousset <contact@amousset.me>
 # modus_operandi.toml variant
-# Version 4.4.0
+# Version 4.6.0
 
 inherits = "modus_operandi"
 

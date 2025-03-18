@@ -40,8 +40,15 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let help = format!(
-        "\
+    let args = Args::parse_args().context("could not parse arguments")?;
+
+    helix_loader::initialize_config_file(args.config_file.clone());
+    helix_loader::initialize_log_file(args.log_file.clone());
+
+    // Help has a higher priority and should be handled separately.
+    if args.display_help {
+        print!(
+            "\
 {} {}
 {}
 {}
@@ -69,21 +76,12 @@ FLAGS:
     -w, --working-dir <path>       Specify an initial working directory
     +N                             Open the first given file at line number N
 ",
-        env!("CARGO_PKG_NAME"),
-        VERSION_AND_GIT_HASH,
-        env!("CARGO_PKG_AUTHORS"),
-        env!("CARGO_PKG_DESCRIPTION"),
-        helix_loader::default_log_file().display(),
-    );
-
-    let mut args = Args::parse_args().context("could not parse arguments")?;
-
-    helix_loader::initialize_config_file(args.config_file.clone());
-    helix_loader::initialize_log_file(args.log_file.clone());
-
-    // Help has a higher priority and should be handled separately.
-    if args.display_help {
-        print!("{}", help);
+            env!("CARGO_PKG_NAME"),
+            VERSION_AND_GIT_HASH,
+            env!("CARGO_PKG_AUTHORS"),
+            env!("CARGO_PKG_DESCRIPTION"),
+            helix_loader::default_log_file().display(),
+        );
         std::process::exit(0);
     }
 
@@ -116,10 +114,6 @@ FLAGS:
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;
 
-    // Before setting the working directory, resolve all the paths in args.files
-    for (path, _) in &mut args.files {
-        *path = helix_stdx::path::canonicalize(&*path);
-    }
     // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
     // Application::new() depends on this logic so it must be updated if this changes.
     if let Some(path) = &args.working_directory {
@@ -154,8 +148,7 @@ FLAGS:
     });
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app =
-        Application::new(args, config, lang_loader).context("unable to create new application")?;
+    let mut app = Application::new(args, config, lang_loader).context("unable to start Helix")?;
 
     let exit_code = app.run(&mut EventStream::new()).await?;
 

@@ -1,6 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
+use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -11,7 +11,6 @@ use helix_view::{
     align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
     editor::{ConfigEvent, EditorEvent},
-    events::DiagnosticsDidChange,
     graphics::Rect,
     theme,
     tree::Layout,
@@ -33,7 +32,7 @@ use crate::{
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
+use std::{io::stdin, path::Path, sync::Arc};
 
 #[cfg(not(windows))]
 use anyhow::Context;
@@ -65,11 +64,6 @@ pub struct Application {
     pub editor: Editor,
 
     config: Arc<ArcSwap<Config>>,
-
-    #[allow(dead_code)]
-    theme_loader: Arc<theme::Loader>,
-    #[allow(dead_code)]
-    syn_loader: Arc<ArcSwap<syntax::Loader>>,
 
     signals: Signals,
     jobs: Jobs,
@@ -107,25 +101,7 @@ impl Application {
 
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
-
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| theme_loader.default_theme(true_color));
-
-        let syn_loader = Arc::new(ArcSwap::from_pointee(lang_loader));
+        let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
@@ -140,13 +116,14 @@ impl Application {
         let handlers = handlers::setup(config.clone());
         let mut editor = Editor::new(
             area,
-            theme_loader.clone(),
-            syn_loader.clone(),
+            Arc::new(theme_loader),
+            Arc::new(ArcSwap::from_pointee(lang_loader)),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
             handlers,
         );
+        Self::load_configured_theme(&mut editor, &config.load());
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -164,7 +141,7 @@ impl Application {
 
             // If the first file is a directory, skip it and open a picker
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                let picker = ui::file_picker(first, &config.load().editor);
+                let picker = ui::file_picker(&editor, first);
                 compositor.push(Box::new(overlaid(picker)));
             }
 
@@ -175,7 +152,7 @@ impl Application {
                     nr_of_files += 1;
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
-                            "expected a path to file, found a directory. (to open a directory pass it as first argument)"
+                            "expected a path to file, but found a directory: {file:?}. (to open a directory pass it as first argument)"
                         ));
                     } else {
                         // If the user passes in either `--vsplit` or
@@ -189,6 +166,7 @@ impl Application {
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
                         };
+                        let old_id = editor.document_id_by_path(&file);
                         let doc_id = match editor.open(&file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
@@ -196,6 +174,11 @@ impl Application {
                                 continue;
                             }
                             Err(err) => return Err(anyhow::anyhow!(err)),
+                            // We can't open more than 1 buffer for 1 file, in this case we already have opened this file previously
+                            Ok(doc_id) if old_id == Some(doc_id) => {
+                                nr_of_files -= 1;
+                                doc_id
+                            }
                             Ok(doc_id) => doc_id,
                         };
                         // with Action::Load all documents have the same view
@@ -204,8 +187,13 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-                        doc.set_selection(view_id, pos);
+                        let selection = pos
+                            .into_iter()
+                            .map(|coords| {
+                                Range::point(pos_at_coords(doc.text().slice(..), coords, true))
+                            })
+                            .collect();
+                        doc.set_selection(view_id, selection);
                     }
                 }
 
@@ -234,8 +222,6 @@ impl Application {
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
-        editor.set_theme(theme);
-
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
@@ -252,12 +238,7 @@ impl Application {
             compositor,
             terminal,
             editor,
-
             config,
-
-            theme_loader,
-            syn_loader,
-
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
@@ -407,10 +388,9 @@ impl Application {
     fn refresh_language_config(&mut self) -> Result<(), Error> {
         let lang_loader = helix_core::config::user_lang_loader()?;
 
-        self.syn_loader.store(Arc::new(lang_loader));
-        self.editor.syn_loader = self.syn_loader.clone();
+        self.editor.syn_loader.store(Arc::new(lang_loader));
         for document in self.editor.documents.values_mut() {
-            document.detect_language(self.syn_loader.clone());
+            document.detect_language(self.editor.syn_loader.clone());
             let diagnostics = Editor::doc_diagnostics(
                 &self.editor.language_servers,
                 &self.editor.diagnostics,
@@ -422,34 +402,13 @@ impl Application {
         Ok(())
     }
 
-    /// Refresh theme after config change
-    fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                self.theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
-
-        self.editor.set_theme(theme);
-        Ok(())
-    }
-
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
-            self.refresh_theme(&default_config)?;
+            // Refresh theme after config change
+            Self::load_configured_theme(&mut self.editor, &default_config);
             self.terminal
                 .reconfigure(default_config.editor.clone().into())?;
             // Store new config
@@ -465,6 +424,37 @@ impl Application {
                 self.editor.set_error(err.to_string());
             }
         }
+    }
+
+    /// Load the theme set in configuration
+    fn load_configured_theme(editor: &mut Editor, config: &Config) {
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                editor
+                    .theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| {
+                        let colors_ok = true_color || theme.is_16_color();
+                        if !colors_ok {
+                            log::warn!(
+                                "loaded theme `{}` but cannot use it because true color \
+                                support is not enabled",
+                                theme.name()
+                            );
+                        }
+                        colors_ok
+                    })
+            })
+            .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
+        editor.set_theme(theme);
     }
 
     #[cfg(windows)]
@@ -711,7 +701,7 @@ impl Application {
                         // This might not be required by the spec but Neovim does this as well, so it's
                         // probably a good idea for compatibility.
                         if let Some(config) = language_server.config() {
-                            tokio::spawn(language_server.did_change_configuration(config.clone()));
+                            language_server.did_change_configuration(config.clone());
                         }
 
                         let docs = self
@@ -729,15 +719,15 @@ impl Application {
                             let language_id =
                                 doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
-                            tokio::spawn(language_server.text_document_did_open(
+                            language_server.text_document_did_open(
                                 url,
                                 doc.version(),
                                 doc.text(),
                                 language_id,
-                            ));
+                            );
                         }
                     }
-                    Notification::PublishDiagnostics(mut params) => {
+                    Notification::PublishDiagnostics(params) => {
                         let uri = match helix_core::Uri::try_from(params.uri) {
                             Ok(uri) => uri,
                             Err(err) => {
@@ -750,103 +740,23 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
-                        // have to inline the function because of borrow checking...
-                        let doc = self.editor.documents.values_mut()
-                            .find(|doc| doc.uri().is_some_and(|u| u == uri))
-                            .filter(|doc| {
-                                if let Some(version) = params.version {
-                                    if version != doc.version() {
-                                        log::info!("Version ({version}) is out of date for {uri:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
-                                        return false;
-                                    }
-                                }
-                                true
-                            });
-
-                        let mut unchanged_diag_sources = Vec::new();
-                        if let Some(doc) = &doc {
-                            let lang_conf = doc.language.clone();
-
-                            if let Some(lang_conf) = &lang_conf {
-                                if let Some(old_diagnostics) = self.editor.diagnostics.get(&uri) {
-                                    if !lang_conf.persistent_diagnostic_sources.is_empty() {
-                                        // Sort diagnostics first by severity and then by line numbers.
-                                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                                        params
-                                            .diagnostics
-                                            .sort_by_key(|d| (d.severity, d.range.start));
-                                    }
-                                    for source in &lang_conf.persistent_diagnostic_sources {
-                                        let new_diagnostics = params
-                                            .diagnostics
-                                            .iter()
-                                            .filter(|d| d.source.as_ref() == Some(source));
-                                        let old_diagnostics = old_diagnostics
-                                            .iter()
-                                            .filter(|(d, d_server)| {
-                                                *d_server == server_id
-                                                    && d.source.as_ref() == Some(source)
-                                            })
-                                            .map(|(d, _)| d);
-                                        if new_diagnostics.eq(old_diagnostics) {
-                                            unchanged_diag_sources.push(source.clone())
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        let diagnostics = params.diagnostics.into_iter().map(|d| (d, server_id));
-
-                        // Insert the original lsp::Diagnostics here because we may have no open document
-                        // for diagnosic message and so we can't calculate the exact position.
-                        // When using them later in the diagnostics picker, we calculate them on-demand.
-                        let diagnostics = match self.editor.diagnostics.entry(uri) {
-                            Entry::Occupied(o) => {
-                                let current_diagnostics = o.into_mut();
-                                // there may entries of other language servers, which is why we can't overwrite the whole entry
-                                current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
-                                current_diagnostics.extend(diagnostics);
-                                current_diagnostics
-                                // Sort diagnostics first by severity and then by line numbers.
-                            }
-                            Entry::Vacant(v) => v.insert(diagnostics.collect()),
-                        };
-
-                        // Sort diagnostics first by severity and then by line numbers.
-                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                        diagnostics
-                            .sort_by_key(|(d, server_id)| (d.severity, d.range.start, *server_id));
-
-                        if let Some(doc) = doc {
-                            let diagnostic_of_language_server_and_not_in_unchanged_sources =
-                                |diagnostic: &lsp::Diagnostic, ls_id| {
-                                    ls_id == server_id
-                                        && diagnostic.source.as_ref().map_or(true, |source| {
-                                            !unchanged_diag_sources.contains(source)
-                                        })
-                                };
-                            let diagnostics = Editor::doc_diagnostics_with_filter(
-                                &self.editor.language_servers,
-                                &self.editor.diagnostics,
-                                doc,
-                                diagnostic_of_language_server_and_not_in_unchanged_sources,
-                            );
-                            doc.replace_diagnostics(
-                                diagnostics,
-                                &unchanged_diag_sources,
-                                Some(server_id),
-                            );
-
-                            let doc = doc.id();
-                            helix_event::dispatch(DiagnosticsDidChange {
-                                editor: &mut self.editor,
-                                doc,
-                            });
-                        }
+                        self.editor.handle_lsp_diagnostics(
+                            language_server.id(),
+                            uri,
+                            params.version,
+                            params.diagnostics,
+                        );
                     }
                     Notification::ShowMessage(params) => {
-                        log::warn!("unhandled window/showMessage: {:?}", params);
+                        if self.config.load().editor.lsp.display_messages {
+                            match params.typ {
+                                lsp::MessageType::ERROR => self.editor.set_error(params.message),
+                                lsp::MessageType::WARNING => {
+                                    self.editor.set_warning(params.message)
+                                }
+                                _ => self.editor.set_status(params.message),
+                            }
+                        }
                     }
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
@@ -930,7 +840,7 @@ impl Application {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.load().editor.lsp.display_messages {
+                        if self.config.load().editor.lsp.display_progress_messages {
                             self.editor.set_status(status);
                         }
                     }
@@ -1112,7 +1022,13 @@ impl Application {
                     }
                 };
 
-                tokio::spawn(language_server!().reply(id, reply));
+                let language_server = language_server!();
+                if let Err(err) = language_server.reply(id.clone(), reply) {
+                    log::error!(
+                        "Failed to send reply to server '{}' request {id}: {err}",
+                        language_server.name()
+                    );
+                }
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }

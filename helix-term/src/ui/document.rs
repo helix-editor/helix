@@ -60,7 +60,9 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
                             acc.patch(self.theme.highlight(span.0))
                         });
                     if self.kind == StyleIterKind::BaseHighlights {
-                        end = self.text.byte_to_next_char(end);
+                        // Move the end byte index to the nearest character boundary (rounding up)
+                        // and convert it to a character index.
+                        end = self.text.byte_to_char(self.text.ceil_char_boundary(end));
                     }
                     return Some((style, end));
                 }
@@ -433,7 +435,7 @@ impl<'a> TextRenderer<'a> {
             Grapheme::Newline => &self.newline,
         };
 
-        let in_bounds = self.column_in_bounds(position.col + width - 1);
+        let in_bounds = self.column_in_bounds(position.col, width);
 
         if in_bounds {
             self.surface.set_string(
@@ -452,7 +454,6 @@ impl<'a> TextRenderer<'a> {
             );
             self.surface.set_style(rect, style);
         }
-
         if *is_in_indent_area && !is_whitespace {
             *last_indent_level = position.col;
             *is_in_indent_area = false;
@@ -461,8 +462,8 @@ impl<'a> TextRenderer<'a> {
         width
     }
 
-    pub fn column_in_bounds(&self, colum: usize) -> bool {
-        self.offset.col <= colum && colum < self.viewport.width as usize + self.offset.col
+    pub fn column_in_bounds(&self, colum: usize, width: usize) -> bool {
+        self.offset.col <= colum && colum + width <= self.offset.col + self.viewport.width as usize
     }
 
     /// Overlay indentation guides ontop of a rendered line
@@ -523,8 +524,6 @@ impl<'a> TextRenderer<'a> {
         self.surface.set_style(area, style);
     }
 
-    /// Sets the style of an area **within the text viewport* this accounts
-    /// both for the renderers vertical offset and its viewport
     #[allow(clippy::too_many_arguments)]
     pub fn set_string_truncated(
         &mut self,

@@ -4,9 +4,10 @@ use helix_lsp::lsp;
 use tokio::sync::mpsc::Sender;
 use tokio::time::{Duration, Instant};
 
-use helix_event::{send_blocking, AsyncHook, CancelRx};
+use helix_event::{send_blocking, AsyncHook, TaskController, TaskHandle};
 use helix_view::Editor;
 
+use super::LspCompletionItem;
 use crate::handlers::completion::CompletionItem;
 use crate::job;
 
@@ -22,7 +23,7 @@ use crate::job;
 /// > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
 /// > The returned completion item should have the documentation property filled in.
 pub struct ResolveHandler {
-    last_request: Option<Arc<CompletionItem>>,
+    last_request: Option<Arc<LspCompletionItem>>,
     resolver: Sender<ResolveRequest>,
 }
 
@@ -30,15 +31,11 @@ impl ResolveHandler {
     pub fn new() -> ResolveHandler {
         ResolveHandler {
             last_request: None,
-            resolver: ResolveTimeout {
-                next_request: None,
-                in_flight: None,
-            }
-            .spawn(),
+            resolver: ResolveTimeout::default().spawn(),
         }
     }
 
-    pub fn ensure_item_resolved(&mut self, editor: &mut Editor, item: &mut CompletionItem) {
+    pub fn ensure_item_resolved(&mut self, editor: &mut Editor, item: &mut LspCompletionItem) {
         if item.resolved {
             return;
         }
@@ -93,14 +90,15 @@ impl ResolveHandler {
 }
 
 struct ResolveRequest {
-    item: Arc<CompletionItem>,
+    item: Arc<LspCompletionItem>,
     ls: Arc<helix_lsp::Client>,
 }
 
 #[derive(Default)]
 struct ResolveTimeout {
     next_request: Option<ResolveRequest>,
-    in_flight: Option<(helix_event::CancelTx, Arc<CompletionItem>)>,
+    in_flight: Option<Arc<LspCompletionItem>>,
+    task_controller: TaskController,
 }
 
 impl AsyncHook for ResolveTimeout {
@@ -120,7 +118,7 @@ impl AsyncHook for ResolveTimeout {
         } else if self
             .in_flight
             .as_ref()
-            .is_some_and(|(_, old_request)| old_request.item == request.item.item)
+            .is_some_and(|old_request| old_request.item == request.item.item)
         {
             self.next_request = None;
             None
@@ -134,14 +132,14 @@ impl AsyncHook for ResolveTimeout {
         let Some(request) = self.next_request.take() else {
             return;
         };
-        let (tx, rx) = helix_event::cancelation();
-        self.in_flight = Some((tx, request.item.clone()));
-        tokio::spawn(request.execute(rx));
+        let token = self.task_controller.restart();
+        self.in_flight = Some(request.item.clone());
+        tokio::spawn(request.execute(token));
     }
 }
 
 impl ResolveRequest {
-    async fn execute(self, cancel: CancelRx) {
+    async fn execute(self, cancel: TaskHandle) {
         let future = self.ls.resolve_completion_item(&self.item.item);
         let Some(resolved_item) = helix_event::cancelable_future(future, cancel).await else {
             return;
@@ -152,8 +150,8 @@ impl ResolveRequest {
                 .unwrap()
                 .completion
             {
-                let resolved_item = match resolved_item {
-                    Ok(item) => CompletionItem {
+                let resolved_item = CompletionItem::Lsp(match resolved_item {
+                    Ok(item) => LspCompletionItem {
                         item,
                         resolved: true,
                         ..*self.item
@@ -166,8 +164,8 @@ impl ResolveRequest {
                         item.resolved = true;
                         item
                     }
-                };
-                completion.replace_item(&self.item, resolved_item);
+                });
+                completion.replace_item(&*self.item, resolved_item);
             };
         })
         .await

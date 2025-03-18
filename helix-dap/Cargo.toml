@@ -24,4 +24,4 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std
 thiserror.workspace = true
 
 [dev-dependencies]
-fern = "0.6"
+fern = "0.7"

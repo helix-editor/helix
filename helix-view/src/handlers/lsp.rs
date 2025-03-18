@@ -1,37 +1,12 @@
+use std::collections::btree_map::Entry;
 use std::fmt::Display;
 
 use crate::editor::Action;
+use crate::events::DiagnosticsDidChange;
 use crate::Editor;
-use crate::{DocumentId, ViewId};
 use helix_core::Uri;
 use helix_lsp::util::generate_transaction_from_edits;
-use helix_lsp::{lsp, OffsetEncoding};
-
-pub enum CompletionEvent {
-    /// Auto completion was triggered by typing a word char
-    AutoTrigger {
-        cursor: usize,
-        doc: DocumentId,
-        view: ViewId,
-    },
-    /// Auto completion was triggered by typing a trigger char
-    /// specified by the LSP
-    TriggerChar {
-        cursor: usize,
-        doc: DocumentId,
-        view: ViewId,
-    },
-    /// A completion was manually requested (c-x)
-    ManualTrigger {
-        cursor: usize,
-        doc: DocumentId,
-        view: ViewId,
-    },
-    /// Some text was deleted and the cursor is now at `pos`
-    DeleteText { cursor: usize },
-    /// Invalidate the current auto completion trigger
-    Cancel,
-}
+use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {
@@ -243,8 +218,8 @@ impl Editor {
         match op {
             ResourceOp::Create(op) => {
                 let uri = Uri::try_from(&op.uri)?;
-                let path = uri.as_path_buf().expect("URIs are valid paths");
-                let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
+                let path = uri.as_path().expect("URIs are valid paths");
+                let ignore_if_exists = op.options.as_ref().is_some_and(|options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
                 if !ignore_if_exists || !path.exists() {
@@ -255,13 +230,15 @@ impl Editor {
                         }
                     }
 
-                    fs::write(&path, [])?;
-                    self.language_servers.file_event_handler.file_changed(path);
+                    fs::write(path, [])?;
+                    self.language_servers
+                        .file_event_handler
+                        .file_changed(path.to_path_buf());
                 }
             }
             ResourceOp::Delete(op) => {
                 let uri = Uri::try_from(&op.uri)?;
-                let path = uri.as_path_buf().expect("URIs are valid paths");
+                let path = uri.as_path().expect("URIs are valid paths");
                 if path.is_dir() {
                     let recursive = op
                         .options
@@ -270,11 +247,13 @@ impl Editor {
                         .unwrap_or(false);
 
                     if recursive {
-                        fs::remove_dir_all(&path)?
+                        fs::remove_dir_all(path)?
                     } else {
-                        fs::remove_dir(&path)?
+                        fs::remove_dir(path)?
                     }
-                    self.language_servers.file_event_handler.file_changed(path);
+                    self.language_servers
+                        .file_event_handler
+                        .file_changed(path.to_path_buf());
                 } else if path.is_file() {
                     fs::remove_file(path)?;
                 }
@@ -284,7 +263,7 @@ impl Editor {
                 let from = from_uri.as_path().expect("URIs are valid paths");
                 let to_uri = Uri::try_from(&op.new_uri)?;
                 let to = to_uri.as_path().expect("URIs are valid paths");
-                let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
+                let ignore_if_exists = op.options.as_ref().is_some_and(|options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
                 if !ignore_if_exists || !to.exists() {
@@ -293,5 +272,93 @@ impl Editor {
             }
         }
         Ok(())
+    }
+
+    pub fn handle_lsp_diagnostics(
+        &mut self,
+        server_id: LanguageServerId,
+        uri: Uri,
+        version: Option<i32>,
+        mut diagnostics: Vec<lsp::Diagnostic>,
+    ) {
+        let doc = self
+            .documents
+            .values_mut()
+            .find(|doc| doc.uri().is_some_and(|u| u == uri));
+
+        if let Some((version, doc)) = version.zip(doc.as_ref()) {
+            if version != doc.version() {
+                log::info!("Version ({version}) is out of date for {uri:?} (expected ({})), dropping PublishDiagnostic notification", doc.version());
+                return;
+            }
+        }
+
+        let mut unchanged_diag_sources = Vec::new();
+        if let Some((lang_conf, old_diagnostics)) = doc
+            .as_ref()
+            .and_then(|doc| Some((doc.language_config()?, self.diagnostics.get(&uri)?)))
+        {
+            if !lang_conf.persistent_diagnostic_sources.is_empty() {
+                // Sort diagnostics first by severity and then by line numbers.
+                // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                diagnostics.sort_by_key(|d| (d.severity, d.range.start));
+            }
+            for source in &lang_conf.persistent_diagnostic_sources {
+                let new_diagnostics = diagnostics
+                    .iter()
+                    .filter(|d| d.source.as_ref() == Some(source));
+                let old_diagnostics = old_diagnostics
+                    .iter()
+                    .filter(|(d, d_server)| {
+                        *d_server == server_id && d.source.as_ref() == Some(source)
+                    })
+                    .map(|(d, _)| d);
+                if new_diagnostics.eq(old_diagnostics) {
+                    unchanged_diag_sources.push(source.clone())
+                }
+            }
+        }
+
+        let diagnostics = diagnostics.into_iter().map(|d| (d, server_id));
+
+        // Insert the original lsp::Diagnostics here because we may have no open document
+        // for diagnostic message and so we can't calculate the exact position.
+        // When using them later in the diagnostics picker, we calculate them on-demand.
+        let diagnostics = match self.diagnostics.entry(uri) {
+            Entry::Occupied(o) => {
+                let current_diagnostics = o.into_mut();
+                // there may entries of other language servers, which is why we can't overwrite the whole entry
+                current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
+                current_diagnostics.extend(diagnostics);
+                current_diagnostics
+                // Sort diagnostics first by severity and then by line numbers.
+            }
+            Entry::Vacant(v) => v.insert(diagnostics.collect()),
+        };
+
+        // Sort diagnostics first by severity and then by line numbers.
+        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+        diagnostics.sort_by_key(|(d, server_id)| (d.severity, d.range.start, *server_id));
+
+        if let Some(doc) = doc {
+            let diagnostic_of_language_server_and_not_in_unchanged_sources =
+                |diagnostic: &lsp::Diagnostic, ls_id| {
+                    ls_id == server_id
+                        && diagnostic
+                            .source
+                            .as_ref()
+                            .map_or(true, |source| !unchanged_diag_sources.contains(source))
+                };
+            let diagnostics = Self::doc_diagnostics_with_filter(
+                &self.language_servers,
+                &self.diagnostics,
+                doc,
+                diagnostic_of_language_server_and_not_in_unchanged_sources,
+            );
+            doc.replace_diagnostics(diagnostics, &unchanged_diag_sources, Some(server_id));
+
+            let doc = doc.id();
+            helix_event::dispatch(DiagnosticsDidChange { editor: self, doc });
+        }
     }
 }
