@@ -2873,17 +2873,19 @@ scope = "source.ini"
 file-types = [
   "ini",
   # Systemd unit files
-  "service",
   "automount",
+  "desktop",
   "device",
   "mount",
   "path",
   "service",
   "slice",
+  "scope",
   "socket",
   "swap",
   "target",
   "timer",
+  { glob = "systemd/**/*.conf" },
   # Podman quadlets
   "container",
   "volume",
