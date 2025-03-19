@@ -188,6 +188,7 @@ inlayHints.closureReturnTypeHints.enable = "with_block"
 inlayHints.discriminantHints.enable = "fieldless"
 inlayHints.lifetimeElisionHints.enable = "skip_trivial"
 inlayHints.typeHints.hideClosureInitialization = false
+files.excludeDirs = [ "target" ]
 
 
 [language-server.typescript-language-server]
