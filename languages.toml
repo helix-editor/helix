@@ -2873,6 +2873,7 @@ scope = "source.ini"
 file-types = [
   "ini",
   # Systemd unit files
+  "service",
   "automount",
   "desktop",
   "device",
@@ -2880,7 +2881,6 @@ file-types = [
   "nspawn",
   "path",
   "scope",
-  "service",
   "slice",
   "socket",
   "swap",
