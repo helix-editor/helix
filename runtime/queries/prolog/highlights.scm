@@ -2,18 +2,18 @@
 
 (atom) @constant
 
-((atom) @boolean
-  (#eq? @boolean "true"))
+((atom) @constant.builtin.boolean
+  (#eq? @constant.builtin.boolean "true"))
 
-((atom) @boolean
-  (#eq? @boolean "false"))
+((atom) @constant.builtin.boolean
+  (#eq? @constant.builtin.boolean "false"))
 
 (functional_notation
-  function: (atom) @function.call)
+  function: (atom) @function)
 
-(integer) @number
+(integer) @constant.numeric.integer
 
-(float_number) @number.float
+(float_number) @constant.numeric.float
 
 (directive_head) @operator
 
