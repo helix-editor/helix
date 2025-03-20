@@ -289,10 +289,7 @@ impl Editor {
         version: Option<i32>,
         mut diagnostics: Vec<lsp::Diagnostic>,
     ) {
-        let doc = self
-            .documents
-            .values_mut()
-            .find(|doc| doc.uri().is_some_and(|u| u == uri));
+        let doc = self.documents.values_mut().find(|doc| doc.uri() == uri);
 
         if let Some((version, doc)) = version.zip(doc.as_ref()) {
             if version != doc.version() {
