@@ -2491,7 +2491,7 @@ fn yank_diagnostic(
         .diagnostics()
         .iter()
         .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
-        .map(|d| d.message.clone())
+        .map(|d| d.inner.message.clone())
         .collect();
     let n = diag.len();
     if n == 0 {

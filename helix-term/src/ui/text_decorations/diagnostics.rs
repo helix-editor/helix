@@ -4,13 +4,13 @@ use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::{DocumentFormatter, FormattedGrapheme};
 use helix_core::graphemes::Grapheme;
 use helix_core::text_annotations::TextAnnotations;
-use helix_core::{Diagnostic, Position};
+use helix_core::Position;
 use helix_view::annotations::diagnostics::{
     DiagnosticFilter, InlineDiagnosticAccumulator, InlineDiagnosticsConfig,
 };
 
 use helix_view::theme::Style;
-use helix_view::{Document, Theme};
+use helix_view::{document::Diagnostic, Document, Theme};
 
 use crate::ui::document::{LinePos, TextRenderer};
 use crate::ui::text_decorations::Decoration;
@@ -102,7 +102,7 @@ impl Renderer<'_, '_> {
         let mut end_col = start_col;
         let mut draw_col = (col + 1) as u16;
 
-        for line in diag.message.lines() {
+        for line in diag.inner.message.lines() {
             if !self.renderer.column_in_bounds(draw_col as usize, 1) {
                 break;
             }
@@ -139,7 +139,7 @@ impl Renderer<'_, '_> {
         let text_fmt = self.config.text_fmt(text_col, self.renderer.viewport.width);
         let annotations = TextAnnotations::default();
         let formatter = DocumentFormatter::new_at_prev_checkpoint(
-            diag.message.as_str().trim().into(),
+            diag.inner.message.as_str().trim().into(),
             &text_fmt,
             &annotations,
             0,
@@ -262,9 +262,9 @@ impl Decoration for InlineDiagnostics<'_> {
                 match filter {
                     DiagnosticFilter::Enable(filter) => eol_diganogistcs
                         .filter(|(diag, _)| filter > diag.severity())
-                        .max_by_key(|(diagnostic, _)| diagnostic.severity),
+                        .max_by_key(|(diagnostic, _)| diagnostic.inner.severity),
                     DiagnosticFilter::Disable => {
-                        eol_diganogistcs.max_by_key(|(diagnostic, _)| diagnostic.severity)
+                        eol_diganogistcs.max_by_key(|(diagnostic, _)| diagnostic.inner.severity)
                     }
                 }
             }
