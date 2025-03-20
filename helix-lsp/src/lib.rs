@@ -52,7 +52,7 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OffsetEncoding {
     /// UTF-8 code units aka bytes
     Utf8,
@@ -68,63 +68,7 @@ pub mod util {
     use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
     use helix_core::snippets::{RenderedSnippet, Snippet, SnippetRenderCtx};
     use helix_core::{chars, RopeSlice};
-    use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
-
-    /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
-    ///
-    /// Panics when [`pos_to_lsp_pos`] would for an invalid range on the diagnostic.
-    pub fn diagnostic_to_lsp_diagnostic(
-        doc: &Rope,
-        diag: &helix_core::diagnostic::Diagnostic,
-        offset_encoding: OffsetEncoding,
-    ) -> lsp::Diagnostic {
-        use helix_core::diagnostic::Severity::*;
-
-        let range = Range::new(diag.range.start, diag.range.end);
-        let severity = diag.severity.map(|s| match s {
-            Hint => lsp::DiagnosticSeverity::HINT,
-            Info => lsp::DiagnosticSeverity::INFORMATION,
-            Warning => lsp::DiagnosticSeverity::WARNING,
-            Error => lsp::DiagnosticSeverity::ERROR,
-        });
-
-        let code = match diag.code.clone() {
-            Some(x) => match x {
-                NumberOrString::Number(x) => Some(lsp::NumberOrString::Number(x)),
-                NumberOrString::String(x) => Some(lsp::NumberOrString::String(x)),
-            },
-            None => None,
-        };
-
-        let new_tags: Vec<_> = diag
-            .tags
-            .iter()
-            .map(|tag| match tag {
-                helix_core::diagnostic::DiagnosticTag::Unnecessary => {
-                    lsp::DiagnosticTag::UNNECESSARY
-                }
-                helix_core::diagnostic::DiagnosticTag::Deprecated => lsp::DiagnosticTag::DEPRECATED,
-            })
-            .collect();
-
-        let tags = if !new_tags.is_empty() {
-            Some(new_tags)
-        } else {
-            None
-        };
-
-        lsp::Diagnostic {
-            range: range_to_lsp_range(doc, range, offset_encoding),
-            severity,
-            code,
-            source: diag.source.clone(),
-            message: diag.message.to_owned(),
-            related_information: None,
-            tags,
-            data: diag.data.to_owned(),
-            ..Default::default()
-        }
-    }
+    use helix_core::{Range, Rope, Selection, Tendril, Transaction};
 
     /// Converts [`lsp::Position`] to a position in the document.
     ///

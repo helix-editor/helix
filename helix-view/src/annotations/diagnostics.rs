@@ -1,10 +1,10 @@
 use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::{FormattedGrapheme, TextFormat};
 use helix_core::text_annotations::LineAnnotation;
-use helix_core::{softwrapped_dimensions, Diagnostic, Position};
+use helix_core::{softwrapped_dimensions, Position};
 use serde::{Deserialize, Serialize};
 
-use crate::Document;
+use crate::{document::Diagnostic, Document};
 
 /// Describes the severity level of a [`Diagnostic`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
@@ -305,7 +305,7 @@ impl LineAnnotation for InlineDiagnostics<'_> {
             .drain(..)
             .map(|(diag, anchor)| {
                 let text_fmt = self.state.config.text_fmt(anchor, self.width);
-                softwrapped_dimensions(diag.message.as_str().trim().into(), &text_fmt).0
+                softwrapped_dimensions(diag.inner.message.as_str().trim().into(), &text_fmt).0
             })
             .sum();
         Position::new(multi as usize + diagostic_height, 0)

@@ -1,9 +1,6 @@
 use futures_util::{stream::FuturesOrdered, FutureExt};
 use helix_lsp::{
-    block_on,
-    lsp::{self, DiagnosticSeverity, NumberOrString},
-    util::lsp_range_to_range,
-    Client, LanguageServerId, OffsetEncoding,
+    block_on, lsp, util::lsp_range_to_range, Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
 use tui::text::Span;
@@ -11,8 +8,7 @@ use tui::text::Span;
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
-    text_annotations::InlineAnnotation, Selection, Uri,
+    syntax::config::LanguageServerFeature, text_annotations::InlineAnnotation, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -20,7 +16,7 @@ use helix_view::{
     editor::Action,
     handlers::lsp::SignatureHelpInvoked,
     theme::Style,
-    Document, View,
+    Diagnostic, Document, DocumentId, View,
 };
 
 use crate::{
@@ -29,7 +25,7 @@ use crate::{
     ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
-use std::{collections::HashSet, fmt::Display, future::Future, path::Path};
+use std::{collections::HashSet, fmt::Display, future::Future};
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
@@ -53,31 +49,48 @@ macro_rules! language_server_with_feature {
     }};
 }
 
-/// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri` and adds
-/// the server's  offset encoding.
+/// A wrapper around `lsp::Location`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Location {
+pub struct Location {
     uri: Uri,
-    range: lsp::Range,
-    offset_encoding: OffsetEncoding,
+    range: helix_view::Range,
 }
 
-fn lsp_location_to_location(
-    location: lsp::Location,
-    offset_encoding: OffsetEncoding,
-) -> Option<Location> {
-    let uri = match location.uri.try_into() {
-        Ok(uri) => uri,
-        Err(err) => {
-            log::warn!("discarding invalid or unsupported URI: {err}");
-            return None;
-        }
-    };
-    Some(Location {
-        uri,
-        range: location.range,
-        offset_encoding,
-    })
+impl Location {
+    fn lsp(location: lsp::Location, offset_encoding: OffsetEncoding) -> Option<Self> {
+        let uri = match location.uri.try_into() {
+            Ok(uri) => uri,
+            Err(err) => {
+                log::warn!("discarding invalid or unsupported URI: {err}");
+                return None;
+            }
+        };
+        Some(Self {
+            uri,
+            range: helix_view::Range::Lsp {
+                range: location.range,
+                offset_encoding,
+            },
+        })
+    }
+
+    fn file_location<'a>(&'a self, editor: &Editor) -> Option<FileLocation<'a>> {
+        let (path_or_id, doc) = match &self.uri {
+            Uri::File(path) => ((&**path).into(), None),
+            Uri::Scratch(doc_id) => ((*doc_id).into(), editor.documents.get(doc_id)),
+            _ => return None,
+        };
+        let lines = match self.range {
+            helix_view::Range::Lsp { range, .. } => {
+                Some((range.start.line as usize, range.end.line as usize))
+            }
+            helix_view::Range::Document(range) => doc.map(|doc| {
+                let text = doc.text().slice(..);
+                (text.char_to_line(range.start), text.char_to_line(range.end))
+            }),
+        };
+        Some((path_or_id, lines))
+    }
 }
 
 struct SymbolInformationItem {
@@ -94,63 +107,57 @@ struct DiagnosticStyles {
 
 struct PickerDiagnostic {
     location: Location,
-    diag: lsp::Diagnostic,
-}
-
-fn location_to_file_location(location: &Location) -> Option<FileLocation> {
-    let path = location.uri.as_path()?;
-    let line = Some((
-        location.range.start.line as usize,
-        location.range.end.line as usize,
-    ));
-    Some((path.into(), line))
+    diag: Diagnostic,
 }
 
 fn jump_to_location(editor: &mut Editor, location: &Location, action: Action) {
     let (view, doc) = current!(editor);
     push_jump(view, doc);
 
-    let Some(path) = location.uri.as_path() else {
-        let err = format!("unable to convert URI to filepath: {:?}", location.uri);
-        editor.set_error(err);
-        return;
+    let doc_id = match &location.uri {
+        Uri::Scratch(doc_id) => {
+            editor.switch(*doc_id, action);
+            *doc_id
+        }
+        Uri::File(path) => match editor.open(path, action) {
+            Ok(doc_id) => doc_id,
+            Err(err) => {
+                editor.set_error(format!("failed to open path: {:?}: {:?}", path, err));
+                return;
+            }
+        },
+        _ => return,
     };
-    jump_to_position(
-        editor,
-        path,
-        location.range,
-        location.offset_encoding,
-        action,
-    );
+
+    jump_to_position(editor, doc_id, location.range, action);
 }
 
 fn jump_to_position(
     editor: &mut Editor,
-    path: &Path,
-    range: lsp::Range,
-    offset_encoding: OffsetEncoding,
+    doc_id: DocumentId,
+    range: helix_view::Range,
     action: Action,
 ) {
-    let doc = match editor.open(path, action) {
-        Ok(id) => doc_mut!(editor, &id),
-        Err(err) => {
-            let err = format!("failed to open path: {:?}: {:?}", path, err);
-            editor.set_error(err);
-            return;
-        }
+    let Some(doc) = editor.documents.get_mut(&doc_id) else {
+        return;
     };
     let view = view_mut!(editor);
-    // TODO: convert inside server
-    let new_range = if let Some(new_range) = lsp_range_to_range(doc.text(), range, offset_encoding)
-    {
-        new_range
-    } else {
-        log::warn!("lsp position out of bounds - {:?}", range);
-        return;
+    let selection = match range {
+        helix_view::Range::Lsp {
+            range,
+            offset_encoding,
+        } => {
+            let Some(range) = lsp_range_to_range(doc.text(), range, offset_encoding) else {
+                log::warn!("lsp position out of bounds - {:?}", range);
+                return;
+            };
+            range.into()
+        }
+        helix_view::Range::Document(range) => Selection::single(range.start, range.end),
     };
     // we flip the range so that the cursor sits on the start of the symbol
     // (for example start of the function).
-    doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
+    doc.set_selection(view.id, selection);
     if action.align_view(view, doc.id()) {
         align_view(doc, view, Align::Center);
     }
@@ -201,30 +208,22 @@ type DiagnosticsPicker = Picker<PickerDiagnostic, DiagnosticStyles>;
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: impl IntoIterator<Item = (Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>)>,
+    diagnostics: impl IntoIterator<Item = (Uri, Vec<Diagnostic>)>,
     format: DiagnosticsFormat,
 ) -> DiagnosticsPicker {
-    // TODO: drop current_path comparison and instead use workspace: bool flag?
-
     // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
     for (uri, diags) in diagnostics {
         flat_diag.reserve(diags.len());
 
-        for (diag, provider) in diags {
-            if let Some(ls) = provider
-                .language_server_id()
-                .and_then(|id| cx.editor.language_server_by_id(id))
-            {
-                flat_diag.push(PickerDiagnostic {
-                    location: Location {
-                        uri: uri.clone(),
-                        range: diag.range,
-                        offset_encoding: ls.offset_encoding(),
-                    },
-                    diag,
-                });
-            }
+        for diag in diags {
+            flat_diag.push(PickerDiagnostic {
+                location: Location {
+                    uri: uri.clone(),
+                    range: diag.range,
+                },
+                diag,
+            });
         }
     }
 
@@ -239,11 +238,12 @@ fn diag_picker(
         ui::PickerColumn::new(
             "severity",
             |item: &PickerDiagnostic, styles: &DiagnosticStyles| {
+                use helix_core::diagnostic::Severity::*;
                 match item.diag.severity {
-                    Some(DiagnosticSeverity::HINT) => Span::styled("HINT", styles.hint),
-                    Some(DiagnosticSeverity::INFORMATION) => Span::styled("INFO", styles.info),
-                    Some(DiagnosticSeverity::WARNING) => Span::styled("WARN", styles.warning),
-                    Some(DiagnosticSeverity::ERROR) => Span::styled("ERROR", styles.error),
+                    Some(Hint) => Span::styled("HINT", styles.hint),
+                    Some(Info) => Span::styled("INFO", styles.info),
+                    Some(Warning) => Span::styled("WARN", styles.warning),
+                    Some(Error) => Span::styled("ERROR", styles.error),
                     _ => Span::raw(""),
                 }
                 .into()
@@ -253,11 +253,12 @@ fn diag_picker(
             item.diag.source.as_deref().unwrap_or("").into()
         }),
         ui::PickerColumn::new("code", |item: &PickerDiagnostic, _| {
-            match item.diag.code.as_ref() {
-                Some(NumberOrString::Number(n)) => n.to_string().into(),
-                Some(NumberOrString::String(s)) => s.as_str().into(),
-                None => "".into(),
-            }
+            item.diag
+                .code
+                .as_ref()
+                .map(|c| c.as_string())
+                .unwrap_or_default()
+                .into()
         }),
         ui::PickerColumn::new("message", |item: &PickerDiagnostic, _| {
             item.diag.message.as_str().into()
@@ -295,7 +296,7 @@ fn diag_picker(
                 .immediately_show_diagnostic(doc, view.id);
         },
     )
-    .with_preview(move |_editor, diag| location_to_file_location(&diag.location))
+    .with_preview(|editor, diag| diag.location.file_location(editor))
     .truncate_start(false)
 }
 
@@ -319,8 +320,10 @@ pub fn symbol_picker(cx: &mut Context) {
             },
             location: Location {
                 uri: uri.clone(),
-                range: symbol.selection_range,
-                offset_encoding,
+                range: helix_view::Range::Lsp {
+                    range: symbol.selection_range,
+                    offset_encoding,
+                },
             },
         });
         for child in symbol.children.into_iter().flatten() {
@@ -353,8 +356,10 @@ pub fn symbol_picker(cx: &mut Context) {
                         .map(|symbol| SymbolInformationItem {
                             location: Location {
                                 uri: doc_uri.clone(),
-                                range: symbol.location.range,
-                                offset_encoding,
+                                range: helix_view::Range::Lsp {
+                                    range: symbol.location.range,
+                                    offset_encoding,
+                                },
                             },
                             symbol,
                         })
@@ -421,7 +426,7 @@ pub fn symbol_picker(cx: &mut Context) {
                     jump_to_location(cx.editor, &item.location, action);
                 },
             )
-            .with_preview(move |_editor, item| location_to_file_location(&item.location))
+            .with_preview(|editor, item| item.location.file_location(editor))
             .truncate_start(false);
 
             compositor.push(Box::new(overlaid(picker)))
@@ -478,8 +483,10 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                             Some(SymbolInformationItem {
                                 location: Location {
                                     uri,
-                                    range: symbol.location.range,
-                                    offset_encoding,
+                                    range: helix_view::Range::Lsp {
+                                        range: symbol.location.range,
+                                        offset_encoding,
+                                    },
                                 },
                                 symbol,
                             })
@@ -547,7 +554,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             jump_to_location(cx.editor, &item.location, action);
         },
     )
-    .with_preview(|_editor, item| location_to_file_location(&item.location))
+    .with_preview(|editor, item| item.location.file_location(editor))
     .with_dynamic_query(get_symbols, None)
     .truncate_start(false);
 
@@ -609,20 +616,26 @@ fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Lo
             let columns = [ui::PickerColumn::new(
                 "location",
                 |item: &Location, cwdir: &std::path::PathBuf| {
-                    let path = if let Some(path) = item.uri.as_path() {
-                        path.strip_prefix(cwdir).unwrap_or(path).to_string_lossy()
+                    use std::fmt::Write;
+                    let mut path = if let Some(path) = item.uri.as_path() {
+                        path.strip_prefix(cwdir)
+                            .unwrap_or(path)
+                            .to_string_lossy()
+                            .to_string()
                     } else {
-                        item.uri.to_string().into()
+                        item.uri.to_string()
                     };
-
-                    format!("{path}:{}", item.range.start.line + 1).into()
+                    if let helix_view::Range::Lsp { range, .. } = item.range {
+                        write!(path, ":{}", range.start.line + 1).unwrap();
+                    }
+                    path.into()
                 },
             )];
 
             let picker = Picker::new(columns, 0, locations, cwdir, |cx, location, action| {
                 jump_to_location(cx.editor, location, action)
             })
-            .with_preview(|_editor, location| location_to_file_location(location));
+            .with_preview(|editor, location| location.file_location(editor));
             compositor.push(Box::new(overlaid(picker)));
         }
     }
@@ -650,12 +663,14 @@ where
             match response {
                 Ok((response, offset_encoding)) => match response {
                     Some(lsp::GotoDefinitionResponse::Scalar(lsp_location)) => {
-                        locations.extend(lsp_location_to_location(lsp_location, offset_encoding));
+                        locations.extend(Location::lsp(lsp_location, offset_encoding));
                     }
                     Some(lsp::GotoDefinitionResponse::Array(lsp_locations)) => {
-                        locations.extend(lsp_locations.into_iter().flat_map(|location| {
-                            lsp_location_to_location(location, offset_encoding)
-                        }));
+                        locations.extend(
+                            lsp_locations
+                                .into_iter()
+                                .flat_map(|location| Location::lsp(location, offset_encoding)),
+                        );
                     }
                     Some(lsp::GotoDefinitionResponse::Link(lsp_locations)) => {
                         locations.extend(
@@ -667,9 +682,7 @@ where
                                         location_link.target_range,
                                     )
                                 })
-                                .flat_map(|location| {
-                                    lsp_location_to_location(location, offset_encoding)
-                                }),
+                                .flat_map(|location| Location::lsp(location, offset_encoding)),
                         );
                     }
                     None => (),
@@ -749,7 +762,7 @@ pub fn goto_reference(cx: &mut Context) {
                     lsp_locations
                         .into_iter()
                         .flatten()
-                        .flat_map(|location| lsp_location_to_location(location, offset_encoding)),
+                        .flat_map(|location| Location::lsp(location, offset_encoding)),
                 ),
                 Err(err) => log::error!("Error requesting references: {err}"),
             }

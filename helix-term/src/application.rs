@@ -729,16 +729,23 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
-                        let provider = helix_core::diagnostic::DiagnosticProvider::Lsp {
+                        let provider = helix_view::diagnostic::DiagnosticProvider::Lsp {
                             server_id,
                             identifier: None,
                         };
-                        self.editor.handle_lsp_diagnostics(
-                            &provider,
-                            uri,
-                            params.version,
-                            params.diagnostics,
-                        );
+                        let diagnostics = params
+                            .diagnostics
+                            .into_iter()
+                            .map(|diagnostic| {
+                                helix_view::Diagnostic::lsp(
+                                    provider.clone(),
+                                    language_server.offset_encoding(),
+                                    diagnostic,
+                                )
+                            })
+                            .collect();
+                        self.editor
+                            .handle_diagnostics(&provider, uri, params.version, diagnostics);
                     }
                     Notification::ShowMessage(params) => {
                         if self.config.load().editor.lsp.display_messages {
@@ -844,8 +851,8 @@ impl Application {
                         // we need to clear those and remove the entries from the list if this leads to
                         // an empty diagnostic list for said files
                         for diags in self.editor.diagnostics.values_mut() {
-                            diags.retain(|(_, provider)| {
-                                provider.language_server_id() != Some(server_id)
+                            diags.retain(|diag| {
+                                diag.provider.language_server_id() != Some(server_id)
                             });
                         }
 

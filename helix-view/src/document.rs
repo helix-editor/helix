@@ -4,16 +4,15 @@ use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
-use helix_core::chars::char_is_word;
 use helix_core::command_line::Token;
-use helix_core::diagnostic::DiagnosticProvider;
+use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
+use helix_core::RopeSlice;
 use helix_event::TaskController;
-use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 use once_cell::sync::OnceCell;
@@ -40,10 +39,11 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, config::LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
+    ChangeSet, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
 use crate::{
+    diagnostic::DiagnosticProvider,
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
     expansion,
@@ -1452,45 +1452,7 @@ impl Document {
             diff_handle.update_document(self.text.clone(), false);
         }
 
-        // map diagnostics over changes too
-        changes.update_positions(self.diagnostics.iter_mut().map(|diagnostic| {
-            let assoc = if diagnostic.starts_at_word {
-                Assoc::BeforeWord
-            } else {
-                Assoc::After
-            };
-            (&mut diagnostic.range.start, assoc)
-        }));
-        changes.update_positions(self.diagnostics.iter_mut().filter_map(|diagnostic| {
-            if diagnostic.zero_width {
-                // for zero width diagnostics treat the diagnostic as a point
-                // rather than a range
-                return None;
-            }
-            let assoc = if diagnostic.ends_at_word {
-                Assoc::AfterWord
-            } else {
-                Assoc::Before
-            };
-            Some((&mut diagnostic.range.end, assoc))
-        }));
-        self.diagnostics.retain_mut(|diagnostic| {
-            if diagnostic.zero_width {
-                diagnostic.range.end = diagnostic.range.start
-            } else if diagnostic.range.start >= diagnostic.range.end {
-                return false;
-            }
-            diagnostic.line = self.text.char_to_line(diagnostic.range.start);
-            true
-        });
-
-        self.diagnostics.sort_by_key(|diagnostic| {
-            (
-                diagnostic.range,
-                diagnostic.severity,
-                diagnostic.provider.clone(),
-            )
-        });
+        Diagnostic::apply_changes(&mut self.diagnostics, changes, self.text.slice(..));
 
         // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
         let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
@@ -2022,94 +1984,6 @@ impl Document {
         )
     }
 
-    pub fn lsp_diagnostic_to_diagnostic(
-        text: &Rope,
-        language_config: Option<&LanguageConfiguration>,
-        diagnostic: &helix_lsp::lsp::Diagnostic,
-        provider: DiagnosticProvider,
-        offset_encoding: helix_lsp::OffsetEncoding,
-    ) -> Option<Diagnostic> {
-        use helix_core::diagnostic::{Range, Severity::*};
-
-        // TODO: convert inside server
-        let start =
-            if let Some(start) = lsp_pos_to_pos(text, diagnostic.range.start, offset_encoding) {
-                start
-            } else {
-                log::warn!("lsp position out of bounds - {:?}", diagnostic);
-                return None;
-            };
-
-        let end = if let Some(end) = lsp_pos_to_pos(text, diagnostic.range.end, offset_encoding) {
-            end
-        } else {
-            log::warn!("lsp position out of bounds - {:?}", diagnostic);
-            return None;
-        };
-
-        let severity = diagnostic.severity.and_then(|severity| match severity {
-            lsp::DiagnosticSeverity::ERROR => Some(Error),
-            lsp::DiagnosticSeverity::WARNING => Some(Warning),
-            lsp::DiagnosticSeverity::INFORMATION => Some(Info),
-            lsp::DiagnosticSeverity::HINT => Some(Hint),
-            severity => {
-                log::error!("unrecognized diagnostic severity: {:?}", severity);
-                None
-            }
-        });
-
-        if let Some(lang_conf) = language_config {
-            if let Some(severity) = severity {
-                if severity < lang_conf.diagnostic_severity {
-                    return None;
-                }
-            }
-        };
-        use helix_core::diagnostic::{DiagnosticTag, NumberOrString};
-
-        let code = match diagnostic.code.clone() {
-            Some(x) => match x {
-                lsp::NumberOrString::Number(x) => Some(NumberOrString::Number(x)),
-                lsp::NumberOrString::String(x) => Some(NumberOrString::String(x)),
-            },
-            None => None,
-        };
-
-        let tags = if let Some(tags) = &diagnostic.tags {
-            let new_tags = tags
-                .iter()
-                .filter_map(|tag| match *tag {
-                    lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
-                    lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
-                    _ => None,
-                })
-                .collect();
-
-            new_tags
-        } else {
-            Vec::new()
-        };
-
-        let ends_at_word =
-            start != end && end != 0 && text.get_char(end - 1).is_some_and(char_is_word);
-        let starts_at_word = start != end && text.get_char(start).is_some_and(char_is_word);
-
-        Some(Diagnostic {
-            range: Range { start, end },
-            ends_at_word,
-            starts_at_word,
-            zero_width: start == end,
-            line: diagnostic.range.start.line as usize,
-            message: diagnostic.message.clone(),
-            severity,
-            code,
-            tags,
-            source: diagnostic.source.clone(),
-            data: diagnostic.data.clone(),
-            provider,
-        })
-    }
-
     #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
@@ -2124,17 +1998,17 @@ impl Document {
         if unchanged_sources.is_empty() {
             if let Some(provider) = provider {
                 self.diagnostics
-                    .retain(|diagnostic| &diagnostic.provider != provider);
+                    .retain(|diagnostic| &diagnostic.inner.provider != provider);
             } else {
                 self.diagnostics.clear();
             }
         } else {
             self.diagnostics.retain(|d| {
-                if provider.is_some_and(|provider| provider != &d.provider) {
+                if provider.is_some_and(|provider| provider != &d.inner.provider) {
                     return true;
                 }
 
-                if let Some(source) = &d.source {
+                if let Some(source) = &d.inner.source {
                     unchanged_sources.contains(source)
                 } else {
                     false
@@ -2142,19 +2016,13 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics.sort_by_key(|diagnostic| {
-            (
-                diagnostic.range,
-                diagnostic.severity,
-                diagnostic.provider.clone(),
-            )
-        });
+        self.diagnostics.sort();
     }
 
-    /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
+    /// clears diagnostics for a given language server id
     pub fn clear_diagnostics_for_language_server(&mut self, id: LanguageServerId) {
         self.diagnostics
-            .retain(|d| d.provider.language_server_id() != Some(id));
+            .retain(|d| d.inner.provider.language_server_id() != Some(id));
     }
 
     /// Get the document's auto pairs. If the document has a recognized
@@ -2315,6 +2183,94 @@ impl Display for FormatterError {
                 write!(f, "Formatter exited with non zero exit status")
             }
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Diagnostic {
+    pub inner: crate::Diagnostic,
+    pub range: helix_stdx::Range,
+    pub line: usize,
+    ends_at_word: bool,
+    starts_at_word: bool,
+    zero_width: bool,
+}
+
+impl Diagnostic {
+    #[inline]
+    pub fn severity(&self) -> Severity {
+        self.inner.severity.unwrap_or(Severity::Warning)
+    }
+
+    fn apply_changes(diagnostics: &mut Vec<Self>, changes: &ChangeSet, text: RopeSlice) {
+        use helix_core::Assoc;
+
+        changes.update_positions(diagnostics.iter_mut().map(|diagnostic| {
+            let assoc = if diagnostic.starts_at_word {
+                Assoc::BeforeWord
+            } else {
+                Assoc::After
+            };
+            (&mut diagnostic.range.start, assoc)
+        }));
+        changes.update_positions(diagnostics.iter_mut().filter_map(|diagnostic| {
+            if diagnostic.zero_width {
+                // for zero width diagnostics treat the diagnostic as a point
+                // rather than a range
+                return None;
+            }
+            let assoc = if diagnostic.ends_at_word {
+                Assoc::AfterWord
+            } else {
+                Assoc::Before
+            };
+            Some((&mut diagnostic.range.end, assoc))
+        }));
+        diagnostics.retain_mut(|diagnostic| {
+            if diagnostic.zero_width {
+                diagnostic.range.end = diagnostic.range.start;
+            } else if diagnostic.range.start >= diagnostic.range.end {
+                return false;
+            }
+            diagnostic.line = text.char_to_line(diagnostic.range.start);
+            true
+        });
+
+        diagnostics.sort();
+    }
+}
+
+impl crate::Diagnostic {
+    pub(crate) fn to_document_diagnostic(&self, text: &Rope) -> Option<Diagnostic> {
+        use helix_core::chars::char_is_word;
+        use helix_lsp::util;
+
+        let (start, end, line) = match self.range {
+            crate::Range::Lsp {
+                range,
+                offset_encoding,
+            } => {
+                let start = util::lsp_pos_to_pos(text, range.start, offset_encoding)?;
+                let end = util::lsp_pos_to_pos(text, range.end, offset_encoding)?;
+                (start, end, range.start.line as usize)
+            }
+            crate::Range::Document(range) => {
+                (range.start, range.end, text.char_to_line(range.start))
+            }
+        };
+
+        let ends_at_word =
+            start != end && end != 0 && text.get_char(end - 1).is_some_and(char_is_word);
+        let starts_at_word = start != end && text.get_char(start).is_some_and(char_is_word);
+
+        Some(Diagnostic {
+            inner: self.clone(),
+            range: helix_stdx::Range { start, end },
+            line,
+            starts_at_word,
+            ends_at_word,
+            zero_width: start == end,
+        })
     }
 }
 

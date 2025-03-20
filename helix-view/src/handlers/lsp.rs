@@ -1,12 +1,8 @@
-use std::collections::btree_map::Entry;
 use std::fmt::Display;
 
 use crate::editor::Action;
-use crate::events::{
-    DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
-};
+use crate::events::{DocumentDidChange, DocumentDidClose, LanguageServerInitialized};
 use crate::{DocumentId, Editor};
-use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
 use helix_event::register_hook;
 use helix_lsp::util::generate_transaction_from_edits;
@@ -280,91 +276,6 @@ impl Editor {
             }
         }
         Ok(())
-    }
-
-    pub fn handle_lsp_diagnostics(
-        &mut self,
-        provider: &DiagnosticProvider,
-        uri: Uri,
-        version: Option<i32>,
-        mut diagnostics: Vec<lsp::Diagnostic>,
-    ) {
-        let doc = self.documents.values_mut().find(|doc| doc.uri() == uri);
-
-        if let Some((version, doc)) = version.zip(doc.as_ref()) {
-            if version != doc.version() {
-                log::info!("Version ({version}) is out of date for {uri:?} (expected ({})), dropping PublishDiagnostic notification", doc.version());
-                return;
-            }
-        }
-
-        let mut unchanged_diag_sources = Vec::new();
-        if let Some((lang_conf, old_diagnostics)) = doc
-            .as_ref()
-            .and_then(|doc| Some((doc.language_config()?, self.diagnostics.get(&uri)?)))
-        {
-            if !lang_conf.persistent_diagnostic_sources.is_empty() {
-                // Sort diagnostics first by severity and then by line numbers.
-                // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                diagnostics.sort_by_key(|d| (d.severity, d.range.start));
-            }
-            for source in &lang_conf.persistent_diagnostic_sources {
-                let new_diagnostics = diagnostics
-                    .iter()
-                    .filter(|d| d.source.as_ref() == Some(source));
-                let old_diagnostics = old_diagnostics
-                    .iter()
-                    .filter(|(d, d_provider)| {
-                        d_provider == provider && d.source.as_ref() == Some(source)
-                    })
-                    .map(|(d, _)| d);
-                if new_diagnostics.eq(old_diagnostics) {
-                    unchanged_diag_sources.push(source.clone())
-                }
-            }
-        }
-
-        let diagnostics = diagnostics.into_iter().map(|d| (d, provider.clone()));
-
-        // Insert the original lsp::Diagnostics here because we may have no open document
-        // for diagnostic message and so we can't calculate the exact position.
-        // When using them later in the diagnostics picker, we calculate them on-demand.
-        let diagnostics = match self.diagnostics.entry(uri) {
-            Entry::Occupied(o) => {
-                let current_diagnostics = o.into_mut();
-                // there may entries of other language servers, which is why we can't overwrite the whole entry
-                current_diagnostics.retain(|(_, d_provider)| d_provider != provider);
-                current_diagnostics.extend(diagnostics);
-                current_diagnostics
-                // Sort diagnostics first by severity and then by line numbers.
-            }
-            Entry::Vacant(v) => v.insert(diagnostics.collect()),
-        };
-
-        // Sort diagnostics first by severity and then by line numbers.
-        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-        diagnostics.sort_by_key(|(d, provider)| (d.severity, d.range.start, provider.clone()));
-
-        if let Some(doc) = doc {
-            let diagnostic_of_language_server_and_not_in_unchanged_sources =
-                |diagnostic: &lsp::Diagnostic, d_provider: &DiagnosticProvider| {
-                    d_provider == provider
-                        && diagnostic
-                            .source
-                            .as_ref()
-                            .map_or(true, |source| !unchanged_diag_sources.contains(source))
-                };
-            let diagnostics = Self::doc_diagnostics_with_filter(
-                &self.language_servers,
-                &self.diagnostics,
-                doc,
-                diagnostic_of_language_server_and_not_in_unchanged_sources,
-            );
-            doc.replace_diagnostics(diagnostics, &unchanged_diag_sources, Some(provider));
-
-            let doc = doc.id();
-            helix_event::dispatch(DiagnosticsDidChange { editor: self, doc });
-        }
     }
 
     pub fn execute_lsp_command(&mut self, command: lsp::Command, server_id: LanguageServerId) {

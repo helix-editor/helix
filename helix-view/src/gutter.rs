@@ -69,20 +69,22 @@ pub fn diagnostic<'doc>(
                 .iter()
                 .take_while(|d| {
                     d.line == line
-                        && d.provider.language_server_id().map_or(true, |id| {
+                        && d.inner.provider.language_server_id().map_or(true, |id| {
                             doc.language_servers_with_feature(LanguageServerFeature::Diagnostics)
                                 .any(|ls| ls.id() == id)
                         })
                 });
-            diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
-                write!(out, "●").ok();
-                match d.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                }
-            })
+            diagnostics_on_line
+                .max_by_key(|d| d.inner.severity)
+                .map(|d| {
+                    write!(out, "●").ok();
+                    match d.inner.severity {
+                        Some(Severity::Error) => error,
+                        Some(Severity::Warning) | None => warning,
+                        Some(Severity::Info) => info,
+                        Some(Severity::Hint) => hint,
+                    }
+                })
         },
     )
 }
