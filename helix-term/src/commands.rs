@@ -7001,3 +7001,44 @@ fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
         syntax_workspace_symbol_picker(cx);
     }
 }
+
+fn code_action(cx: &mut Context) {
+    impl ui::menu::Item for helix_view::Action {
+        type Data = ();
+        fn format(&self, _data: &Self::Data) -> ui::menu::Row {
+            self.title().into()
+        }
+    }
+
+    let Some(future) = cx.editor.actions() else {
+        cx.editor.set_error("No code actions available");
+        return;
+    };
+
+    cx.jobs.callback(async move {
+        let actions = future.await;
+
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if actions.is_empty() {
+                editor.set_error("No code actions available");
+                return;
+            }
+            let mut picker = ui::Menu::new(actions, (), move |editor, action, event| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
+
+                // always present here
+                let action = action.unwrap();
+                action.execute(editor);
+            });
+            picker.move_down(); // pre-select the first item
+
+            let popup = Popup::new("code-action", picker).with_scrollbar(false);
+
+            compositor.replace_or_push("code-action", popup);
+        };
+
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
+}
