@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::num::NonZeroUsize;
 use std::sync::atomic::{self, AtomicUsize};
 use std::sync::Arc;
 use std::time::Duration;
@@ -86,7 +85,7 @@ impl DiagnosticsHandler {
             active_generation,
             generation: Cell::new(0),
             events,
-            last_doc: Cell::new(DocumentId(NonZeroUsize::new(usize::MAX).unwrap())),
+            last_doc: Cell::new(DocumentId::MAX),
             last_cursor_line: Cell::new(usize::MAX),
             active: true,
         }

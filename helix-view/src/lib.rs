@@ -19,24 +19,6 @@ pub mod theme;
 pub mod tree;
 pub mod view;
 
-use std::num::NonZeroUsize;
-
-// uses NonZeroUsize so Option<DocumentId> use a byte rather than two
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct DocumentId(NonZeroUsize);
-
-impl Default for DocumentId {
-    fn default() -> DocumentId {
-        DocumentId(NonZeroUsize::new(1).unwrap())
-    }
-}
-
-impl std::fmt::Display for DocumentId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))
-    }
-}
-
 slotmap::new_key_type! {
     pub struct ViewId;
 }
@@ -76,5 +58,6 @@ pub use action::Action;
 pub use document::Document;
 pub use editor::Editor;
 use helix_core::char_idx_at_visual_offset;
+pub use helix_core::uri::DocumentId;
 pub use theme::Theme;
 pub use view::View;

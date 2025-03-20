@@ -195,7 +195,7 @@ fn request_document_diagnostics_for_language_severs(
                 server_id: language_server_id,
                 identifier,
             };
-            let uri = doc.uri()?;
+            let uri = doc.uri();
 
             Some(async move {
                 let result = future.await;

@@ -20,17 +20,13 @@ use helix_stdx::{
 use helix_view::{
     align_view,
     document::{from_reader, SCRATCH_BUFFER_NAME},
-    Align, Document, DocumentId, Editor,
+    Align, Document, Editor,
 };
 use ignore::{DirEntry, WalkBuilder, WalkState};
 
 use crate::{
     filter_picker_entry,
-    ui::{
-        overlay::overlaid,
-        picker::{Injector, PathOrId},
-        Picker, PickerColumn,
-    },
+    ui::{overlay::overlaid, picker::Injector, FileLocation, Picker, PickerColumn},
 };
 
 use super::Context;
@@ -76,22 +72,6 @@ impl TagKind {
     }
 }
 
-// NOTE: Uri is cheap to clone and DocumentId is Copy
-#[derive(Debug, Clone)]
-enum UriOrDocumentId {
-    Uri(Uri),
-    Id(DocumentId),
-}
-
-impl UriOrDocumentId {
-    fn path_or_id(&self) -> Option<PathOrId<'_>> {
-        match self {
-            Self::Id(id) => Some(PathOrId::Id(*id)),
-            Self::Uri(uri) => uri.as_path().map(PathOrId::Path),
-        }
-    }
-}
-
 #[derive(Debug)]
 struct Tag {
     kind: TagKind,
@@ -100,14 +80,25 @@ struct Tag {
     end: usize,
     start_line: usize,
     end_line: usize,
-    doc: UriOrDocumentId,
+    doc: Uri,
+}
+
+impl Tag {
+    fn file_location(&self) -> Option<FileLocation<'_>> {
+        let path = match &self.doc {
+            Uri::File(path) => (&**path).into(),
+            Uri::Scratch(id) => (*id).into(),
+            _ => return None,
+        };
+        Some((path, Some((self.start_line, self.end_line))))
+    }
 }
 
 fn tags_iter<'a>(
     syntax: &'a Syntax,
     loader: &'a Loader,
     text: RopeSlice<'a>,
-    doc: UriOrDocumentId,
+    doc: Uri,
     pattern: Option<&'a rope::Regex>,
 ) -> impl Iterator<Item = Tag> + 'a {
     let mut tags_iter = syntax.tags(text, loader, ..);
@@ -157,7 +148,7 @@ pub fn syntax_symbol_picker(cx: &mut Context) {
     let doc_id = doc.id();
     let text = doc.text().slice(..);
     let loader = cx.editor.syn_loader.load();
-    let tags = tags_iter(syntax, &loader, text, UriOrDocumentId::Id(doc.id()), None);
+    let tags = tags_iter(syntax, &loader, text, doc.uri(), None);
 
     let columns = vec![
         PickerColumn::new("kind", |tag: &Tag, _| tag.kind.as_str().into()),
@@ -179,9 +170,7 @@ pub fn syntax_symbol_picker(cx: &mut Context) {
             }
         },
     )
-    .with_preview(|_editor, tag| {
-        Some((tag.doc.path_or_id()?, Some((tag.start_line, tag.end_line))))
-    })
+    .with_preview(|_editor, tag| tag.file_location())
     .truncate_start(false);
 
     cx.push_layer(Box::new(overlaid(picker)));
@@ -248,23 +237,17 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
     let columns = vec![
         PickerColumn::new("kind", |tag: &Tag, _| tag.kind.as_str().into()),
         PickerColumn::new("name", |tag: &Tag, _| tag.name.as_str().into()).without_filtering(),
-        PickerColumn::new("path", |tag: &Tag, state: &SearchState| {
-            match &tag.doc {
-                UriOrDocumentId::Uri(uri) => {
-                    if let Some(path) = uri.as_path() {
-                        let path = if let Ok(stripped) = path.strip_prefix(&state.search_root) {
-                            stripped
-                        } else {
-                            path
-                        };
-                        path.to_string_lossy().into()
-                    } else {
-                        uri.to_string().into()
-                    }
-                }
-                // This picker only uses `Id` for scratch buffers for better display.
-                UriOrDocumentId::Id(_) => SCRATCH_BUFFER_NAME.into(),
+        PickerColumn::new("path", |tag: &Tag, state: &SearchState| match &tag.doc {
+            Uri::File(path) => {
+                let path = if let Ok(stripped) = path.strip_prefix(&state.search_root) {
+                    stripped
+                } else {
+                    path
+                };
+                path.to_string_lossy().into()
             }
+            Uri::Scratch(_) => SCRATCH_BUFFER_NAME.into(),
+            _ => unimplemented!(),
         }),
     ];
 
@@ -284,11 +267,8 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
         for doc in editor.documents() {
             let Some(syntax) = doc.syntax() else { continue };
             let text = doc.text().slice(..);
-            let uri_or_id = doc
-                .uri()
-                .map(UriOrDocumentId::Uri)
-                .unwrap_or_else(|| UriOrDocumentId::Id(doc.id()));
-            for tag in tags_iter(syntax, &loader, text.slice(..), uri_or_id, Some(&pattern)) {
+            let uri = doc.uri();
+            for tag in tags_iter(syntax, &loader, text.slice(..), uri, Some(&pattern)) {
                 if injector.push(tag).is_err() {
                     return async { Ok(()) }.boxed();
                 }
@@ -359,13 +339,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
                             return Ok(false);
                         };
                         let uri = Uri::from(path::normalize(path));
-                        for tag in tags_iter(
-                            syntax,
-                            &loader,
-                            text.slice(..),
-                            UriOrDocumentId::Uri(uri),
-                            Some(&pattern),
-                        ) {
+                        for tag in tags_iter(syntax, &loader, text.slice(..), uri, Some(&pattern)) {
                             if injector.push(tag).is_err() {
                                 quit = true;
                                 break;
@@ -398,15 +372,16 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
         state,
         move |cx, tag, action| {
             let doc_id = match &tag.doc {
-                UriOrDocumentId::Id(id) => *id,
-                UriOrDocumentId::Uri(uri) => match cx.editor.open(uri.as_path().expect(""), action) {
+                Uri::Scratch(id) => *id,
+                Uri::File(path) => match cx.editor.open(path, action) {
                     Ok(id) => id,
                     Err(e) => {
                         cx.editor
-                            .set_error(format!("Failed to open file '{uri:?}': {e}"));
+                            .set_error(format!("Failed to open file '{path:?}': {e}"));
                         return;
                     }
                 }
+                _ => return,
             };
             let doc = doc_mut!(cx.editor, &doc_id);
             let view = view_mut!(cx.editor);
@@ -422,12 +397,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
         },
     )
     .with_dynamic_query(get_tags, Some(275))
-    .with_preview(move |_editor, tag| {
-        Some((
-            tag.doc.path_or_id()?,
-            Some((tag.start_line, tag.end_line)),
-        ))
-    })
+    .with_preview(|_editor, tag| tag.file_location())
     .with_history_register(Some(reg))
     .truncate_start(false);
     cx.push_layer(Box::new(overlaid(picker)));
