@@ -1,6 +1,7 @@
 #[macro_use]
 pub mod macros;
 
+mod action;
 pub mod annotations;
 pub mod base64;
 pub mod clipboard;
@@ -73,6 +74,7 @@ pub fn align_view(doc: &mut Document, view: &View, align: Align) {
     doc.set_view_offset(view.id, view_offset);
 }
 
+pub use action::Action;
 pub use document::Document;
 pub use editor::Editor;
 use helix_core::char_idx_at_visual_offset;
