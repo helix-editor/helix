@@ -704,12 +704,10 @@ impl Registry {
                     }) {
                         return Some((name.to_owned(), Ok(client.clone())));
                     }
-                } else {
+                } else if !autostart {
                     // If autostart LSP turned off, do not automatically start a client for server
                     // Try emulate the empty clients list behavior for disable LSP
-                    if !autostart {
-                        return None;
-                    }
+                    return None;
                 }
                 match self.start_client(
                     name.clone(),
