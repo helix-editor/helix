@@ -342,6 +342,12 @@ pub struct Config {
     pub default_line_ending: LineEndingConfig,
     /// Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`.
     pub insert_final_newline: bool,
+    /// Whether to automatically remove all trailing line-endings after the final one on write.
+    /// Defaults to `false`.
+    pub trim_final_newlines: bool,
+    /// Whether to automatically remove all whitespace characters preceding line-endings on write.
+    /// Defaults to `false`.
+    pub trim_trailing_whitespace: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
     /// Draw border around popups.
@@ -363,7 +369,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SmartTabConfig {
     pub enable: bool,
     pub supersede_menu: bool,
@@ -994,6 +1000,8 @@ impl Default for Config {
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
+            trim_final_newlines: false,
+            trim_trailing_whitespace: false,
             smart_tab: Some(SmartTabConfig::default()),
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
@@ -1079,7 +1087,7 @@ pub struct Editor {
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
-    pub last_cwd: Option<PathBuf>,
+    last_cwd: Option<PathBuf>,
 
     pub exit_code: i32,
 
@@ -1416,9 +1424,7 @@ impl Editor {
             if !ls.is_initialized() {
                 continue;
             }
-            if let Some(notification) = ls.did_rename(old_path, &new_path, is_dir) {
-                tokio::spawn(notification);
-            };
+            ls.did_rename(old_path, &new_path, is_dir);
         }
         self.language_servers
             .file_event_handler
@@ -1441,7 +1447,7 @@ impl Editor {
             }
             // if we are open in LSPs send did_close notification
             for language_server in doc.language_servers() {
-                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+                language_server.text_document_did_close(doc.identifier());
             }
         }
         // we need to clear the list of language servers here so that
@@ -1522,7 +1528,7 @@ impl Editor {
             });
 
         for (_, language_server) in doc_language_servers_not_in_registry {
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            language_server.text_document_did_close(doc.identifier());
         }
 
         let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
@@ -1533,12 +1539,12 @@ impl Editor {
 
         for (_, language_server) in language_servers_not_in_doc {
             // TODO: this now races with on_init code if the init happens too quickly
-            tokio::spawn(language_server.text_document_did_open(
+            language_server.text_document_did_open(
                 doc_url.clone(),
                 doc.version(),
                 doc.text(),
                 language_id.clone(),
-            ));
+            );
         }
 
         doc.language_servers = language_servers;
@@ -1797,8 +1803,7 @@ impl Editor {
         self.saves.remove(&doc_id);
 
         for language_server in doc.language_servers() {
-            // TODO: track error
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            language_server.text_document_did_close(doc.identifier());
         }
 
         enum Action {
@@ -2208,6 +2213,16 @@ impl Editor {
             doc.ensure_view_init(current_view.id);
             current_view.id
         }
+    }
+
+    pub fn set_cwd(&mut self, path: &Path) -> std::io::Result<()> {
+        self.last_cwd = helix_stdx::env::set_current_working_dir(path)?;
+        self.clear_doc_relative_paths();
+        Ok(())
+    }
+
+    pub fn get_last_cwd(&mut self) -> Option<&Path> {
+        self.last_cwd.as_deref()
     }
 }
 

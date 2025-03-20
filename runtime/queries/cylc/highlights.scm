@@ -1,5 +1,3 @@
-(ERROR) @markup.bold
-
 [
   (jinja2_expression)
   (jinja2_statement)

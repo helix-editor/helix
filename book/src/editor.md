@@ -1,11 +1,13 @@
 ## Editor
 
 - [`[editor]` Section](#editor-section)
+- [`[editor.clipboard-provider]` Section](#editorclipboard-provider-section)
 - [`[editor.statusline]` Section](#editorstatusline-section)
 - [`[editor.lsp]` Section](#editorlsp-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
+- [`[editor.auto-save]` Section](#editorauto-save-section)
 - [`[editor.search]` Section](#editorsearch-section)
 - [`[editor.whitespace]` Section](#editorwhitespace-section)
 - [`[editor.indent-guides]` Section](#editorindent-guides-section)
@@ -51,6 +53,8 @@
 | `workspace-lsp-roots` | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml` | `[]` |
 | `default-line-ending` | The line ending to use for new documents. Can be `native`, `lf`, `crlf`, `ff`, `cr` or `nel`. `native` uses the platform's native line ending (`crlf` on Windows, otherwise `lf`). | `native` |
 | `insert-final-newline` | Whether to automatically insert a trailing line-ending on write if missing | `true` |
+| `trim-final-newlines` | Whether to automatically remove line-endings after the final one on write | `false` |
+| `trim-trailing-whitespace` | Whether to automatically remove whitespace preceding line endings on write | `false` |
 | `popup-border` | Draw border around `popup`, `menu`, `all`, or `none` | `none` |
 | `indent-heuristic` | How the indentation for a newly inserted line is computed: `simple` just copies the indentation level from the previous line, `tree-sitter` computes the indentation based on the syntax tree and `hybrid` combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being `hybrid` -> `tree-sitter` -> `simple`). | `hybrid`
 | `jump-label-alphabet` | The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. | `"abcdefghijklmnopqrstuvwxyz"`
@@ -68,7 +72,7 @@ For instance, setting it to use OSC 52 termcodes, the configuration would be:
 clipboard-provider = "termcode"
 ```
 
-Alternatively, Helix can be configured to use arbitary commands for clipboard integration:
+Alternatively, Helix can be configured to use arbitrary commands for clipboard integration:
 
 ```toml
 [editor.clipboard-provider.custom]
@@ -143,7 +147,8 @@ The following statusline elements can be configured:
 | Key                   | Description                                                 | Default |
 | ---                   | -----------                                                 | ------- |
 | `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
-| `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
+| `display-messages`    | Display LSP `window/showMessage` messages below statusline[^1] | `true` |
+| `display-progress-messages` | Display LSP progress messages below statusline[^1]    | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
@@ -441,6 +446,8 @@ fn main() {
 | `prefix-len` | How many horizontal bars `─` are rendered before the diagnostic text.  | `1` |
 | `max-wrap` | Equivalent of the `editor.soft-wrap.max-wrap` option for diagnostics.  | `20` |
 | `max-diagnostics` | Maximum number of diagnostics to render inline for a given line  | `10` |
+
+The allowed values for `cursor-line` and `other-lines` are: `error`, `warning`, `info`, `hint`.
 
 The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the `end-of-line-diagnostics` config option):
 

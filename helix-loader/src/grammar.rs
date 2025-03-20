@@ -273,12 +273,12 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         }
 
         // ensure the remote matches the configured remote
-        if get_remote_url(&grammar_dir).map_or(true, |s| s != remote) {
+        if get_remote_url(&grammar_dir).as_ref() != Some(&remote) {
             set_remote(&grammar_dir, &remote)?;
         }
 
         // ensure the revision matches the configured revision
-        if get_revision(&grammar_dir).map_or(true, |s| s != revision) {
+        if get_revision(&grammar_dir).as_ref() != Some(&revision) {
             // Fetch the exact revision from the remote.
             // Supported by server-side git since v2.5.0 (July 2015),
             // enabled by default on major git hosts.

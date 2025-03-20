@@ -54,6 +54,7 @@
 "ui.window" = { fg = "bg1" }
 "ui.help" = { bg = "bg1", fg = "fg0" }
 "ui.text" = { fg = "fg0" }
+"ui.text.directory" = { fg = "niagara0", modifiers = ["bold"] }
 "ui.text.focus" = { bg = "bg5", modifiers = ["bold"] }
 "ui.selection" = { bg = "bg2" }
 "ui.selection.primary" = { bg = "bg5" }

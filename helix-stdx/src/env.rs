@@ -103,6 +103,12 @@ fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>)
         let mat = captures.get_match().unwrap();
         let pattern_id = mat.pattern().as_usize();
         let mut range = mat.range();
+        // A pattern may match multiple times on a single variable, for example `${HOME:-$HOME}`:
+        // `${HOME:-` matches and also the default value (`$HOME`). Skip past any variables which
+        // have already been expanded.
+        if range.start < pos {
+            continue;
+        }
         let var = &bytes[captures.get_group(1).unwrap().range()];
         let default = if pattern_id != 5 {
             let Some(bracket_pos) = find_brace_end(&bytes[range.end..]) else {
@@ -203,6 +209,7 @@ mod tests {
         assert_env_expand!(env, "bar/$FOO/baz", "bar/foo/baz");
         assert_env_expand!(env, "bar/${FOO}/baz", "bar/foo/baz");
         assert_env_expand!(env, "baz/${BAR:-bar}/foo", "baz/bar/foo");
+        assert_env_expand!(env, "baz/${FOO:-$FOO}/foo", "baz/foo/foo");
         assert_env_expand!(env, "baz/${BAR:=bar}/foo", "baz/bar/foo");
         assert_env_expand!(env, "baz/${BAR-bar}/foo", "baz/bar/foo");
         assert_env_expand!(env, "baz/${BAR=bar}/foo", "baz/bar/foo");
