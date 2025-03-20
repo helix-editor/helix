@@ -29,7 +29,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs,
     io::{self, stdin},
-    num::{NonZeroU8, NonZeroUsize},
+    num::NonZeroU8,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -1729,9 +1729,7 @@ impl Editor {
     /// Generate an id for a new document and register it.
     fn new_document(&mut self, mut doc: Document) -> DocumentId {
         let id = self.next_document_id;
-        // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
-        self.next_document_id =
-            DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
+        self.next_document_id = self.next_document_id.next();
         doc.id = id;
         self.documents.insert(id, doc);
 
@@ -2061,9 +2059,8 @@ impl Editor {
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         let text = document.text().clone();
         let language_config = document.language.clone();
-        document
-            .uri()
-            .and_then(|uri| diagnostics.get(&uri))
+        diagnostics
+            .get(&document.uri())
             .map(|diags| {
                 diags.iter().filter_map(move |(diagnostic, provider)| {
                     let server_id = provider.language_server_id()?;

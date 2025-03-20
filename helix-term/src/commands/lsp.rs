@@ -338,9 +338,7 @@ pub fn symbol_picker(cx: &mut Context) {
             let request = language_server.document_symbols(doc.identifier()).unwrap();
             let offset_encoding = language_server.offset_encoding();
             let doc_id = doc.identifier();
-            let doc_uri = doc
-                .uri()
-                .expect("docs with active language servers must be backed by paths");
+            let doc_uri = doc.uri();
 
             async move {
                 let symbols = match request.await? {
@@ -558,11 +556,10 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
 pub fn diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    if let Some(uri) = doc.uri() {
-        let diagnostics = cx.editor.diagnostics.get(&uri).cloned().unwrap_or_default();
-        let picker = diag_picker(cx, [(uri, diagnostics)], DiagnosticsFormat::HideSourcePath);
-        cx.push_layer(Box::new(overlaid(picker)));
-    }
+    let uri = doc.uri();
+    let diagnostics = cx.editor.diagnostics.get(&uri).cloned().unwrap_or_default();
+    let picker = diag_picker(cx, [(uri, diagnostics)], DiagnosticsFormat::HideSourcePath);
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 pub fn workspace_diagnostics_picker(cx: &mut Context) {

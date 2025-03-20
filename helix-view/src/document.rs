@@ -1936,8 +1936,11 @@ impl Document {
         Url::from_file_path(self.path()?).ok()
     }
 
-    pub fn uri(&self) -> Option<helix_core::Uri> {
-        Some(self.path()?.clone().into())
+    pub fn uri(&self) -> helix_core::Uri {
+        self.path
+            .clone()
+            .map(|path| path.into())
+            .unwrap_or(helix_core::Uri::Scratch(self.id))
     }
 
     #[inline]
