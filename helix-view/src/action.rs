@@ -2,11 +2,7 @@ use std::{borrow::Cow, collections::HashSet, fmt, future::Future};
 
 use futures_util::{stream::FuturesOrdered, FutureExt as _};
 use helix_core::syntax::config::LanguageServerFeature;
-use helix_lsp::{
-    lsp,
-    util::{diagnostic_to_lsp_diagnostic, range_to_lsp_range},
-    LanguageServerId,
-};
+use helix_lsp::{lsp, util::range_to_lsp_range, LanguageServerId};
 use tokio_stream::StreamExt as _;
 
 use crate::Editor;
@@ -179,13 +175,13 @@ impl Editor {
                         .diagnostics()
                         .iter()
                         .filter(|&diag| {
-                            diag.provider.language_server_id() == Some(language_server_id)
+                            diag.inner.provider.language_server_id() == Some(language_server_id)
                                 && selection.overlaps(&helix_core::Range::new(
                                     diag.range.start,
                                     diag.range.end,
                                 ))
                         })
-                        .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding))
+                        .map(|diag| diag.inner.to_lsp_diagnostic(doc.text(), offset_encoding))
                         .collect(),
                     only: None,
                     trigger_kind: Some(lsp::CodeActionTriggerKind::INVOKED),

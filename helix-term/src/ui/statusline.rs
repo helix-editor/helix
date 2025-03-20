@@ -1,6 +1,7 @@
 use helix_core::indent::IndentStyle;
-use helix_core::{coords_at_pos, encoding, unicode::width::UnicodeWidthStr, Position};
-use helix_lsp::lsp::DiagnosticSeverity;
+use helix_core::{
+    coords_at_pos, diagnostic::Severity, encoding, unicode::width::UnicodeWidthStr, Position,
+};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -215,14 +216,13 @@ fn render_diagnostics<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    use helix_core::diagnostic::Severity;
     let (hints, info, warnings, errors) =
         context
             .doc
             .diagnostics()
             .iter()
             .fold((0, 0, 0, 0), |mut counts, diag| {
-                match diag.severity {
+                match diag.inner.severity {
                     Some(Severity::Hint) | None => counts.0 += 1,
                     Some(Severity::Info) => counts.1 += 1,
                     Some(Severity::Warning) => counts.2 += 1,
@@ -267,16 +267,16 @@ where
     use helix_core::diagnostic::Severity;
     let (hints, info, warnings, errors) = context.editor.diagnostics.values().flatten().fold(
         (0u32, 0u32, 0u32, 0u32),
-        |mut counts, (diag, _)| {
+        |mut counts, diag| {
             match diag.severity {
                 // PERF: For large workspace diagnostics, this loop can be very tight.
                 //
                 // Most often the diagnostics will be for warnings and errors.
                 // Errors should tend to be fixed fast, leaving warnings as the most common.
-                Some(DiagnosticSeverity::WARNING) => counts.2 += 1,
-                Some(DiagnosticSeverity::ERROR) => counts.3 += 1,
-                Some(DiagnosticSeverity::HINT) => counts.0 += 1,
-                Some(DiagnosticSeverity::INFORMATION) => counts.1 += 1,
+                Some(Severity::Warning) => counts.2 += 1,
+                Some(Severity::Error) => counts.3 += 1,
+                Some(Severity::Hint) => counts.0 += 1,
+                Some(Severity::Info) => counts.1 += 1,
                 // Fallback to `hint`.
                 _ => counts.0 += 1,
             }

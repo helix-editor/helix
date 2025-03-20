@@ -14,7 +14,6 @@ use crate::{
 };
 
 use helix_core::{
-    diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, OverlayHighlights},
@@ -343,7 +342,9 @@ impl EditorView {
         theme: &Theme,
         overlay_highlights: &mut Vec<OverlayHighlights>,
     ) {
-        use helix_core::diagnostic::{DiagnosticTag, Range, Severity};
+        use helix_core::diagnostic::Severity;
+        use helix_stdx::Range;
+        use helix_view::diagnostic::DiagnosticTag;
         let get_scope_of = |scope| {
             theme
                 .find_highlight_exact(scope)
@@ -386,7 +387,7 @@ impl EditorView {
 
         for diagnostic in doc.diagnostics() {
             // Separate diagnostics into different Vecs by severity.
-            let vec = match diagnostic.severity {
+            let vec = match diagnostic.inner.severity {
                 Some(Severity::Info) => &mut info_vec,
                 Some(Severity::Hint) => &mut hint_vec,
                 Some(Severity::Warning) => &mut warning_vec,
@@ -398,16 +399,16 @@ impl EditorView {
             // the diagnostic as info/hint/default and only render it as unnecessary/deprecated
             // instead. For warning/error diagnostics, render both the severity highlight and
             // the tag highlight.
-            if diagnostic.tags.is_empty()
+            if diagnostic.inner.tags.is_empty()
                 || matches!(
-                    diagnostic.severity,
+                    diagnostic.inner.severity,
                     Some(Severity::Warning | Severity::Error)
                 )
             {
                 push_diagnostic(vec, diagnostic.range);
             }
 
-            for tag in &diagnostic.tags {
+            for tag in &diagnostic.inner.tags {
                 match tag {
                     DiagnosticTag::Unnecessary => {
                         if unnecessary.is_some() {
@@ -717,6 +718,7 @@ impl EditorView {
         theme: &Theme,
     ) {
         use helix_core::diagnostic::Severity;
+        use helix_view::diagnostic::NumberOrString;
         use tui::{
             layout::Alignment,
             text::Text,
@@ -740,17 +742,18 @@ impl EditorView {
         let mut lines = Vec::new();
         let background_style = theme.get("ui.background");
         for diagnostic in diagnostics {
-            let style = Style::reset()
-                .patch(background_style)
-                .patch(match diagnostic.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                });
-            let text = Text::styled(&diagnostic.message, style);
+            let style =
+                Style::reset()
+                    .patch(background_style)
+                    .patch(match diagnostic.inner.severity {
+                        Some(Severity::Error) => error,
+                        Some(Severity::Warning) | None => warning,
+                        Some(Severity::Info) => info,
+                        Some(Severity::Hint) => hint,
+                    });
+            let text = Text::styled(&diagnostic.inner.message, style);
             lines.extend(text.lines);
-            let code = diagnostic.code.as_ref().map(|x| match x {
+            let code = diagnostic.inner.code.as_ref().map(|x| match x {
                 NumberOrString::Number(n) => format!("({n})"),
                 NumberOrString::String(s) => format!("({s})"),
             });

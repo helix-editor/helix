@@ -5,11 +5,11 @@ use std::time::Duration;
 use tokio::time::Instant;
 use tokio_stream::StreamExt;
 
-use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::Uri;
 use helix_event::{cancelable_future, register_hook, send_blocking};
 use helix_lsp::{lsp, LanguageServerId};
+use helix_view::diagnostic::DiagnosticProvider;
 use helix_view::document::Mode;
 use helix_view::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidOpen, LanguageServerInitialized,
@@ -195,12 +195,13 @@ fn request_document_diagnostics_for_language_severs(
                 server_id: language_server_id,
                 identifier,
             };
+            let offset_encoding = language_server.offset_encoding();
             let uri = doc.uri();
 
             Some(async move {
                 let result = future.await;
 
-                (result, provider, uri)
+                (result, provider, offset_encoding, uri)
             })
         })
         .collect();
@@ -213,13 +214,20 @@ fn request_document_diagnostics_for_language_severs(
         let mut retry_language_servers = HashSet::new();
         loop {
             match cancelable_future(futures.next(), &cancel).await {
-                Some(Some((Ok(result), provider, uri))) => {
+                Some(Some((Ok(result), provider, offset_encoding, uri))) => {
                     job::dispatch(move |editor, _| {
-                        handle_pull_diagnostics_response(editor, result, provider, uri, doc_id);
+                        handle_pull_diagnostics_response(
+                            editor,
+                            result,
+                            provider,
+                            offset_encoding,
+                            uri,
+                            doc_id,
+                        );
                     })
                     .await;
                 }
-                Some(Some((Err(err), DiagnosticProvider::Lsp { server_id, .. }, _))) => {
+                Some(Some((Err(err), DiagnosticProvider::Lsp { server_id, .. }, _, _))) => {
                     let parsed_cancellation_data = if let helix_lsp::Error::Rpc(error) = err {
                         error.data.and_then(|data| {
                             serde_json::from_value::<lsp::DiagnosticServerCancellationData>(data)
@@ -233,6 +241,9 @@ fn request_document_diagnostics_for_language_severs(
                         retry_language_servers.insert(server_id);
                     }
                 }
+                // All responses are from language servers so other diagnostic providers are
+                // impossible in this block.
+                Some(Some((_, _other_provider, _, _))) => unreachable!(),
                 Some(None) => break,
                 // The request was cancelled.
                 None => return,
@@ -271,6 +282,7 @@ fn handle_pull_diagnostics_response(
     editor: &mut Editor,
     result: lsp::DocumentDiagnosticReportResult,
     provider: DiagnosticProvider,
+    offset_encoding: helix_lsp::OffsetEncoding,
     uri: Uri,
     document_id: DocumentId,
 ) {
@@ -278,12 +290,19 @@ fn handle_pull_diagnostics_response(
         lsp::DocumentDiagnosticReportResult::Report(report) => {
             let result_id = match report {
                 lsp::DocumentDiagnosticReport::Full(report) => {
-                    editor.handle_lsp_diagnostics(
-                        &provider,
-                        uri,
-                        None,
-                        report.full_document_diagnostic_report.items,
-                    );
+                    let diagnostics = report
+                        .full_document_diagnostic_report
+                        .items
+                        .into_iter()
+                        .map(|diagnostic| {
+                            helix_view::Diagnostic::lsp(
+                                provider.clone(),
+                                offset_encoding,
+                                diagnostic,
+                            )
+                        })
+                        .collect();
+                    editor.handle_diagnostics(&provider, uri, None, diagnostics);
 
                     report.full_document_diagnostic_report.result_id
                 }

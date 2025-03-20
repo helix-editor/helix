@@ -4,6 +4,7 @@ pub mod macros;
 mod action;
 pub mod annotations;
 pub mod clipboard;
+pub mod diagnostic;
 pub mod document;
 pub mod editor;
 pub mod events;
@@ -54,7 +55,17 @@ pub fn align_view(doc: &mut Document, view: &View, align: Align) {
     doc.set_view_offset(view.id, view_offset);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Range {
+    Document(helix_stdx::Range),
+    Lsp {
+        range: helix_lsp::lsp::Range,
+        offset_encoding: helix_lsp::OffsetEncoding,
+    },
+}
+
 pub use action::Action;
+pub use diagnostic::Diagnostic;
 pub use document::Document;
 pub use editor::Editor;
 use helix_core::char_idx_at_visual_offset;
