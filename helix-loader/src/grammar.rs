@@ -592,6 +592,6 @@ fn mtime(path: &Path) -> Result<SystemTime> {
 /// Gives the contents of a file from a language's `runtime/queries/<lang>`
 /// directory
 pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let path = crate::runtime_file(&PathBuf::new().join("queries").join(language).join(filename));
+    let path = crate::runtime_file(PathBuf::new().join("queries").join(language).join(filename));
     std::fs::read_to_string(path)
 }
