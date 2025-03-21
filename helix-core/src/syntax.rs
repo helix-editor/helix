@@ -2557,7 +2557,7 @@ pub enum InjectionLanguageMarker<'a> {
     Shebang(RopeSlice<'a>),
 }
 
-pub const SHEBANG: &str = r"#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
+const SHEBANG: &str = r"#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
 
 pub struct Merge<I> {
     iter: I,

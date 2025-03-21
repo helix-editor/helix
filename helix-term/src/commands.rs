@@ -34,7 +34,7 @@ use helix_core::{
     regex::{self, Regex},
     search::{self, CharMatcher},
     selection, surround,
-    syntax::{BlockCommentToken, LanguageServerFeature, SHEBANG},
+    syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
@@ -3623,16 +3623,13 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
     let mut ranges = SmallVec::with_capacity(selection.len());
 
     let continue_comment_tokens = {
-        static SHEBANG_REGEX: Lazy<Regex> =
-            Lazy::new(|| Regex::new(&["^", SHEBANG].concat()).unwrap());
-
         let curr_line_num = selection.primary().cursor_line(text);
         let line = text.line(curr_line_num);
 
         let is_not_shebang = curr_line_num > 0
             || line
                 .as_str()
-                .map(|line| SHEBANG_REGEX.captures(line).is_none())
+                .map(|line| !line.starts_with("#!"))
                 .unwrap_or(true);
 
         if is_not_shebang
@@ -4155,16 +4152,13 @@ pub mod insert {
         let mut new_text = String::new();
 
         let continue_comment_tokens = {
-            static SHEBANG_REGEX: Lazy<Regex> =
-                Lazy::new(|| Regex::new(&["^", SHEBANG].concat()).unwrap());
-
             let curr_line_num = selection.primary().cursor_line(text);
             let line = text.line(curr_line_num);
 
             let is_not_shebang = curr_line_num > 0
                 || line
                     .as_str()
-                    .map(|line| SHEBANG_REGEX.captures(line).is_none())
+                    .map(|line| !line.starts_with("#!"))
                     .unwrap_or(true);
 
             if is_not_shebang && config.continue_comments {
