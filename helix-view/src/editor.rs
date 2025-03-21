@@ -45,6 +45,7 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
+    movement::Movement,
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
@@ -1111,7 +1112,13 @@ pub struct Editor {
     pub cursor_cache: CursorCache,
 }
 
-pub type Motion = Box<dyn Fn(&mut Editor)>;
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum MotionMode {
+    Normal,
+    Reverse,
+}
+
+pub type Motion = Box<dyn Fn(&mut Editor, MotionMode, Option<Movement>)>;
 
 #[derive(Debug)]
 pub enum EditorEvent {
@@ -1244,19 +1251,44 @@ impl Editor {
             || self.config().popup_border == PopupBorderConfig::Menu
     }
 
-    pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
-        motion(self);
+    pub fn apply_motion<F>(&mut self, motion: F)
+    where
+        F: Fn(&mut Self, MotionMode, Option<Movement>) + 'static,
+    {
+        motion(self, MotionMode::Normal, None);
         self.last_motion = Some(Box::new(motion));
     }
 
     pub fn repeat_last_motion(&mut self, count: usize) {
+        self.repeat_last_motion_impl(count, MotionMode::Normal, None);
+    }
+
+    pub fn repeat_last_motion_reverse(&mut self, count: usize) {
+        self.repeat_last_motion_impl(count, MotionMode::Reverse, None);
+    }
+
+    pub fn extend_repeat_last_motion(&mut self, count: usize) {
+        self.repeat_last_motion_impl(count, MotionMode::Normal, Some(Movement::Extend));
+    }
+
+    pub fn extend_repeat_last_motion_reverse(&mut self, count: usize) {
+        self.repeat_last_motion_impl(count, MotionMode::Reverse, Some(Movement::Extend));
+    }
+
+    fn repeat_last_motion_impl(
+        &mut self,
+        count: usize,
+        mode: MotionMode,
+        movement_override: Option<Movement>,
+    ) {
         if let Some(motion) = self.last_motion.take() {
             for _ in 0..count {
-                motion(self);
+                motion(self, mode, movement_override);
             }
             self.last_motion = Some(motion);
         }
     }
+
     /// Current editing mode for the [`Editor`].
     pub fn mode(&self) -> Mode {
         self.mode
