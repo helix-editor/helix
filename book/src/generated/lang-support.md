@@ -203,11 +203,12 @@
 | sml | ✓ |  |  |  |
 | snakemake | ✓ |  | ✓ | `pylsp` |
 | solidity | ✓ | ✓ |  | `solc` |
+| sourcepawn | ✓ | ✓ |  | `sourcepawn-studio` |
 | spade | ✓ |  | ✓ | `spade-language-server` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ | ✓ |  |  |
 | sshclientconfig | ✓ |  |  |  |
-| starlark | ✓ | ✓ |  | `starpls` |
+| starlark | ✓ | ✓ | ✓ | `starpls` |
 | strace | ✓ |  |  |  |
 | supercollider | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
@@ -224,6 +225,7 @@
 | textproto | ✓ | ✓ | ✓ |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
 | thrift | ✓ |  |  |  |
+| tlaplus | ✓ |  |  |  |
 | todotxt | ✓ |  |  |  |
 | toml | ✓ | ✓ |  | `taplo` |
 | tsq | ✓ |  |  | `ts_query_ls` |
@@ -245,7 +247,8 @@
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  | `wat_server` |
 | webc | ✓ |  |  |  |
-| wgsl | ✓ |  |  | `wgsl_analyzer` |
+| werk | ✓ |  |  |  |
+| wgsl | ✓ |  |  | `wgsl-analyzer` |
 | wit | ✓ |  | ✓ |  |
 | wren | ✓ | ✓ | ✓ |  |
 | xit | ✓ |  |  |  |
