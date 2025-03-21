@@ -5,6 +5,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
+use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
@@ -1433,8 +1434,13 @@ impl Document {
             true
         });
 
-        self.diagnostics
-            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider.clone(),
+            )
+        });
 
         // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
         let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
@@ -1980,7 +1986,7 @@ impl Document {
         text: &Rope,
         language_config: Option<&LanguageConfiguration>,
         diagnostic: &helix_lsp::lsp::Diagnostic,
-        language_server_id: LanguageServerId,
+        provider: DiagnosticProvider,
         offset_encoding: helix_lsp::OffsetEncoding,
     ) -> Option<Diagnostic> {
         use helix_core::diagnostic::{Range, Severity::*};
@@ -2060,7 +2066,7 @@ impl Document {
             tags,
             source: diagnostic.source.clone(),
             data: diagnostic.data.clone(),
-            provider: language_server_id,
+            provider,
         })
     }
 
@@ -2073,13 +2079,18 @@ impl Document {
         &mut self,
         diagnostics: impl IntoIterator<Item = Diagnostic>,
         unchanged_sources: &[String],
-        language_server_id: Option<LanguageServerId>,
+        provider: Option<&DiagnosticProvider>,
     ) {
         if unchanged_sources.is_empty() {
-            self.clear_diagnostics(language_server_id);
+            if let Some(provider) = provider {
+                self.diagnostics
+                    .retain(|diagnostic| &diagnostic.provider != provider);
+            } else {
+                self.diagnostics.clear();
+            }
         } else {
             self.diagnostics.retain(|d| {
-                if language_server_id.is_some_and(|id| id != d.provider) {
+                if provider.is_some_and(|provider| provider != &d.provider) {
                     return true;
                 }
 
@@ -2091,17 +2102,19 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics
-            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider.clone(),
+            )
+        });
     }
 
     /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
-    pub fn clear_diagnostics(&mut self, language_server_id: Option<LanguageServerId>) {
-        if let Some(id) = language_server_id {
-            self.diagnostics.retain(|d| d.provider != id);
-        } else {
-            self.diagnostics.clear();
-        }
+    pub fn clear_diagnostics_for_language_server(&mut self, id: LanguageServerId) {
+        self.diagnostics
+            .retain(|d| d.provider.language_server_id() != Some(id));
     }
 
     /// Get the document's auto pairs. If the document has a recognized

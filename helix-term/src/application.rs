@@ -740,8 +740,10 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
+                        let provider =
+                            helix_core::diagnostic::DiagnosticProvider::Lsp { server_id };
                         self.editor.handle_lsp_diagnostics(
-                            language_server.id(),
+                            &provider,
                             uri,
                             params.version,
                             params.diagnostics,
@@ -854,14 +856,16 @@ impl Application {
                         // we need to clear those and remove the entries from the list if this leads to
                         // an empty diagnostic list for said files
                         for diags in self.editor.diagnostics.values_mut() {
-                            diags.retain(|(_, lsp_id)| *lsp_id != server_id);
+                            diags.retain(|(_, provider)| {
+                                provider.language_server_id() != Some(server_id)
+                            });
                         }
 
                         self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
 
                         // Clear any diagnostics for documents with this server open.
                         for doc in self.editor.documents_mut() {
-                            doc.clear_diagnostics(Some(server_id));
+                            doc.clear_diagnostics_for_language_server(server_id);
                         }
 
                         // Remove the language server from the registry.
