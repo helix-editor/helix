@@ -22,6 +22,7 @@ use helix_vcs::DiffProviderRegistry;
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
+use parking_lot::RwLock;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -50,7 +51,7 @@ use helix_core::{
         self,
         config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     },
-    Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
+    Change, LineEnding, Position, Range, Selection, SpellingLanguage, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap::{self as dap, registry::DebugAdapterId};
 use helix_stdx::path::canonicalize;
@@ -1247,7 +1248,11 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    pub dictionaries: Dictionaries,
 }
+
+type Dictionaries = HashMap<SpellingLanguage, Arc<RwLock<spellbook::Dictionary>>>;
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
 
@@ -1368,6 +1373,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            dictionaries: HashMap::new(),
         }
     }
 

@@ -1,3 +1,5 @@
+use std::fmt;
+
 pub use encoding_rs as encoding;
 
 pub mod auto_pairs;
@@ -74,3 +76,48 @@ pub use transaction::{Assoc, Change, ChangeSet, Deletion, Operation, Transaction
 pub use uri::Uri;
 
 pub use tree_house::Language;
+
+/// A language to use for spell checking.
+///
+/// This is defined in the form `"ab_CD"` where `a`, `b`, `C` and `D` are all ASCII alphanumeric.
+/// The first two letters declare the ISO 639 language code and the later two are the ISO 3166
+/// territory identifier. The territory identifier is optional, so a language may just be `"ab"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SpellingLanguage([u8; 5]);
+
+impl SpellingLanguage {
+    pub const EN_US: Self = Self(*b"en_US");
+
+    pub fn as_str(&self) -> &str {
+        // SAFETY: `.0` is all ASCII bytes which is valid UTF-8.
+        unsafe { std::str::from_utf8_unchecked(&self.0) }
+    }
+}
+
+impl fmt::Display for SpellingLanguage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug)]
+pub struct ParseSpellingLanguageError(String);
+
+impl std::str::FromStr for SpellingLanguage {
+    type Err = ParseSpellingLanguageError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // TODO: some parsing.
+        if s.as_bytes() == Self::EN_US.0 {
+            Ok(Self::EN_US)
+        } else {
+            Err(ParseSpellingLanguageError(s.to_owned()))
+        }
+    }
+}
+
+impl fmt::Display for ParseSpellingLanguageError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "expected ISO639 language code and optional ISO3166 territory code ('ab' or 'ab-CD'), found '{}'", self.0)
+    }
+}
