@@ -1,5 +1,5 @@
 //! LSP diagnostic utility types.
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 pub use helix_stdx::range::Range;
 use serde::{Deserialize, Serialize};
@@ -50,9 +50,24 @@ pub struct Diagnostic {
     pub data: Option<serde_json::Value>,
 }
 
+/// The source of a diagnostic.
+///
+/// This type is cheap to clone: all data is either `Copy` or wrapped in an `Arc`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DiagnosticProvider {
-    Lsp { server_id: LanguageServerId },
+    Lsp {
+        /// The ID of the language server which sent the diagnostic.
+        server_id: LanguageServerId,
+        /// An optional identifier under which diagnostics are managed by the client.
+        ///
+        /// `identifier` is a field from the LSP "Pull Diagnostics" feature meant to provide an
+        /// optional "namespace" for diagnostics: a language server can respond to a diagnostics
+        /// pull request with an identifier and these diagnostics should be treated as separate
+        /// from push diagnostics. Rust-analyzer uses this feature for example to provide Cargo
+        /// diagnostics with push and internal diagnostics with pull. The push diagnostics should
+        /// not clear the pull diagnostics and vice-versa.
+        identifier: Option<Arc<str>>,
+    },
     // Future internal features can go here...
 }
 

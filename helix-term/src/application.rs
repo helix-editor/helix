@@ -740,8 +740,10 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
-                        let provider =
-                            helix_core::diagnostic::DiagnosticProvider::Lsp { server_id };
+                        let provider = helix_core::diagnostic::DiagnosticProvider::Lsp {
+                            server_id,
+                            identifier: None,
+                        };
                         self.editor.handle_lsp_diagnostics(
                             &provider,
                             uri,
