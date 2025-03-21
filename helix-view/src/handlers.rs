@@ -1,5 +1,6 @@
 use completion::{CompletionEvent, CompletionHandler};
 use helix_event::send_blocking;
+use spelling::SpellingHandler;
 use tokio::sync::mpsc::Sender;
 
 use crate::handlers::lsp::SignatureHelpInvoked;
@@ -9,6 +10,7 @@ pub mod completion;
 pub mod dap;
 pub mod diagnostics;
 pub mod lsp;
+pub mod spelling;
 
 #[derive(Debug)]
 pub enum AutoSaveEvent {
@@ -22,6 +24,7 @@ pub struct Handlers {
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
     pub document_colors: Sender<lsp::DocumentColorsEvent>,
+    pub spelling: SpellingHandler,
 }
 
 impl Handlers {
