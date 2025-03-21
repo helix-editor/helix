@@ -392,9 +392,11 @@ pub fn symbol_picker(cx: &mut Context) {
 
     cx.jobs.callback(async move {
         let mut symbols = Vec::new();
-        // TODO if one symbol request errors, all other requests are discarded (even if they're valid)
-        while let Some(mut lsp_items) = futures.try_next().await? {
-            symbols.append(&mut lsp_items);
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok(mut items) => symbols.append(&mut items),
+                Err(err) => log::error!("Error requesting document symbols: {err}"),
+            }
         }
         let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
             let columns = [
@@ -497,10 +499,14 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
         let injector = injector.clone();
         async move {
-            // TODO if one symbol request errors, all other requests are discarded (even if they're valid)
-            while let Some(lsp_items) = futures.try_next().await? {
-                for item in lsp_items {
-                    injector.push(item)?;
+            while let Some(response) = futures.next().await {
+                match response {
+                    Ok(items) => {
+                        for item in items {
+                            injector.push(item)?;
+                        }
+                    }
+                    Err(err) => log::error!("Error requesting workspace symbols: {err}"),
                 }
             }
             Ok(())
@@ -901,34 +907,35 @@ where
 
     cx.jobs.callback(async move {
         let mut locations = Vec::new();
-        while let Some((response, offset_encoding)) = futures.try_next().await? {
+        while let Some(response) = futures.next().await {
             match response {
-                Some(lsp::GotoDefinitionResponse::Scalar(lsp_location)) => {
-                    locations.extend(lsp_location_to_location(lsp_location, offset_encoding));
-                }
-                Some(lsp::GotoDefinitionResponse::Array(lsp_locations)) => {
-                    locations.extend(
-                        lsp_locations.into_iter().flat_map(|location| {
+                Ok((response, offset_encoding)) => match response {
+                    Some(lsp::GotoDefinitionResponse::Scalar(lsp_location)) => {
+                        locations.extend(lsp_location_to_location(lsp_location, offset_encoding));
+                    }
+                    Some(lsp::GotoDefinitionResponse::Array(lsp_locations)) => {
+                        locations.extend(lsp_locations.into_iter().flat_map(|location| {
                             lsp_location_to_location(location, offset_encoding)
-                        }),
-                    );
-                }
-                Some(lsp::GotoDefinitionResponse::Link(lsp_locations)) => {
-                    locations.extend(
-                        lsp_locations
-                            .into_iter()
-                            .map(|location_link| {
-                                lsp::Location::new(
-                                    location_link.target_uri,
-                                    location_link.target_range,
-                                )
-                            })
-                            .flat_map(|location| {
-                                lsp_location_to_location(location, offset_encoding)
-                            }),
-                    );
-                }
-                None => (),
+                        }));
+                    }
+                    Some(lsp::GotoDefinitionResponse::Link(lsp_locations)) => {
+                        locations.extend(
+                            lsp_locations
+                                .into_iter()
+                                .map(|location_link| {
+                                    lsp::Location::new(
+                                        location_link.target_uri,
+                                        location_link.target_range,
+                                    )
+                                })
+                                .flat_map(|location| {
+                                    lsp_location_to_location(location, offset_encoding)
+                                }),
+                        );
+                    }
+                    None => (),
+                },
+                Err(err) => log::error!("Error requesting locations: {err}"),
             }
         }
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
@@ -1001,13 +1008,16 @@ pub fn goto_reference(cx: &mut Context) {
 
     cx.jobs.callback(async move {
         let mut locations = Vec::new();
-        while let Some((lsp_locations, offset_encoding)) = futures.try_next().await? {
-            locations.extend(
-                lsp_locations
-                    .into_iter()
-                    .flatten()
-                    .flat_map(|location| lsp_location_to_location(location, offset_encoding)),
-            );
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok((lsp_locations, offset_encoding)) => locations.extend(
+                    lsp_locations
+                        .into_iter()
+                        .flatten()
+                        .flat_map(|location| lsp_location_to_location(location, offset_encoding)),
+                ),
+                Err(err) => log::error!("Error requesting references: {err}"),
+            }
         }
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if locations.is_empty() {
@@ -1059,9 +1069,11 @@ pub fn hover(cx: &mut Context) {
     cx.jobs.callback(async move {
         let mut hovers: Vec<(String, lsp::Hover)> = Vec::new();
 
-        while let Some((server_name, hover)) = futures.try_next().await? {
-            if let Some(hover) = hover {
-                hovers.push((server_name, hover));
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok((server_name, Some(hover))) => hovers.push((server_name, hover)),
+                Ok(_) => (),
+                Err(err) => log::error!("Error requesting hover: {err}"),
             }
         }
 
