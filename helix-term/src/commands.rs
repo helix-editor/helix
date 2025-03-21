@@ -33,7 +33,7 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection, shellwords, surround,
+    selection, surround,
     syntax::{BlockCommentToken, LanguageServerFeature, SHEBANG},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
