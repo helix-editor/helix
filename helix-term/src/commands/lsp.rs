@@ -745,9 +745,12 @@ pub fn code_action(cx: &mut Context) {
 
     cx.jobs.callback(async move {
         let mut actions = Vec::new();
-        // TODO if one code action request errors, all other requests are ignored (even if they're valid)
-        while let Some(mut lsp_items) = futures.try_next().await? {
-            actions.append(&mut lsp_items);
+
+        while let Some(output) = futures.next().await {
+            match output {
+                Ok(mut lsp_items) => actions.append(&mut lsp_items),
+                Err(err) => log::error!("while gathering code actions: {err}"),
+            }
         }
 
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
