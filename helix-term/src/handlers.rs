@@ -18,20 +18,25 @@ mod diagnostics;
 mod document_colors;
 mod signature_help;
 mod snippet;
+mod spelling;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     events::register();
 
-    let event_tx = completion::CompletionHandler::new(config).spawn();
+    let completion_tx = completion::CompletionHandler::new(config).spawn();
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
     let document_colors = DocumentColorsHandler::default().spawn();
+    let spelling = helix_view::handlers::spelling::SpellingHandler::new(
+        spelling::SpellingHandler::default().spawn(),
+    );
 
     let handlers = Handlers {
-        completions: helix_view::handlers::completion::CompletionHandler::new(event_tx),
+        completions: helix_view::handlers::completion::CompletionHandler::new(completion_tx),
         signature_hints,
         auto_save,
         document_colors,
+        spelling,
     };
 
     helix_view::handlers::register_hooks(&handlers);
@@ -41,5 +46,6 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     diagnostics::register_hooks(&handlers);
     snippet::register_hooks(&handlers);
     document_colors::register_hooks(&handlers);
+    spelling::register_hooks(&handlers);
     handlers
 }

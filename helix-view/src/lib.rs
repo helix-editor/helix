@@ -71,5 +71,6 @@ pub use document::Document;
 pub use editor::Editor;
 use helix_core::char_idx_at_visual_offset;
 pub use helix_core::uri::DocumentId;
+pub use spellbook::Dictionary;
 pub use theme::Theme;
 pub use view::View;

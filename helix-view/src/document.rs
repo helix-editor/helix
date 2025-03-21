@@ -1737,6 +1737,10 @@ impl Document {
         current_revision
     }
 
+    pub fn spelling_language(&self) -> Option<helix_core::SpellingLanguage> {
+        Some(helix_core::SpellingLanguage::EN_US)
+    }
+
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub fn language_scope(&self) -> Option<&str> {
         self.language

@@ -132,6 +132,15 @@ pub fn cache_dir() -> PathBuf {
     path
 }
 
+pub fn state_dir() -> PathBuf {
+    let strategy = choose_base_strategy().expect("could not determine XDG strategy");
+    let mut path = strategy
+        .state_dir()
+        .expect("state_dir is always Some for default base strategy");
+    path.push("helix");
+    path
+}
+
 pub fn config_file() -> PathBuf {
     CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
@@ -150,6 +159,11 @@ pub fn lang_config_file() -> PathBuf {
 
 pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
+}
+
+// TODO: personal dictionary per language.
+pub fn personal_dictionary_file() -> PathBuf {
+    state_dir().join("personal-dictionary.txt")
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`

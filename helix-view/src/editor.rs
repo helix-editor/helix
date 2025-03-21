@@ -6,6 +6,9 @@ use crate::{
         self, DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode,
         SavePoint,
     },
+    editor::syntax::config::{
+        AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap,
+    },
     events::{DiagnosticsDidChange, DocumentDidClose, DocumentDidOpen, DocumentFocusLost},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
@@ -23,6 +26,7 @@ use helix_vcs::DiffProviderRegistry;
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
+use parking_lot::RwLock;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -47,11 +51,8 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{
-        self,
-        config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
-    },
-    Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
+    syntax::{self},
+    Change, LineEnding, Position, Range, Selection, SpellingLanguage, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
 use helix_stdx::path::canonicalize;
@@ -1133,7 +1134,11 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    pub dictionaries: Dictionaries,
 }
+
+type Dictionaries = HashMap<SpellingLanguage, Arc<RwLock<spellbook::Dictionary>>>;
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
 
@@ -1255,6 +1260,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            dictionaries: HashMap::new(),
         }
     }
 
