@@ -187,13 +187,10 @@ impl Client {
         id: LanguageServerId,
         name: String,
         req_timeout: u64,
-    ) -> Result<(
-        Self,
-        UnboundedReceiver<(LanguageServerId, Call)>,
-        Arc<Notify>,
-    )> {
-        // Resolve path to the binary
-        let cmd = helix_stdx::env::which(cmd)?;
+        doc_path: Option<&std::path::PathBuf>,
+    ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
+        // Reads the absolute path otherwise resolves path to the binary
+        let cmd = Self::resolve_cmd_path(cmd)?;
 
         let process = Command::new(cmd)
             .envs(server_environment)
@@ -237,6 +234,15 @@ impl Client {
         };
 
         Ok((client, server_rx, initialize_notify))
+    }
+
+    fn resolve_cmd_path(cmd: &str) -> Result<PathBuf> {
+        if Path::new(cmd).exists() {
+            return Ok(PathBuf::from(cmd));
+        }
+
+        let path = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
+        return Ok(path);
     }
 
     pub fn name(&self) -> &str {
