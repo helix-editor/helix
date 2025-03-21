@@ -4,6 +4,7 @@ use crate::{
     auto_pairs::AutoPairs,
     chars::char_is_line_ending,
     diagnostic::Severity,
+    indent::MAX_INDENT,
     regex::Regex,
     transaction::{ChangeSet, Operation},
     RopeSlice, Tendril,
@@ -59,12 +60,13 @@ where
     D: serde::Deserializer<'de>,
 {
     usize::deserialize(deserializer).and_then(|n| {
-        if n > 0 && n <= 16 {
+        if n > 0 && n <= MAX_INDENT.into() {
             Ok(n)
         } else {
-            Err(serde::de::Error::custom(
-                "tab width must be a value from 1 to 16 inclusive",
-            ))
+            Err(serde::de::Error::custom(format!(
+                "tab width must be a value from 1 to {} inclusive",
+                MAX_INDENT
+            )))
         }
     })
 }
