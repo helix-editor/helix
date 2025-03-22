@@ -1,7 +1,5 @@
 # Author: Ahmir Postell <postell.ahmir@gmail.com>
 
-name = "focus_nova"
-
 "annotation" = { fg = "fg1" }
 
 "attribute" = { fg = "aqua1", modifiers = ["italic"] }
