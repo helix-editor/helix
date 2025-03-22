@@ -389,8 +389,9 @@ impl Application {
         let lang_loader = helix_core::config::user_lang_loader()?;
 
         self.editor.syn_loader.store(Arc::new(lang_loader));
+        let loader = self.editor.syn_loader.load();
         for document in self.editor.documents.values_mut() {
-            document.detect_language(self.editor.syn_loader.clone());
+            document.detect_language(&loader);
             let diagnostics = Editor::doc_diagnostics(
                 &self.editor.language_servers,
                 &self.editor.diagnostics,
