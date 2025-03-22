@@ -1500,6 +1500,10 @@ comment-token = "%"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "swipl" ]
 
+[[grammar]]
+name = "prolog"
+source = { git = "https://codeberg.org/foxy/tree-sitter-prolog", subpath = "grammars/prolog", rev = "93c69d2f84d8a167c0a3f4a8d51ccefe365a4dc8" }
+
 [[language]]
 name = "tsq"
 scope = "source.tsq"
