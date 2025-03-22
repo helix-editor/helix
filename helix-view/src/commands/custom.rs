@@ -25,7 +25,7 @@ impl CustomTypeableCommands {
     }
 
     #[inline]
-    pub fn names(&self) -> impl Iterator<Item = &str> {
+    pub fn non_hidden_names(&self) -> impl Iterator<Item = &str> {
         self.commands
             .iter()
             .filter(|command| !command.hidden)
@@ -95,9 +95,5 @@ impl CustomTypableCommand {
         }
 
         prompt
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &str> {
-        self.commands.iter().map(|command| command.as_str())
     }
 }

@@ -3861,7 +3861,10 @@ fn complete_command_line(editor: &Editor, input: &str) -> Vec<ui::prompt::Comple
             .map(|(name, _)| (0.., name.into()))
             .collect()
         } else {
-            let custom = config.commands.names().map(|name| name.to_string());
+            let custom = config
+                .commands
+                .non_hidden_names()
+                .map(|name| name.to_string());
             let builtin = TYPABLE_COMMAND_LIST
                 .iter()
                 .map(|command| command.name.to_string());
