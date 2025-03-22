@@ -3621,13 +3621,26 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
     let mut ranges = SmallVec::with_capacity(selection.len());
 
-    let continue_comment_tokens =
-        if comment_continuation == CommentContinuation::Enabled && config.continue_comments {
+    let continue_comment_tokens = {
+        let curr_line_num = selection.primary().cursor_line(text);
+        let line = text.line(curr_line_num);
+
+        let is_not_shebang = curr_line_num > 0
+            || line
+                .as_str()
+                .map(|line| !line.starts_with("#!"))
+                .unwrap_or(true);
+
+        if is_not_shebang
+            && comment_continuation == CommentContinuation::Enabled
+            && config.continue_comments
+        {
             doc.language_config()
                 .and_then(|config| config.comment_tokens.as_ref())
         } else {
             None
-        };
+        }
+    };
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         // the line number, where the cursor is currently
@@ -4137,11 +4150,22 @@ pub mod insert {
         let mut global_offs = 0;
         let mut new_text = String::new();
 
-        let continue_comment_tokens = if config.continue_comments {
-            doc.language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-        } else {
-            None
+        let continue_comment_tokens = {
+            let curr_line_num = selection.primary().cursor_line(text);
+            let line = text.line(curr_line_num);
+
+            let is_not_shebang = curr_line_num > 0
+                || line
+                    .as_str()
+                    .map(|line| !line.starts_with("#!"))
+                    .unwrap_or(true);
+
+            if is_not_shebang && config.continue_comments {
+                doc.language_config()
+                    .and_then(|config| config.comment_tokens.as_ref())
+            } else {
+                None
+            }
         };
 
         let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
