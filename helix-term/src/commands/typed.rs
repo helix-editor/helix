@@ -12,7 +12,7 @@ use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
-use helix_view::editor::{CloseError, ConfigEvent};
+use helix_view::editor::{CloseError, Config, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
 use ui::completers::{self, Completer};
@@ -2046,7 +2046,10 @@ fn set_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     } else {
         arg.parse().map_err(field_error)?
     };
-    let config = serde_json::from_value(config).map_err(field_error)?;
+    let mut config: Box<Config> = serde_json::from_value(config).map_err(field_error)?;
+
+    // Copy custom commands over to new config
+    config.commands = cx.editor.config().commands.clone();
 
     cx.editor
         .config_events
@@ -2140,8 +2143,11 @@ fn toggle_option(
     };
 
     let status = format!("'{key}' is now set to {value}");
-    let config = serde_json::from_value(config)
+    let mut config: Box<Config> = serde_json::from_value(config)
         .map_err(|err| anyhow::anyhow!("Failed to parse config: {err}"))?;
+
+    // Copy custom commands over to new config
+    config.commands = cx.editor.config().commands.clone();
 
     cx.editor
         .config_events
