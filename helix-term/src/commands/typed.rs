@@ -3728,12 +3728,12 @@ pub(super) fn execute_command(
 ) -> anyhow::Result<()> {
     let args = if event == PromptEvent::Validate {
         Args::parse(args, cmd.signature, true, |token| {
-            expansion::expand(cx.editor, token, posargs, false).map_err(|err| err.into())
+            expansion::expand(cx.editor, token, posargs).map_err(|err| err.into())
         })
         .map_err(|err| anyhow!("'{}': {err}", cmd.name))?
     } else {
         Args::parse(args, cmd.signature, false, |token| {
-            expansion::expand(cx.editor, token, posargs, true).map_err(|err| err.into())
+            expansion::expand_only_arg(token, posargs).map_err(|err| err.into())
         })
         .map_err(|err| anyhow!("'{}': {err}", cmd.name))?
     };

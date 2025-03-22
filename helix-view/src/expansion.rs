@@ -71,17 +71,17 @@ pub fn expand<'a>(
     editor: &Editor,
     token: Token<'a>,
     posargs: &[Cow<'a, str>],
-    only_expand_posargs: bool,
 ) -> Result<Cow<'a, str>> {
     // Note: see the `TokenKind` documentation for more details on how each branch should expand.
     match token.kind {
-        TokenKind::Expansion(ExpansionKind::Variable) if !only_expand_posargs => {
+        TokenKind::Unquoted | TokenKind::Quoted(_) => Ok(token.content),
+        TokenKind::Expansion(ExpansionKind::Variable) => {
             let var = Variable::from_name(&token.content)
                 .ok_or_else(|| anyhow!("unknown variable '{}'", token.content))?;
 
             expand_variable(editor, var)
         }
-        TokenKind::Expansion(ExpansionKind::Unicode) if !only_expand_posargs => {
+        TokenKind::Expansion(ExpansionKind::Unicode) => {
             if let Some(ch) = u32::from_str_radix(token.content.as_ref(), 16)
                 .ok()
                 .and_then(char::from_u32)
@@ -94,29 +94,35 @@ pub fn expand<'a>(
                 ))
             }
         }
-        TokenKind::Expand if !only_expand_posargs => expand_inner(editor, token.content, posargs),
-        TokenKind::Expansion(ExpansionKind::Shell) if !only_expand_posargs => {
-            expand_shell(editor, token.content, posargs)
-        }
+        TokenKind::Expand => expand_inner(editor, token.content, posargs),
+        TokenKind::Expansion(ExpansionKind::Shell) => expand_shell(editor, token.content, posargs),
         TokenKind::Expansion(ExpansionKind::Arg) => expand_arg(&token.content, posargs),
 
         // Note: see the docs for this variant.
-        TokenKind::ExpansionKind if !only_expand_posargs => unreachable!(
+        TokenKind::ExpansionKind => unreachable!(
             "expansion name tokens cannot be emitted when command line validation is enabled"
         ),
+    }
+}
 
+/// Expands the given command line token for only `%arg{}`'s.
+///
+/// Note that the lifetime of the expanded variable is only bound to the input token and not the
+/// `Editor`. See `expand_variable` below for more discussion of lifetimes.
+pub fn expand_only_arg<'a>(token: Token<'a>, posargs: &[Cow<'a, str>]) -> Result<Cow<'a, str>> {
+    // Note: see the `TokenKind` documentation for more details on how each branch should expand.
+    match token.kind {
+        TokenKind::Expansion(ExpansionKind::Arg) => expand_arg(&token.content, posargs),
         _ => Ok(token.content),
     }
 }
 
 /// Expand a positional argument.
 pub fn expand_arg<'a>(content: &Cow<'a, str>, args: &[Cow<'a, str>]) -> Result<Cow<'a, str>> {
-    if args.is_empty() {
-        return Ok(Cow::default());
-    }
-
-    let idx: usize = content.parse()?;
-    Ok(args[idx].clone())
+    Ok(args
+        .get(content.parse::<usize>()?)
+        .cloned()
+        .unwrap_or_default())
 }
 
 /// Expand a shell command.
@@ -198,7 +204,7 @@ fn expand_inner<'a>(
                 .unwrap()
                 .map_err(|err| anyhow!("{err}"))?;
             // expand it (this is the recursive part),
-            let expanded = expand(editor, token, posargs, false)?;
+            let expanded = expand(editor, token, posargs)?;
             escaped.push_str(expanded.as_ref());
             // and move forward to the end of the expansion.
             start = idx + tokenizer.pos();
