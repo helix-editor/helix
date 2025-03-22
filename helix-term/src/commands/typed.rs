@@ -61,19 +61,17 @@ impl TypableCommand {
 
     /// Builds the typable commands prompt.
     fn prompt(&self) -> Cow<'_, str> {
-        let command = self;
-
-        if command.aliases.is_empty() && command.signature.flags.is_empty() {
-            return Cow::Borrowed(command.doc);
+        if self.aliases.is_empty() && self.signature.flags.is_empty() {
+            return Cow::Borrowed(self.doc);
         }
 
-        let mut doc = command.doc.to_string();
+        let mut doc = self.doc.to_string();
 
-        if !command.aliases.is_empty() {
-            write!(doc, "\nAliases: {}", command.aliases.join(", ")).unwrap();
+        if !self.aliases.is_empty() {
+            write!(doc, "\nAliases: {}", self.aliases.join(", ")).unwrap();
         }
 
-        if !command.signature.flags.is_empty() {
+        if !self.signature.flags.is_empty() {
             const ARG_PLACEHOLDER: &str = " <arg>";
 
             fn flag_len(flag: &Flag) -> usize {
@@ -89,9 +87,9 @@ impl TypableCommand {
 
             doc.push_str("\nFlags:");
 
-            let max_flag_len = command.signature.flags.iter().map(flag_len).max().unwrap();
+            let max_flag_len = self.signature.flags.iter().map(flag_len).max().unwrap();
 
-            for flag in command.signature.flags {
+            for flag in self.signature.flags {
                 let mut buf = [0u8; 4];
                 let this_flag_len = flag_len(flag);
                 write!(
