@@ -7,6 +7,7 @@ use crate::{
     events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
+    icons,
     info::Info,
     input::KeyEvent,
     register::Registers,
@@ -17,6 +18,7 @@ use crate::{
 use dap::StackFrame;
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
+use icons::Icons;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
@@ -370,6 +372,8 @@ pub struct Config {
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
     /// `true`.
     pub editor_config: bool,
+    /// Centralized location for icons that can be used throughout the UI  
+    pub icons: Icons,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1014,6 +1018,7 @@ impl Default for Config {
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
+            icons: Icons::default(),
         }
     }
 }
