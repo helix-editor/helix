@@ -770,6 +770,10 @@ impl<'a> Args<'a> {
         }
     }
 
+    pub fn empty() -> Self {
+        Self::default()
+    }
+
     /// Reads the next token out of the given parser.
     ///
     /// If the command's signature sets a maximum number of positionals (via `raw_after`) then

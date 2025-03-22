@@ -3695,7 +3695,7 @@ fn execute_command_line(
                 let (command, args, _) = command_line::split(command);
 
                 if let Some(typed) = typed::TYPABLE_COMMAND_MAP.get(command) {
-                    execute_command(cx, typed, args, posargs.as_slice(), event)?;
+                    execute_command(cx, typed, args, &posargs, event)?;
                 } else if let Some(r#macro) = command.strip_prefix('@') {
                     execute_macro(cx, command, r#macro, event)?;
                 } else {
@@ -3709,11 +3709,11 @@ fn execute_command_line(
     // If command is numeric, interpret as line number and go there.
     if command.parse::<usize>().is_ok() && args.trim().is_empty() {
         let cmd = TYPABLE_COMMAND_MAP.get("goto").unwrap();
-        return execute_command(cx, cmd, command, &[], event);
+        return execute_command(cx, cmd, command, &Args::empty(), event);
     }
 
     match typed::TYPABLE_COMMAND_MAP.get(command) {
-        Some(cmd) => execute_command(cx, cmd, args, &[], event),
+        Some(cmd) => execute_command(cx, cmd, args, &Args::empty(), event),
         None if event == PromptEvent::Validate => Err(anyhow!("no such command: '{command}'")),
         None => Ok(()),
     }
@@ -3723,17 +3723,17 @@ pub(super) fn execute_command(
     cx: &mut compositor::Context,
     cmd: &TypableCommand,
     args: &str,
-    posargs: &[Cow<'_, str>],
+    posargs: &Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     let args = if event == PromptEvent::Validate {
         Args::parse(args, cmd.signature, true, |token| {
-            expansion::expand(cx.editor, token, posargs).map_err(|err| err.into())
+            expansion::expand(cx.editor, token, posargs.as_slice()).map_err(|err| err.into())
         })
         .map_err(|err| anyhow!("'{}': {err}", cmd.name))?
     } else {
         Args::parse(args, cmd.signature, false, |token| {
-            expansion::expand_only_arg(token, posargs).map_err(|err| err.into())
+            expansion::expand_only_arg(token, posargs.as_slice()).map_err(|err| err.into())
         })
         .map_err(|err| anyhow!("'{}': {err}", cmd.name))?
     };
