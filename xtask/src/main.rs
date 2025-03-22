@@ -1,4 +1,5 @@
 mod docgen;
+mod grammarcheck;
 mod helpers;
 mod path;
 
@@ -7,7 +8,12 @@ use std::{env, error::Error};
 type DynError = Box<dyn Error>;
 
 pub mod tasks {
+    use crate::grammarcheck::grammar_check;
     use crate::DynError;
+
+    pub fn grammarcheck() -> Result<(), DynError> {
+        grammar_check()
+    }
 
     pub fn docgen() -> Result<(), DynError> {
         use crate::docgen::*;
@@ -95,6 +101,8 @@ Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
     Tasks:
         docgen: Generate files to be included in the mdbook output.
         query-check: Check that tree-sitter queries are valid.
+        theme-check: Check that themes are valid.
+        grammar-check: Check for outdated tree-sitter grammars.
         theme-check: Check that theme files in runtime/themes are valid.
 "
         );
@@ -109,6 +117,7 @@ fn main() -> Result<(), DynError> {
             "docgen" => tasks::docgen()?,
             "query-check" => tasks::querycheck()?,
             "theme-check" => tasks::themecheck()?,
+            "grammar-check" => tasks::grammarcheck()?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };
