@@ -21,6 +21,7 @@ pub struct Handlers {
     pub completions: CompletionHandler,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
+    pub pull_diagnostics: Sender<lsp::PullDiagnosticsEvent>,
 }
 
 impl Handlers {
