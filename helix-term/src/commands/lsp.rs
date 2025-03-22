@@ -19,7 +19,7 @@ use helix_core::{
 use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
-    editor::Action,
+    editor::{Action, LspConfig},
     handlers::lsp::SignatureHelpInvoked,
     theme::Style,
     Document, View,
@@ -1260,7 +1260,8 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
 }
 
 pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::job::Jobs) {
-    if !editor.config().lsp.display_inlay_hints {
+    let lsp = &editor.config().lsp;
+    if !lsp.display_inlay_hints {
         return;
     }
 
@@ -1269,7 +1270,7 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
             Some(doc) => doc,
             None => continue,
         };
-        if let Some(callback) = compute_inlay_hints_for_view(view, doc) {
+        if let Some(callback) = compute_inlay_hints_for_view(view, doc, lsp) {
             jobs.callback(callback);
         }
     }
@@ -1278,6 +1279,7 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
 fn compute_inlay_hints_for_view(
     view: &View,
     doc: &Document,
+    lsp: &LspConfig,
 ) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>>>>> {
     let view_id = view.id;
     let doc_id = view.doc;
@@ -1326,6 +1328,7 @@ fn compute_inlay_hints_for_view(
 
     let offset_encoding = language_server.offset_encoding();
 
+    let max_inlay_length = lsp.max_inlay_hint_length;
     let callback = super::make_job_callback(
         language_server.text_document_range_inlay_hints(doc.identifier(), range, None)?,
         move |editor, _compositor, response: Option<Vec<lsp::InlayHint>>| {
@@ -1395,7 +1398,17 @@ fn compute_inlay_hints_for_view(
                     padding_before_inlay_hints.push(InlineAnnotation::new(char_idx, " "));
                 }
 
-                inlay_hints_vec.push(InlineAnnotation::new(char_idx, label));
+                let len = label.len();
+                inlay_hints_vec.push(InlineAnnotation::new(
+                    char_idx,
+                    if max_inlay_length > 0 && len > max_inlay_length {
+                        let mut label = label[0..max_inlay_length - 3].to_string();
+                        label.push_str("...");
+                        label
+                    } else {
+                        label
+                    },
+                ));
 
                 if let Some(true) = hint.padding_right {
                     padding_after_inlay_hints.push(InlineAnnotation::new(char_idx, " "));

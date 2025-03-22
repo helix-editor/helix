@@ -459,6 +459,8 @@ pub struct LspConfig {
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
     pub goto_reference_include_declaration: bool,
+    /// Controls the length of the inlay, setting it to 0(default) will not limit.
+    pub max_inlay_hint_length: usize,
 }
 
 impl Default for LspConfig {
@@ -472,6 +474,7 @@ impl Default for LspConfig {
             display_inlay_hints: false,
             snippets: true,
             goto_reference_include_declaration: true,
+            max_inlay_hint_length: 0,
         }
     }
 }
