@@ -1319,16 +1319,12 @@ fn get_character_info(
     Ok(())
 }
 
-fn force_reload(
-    cx: &mut compositor::Context,
-    _args: Args,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    reload(cx, _args, event)
-}
-
 /// Reload the [`Document`] from its source file.
-fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+fn reload_impl(
+    cx: &mut compositor::Context,
+    event: PromptEvent,
+    force: bool,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -1336,7 +1332,7 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
-    if doc.is_modified() {
+    if !force && doc.is_modified() {
         bail!("Cannot reload unsaved buffer");
     }
 
@@ -1352,15 +1348,23 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     Ok(())
 }
 
-fn force_reload_all(
+fn force_reload(
     cx: &mut compositor::Context,
     _args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    reload_all(cx, _args, event)
+    reload_impl(cx, event, true)
 }
 
-fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    reload_impl(cx, event, false)
+}
+
+fn reload_all_impl(
+    cx: &mut compositor::Context,
+    event: PromptEvent,
+    force: bool,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -1390,7 +1394,9 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
 
         if doc.is_modified() {
             unsaved_buffer_count += 1;
-            continue;
+            if !force {
+                continue;
+            }
         }
 
         // Every doc is guaranteed to have at least 1 view at this point.
@@ -1419,7 +1425,7 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         }
     }
 
-    if unsaved_buffer_count > 0 {
+    if !force && unsaved_buffer_count > 0 {
         bail!(
             "{}, unsaved buffer(s) remaining, all saved buffers reloaded",
             unsaved_buffer_count
@@ -1429,6 +1435,17 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
     Ok(())
 }
 
+fn force_reload_all(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    reload_all_impl(cx, event, true)
+}
+
+fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    reload_all_impl(cx, event, false)
+}
 /// Update the [`Document`] if it has been modified.
 fn update(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
