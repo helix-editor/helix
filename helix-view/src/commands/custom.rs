@@ -2,6 +2,7 @@ use std::{fmt::Write, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
+/// Repository of custom commands.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CustomTypeableCommands {
     pub commands: Arc<[CustomTypableCommand]>,
@@ -16,7 +17,7 @@ impl Default for CustomTypeableCommands {
 }
 
 impl CustomTypeableCommands {
-    #[inline]
+    /// Retrieves a command by its name if it exists.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<&CustomTypableCommand> {
         self.commands
@@ -24,6 +25,7 @@ impl CustomTypeableCommands {
             .find(|command| command.name == name.trim_start_matches(':'))
     }
 
+    /// Returns the names of the custom commands that are not hidden.
     #[inline]
     pub fn non_hidden_names(&self) -> impl Iterator<Item = &str> {
         self.commands
@@ -33,17 +35,29 @@ impl CustomTypeableCommands {
     }
 }
 
+/// Represents a user-custom typable command.
 #[derive(Debug, Clone, Deserialize, Default, Serialize, PartialEq, Eq)]
 pub struct CustomTypableCommand {
+    /// The custom command that will be typed into the command line.
+    ///
+    /// For example `lg`
     pub name: String,
+    /// The description of what the custom command does.
     pub desc: Option<String>,
+    /// Single or multiple commands which will be executed via the custom command.
     pub commands: Vec<String>,
+    /// Signifier if command accepts any input.
+    ///
+    /// This is only for documentation purposes.
     pub accepts: Option<String>,
+    /// The name of the typeable of which the custom command emulate in its completions.
     pub completer: Option<String>,
+    /// Whether or not the custom command is shown in the prompt list.
     pub hidden: bool,
 }
 
 impl CustomTypableCommand {
+    /// Builds the prompt documentation for command.
     pub fn prompt(&self) -> String {
         // wcd! <path>: writes buffer forcefully, then changes to its directory
         //
