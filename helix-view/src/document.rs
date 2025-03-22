@@ -867,10 +867,13 @@ impl Document {
         )?;
 
         let fut = async move {
-            let edits = request.await.unwrap_or_else(|e| {
-                log::warn!("LSP formatting failed: {}", e);
-                Default::default()
-            });
+            let edits = request
+                .await
+                .unwrap_or_else(|e| {
+                    log::warn!("LSP formatting failed: {}", e);
+                    Default::default()
+                })
+                .unwrap_or_default();
             Ok(helix_lsp::util::generate_transaction_from_edits(
                 &text,
                 edits,

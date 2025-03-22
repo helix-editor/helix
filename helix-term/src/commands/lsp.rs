@@ -343,9 +343,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 .expect("docs with active language servers must be backed by paths");
 
             async move {
-                let json = request.await?;
-                let response: Option<lsp::DocumentSymbolResponse> = serde_json::from_value(json)?;
-                let symbols = match response {
+                let symbols = match request.await? {
                     Some(symbols) => symbols,
                     None => return anyhow::Ok(vec![]),
                 };
@@ -461,30 +459,34 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                     .unwrap();
                 let offset_encoding = language_server.offset_encoding();
                 async move {
-                    let json = request.await?;
+                    let symbols = request
+                        .await?
+                        .and_then(|resp| match resp {
+                            lsp::WorkspaceSymbolResponse::Flat(symbols) => Some(symbols),
+                            lsp::WorkspaceSymbolResponse::Nested(_) => None,
+                        })
+                        .unwrap_or_default();
 
-                    let response: Vec<_> =
-                        serde_json::from_value::<Option<Vec<lsp::SymbolInformation>>>(json)?
-                            .unwrap_or_default()
-                            .into_iter()
-                            .filter_map(|symbol| {
-                                let uri = match Uri::try_from(&symbol.location.uri) {
-                                    Ok(uri) => uri,
-                                    Err(err) => {
-                                        log::warn!("discarding symbol with invalid URI: {err}");
-                                        return None;
-                                    }
-                                };
-                                Some(SymbolInformationItem {
-                                    location: Location {
-                                        uri,
-                                        range: symbol.location.range,
-                                        offset_encoding,
-                                    },
-                                    symbol,
-                                })
+                    let response: Vec<_> = symbols
+                        .into_iter()
+                        .filter_map(|symbol| {
+                            let uri = match Uri::try_from(&symbol.location.uri) {
+                                Ok(uri) => uri,
+                                Err(err) => {
+                                    log::warn!("discarding symbol with invalid URI: {err}");
+                                    return None;
+                                }
+                            };
+                            Some(SymbolInformationItem {
+                                location: Location {
+                                    uri,
+                                    range: symbol.location.range,
+                                    offset_encoding,
+                                },
+                                symbol,
                             })
-                            .collect();
+                        })
+                        .collect();
 
                     anyhow::Ok(response)
                 }
@@ -676,11 +678,8 @@ pub fn code_action(cx: &mut Context) {
             Some((code_action_request, language_server_id))
         })
         .map(|(request, ls_id)| async move {
-            let json = request.await?;
-            let response: Option<lsp::CodeActionResponse> = serde_json::from_value(json)?;
-            let mut actions = match response {
-                Some(a) => a,
-                None => return anyhow::Ok(Vec::new()),
+            let Some(mut actions) = request.await? else {
+                return anyhow::Ok(Vec::new());
             };
 
             // remove disabled code actions
@@ -782,15 +781,9 @@ pub fn code_action(cx: &mut Context) {
                         // we support lsp "codeAction/resolve" for `edit` and `command` fields
                         let mut resolved_code_action = None;
                         if code_action.edit.is_none() || code_action.command.is_none() {
-                            if let Some(future) =
-                                language_server.resolve_code_action(code_action.clone())
-                            {
-                                if let Ok(response) = helix_lsp::block_on(future) {
-                                    if let Ok(code_action) =
-                                        serde_json::from_value::<CodeAction>(response)
-                                    {
-                                        resolved_code_action = Some(code_action);
-                                    }
+                            if let Some(future) = language_server.resolve_code_action(code_action) {
+                                if let Ok(code_action) = helix_lsp::block_on(future) {
+                                    resolved_code_action = Some(code_action);
                                 }
                             }
                         }
@@ -882,7 +875,7 @@ fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Lo
 fn goto_single_impl<P, F>(cx: &mut Context, feature: LanguageServerFeature, request_provider: P)
 where
     P: Fn(&Client, lsp::Position, lsp::TextDocumentIdentifier) -> Option<F>,
-    F: Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+    F: Future<Output = helix_lsp::Result<Option<lsp::GotoDefinitionResponse>>> + 'static + Send,
 {
     let (view, doc) = current_ref!(cx.editor);
     let mut futures: FuturesOrdered<_> = doc
@@ -891,11 +884,7 @@ where
             let offset_encoding = language_server.offset_encoding();
             let pos = doc.position(view.id, offset_encoding);
             let future = request_provider(language_server, pos, doc.identifier()).unwrap();
-            async move {
-                let json = future.await?;
-                let response: Option<lsp::GotoDefinitionResponse> = serde_json::from_value(json)?;
-                anyhow::Ok((response, offset_encoding))
-            }
+            async move { anyhow::Ok((future.await?, offset_encoding)) }
         })
         .collect();
 
@@ -992,11 +981,7 @@ pub fn goto_reference(cx: &mut Context) {
                     None,
                 )
                 .unwrap();
-            async move {
-                let json = future.await?;
-                let locations: Option<Vec<lsp::Location>> = serde_json::from_value(json)?;
-                anyhow::Ok((locations, offset_encoding))
-            }
+            async move { anyhow::Ok((future.await?, offset_encoding)) }
         })
         .collect();
 
@@ -1158,7 +1143,9 @@ pub fn rename_symbol(cx: &mut Context) {
 
                 match block_on(future) {
                     Ok(edits) => {
-                        let _ = cx.editor.apply_workspace_edit(offset_encoding, &edits);
+                        let _ = cx
+                            .editor
+                            .apply_workspace_edit(offset_encoding, &edits.unwrap_or_default());
                     }
                     Err(err) => cx.editor.set_error(err.to_string()),
                 }

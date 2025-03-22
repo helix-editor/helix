@@ -146,10 +146,10 @@ impl Context<'_> {
     #[inline]
     pub fn callback<T, F>(
         &mut self,
-        call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+        call: impl Future<Output = helix_lsp::Result<T>> + 'static + Send,
         callback: F,
     ) where
-        T: for<'de> serde::Deserialize<'de> + Send + 'static,
+        T: Send + 'static,
         F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
     {
         self.jobs.callback(make_job_callback(call, callback));
@@ -175,16 +175,15 @@ impl Context<'_> {
 
 #[inline]
 fn make_job_callback<T, F>(
-    call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+    call: impl Future<Output = helix_lsp::Result<T>> + 'static + Send,
     callback: F,
 ) -> std::pin::Pin<Box<impl Future<Output = Result<Callback, anyhow::Error>>>>
 where
-    T: for<'de> serde::Deserialize<'de> + Send + 'static,
+    T: Send + 'static,
     F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
 {
     Box::pin(async move {
-        let json = call.await?;
-        let response = serde_json::from_value(json)?;
+        let response = call.await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 callback(editor, compositor, response)
@@ -4905,7 +4904,10 @@ fn format_selections(cx: &mut Context) {
         )
         .unwrap();
 
-    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future)).unwrap_or_default();
+    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future))
+        .ok()
+        .flatten()
+        .unwrap_or_default();
 
     let transaction =
         helix_lsp::util::generate_transaction_from_edits(doc.text(), edits, offset_encoding);

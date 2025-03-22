@@ -1410,7 +1410,7 @@ impl Editor {
                 continue;
             };
             let edit = match helix_lsp::block_on(request) {
-                Ok(edit) => edit,
+                Ok(edit) => edit.unwrap_or_default(),
                 Err(err) => {
                     log::error!("invalid willRename response: {err:?}");
                     continue;
