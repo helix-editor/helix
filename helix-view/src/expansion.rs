@@ -109,6 +109,7 @@ pub fn expand<'a>(
 ///
 /// Note that the lifetime of the expanded variable is only bound to the input token and not the
 /// `Editor`. See `expand_variable` below for more discussion of lifetimes.
+#[inline]
 pub fn expand_only_arg<'a>(token: Token<'a>, posargs: &[Cow<'a, str>]) -> Result<Cow<'a, str>> {
     // Note: see the `TokenKind` documentation for more details on how each branch should expand.
     match token.kind {
@@ -118,6 +119,7 @@ pub fn expand_only_arg<'a>(token: Token<'a>, posargs: &[Cow<'a, str>]) -> Result
 }
 
 /// Expand a positional argument.
+#[inline]
 pub fn expand_arg<'a>(content: &Cow<'a, str>, args: &[Cow<'a, str>]) -> Result<Cow<'a, str>> {
     Ok(args
         .get(content.parse::<usize>()?)
