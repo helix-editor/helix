@@ -43,7 +43,7 @@ impl TypableCommand {
     /// are then used to potentially substitute `%arg{}` placeholders.
     ///
     /// This also sets up any completer that may be associated with the custom command.
-    fn custom_from(command: &str) -> Self {
+    fn custom_with_completer_from(command: &str) -> Self {
         Self {
             name: "custom",
             aliases: &[],
@@ -3685,7 +3685,7 @@ fn execute_command_line(
         if let Some(custom) = cx.editor.config().commands.get(command) {
             let posargs = Args::parse(
                 args,
-                TypableCommand::custom_from(command).signature,
+                TypableCommand::custom_with_completer_from(command).signature,
                 false,
                 |token| Ok(token.content),
             )
