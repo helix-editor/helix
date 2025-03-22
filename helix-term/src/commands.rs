@@ -343,6 +343,10 @@ impl MappableCommand {
         extend_parent_node_start, "Extend to beginning of the parent node",
         find_till_char, "Move till next occurrence of char",
         find_next_char, "Move to next occurrence of char",
+        find_next_pair, "Move to next occurrence of 2 chars",
+        find_prev_pair, "Move to next occurrence of 2 chars",
+        extend_next_pair, "Extend to next occurrence of 2 chars",
+        extend_prev_pair, "Extend to next occurrence of 2 chars",
         extend_till_char, "Extend till next occurrence of char",
         extend_next_char, "Extend to next occurrence of char",
         till_prev_char, "Move till previous occurrence of char",
@@ -1553,7 +1557,83 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
     })
 }
 
-//
+fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
+    // TODO: count is reset to 1 before next key so we move it into the closure here.
+    // Would be nice to carry over.
+    let count = cx.count();
+    let eof = doc!(cx.editor).line_ending.as_str();
+
+    // need to wait for next key
+    // TODO: should this be done by grapheme rather than char?  For example,
+    // we can't properly handle the line-ending CRLF case here in terms of char.
+    cx.on_next_key(move |cx, event| {
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => search::PairMatcher::LineEnding(eof),
+
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => search::PairMatcher::Char('\t'),
+
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => search::PairMatcher::Char(ch),
+            _ => return,
+        };
+
+        cx.on_next_key(move |cx, event| {
+            let ch_2 = match event {
+                KeyEvent {
+                    code: KeyCode::Enter,
+                    ..
+                } => search::PairMatcher::LineEnding(eof),
+
+                KeyEvent {
+                    code: KeyCode::Tab, ..
+                } => search::PairMatcher::Char('\t'),
+
+                KeyEvent {
+                    code: KeyCode::Char(ch),
+                    ..
+                } => search::PairMatcher::Char(ch),
+                _ => return,
+            };
+            let motion = move |editor: &mut Editor| {
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
+                let selection = doc.selection(view.id).clone();
+                let selection = match direction {
+                    Direction::Forward => selection.transform(|range| {
+                        search::find_nth_pair(text, ch, ch_2, range.char_cursor(), count, direction)
+                            .map_or(range, |pos| {
+                                if extend {
+                                    Range::new(range.from(), pos + 2)
+                                } else {
+                                    Range::new(pos, pos + 2)
+                                }
+                            })
+                    }),
+                    Direction::Backward => selection.transform(|range| {
+                        search::find_nth_pair(text, ch, ch_2, range.char_cursor(), count, direction)
+                            .map_or(range, |pos| {
+                                if extend {
+                                    Range::new(pos + 2, range.to())
+                                } else {
+                                    Range::new(pos + 2, pos)
+                                }
+                            })
+                    }),
+                };
+                doc.set_selection(view.id, selection);
+            };
+
+            cx.editor.apply_motion(motion);
+        })
+    })
+}
 
 #[inline]
 fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
@@ -1566,20 +1646,12 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
 ) where
     F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
 {
+    // TODO: make this grapheme-aware
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-        // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-        // here, but just in terms of chars instead.
-        let search_start_pos = if range.anchor < range.head {
-            range.head - 1
-        } else {
-            range.head
-        };
-
-        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
+        search_fn(text, char_matcher, range.char_cursor(), count, inclusive).map_or(range, |pos| {
             if extend {
                 range.put_cursor(text, pos, true)
             } else {
@@ -1625,6 +1697,22 @@ fn find_prev_char_impl(
         };
         search::find_nth_prev(text, ch, pos, n).map(|n| (n + 1).min(text.len_chars()))
     }
+}
+
+fn find_next_pair(cx: &mut Context) {
+    find_char_pair(cx, Direction::Forward, false)
+}
+
+fn find_prev_pair(cx: &mut Context) {
+    find_char_pair(cx, Direction::Backward, false)
+}
+
+fn extend_next_pair(cx: &mut Context) {
+    find_char_pair(cx, Direction::Forward, true)
+}
+
+fn extend_prev_pair(cx: &mut Context) {
+    find_char_pair(cx, Direction::Backward, true)
 }
 
 fn find_till_char(cx: &mut Context) {
