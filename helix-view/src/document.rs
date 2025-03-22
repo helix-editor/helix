@@ -146,9 +146,6 @@ pub struct Document {
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
-    /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
-    /// update from the LSP
-    pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
@@ -275,7 +272,6 @@ impl fmt::Debug for Document {
             .field("id", &self.id)
             .field("text", &self.text)
             .field("selections", &self.selections)
-            .field("inlay_hints_oudated", &self.inlay_hints_oudated)
             .field("text_annotations", &self.inlay_hints)
             .field("view_data", &self.view_data)
             .field("path", &self.path)
@@ -678,7 +674,6 @@ impl Document {
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
-            inlay_hints_oudated: false,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             editor_config: EditorConfig::default(),
@@ -1436,33 +1431,6 @@ impl Document {
         self.diagnostics
             .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
 
-        // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
-        let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
-            changes.update_positions(
-                annotations
-                    .iter_mut()
-                    .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
-            );
-        };
-
-        self.inlay_hints_oudated = true;
-        for text_annotation in self.inlay_hints.values_mut() {
-            let DocumentInlayHints {
-                id: _,
-                type_inlay_hints,
-                parameter_inlay_hints,
-                other_inlay_hints,
-                padding_before_inlay_hints,
-                padding_after_inlay_hints,
-            } = text_annotation;
-
-            apply_inlay_hint_changes(padding_before_inlay_hints);
-            apply_inlay_hint_changes(type_inlay_hints);
-            apply_inlay_hint_changes(parameter_inlay_hints);
-            apply_inlay_hint_changes(other_inlay_hints);
-            apply_inlay_hint_changes(padding_after_inlay_hints);
-        }
-
         helix_event::dispatch(DocumentDidChange {
             doc: self,
             view: view_id,
@@ -1481,19 +1449,6 @@ impl Document {
                 doc: self,
                 view: view_id,
             });
-        }
-
-        if emit_lsp_notification {
-            // TODO: move to hook
-            // emit lsp notification
-            for language_server in self.language_servers() {
-                let _ = language_server.text_document_did_change(
-                    self.versioned_identifier(),
-                    &old_doc,
-                    self.text(),
-                    changes,
-                );
-            }
         }
 
         true
@@ -2221,6 +2176,12 @@ impl Document {
     /// Get the inlay hints for this document and `view_id`.
     pub fn inlay_hints(&self, view_id: ViewId) -> Option<&DocumentInlayHints> {
         self.inlay_hints.get(&view_id)
+    }
+
+    pub fn inlay_hints_mut(&mut self) -> impl Iterator<Item = (ViewId, &mut DocumentInlayHints)> {
+        self.inlay_hints
+            .iter_mut()
+            .map(|(view_id, hints)| (*view_id, hints))
     }
 
     /// Completely removes all the inlay hints saved for the document, dropping them to free memory
