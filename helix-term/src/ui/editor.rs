@@ -35,6 +35,8 @@ use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
+use super::text_decorations::blame::InlineBlame;
+
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<(OnKeyCallback, OnKeyCallbackKind)>,
@@ -201,6 +203,24 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+
+        if config.inline_blame.enable {
+            let cursor_line_idx = doc.cursor_line(view.id);
+
+            // do not render inline blame for empty lines to reduce visual noise
+            if doc.text().line(cursor_line_idx) != doc.line_ending.as_str() {
+                if let Ok(line_blame) =
+                    doc.line_blame(cursor_line_idx as u32, &config.inline_blame.format)
+                {
+                    decorations.add_decoration(InlineBlame::new(
+                        theme,
+                        cursor_line_idx,
+                        line_blame,
+                    ));
+                };
+            }
+        }
+
         render_document(
             surface,
             inner,

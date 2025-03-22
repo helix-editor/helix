@@ -1,8 +1,7 @@
+use crate::job::Job;
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::{self, Deref};
-
-use crate::job::Job;
 
 use super::*;
 
@@ -14,6 +13,7 @@ use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
+use helix_view::handlers::BlameEvent;
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -1330,11 +1330,22 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })?;
+    let doc_id = doc.id();
     if let Some(path) = doc.path() {
         cx.editor
             .language_servers
             .file_event_handler
             .file_changed(path.clone());
+    }
+
+    if let Some(path) = doc.path() {
+        helix_event::send_blocking(
+            &cx.editor.handlers.blame,
+            BlameEvent {
+                path: path.to_path_buf(),
+                doc_id,
+            },
+        );
     }
     Ok(())
 }
@@ -1388,6 +1399,16 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
             if view.doc.eq(&doc_id) {
                 view.ensure_cursor_in_view(doc, scrolloff);
             }
+        }
+
+        if let Some(path) = doc.path() {
+            helix_event::send_blocking(
+                &cx.editor.handlers.blame,
+                BlameEvent {
+                    path: path.to_path_buf(),
+                    doc_id,
+                },
+            );
         }
     }
 

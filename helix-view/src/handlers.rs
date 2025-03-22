@@ -16,11 +16,18 @@ pub enum AutoSaveEvent {
     LeftInsertMode,
 }
 
+#[derive(Debug)]
+pub struct BlameEvent {
+    pub path: std::path::PathBuf,
+    pub doc_id: DocumentId,
+}
+
 pub struct Handlers {
     // only public because most of the actual implementation is in helix-term right now :/
     pub completions: CompletionHandler,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
+    pub blame: Sender<BlameEvent>,
 }
 
 impl Handlers {

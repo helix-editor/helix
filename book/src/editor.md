@@ -4,6 +4,7 @@
 - [`[editor.clipboard-provider]` Section](#editorclipboard-provider-section)
 - [`[editor.statusline]` Section](#editorstatusline-section)
 - [`[editor.lsp]` Section](#editorlsp-section)
+- [`[editor.inline-blame]` Section](#editorinlineblame-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
@@ -159,6 +160,38 @@ The following statusline elements can be configured:
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
 
 [^2]: You may also have to activate them in the language server config for them to appear, not just in Helix. Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances. Please report any bugs you see so we can fix them!
+
+### `[editor.inline-blame]` Section
+
+| Key     | Description                                | Default |
+| ------- | ------------------------------------------ | ------- |
+| `enable` | Enable inline blame | `false` |
+| `format` | The format in which to show the inline blame | `"{author}, {time-ago} • {message} • {commit}"` |
+
+For `inline-blame-format`, you can use specific variables like so: `{variable}`.
+
+These are the available variables:
+
+- `author`: The author of the commit
+- `date`: When the commit was made
+- `time-ago`: How long ago the commit was made
+- `message`: The message of the commit, excluding the body
+- `body`: The body of the commit
+- `commit`: The short hex SHA1 hash of the commit
+- `email`: The email of the author of the commit
+
+Any of the variables can potentially be empty.
+In this case, the content before the variable will not be included in the string.
+If the variable is at the beginning of the string, the content after the variable will not be included.
+
+Some examples, using the default value `format` value:
+
+- If `author` is empty: `"{time-ago} • {message} • {commit}"`
+- If `time-ago` is empty: `"{author} • {message} • {commit}"`
+- If `message` is empty: `"{author}, {time-ago} • {commit}"`
+- If `commit` is empty: `"{author}, {time-ago} • {message}"`
+- If `time-ago` and `message` is empty: `"{author} • {commit}"`
+- If `author` and `message` is empty: `"{time-ago} • {commit}"`
 
 ### `[editor.cursor-shape]` Section
 
