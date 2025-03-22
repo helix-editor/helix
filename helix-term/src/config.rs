@@ -233,7 +233,7 @@ impl CommandTomlType {
                     }
                 }
 
-                if macros > 1 && commands.len() > 1 {
+                if macros > 1 || (macros == 1 && commands.len() > 1) {
                     bail!("macros cannot be used in a sequence");
                 }
 
@@ -266,7 +266,7 @@ impl CommandTomlType {
                     }
                 }
 
-                if macros > 1 && commands.len() > 1 {
+                if macros > 1 || (macros == 1 && commands.len() > 1) {
                     bail!("macros cannot be used in a sequence");
                 }
 
