@@ -338,7 +338,11 @@ mod tests {
 
     #[test]
     fn test_default_gutter_widths() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -363,7 +367,11 @@ mod tests {
             ..Default::default()
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -381,7 +389,11 @@ mod tests {
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -403,7 +415,11 @@ mod tests {
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("a\nb");
