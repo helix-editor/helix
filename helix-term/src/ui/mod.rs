@@ -682,9 +682,11 @@ pub mod completers {
     pub fn program(_editor: &Editor, input: &str) -> Vec<Completion> {
         static PROGRAMS_IN_PATH: Lazy<Vec<String>> = Lazy::new(|| {
             // Go through the entire PATH and read all files into a vec.
-            let mut vec = std::env::var("PATH")
-                .unwrap_or("".to_owned())
-                .split(":")
+            let Some(path) = std::env::var_os("PATH") else {
+                return Vec::new();
+            };
+
+            let mut vec = std::env::split_paths(&path)
                 .flat_map(|s| {
                     std::fs::read_dir(s)
                         .map_or_else(|_| vec![], |res| res.into_iter().collect::<Vec<_>>())
