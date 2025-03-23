@@ -870,6 +870,40 @@ async fn test_reload_no_force() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_reload_force() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("hello#[ |]#")
+        .build()?;
+
+    file.as_file_mut().write_all(b"goodbye!")?;
+
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("athere<esc>"), None),
+            (
+                Some(":reload!<ret>"),
+                Some(&|app| {
+                    assert!(!app.editor.is_err());
+
+                    let doc = app.editor.documents().next().unwrap();
+                    assert!(!doc.is_modified());
+                    assert_eq!(doc.text(), "goodbye!");
+                }),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    helpers::assert_file_has_content(&mut file, "goodbye!")?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_reload_all_no_force() -> anyhow::Result<()> {
     let file1 = tempfile::NamedTempFile::new()?;
     let mut file2 = tempfile::NamedTempFile::new()?;
