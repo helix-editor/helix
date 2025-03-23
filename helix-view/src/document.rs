@@ -57,6 +57,7 @@ const DEFAULT_TAB_WIDTH: usize = 4;
 pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
+pub const TREE_SITTER_TREE_BUFFER_NAME: &str = "[tree-sitter-tree]";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
@@ -147,6 +148,8 @@ pub struct Document {
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
+    /// Used to highlight specific text in the document that may be of interest
+    pub(crate) highlights: HashMap<ViewId, Vec<Overlay>>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
@@ -200,6 +203,9 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+    pub modifiable: bool,
+
+    pub is_tree_sitter_tree: bool,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -702,7 +708,10 @@ impl Document {
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
+            modifiable: true,
             jump_labels: HashMap::new(),
+            highlights: HashMap::new(),
+            is_tree_sitter_tree: false,
         }
     }
 
@@ -1321,6 +1330,7 @@ impl Document {
         self.selections.remove(&view_id);
         self.inlay_hints.remove(&view_id);
         self.jump_labels.remove(&view_id);
+        self.highlights.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -1329,7 +1339,12 @@ impl Document {
         transaction: &Transaction,
         view_id: ViewId,
         emit_lsp_notification: bool,
+        bypass_unmodifiable: bool,
     ) -> bool {
+        if !self.modifiable && !bypass_unmodifiable {
+            return false;
+        }
+
         use helix_core::Assoc;
 
         let old_doc = self.text().clone();
@@ -1352,7 +1367,12 @@ impl Document {
             return true;
         }
 
-        self.modified_since_accessed = true;
+        // unmodifiable files are never modified. If we modify them,
+        // we act as if the entire buffer was replaced by a different
+        // one with different content.
+        if self.modifiable {
+            self.modified_since_accessed = true;
+        }
         self.version += 1;
 
         for selection in self.selections.values_mut() {
@@ -1495,12 +1515,20 @@ impl Document {
         true
     }
 
+    pub fn unmodifiable(&mut self) {
+        self.modifiable = false;
+    }
+
     fn apply_inner(
         &mut self,
         transaction: &Transaction,
         view_id: ViewId,
         emit_lsp_notification: bool,
+        bypass_unmodifiable: bool,
     ) -> bool {
+        if !self.modifiable && !bypass_unmodifiable {
+            return false;
+        }
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
         if self.changes.is_empty() && !transaction.changes().is_empty() {
@@ -1510,7 +1538,12 @@ impl Document {
             });
         }
 
-        let success = self.apply_impl(transaction, view_id, emit_lsp_notification);
+        let success = self.apply_impl(
+            transaction,
+            view_id,
+            emit_lsp_notification,
+            bypass_unmodifiable,
+        );
 
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
@@ -1522,14 +1555,24 @@ impl Document {
     }
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
-        self.apply_inner(transaction, view_id, true)
+        self.apply_inner(transaction, view_id, true, false)
+    }
+
+    /// Apply a [`Transaction`] to the [`Document`] to change its text,
+    /// allowing application even if the document is unmodifiable.
+    pub fn apply_bypass_unmodifiable(
+        &mut self,
+        transaction: &Transaction,
+        view_id: ViewId,
+    ) -> bool {
+        self.apply_inner(transaction, view_id, true, true)
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text
     /// without notifying the language servers. This is useful for temporary transactions
     /// that must not influence the server.
     pub fn apply_temporary(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
-        self.apply_inner(transaction, view_id, false)
+        self.apply_inner(transaction, view_id, false, false)
     }
 
     fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
@@ -1541,7 +1584,7 @@ impl Document {
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
-            self.apply_impl(txn, view.id, true)
+            self.apply_impl(txn, view.id, true, false)
         } else {
             false
         };
@@ -1612,7 +1655,7 @@ impl Document {
 
         let savepoint_ref = self.savepoints.remove(savepoint_idx);
         let mut revert = savepoint.revert.lock();
-        self.apply_inner(&revert, view.id, emit_lsp_notification);
+        self.apply_inner(&revert, view.id, emit_lsp_notification, false);
         *revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
         self.savepoints.push(savepoint_ref)
     }
@@ -1630,7 +1673,7 @@ impl Document {
         };
         let mut success = false;
         for txn in txns {
-            if self.apply_impl(&txn, view.id, true) {
+            if self.apply_impl(&txn, view.id, true, false) {
                 success = true;
             }
         }
@@ -1683,6 +1726,12 @@ impl Document {
 
     /// If there are unsaved modifications.
     pub fn is_modified(&self) -> bool {
+        // Unmodifiable files are never modified.
+        // We act as if they are simply replaced by
+        // a different file, if we do modify them internally
+        if !self.modifiable {
+            return false;
+        }
         let history = self.history.take();
         let current_revision = history.current_revision();
         self.history.set(history);
@@ -1942,7 +1991,20 @@ impl Document {
 
     pub fn display_name(&self) -> Cow<'_, str> {
         self.relative_path()
-            .map_or_else(|| SCRATCH_BUFFER_NAME.into(), |path| path.to_string_lossy())
+            .map_or_else(|| self.default_name().into(), |path| path.to_string_lossy())
+    }
+
+    /// Fallback name for the document when the path cannot be determined
+    pub fn default_name(&self) -> &'static str {
+        if self.is_tree_sitter_tree {
+            TREE_SITTER_TREE_BUFFER_NAME
+        } else {
+            SCRATCH_BUFFER_NAME
+        }
+    }
+
+    pub fn tree_sitter_tree(&mut self) {
+        self.is_tree_sitter_tree = true;
     }
 
     // transact(Fn) ?
@@ -2219,6 +2281,14 @@ impl Document {
 
     pub fn remove_jump_labels(&mut self, view_id: ViewId) {
         self.jump_labels.remove(&view_id);
+    }
+
+    pub fn set_highlights(&mut self, view_id: ViewId, labels: Vec<Overlay>) {
+        self.highlights.insert(view_id, labels);
+    }
+
+    pub fn remove_highlights(&mut self, view_id: ViewId) {
+        self.highlights.remove(&view_id);
     }
 
     /// Get the inlay hints for this document and `view_id`.
