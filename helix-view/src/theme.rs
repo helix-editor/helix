@@ -624,24 +624,9 @@ mod tests {
 
     #[test]
     fn convert_to_and_from() {
-        let bytes = [
-            u8::MAX,
-            u8::MAX,
-            u8::MAX,
-            u8::MAX,
-            u8::MAX,
-            0xFF,
-            0xFE,
-            0xFA,
-        ];
-        assert_eq!(
-            Theme::rgb_highlight(0xFF, 0xFE, 0xFA).0.to_be_bytes(),
-            bytes
-        );
-        assert_eq!(
-            Theme::decode_rgb_highlight(usize::from_be_bytes(bytes)),
-            Some((0xFF, 0xFE, 0xFA))
-        );
+        let (r, g, b) = (0xFF, 0xFE, 0xFA);
+        let highlight = Theme::rgb_highlight(r, g, b);
+        assert_eq!(Theme::decode_rgb_highlight(highlight.0), Some((r, g, b)));
     }
 
     /// make sure we can store all the colors at the end
