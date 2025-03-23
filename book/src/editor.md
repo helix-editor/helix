@@ -35,7 +35,7 @@
 | `cursorcolumn` | Highlight all columns with a cursor | `false` |
 | `continue-comments` | if helix should automatically add a line comment token if you create a new line inside a comment. | `true` |
 | `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer` and `scrollbar`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
-| `gutters` | Gutters to display on the right-hand side of the window. Configuration is identical to the `gutters` key above, but specified gutters will be rendered right-to-left. | `[]` |
+| `gutters-right` | Gutters to display on the right-hand side of the window. Configuration is identical to the `gutters` key above, but specified gutters will be rendered right-to-left. | `[]` |
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
 | `path-completion` | Enable filepath completion. Show files and directories if an existing path at the cursor was recognized, either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved). Defaults to true. | `true` |
 | `auto-format` | Enable automatic formatting on save | `true` |
@@ -380,6 +380,19 @@ Other diff providers will eventually be supported by a future plugin system.
 There are currently no options for this section.
 
 #### `[editor.gutters.spacer]` Section
+
+Currently unused
+
+#### `[editor.gutters.scrollbar]` Section
+
+### `[editor.gutters-right]` Section
+
+Configuration options are identical to `[editor.gutters]` Section.
+
+```toml
+[editor]
+gutters-right = ["scrollbar"]
+```
 
 Currently unused
 
