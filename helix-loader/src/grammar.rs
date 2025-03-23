@@ -497,7 +497,7 @@ fn build_tree_sitter_library(
             .arg(format!("/out:{}", library_path.to_str().unwrap()));
     } else {
         #[cfg(not(windows))]
-        let command = command.arg("-fPIC");
+        command.arg("-fPIC");
 
         command
             .arg("-shared")
@@ -521,7 +521,7 @@ fn build_tree_sitter_library(
                     library_path.with_file_name(format!("{}_scanner.o", &grammar.grammar_id));
 
                 #[cfg(not(windows))]
-                let cpp_command = cpp_command.arg("-fPIC");
+                cpp_command.arg("-fPIC");
 
                 cpp_command
                     .arg("-fno-exceptions")
