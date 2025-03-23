@@ -146,6 +146,8 @@ pub struct Document {
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    /// Color swatches for the document
+    pub(crate) color_swatches: HashMap<ViewId, DocumentColorSwatches>,
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
@@ -200,6 +202,13 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DocumentColorSwatches {
+    pub color_swatches: Vec<InlineAnnotation>,
+    pub colors: Vec<Highlight>,
+    pub color_swatches_padding: Vec<InlineAnnotation>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -679,6 +688,7 @@ impl Document {
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
+            color_swatches: HashMap::default(),
             inlay_hints_oudated: false,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
@@ -2213,6 +2223,18 @@ impl Document {
         self.inlay_hints.insert(view_id, inlay_hints);
     }
 
+    pub fn set_color_swatches(&mut self, view_id: ViewId, color_swatches: DocumentColorSwatches) {
+        self.color_swatches.insert(view_id, color_swatches);
+    }
+
+    pub fn color_swatches_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (ViewId, &mut DocumentColorSwatches)> {
+        self.color_swatches
+            .iter_mut()
+            .map(|(view_id, swatches)| (*view_id, swatches))
+    }
+
     pub fn set_jump_labels(&mut self, view_id: ViewId, labels: Vec<Overlay>) {
         self.jump_labels.insert(view_id, labels);
     }
@@ -2230,6 +2252,10 @@ impl Document {
     /// (since it often means inlay hints have been fully deactivated).
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
+    }
+
+    pub fn reset_all_color_swatches(&mut self) {
+        self.color_swatches = Default::default();
     }
 }
 
