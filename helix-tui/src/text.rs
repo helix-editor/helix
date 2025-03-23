@@ -436,6 +436,12 @@ impl<'a> From<Vec<Spans<'a>>> for Text<'a> {
     }
 }
 
+impl<'a> From<&Vec<char>> for Text<'a> {
+    fn from(chars: &Vec<char>) -> Text<'a> {
+        chars.iter().collect::<String>().into()
+    }
+}
+
 impl<'a> From<Text<'a>> for String {
     fn from(text: Text<'a>) -> String {
         String::from(&text)
