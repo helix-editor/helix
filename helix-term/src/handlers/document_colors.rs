@@ -78,25 +78,26 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
         .collect();
 
     tokio::spawn(async move {
-        if let Some(output) = futures.next().await {
+        // support multiple language servers
+        let mut all_colors = vec![];
+        while let Some(output) = futures.next().await {
             match output {
                 Ok((colors, offset_encoding)) => {
-                    job::dispatch(move |editor, _| {
-                        attach_document_colors(editor, doc_id, colors, offset_encoding)
-                    })
-                    .await;
+                    all_colors.extend(colors.into_iter().map(|color| (color, offset_encoding)))
                 }
                 Err(err) => log::error!("document color request failed: {err}"),
             }
         }
+        // sort the colors by their positions
+        all_colors.sort_unstable_by_key(|(color, _)| color.range.start);
+        job::dispatch(move |editor, _| attach_document_colors(editor, doc_id, all_colors)).await;
     });
 }
 
 fn attach_document_colors(
     editor: &mut Editor,
     doc_id: DocumentId,
-    mut doc_colors: Vec<lsp::ColorInformation>,
-    offset_encoding: OffsetEncoding,
+    doc_colors: Vec<(lsp::ColorInformation, OffsetEncoding)>,
 ) {
     if !editor.config().lsp.display_color_swatches {
         return;
@@ -106,16 +107,13 @@ fn attach_document_colors(
         return;
     };
 
-    // Most language servers will already send them sorted but ensure this is the case to avoid errors on our end
-    doc_colors.sort_unstable_by_key(|color| color.range.start);
-
     let mut color_swatches = Vec::with_capacity(doc_colors.len());
     let mut color_swatches_padding = Vec::with_capacity(doc_colors.len());
     let mut colors = Vec::with_capacity(doc_colors.len());
 
     let doc_text = doc.text();
 
-    for ColorInformation { range, color } in doc_colors {
+    for (ColorInformation { range, color }, offset_encoding) in doc_colors {
         let swatch_idx =
             match helix_lsp::util::lsp_pos_to_pos(doc_text, range.start, offset_encoding) {
                 Some(pos) => pos,
