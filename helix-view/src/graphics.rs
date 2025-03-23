@@ -504,11 +504,6 @@ impl Style {
         }
     }
 
-    /// Returns a `Style` with an RGB foreground color
-    pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::new().fg(Color::Rgb(r, g, b))
-    }
-
     /// Changes the foreground color.
     ///
     /// ## Examples

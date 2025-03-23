@@ -322,7 +322,7 @@ impl Theme {
     #[inline]
     pub fn highlight(&self, index: usize) -> Style {
         if let Some((red, green, blue)) = Self::decode_rgb_highlight(index) {
-            Style::rgb(red, green, blue)
+            Style::new().fg(Color::Rgb(red, green, blue))
         } else {
             self.highlights[index]
         }
@@ -666,19 +666,19 @@ mod tests {
         let (r, g, b) = (0x14, 0xAA, 0xF7);
         assert_eq!(
             Theme::default().highlight(Theme::rgb_highlight(r, g, b).0),
-            Style::rgb(r, g, b)
+            Style::new().fg(Color::Rgb(r, g, b))
         );
         // pure black
         let (r, g, b) = (0x00, 0x00, 0x00);
         assert_eq!(
             Theme::default().highlight(Theme::rgb_highlight(r, g, b).0),
-            Style::rgb(r, g, b)
+            Style::new().fg(Color::Rgb(r, g, b))
         );
         // pure white
         let (r, g, b) = (0xff, 0xff, 0xff);
         assert_eq!(
             Theme::default().highlight(Theme::rgb_highlight(r, g, b).0),
-            Style::rgb(r, g, b)
+            Style::new().fg(Color::Rgb(r, g, b))
         );
     }
 
