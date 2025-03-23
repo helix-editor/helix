@@ -1,7 +1,8 @@
 use std::{collections::HashSet, time::Duration};
 
+use futures_util::{stream::FuturesOrdered, StreamExt};
 use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation};
-use helix_event::{cancelable_future, register_hook, TaskController};
+use helix_event::register_hook;
 use helix_lsp::{
     lsp::{self, ColorInformation},
     OffsetEncoding,
@@ -10,7 +11,7 @@ use helix_view::{
     document::DocumentColorSwatches,
     events::{DocumentDidChange, DocumentDidOpen, LanguageServerExited, LanguageServerInitialized},
     handlers::{lsp::DocumentColorsEvent, Handlers},
-    DocumentId, Editor, Theme, ViewId,
+    DocumentId, Editor, Theme,
 };
 use tokio::time::Instant;
 
@@ -18,7 +19,6 @@ use crate::job;
 
 #[derive(Default)]
 pub(super) struct DocumentColorsHandler {
-    views: HashSet<ViewId>,
     docs: HashSet<DocumentId>,
 }
 
@@ -40,7 +40,6 @@ impl helix_event::AsyncHook for DocumentColorsHandler {
     }
 
     fn finish_debounce(&mut self) {
-        let mut views = std::mem::take(&mut self.views);
         let docs = std::mem::take(&mut self.docs);
 
         job::dispatch_blocking(move |editor, _compositor| {
@@ -50,99 +49,61 @@ impl helix_event::AsyncHook for DocumentColorsHandler {
                 .active_requests
                 .retain(|_, controller| controller.is_running());
 
-            // Drop any views which have been closed.
-            views.retain(|&view| editor.tree.contains(view));
-            // Add any views that show documents which changed.
-            views.extend(
-                editor
-                    .tree
-                    .views()
-                    .filter_map(|(view, _)| docs.contains(&view.doc).then_some(view.id)),
-            );
-
-            for view in views {
-                let doc = editor.tree.get(view).doc;
-                request_document_colors_for_view(editor, view, doc);
+            for doc in docs {
+                request_document_colors(editor, doc);
             }
         });
     }
 }
 
-fn request_document_colors_for_view(editor: &mut Editor, view_id: ViewId, doc_id: DocumentId) {
+fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
     if !editor.config().lsp.display_color_swatches {
         return;
-    }
-
-    // Cancel any ongoing events for this view.
-    if let Some(mut controller) = editor
-        .handlers
-        .document_colors
-        .active_requests
-        .remove(&view_id)
-    {
-        controller.cancel();
     }
 
     let Some(doc) = editor.document(doc_id) else {
         return;
     };
 
-    let Some(language_server) = doc
+    let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentColors)
-        .next()
-    else {
-        return;
-    };
+        .map(|language_server| {
+            let offset_encoding = language_server.offset_encoding();
+            let future = language_server
+                .text_document_colors(doc.identifier(), None)
+                .unwrap();
 
-    let offset_encoding = language_server.offset_encoding();
-
-    let future = language_server
-        .text_document_colors(doc.identifier(), None)
-        .expect("language server must return Some if it supports document colors");
-
-    let mut controller = TaskController::new();
-    let cancel = controller.restart();
-    editor
-        .handlers
-        .document_colors
-        .active_requests
-        .insert(view_id, controller);
+            async move { anyhow::Ok((future.await?, offset_encoding)) }
+        })
+        .collect();
 
     tokio::spawn(async move {
-        match cancelable_future(future, cancel).await {
-            Some(Ok(response)) => {
-                job::dispatch(move |editor, _| {
-                    attach_document_colors(editor, view_id, doc_id, response, offset_encoding)
-                })
-                .await;
+        if let Some(output) = futures.next().await {
+            match output {
+                Ok((colors, offset_encoding)) => {
+                    job::dispatch(move |editor, _| {
+                        attach_document_colors(editor, doc_id, colors, offset_encoding)
+                    })
+                    .await;
+                }
+                Err(err) => log::error!("document color request failed: {err}"),
             }
-            Some(Err(err)) => log::error!("document color request failed: {err}"),
-            None => (),
         }
     });
 }
 
 fn attach_document_colors(
     editor: &mut Editor,
-    view_id: ViewId,
     doc_id: DocumentId,
-    response: Option<Vec<lsp::ColorInformation>>,
+    mut doc_colors: Vec<lsp::ColorInformation>,
     offset_encoding: OffsetEncoding,
 ) {
-    if !editor.config().lsp.display_color_swatches || editor.tree.try_get(view_id).is_none() {
+    if !editor.config().lsp.display_color_swatches {
         return;
     }
 
     let Some(doc) = editor.documents.get_mut(&doc_id) else {
         return;
-    };
-
-    let mut doc_colors = match response {
-        Some(colors) if !colors.is_empty() => colors,
-        _ => {
-            doc.set_color_swatches(view_id, DocumentColorSwatches::default());
-            return;
-        }
     };
 
     // Most language servers will already send them sorted but ensure this is the case to avoid errors on our end
@@ -176,22 +137,13 @@ fn attach_document_colors(
         color_swatches_padding,
     };
 
-    doc.set_color_swatches(view_id, swatches)
+    doc.set_color_swatches(swatches)
 }
 
 pub(super) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
         // when a document is initially opened, request colors for it
-        let views: Vec<_> = event
-            .editor
-            .tree
-            .views()
-            .filter_map(|(view, _)| (view.doc == event.doc).then_some(view.id))
-            .collect();
-
-        for view in views {
-            request_document_colors_for_view(event.editor, view, event.doc);
-        }
+        request_document_colors(event.editor, event.doc);
 
         Ok(())
     });
@@ -210,13 +162,12 @@ pub(super) fn register_hooks(handlers: &Handlers) {
             );
         };
 
-        for (_view_id, color_swatch) in event.doc.color_swatches_mut() {
-            let DocumentColorSwatches {
-                color_swatches,
-                colors: _colors,
-                color_swatches_padding,
-            } = color_swatch;
-
+        if let Some(DocumentColorSwatches {
+            color_swatches,
+            colors: _colors,
+            color_swatches_padding,
+        }) = event.doc.color_swatches_mut()
+        {
             apply_color_swatch_changes(color_swatches);
             apply_color_swatch_changes(color_swatches_padding);
         }
@@ -228,14 +179,10 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
 
     register_hook!(move |event: &mut LanguageServerInitialized<'_>| {
-        let views: Vec<_> = event
-            .editor
-            .tree
-            .views()
-            .map(|(view, _)| (view.id, view.doc))
-            .collect();
-        for (view, doc) in views {
-            request_document_colors_for_view(event.editor, view, doc);
+        let doc_ids: Vec<_> = event.editor.documents().map(|doc| doc.id()).collect();
+
+        for doc_id in doc_ids {
+            request_document_colors(event.editor, doc_id);
         }
 
         Ok(())
@@ -244,22 +191,15 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut LanguageServerExited<'_>| {
         // Clear and re-request all color swatches when a server exits.
         for doc in event.editor.documents_mut() {
-            if doc
-                .language_servers()
-                .any(|server| server.id() == event.server_id)
-            {
+            if doc.supports_language_server(event.server_id) {
                 doc.reset_all_color_swatches();
             }
         }
 
-        let views: Vec<_> = event
-            .editor
-            .tree
-            .views()
-            .map(|(view, _)| (view.id, view.doc))
-            .collect();
-        for (view, doc) in views {
-            request_document_colors_for_view(event.editor, view, doc);
+        let doc_ids: Vec<_> = event.editor.documents().map(|doc| doc.id()).collect();
+
+        for doc_id in doc_ids {
+            request_document_colors(event.editor, doc_id);
         }
 
         Ok(())

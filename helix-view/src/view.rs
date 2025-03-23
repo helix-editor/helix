@@ -488,7 +488,7 @@ impl View {
                 color_swatches,
                 colors,
                 color_swatches_padding,
-            }) = doc.color_swatches.get(&self.id)
+            }) = &doc.color_swatches
             {
                 for (color_swatch, color) in color_swatches.iter().zip(colors) {
                     text_annotations
