@@ -1,6 +1,5 @@
 use std::collections::btree_map::Entry;
 use std::fmt::Display;
-use tokio::sync::mpsc::Sender;
 
 use crate::editor::Action;
 use crate::events::{
@@ -16,24 +15,6 @@ use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
 use super::Handlers;
 
 pub struct DocumentColorsEvent(pub DocumentId);
-
-pub struct DocumentColorsHandler {
-    event_tx: Sender<DocumentColorsEvent>,
-}
-
-impl DocumentColorsHandler {
-    pub fn new(event_tx: Sender<DocumentColorsEvent>) -> Self {
-        Self { event_tx }
-    }
-
-    pub fn tx(&self) -> &Sender<DocumentColorsEvent> {
-        &self.event_tx
-    }
-
-    pub fn event(&self, event: DocumentColorsEvent) {
-        helix_event::send_blocking(&self.event_tx, event)
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {

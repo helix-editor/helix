@@ -120,11 +120,6 @@ pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
     }
     let (view, doc): (&helix_view::View, &helix_view::Document) = current_ref!(editor);
 
-    editor
-        .handlers
-        .document_colors
-        .event(helix_view::handlers::lsp::DocumentColorsEvent(doc.id()));
-
     let mut text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(text);
     text = doc.text().slice(..cursor);

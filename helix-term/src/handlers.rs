@@ -25,15 +25,13 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     let event_tx = completion::CompletionHandler::new(config).spawn();
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
-    let document_colors_sender = DocumentColorsHandler::new().spawn();
+    let document_colors = DocumentColorsHandler::default().spawn();
 
     let handlers = Handlers {
         completions: helix_view::handlers::completion::CompletionHandler::new(event_tx),
         signature_hints,
         auto_save,
-        document_colors: helix_view::handlers::lsp::DocumentColorsHandler::new(
-            document_colors_sender,
-        ),
+        document_colors,
     };
 
     helix_view::handlers::register_hooks(&handlers);

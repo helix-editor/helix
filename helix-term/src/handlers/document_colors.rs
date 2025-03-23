@@ -19,12 +19,6 @@ pub(super) struct DocumentColorsHandler {
     docs: HashSet<DocumentId>,
 }
 
-impl DocumentColorsHandler {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 const DOCUMENT_CHANGE_DEBOUNCE: Duration = Duration::from_millis(50);
 
 impl helix_event::AsyncHook for DocumentColorsHandler {
@@ -149,9 +143,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         Ok(())
     });
 
-    // Once these events carry a reference to the Editor then this `tx` method can be dropped
-    // and we can use `DocumentColorHandler::event` instead.
-    let tx = handlers.document_colors.tx().clone();
+    let tx = handlers.document_colors.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
         // Update the color swatch' positions, helping ensure they are displayed in the
         // proper place.
