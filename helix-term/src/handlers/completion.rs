@@ -119,7 +119,6 @@ pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
         return;
     }
     let (view, doc): (&helix_view::View, &helix_view::Document) = current_ref!(editor);
-
     let mut text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(text);
     text = doc.text().slice(..cursor);
