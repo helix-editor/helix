@@ -2,7 +2,7 @@ use std::{collections::HashSet, time::Duration};
 
 use futures_util::{stream::FuturesOrdered, StreamExt};
 use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation};
-use helix_event::register_hook;
+use helix_event::{cancelable_future, register_hook};
 use helix_lsp::lsp;
 use helix_view::{
     document::DocumentColorSwatches,
@@ -52,9 +52,11 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
         return;
     }
 
-    let Some(doc) = editor.document(doc_id) else {
+    let Some(doc) = editor.document_mut(doc_id) else {
         return;
     };
+
+    let cancel = doc.color_swatch_controller.restart();
 
     let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentColors)
@@ -85,10 +87,13 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
 
     tokio::spawn(async move {
         let mut all_colors = Vec::new();
-        while let Some(response) = futures.next().await {
-            match response {
-                Ok(items) => all_colors.extend(items),
-                Err(err) => log::error!("document color request failed: {err}"),
+        loop {
+            match cancelable_future(futures.next(), &cancel).await {
+                Some(Some(Ok(items))) => all_colors.extend(items),
+                Some(Some(Err(err))) => log::error!("document color request failed: {err}"),
+                Some(None) => break,
+                // The request was cancelled.
+                None => return,
             }
         }
         job::dispatch(move |editor, _| attach_document_colors(editor, doc_id, all_colors)).await;
@@ -108,6 +113,11 @@ fn attach_document_colors(
         return;
     };
 
+    if doc_colors.is_empty() {
+        doc.color_swatches.take();
+        return;
+    }
+
     doc_colors.sort_by_key(|(pos, _)| *pos);
 
     let mut color_swatches = Vec::with_capacity(doc_colors.len());
@@ -124,13 +134,11 @@ fn attach_document_colors(
         ));
     }
 
-    let swatches = DocumentColorSwatches {
+    doc.color_swatches = Some(DocumentColorSwatches {
         color_swatches,
         colors,
         color_swatches_padding,
-    };
-
-    doc.set_color_swatches(swatches)
+    });
 }
 
 pub(super) fn register_hooks(handlers: &Handlers) {
@@ -159,11 +167,14 @@ pub(super) fn register_hooks(handlers: &Handlers) {
             color_swatches,
             colors: _colors,
             color_swatches_padding,
-        }) = event.doc.color_swatches_mut()
+        }) = &mut event.doc.color_swatches
         {
             apply_color_swatch_changes(color_swatches);
             apply_color_swatch_changes(color_swatches_padding);
         }
+
+        // Cancel the ongoing request, if present.
+        event.doc.color_swatch_controller.cancel();
 
         helix_event::send_blocking(&tx, DocumentColorsEvent(event.doc.id()));
 
@@ -184,7 +195,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         // Clear and re-request all color swatches when a server exits.
         for doc in event.editor.documents_mut() {
             if doc.supports_language_server(event.server_id) {
-                doc.reset_all_color_swatches();
+                doc.color_swatches.take();
             }
         }
 

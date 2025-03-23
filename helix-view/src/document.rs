@@ -11,6 +11,7 @@ use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
+use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -146,8 +147,6 @@ pub struct Document {
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
-    /// Color swatches for the document
-    pub(crate) color_swatches: Option<DocumentColorSwatches>,
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
@@ -202,6 +201,12 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+
+    /// Annotations for LSP document color swatches
+    pub color_swatches: Option<DocumentColorSwatches>,
+    // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
+    // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
+    pub color_swatch_controller: TaskController,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -688,7 +693,6 @@ impl Document {
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
-            color_swatches: None,
             inlay_hints_oudated: false,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
@@ -713,6 +717,8 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            color_swatches: None,
+            color_swatch_controller: TaskController::new(),
         }
     }
 
@@ -2223,14 +2229,6 @@ impl Document {
         self.inlay_hints.insert(view_id, inlay_hints);
     }
 
-    pub fn set_color_swatches(&mut self, color_swatches: DocumentColorSwatches) {
-        self.color_swatches = Some(color_swatches);
-    }
-
-    pub fn color_swatches_mut(&mut self) -> Option<&mut DocumentColorSwatches> {
-        self.color_swatches.as_mut()
-    }
-
     pub fn set_jump_labels(&mut self, view_id: ViewId, labels: Vec<Overlay>) {
         self.jump_labels.insert(view_id, labels);
     }
@@ -2248,10 +2246,6 @@ impl Document {
     /// (since it often means inlay hints have been fully deactivated).
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
-    }
-
-    pub fn reset_all_color_swatches(&mut self) {
-        self.color_swatches = Default::default();
     }
 }
 
