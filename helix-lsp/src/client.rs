@@ -1096,7 +1096,7 @@ impl Client {
         Some(self.call::<lsp::request::InlayHintRequest>(params))
     }
 
-    pub fn text_document_colors(
+    pub fn text_document_document_color(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         work_done_token: Option<lsp::ProgressToken>,

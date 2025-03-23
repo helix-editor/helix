@@ -64,7 +64,7 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
         .map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
             let future = language_server
-                .text_document_colors(doc.identifier(), None)
+                .text_document_document_color(doc.identifier(), None)
                 .unwrap();
 
             async move { anyhow::Ok((future.await?, offset_encoding)) }
