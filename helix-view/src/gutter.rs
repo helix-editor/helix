@@ -207,7 +207,9 @@ pub fn line_numbers<'doc>(
 
     Box::new(
         move |line: usize, selected: bool, first_visual_line: bool, out: &mut String| {
-            if line == last_line_in_view && !draw_last {
+            if line > last_line_in_view {
+                None
+            } else if line == last_line_in_view && !draw_last {
                 write!(out, "{:>1$}", '~', width).unwrap();
                 Some(linenr)
             } else {
