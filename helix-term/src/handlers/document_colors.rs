@@ -52,8 +52,10 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
 
     let cancel = doc.color_swatch_controller.restart();
 
+    let mut seen_language_servers = HashSet::new();
     let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentColors)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {
             let text = doc.text().clone();
             let offset_encoding = language_server.offset_encoding();
