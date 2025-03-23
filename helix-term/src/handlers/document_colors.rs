@@ -3,10 +3,7 @@ use std::{collections::HashSet, time::Duration};
 use futures_util::{stream::FuturesOrdered, StreamExt};
 use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation};
 use helix_event::register_hook;
-use helix_lsp::{
-    lsp::{self, ColorInformation},
-    OffsetEncoding,
-};
+use helix_lsp::lsp;
 use helix_view::{
     document::DocumentColorSwatches,
     events::{DocumentDidChange, DocumentDidOpen, LanguageServerExited, LanguageServerInitialized},
@@ -62,28 +59,38 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
     let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentColors)
         .map(|language_server| {
+            let text = doc.text().clone();
             let offset_encoding = language_server.offset_encoding();
             let future = language_server
                 .text_document_document_color(doc.identifier(), None)
                 .unwrap();
 
-            async move { anyhow::Ok((future.await?, offset_encoding)) }
+            async move {
+                let colors: Vec<_> = future
+                    .await?
+                    .into_iter()
+                    .filter_map(|color_info| {
+                        let pos = helix_lsp::util::lsp_pos_to_pos(
+                            &text,
+                            color_info.range.start,
+                            offset_encoding,
+                        )?;
+                        Some((pos, color_info.color))
+                    })
+                    .collect();
+                anyhow::Ok(colors)
+            }
         })
         .collect();
 
     tokio::spawn(async move {
-        // support multiple language servers
-        let mut all_colors = vec![];
-        while let Some(output) = futures.next().await {
-            match output {
-                Ok((colors, offset_encoding)) => {
-                    all_colors.extend(colors.into_iter().map(|color| (color, offset_encoding)))
-                }
+        let mut all_colors = Vec::new();
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok(items) => all_colors.extend(items),
                 Err(err) => log::error!("document color request failed: {err}"),
             }
         }
-        // sort the colors by their positions
-        all_colors.sort_unstable_by_key(|(color, _)| color.range.start);
         job::dispatch(move |editor, _| attach_document_colors(editor, doc_id, all_colors)).await;
     });
 }
@@ -91,7 +98,7 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
 fn attach_document_colors(
     editor: &mut Editor,
     doc_id: DocumentId,
-    doc_colors: Vec<(lsp::ColorInformation, OffsetEncoding)>,
+    mut doc_colors: Vec<(usize, lsp::Color)>,
 ) {
     if !editor.config().lsp.display_color_swatches {
         return;
@@ -101,21 +108,15 @@ fn attach_document_colors(
         return;
     };
 
+    doc_colors.sort_by_key(|(pos, _)| *pos);
+
     let mut color_swatches = Vec::with_capacity(doc_colors.len());
     let mut color_swatches_padding = Vec::with_capacity(doc_colors.len());
     let mut colors = Vec::with_capacity(doc_colors.len());
 
-    let doc_text = doc.text();
-
-    for (ColorInformation { range, color }, offset_encoding) in doc_colors {
-        let swatch_idx =
-            match helix_lsp::util::lsp_pos_to_pos(doc_text, range.start, offset_encoding) {
-                Some(pos) => pos,
-                // Skip color swatches that have no "real" position
-                None => continue,
-            };
-        color_swatches_padding.push(InlineAnnotation::new(swatch_idx, " "));
-        color_swatches.push(InlineAnnotation::new(swatch_idx, "■"));
+    for (pos, color) in doc_colors {
+        color_swatches_padding.push(InlineAnnotation::new(pos, " "));
+        color_swatches.push(InlineAnnotation::new(pos, "■"));
         colors.push(Theme::rgb_highlight(
             (color.red * 255.) as u8,
             (color.green * 255.) as u8,
@@ -164,7 +165,6 @@ pub(super) fn register_hooks(handlers: &Handlers) {
             apply_color_swatch_changes(color_swatches_padding);
         }
 
-        // TODO: ideally we should only send this if the document is visible.
         helix_event::send_blocking(&tx, DocumentColorsEvent(event.doc.id()));
 
         Ok(())
