@@ -1100,7 +1100,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::ColorInformation>>>>> {
+    ) -> Option<impl Future<Output = Result<Vec<lsp::ColorInformation>>>> {
         self.capabilities.get().unwrap().color_provider.as_ref()?;
         let params = lsp::DocumentColorParams {
             text_document,
@@ -1112,8 +1112,7 @@ impl Client {
             },
         };
 
-        let res = self.call::<lsp::request::DocumentColor>(params);
-        Some(async move { Ok(serde_json::from_value(res.await?)?) })
+        Some(self.call::<lsp::request::DocumentColor>(params))
     }
 
     pub fn text_document_hover(
