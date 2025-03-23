@@ -27,6 +27,7 @@ lto = "thin"
 inherits = "release"
 lto = "fat"
 codegen-units = 1
+panic = "abort"
 strip = true
 opt-level = 3
 
