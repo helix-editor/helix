@@ -899,7 +899,9 @@ async fn test_reload_all_no_force() -> anyhow::Result<()> {
                     doc2_visited = true;
                 }
             }
-            assert!(app.editor.documents().count() == 2 && doc1_visited && doc2_visited);
+            assert!(doc1_visited);
+            assert!(doc2_visited);
+            assert_eq!(app.editor.documents().count(), 2);
         }),
         false,
     )
@@ -938,7 +940,9 @@ async fn test_reload_all_force() -> anyhow::Result<()> {
                     doc2_visited = true;
                 }
             }
-            assert!(app.editor.documents().count() == 2 && doc1_visited && doc2_visited);
+            assert!(doc1_visited);
+            assert!(doc2_visited);
+            assert_eq!(app.editor.documents().count(), 2);
         }),
         false,
     )
