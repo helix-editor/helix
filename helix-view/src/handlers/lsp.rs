@@ -1,5 +1,4 @@
 use std::collections::btree_map::Entry;
-use std::collections::HashMap;
 use std::fmt::Display;
 use tokio::sync::mpsc::Sender;
 
@@ -7,10 +6,10 @@ use crate::editor::Action;
 use crate::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
 };
-use crate::{DocumentId, Editor, ViewId};
+use crate::{DocumentId, Editor};
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
-use helix_event::{register_hook, TaskController};
+use helix_event::register_hook;
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
 
@@ -20,15 +19,11 @@ pub struct DocumentColorsEvent(pub DocumentId);
 
 pub struct DocumentColorsHandler {
     event_tx: Sender<DocumentColorsEvent>,
-    pub active_requests: HashMap<ViewId, TaskController>,
 }
 
 impl DocumentColorsHandler {
     pub fn new(event_tx: Sender<DocumentColorsEvent>) -> Self {
-        Self {
-            event_tx,
-            active_requests: HashMap::new(),
-        }
+        Self { event_tx }
     }
 
     pub fn tx(&self) -> &Sender<DocumentColorsEvent> {

@@ -43,12 +43,6 @@ impl helix_event::AsyncHook for DocumentColorsHandler {
         let docs = std::mem::take(&mut self.docs);
 
         job::dispatch_blocking(move |editor, _compositor| {
-            editor
-                .handlers
-                .document_colors
-                .active_requests
-                .retain(|_, controller| controller.is_running());
-
             for doc in docs {
                 request_document_colors(editor, doc);
             }
