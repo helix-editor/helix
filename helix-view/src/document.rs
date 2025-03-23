@@ -11,6 +11,7 @@ use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
+use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -200,6 +201,19 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+
+    /// Annotations for LSP document color swatches
+    pub color_swatches: Option<DocumentColorSwatches>,
+    // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
+    // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
+    pub color_swatch_controller: TaskController,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DocumentColorSwatches {
+    pub color_swatches: Vec<InlineAnnotation>,
+    pub colors: Vec<Highlight>,
+    pub color_swatches_padding: Vec<InlineAnnotation>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -703,6 +717,8 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            color_swatches: None,
+            color_swatch_controller: TaskController::new(),
         }
     }
 
