@@ -794,25 +794,21 @@ impl Application {
 
                         let status = match parts {
                             (Some(title), Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
+                                format!("{}% {} - {}", percentage, title, message)
                             }
                             (Some(title), None, Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, title)
+                                format!("{}% {}", percentage, title)
                             }
                             (Some(title), Some(message), None) => {
-                                format!("[{}] {} - {}", token_d, title, message)
+                                format!("{} - {}", title, message)
                             }
                             (None, Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, message)
+                                format!("{}% {}", percentage, message)
                             }
-                            (Some(title), None, None) => {
-                                format!("[{}] {}", token_d, title)
-                            }
-                            (None, Some(message), None) => {
-                                format!("[{}] {}", token_d, message)
-                            }
+                            (Some(title), None, None) => title.to_string(),
+                            (None, Some(message), None) => message.to_string(),
                             (None, None, Some(percentage)) => {
-                                format!("[{}] {}%", token_d, percentage)
+                                format!("{}%", percentage)
                             }
                             (None, None, None) => format!("[{}]", token_d),
                         };
