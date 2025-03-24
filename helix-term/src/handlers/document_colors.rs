@@ -149,12 +149,29 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
         // Update the color swatch' positions, helping ensure they are displayed in the
         // proper place.
-        let apply_color_swatch_changes = |annotations: &mut Vec<InlineAnnotation>| {
+        let apply_color_swatch_changes = |annotations: &mut [InlineAnnotation]| {
             event.changes.update_positions(
                 annotations
                     .iter_mut()
                     .map(|annotation| (&mut annotation.char_idx, helix_core::Assoc::After)),
             );
+        };
+        // In a ghost transaction, language servers are not notified. This is a problem
+        // because it means the positions for color swatches are incorrect, and if we
+        // are currently completing what is a document color then the color swatch for it
+        // won't show.
+        if event.ghost_transaction && event.doc.color_swatches.is_some() {
+            for language_server in event
+                .doc
+                .language_servers_with_feature(LanguageServerFeature::DocumentColors)
+            {
+                language_server.text_document_did_change(
+                    event.doc.versioned_identifier(),
+                    event.old_text,
+                    event.doc.text(),
+                    event.changes,
+                );
+            }
         };
 
         if let Some(DocumentColorSwatches {
