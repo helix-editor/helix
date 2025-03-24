@@ -787,46 +787,48 @@ impl Application {
                             }
                         };
 
-                        let token_d: &dyn std::fmt::Display = match &token {
-                            lsp::NumberOrString::Number(n) => n,
-                            lsp::NumberOrString::String(s) => s,
-                        };
-
-                        let status = match parts {
+                        let mut status = match parts {
                             (Some(title), Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
+                                format!("{}% {} - {}", percentage, title, message)
                             }
                             (Some(title), None, Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, title)
+                                format!("{}% {}", percentage, title)
                             }
                             (Some(title), Some(message), None) => {
-                                format!("[{}] {} - {}", token_d, title, message)
+                                format!("{} - {}", title, message)
                             }
                             (None, Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, message)
+                                format!("{}% {}", percentage, message)
                             }
-                            (Some(title), None, None) => {
-                                format!("[{}] {}", token_d, title)
-                            }
-                            (None, Some(message), None) => {
-                                format!("[{}] {}", token_d, message)
-                            }
+                            (Some(title), None, None) => title.to_string(),
+                            (None, Some(message), None) => message.to_string(),
                             (None, None, Some(percentage)) => {
-                                format!("[{}] {}%", token_d, percentage)
+                                format!("{}%", percentage)
                             }
-                            (None, None, None) => format!("[{}]", token_d),
+                            (None, None, None) => "".to_owned(),
                         };
 
-                        if let lsp::WorkDoneProgress::End(_) = work {
-                            self.lsp_progress.end_progress(server_id, &token);
-                            if !self.lsp_progress.is_progressing(server_id) {
-                                editor_view.spinners_mut().get_or_create(server_id).stop();
+                        match work {
+                            lsp::WorkDoneProgress::Begin(being_status) => {
+                                self.lsp_progress
+                                    .begin(server_id, token.clone(), being_status);
                             }
-                        } else {
-                            self.lsp_progress.update(server_id, token, work);
+                            lsp::WorkDoneProgress::Report(report_status) => {
+                                self.lsp_progress
+                                    .update(server_id, token.clone(), report_status);
+                            }
+                            lsp::WorkDoneProgress::End(_) => {
+                                self.lsp_progress.end_progress(server_id, &token);
+                                if !self.lsp_progress.is_progressing(server_id) {
+                                    editor_view.spinners_mut().get_or_create(server_id).stop();
+                                };
+                            }
                         }
 
                         if self.config.load().editor.lsp.display_progress_messages {
+                            if let Some(title) = self.lsp_progress.title(server_id, &token) {
+                                status = format!("{} {}", title, status);
+                            }
                             self.editor.set_status(status);
                         }
                     }
