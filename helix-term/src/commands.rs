@@ -3472,9 +3472,9 @@ fn insert_at_line_start(cx: &mut Context) {
     insert_with_indent(cx, IndentFallbackPos::LineStart);
 }
 
-pub(crate) fn blame_line_impl(editor: &mut Editor, doc: DocumentId, cursor_line: u32) {
+pub(crate) fn blame_line_impl(editor: &mut Editor, doc_id: DocumentId, cursor_line: u32) {
     let inline_blame_config = &editor.config().inline_blame;
-    let Some(doc) = editor.document(doc) else {
+    let Some(doc) = editor.document(doc_id) else {
         return;
     };
     let line_blame = match doc.line_blame(cursor_line, &inline_blame_config.format) {
@@ -3494,7 +3494,9 @@ pub(crate) fn blame_line_impl(editor: &mut Editor, doc: DocumentId, cursor_line:
                     },
                 );
                 editor.set_status(format!("Requested blame for {}...", path.display()));
-                let doc = doc_mut!(editor);
+                let doc = editor
+                    .document_mut(doc_id)
+                    .expect("exists since we return from the function earlier if it does not");
                 doc.is_blame_potentially_out_of_date = false;
             } else {
                 editor.set_error("Could not get path of document");

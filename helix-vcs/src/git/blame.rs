@@ -1,65 +1,38 @@
 use anyhow::Context as _;
 use anyhow::Result;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::DiffHandle;
-
 use super::{get_repo_dir, open_repo};
+
+/// Allows us to save compute resources when requesting blame for the same line
+/// To go from an `ObjectId` (which represents a commit) to `LineBLame`, we have to perform some work.
+///
+/// With this struct, we only do this work once. Getting `LineBlame` for the same line for the 2nd and subsequent
+/// times is going to be free. This is important because we do this step on every render, in the main thread.
+#[derive(Debug)]
+enum LineBlameUnit {
+    /// The raw object id of the commit for a line.
+    /// It will take a bit of compute in order to obtain the `LineBlame` for it.
+    Unprocessed(gix::ObjectId),
+    /// Fully processed line blame information.
+    Processed(LineBlame),
+}
 
 /// Stores information about the blame for a file
 #[derive(Debug)]
 pub struct FileBlame {
-    /// A map from line numbers to commit IDs
-    blame: HashMap<u32, gix::ObjectId>,
+    /// A map from line numbers to blame for that line
+    blame: RefCell<HashMap<u32, LineBlameUnit>>,
     /// The owning repository for this file's `ObjectId`s
     repo: gix::ThreadSafeRepository,
 }
 
 impl FileBlame {
     /// Get the blame information corresponing to a line in file and diff for that line
-    ///
-    /// returns `None` if the line is part of an insertion, as the blame for that line would not
-    /// be meaningful
     #[inline]
-    pub fn blame_for_line(&self, line: u32, diff_handle: Option<&DiffHandle>) -> Option<LineBlame> {
-        let (inserted_lines, removed_lines) = diff_handle.map_or(
-            // in theory there can be situations where we don't have the diff for a file
-            // but we have the blame. In this case, we can just act like there is no diff
-            Some((0, 0)),
-            |diff_handle| {
-                // Compute the amount of lines inserted and deleted before the `line`
-                // This information is needed to accurately transform the state of the
-                // file in the file system into what gix::blame knows about (gix::blame only
-                // knows about commit history, it does not know about uncommitted changes)
-                diff_handle
-                    .load()
-                    .hunks_intersecting_line_ranges(std::iter::once((0, line as usize)))
-                    .try_fold(
-                        (0, 0),
-                        |(total_inserted_lines, total_deleted_lines), hunk| {
-                            // check if the line intersects the hunk's `after` (which represents
-                            // inserted lines)
-                            (hunk.after.start > line || hunk.after.end <= line).then_some((
-                                total_inserted_lines + (hunk.after.end - hunk.after.start),
-                                total_deleted_lines + (hunk.before.end - hunk.before.start),
-                            ))
-                        },
-                    )
-            },
-        )?;
-
-        Some(self.blame_for_line_inserted_removed(line, inserted_lines, removed_lines))
-    }
-
-    // this is a separate function for use in Tests
-    #[inline]
-    fn blame_for_line_inserted_removed(
-        &self,
-        line: u32,
-        inserted_lines: u32,
-        removed_lines: u32,
-    ) -> LineBlame {
+    pub fn blame_for_line(&self, line: u32, inserted_lines: u32, removed_lines: u32) -> LineBlame {
         // Because gix_blame doesn't care about stuff that is not commited, we have to "normalize" the
         // line number to account for uncommited code.
         //
@@ -74,14 +47,19 @@ impl FileBlame {
         let blame_line = line.saturating_sub(inserted_lines) + removed_lines;
         let repo = self.repo.to_thread_local();
 
-        let commit = self
-            .blame
-            .get(&blame_line)
-            .and_then(|obj| repo.find_commit(*obj).ok());
+        let mut blame = self.blame.borrow_mut();
+        let line_blame_unit = blame.get_mut(&blame_line);
+
+        let commit = match line_blame_unit {
+            Some(LineBlameUnit::Unprocessed(object_id)) => repo.find_commit(*object_id).ok(),
+            Some(LineBlameUnit::Processed(line_blame)) => return line_blame.clone(),
+            None => None,
+        };
+
         let message = commit.as_ref().and_then(|c| c.message().ok());
         let author = commit.as_ref().and_then(|c| c.author().ok());
 
-        LineBlame {
+        let line_blame = LineBlame {
             commit_hash: commit
                 .as_ref()
                 .and_then(|c| c.short_id().map(|id| id.to_string()).ok()),
@@ -92,12 +70,19 @@ impl FileBlame {
             commit_body: message
                 .as_ref()
                 .and_then(|msg| msg.body.map(|body| body.to_string())),
-            time_ago: author
-                .map(|a| helix_stdx::time::format_relative_time(a.time.seconds, a.time.offset)),
-        }
+            time_stamp: author.map(|a| (a.time.seconds, a.time.offset)),
+            time_ago: None,
+        };
+
+        // we know that `line_blame_unit` here is not processed
+        if let Some(line_blame_unit) = line_blame_unit {
+            *line_blame_unit = LineBlameUnit::Processed(line_blame.clone());
+        };
+
+        line_blame
     }
 
-    /// Compute blame for this file
+    /// Compute blame for this file (expensive)
     pub fn try_new(file: PathBuf) -> Result<Self> {
         let thread_safe_repo =
             open_repo(get_repo_dir(&file)?).context("Failed to open git repo")?;
@@ -135,13 +120,15 @@ impl FileBlame {
         .entries;
 
         Ok(Self {
-            blame: file_blame
-                .into_iter()
-                .flat_map(|blame| {
-                    (blame.start_in_blamed_file..blame.start_in_blamed_file + blame.len.get())
-                        .map(move |i| (i, blame.commit_id))
-                })
-                .collect(),
+            blame: RefCell::new(
+                file_blame
+                    .into_iter()
+                    .flat_map(|blame| {
+                        (blame.start_in_blamed_file..blame.start_in_blamed_file + blame.len.get())
+                            .map(move |i| (i, LineBlameUnit::Unprocessed(blame.commit_id)))
+                    })
+                    .collect(),
+            ),
             repo: thread_safe_repo,
         })
     }
@@ -155,18 +142,28 @@ pub struct LineBlame {
     commit_date: Option<String>,
     commit_message: Option<String>,
     commit_body: Option<String>,
+    /// Used to compute `time-ago`
+    time_stamp: Option<(i64, i32)>,
+    /// This field is the only one that needs to be re-computed every time
+    /// we request the `LineBlame`. It exists here for lifetime purposes, so we can return
+    /// `&str` from `Self::get_variable`.
+    ///
+    /// This should only be set from within and never initialized.
     time_ago: Option<String>,
 }
 
 impl LineBlame {
     /// Longest variable is: `time-ago` (and `message`)
+    // this is just to reduce allocation by a little bit by specifying the max size we would expect a
+    // variable to be up-front. This function is called every render.
     const LONGEST_VARIABLE_LENGTH: usize = 7;
+
     /// # Returns
     ///
     /// None => Invalid variable
     /// Some(None) => Valid variable, but is empty
     #[inline]
-    fn get_variable(&self, var: &str) -> Option<Option<&str>> {
+    fn get_variable(&mut self, var: &str) -> Option<Option<&str>> {
         Some(
             // if adding new variables, update `Self::LONGEST_VARIABLE_LENGTH`
             match var {
@@ -176,7 +173,13 @@ impl LineBlame {
                 "message" => &self.commit_message,
                 "email" => &self.author_email,
                 "body" => &self.commit_body,
-                "time-ago" => &self.time_ago,
+                "time-ago" => {
+                    let time_ago = self.time_stamp.map(|(utc_seconds, timezone_offset)| {
+                        helix_stdx::time::format_relative_time(utc_seconds, timezone_offset)
+                    });
+                    self.time_ago = time_ago;
+                    &self.time_ago
+                }
                 _ => return None,
             }
             .as_deref(),
@@ -185,7 +188,7 @@ impl LineBlame {
 
     /// Parse the user's blame format
     #[inline]
-    pub fn parse_format(&self, format: &str) -> String {
+    pub fn parse_format(&mut self, format: &str) -> String {
         let mut line_blame = String::new();
         let mut content_before_variable = String::with_capacity(format.len());
 
@@ -418,7 +421,7 @@ mod test {
                             let blame_result =
                                 FileBlame::try_new(file.clone())
                                     .unwrap()
-                                    .blame_for_line_inserted_removed(line_number, added_lines, removed_lines)
+                                    .blame_for_line(line_number, added_lines, removed_lines)
                                     .commit_message;
 
                             assert_eq!(
@@ -565,6 +568,7 @@ mod test {
             commit_date: Some("2028-01-10".to_owned()),
             commit_message: Some("feat!: extend house".to_owned()),
             commit_body: Some("BREAKING CHANGE: Removed door".to_owned()),
+            time_stamp: None,
             time_ago: None,
         }
     }

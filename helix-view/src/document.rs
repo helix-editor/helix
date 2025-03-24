@@ -198,7 +198,7 @@ pub struct Document {
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
     /// Contains blame information for each line in the file
-    /// We store the Result because when we access the blame directly we want to log the error
+    /// We store the Result because when we access the blame manually we want to log the error
     /// But if it is in the background we are just going to ignore the error
     pub file_blame: Option<anyhow::Result<helix_vcs::FileBlame>>,
 
@@ -1580,15 +1580,56 @@ impl Document {
 
     /// Get the line blame for this view
     pub fn line_blame(&self, cursor_line: u32, format: &str) -> Result<String, LineBlameError> {
-        Ok(self
-            .file_blame
-            .as_ref()
-            .ok_or(LineBlameError::NotReadyYet)?
-            .as_ref()
-            .map_err(|err| LineBlameError::NoFileBlame(cursor_line.saturating_add(1), err))?
-            .blame_for_line(cursor_line, self.diff_handle())
-            .ok_or(LineBlameError::NotCommittedYet)?
-            .parse_format(format))
+        // how many lines were inserted and deleted before the cursor line
+        let (inserted_lines, deleted_lines) = self
+            .diff_handle()
+            .map_or(
+                // in theory there can be situations where we don't have the diff for a file
+                // but we have the blame. In this case, we can just act like there is no diff
+                Some((0, 0)),
+                |diff_handle| {
+                    // Compute the amount of lines inserted and deleted before the `line`
+                    // This information is needed to accurately transform the state of the
+                    // file in the file system into what gix::blame knows about (gix::blame only
+                    // knows about commit history, it does not know about uncommitted changes)
+                    diff_handle
+                        .load()
+                        .hunks_intersecting_line_ranges(std::iter::once((0, cursor_line as usize)))
+                        .try_fold(
+                            (0, 0),
+                            |(total_inserted_lines, total_deleted_lines), hunk| {
+                                // check if the line intersects the hunk's `after` (which represents
+                                // inserted lines)
+                                (hunk.after.start > cursor_line || hunk.after.end <= cursor_line)
+                                    .then_some((
+                                        total_inserted_lines + (hunk.after.end - hunk.after.start),
+                                        total_deleted_lines + (hunk.before.end - hunk.before.start),
+                                    ))
+                            },
+                        )
+                },
+            )
+            .ok_or(LineBlameError::NotCommittedYet)?;
+
+        let file_blame = match &self.file_blame {
+            None => return Err(LineBlameError::NotReadyYet),
+            Some(result) => match result {
+                Err(err) => {
+                    return Err(LineBlameError::NoFileBlame(
+                        // convert 0-based line into 1-based line
+                        cursor_line.saturating_add(1),
+                        err,
+                    ));
+                }
+                Ok(file_blame) => file_blame,
+            },
+        };
+
+        let line_blame = file_blame
+            .blame_for_line(cursor_line, inserted_lines, deleted_lines)
+            .parse_format(format);
+
+        Ok(line_blame)
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text
