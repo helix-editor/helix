@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Configuration</title>
+        <title>Ecosystem</title>
 
 
         <!-- Custom HTML head -->
@@ -131,7 +131,7 @@
                         <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/configuration.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/ecosystem.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -160,46 +160,18 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
-<p>To override global configuration parameters, create a <code>config.toml</code> file located in your config directory:</p>
-<ul>
-<li>Linux and Mac: <code>~/.config/helix/config.toml</code></li>
-<li>Windows: <code>%AppData%\helix\config.toml</code></li>
-</ul>
-<blockquote>
-<p>💡 You can easily open the config file by typing <code>:config-open</code> within Helix normal mode.</p>
-</blockquote>
-<p>Example config:</p>
-<pre><code class="language-toml">theme = "onedark"
-
-[editor]
-line-number = "relative"
-mouse = false
-
-[editor.cursor-shape]
-insert = "bar"
-normal = "block"
-select = "underline"
-
-[editor.file-picker]
-hidden = false
-</code></pre>
-<p>You can use a custom configuration file by specifying it with the <code>-c</code> or
-<code>--config</code> command line argument, for example <code>hx -c path/to/custom-config.toml</code>.
-You can reload the config file by issuing the <code>:config-reload</code> command. Alternatively, on Unix operating systems, you can reload it by sending the USR1
-signal to the Helix process, such as by using the command <code>pkill -USR1 hx</code>.</p>
-<p>Finally, you can have a <code>config.toml</code> local to a project by putting it under a <code>.helix</code> directory in your repository.
-Its settings will be merged with the configuration directory <code>config.toml</code> and the built-in configuration.</p>
+                        <h1 id="ecosystem"><a class="header" href="#ecosystem">Ecosystem</a></h1>
+<p>This section has information related to the wider Helix ecosystem.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="other-software.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="lang-support.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="editor.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="from-vim.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -209,11 +181,11 @@ Its settings will be merged with the configuration directory <code>config.toml</
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="other-software.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="lang-support.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="editor.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="from-vim.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

@@ -1838,7 +1838,9 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>yuck</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>zig</td><td>✓</td><td>✓</td><td>✓</td><td><code>zls</code></td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="migrating-from-vim"><a class="header" href="#migrating-from-vim">Migrating from Vim</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="ecosystem"><a class="header" href="#ecosystem">Ecosystem</a></h1>
+<p>This section has information related to the wider Helix ecosystem.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="migrating-from-vim"><a class="header" href="#migrating-from-vim">Migrating from Vim</a></h1>
 <p>Helix's editing model is strongly inspired from Vim and Kakoune, and a notable
 difference from Vim (and the most striking similarity to Kakoune) is that Helix
 follows the <code>selection → action</code> model. This means that whatever you are
@@ -1849,7 +1851,32 @@ single width selection.</p>
 <blockquote>
 <p>TODO: Mention textobjects, surround, registers</p>
 </blockquote>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="helix-mode-in-other-software"><a class="header" href="#helix-mode-in-other-software">Helix mode in other software</a></h1>
+<p>Helix' keymap and interaction model (<a href="other-software.html#usage.md">Using Helix</a>) is easier to adopt if it can be used consistently in many editing contexts. Yet, certain use cases cannot easily be addressed directly in Helix. Similar to vim, this leads to the creation of "Helix mode" in various other software products, allowing Helix-style editing for a greater variety of use cases.</p>
+<p>"Helix mode" is frequently still in early stages or missing entirely. For such cases, we also link to relevant bugs or discussions.</p>
+<h2 id="other-editors"><a class="header" href="#other-editors">Other editors</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Editor</th><th>Plugin or feature providing Helix editing</th><th>Comments</th></tr></thead><tbody>
+<tr><td><a href="https://www.vim.org/">Vim</a></td><td><a href="https://github.com/chtenb/helix.vim">helix.vim</a> config</td><td></td></tr>
+<tr><td><a href="https://www.jetbrains.com/idea/">IntelliJ IDEA</a> / <a href="https://developer.android.com/studio">Android Studio</a></td><td><a href="https://plugins.jetbrains.com/plugin/164-ideavim">IdeaVim</a> plugin + <a href="https://github.com/chtenb/helix.vim">helix.idea.vim</a> config</td><td>Minimum recommended version is IdeaVim 2.19.0.</td></tr>
+<tr><td><a href="https://code.visualstudio.com/">Visual Studio Code</a></td><td><a href="https://marketplace.visualstudio.com/items?itemName=gregoire.dance">Dance</a> extension, or its <a href="https://marketplace.visualstudio.com/items?itemName=kend.dancehelixkey">Helix fork</a></td><td>The Helix fork has diverged. You can also use the original Dance and tweak its keybindings directly (try <a href="https://github.com/71/dance/issues/299#issuecomment-1655509531">this config</a>).</td></tr>
+<tr><td><a href="https://code.visualstudio.com/">Visual Studio Code</a></td><td><a href="https://marketplace.visualstudio.com/items?itemName=jasew.vscode-helix-emulation">Helix for VS Code</a> extension</td><td></td></tr>
+<tr><td><a href="https://zed.dev/">Zed</a></td><td>native via keybindings (<a href="https://github.com/zed-industries/zed/issues/4642">Bug</a>)</td><td></td></tr>
+<tr><td><a href="https://codemirror.net/">CodeMirror</a></td><td><a href="https://gitlab.com/_rvidal/codemirror-helix">codemirror-helix</a></td><td></td></tr>
+</tbody></table>
+</div>
+<h2 id="shells"><a class="header" href="#shells">Shells</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Shell</th><th>Plugin or feature providing Helix editing</th></tr></thead><tbody>
+<tr><td>Fish</td><td><a href="https://github.com/fish-shell/fish-shell/issues/7748">Feature Request</a></td></tr>
+<tr><td>Fish</td><td><a href="https://github.com/sshilovsky/fish-helix/tree/main">fish-helix</a></td></tr>
+<tr><td>Zsh</td><td><a href="https://github.com/john-h-k/helix-zsh">helix-zsh</a></td></tr>
+<tr><td>Nushell</td><td><a href="https://github.com/nushell/reedline/issues/639">Feature Request</a></td></tr>
+</tbody></table>
+</div>
+<h2 id="other-software"><a class="header" href="#other-software">Other software</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Software</th><th>Plugin or feature providing Helix editing.</th><th>Comments</th></tr></thead><tbody>
+<tr><td><a href="https://obsidian.md/">Obsidian</a></td><td><a href="https://github.com/Sinono3/obsidian-helix">Obsidian-Helix</a></td><td>Uses <code>codemirror-helix</code> listed above.</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>To override global configuration parameters, create a <code>config.toml</code> file located in your config directory:</p>
 <ul>
 <li>Linux and Mac: <code>~/.config/helix/config.toml</code></li>
