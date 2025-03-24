@@ -4,7 +4,7 @@ use helix_event::register_hook;
 use helix_vcs::FileBlame;
 use helix_view::{
     editor::InlineBlameBehaviour,
-    events::DocumentDidOpen,
+    events::{DocumentDidOpen, EditorConfigDidChange},
     handlers::{BlameEvent, Handlers},
     DocumentId,
 };
@@ -88,6 +88,28 @@ pub(super) fn register_hooks(handlers: &Handlers) {
                     line: None,
                 },
             );
+        }
+        Ok(())
+    });
+    let tx = handlers.blame.clone();
+    register_hook!(move |event: &mut EditorConfigDidChange<'_>| {
+        if event.old_config.inline_blame.behaviour == InlineBlameBehaviour::Disabled
+            && event.new_config.inline_blame.behaviour != InlineBlameBehaviour::Disabled
+        {
+            // request blame for all documents, since any of them could have
+            // outdated blame
+            for doc in event.editor.documents() {
+                if let Some(path) = doc.path() {
+                    helix_event::send_blocking(
+                        &tx,
+                        BlameEvent {
+                            path: path.to_path_buf(),
+                            doc_id: doc.id(),
+                            line: None,
+                        },
+                    );
+                }
+            }
         }
         Ok(())
     });
