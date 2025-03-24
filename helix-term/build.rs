@@ -150,9 +150,9 @@ mod windows_rc {
     #[cfg(target_env = "gnu")]
     pub(crate) fn link_icon_in_windows_exe(icon_path: &str) {
         let windres_exe = PathBuf::from(r"windres.exe");
-        check_if_exe_works(&windres_exe).expect(
-            "Could not locate windres.exe binary from gnu toolkit in the PATH environment variable.",
-        );
+        if !check_if_exe_works(&windres_exe) {
+            panic!("Could not locate windres.exe binary from gnu toolkit in the PATH environment variable.")
+        };
 
         let output = env::var("OUT_DIR").expect("Env var OUT_DIR should have been set by compiler");
         let output_dir = PathBuf::from(output);
@@ -193,15 +193,11 @@ mod windows_rc {
     }
 
     #[cfg(target_env = "gnu")]
-    fn check_if_exe_works(exe: &PathBuf) -> Result<(), ()> {
-        let output = process::Command::new(exe)
+    fn check_if_exe_works(exe: &PathBuf) -> bool {
+        process::Command::new(exe)
             .arg("--version") // Optional: You can pass an argument to check if the command is working
-            .output();
-
-        match output {
-            Ok(_) => Ok(()),   // Command exists and ran successfully
-            Err(_) => Err(()), // Command failed to run
-        }
+            .output()
+            .is_okay()
     }
 
     fn write_resource_file(rc_path: &Path, icon_path: &str) -> io::Result<()> {
