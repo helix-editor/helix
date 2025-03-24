@@ -300,14 +300,14 @@ impl Theme {
     /// Interpret a Highlight with the RGB foreground
     fn decode_rgb_highlight(rgb: usize) -> Option<(u8, u8, u8)> {
         (rgb > Self::RGB_START).then(|| {
-            let [r, g, b, ..] = rgb.to_ne_bytes();
+            let [r, g, b, ..] = rgb.to_le_bytes();
             (r, g, b)
         })
     }
 
     /// Create a Highlight that represents an RGB color
     pub fn rgb_highlight(r: u8, g: u8, b: u8) -> Highlight {
-        Highlight(usize::from_ne_bytes([
+        Highlight(usize::from_le_bytes([
             r,
             g,
             b,
