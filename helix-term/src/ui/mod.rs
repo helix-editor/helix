@@ -371,8 +371,8 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
 pub mod completers {
     use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
+    use helix_core::command_line::{self, Token, Tokenizer};
     use helix_core::fuzzy::fuzzy_match;
-    use helix_core::shellwords::Shellwords;
     use helix_core::syntax::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
@@ -709,19 +709,46 @@ pub mod completers {
             .collect()
     }
 
-    pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
-        let shellwords = Shellwords::from(input);
-        let words = shellwords.words();
+    fn get_last_argument(input: &str) -> Option<Token> {
+        let tokenizer = Tokenizer::new(input, false);
+        let last = tokenizer.last()?;
 
-        if words.len() > 1 || shellwords.ends_with_whitespace() {
-            let offset = words[0].len() + 1;
-            // Theoretically one could now parse bash completion scripts, but filename should suffice for now.
-            let mut completions = filename(editor, &input[offset..]);
-            for completion in completions.iter_mut() {
-                completion.0.start += offset;
-            }
-            return completions;
+        Some(last.unwrap())
+    }
+
+    /// This expects input to be a raw string of arguments, because this is what Signature's raw_after does.
+    pub fn repeating_filenames(editor: &Editor, input: &str) -> Vec<Completion> {
+        let Some(token) = get_last_argument(input) else {
+            return Vec::new();
+        };
+
+        let offset = token.content_start;
+
+        // Theoretically one could now parse bash completion scripts, but filename should suffice for now.
+        let mut completions = filename(editor, &input[offset..]);
+        for completion in completions.iter_mut() {
+            completion.0.start += offset;
         }
-        program(editor, input)
+        completions
+    }
+
+    pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
+        let (_, _, complete_command) = command_line::split(input);
+
+        if complete_command {
+            return program(editor, input);
+        }
+
+        let Some(token) = get_last_argument(input) else {
+            return Vec::new();
+        };
+
+        let mut completions = repeating_filenames(editor, &token.content);
+
+        for completion in completions.iter_mut() {
+            completion.0.start += token.content_start;
+        }
+
+        completions
     }
 }
