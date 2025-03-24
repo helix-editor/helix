@@ -71,11 +71,5 @@ pub fn format_relative_time(timestamp: i64, timezone_offset: i32) -> String {
         "from now"
     };
 
-    let mut relative_time = String::with_capacity(value.len() + 1 + unit.len() + 1 + label.len());
-    relative_time.push_str(&value);
-    relative_time.push(' ');
-    relative_time.push_str(unit);
-    relative_time.push(' ');
-    relative_time.push_str(label);
-    relative_time
+    format!("{value} {unit} {label}")
 }
