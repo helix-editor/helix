@@ -367,7 +367,6 @@ impl Application {
                 let mut app_config = (*self.config.load().clone()).clone();
                 helix_event::dispatch(EditorConfigDidChange {
                     old_config: &app_config.editor,
-                    new_config: &editor_config,
                     editor: &mut self.editor,
                 });
                 app_config.editor = *editor_config;

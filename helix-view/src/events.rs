@@ -19,7 +19,6 @@ events! {
     }
     EditorConfigDidChange<'a> {
         old_config: &'a Config,
-        new_config: &'a Config,
         editor: &'a mut Editor
     }
     DocumentDidClose<'a> {

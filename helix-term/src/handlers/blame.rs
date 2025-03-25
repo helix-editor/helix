@@ -77,7 +77,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut EditorConfigDidChange<'_>| {
         let has_enabled_inline_blame = event.old_config.inline_blame.behaviour
             == InlineBlameBehaviour::Disabled
-            && event.new_config.inline_blame.behaviour != InlineBlameBehaviour::Disabled;
+            && event.editor.config().inline_blame.behaviour != InlineBlameBehaviour::Disabled;
 
         if has_enabled_inline_blame {
             // request blame for all documents, since any of them could have
