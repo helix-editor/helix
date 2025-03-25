@@ -36,10 +36,10 @@
   (identifier) @type)
 
 (lambda_expr
-  (typed_parameter (identifier) @parameter))
+  (typed_parameter (identifier) @variable.parameter))
 
 (lambda_expr
-  (identifier) @parameter)
+  (identifier) @variable.parameter)
 
 (selector_expr
   (select_suffix
