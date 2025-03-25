@@ -12,7 +12,7 @@
     (identifier) @namespace)
   (identifier) @namespace)
 
-(basic_type) @type
+(basic_type) @type.builtin
 
 (schema_type
   (dotted_name
