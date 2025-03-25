@@ -25,7 +25,7 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig, InlineBlameBehaviour},
+    editor::{CompleteAction, CursorShapeConfig, InlineBlameBehaviour, InlineBlameConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -204,55 +204,7 @@ impl EditorView {
             config.end_of_line_diagnostics,
         ));
 
-        if config.inline_blame.behaviour == InlineBlameBehaviour::CursorLine {
-            let cursor_line_idx = doc.cursor_line(view.id);
-
-            // do not render inline blame for empty lines to reduce visual noise
-            if doc.text().line(cursor_line_idx) != doc.line_ending.as_str() {
-                if let Ok(line_blame) =
-                    doc.line_blame(cursor_line_idx as u32, &config.inline_blame.format)
-                {
-                    decorations.add_decoration(InlineBlame::new(
-                        theme,
-                        text_decorations::blame::LineBlame::OneLine((cursor_line_idx, line_blame)),
-                    ));
-                };
-            }
-        } else if config.inline_blame.behaviour == InlineBlameBehaviour::AllLines {
-            let text = doc.text();
-            let text_line_count = text.len_lines();
-            let view_height = view.inner_height();
-            let first_visible_line =
-                text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
-            let first_line = first_visible_line.saturating_sub(view_height);
-            let last_line = first_visible_line
-                .saturating_add(view_height.saturating_mul(2))
-                .min(text_line_count);
-
-            let mut blame_lines = vec![None; text_line_count];
-
-            // Compute ~3 times the current view height of inline blame, that way some scrolling
-            // will not show half the view with inline blame and half without while still being faster
-            // than rendering inline blame for the full file.
-            let blame_for_all_lines = (first_line..last_line).filter_map(|line_idx| {
-                // do not render inline blame for empty lines to reduce visual noise
-                if text.line(line_idx) != doc.line_ending.as_str() {
-                    doc.line_blame(line_idx as u32, &config.inline_blame.format)
-                        .ok()
-                        .map(|blame| (line_idx, blame))
-                } else {
-                    None
-                }
-            });
-
-            for (line_idx, blame) in blame_for_all_lines {
-                blame_lines[line_idx] = Some(blame);
-            }
-            decorations.add_decoration(InlineBlame::new(
-                theme,
-                text_decorations::blame::LineBlame::ManyLines(blame_lines),
-            ));
-        }
+        Self::render_inline_blame(&config.inline_blame, doc, view, &mut decorations, theme);
 
         render_document(
             surface,
@@ -293,6 +245,63 @@ impl EditorView {
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
         statusline::render(&mut context, statusline_area, surface);
+    }
+
+    fn render_inline_blame(
+        inline_blame: &InlineBlameConfig,
+        doc: &Document,
+        view: &View,
+        decorations: &mut DecorationManager,
+        theme: &Theme,
+    ) {
+        if inline_blame.behaviour == InlineBlameBehaviour::CursorLine {
+            let cursor_line_idx = doc.cursor_line(view.id);
+
+            // do not render inline blame for empty lines to reduce visual noise
+            if doc.text().line(cursor_line_idx) != doc.line_ending.as_str() {
+                if let Ok(line_blame) = doc.line_blame(cursor_line_idx as u32, &inline_blame.format)
+                {
+                    decorations.add_decoration(InlineBlame::new(
+                        theme,
+                        text_decorations::blame::LineBlame::OneLine((cursor_line_idx, line_blame)),
+                    ));
+                };
+            }
+        } else if inline_blame.behaviour == InlineBlameBehaviour::AllLines {
+            let text = doc.text();
+            let text_line_count = text.len_lines();
+            let view_height = view.inner_height();
+            let first_visible_line =
+                text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
+            let first_line = first_visible_line.saturating_sub(view_height);
+            let last_line = first_visible_line
+                .saturating_add(view_height.saturating_mul(2))
+                .min(text_line_count);
+
+            let mut blame_lines = vec![None; text_line_count];
+
+            // Compute ~3 times the current view height of inline blame, that way some scrolling
+            // will not show half the view with inline blame and half without while still being faster
+            // than rendering inline blame for the full file.
+            let blame_for_all_lines = (first_line..last_line).filter_map(|line_idx| {
+                // do not render inline blame for empty lines to reduce visual noise
+                if text.line(line_idx) != doc.line_ending.as_str() {
+                    doc.line_blame(line_idx as u32, &inline_blame.format)
+                        .ok()
+                        .map(|blame| (line_idx, blame))
+                } else {
+                    None
+                }
+            });
+
+            for (line_idx, blame) in blame_for_all_lines {
+                blame_lines[line_idx] = Some(blame);
+            }
+            decorations.add_decoration(InlineBlame::new(
+                theme,
+                text_decorations::blame::LineBlame::ManyLines(blame_lines),
+            ));
+        }
     }
 
     pub fn render_rulers(
