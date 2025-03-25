@@ -9,14 +9,90 @@ fn has_camel_transition(prev: Option<char>, current: char) -> bool {
     current.is_uppercase() && prev.is_some_and(|ch| ch.is_lowercase())
 }
 
+/// In-place conversion into `UPPERCASE`
+pub fn into_uppercase(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    *buf = chars.flat_map(char::to_uppercase).collect();
+}
+
+/// In-place conversion into `lowercase`
+pub fn into_lowercase(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    *buf = chars.flat_map(char::to_lowercase).collect();
+}
+
+/// Change case of a character iterator and put the result into the `buf`.
+///
+/// # Arguments
+///
+/// - `separator`: Choose what character to insert between the words
+fn case_converter_with_separator(
+    chars: impl Iterator<Item = char>,
+    buf: &mut Tendril,
+    separator: char,
+) {
+    let mut prev = None;
+
+    for current in chars.skip_while(|ch| ch.is_whitespace()) {
+        if !current.is_alphanumeric() {
+            prev = Some(current);
+            continue;
+        }
+
+        // "email@somewhere" => transition at 'l' -> '@'
+        // first character must not be separator, e.g. @emailSomewhere should not become -email-somewhere
+        let has_alphanum_transition = !prev.is_some_and(|p| p.is_alphanumeric()) && !buf.is_empty();
+
+        if has_camel_transition(prev, current) || has_alphanum_transition {
+            buf.push(separator);
+        }
+
+        buf.extend(current.to_lowercase());
+
+        prev = Some(current);
+    }
+}
+
+/// In-place conversion into `kebab-case`
+pub fn into_kebab_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    case_converter_with_separator(chars, buf, '-');
+}
+
+/// In-place conversion into `PascalCase`
+pub fn into_snake_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    case_converter_with_separator(chars, buf, '_');
+}
+
+// todo: should this be grapheme aware?
+
+/// Choose how words are capitalized
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum CapitalizeWords {
+    /// # Examples
+    ///
+    /// - oneTwoThree
+    /// - one-Two-Three
+    /// - one Two Three
     AllButFirst,
+    /// # Examples
+    ///
+    /// - OneTwoThree
+    /// - One-Two-Three
+    /// - One Two Three
     All,
+    /// # Examples
+    ///
+    /// - Onetwothree
+    /// - One-two-three
+    /// - One two three
     First,
 }
 
-fn smart_case_conversion(
+/// Change case of a character iterator and put the result into the `buf`.
+///
+/// # Arguments
+///
+/// - `capitalize`: Choose how to capitalize the output
+/// - `separator`: Character to insert between the words
+fn case_converter_with_capitalization_and_separator(
     chars: impl Iterator<Item = char>,
     buf: &mut Tendril,
     capitalize: CapitalizeWords,
@@ -61,31 +137,24 @@ fn smart_case_conversion(
     *buf = buf.trim_end().into();
 }
 
-fn separator_case_conversion(
-    chars: impl Iterator<Item = char>,
-    buf: &mut Tendril,
-    separator: char,
-) {
-    let mut prev = None;
+/// In-place conversion into `Title Case`
+pub fn into_title_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    case_converter_with_capitalization_and_separator(chars, buf, CapitalizeWords::All, Some(' '));
+}
 
-    for current in chars.skip_while(|ch| ch.is_whitespace()) {
-        if !current.is_alphanumeric() {
-            prev = Some(current);
-            continue;
-        }
+/// In-place conversion into `Sentence case`
+pub fn into_sentence_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    case_converter_with_capitalization_and_separator(chars, buf, CapitalizeWords::First, Some(' '));
+}
 
-        // "email@somewhere" => transition at 'l' -> '@'
-        // first character must not be separator, e.g. @emailSomewhere should not become -email-somewhere
-        let has_alphanum_transition = !prev.is_some_and(|p| p.is_alphanumeric()) && !buf.is_empty();
+/// In-place conversion into `camelCase`
+pub fn into_camel_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    case_converter_with_capitalization_and_separator(chars, buf, CapitalizeWords::AllButFirst, None);
+}
 
-        if has_camel_transition(prev, current) || has_alphanum_transition {
-            buf.push(separator);
-        }
-
-        buf.extend(current.to_lowercase());
-
-        prev = Some(current);
-    }
+/// In-place conversion into `PascalCase`
+pub fn into_pascal_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    case_converter_with_capitalization_and_separator(chars, buf, CapitalizeWords::All, None);
 }
 
 enum AlternateCase {
@@ -110,8 +179,8 @@ impl Iterator for AlternateCase {
             AlternateCase::Upper(upper) => upper.size_hint(),
             AlternateCase::Lower(lower) => lower.size_hint(),
             AlternateCase::Keep(ch) => {
-                let n = if ch.is_some() { 1 } else { 0 };
-                (n, Some(n))
+                let size = ch.is_some() as usize;
+                (size, Some(size))
             }
         }
     }
@@ -131,38 +200,6 @@ pub fn into_alternate_case(chars: impl Iterator<Item = char>, buf: &mut Tendril)
             }
         })
         .collect();
-}
-
-pub fn into_uppercase(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    *buf = chars.flat_map(char::to_uppercase).collect();
-}
-
-pub fn into_lowercase(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    *buf = chars.flat_map(char::to_lowercase).collect();
-}
-
-pub fn into_kebab_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    separator_case_conversion(chars, buf, '-');
-}
-
-pub fn into_snake_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    separator_case_conversion(chars, buf, '_');
-}
-
-pub fn into_title_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    smart_case_conversion(chars, buf, CapitalizeWords::All, Some(' '));
-}
-
-pub fn into_sentence_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    smart_case_conversion(chars, buf, CapitalizeWords::First, Some(' '));
-}
-
-pub fn into_camel_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    smart_case_conversion(chars, buf, CapitalizeWords::AllButFirst, None);
-}
-
-pub fn into_pascal_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    smart_case_conversion(chars, buf, CapitalizeWords::All, None);
 }
 
 /// Create functional versions of the "into_*" case functions that take a `&mut Tendril`
