@@ -261,15 +261,19 @@ impl EditorView {
 
                 // do not render inline blame for empty lines to reduce visual noise
                 if doc.text().line(cursor_line_idx) != doc.line_ending.as_str() {
-                    if let Ok(line_blame) = doc.line_blame(cursor_line_idx as u32, &inline_blame.format)
+                    if let Ok(line_blame) =
+                        doc.line_blame(cursor_line_idx as u32, &inline_blame.format)
                     {
                         decorations.add_decoration(InlineBlame::new(
                             theme,
-                            text_decorations::blame::LineBlame::OneLine((cursor_line_idx, line_blame)),
+                            text_decorations::blame::LineBlame::OneLine((
+                                cursor_line_idx,
+                                line_blame,
+                            )),
                         ));
                     };
                 }
-            },
+            }
             InlineBlameBehaviour::AllLines => {
                 let text = doc.text();
                 let text_line_count = text.len_lines();
@@ -300,11 +304,12 @@ impl EditorView {
                 for (line_idx, blame) in blame_for_all_lines {
                     blame_lines[line_idx] = Some(blame);
                 }
+
                 decorations.add_decoration(InlineBlame::new(
                     theme,
                     text_decorations::blame::LineBlame::ManyLines(blame_lines),
                 ));
-            },
+            }
         }
     }
 
