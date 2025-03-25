@@ -89,6 +89,6 @@
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |
-| `:left` | Align text to the left, optionally pass a number overriding the current document's text width |
+| `:left` | Align text to the left |
 | `:center` | Center-align text, optionally pass a number overriding the current document's text width |
 | `:right` | Align text to the right, optionally pass a number overriding the current document's text width |

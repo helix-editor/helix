@@ -3562,7 +3562,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "left",
         aliases: &[],
-        doc: "Align text to the left, optionally pass a number overriding the current document's text width",
+        doc: "Align text to the left",
         fun: left,
         completer: CommandCompleter::none(),
         signature: Signature {
