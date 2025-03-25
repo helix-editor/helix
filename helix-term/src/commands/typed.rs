@@ -1327,7 +1327,7 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     }
 
     let scrolloff = cx.editor.config().scrolloff;
-    let inline_blame_behaviour = cx.editor.config().inline_blame.behaviour;
+    let inline_compute = cx.editor.config().inline_blame.compute;
     let (view, doc) = current!(cx.editor);
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
@@ -1340,7 +1340,7 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
             .file_changed(path.clone());
     }
 
-    if doc.should_request_full_file_blame(inline_blame_behaviour) {
+    if doc.should_request_full_file_blame(inline_compute) {
         if let Some(path) = doc.path() {
             helix_event::send_blocking(
                 &cx.editor.handlers.blame,
@@ -1380,7 +1380,7 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         })
         .collect();
 
-    let blame_behaviour = cx.editor.config().inline_blame.behaviour;
+    let blame_compute = cx.editor.config().inline_blame.compute;
 
     for (doc_id, view_ids) in docs_view_ids {
         let doc = doc_mut!(cx.editor, &doc_id);
@@ -1410,7 +1410,7 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
             }
         }
 
-        if doc.should_request_full_file_blame(blame_behaviour) {
+        if doc.should_request_full_file_blame(blame_compute) {
             if let Some(path) = doc.path() {
                 helix_event::send_blocking(
                     &cx.editor.handlers.blame,

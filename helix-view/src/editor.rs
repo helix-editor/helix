@@ -175,30 +175,32 @@ impl Default for GutterLineNumbersConfig {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InlineBlameBehaviour {
-    /// Do not show inline blame
-    ///
-    /// Loads blame for the file in the background when the document is
-    /// opened and request it again when it is `:reload`ed.
-    ///
-    /// This allows instantaneous access to line blame with `space + B` and when
-    /// `:toggle inline-blame.enable` but for the cost of consuming more
-    /// resources in the background
-    Background,
     /// Do not show inline blame, and do not request it in the background
     ///
     /// When manually requesting the inline blame, it may take several seconds to appear.
-    Disabled,
+    Hidden,
     /// Show the inline blame on the cursor line
     CursorLine,
     /// Show the inline blame on every other line
     AllLines,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum InlineBlameCompute {
+    /// Inline blame for a file will be fetched when a document is opened or reloaded, for example
+    Background,
+    /// Inline blame for a file will be fetched when explicitly requested, e.g. when using `space + B`
+    OnDemand,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct InlineBlameConfig {
-    /// Show inline blame for a line when cursor is on that line
+    /// How to show the inline blame
     pub behaviour: InlineBlameBehaviour,
+    /// Whether the inline blame should be fetched in the background
+    pub compute: InlineBlameCompute,
     /// How the inline blame should look like and the information it includes
     pub format: String,
 }
@@ -206,8 +208,9 @@ pub struct InlineBlameConfig {
 impl Default for InlineBlameConfig {
     fn default() -> Self {
         Self {
-            behaviour: InlineBlameBehaviour::Disabled,
+            behaviour: InlineBlameBehaviour::Hidden,
             format: "{author}, {time-ago} • {message} • {commit}".to_owned(),
+            compute: InlineBlameCompute::OnDemand,
         }
     }
 }

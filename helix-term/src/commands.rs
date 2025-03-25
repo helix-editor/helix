@@ -3480,8 +3480,9 @@ pub(crate) fn blame_line_impl(editor: &mut Editor, doc_id: DocumentId, cursor_li
     let line_blame = match doc.line_blame(cursor_line, &inline_blame_config.format) {
         result
             if (result.is_ok() && doc.is_blame_potentially_out_of_date)
-                || matches!(result, Err(LineBlameError::NotReadyYet) if inline_blame_config.behaviour
-                == helix_view::editor::InlineBlameBehaviour::Disabled) =>
+                || matches!(result, Err(LineBlameError::NotReadyYet) if inline_blame_config.compute
+                    == helix_view::editor::InlineBlameCompute::OnDemand
+                ) =>
         {
             if let Some(path) = doc.path() {
                 let tx = editor.handlers.blame.clone();

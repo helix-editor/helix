@@ -164,16 +164,24 @@ The following statusline elements can be configured:
 
 ### `[editor.inline-blame]` Section
 
+Inline blame is virtual text that appears at the end of a line, displaying information about the most recent commit that affected this line.
+
 | Key     | Description                                | Default |
 | ------- | ------------------------------------------ | ------- |
-| `behaviour` | Choose the behaviour of inline blame | `"disabled"` |
+| `behaviour` | Choose when to show inline blame | `"hidden"` |
+| `compute` | Choose when inline blame should be computed | `"on-demand"` |
 | `format` | The format in which to show the inline blame | `"{author}, {time-ago} • {message} • {commit}"` |
 
 The `behaviour` can be one of the following:
-- `"all-lines"`: Inline blame is turned on. Virtual text will appear at the end of each non-empty line, showing information about the latest commit for that line.
-- `"cursor-line"`: Inline blame is turned on. Virtual text will appear at the end of the current cursor line, showing information about the latest commit for that line.
-- `"background"`: Inline blame is turned off, but the blame is still requested in the background when opening and reloading files. This will have zero impact on performance, but will use slightly more resources in the background. This allows blame for line (`space + B`) to be retrieved instantaneously with zero delay.
-- `"disabled"`: Inline blame is turned off, with no requests happening in the background. When you run `space + B` for the first time in a file, it will load the blame for this file. You may have to wait a little bit for the blame to become available, depending on the size of your repository. After it becomes available, for this file `space + B` will retrieve the blame for any line in this file with zero delay. If the file is reloaded, the process will repeat as the blame is potentially out of date and needs to be refreshed.
+- `"all-lines"`: Inline blame is on every line.
+- `"cursor-line"`: Inline blame is only on the line of the primary cursor.
+- `"hidden"`: Inline blame is not shown.
+
+Inline blame will only show if the blame for the file has already been computed.
+
+The `compute` key determines under which circumstances the blame is computed, and can be one of the following:
+- `"on-demand"`: Blame for the file is computed only when explicitly requested, such as when using `space + B` to blame the line of the cursor. There may be a little delay when loading the blame. When opening new files, even with `behaviour` not set to `"hidden"`, the inline blame won't show. It needs to be computed first in order to become available. This computation can be manually triggered by requesting it with `space + B`.
+- `"background"`: Blame for the file is loaded in the background. This will have zero effect on performance of the Editor, but will use a little bit extra resources. Directly requesting the blame with `space + B` will be instant. Inline blame will show as soon as the blame is available when loading new files.
 
 `inline-blame-format` allows customization of the blame message, and can be set to any string. Variables can be used like so: `{variable}`. These are the available variables:
 
