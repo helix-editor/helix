@@ -1809,13 +1809,14 @@ impl Editor {
     }
 
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
-        let doc = match self.documents.remove(&doc_id) {
+        let doc = match self.documents.get(&doc_id) {
             Some(doc) => doc,
             None => return Err(CloseError::DoesNotExist),
         };
         if !force && doc.is_modified() {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
+        let doc = self.documents.remove(&doc_id).unwrap();
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
