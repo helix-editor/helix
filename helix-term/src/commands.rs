@@ -18,11 +18,7 @@ use tui::{
 pub use typed::*;
 
 use helix_core::{
-    case_conversion::{
-        to_alternate_case, to_camel_case, to_kebab_case, to_lowercase, to_pascal_case,
-        to_snake_case, to_title_case, to_uppercase,
-    },
-    char_idx_at_visual_offset,
+    case_conversion, char_idx_at_visual_offset,
     chars::char_is_word,
     command_line, comment,
     doc_formatter::TextFormat,
@@ -361,6 +357,7 @@ impl MappableCommand {
         switch_to_pascal_case, "Switch to PascalCase",
         switch_to_camel_case, "Switch to camelCase",
         switch_to_title_case, "Switch to Title Case",
+        switch_to_sentence_case, "Switch to Sentence case",
         switch_to_snake_case, "Switch to snake_case",
         switch_to_kebab_case, "Switch to kebab-case",
         page_up, "Move page up",
@@ -1717,6 +1714,7 @@ fn replace(cx: &mut Context) {
     })
 }
 
+#[inline]
 fn switch_case_impl<F>(cx: &mut Context, change_fn: F)
 where
     F: for<'a> Fn(&mut (dyn Iterator<Item = char> + 'a)) -> Tendril,
@@ -1739,35 +1737,39 @@ where
 }
 
 fn switch_to_pascal_case(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_pascal_case(chars))
+    switch_case_impl(cx, |chars| case_conversion::to_pascal_case(chars))
 }
 
 fn switch_to_camel_case(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_camel_case(chars))
+    switch_case_impl(cx, |chars| case_conversion::to_camel_case(chars))
 }
 
 fn switch_to_lowercase(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_lowercase(chars))
+    switch_case_impl(cx, |chars| case_conversion::to_lowercase(chars))
 }
 
 fn switch_to_uppercase(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_uppercase(chars))
+    switch_case_impl(cx, |chars| case_conversion::to_uppercase(chars))
 }
 
 fn switch_to_alternate_case(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_alternate_case(chars))
+    switch_case_impl(cx, |chars| case_conversion::to_alternate_case(chars))
 }
 
 fn switch_to_title_case(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_title_case(chars))
+    switch_case_impl(cx, |chars| case_conversion::to_title_case(chars))
+}
+
+fn switch_to_sentence_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| case_conversion::to_sentence_case(chars))
 }
 
 fn switch_to_snake_case(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_snake_case(chars))
+    switch_case_impl(cx, |chars| case_conversion::to_snake_case(chars))
 }
 
 fn switch_to_kebab_case(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_kebab_case(chars))
+    switch_case_impl(cx, |chars| case_conversion::to_kebab_case(chars))
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {

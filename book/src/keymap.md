@@ -247,6 +247,7 @@ Various commands for changing the case of text in different ways.
 | `p`              | Switch text to Pascal Case                       | `switch_to_pascal_case`    |
 | `c`              | Switch text to camelCase                         | `switch_to_camel_case`     |
 | `t`              | Switch text to Title Case                        | `switch_to_title_case`     |
+| `S`              | Switch text to Sentence case                     | `switch_to_sentence_case`  |
 | `s`              | Switch text to snake_case                        | `switch_to_snake_case`     |
 | `k`              | Switch text to kebab-case                        | `switch_to_kebab_case`     |
 | `a`              | Switch text to aLTERNATE cASE                    | `switch_to_alternate_case` |

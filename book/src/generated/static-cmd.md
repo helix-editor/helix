@@ -59,6 +59,7 @@
 | `switch_to_pascal_case` | Switch to PascalCase | normal: `` `p ``, select: `` `p `` |
 | `switch_to_camel_case` | Switch to camelCase | normal: `` `c ``, select: `` `c `` |
 | `switch_to_title_case` | Switch to Title Case | normal: `` `t ``, select: `` `t `` |
+| `switch_to_sentence_case` | Switch to Sentence case | normal: `` `S ``, select: `` `S `` |
 | `switch_to_snake_case` | Switch to snake_case | normal: `` `s ``, select: `` `s `` |
 | `switch_to_kebab_case` | Switch to kebab-case | normal: `` `k ``, select: `` `k `` |
 | `page_up` | Move page up | normal: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> ``, select: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> ``, insert: `` <pageup> `` |

@@ -27,6 +27,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "p" => switch_to_pascal_case,
             "c" => switch_to_camel_case,
             "t" => switch_to_title_case,
+            "S" => switch_to_sentence_case,
             "s" => switch_to_snake_case,
             "k" => switch_to_kebab_case,
         },

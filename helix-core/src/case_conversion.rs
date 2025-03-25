@@ -9,13 +9,20 @@ fn has_camel_transition(prev: Option<char>, current: char) -> bool {
     current.is_uppercase() && prev.is_some_and(|ch| ch.is_lowercase())
 }
 
-pub fn smart_case_conversion(
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+enum CapitalizeWords {
+    AllButFirst,
+    All,
+    First,
+}
+
+fn smart_case_conversion(
     chars: impl Iterator<Item = char>,
     buf: &mut Tendril,
-    capitalize_first: bool,
+    capitalize: CapitalizeWords,
     separator: Option<char>,
 ) {
-    let mut should_capitalize_current = capitalize_first;
+    let mut should_capitalize_current = capitalize != CapitalizeWords::AllButFirst;
     let mut prev = None;
 
     let add_separator_if_needed = |prev: Option<char>, buf: &mut Tendril| {
@@ -30,7 +37,7 @@ pub fn smart_case_conversion(
 
     for current in chars.skip_while(|ch| ch.is_whitespace()) {
         if !current.is_alphanumeric() {
-            should_capitalize_current = true;
+            should_capitalize_current = capitalize != CapitalizeWords::First;
             add_separator_if_needed(prev, buf);
             prev = Some(current);
             continue;
@@ -38,7 +45,7 @@ pub fn smart_case_conversion(
 
         if has_camel_transition(prev, current) {
             add_separator_if_needed(prev, buf);
-            should_capitalize_current = true;
+            should_capitalize_current = capitalize != CapitalizeWords::First;
         }
 
         if should_capitalize_current {
@@ -54,7 +61,7 @@ pub fn smart_case_conversion(
     *buf = buf.trim_end().into();
 }
 
-pub fn separator_case_conversion(
+fn separator_case_conversion(
     chars: impl Iterator<Item = char>,
     buf: &mut Tendril,
     separator: char,
@@ -143,15 +150,19 @@ pub fn into_snake_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
 }
 
 pub fn into_title_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    smart_case_conversion(chars, buf, true, Some(' '));
+    smart_case_conversion(chars, buf, CapitalizeWords::All, Some(' '));
+}
+
+pub fn into_sentence_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
+    smart_case_conversion(chars, buf, CapitalizeWords::First, Some(' '));
 }
 
 pub fn into_camel_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    smart_case_conversion(chars, buf, false, None);
+    smart_case_conversion(chars, buf, CapitalizeWords::AllButFirst, None);
 }
 
 pub fn into_pascal_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    smart_case_conversion(chars, buf, true, None);
+    smart_case_conversion(chars, buf, CapitalizeWords::All, None);
 }
 
 /// Create functional versions of the "into_*" case functions that take a `&mut Tendril`
@@ -176,6 +187,7 @@ to_case! {
     into_title_case => to_title_case
     into_kebab_case => to_kebab_case
     into_snake_case => to_snake_case
+    into_sentence_case => to_sentence_case
 }
 
 #[cfg(test)]
@@ -296,6 +308,7 @@ mod tests {
     fn test_title_case_conversion() {
         let tests = [
             ("hello world", "Hello World"),
+            ("hello world again", "Hello World Again"),
             ("Hello World", "Hello World"),
             ("hello_world", "Hello World"),
             ("HELLO_WORLD", "Hello World"),
@@ -312,6 +325,30 @@ mod tests {
         for (input, expected) in tests {
             dbg!(input);
             assert_eq!(to_title_case(input.chars()), expected)
+        }
+    }
+
+    #[test]
+    fn test_sentence_case_conversion() {
+        let tests = [
+            ("hello world", "Hello world"),
+            ("hello world again", "Hello world again"),
+            ("Hello World", "Hello world"),
+            ("hello_world", "Hello world"),
+            ("HELLO_WORLD", "Hello world"),
+            ("hello-world", "Hello world"),
+            ("hello  world", "Hello world"),
+            ("   hello world", "Hello world"),
+            ("hello\tworld", "Hello world"),
+            ("HELLO  WORLD", "Hello world"),
+            ("HELLO-world", "Hello world"),
+            ("hello  WORLD ", "Hello world"),
+            ("helloWorld", "Hello world"),
+        ];
+
+        for (input, expected) in tests {
+            dbg!(input);
+            assert_eq!(to_sentence_case(input.chars()), expected)
         }
     }
 
