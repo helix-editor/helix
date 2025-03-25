@@ -179,6 +179,7 @@ impl EditorView {
         }
 
         Self::render_rulers(editor, doc, view, inner, surface, theme);
+        Self::render_inline_blame(&config.inline_blame, doc, view, &mut decorations, theme);
 
         let primary_cursor = doc
             .selection(view.id)
@@ -203,8 +204,6 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
-
-        Self::render_inline_blame(&config.inline_blame, doc, view, &mut decorations, theme);
 
         render_document(
             surface,

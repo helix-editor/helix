@@ -20,10 +20,7 @@ pub struct InlineBlame {
 
 impl InlineBlame {
     pub fn new(style: Style, lines: LineBlame) -> Self {
-        InlineBlame {
-            style,
-            lines,
-        }
+        InlineBlame { style, lines }
     }
 }
 
