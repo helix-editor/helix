@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use helix_core::Position;
 
 use helix_view::theme::Style;
@@ -7,17 +9,15 @@ use crate::ui::document::{LinePos, TextRenderer};
 use crate::ui::text_decorations::Decoration;
 
 pub struct InlineBlame {
-    message: String,
-    cursor: usize,
+    lines: HashMap<usize, String>,
     style: Style,
 }
 
 impl InlineBlame {
-    pub fn new(theme: &Theme, cursor: usize, message: String) -> Self {
+    pub fn new(theme: &Theme, lines: HashMap<usize, String>) -> Self {
         InlineBlame {
             style: theme.get("ui.virtual.inline-blame"),
-            message,
-            cursor,
+            lines,
         }
     }
 }
@@ -29,10 +29,10 @@ impl Decoration for InlineBlame {
         pos: LinePos,
         virt_off: Position,
     ) -> Position {
-        // do not draw inline blame for lines other than the cursor line
-        if self.cursor != pos.doc_line {
+        let Some(blame) = self.lines.get(&pos.doc_line) else {
+            // do not draw inline blame for lines that have no content in them
             return Position::new(0, 0);
-        }
+        };
 
         // where the line in the document ends
         let end_of_line = virt_off.col as u16;
@@ -48,7 +48,7 @@ impl Decoration for InlineBlame {
                     .set_string_truncated(
                         renderer.viewport.x + start_drawing_at,
                         pos.visual_line,
-                        &self.message,
+                        &blame,
                         renderer.viewport.width.saturating_sub(start_drawing_at) as usize,
                         |_| self.style,
                         true,

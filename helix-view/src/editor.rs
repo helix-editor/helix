@@ -188,8 +188,10 @@ pub enum InlineBlameBehaviour {
     ///
     /// When manually requesting the inline blame, it may take several seconds to appear.
     Disabled,
-    /// Show the inline blame
-    Visible,
+    /// Show the inline blame on the cursor line
+    CursorLine,
+    /// Show the inline blame on every other line
+    AllLines,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

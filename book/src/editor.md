@@ -170,7 +170,8 @@ The following statusline elements can be configured:
 | `format` | The format in which to show the inline blame | `"{author}, {time-ago} • {message} • {commit}"` |
 
 The `behaviour` can be one of the following:
-- `"visible"`: Inline blame is turned on. Virtual text will appear at the end of each non-empty line, showing information about the latest commit for that line.
+- `"all-lines"`: Inline blame is turned on. Virtual text will appear at the end of each non-empty line, showing information about the latest commit for that line.
+- `"cursor-line"`: Inline blame is turned on. Virtual text will appear at the end of the current cursor line, showing information about the latest commit for that line.
 - `"background"`: Inline blame is turned off, but the blame is still requested in the background when opening and reloading files. This will have zero impact on performance, but will use slightly more resources in the background. This allows blame for line (`space + B`) to be retrieved instantaneously with zero delay.
 - `"disabled"`: Inline blame is turned off, with no requests happening in the background. When you run `space + B` for the first time in a file, it will load the blame for this file. You may have to wait a little bit for the blame to become available, depending on the size of your repository. After it becomes available, for this file `space + B` will retrieve the blame for any line in this file with zero delay. If the file is reloaded, the process will repeat as the blame is potentially out of date and needs to be refreshed.
 

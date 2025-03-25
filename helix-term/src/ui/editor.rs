@@ -31,7 +31,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc};
+use std::{collections::HashMap, mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -204,7 +204,7 @@ impl EditorView {
             config.end_of_line_diagnostics,
         ));
 
-        if config.inline_blame.behaviour == InlineBlameBehaviour::Visible {
+        if config.inline_blame.behaviour == InlineBlameBehaviour::CursorLine {
             let cursor_line_idx = doc.cursor_line(view.id);
 
             // do not render inline blame for empty lines to reduce visual noise
@@ -214,11 +214,23 @@ impl EditorView {
                 {
                     decorations.add_decoration(InlineBlame::new(
                         theme,
-                        cursor_line_idx,
-                        line_blame,
+                        HashMap::from([(cursor_line_idx, line_blame)]),
                     ));
                 };
             }
+        } else if config.inline_blame.behaviour == InlineBlameBehaviour::AllLines {
+            let blame_for_all_lines = (0..doc.text().len_lines())
+                .filter_map(|line_idx| {
+                    (doc.text().line(line_idx) != doc.line_ending.as_str())
+                        .then(|| {
+                            doc.line_blame(line_idx as u32, &config.inline_blame.format)
+                                .ok()
+                                .map(|blame| (line_idx, blame))
+                        })
+                        .flatten()
+                })
+                .collect();
+            decorations.add_decoration(InlineBlame::new(theme, blame_for_all_lines));
         }
 
         render_document(
