@@ -4,14 +4,6 @@ use crate::Tendril;
 
 // todo: should this be grapheme aware?
 
-pub fn simple_case_conversion(
-    chars: impl Iterator<Item = char>,
-    buf: &mut Tendril,
-    transform_char: impl Fn(&char) -> char,
-) {
-    *buf = chars.map(|ch| transform_char(&ch)).collect();
-}
-
 /// Whether there is a camelCase transition, such as at 'l' -> 'C'
 fn has_camel_transition(prev: Option<char>, current: char) -> bool {
     current.is_uppercase() && prev.is_some_and(|ch| ch.is_lowercase())
