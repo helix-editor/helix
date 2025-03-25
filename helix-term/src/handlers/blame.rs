@@ -75,9 +75,11 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
     let tx = handlers.blame.clone();
     register_hook!(move |event: &mut EditorConfigDidChange<'_>| {
-        if event.old_config.inline_blame.behaviour == InlineBlameBehaviour::Disabled
-            && event.new_config.inline_blame.behaviour != InlineBlameBehaviour::Disabled
-        {
+        let has_enabled_inline_blame = event.old_config.inline_blame.behaviour
+            == InlineBlameBehaviour::Disabled
+            && event.new_config.inline_blame.behaviour != InlineBlameBehaviour::Disabled;
+
+        if has_enabled_inline_blame {
             // request blame for all documents, since any of them could have
             // outdated blame
             for doc in event.editor.documents() {
