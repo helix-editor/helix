@@ -1,7 +1,6 @@
 use helix_core::Position;
 
 use helix_view::theme::Style;
-use helix_view::Theme;
 
 use crate::ui::document::{LinePos, TextRenderer};
 use crate::ui::text_decorations::Decoration;
@@ -20,9 +19,9 @@ pub struct InlineBlame {
 }
 
 impl InlineBlame {
-    pub fn new(theme: &Theme, lines: LineBlame) -> Self {
+    pub fn new(style: Style, lines: LineBlame) -> Self {
         InlineBlame {
-            style: theme.get("ui.virtual.inline-blame"),
+            style,
             lines,
         }
     }

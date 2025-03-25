@@ -254,6 +254,7 @@ impl EditorView {
         decorations: &mut DecorationManager,
         theme: &Theme,
     ) {
+        const INLINE_BLAME_SCOPE: &str = "ui.virtual.inline-blame";
         match inline_blame.behaviour {
             InlineBlameBehaviour::Hidden => (),
             InlineBlameBehaviour::CursorLine => {
@@ -265,7 +266,7 @@ impl EditorView {
                         doc.line_blame(cursor_line_idx as u32, &inline_blame.format)
                     {
                         decorations.add_decoration(InlineBlame::new(
-                            theme,
+                            theme.get(INLINE_BLAME_SCOPE),
                             text_decorations::blame::LineBlame::OneLine((
                                 cursor_line_idx,
                                 line_blame,
@@ -306,7 +307,7 @@ impl EditorView {
                 }
 
                 decorations.add_decoration(InlineBlame::new(
-                    theme,
+                    theme.get(INLINE_BLAME_SCOPE),
                     text_decorations::blame::LineBlame::ManyLines(blame_lines),
                 ));
             }
