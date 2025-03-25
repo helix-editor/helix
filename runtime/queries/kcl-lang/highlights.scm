@@ -53,7 +53,7 @@
   body: (block
     .
     (string
-      (string_content) @string.documentation)))
+      (string_content) @comment.block.documentation)))
 
 (decorator
   (identifier) @attribute)
