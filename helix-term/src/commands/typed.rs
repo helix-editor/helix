@@ -2924,7 +2924,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: theme,
         completer: CommandCompleter::positional(&[completers::theme]),
         signature: Signature {
-            positionals: (1, Some(1)),
+            positionals: (0, Some(1)),
             ..Signature::DEFAULT
         },
     },
