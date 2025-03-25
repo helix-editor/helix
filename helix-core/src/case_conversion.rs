@@ -162,45 +162,28 @@ pub fn into_pascal_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
     smart_case_conversion(chars, buf, true, None);
 }
 
-fn to_case<I>(chars: I, into_case: fn(I, &mut Tendril)) -> Tendril
-where
-    I: Iterator<Item = char>,
-{
-    let mut res = Tendril::new();
-    into_case(chars, &mut res);
-    res
+/// Create functional versions of the "into_*" case functions that take a `&mut Tendril`
+macro_rules! to_case {
+    ($($into_case:ident => $to_case:ident)*) => {
+        $(
+            pub fn $to_case(chars: impl Iterator<Item = char>) -> Tendril {
+                let mut res = Tendril::new();
+                $into_case(chars, &mut res);
+                res
+            }
+        )*
+    };
 }
 
-pub fn to_camel_case(chars: impl Iterator<Item = char>) -> Tendril {
-    to_case(chars, into_camel_case)
-}
-
-pub fn to_lowercase(chars: impl Iterator<Item = char>) -> Tendril {
-    to_case(chars, into_lowercase)
-}
-
-pub fn to_uppercase(chars: impl Iterator<Item = char>) -> Tendril {
-    to_case(chars, into_uppercase)
-}
-
-pub fn to_pascal_case(chars: impl Iterator<Item = char>) -> Tendril {
-    to_case(chars, into_pascal_case)
-}
-
-pub fn to_alternate_case(chars: impl Iterator<Item = char>) -> Tendril {
-    to_case(chars, into_alternate_case)
-}
-
-pub fn to_title_case(chars: impl Iterator<Item = char>) -> Tendril {
-    to_case(chars, into_title_case)
-}
-
-pub fn to_kebab_case(chars: impl Iterator<Item = char>) -> Tendril {
-    to_case(chars, into_kebab_case)
-}
-
-pub fn to_snake_case(chars: impl Iterator<Item = char>) -> Tendril {
-    to_case(chars, into_snake_case)
+to_case! {
+    into_camel_case => to_camel_case
+    into_lowercase => to_lowercase
+    into_uppercase => to_uppercase
+    into_pascal_case => to_pascal_case
+    into_alternate_case => to_alternate_case
+    into_title_case => to_title_case
+    into_kebab_case => to_kebab_case
+    into_snake_case => to_snake_case
 }
 
 #[cfg(test)]
