@@ -3864,10 +3864,11 @@ fn complete_command_line(editor: &Editor, input: &str) -> Vec<ui::prompt::Comple
             let custom = config
                 .commands
                 .non_hidden_names()
-                .map(|name| name.to_string());
+                .map(|name| Cow::Owned(name.to_string()));
+
             let builtin = TYPABLE_COMMAND_LIST
                 .iter()
-                .map(|command| command.name.to_string());
+                .map(|command| Cow::Borrowed(command.name));
 
             // NOTE: `custom.chain(builtin)` forces custom commands to be at the top of the list.
             fuzzy_match(command, custom.chain(builtin), false)
