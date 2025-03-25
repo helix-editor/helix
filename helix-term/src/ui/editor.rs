@@ -31,7 +31,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{collections::HashMap, mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc};
+use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -214,37 +214,44 @@ impl EditorView {
                 {
                     decorations.add_decoration(InlineBlame::new(
                         theme,
-                        HashMap::from([(cursor_line_idx, line_blame)]),
+                        text_decorations::blame::LineBlame::OneLine((cursor_line_idx, line_blame)),
                     ));
                 };
             }
         } else if config.inline_blame.behaviour == InlineBlameBehaviour::AllLines {
             let text = doc.text();
-            let len_lines = text.len_lines();
+            let text_line_count = text.len_lines();
             let view_height = view.inner_height();
             let first_visible_line =
                 text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
             let first_line = first_visible_line.saturating_sub(view_height);
             let last_line = first_visible_line
                 .saturating_add(view_height.saturating_mul(2))
-                .min(len_lines);
+                .min(text_line_count);
+
+            let mut blame_lines = vec![None; text_line_count];
 
             // Compute ~3 times the current view height of inline blame, that way some scrolling
             // will not show half the view with inline blame and half without while still being faster
             // than rendering inline blame for the full file.
-            let blame_for_all_lines = (first_line..last_line)
-                .filter_map(|line_idx| {
-                    // do not render inline blame for empty lines to reduce visual noise
-                    if text.line(line_idx) != doc.line_ending.as_str() {
-                        doc.line_blame(line_idx as u32, &config.inline_blame.format)
-                            .ok()
-                            .map(|blame| (line_idx, blame))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            decorations.add_decoration(InlineBlame::new(theme, blame_for_all_lines));
+            let blame_for_all_lines = (first_line..last_line).filter_map(|line_idx| {
+                // do not render inline blame for empty lines to reduce visual noise
+                if text.line(line_idx) != doc.line_ending.as_str() {
+                    doc.line_blame(line_idx as u32, &config.inline_blame.format)
+                        .ok()
+                        .map(|blame| (line_idx, blame))
+                } else {
+                    None
+                }
+            });
+
+            for (line_idx, blame) in blame_for_all_lines {
+                blame_lines[line_idx] = Some(blame);
+            }
+            decorations.add_decoration(InlineBlame::new(
+                theme,
+                text_decorations::blame::LineBlame::ManyLines(blame_lines),
+            ));
         }
 
         render_document(

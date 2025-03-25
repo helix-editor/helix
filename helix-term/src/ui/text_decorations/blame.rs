@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use helix_core::Position;
 
 use helix_view::theme::Style;
@@ -8,13 +6,21 @@ use helix_view::Theme;
 use crate::ui::document::{LinePos, TextRenderer};
 use crate::ui::text_decorations::Decoration;
 
+pub enum LineBlame {
+    OneLine((usize, String)),
+    // Optimization: Use `Vec<T>` insted of `HashMap<usize, T>`
+    // because we know that the amount of lines visible in the viewport X3 cannot be a very large number,
+    // most likely up to a few hundred. In the absolute extreme case, maybe 5,000.
+    ManyLines(Vec<Option<String>>),
+}
+
 pub struct InlineBlame {
-    lines: HashMap<usize, String>,
+    lines: LineBlame,
     style: Style,
 }
 
 impl InlineBlame {
-    pub fn new(theme: &Theme, lines: HashMap<usize, String>) -> Self {
+    pub fn new(theme: &Theme, lines: LineBlame) -> Self {
         InlineBlame {
             style: theme.get("ui.virtual.inline-blame"),
             lines,
@@ -29,9 +35,23 @@ impl Decoration for InlineBlame {
         pos: LinePos,
         virt_off: Position,
     ) -> Position {
-        let Some(blame) = self.lines.get(&pos.doc_line) else {
-            // do not draw inline blame for lines that have no content in them
-            return Position::new(0, 0);
+        let blame = match &self.lines {
+            LineBlame::OneLine((line, blame)) => {
+                if line != &pos.doc_line {
+                    // do not draw inline blame for lines that have no content in them
+                    blame
+                } else {
+                    return Position::new(0, 0);
+                }
+            }
+            LineBlame::ManyLines(lines) => {
+                if let Some(Some(blame)) = lines.get(pos.doc_line) {
+                    blame
+                } else {
+                    // do not draw inline blame for lines that have no content in them
+                    return Position::new(0, 0);
+                }
+            }
         };
 
         // where the line in the document ends
