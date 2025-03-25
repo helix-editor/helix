@@ -756,10 +756,11 @@ impl Application {
                             .compositor
                             .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let lsp::ProgressParams { token, value } = params;
-
-                        let lsp::ProgressParamsValue::WorkDone(work) = value;
-                        let parts = match &work {
+                        let lsp::ProgressParams {
+                            token,
+                            value: lsp::ProgressParamsValue::WorkDone(work),
+                        } = params;
+                        let (title, message, percentage) = match &work {
                             lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
                                 title,
                                 message,
@@ -787,31 +788,32 @@ impl Application {
                             }
                         };
 
-                        let mut status = match parts {
-                            (Some(title), Some(message), Some(percentage)) => {
-                                format!("{}% {} - {}", percentage, title, message)
+                        if self.editor.config().lsp.display_progress_messages {
+                            let title =
+                                title.or_else(|| self.lsp_progress.title(server_id, &token));
+                            if title.is_some() || percentage.is_some() || message.is_some() {
+                                use std::fmt::Write as _;
+                                let mut status = format!("{}: ", language_server!().name());
+                                if let Some(percentage) = percentage {
+                                    write!(status, "{percentage:>2}% ").unwrap();
+                                }
+                                if let Some(title) = title {
+                                    status.push_str(title);
+                                }
+                                if title.is_some() && message.is_some() {
+                                    status.push_str(" ⋅ ");
+                                }
+                                if let Some(message) = message {
+                                    status.push_str(message);
+                                }
+                                self.editor.set_status(status);
                             }
-                            (Some(title), None, Some(percentage)) => {
-                                format!("{}% {}", percentage, title)
-                            }
-                            (Some(title), Some(message), None) => {
-                                format!("{} - {}", title, message)
-                            }
-                            (None, Some(message), Some(percentage)) => {
-                                format!("{}% {}", percentage, message)
-                            }
-                            (Some(title), None, None) => title.to_string(),
-                            (None, Some(message), None) => message.to_string(),
-                            (None, None, Some(percentage)) => {
-                                format!("{}%", percentage)
-                            }
-                            (None, None, None) => "".to_owned(),
-                        };
+                        }
 
                         match work {
-                            lsp::WorkDoneProgress::Begin(being_status) => {
+                            lsp::WorkDoneProgress::Begin(begin_status) => {
                                 self.lsp_progress
-                                    .begin(server_id, token.clone(), being_status);
+                                    .begin(server_id, token.clone(), begin_status);
                             }
                             lsp::WorkDoneProgress::Report(report_status) => {
                                 self.lsp_progress
@@ -823,13 +825,6 @@ impl Application {
                                     editor_view.spinners_mut().get_or_create(server_id).stop();
                                 };
                             }
-                        }
-
-                        if self.config.load().editor.lsp.display_progress_messages {
-                            if let Some(title) = self.lsp_progress.title(server_id, &token) {
-                                status = format!("{} {}", title, status);
-                            }
-                            self.editor.set_status(status);
                         }
                     }
                     Notification::ProgressMessage(_params) => {

@@ -783,7 +783,7 @@ impl LspProgressMap {
     pub fn title(&self, id: LanguageServerId, token: &lsp::ProgressToken) -> Option<&String> {
         self.progress(id, token).and_then(|p| match p {
             ProgressStatus::Created => None,
-            ProgressStatus::Started { title, progress: _ } => Some(title),
+            ProgressStatus::Started { title, .. } => Some(title),
         })
     }
 
@@ -822,7 +822,7 @@ impl LspProgressMap {
             token,
             ProgressStatus::Started {
                 title: status.title.clone(),
-                progress: helix_lsp_types::WorkDoneProgress::Begin(status),
+                progress: lsp::WorkDoneProgress::Begin(status),
             },
         );
     }
@@ -840,8 +840,8 @@ impl LspProgressMap {
             .entry(token)
             .and_modify(|e| match e {
                 ProgressStatus::Created => (),
-                ProgressStatus::Started { title: _, progress } => {
-                    *progress = helix_lsp_types::WorkDoneProgress::Report(status)
+                ProgressStatus::Started { progress, .. } => {
+                    *progress = lsp::WorkDoneProgress::Report(status)
                 }
             });
     }
