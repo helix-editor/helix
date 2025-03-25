@@ -127,7 +127,8 @@ const MIN_WORD_GRAPHEMES: usize = 3;
 /// Maximum word length allowed (in chars)
 const MAX_WORD_LEN: usize = 50;
 
-type Word = kstring::KString;
+// TODO: choose or create a suitable small string type.
+type Word = String;
 
 #[derive(Debug, Default)]
 struct WordIndexInner {
@@ -149,11 +150,7 @@ impl WordIndexInner {
         if let Some(rc) = self.words.get_mut(word.as_ref()) {
             *rc = rc.saturating_add(1);
         } else {
-            let word = match word {
-                Cow::Owned(s) => Word::from_string(s),
-                Cow::Borrowed(s) => Word::from_ref(s),
-            };
-            self.words.insert(word, 1);
+            self.words.insert(word.into_owned(), 1);
         }
     }
 
@@ -183,10 +180,7 @@ impl WordIndex {
         let inner = self.inner.read();
         let mut matches = fuzzy_match(pattern, inner.words(), false);
         matches.sort_unstable_by_key(|(_, score)| *score);
-        matches
-            .into_iter()
-            .map(|(word, _)| word.to_string())
-            .collect()
+        matches.into_iter().map(|(word, _)| word.clone()).collect()
     }
 
     fn add_document(&self, text: &Rope) {
@@ -443,7 +437,7 @@ mod tests {
     impl WordIndex {
         fn words(&self) -> HashSet<String> {
             let inner = self.inner.read();
-            inner.words().map(|w| w.to_string()).collect()
+            inner.words().cloned().collect()
         }
     }
 
