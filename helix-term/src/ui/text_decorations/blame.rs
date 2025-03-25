@@ -37,7 +37,7 @@ impl Decoration for InlineBlame {
     ) -> Position {
         let blame = match &self.lines {
             LineBlame::OneLine((line, blame)) => {
-                if line != &pos.doc_line {
+                if line == &pos.doc_line {
                     // do not draw inline blame for lines that have no content in them
                     blame
                 } else {
