@@ -47,7 +47,7 @@
 
 (comment) @comment
 (string) @string
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 
 (schema_stmt
   body: (block
