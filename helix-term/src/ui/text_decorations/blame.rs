@@ -48,7 +48,7 @@ impl Decoration for InlineBlame {
                     .set_string_truncated(
                         renderer.viewport.x + start_drawing_at,
                         pos.visual_line,
-                        &blame,
+                        blame,
                         renderer.viewport.width.saturating_sub(start_drawing_at) as usize,
                         |_| self.style,
                         true,
