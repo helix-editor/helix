@@ -50,10 +50,10 @@ pub fn smart_case_conversion(
         }
 
         if should_capitalize_current {
-            buf.push(current.to_ascii_uppercase());
+            buf.extend(current.to_uppercase());
             should_capitalize_current = false;
         } else {
-            buf.push(current.to_ascii_lowercase());
+            buf.extend(current.to_lowercase());
         }
 
         prev = Some(current);
@@ -83,7 +83,7 @@ pub fn separator_case_conversion(
             buf.push(separator);
         }
 
-        buf.push(current.to_ascii_lowercase());
+        buf.extend(current.to_lowercase());
 
         prev = Some(current);
     }
