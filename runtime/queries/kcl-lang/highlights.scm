@@ -105,6 +105,14 @@
   "else"
 ] @keyword.control.conditional
 
+[ 
+  "and"
+  "or"
+  "not"
+  "in"
+  "is"
+] @keyword.operator
+
 [
   "("
   ")"
@@ -139,11 +147,6 @@
   "=="
   "!="
   "@"
-  "and"
-  "or"
-  "not"
-  "in"
-  "is"
   "="
   ":"
 ] @operator
