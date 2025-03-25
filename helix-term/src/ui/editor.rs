@@ -219,15 +219,29 @@ impl EditorView {
                 };
             }
         } else if config.inline_blame.behaviour == InlineBlameBehaviour::AllLines {
-            let blame_for_all_lines = (0..doc.text().len_lines())
+            let text = doc.text();
+            let len_lines = text.len_lines();
+            let view_height = view.inner_height();
+            let first_visible_line =
+                text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
+            let first_line = first_visible_line.saturating_sub(view_height);
+            let last_line = first_visible_line
+                .saturating_add(view_height.saturating_mul(2))
+                .min(len_lines);
+
+            // Compute ~3 times the current view height of inline blame, that way some scrolling
+            // will not show half the view with inline blame and half without while still being faster
+            // than rendering inline blame for the full file.
+            let blame_for_all_lines = (first_line..last_line)
                 .filter_map(|line_idx| {
-                    (doc.text().line(line_idx) != doc.line_ending.as_str())
-                        .then(|| {
-                            doc.line_blame(line_idx as u32, &config.inline_blame.format)
-                                .ok()
-                                .map(|blame| (line_idx, blame))
-                        })
-                        .flatten()
+                    // do not render inline blame for empty lines to reduce visual noise
+                    if text.line(line_idx) != doc.line_ending.as_str() {
+                        doc.line_blame(line_idx as u32, &config.inline_blame.format)
+                            .ok()
+                            .map(|blame| (line_idx, blame))
+                    } else {
+                        None
+                    }
                 })
                 .collect();
             decorations.add_decoration(InlineBlame::new(theme, blame_for_all_lines));
