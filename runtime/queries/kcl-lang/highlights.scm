@@ -72,6 +72,8 @@
 [
   (true)
   (false)
+] @constant.builtin.boolean
+[
   (none)
   (undefined)
 ] @constant.builtin
