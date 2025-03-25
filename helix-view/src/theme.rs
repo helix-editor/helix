@@ -298,25 +298,18 @@ impl Theme {
     const RGB_START: usize = (usize::MAX << (8 + 8 + 8)) - 1;
 
     /// Interpret a Highlight with the RGB foreground
-    fn decode_rgb_highlight(rgb: usize) -> Option<(u8, u8, u8)> {
-        (rgb > Self::RGB_START).then(|| {
+    const fn decode_rgb_highlight(rgb: usize) -> Option<(u8, u8, u8)> {
+        if rgb > Self::RGB_START {
             let [.., r, g, b] = rgb.to_be_bytes();
-            (r, g, b)
-        })
+            Some((r, g, b))
+        } else {
+            None
+        }
     }
 
     /// Create a Highlight that represents an RGB color
-    pub fn rgb_highlight(r: u8, g: u8, b: u8) -> Highlight {
-        Highlight(usize::from_be_bytes([
-            u8::MAX,
-            u8::MAX,
-            u8::MAX,
-            u8::MAX,
-            u8::MAX,
-            r,
-            g,
-            b,
-        ]))
+    pub const fn rgb_highlight(r: u8, g: u8, b: u8) -> Highlight {
+        Highlight(Self::RGB_START + 1 + ((r as usize) << 16) + ((g as usize) << 8) + b as usize)
     }
 
     #[inline]
