@@ -84,12 +84,7 @@
   "assert"
   "as"
   "check"
-  "elif"
-  "else"
   "filter"
-  "for"
-  "if"
-  "import"
   "lambda"
   "map"
   "mixin"
@@ -98,6 +93,17 @@
   "schema"
   "type"
 ] @keyword
+[
+  "import"
+] @keyword.control.import
+[
+  "for"
+] @keyword.control.repeat
+[
+  "if"
+  "elif"
+  "else"
+] @keyword.control.conditional
 
 [
   "("
