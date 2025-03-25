@@ -43,7 +43,7 @@
 
 (selector_expr
   (select_suffix
-    (identifier) @property))
+    (identifier) @variable.other.member))
 
 (comment) @comment
 (string) @string
