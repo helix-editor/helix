@@ -149,7 +149,12 @@ pub fn into_sentence_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) 
 
 /// In-place conversion into `camelCase`
 pub fn into_camel_case(chars: impl Iterator<Item = char>, buf: &mut Tendril) {
-    case_converter_with_capitalization_and_separator(chars, buf, CapitalizeWords::AllButFirst, None);
+    case_converter_with_capitalization_and_separator(
+        chars,
+        buf,
+        CapitalizeWords::AllButFirst,
+        None,
+    );
 }
 
 /// In-place conversion into `PascalCase`
