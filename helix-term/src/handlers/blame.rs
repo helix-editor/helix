@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{mem, time::Duration};
 
 use helix_event::register_hook;
 use helix_vcs::FileBlame;
@@ -8,13 +8,13 @@ use helix_view::{
     handlers::{BlameEvent, Handlers},
     DocumentId,
 };
-use tokio::{sync::oneshot, time::Instant};
+use tokio::time::Instant;
 
 use crate::job;
 
 #[derive(Default)]
 pub struct BlameHandler {
-    worker: Option<oneshot::Receiver<anyhow::Result<FileBlame>>>,
+    file_blame: Option<anyhow::Result<FileBlame>>,
     doc_id: DocumentId,
     show_blame_for_line_in_statusline: Option<u32>,
 }
@@ -27,36 +27,18 @@ impl helix_event::AsyncHook for BlameHandler {
         event: Self::Event,
         _timeout: Option<tokio::time::Instant>,
     ) -> Option<tokio::time::Instant> {
-        if let Some(worker) = &mut self.worker {
-            if worker.try_recv().is_ok() {
-                self.finish_debounce();
-                return None;
-            }
-        }
-
         self.doc_id = event.doc_id;
         self.show_blame_for_line_in_statusline = event.line;
-        let (tx, rx) = oneshot::channel();
-
-        tokio::spawn(async move {
-            let result = FileBlame::try_new(event.path);
-            let _ = tx.send(result);
-        });
-
-        self.worker = Some(rx);
-
+        self.file_blame = Some(FileBlame::try_new(event.path));
         Some(Instant::now() + Duration::from_millis(50))
     }
 
     fn finish_debounce(&mut self) {
         let doc_id = self.doc_id;
         let line_blame = self.show_blame_for_line_in_statusline;
-        if let Some(worker) = self.worker.take() {
+        let result = mem::take(&mut self.file_blame);
+        if let Some(result) = result {
             tokio::spawn(async move {
-                let Ok(result) = worker.await else {
-                    return;
-                };
-
                 job::dispatch(move |editor, _| {
                     let Some(doc) = editor.document_mut(doc_id) else {
                         return;

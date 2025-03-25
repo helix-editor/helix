@@ -1,6 +1,6 @@
 use anyhow::Context as _;
 use anyhow::Result;
-use std::cell::RefCell;
+use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -24,7 +24,7 @@ enum LineBlameUnit {
 #[derive(Debug)]
 pub struct FileBlame {
     /// A map from line numbers to blame for that line
-    blame: RefCell<HashMap<u32, LineBlameUnit>>,
+    blame: Mutex<HashMap<u32, LineBlameUnit>>,
     /// The owning repository for this file's `ObjectId`s
     repo: gix::ThreadSafeRepository,
 }
@@ -47,7 +47,7 @@ impl FileBlame {
         let blame_line = line.saturating_sub(inserted_lines) + removed_lines;
         let repo = self.repo.to_thread_local();
 
-        let mut blame = self.blame.borrow_mut();
+        let mut blame = self.blame.lock();
         let line_blame_unit = blame.get_mut(&blame_line);
 
         let commit = match line_blame_unit {
@@ -120,7 +120,7 @@ impl FileBlame {
         .entries;
 
         Ok(Self {
-            blame: RefCell::new(
+            blame: Mutex::new(
                 file_blame
                     .into_iter()
                     .flat_map(|blame| {
