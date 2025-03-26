@@ -153,20 +153,47 @@ impl EditorView {
             ],
         };
 
+        // how many total lines there are in the welcome screen
         let lines_count = lines.len();
-        let longest_line_length = longest_left.max(longest_center);
 
-        if longest_line_length as u16 > view.area.width || lines_count as u16 >= view.area.height {
+        // the y-coordinate where we start drawing the welcome screen
+        let y_start = view.area.y + (view.area.height / 2).saturating_sub(lines_count as u16 / 2);
+        let y_center = view.area.x + view.area.width / 2;
+
+        // largest possible padding that still allows the text to fit within the screen
+        let max_padding = view.area.width as i16 / 2 - longest_left as i16 / 2 - view.area.x as i16;
+
+        // Despite being in the mathematical left, we want to start drawing the "left"
+        // lines a little bit extra to the right so it looks good
+        //
+        // this is because of text density: at the start the text density is high, but
+        // towards the end it is low. Therefore to achieve an optical balance we must
+        // do a little offset
+        //
+        // this padding of 4 is not cruicial though, so if we can't fit it on the screen
+        // we just decrease it until it is 0. Once that happens, if it still overflows
+        // we don't want to draw the welcome screen.
+        let padding = 4.min(max_padding.max(0) as u16);
+
+        let x_start_left =
+            padding + view.area.x + (view.area.width / 2).saturating_sub(longest_left as u16 / 2);
+
+        let has_x_left_overflow = (x_start_left + longest_left as u16) > view.area.width;
+        let has_x_center_overflow = longest_center as u16 > view.area.width;
+        let has_x_overflow = has_x_left_overflow || has_x_center_overflow;
+
+        // we want lines_count < view.area.height so it does not get drawn
+        // over the status line
+        let has_y_overflow = lines_count as u16 >= view.area.height;
+
+        if has_x_overflow || has_y_overflow {
             return;
         }
 
-        let y_start = view.area.y + view.area.height / 2 - lines_count as u16 / 2;
-        let x_start_left = view.area.x + view.area.width / 2 - longest_left as u16 / 2;
-
         for (lines_drawn, (line, align)) in lines.iter().enumerate() {
             let x = match align {
-                Align::Left => x_start_left + 4,
-                Align::Center => view.area.x + view.area.width / 2 - line.width() as u16 / 2,
+                Align::Left => x_start_left,
+                Align::Center => y_center - line.width() as u16 / 2,
             };
             surface.set_spans(x, y_start + lines_drawn as u16, line, line.width() as u16);
         }
