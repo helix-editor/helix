@@ -122,7 +122,7 @@ impl EditorView {
             [Left] vec![
                 "type ".into(),
                 Span::styled(":theme", theme.get("markup.raw")),
-                "              to choose a color scheme".into(),
+                "              to choose a theme".into(),
             ],
             [Left] vec![
                 "type ".into(),
@@ -170,10 +170,10 @@ impl EditorView {
         // towards the end it is low. Therefore to achieve an optical balance we must
         // do a little offset
         //
-        // this padding of 4 is not cruicial though, so if we can't fit it on the screen
+        // this padding of 3 is not cruicial though, so if we can't fit it on the screen
         // we just decrease it until it is 0. Once that happens, if it still overflows
         // we don't want to draw the welcome screen.
-        let padding = 4.min(max_padding.max(0) as u16);
+        let padding = 3.min(max_padding.max(0) as u16);
 
         let x_start_left =
             padding + view.area.x + (view.area.width / 2).saturating_sub(longest_left as u16 / 2);

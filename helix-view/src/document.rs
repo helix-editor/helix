@@ -208,7 +208,7 @@ pub struct Document {
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
 
-    /// Whether to render the dashboard when opening the document
+    /// Whether to render the welcome screen when opening the document
     pub is_welcome: bool,
 }
 

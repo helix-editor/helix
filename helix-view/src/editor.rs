@@ -247,7 +247,7 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
-    /// Whether to enable the dashboard
+    /// Whether to enable the welcome screen
     pub welcome_screen: bool,
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
