@@ -17,7 +17,7 @@ use helix_view::{
         GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig,
         SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
     },
-    events::{DocumentFocusLost, DocumentOpened, SelectionDidChange},
+    events::{DocumentDidOpen, DocumentFocusLost, SelectionDidChange},
     extension::document_id_to_usize,
     input::KeyEvent,
     theme::Color,
@@ -2198,7 +2198,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
         "document-opened" => {
             // TODO: Share this code with the above since most of it is
             // exactly the same
-            register_hook!(move |event: &mut DocumentOpened<'_>| {
+            register_hook!(move |event: &mut DocumentDidOpen<'_>| {
                 let cloned_func = rooted.value().clone();
                 let doc_id = event.doc;
 

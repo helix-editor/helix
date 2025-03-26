@@ -5,10 +5,7 @@ use crate::{
         DocumentOpenError, DocumentSavedEvent, DocumentSavedEventFuture, DocumentSavedEventResult,
         Mode, SavePoint,
     },
-    events::{
-        DocumentClosed, DocumentDidClose, DocumentDidOpen, DocumentFocusLost, DocumentOpened,
-        DocumentSaved,
-    },
+    events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost, DocumentSaved},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -1896,10 +1893,6 @@ impl Editor {
 
         self._refresh();
 
-        dispatch(DocumentClosed {
-            editor: self,
-            doc: doc_id,
-        });
         helix_event::dispatch(DocumentDidClose { editor: self, doc });
 
         Ok(())
