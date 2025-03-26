@@ -165,7 +165,7 @@ impl EditorView {
 
         for (lines_drawn, (line, align)) in lines.iter().enumerate() {
             let x = match align {
-                Align::Left => x_start_left,
+                Align::Left => x_start_left + 4,
                 Align::Center => view.area.x + view.area.width / 2 - line.width() as u16 / 2,
             };
             surface.set_spans(x, y_start + lines_drawn as u16, line, line.width() as u16);
