@@ -268,7 +268,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
-    title: Option<&'static str>,
+    title: Option<Spans<'static>>,
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -410,7 +410,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
-    pub fn with_title(mut self, title: &'static str) -> Self {
+    pub fn with_title(mut self, title: Spans<'static>) -> Self {
         self.title = Some(title);
         self
     }
@@ -681,10 +681,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);
 
-        let block: Block<'_> = self
-            .title
-            .as_ref()
-            .map_or(Block::bordered(), |title| Block::bordered().title(title));
+        let block: Block<'_> = self.title.as_ref().map_or(Block::bordered(), |title| {
+            Block::bordered().title(title.clone())
+        });
 
         // calculate the inner area inside the box
         let inner = block.inner(area);

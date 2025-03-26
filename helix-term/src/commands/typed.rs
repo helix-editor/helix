@@ -1459,7 +1459,7 @@ fn lsp_workspace_command(
                             cx.editor.execute_lsp_command(command.clone(), *ls_id);
                         },
                     )
-                    .with_title("LSP Commands");
+                    .with_title("LSP Commands".into());
                     compositor.push(Box::new(overlaid(picker)))
                 },
             ));
