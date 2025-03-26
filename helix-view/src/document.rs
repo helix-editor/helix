@@ -64,6 +64,7 @@ pub enum Mode {
     Normal = 0,
     Select = 1,
     Insert = 2,
+    Overtype = 3,
 }
 
 impl Display for Mode {
@@ -72,6 +73,7 @@ impl Display for Mode {
             Mode::Normal => f.write_str("normal"),
             Mode::Select => f.write_str("select"),
             Mode::Insert => f.write_str("insert"),
+            Mode::Overtype => f.write_str("overtype"),
         }
     }
 }
@@ -84,6 +86,7 @@ impl FromStr for Mode {
             "normal" => Ok(Mode::Normal),
             "select" => Ok(Mode::Select),
             "insert" => Ok(Mode::Insert),
+            "overtype" => Ok(Mode::Overtype),
             _ => bail!("Invalid mode '{}'", s),
         }
     }
