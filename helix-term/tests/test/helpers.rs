@@ -82,8 +82,10 @@ where
     V: Into<String>,
 {
     fn from((input, keys, output, line_feed_handling): (S, R, V, LineFeedHandling)) -> Self {
-        let (in_text, in_selection) = test::print(&line_feed_handling.apply(&input.into()));
-        let (out_text, out_selection) = test::print(&line_feed_handling.apply(&output.into()));
+        let (in_text, in_selection) =
+            test::parse_selection_string(&line_feed_handling.apply(&input.into())).unwrap();
+        let (out_text, out_selection) =
+            test::parse_selection_string(&line_feed_handling.apply(&output.into())).unwrap();
 
         TestCase {
             in_text,
@@ -362,7 +364,7 @@ impl AppBuilder {
     }
 
     pub fn with_input_text<S: Into<String>>(mut self, input_text: S) -> Self {
-        self.input = Some(test::print(&input_text.into()));
+        self.input = Some(test::parse_selection_string(&input_text.into()).unwrap());
         self
     }
 
