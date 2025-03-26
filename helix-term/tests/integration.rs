@@ -17,9 +17,9 @@ mod test {
 
     mod auto_indent;
     mod auto_pairs;
+    mod command_line;
     mod commands;
     mod languages;
     mod movement;
-    mod prompt;
     mod splits;
 }

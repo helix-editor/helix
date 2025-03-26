@@ -5,14 +5,17 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
+use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
+use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
+use once_cell::sync::OnceCell;
 use thiserror;
 
 use ::parking_lot::Mutex;
@@ -30,6 +33,7 @@ use std::sync::{Arc, Weak};
 use std::time::SystemTime;
 
 use helix_core::{
+    editor_config::EditorConfig,
     encoding,
     history::{History, State, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
@@ -49,6 +53,7 @@ use crate::{
 const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
+const DEFAULT_TAB_WIDTH: usize = 4;
 
 pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 
@@ -125,7 +130,7 @@ pub struct SavePoint {
 
 #[derive(Debug, thiserror::Error)]
 pub enum DocumentOpenError {
-    #[error("path must be a regular file, simlink, or directory")]
+    #[error("path must be a regular file, symlink, or directory")]
     IrregularFile,
     #[error(transparent)]
     IoError(#[from] io::Error),
@@ -148,6 +153,7 @@ pub struct Document {
     pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
+    relative_path: OnceCell<Option<PathBuf>>,
     encoding: &'static encoding::Encoding,
     has_bom: bool,
 
@@ -155,6 +161,7 @@ pub struct Document {
 
     /// Current indent style.
     pub indent_style: IndentStyle,
+    editor_config: EditorConfig,
 
     /// The document's default line ending.
     pub line_ending: LineEnding,
@@ -194,6 +201,19 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+
+    /// Annotations for LSP document color swatches
+    pub color_swatches: Option<DocumentColorSwatches>,
+    // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
+    // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
+    pub color_swatch_controller: TaskController,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DocumentColorSwatches {
+    pub color_swatches: Vec<InlineAnnotation>,
+    pub colors: Vec<Highlight>,
+    pub color_swatches_padding: Vec<InlineAnnotation>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -297,6 +317,14 @@ impl fmt::Debug for DocumentInlayHintsId {
         f.debug_struct("DocumentInlayHintsId")
             .field("lines", &(self.first_line..self.last_line))
             .finish()
+    }
+}
+
+impl Editor {
+    pub(crate) fn clear_doc_relative_paths(&mut self) {
+        for doc in self.documents_mut() {
+            doc.relative_path.take();
+        }
     }
 }
 
@@ -659,6 +687,7 @@ impl Document {
             id: DocumentId::default(),
             active_snippet: None,
             path: None,
+            relative_path: OnceCell::new(),
             encoding,
             has_bom,
             text,
@@ -667,6 +696,7 @@ impl Document {
             inlay_hints_oudated: false,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
+            editor_config: EditorConfig::default(),
             line_ending,
             restore_cursor: false,
             syntax: None,
@@ -687,6 +717,8 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            color_swatches: None,
+            color_swatch_controller: TaskController::new(),
         }
     }
 
@@ -701,24 +733,30 @@ impl Document {
     /// overwritten with the `encoding` parameter.
     pub fn open(
         path: &Path,
-        encoding: Option<&'static Encoding>,
+        mut encoding: Option<&'static Encoding>,
         config_loader: Option<Arc<ArcSwap<syntax::Loader>>>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, DocumentOpenError> {
         // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
-        if path
-            .metadata()
-            .map_or(false, |metadata| !metadata.is_file())
-        {
+        if path.metadata().is_ok_and(|metadata| !metadata.is_file()) {
             return Err(DocumentOpenError::IrregularFile);
         }
+
+        let editor_config = if config.load().editor_config {
+            EditorConfig::find(path)
+        } else {
+            EditorConfig::default()
+        };
+        encoding = encoding.or(editor_config.encoding);
 
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding, has_bom) = if path.exists() {
             let mut file = std::fs::File::open(path)?;
             from_reader(&mut file, encoding)?
         } else {
-            let line_ending: LineEnding = config.load().default_line_ending.into();
+            let line_ending = editor_config
+                .line_ending
+                .unwrap_or_else(|| config.load().default_line_ending.into());
             let encoding = encoding.unwrap_or(encoding::UTF_8);
             (Rope::from(line_ending.as_str()), encoding, false)
         };
@@ -731,6 +769,7 @@ impl Document {
             doc.detect_language(loader);
         }
 
+        doc.editor_config = editor_config;
         doc.detect_indent_and_line_ending();
 
         Ok(doc)
@@ -761,9 +800,20 @@ impl Document {
                 ))
             })
         {
+            log::debug!(
+                "formatting '{}' with command '{}', args {fmt_args:?}",
+                self.display_name(),
+                fmt_cmd.display(),
+            );
             use std::process::Stdio;
             let text = self.text().clone();
+
             let mut process = tokio::process::Command::new(&fmt_cmd);
+
+            if let Some(doc_dir) = self.path.as_ref().and_then(|path| path.parent()) {
+                process.current_dir(doc_dir);
+            }
+
             process
                 .args(fmt_args)
                 .stdin(Stdio::piped())
@@ -777,17 +827,21 @@ impl Document {
                         command: fmt_cmd.to_string_lossy().into(),
                         error: e.kind(),
                     })?;
-                {
-                    let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                    to_writer(&mut stdin, (encoding::UTF_8, false), &text)
-                        .await
-                        .map_err(|_| FormatterError::BrokenStdin)?;
-                }
 
-                let output = process
-                    .wait_with_output()
-                    .await
-                    .map_err(|_| FormatterError::WaitForOutputFailed)?;
+                let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                let input_text = text.clone();
+                let input_task = tokio::spawn(async move {
+                    to_writer(&mut stdin, (encoding::UTF_8, false), &input_text).await
+                    // Note that `stdin` is dropped here, causing the pipe to close. This can
+                    // avoid a deadlock with `wait_with_output` below if the process is waiting on
+                    // stdin to close before exiting.
+                });
+                let (input_result, output_result) = tokio::join! {
+                    input_task,
+                    process.wait_with_output(),
+                };
+                let _ = input_result.map_err(|_| FormatterError::BrokenStdin)?;
+                let output = output_result.map_err(|_| FormatterError::WaitForOutputFailed)?;
 
                 if !output.status.success() {
                     if !output.stderr.is_empty() {
@@ -829,10 +883,13 @@ impl Document {
         )?;
 
         let fut = async move {
-            let edits = request.await.unwrap_or_else(|e| {
-                log::warn!("LSP formatting failed: {}", e);
-                Default::default()
-            });
+            let edits = request
+                .await
+                .unwrap_or_else(|e| {
+                    log::warn!("LSP formatting failed: {}", e);
+                    Default::default()
+                })
+                .unwrap_or_default();
             Ok(helix_lsp::util::generate_transaction_from_edits(
                 &text,
                 edits,
@@ -1033,13 +1090,8 @@ impl Document {
                 if !language_server.is_initialized() {
                     continue;
                 }
-                if let Some(notification) = identifier
-                    .clone()
-                    .and_then(|id| language_server.text_document_did_save(id, &text))
-                {
-                    if let Err(err) = notification.await {
-                        log::error!("Failed to send textDocument/didSave: {err}");
-                    }
+                if let Some(id) = identifier.clone() {
+                    language_server.text_document_did_save(id, &text);
                 }
             }
 
@@ -1072,13 +1124,29 @@ impl Document {
     /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
     /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
-        self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            self.language_config()
-                .and_then(|config| config.indent.as_ref())
-                .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
-        });
-        if let Some(line_ending) = auto_detect_line_ending(&self.text) {
+        self.indent_style = if let Some(indent_style) = self.editor_config.indent_style {
+            indent_style
+        } else {
+            auto_detect_indent_style(&self.text).unwrap_or_else(|| {
+                self.language_config()
+                    .and_then(|config| config.indent.as_ref())
+                    .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
+            })
+        };
+        if let Some(line_ending) = self
+            .editor_config
+            .line_ending
+            .or_else(|| auto_detect_line_ending(&self.text))
+        {
             self.line_ending = line_ending;
+        }
+    }
+
+    pub(crate) fn detect_editor_config(&mut self) {
+        if self.config.load().editor_config {
+            if let Some(path) = self.path.as_ref() {
+                self.editor_config = EditorConfig::find(path);
+            }
         }
     }
 
@@ -1171,6 +1239,10 @@ impl Document {
     /// should be used instead
     pub fn set_path(&mut self, path: Option<&Path>) {
         let path = path.map(helix_stdx::path::canonicalize);
+
+        // `take` to remove any prior relative path that may have existed.
+        // This will get set in `relative_path()`.
+        self.relative_path.take();
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
@@ -1381,8 +1453,13 @@ impl Document {
             true
         });
 
-        self.diagnostics
-            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider.clone(),
+            )
+        });
 
         // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
         let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
@@ -1429,23 +1506,6 @@ impl Document {
                 doc: self,
                 view: view_id,
             });
-        }
-
-        if emit_lsp_notification {
-            // TODO: move to hook
-            // emit lsp notification
-            for language_server in self.language_servers() {
-                let notify = language_server.text_document_did_change(
-                    self.versioned_identifier(),
-                    &old_doc,
-                    self.text(),
-                    changes,
-                );
-
-                if let Some(notify) = notify {
-                    tokio::spawn(notify);
-                }
-            }
         }
 
         true
@@ -1801,14 +1861,33 @@ impl Document {
 
     /// The width that the tab character is rendered at
     pub fn tab_width(&self) -> usize {
-        self.language_config()
-            .and_then(|config| config.indent.as_ref())
-            .map_or(4, |config| config.tab_width) // fallback to 4 columns
+        self.editor_config
+            .tab_width
+            .map(|n| n.get() as usize)
+            .unwrap_or_else(|| {
+                self.language_config()
+                    .and_then(|config| config.indent.as_ref())
+                    .map_or(DEFAULT_TAB_WIDTH, |config| config.tab_width)
+            })
     }
 
     // The width (in spaces) of a level of indentation.
     pub fn indent_width(&self) -> usize {
         self.indent_style.indent_width(self.tab_width())
+    }
+
+    /// Whether the document should have a trailing line ending appended on save.
+    pub fn insert_final_newline(&self) -> bool {
+        self.editor_config
+            .insert_final_newline
+            .unwrap_or_else(|| self.config.load().insert_final_newline)
+    }
+
+    /// Whether the document should trim whitespace preceding line endings on save.
+    pub fn trim_trailing_whitespace(&self) -> bool {
+        self.editor_config
+            .trim_trailing_whitespace
+            .unwrap_or_else(|| self.config.load().trim_trailing_whitespace)
     }
 
     pub fn changes(&self) -> &ChangeSet {
@@ -1867,16 +1946,19 @@ impl Document {
         self.view_data_mut(view_id).view_position = new_offset;
     }
 
-    pub fn relative_path(&self) -> Option<Cow<Path>> {
-        self.path
+    pub fn relative_path(&self) -> Option<&Path> {
+        self.relative_path
+            .get_or_init(|| {
+                self.path
+                    .as_ref()
+                    .map(|path| helix_stdx::path::get_relative_path(path).to_path_buf())
+            })
             .as_deref()
-            .map(helix_stdx::path::get_relative_path)
     }
 
-    pub fn display_name(&self) -> Cow<'static, str> {
+    pub fn display_name(&self) -> Cow<'_, str> {
         self.relative_path()
-            .map(|path| path.to_string_lossy().to_string().into())
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
+            .map_or_else(|| SCRATCH_BUFFER_NAME.into(), |path| path.to_string_lossy())
     }
 
     // transact(Fn) ?
@@ -1910,7 +1992,7 @@ impl Document {
         text: &Rope,
         language_config: Option<&LanguageConfiguration>,
         diagnostic: &helix_lsp::lsp::Diagnostic,
-        language_server_id: LanguageServerId,
+        provider: DiagnosticProvider,
         offset_encoding: helix_lsp::OffsetEncoding,
     ) -> Option<Diagnostic> {
         use helix_core::diagnostic::{Range, Severity::*};
@@ -1975,8 +2057,8 @@ impl Document {
         };
 
         let ends_at_word =
-            start != end && end != 0 && text.get_char(end - 1).map_or(false, char_is_word);
-        let starts_at_word = start != end && text.get_char(start).map_or(false, char_is_word);
+            start != end && end != 0 && text.get_char(end - 1).is_some_and(char_is_word);
+        let starts_at_word = start != end && text.get_char(start).is_some_and(char_is_word);
 
         Some(Diagnostic {
             range: Range { start, end },
@@ -1990,7 +2072,7 @@ impl Document {
             tags,
             source: diagnostic.source.clone(),
             data: diagnostic.data.clone(),
-            provider: language_server_id,
+            provider,
         })
     }
 
@@ -2003,13 +2085,18 @@ impl Document {
         &mut self,
         diagnostics: impl IntoIterator<Item = Diagnostic>,
         unchanged_sources: &[String],
-        language_server_id: Option<LanguageServerId>,
+        provider: Option<&DiagnosticProvider>,
     ) {
         if unchanged_sources.is_empty() {
-            self.clear_diagnostics(language_server_id);
+            if let Some(provider) = provider {
+                self.diagnostics
+                    .retain(|diagnostic| &diagnostic.provider != provider);
+            } else {
+                self.diagnostics.clear();
+            }
         } else {
             self.diagnostics.retain(|d| {
-                if language_server_id.map_or(false, |id| id != d.provider) {
+                if provider.is_some_and(|provider| provider != &d.provider) {
                     return true;
                 }
 
@@ -2021,17 +2108,19 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics
-            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider.clone(),
+            )
+        });
     }
 
     /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
-    pub fn clear_diagnostics(&mut self, language_server_id: Option<LanguageServerId>) {
-        if let Some(id) = language_server_id {
-            self.diagnostics.retain(|d| d.provider != id);
-        } else {
-            self.diagnostics.clear();
-        }
+    pub fn clear_diagnostics_for_language_server(&mut self, id: LanguageServerId) {
+        self.diagnostics
+            .retain(|d| d.provider.language_server_id() != Some(id));
     }
 
     /// Get the document's auto pairs. If the document has a recognized
@@ -2066,12 +2155,17 @@ impl Document {
         }
     }
 
+    pub fn text_width(&self) -> usize {
+        self.editor_config
+            .max_line_length
+            .map(|n| n.get() as usize)
+            .or_else(|| self.language_config().and_then(|config| config.text_width))
+            .unwrap_or_else(|| self.config.load().text_width)
+    }
+
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
         let config = self.config.load();
-        let text_width = self
-            .language_config()
-            .and_then(|config| config.text_width)
-            .unwrap_or(config.text_width);
+        let text_width = self.text_width();
         let mut soft_wrap_at_text_width = self
             .language_config()
             .and_then(|config| {
@@ -2169,7 +2263,6 @@ pub enum FormatterError {
     BrokenStdin,
     WaitForOutputFailed,
     InvalidUtf8Output,
-    DiskReloadError(String),
     NonZeroExitStatus(Option<String>),
 }
 
@@ -2184,7 +2277,6 @@ impl Display for FormatterError {
             Self::BrokenStdin => write!(f, "Could not write to formatter stdin"),
             Self::WaitForOutputFailed => write!(f, "Waiting for formatter output failed"),
             Self::InvalidUtf8Output => write!(f, "Invalid UTF-8 formatter output"),
-            Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
             Self::NonZeroExitStatus(Some(output)) => write!(f, "Formatter error: {}", output),
             Self::NonZeroExitStatus(None) => {
                 write!(f, "Formatter exited with non zero exit status")

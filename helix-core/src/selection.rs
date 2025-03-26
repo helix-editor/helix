@@ -9,7 +9,7 @@ use crate::{
     },
     line_ending::get_line_ending,
     movement::Direction,
-    Assoc, ChangeSet, RopeGraphemes, RopeSlice,
+    Assoc, ChangeSet, RopeSlice,
 };
 use helix_stdx::range::is_subset;
 use helix_stdx::rope::{self, RopeSliceExt};
@@ -379,7 +379,7 @@ impl Range {
 
     /// Returns true if this Range covers a single grapheme in the given text
     pub fn is_single_grapheme(&self, doc: RopeSlice) -> bool {
-        let mut graphemes = RopeGraphemes::new(doc.slice(self.from()..self.to()));
+        let mut graphemes = doc.slice(self.from()..self.to()).graphemes();
         let first = graphemes.next();
         let second = graphemes.next();
         first.is_some() && second.is_none()
@@ -619,7 +619,6 @@ impl Selection {
         self
     }
 
-    // TODO: consume an iterator or a vec to reduce allocations?
     #[must_use]
     pub fn new(ranges: SmallVec<[Range; 1]>, primary_index: usize) -> Self {
         assert!(!ranges.is_empty());
@@ -718,6 +717,12 @@ impl IntoIterator for Selection {
 
     fn into_iter(self) -> smallvec::IntoIter<[Range; 1]> {
         self.ranges.into_iter()
+    }
+}
+
+impl FromIterator<Range> for Selection {
+    fn from_iter<T: IntoIterator<Item = Range>>(ranges: T) -> Self {
+        Self::new(ranges.into_iter().collect(), 0)
     }
 }
 

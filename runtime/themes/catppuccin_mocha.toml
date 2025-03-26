@@ -1,3 +1,4 @@
+# NOTE: For contributors looking to modify the theme, please submit a pull request at https://github.com/catppuccin/helix instead of updating this file. Changes are frequently synchronized from the catppuccin/helix theme repository.
 # Syntax highlighting
 # -------------------
 "attribute" = "yellow"
@@ -115,6 +116,7 @@
 "ui.menu" = { fg = "overlay2", bg = "surface0" }
 "ui.menu.selected" = { fg = "text", bg = "surface1", modifiers = ["bold"] }
 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
 "diagnostic.info" = { underline = { color = "sky", style = "curl" } }

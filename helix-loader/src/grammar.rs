@@ -273,12 +273,12 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         }
 
         // ensure the remote matches the configured remote
-        if get_remote_url(&grammar_dir).map_or(true, |s| s != remote) {
+        if get_remote_url(&grammar_dir).as_ref() != Some(&remote) {
             set_remote(&grammar_dir, &remote)?;
         }
 
         // ensure the revision matches the configured revision
-        if get_revision(&grammar_dir).map_or(true, |s| s != revision) {
+        if get_revision(&grammar_dir).as_ref() != Some(&revision) {
             // Fetch the exact revision from the remote.
             // Supported by server-side git since v2.5.0 (July 2015),
             // enabled by default on major git hosts.
@@ -496,9 +496,11 @@ fn build_tree_sitter_library(
             .arg("/link")
             .arg(format!("/out:{}", library_path.to_str().unwrap()));
     } else {
+        #[cfg(not(windows))]
+        command.arg("-fPIC");
+
         command
             .arg("-shared")
-            .arg("-fPIC")
             .arg("-fno-exceptions")
             .arg("-I")
             .arg(header_path)
@@ -517,8 +519,11 @@ fn build_tree_sitter_library(
                 cpp_command.args(compiler.args());
                 let object_file =
                     library_path.with_file_name(format!("{}_scanner.o", &grammar.grammar_id));
+
+                #[cfg(not(windows))]
+                cpp_command.arg("-fPIC");
+
                 cpp_command
-                    .arg("-fPIC")
                     .arg("-fno-exceptions")
                     .arg("-I")
                     .arg(header_path)
@@ -592,6 +597,6 @@ fn mtime(path: &Path) -> Result<SystemTime> {
 /// Gives the contents of a file from a language's `runtime/queries/<lang>`
 /// directory
 pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let path = crate::runtime_file(&PathBuf::new().join("queries").join(language).join(filename));
+    let path = crate::runtime_file(PathBuf::new().join("queries").join(language).join(filename));
     std::fs::read_to_string(path)
 }

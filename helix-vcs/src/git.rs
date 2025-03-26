@@ -11,7 +11,7 @@ use gix::dir::entry::Status;
 use gix::objs::tree::EntryKind;
 use gix::sec::trust::DefaultForLevel;
 use gix::status::{
-    index_worktree::iter::Item,
+    index_worktree::Item,
     plumbing::index_as_worktree::{Change, EntryStatus},
     UntrackedFiles,
 };
