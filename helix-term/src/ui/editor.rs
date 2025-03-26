@@ -176,6 +176,8 @@ impl EditorView {
             );
         }
 
+        Self::render_rulers(editor, doc, view, inner, surface, theme);
+
         let primary_cursor = doc
             .selection(view.id)
             .primary()
@@ -210,7 +212,6 @@ impl EditorView {
             theme,
             decorations,
         );
-        Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {

@@ -39,18 +39,59 @@
   "%i("
 ] @punctuation.bracket
 
+; Literals
+
+[
+  (string)
+  (bare_string)
+  (subshell)
+  (heredoc_body)
+  (heredoc_beginning)
+] @string
+
+[
+  (simple_symbol)
+  (delimited_symbol)
+  (bare_symbol)
+] @string.special.symbol
+
+(pair key: ((_)":" @string.special.symbol) @string.special.symbol)
+
+(regex) @string.regexp
+(escape_sequence) @constant.character.escape
+
+[
+  (integer)
+  (float)
+] @constant.numeric.integer
+
+[
+  (nil)
+  (true)
+  (false)
+] @constant.builtin
+
+(interpolation
+  "#{" @punctuation.special
+  "}" @punctuation.special) @embedded
+
+(comment) @comment
+
 ; Identifiers
+
+((identifier) @function.method
+ (#is-not? local))
 
 [
   (identifier)
 ] @variable
-((identifier) @function.method
- (#is-not? local))
 
 [
   (class_variable)
   (instance_variable)
 ] @variable.other.member
+
+(constant) @constructor
 
 ((identifier) @constant.builtin
  (#match? @constant.builtin "^(__FILE__|__LINE__|__ENCODING__)$"))
@@ -60,8 +101,6 @@
 
 ((constant) @constant
  (#match? @constant "^[A-Z\\d_]+$"))
-
-(constant) @constructor
 
 (self) @variable.builtin
 (super) @function.builtin
@@ -75,6 +114,23 @@
 (method_parameters (identifier) @variable.parameter)
 (block_parameter (identifier) @variable.parameter)
 (block_parameters (identifier) @variable.parameter)
+
+; Function definitions
+
+(alias (identifier) @function.method)
+(setter (identifier) @function.method)
+(method name: [(identifier) (constant)] @function.method)
+(singleton_method name: [(identifier) (constant)] @function.method)
+
+; Function calls
+
+(call
+  method: [(identifier) (constant)] @function.method)
+
+((identifier) @function.builtin
+ (#match? @function.builtin "^(attr|attr_accessor|attr_reader|attr_writer|include|prepend|refine|private|protected|public)$"))
+
+"defined?" @function.builtin
 
 ; Keywords
 
@@ -133,58 +189,3 @@
 
 ((identifier) @keyword.control.exception
  (#match? @keyword.control.exception "^(raise|fail)$"))
-
-; Function calls
-
-((identifier) @function.builtin
- (#match? @function.builtin "^(attr|attr_accessor|attr_reader|attr_writer|include|prepend|refine|private|protected|public)$"))
-
-"defined?" @function.builtin
-
-(call
-  method: [(identifier) (constant)] @function.method)
-
-; Function definitions
-
-(alias (identifier) @function.method)
-(setter (identifier) @function.method)
-(method name: [(identifier) (constant)] @function.method)
-(singleton_method name: [(identifier) (constant)] @function.method)
-
-; Literals
-
-[
-  (string)
-  (bare_string)
-  (subshell)
-  (heredoc_body)
-  (heredoc_beginning)
-] @string
-
-[
-  (simple_symbol)
-  (delimited_symbol)
-  (bare_symbol)
-] @string.special.symbol
-
-(pair key: ((_)":" @string.special.symbol) @string.special.symbol)
-
-(regex) @string.regexp
-(escape_sequence) @constant.character.escape
-
-[
-  (integer)
-  (float)
-] @constant.numeric.integer
-
-[
-  (nil)
-  (true)
-  (false)
-] @constant.builtin
-
-(interpolation
-  "#{" @punctuation.special
-  "}" @punctuation.special) @embedded
-
-(comment) @comment
