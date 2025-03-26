@@ -5,7 +5,7 @@ use tui::{
     text::{Span, Spans, Text},
 };
 
-use std::{borrow::Cow, sync::Arc};
+use std::sync::Arc;
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 

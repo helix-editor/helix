@@ -1,17 +1,15 @@
 use crate::{
     commands::{self, OnKeyCallback, OnKeyCallbackKind},
-    compositor::{Component, Compositor, Context, Event, EventResult},
+    compositor::{Component, Context, Event, EventResult},
     events::{OnModeSwitch, PostCommand},
     handlers::completion::CompletionItem,
-    job::{self, Callback},
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
         document::{render_document, LinePos, TextRenderer},
-        markdown::StyledText,
         statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
-        Completion, Popup, ProgressSpinners,
+        Completion, ProgressSpinners,
     },
 };
 
