@@ -2628,9 +2628,11 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                                 let context = args[0].clone();
                                 engine.update_value("*helix.cx*", context);
 
+                                let mut lock = None;
+
                                 if let Some(SteelVal::CustomStruct(s)) = cloned_place {
                                     let mutex = s.get_mut_index(0).unwrap();
-                                    mutex_lock(&mutex).unwrap();
+                                    lock = Some(mutex_lock(&mutex).unwrap());
                                 }
 
                                 // Acquire lock, wait until its done
@@ -2644,8 +2646,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                                             // next downstream user can handle it.
                                             s.set_index(2, result);
                                             s.set_index(1, SteelVal::BoolV(true));
-                                            let mutex = s.get_mut_index(0).unwrap();
-                                            mutex_unlock(&mutex).unwrap();
+                                            mutex_unlock(&lock.unwrap()).unwrap();
                                         }
 
                                         Err(e) => {
