@@ -201,10 +201,16 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+        let selection = if is_focused {
+            Some(doc.selection(view.id))
+        } else {
+            None
+        };
         render_document(
             surface,
             inner,
             doc,
+            selection,
             view_offset,
             &text_annotations,
             syntax_highlights,
