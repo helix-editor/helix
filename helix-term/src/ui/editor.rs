@@ -22,6 +22,7 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
+use helix_loader::VERSION_AND_GIT_HASH;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -33,7 +34,10 @@ use helix_view::{
 };
 use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc};
 
-use tui::{buffer::Buffer as Surface, text::Span};
+use tui::{
+    buffer::Buffer as Surface,
+    text::{Span, Spans},
+};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -72,6 +76,83 @@ impl EditorView {
 
     pub fn spinners_mut(&mut self) -> &mut ProgressSpinners {
         &mut self.spinners
+    }
+
+    pub fn render_welcome(theme: &Theme, view: &View, surface: &mut Surface) {
+        #[derive(PartialEq, PartialOrd, Eq, Ord)]
+        enum Align {
+            Left,
+            Center,
+        }
+
+        macro_rules! welcome {
+            (
+                $([$align:ident] $line:expr, $(if $cond:expr;)?)* $(,)?
+            ) => {{
+                let mut lines = vec![];
+                let mut longest_left = 0;
+                let mut longest_center = 0;
+                $(
+                    let line = Spans::from($line);
+                    let width = line.width();
+                    lines.push((line, Align::$align));
+                    match Align::$align {
+                        Align::Left => longest_left = longest_left.max(width),
+                        Align::Center => longest_center = longest_center.max(width),
+                    }
+                )*
+                (lines, longest_left, longest_center)
+            }};
+        }
+
+        let (lines, longest_left, longest_center) = welcome! {
+            [Center] vec!["helix ".into(), Span::styled(VERSION_AND_GIT_HASH, theme.get("comment"))],
+            [Left] "",
+            [Center] Span::styled(
+                "A post-modern modal text editor",
+                theme.get("ui.text").add_modifier(Modifier::ITALIC),
+            ),
+            [Left] "",
+            [Left] vec![
+                "type ".into(),
+                Span::styled(":tutor", theme.get("markup.raw")),
+                Span::styled("<enter>", theme.get("comment")),
+                " to learn helix".into(),
+            ],
+            [Left] vec![
+                "type ".into(),
+                Span::styled(":theme", theme.get("markup.raw")),
+                "        to choose a color scheme".into(),
+            ],
+            [Left] vec![
+                "type ".into(),
+                Span::styled("<space>f", theme.get("markup.raw")),
+                "      to open a file".into(),
+            ],
+            [Left] "",
+            [Center] vec![
+                Span::styled("docs: ", theme.get("ui.text")),
+                Span::styled("docs.helix-editor.com", theme.get("markup.link.url")),
+            ],
+        };
+
+        let lines_count = lines.len();
+        let longest_line_length = longest_left.max(longest_center);
+
+        if longest_line_length as u16 > view.area.width || lines_count as u16 >= view.area.height {
+            return;
+        }
+
+        let y_start = view.area.y + view.area.height / 2 - lines_count as u16 / 2;
+        let x_start_left = view.area.x + view.area.width / 2 - longest_left as u16 / 2;
+
+        for (lines_drawn, (line, align)) in lines.iter().enumerate() {
+            let x = match align {
+                Align::Left => x_start_left,
+                Align::Center => view.area.x + view.area.width / 2 - line.width() as u16 / 2,
+            };
+            surface.set_spans(x, y_start + lines_drawn as u16, line, line.width() as u16);
+        }
     }
 
     pub fn render_view(
@@ -177,6 +258,10 @@ impl EditorView {
         }
 
         Self::render_rulers(editor, doc, view, inner, surface, theme);
+
+        if config.welcome_screen && doc.version() == 0 && doc.is_welcome {
+            Self::render_welcome(theme, view, surface);
+        }
 
         let primary_cursor = doc
             .selection(view.id)

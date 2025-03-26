@@ -247,6 +247,8 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
+    /// Whether to enable the dashboard
+    pub welcome_screen: bool,
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
     /// Number of lines to scroll at once. Defaults to 3
@@ -960,6 +962,7 @@ pub enum PopupBorderConfig {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            welcome_screen: true,
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
@@ -1734,6 +1737,14 @@ impl Editor {
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
         self.new_file_from_document(action, Document::default(self.config.clone()))
+    }
+
+    /// Use when Helix is opened with no arguments passed
+    pub fn new_file_welcome(&mut self, action: Action) -> DocumentId {
+        self.new_file_from_document(
+            action,
+            Document::default(self.config.clone()).with_welcome(),
+        )
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
