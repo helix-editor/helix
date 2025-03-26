@@ -3695,7 +3695,7 @@ fn execute_command_line(
                 if let Some(typed) = typed::TYPABLE_COMMAND_MAP.get(command) {
                     execute_command(cx, typed, args, &posargs, event)?;
                 } else if let Some(r#macro) = command.strip_prefix('@') {
-                    execute_macro(cx, command, r#macro, event)?;
+                    execute_macro(cx, r#macro, event)?;
                 } else {
                     execute_static_command(cx, command, event)?;
                 }
@@ -3741,7 +3741,6 @@ pub(super) fn execute_command(
 
 fn execute_macro(
     cx: &mut compositor::Context,
-    command: &str,
     r#macro: &str,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
@@ -3751,7 +3750,7 @@ fn execute_macro(
 
     let MappableCommand::Macro { keys, .. } =
         helix_view::input::parse_macro(r#macro).map(|keys| MappableCommand::Macro {
-            name: command.to_string(),
+            name: String::new(),
             keys,
         })?
     else {
