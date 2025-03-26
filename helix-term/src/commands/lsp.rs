@@ -14,10 +14,8 @@ use tui::{text::Span, widgets::Row};
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, textobject::Word, Selection,
-    Uri,
-    diagnostic::DiagnosticProvider,
-    text_annotations::InlineAnnotation, Selection, Uri,
+    diagnostic::DiagnosticProvider, syntax::LanguageServerFeature,
+    text_annotations::InlineAnnotation, textobject::Word, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
