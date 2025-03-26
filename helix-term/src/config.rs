@@ -192,46 +192,32 @@ enum CommandTomlType {
         desc: Option<String>,
         accepts: Option<String>,
         completer: Option<String>,
-        hidden: Option<bool>,
     },
 }
 
 impl CommandTomlType {
     fn into_custom_command(self, name: String) -> anyhow::Result<CustomTypableCommand> {
-        if !name.starts_with(':') {
-            bail!("custom typable commands must start with `:`");
-        }
-
+        let hidden = !name.starts_with(':');
         let name = name.trim_start_matches(':');
 
-        // NOTE: Macros cannot be in any sequence currently.
+        // WARN: Macros cannot be in any sequence currently.
         //
-        // Its ok if its just ["@macro"] but if it was with
+        // Its OK if its just ["@macro"] but if it was with
         // any other command or other macro it should be rejected.
         let command = match self {
-            Self::Single(command) => {
-                // Validate that command given is valid
-                MappableCommand::from_str(&command)?;
-
-                CustomTypableCommand {
-                    name: name.to_string(),
-                    desc: None,
-                    commands: vec![command.trim_start_matches(':').to_string()],
-                    accepts: None,
-                    completer: None,
-                    hidden: false,
-                }
-            }
+            Self::Single(command) => CustomTypableCommand {
+                name: name.to_string(),
+                desc: None,
+                commands: vec![command.trim_start_matches(':').to_string()],
+                accepts: None,
+                completer: None,
+                hidden,
+            },
             Self::Multiple(commands) => {
-                let mut macros = 0;
-                for command in &commands {
-                    // Validate that command given is valid
-                    MappableCommand::from_str(command)?;
-
-                    if command.starts_with('@') {
-                        macros += 1;
-                    }
-                }
+                let macros = commands
+                    .iter()
+                    .filter(|command| command.starts_with('@'))
+                    .count();
 
                 if macros > 1 || (macros == 1 && commands.len() > 1) {
                     bail!("macros cannot be used in a sequence");
@@ -246,7 +232,7 @@ impl CommandTomlType {
                         .collect::<Vec<_>>(),
                     accepts: None,
                     completer: None,
-                    hidden: false,
+                    hidden,
                 }
             }
             Self::Detailed {
@@ -254,17 +240,11 @@ impl CommandTomlType {
                 desc,
                 accepts,
                 completer,
-                hidden,
             } => {
-                let mut macros = 0;
-                for command in &commands {
-                    // Validate that command given is valid
-                    MappableCommand::from_str(command)?;
-
-                    if command.starts_with('@') {
-                        macros += 1;
-                    }
-                }
+                let macros = commands
+                    .iter()
+                    .filter(|command| command.starts_with('@'))
+                    .count();
 
                 if macros > 1 || (macros == 1 && commands.len() > 1) {
                     bail!("macros cannot be used in a sequence");
@@ -277,6 +257,7 @@ impl CommandTomlType {
                         bail!("custom typable command completer must start with `:`")
                     }
 
+                    // Make sure completer source is a valid command
                     MappableCommand::from_str(completer)?;
                 }
 
@@ -287,11 +268,10 @@ impl CommandTomlType {
                         .into_iter()
                         .map(|command| command.trim_start_matches(':').to_string())
                         .collect::<Vec<_>>(),
-
-                    accepts: accepts.map(|accepts| accepts.trim_start_matches(':').to_string()),
+                    accepts,
                     completer: completer
                         .map(|completer| completer.trim_start_matches(':').to_string()),
-                    hidden: hidden.unwrap_or_default(),
+                    hidden,
                 }
             }
         };
