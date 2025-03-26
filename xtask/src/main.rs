@@ -166,12 +166,9 @@ Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
     Tasks:
         docgen: Generate files to be included in the mdbook output.
         query-check: Check that tree-sitter queries are valid.
-<<<<<<< HEAD
         code-gen: Generate files associated with steel
         steel: Install steel
-=======
         theme-check: Check that theme files in runtime/themes are valid.
->>>>>>> origin
 "
         );
     }

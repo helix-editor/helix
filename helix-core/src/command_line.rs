@@ -223,7 +223,11 @@ impl fmt::Display for ParseArgsError<'_> {
                 write!(f, "flag '--{flag}' missing an argument")
             }
             Self::MissingExpansionDelimiter { expansion } => {
-                write!(f, "missing a string delimiter after '%{expansion}'")
+                if expansion.is_empty() {
+                    write!(f, "'%' was not properly escaped. Please use '%%'")
+                } else {
+                    write!(f, "missing a string delimiter after '%{expansion}'")
+                }
             }
             Self::UnknownExpansion { kind } => {
                 write!(f, "unknown expansion '{kind}'")

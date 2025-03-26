@@ -34,7 +34,7 @@ unicode-width = "=0.1.12"
 unicode-general-category = "1.0"
 slotmap.workspace = true
 tree-sitter.workspace = true
-once_cell = "1.20"
+once_cell = "1.21"
 arc-swap = "1"
 regex = "1"
 bitflags.workspace = true
@@ -54,14 +54,14 @@ encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
-textwrap = "0.16.1"
+textwrap = "0.16.2"
 
 steel-core = { workspace = true, optional = true }
 nucleo.workspace = true
-parking_lot = "0.12"
-globset = "0.4.15"
-regex-cursor = "0.1.4"
+parking_lot.workspace = true
+globset = "0.4.16"
+regex-cursor = "0.1.5"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
-indoc = "2.0.5"
+indoc = "2.0.6"

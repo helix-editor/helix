@@ -2,11 +2,19 @@ use std::collections::btree_map::Entry;
 use std::fmt::Display;
 
 use crate::editor::Action;
-use crate::events::DiagnosticsDidChange;
-use crate::Editor;
+use crate::events::{
+    DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
+};
+use crate::{DocumentId, Editor};
+use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
+use helix_event::register_hook;
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
+
+use super::Handlers;
+
+pub struct DocumentColorsEvent(pub DocumentId);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {
@@ -276,7 +284,7 @@ impl Editor {
 
     pub fn handle_lsp_diagnostics(
         &mut self,
-        server_id: LanguageServerId,
+        provider: &DiagnosticProvider,
         uri: Uri,
         version: Option<i32>,
         mut diagnostics: Vec<lsp::Diagnostic>,
@@ -309,8 +317,8 @@ impl Editor {
                     .filter(|d| d.source.as_ref() == Some(source));
                 let old_diagnostics = old_diagnostics
                     .iter()
-                    .filter(|(d, d_server)| {
-                        *d_server == server_id && d.source.as_ref() == Some(source)
+                    .filter(|(d, d_provider)| {
+                        d_provider == provider && d.source.as_ref() == Some(source)
                     })
                     .map(|(d, _)| d);
                 if new_diagnostics.eq(old_diagnostics) {
@@ -319,7 +327,7 @@ impl Editor {
             }
         }
 
-        let diagnostics = diagnostics.into_iter().map(|d| (d, server_id));
+        let diagnostics = diagnostics.into_iter().map(|d| (d, provider.clone()));
 
         // Insert the original lsp::Diagnostics here because we may have no open document
         // for diagnostic message and so we can't calculate the exact position.
@@ -328,7 +336,7 @@ impl Editor {
             Entry::Occupied(o) => {
                 let current_diagnostics = o.into_mut();
                 // there may entries of other language servers, which is why we can't overwrite the whole entry
-                current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
+                current_diagnostics.retain(|(_, d_provider)| d_provider != provider);
                 current_diagnostics.extend(diagnostics);
                 current_diagnostics
                 // Sort diagnostics first by severity and then by line numbers.
@@ -338,12 +346,12 @@ impl Editor {
 
         // Sort diagnostics first by severity and then by line numbers.
         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-        diagnostics.sort_by_key(|(d, server_id)| (d.severity, d.range.start, *server_id));
+        diagnostics.sort_by_key(|(d, provider)| (d.severity, d.range.start, provider.clone()));
 
         if let Some(doc) = doc {
             let diagnostic_of_language_server_and_not_in_unchanged_sources =
-                |diagnostic: &lsp::Diagnostic, ls_id| {
-                    ls_id == server_id
+                |diagnostic: &lsp::Diagnostic, d_provider: &DiagnosticProvider| {
+                    d_provider == provider
                         && diagnostic
                             .source
                             .as_ref()
@@ -355,10 +363,75 @@ impl Editor {
                 doc,
                 diagnostic_of_language_server_and_not_in_unchanged_sources,
             );
-            doc.replace_diagnostics(diagnostics, &unchanged_diag_sources, Some(server_id));
+            doc.replace_diagnostics(diagnostics, &unchanged_diag_sources, Some(provider));
 
             let doc = doc.id();
             helix_event::dispatch(DiagnosticsDidChange { editor: self, doc });
         }
     }
+
+    pub fn execute_lsp_command(&mut self, command: lsp::Command, server_id: LanguageServerId) {
+        // the command is executed on the server and communicated back
+        // to the client asynchronously using workspace edits
+        let Some(future) = self
+            .language_server_by_id(server_id)
+            .and_then(|server| server.command(command))
+        else {
+            self.set_error("Language server does not support executing commands");
+            return;
+        };
+
+        tokio::spawn(async move {
+            if let Err(err) = future.await {
+                log::error!("Error executing LSP command: {err}");
+            }
+        });
+    }
+}
+
+pub fn register_hooks(_handlers: &Handlers) {
+    register_hook!(move |event: &mut LanguageServerInitialized<'_>| {
+        let language_server = event.editor.language_server_by_id(event.server_id).unwrap();
+
+        for doc in event
+            .editor
+            .documents()
+            .filter(|doc| doc.supports_language_server(event.server_id))
+        {
+            let Some(url) = doc.url() else {
+                continue;
+            };
+
+            let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
+
+            language_server.text_document_did_open(url, doc.version(), doc.text(), language_id);
+        }
+
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut DocumentDidChange<'_>| {
+        // Send textDocument/didChange notifications.
+        if !event.ghost_transaction {
+            for language_server in event.doc.language_servers() {
+                language_server.text_document_did_change(
+                    event.doc.versioned_identifier(),
+                    event.old_text,
+                    event.doc.text(),
+                    event.changes,
+                );
+            }
+        }
+
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut DocumentDidClose<'_>| {
+        // Send textDocument/didClose notifications.
+        for language_server in event.doc.language_servers() {
+            language_server.text_document_did_close(event.doc.identifier());
+        }
+
+        Ok(())
+    });
 }

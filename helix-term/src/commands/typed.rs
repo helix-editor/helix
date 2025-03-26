@@ -327,7 +327,13 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
 
-    if config.insert_final_newline {
+    if doc.trim_trailing_whitespace() {
+        trim_trailing_whitespace(doc, view.id);
+    }
+    if config.trim_final_newlines {
+        trim_final_newlines(doc, view.id);
+    }
+    if doc.insert_final_newline() {
         insert_final_newline(doc, view.id);
     }
 
@@ -358,9 +364,59 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     Ok(())
 }
 
+/// Trim all whitespace preceding line-endings in a document.
+fn trim_trailing_whitespace(doc: &mut Document, view_id: ViewId) {
+    let text = doc.text();
+    let mut pos = 0;
+    let transaction = Transaction::delete(
+        text,
+        text.lines().filter_map(|line| {
+            let line_end_len_chars = line_ending::get_line_ending(&line)
+                .map(|le| le.len_chars())
+                .unwrap_or_default();
+            // Char after the last non-whitespace character or the beginning of the line if the
+            // line is all whitespace:
+            let first_trailing_whitespace =
+                pos + line.last_non_whitespace_char().map_or(0, |idx| idx + 1);
+            pos += line.len_chars();
+            // Char before the line ending character(s), or the final char in the text if there
+            // is no line-ending on this line:
+            let line_end = pos - line_end_len_chars;
+            if first_trailing_whitespace != line_end {
+                Some((first_trailing_whitespace, line_end))
+            } else {
+                None
+            }
+        }),
+    );
+    doc.apply(&transaction, view_id);
+}
+
+/// Trim any extra line-endings after the final line-ending.
+fn trim_final_newlines(doc: &mut Document, view_id: ViewId) {
+    let rope = doc.text();
+    let mut text = rope.slice(..);
+    let mut total_char_len = 0;
+    let mut final_char_len = 0;
+    while let Some(line_ending) = line_ending::get_line_ending(&text) {
+        total_char_len += line_ending.len_chars();
+        final_char_len = line_ending.len_chars();
+        text = text.slice(..text.len_chars() - line_ending.len_chars());
+    }
+    let chars_to_delete = total_char_len - final_char_len;
+    if chars_to_delete != 0 {
+        let transaction = Transaction::delete(
+            rope,
+            [(rope.len_chars() - chars_to_delete, rope.len_chars())].into_iter(),
+        );
+        doc.apply(&transaction, view_id);
+    }
+}
+
+/// Ensure that the document is terminated with a line ending.
 fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
-    if line_ending::get_line_ending(&text.slice(..)).is_none() {
+    if text.len_chars() > 0 && line_ending::get_line_ending(&text.slice(..)).is_none() {
         let eof = Selection::point(text.len_chars());
         let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
         doc.apply(&insert, view_id);
@@ -691,7 +747,13 @@ pub fn write_all_impl(
         let doc = doc_mut!(cx.editor, &doc_id);
         let view = view_mut!(cx.editor, target_view);
 
-        if config.insert_final_newline {
+        if doc.trim_trailing_whitespace() {
+            trim_trailing_whitespace(doc, target_view);
+        }
+        if config.trim_final_newlines {
+            trim_final_newlines(doc, target_view);
+        }
+        if doc.insert_final_newline() {
             insert_final_newline(doc, target_view);
         }
 
@@ -1424,7 +1486,7 @@ fn lsp_workspace_command(
                         commands,
                         (),
                         move |cx, (ls_id, command), _action| {
-                            execute_lsp_command(cx.editor, *ls_id, command.clone());
+                            cx.editor.execute_lsp_command(command.clone(), *ls_id);
                         },
                     );
                     compositor.push(Box::new(overlaid(picker)))
@@ -1452,14 +1514,13 @@ fn lsp_workspace_command(
                     .transpose()?
                     .filter(|args| !args.is_empty());
 
-                execute_lsp_command(
-                    cx.editor,
-                    *ls_id,
+                cx.editor.execute_lsp_command(
                     helix_lsp::lsp::Command {
                         title: command.clone(),
                         arguments,
                         command,
                     },
+                    *ls_id,
                 );
             }
             [] => {
@@ -1591,7 +1652,7 @@ fn lsp_stop(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
 
         for doc in cx.editor.documents_mut() {
             if let Some(client) = doc.remove_language_server_by_name(ls_name) {
-                doc.clear_diagnostics(Some(client.id()));
+                doc.clear_diagnostics_for_language_server(client.id());
                 doc.reset_all_inlay_hints();
                 doc.inlay_hints_oudated = true;
             }
@@ -2115,7 +2176,6 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     }
 
     let scrolloff = cx.editor.config().scrolloff;
-    let cfg_text_width: usize = cx.editor.config().text_width;
     let (view, doc) = current!(cx.editor);
 
     // Find the text_width by checking the following sources in order:
@@ -2126,8 +2186,7 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
         .first()
         .map(|num| num.parse::<usize>())
         .transpose()?
-        .or_else(|| doc.language_config().and_then(|config| config.text_width))
-        .unwrap_or(cfg_text_width);
+        .unwrap_or_else(|| doc.text_width());
 
     let rope = doc.text();
 
@@ -2617,7 +2676,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: buffer_close,
         completer: CommandCompleter::all(completers::buffer),
         signature: Signature {
-            positionals: (0, Some(0)),
+            positionals: (0, None),
             ..Signature::DEFAULT
         },
     },
@@ -2628,7 +2687,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: force_buffer_close,
         completer: CommandCompleter::all(completers::buffer),
         signature: Signature {
-            positionals: (0, Some(0)),
+            positionals: (0, None),
             ..Signature::DEFAULT
         },
     },
@@ -2928,7 +2987,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: theme,
         completer: CommandCompleter::positional(&[completers::theme]),
         signature: Signature {
-            positionals: (1, Some(1)),
+            positionals: (0, Some(1)),
             ..Signature::DEFAULT
         },
     },
@@ -3369,7 +3428,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: reflow,
         completer: CommandCompleter::none(),
         signature: Signature {
-            positionals: (0, Some(0)),
+            positionals: (0, Some(1)),
             ..Signature::DEFAULT
         },
     },
@@ -3681,149 +3740,6 @@ pub(super) fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
-        // <<<<<<< HEAD
-        //         |editor: &Editor, input: &str| {
-        //             let shellwords = Shellwords::from(input);
-        //             let words = shellwords.words();
-
-        //             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
-        //                 fuzzy_match(
-        //                     input,
-        //                     TYPABLE_COMMAND_LIST
-        //                         .iter()
-        //                         .map(|command| Cow::from(command.name))
-        //                         .chain(crate::commands::engine::ScriptingEngine::available_commands()),
-        //                     false,
-        //                 )
-        //                 .into_iter()
-        //                 .map(|(name, _)| (0.., name.into()))
-        //                 .collect()
-        //             } else {
-        //                 // Otherwise, use the command's completer and the last shellword
-        //                 // as completion input.
-        //                 let (word, word_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
-        //                     (&Cow::Borrowed(""), 0)
-        //                 } else {
-        //                     (words.last().unwrap(), words.last().unwrap().len())
-        //                 };
-
-        //                 let argument_number = argument_number_of(&shellwords);
-
-        //                 if let Some(completer) = TYPABLE_COMMAND_MAP
-        //                     .get(&words[0] as &str)
-        //                     .map(|tc| tc.completer_for_argument_number(argument_number))
-        //                 {
-        //                     completer(editor, word)
-        //                         .into_iter()
-        //                         .map(|(range, mut file)| {
-        //                             file.content = shellwords::escape(file.content);
-
-        //                             // offset ranges to input
-        //                             let offset = input.len() - word_len;
-        //                             let range = (range.start + offset)..;
-        //                             (range, file)
-        //                         })
-        //                         .collect()
-        //                 } else {
-        //                     Vec::new()
-        //                 }
-        //             }
-        //         }, // completion
-        //         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-        //             let parts = input.split_whitespace().collect::<Vec<&str>>();
-        //             if parts.is_empty() {
-        //                 return;
-        //             }
-
-        //             // If command is numeric, interpret as line number and go there.
-        //             if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
-        //                 if let Err(e) = typed::goto_line_number(cx, &[Cow::from(parts[0])], event) {
-        //                     cx.editor.set_error(format!("{}", e));
-        //                 }
-        //                 return;
-        //             }
-
-        //             // TODO: @Matt - Add completion for added scripting commands here
-        //             // Handle typable commands
-
-        //             // Register callback functions here - if the prompt event is validate,
-        //             // Grab the function run and run through the hooks.
-        //             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-        //                 let shellwords = Shellwords::from(input);
-        //                 let args = shellwords.words();
-        //                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
-        //                     cx.editor.set_error(format!("{}", e));
-        //                 }
-
-        //                 if event == PromptEvent::Validate {
-        //                     let mappable_command = MappableCommand::Typable {
-        //                         name: cmd.name.to_string(),
-        //                         args: Vec::new(),
-        //                         doc: "".to_string(),
-        //                     };
-
-        //                     let mut ctx = Context {
-        //                         register: None,
-        //                         count: None,
-        //                         editor: cx.editor,
-        //                         callback: Vec::new(),
-        //                         on_next_key_callback: None,
-        //                         jobs: cx.jobs,
-        //                     };
-
-        //                     // // TODO: Figure this out?
-        //                     helix_event::dispatch(crate::events::PostCommand {
-        //                         command: &mappable_command,
-        //                         cx: &mut ctx,
-        //                     });
-        //                 }
-        //             } else if ScriptingEngine::call_typed_command(cx, input, &parts, event) {
-        //                 // Engine handles the other cases
-        //                 if event == PromptEvent::Validate {
-        //                     let mappable_command = MappableCommand::Typable {
-        //                         name: input.to_string(),
-        //                         args: Vec::new(),
-        //                         doc: "".to_string(),
-        //                     };
-
-        //                     let mut ctx = Context {
-        //                         register: None,
-        //                         count: None,
-        //                         editor: cx.editor,
-        //                         callback: Vec::new(),
-        //                         on_next_key_callback: None,
-        //                         jobs: cx.jobs,
-        //                     };
-
-        //                     // // TODO: Figure this out?
-        //                     helix_event::dispatch(crate::events::PostCommand {
-        //                         command: &mappable_command,
-        //                         cx: &mut ctx,
-        //                     });
-        //                 }
-        //             } else if event == PromptEvent::Validate {
-        //                 cx.editor
-        //                     .set_error(format!("no such command: '{}'", parts[0]));
-        //             }
-        //         },
-        //     );
-        //     prompt.doc_fn = Box::new(|input: &str| {
-        //         let part = input.split(' ').next().unwrap_or_default();
-
-        //         if let Some(typed::TypableCommand { doc, aliases, .. }) =
-        //             typed::TYPABLE_COMMAND_MAP.get(part)
-        //         {
-        //             if aliases.is_empty() {
-        //                 return Some((*doc).into());
-        //             }
-        //             return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
-        //         } else if let Some(doc) = ScriptingEngine::get_doc_for_identifier(part) {
-        //             return Some(doc.into());
-        //         }
-
-        //         None
-        //     });
-        // =======
         complete_command_line,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             if let Err(err) = execute_command_line(cx, input, event) {
@@ -3832,7 +3748,6 @@ pub(super) fn command_mode(cx: &mut Context) {
         },
     );
     prompt.doc_fn = Box::new(command_line_doc);
-    // >>>>>>> origin
 
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
