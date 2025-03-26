@@ -126,45 +126,6 @@ pub struct Markdown {
     config_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
-pub struct StyledText {
-    text: tui::text::Text<'static>,
-}
-
-impl StyledText {
-    pub fn new(contents: String, style: Style) -> Self {
-        let spans: Vec<Spans<'static>> = contents
-            .lines()
-            .map(|line| Spans::from(vec![Span::styled(Cow::Owned(line.to_string()), style)]))
-            .collect();
-
-        let text = Text::from(spans);
-
-        Self { text }
-    }
-}
-
-impl Component for StyledText {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        use tui::widgets::{Paragraph, Widget, Wrap};
-
-        let par = Paragraph::new(&self.text)
-            .wrap(Wrap { trim: false })
-            .scroll((cx.scroll.unwrap_or_default() as u16, 0));
-
-        let margin = Margin::all(1);
-        par.render(area.inner(margin), surface);
-    }
-
-    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let padding = 2;
-
-        let max_text_width = (viewport.0.saturating_sub(padding)).min(120);
-        let (width, height) = crate::ui::text::required_size(&self.text, max_text_width);
-
-        Some((width + padding, height + padding))
-    }
-}
-
 // TODO: pre-render and self reference via Pin
 // better yet, just use Tendril + subtendril for references
 

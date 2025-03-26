@@ -1590,30 +1590,15 @@ impl Component for EditorView {
                 cx.editor.theme.get("ui.text")
             };
 
-            if status_msg.len() <= area.width.into() {
-                surface.set_string(
-                    area.x,
-                    area.y + area.height.saturating_sub(1),
-                    status_msg,
-                    style,
-                );
-            } else {
-                let status_msg_box = async move {
-                    let call: job::Callback = Callback::EditorCompositor(Box::new(
-                        move |editor: &mut Editor, compositor: &mut Compositor| {
-                            if let Some((contents, _)) = &editor.status_msg {
-                                let contents = StyledText::new(contents.to_string(), style);
-
-                                let popup = Popup::new("hover", contents).auto_close(true);
-                                compositor.replace_or_push("hover", popup);
-                            }
-                        },
-                    ));
-                    Ok(call)
-                };
-
-                cx.jobs.callback(status_msg_box)
-            }
+            surface.set_string(
+                area.x,
+                area.y + area.height.saturating_sub(1),
+                status_msg,
+                style,
+            );
+            if status_msg.len() <= area.width.into() && *severity == Severity::Error {
+                log::error!("Status bar could not fit this error message: {status_msg}");
+            };
         }
 
         if area.width.saturating_sub(status_msg_width as u16) > key_width {
