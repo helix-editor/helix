@@ -16,6 +16,7 @@
   - [`[editor.gutters.diagnostics]` Section](#editorguttersdiagnostics-section)
   - [`[editor.gutters.diff]` Section](#editorguttersdiff-section)
   - [`[editor.gutters.spacer]` Section](#editorguttersspacer-section)
+- [`[editor.gutters-right]` Section](#editorgutters-right-section)
 - [`[editor.soft-wrap]` Section](#editorsoft-wrap-section)
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
