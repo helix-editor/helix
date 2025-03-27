@@ -30,3 +30,4 @@
   - [Adding indent queries](./guides/indent.md)
   - [Adding injection queries](./guides/injection.md)
   - [Adding tags queries](./guides/tags.md)
+  - [Adding rainbow bracket queries](./guides/rainbow_bracket_queries.md)
