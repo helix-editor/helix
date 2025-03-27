@@ -163,7 +163,7 @@ impl EditorView {
             }
         }
 
-        let gutter_overflow = view.gutter_offset(doc) == 0;
+        let gutter_overflow = view.gutter_offset(doc) + view.gutter_offset_right(doc) == 0;
         if !gutter_overflow {
             Self::render_gutters(
                 editor,
