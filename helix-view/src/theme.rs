@@ -227,6 +227,7 @@ pub struct Theme {
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
+    rainbow_length: usize,
 }
 
 impl From<Value> for Theme {
@@ -253,12 +254,20 @@ impl<'de> Deserialize<'de> for Theme {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn build_theme_values(
     mut values: Map<String, Value>,
-) -> (HashMap<String, Style>, Vec<String>, Vec<Style>, Vec<String>) {
+) -> (
+    HashMap<String, Style>,
+    Vec<String>,
+    Vec<Style>,
+    usize,
+    Vec<String>,
+) {
     let mut styles = HashMap::new();
     let mut scopes = Vec::new();
     let mut highlights = Vec::new();
+    let mut rainbow_length = 0;
 
     let mut warnings = Vec::new();
 
@@ -277,6 +286,27 @@ fn build_theme_values(
     styles.reserve(values.len());
     scopes.reserve(values.len());
     highlights.reserve(values.len());
+
+    for (i, style) in values
+        .remove("rainbow")
+        .and_then(|value| match palette.parse_style_array(value) {
+            Ok(styles) => Some(styles),
+            Err(err) => {
+                warnings.push(err);
+                None
+            }
+        })
+        .unwrap_or_else(default_rainbow)
+        .into_iter()
+        .enumerate()
+    {
+        let name = format!("rainbow.{i}");
+        styles.insert(name.clone(), style);
+        scopes.push(name);
+        highlights.push(style);
+        rainbow_length += 1;
+    }
+
     for (name, style_value) in values {
         let mut style = Style::default();
         if let Err(err) = palette.parse_style(&mut style, style_value) {
@@ -289,9 +319,19 @@ fn build_theme_values(
         highlights.push(style);
     }
 
-    (styles, scopes, highlights, warnings)
+    (styles, scopes, highlights, rainbow_length, warnings)
 }
 
+fn default_rainbow() -> Vec<Style> {
+    vec![
+        Style::default().fg(Color::Red),
+        Style::default().fg(Color::Yellow),
+        Style::default().fg(Color::Green),
+        Style::default().fg(Color::Blue),
+        Style::default().fg(Color::Cyan),
+        Style::default().fg(Color::Magenta),
+    ]
+}
 impl Theme {
     /// To allow `Highlight` to represent arbitrary RGB colors without turning it into an enum,
     /// we interpret the last 256^3 numbers as RGB.
@@ -382,6 +422,10 @@ impl Theme {
         })
     }
 
+    pub fn rainbow_length(&self) -> usize {
+        self.rainbow_length
+    }
+
     fn from_toml(value: Value) -> (Self, Vec<String>) {
         if let Value::Table(table) = value {
             Theme::from_keys(table)
@@ -392,12 +436,14 @@ impl Theme {
     }
 
     fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
-        let (styles, scopes, highlights, load_errors) = build_theme_values(toml_keys);
+        let (styles, scopes, highlights, rainbow_length, load_errors) =
+            build_theme_values(toml_keys);
 
         let theme = Self {
             styles,
             scopes,
             highlights,
+            rainbow_length,
             ..Default::default()
         };
         (theme, load_errors)
@@ -540,6 +586,21 @@ impl ThemePalette {
             *style = style.fg(self.parse_color(value)?);
         }
         Ok(())
+    }
+
+    fn parse_style_array(&self, value: Value) -> Result<Vec<Style>, String> {
+        let mut styles = Vec::new();
+
+        for v in value
+            .as_array()
+            .ok_or_else(|| format!("Could not parse value as an array: '{value}'"))?
+        {
+            let mut style = Style::default();
+            self.parse_style(&mut style, v.clone())?;
+            styles.push(style);
+        }
+
+        Ok(styles)
     }
 }
 
