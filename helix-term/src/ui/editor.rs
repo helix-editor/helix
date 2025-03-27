@@ -116,30 +116,30 @@ impl EditorView {
             [Left] vec![
                 Span::styled(":tutor", theme.get("markup.raw")),
                 Span::styled("<enter>", theme.get("comment")),
-                "       to learn helix".into(),
+                "       learn helix".into(),
             ],
             [Left] vec![
                 Span::styled(":theme", theme.get("markup.raw")),
                 Span::styled("<tab>", theme.get("comment")),
-                "         to choose a theme".into(),
+                "         choose a theme".into(),
             ],
             [Left] vec![
                 Span::styled("<space>e", theme.get("markup.raw")),
-                "            to open file explorer".into(),
+                "            file explorer".into(),
             ],
             [Left] vec![
                 Span::styled("<space>?", theme.get("markup.raw")),
-                "            to see all commands".into(),
+                "            see all commands".into(),
             ],
             [Left] vec![
                 Span::styled(":config-open", theme.get("markup.raw")),
                 Span::styled("<enter>", theme.get("comment")),
-                " to configure helix".into(),
+                " configure helix".into(),
             ],
             [Left] vec![
                 Span::styled(":quit", theme.get("markup.raw")),
                 Span::styled("<enter>", theme.get("comment")),
-                "        to exit helix".into(),
+                "        quit helix".into(),
             ],
             [Left] "",
             [Center] vec![
