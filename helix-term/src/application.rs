@@ -756,10 +756,11 @@ impl Application {
                             .compositor
                             .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let lsp::ProgressParams { token, value } = params;
-
-                        let lsp::ProgressParamsValue::WorkDone(work) = value;
-                        let parts = match &work {
+                        let lsp::ProgressParams {
+                            token,
+                            value: lsp::ProgressParamsValue::WorkDone(work),
+                        } = params;
+                        let (title, message, percentage) = match &work {
                             lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
                                 title,
                                 message,
@@ -787,47 +788,43 @@ impl Application {
                             }
                         };
 
-                        let token_d: &dyn std::fmt::Display = match &token {
-                            lsp::NumberOrString::Number(n) => n,
-                            lsp::NumberOrString::String(s) => s,
-                        };
-
-                        let status = match parts {
-                            (Some(title), Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
+                        if self.editor.config().lsp.display_progress_messages {
+                            let title =
+                                title.or_else(|| self.lsp_progress.title(server_id, &token));
+                            if title.is_some() || percentage.is_some() || message.is_some() {
+                                use std::fmt::Write as _;
+                                let mut status = format!("{}: ", language_server!().name());
+                                if let Some(percentage) = percentage {
+                                    write!(status, "{percentage:>2}% ").unwrap();
+                                }
+                                if let Some(title) = title {
+                                    status.push_str(title);
+                                }
+                                if title.is_some() && message.is_some() {
+                                    status.push_str(" ⋅ ");
+                                }
+                                if let Some(message) = message {
+                                    status.push_str(message);
+                                }
+                                self.editor.set_status(status);
                             }
-                            (Some(title), None, Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, title)
-                            }
-                            (Some(title), Some(message), None) => {
-                                format!("[{}] {} - {}", token_d, title, message)
-                            }
-                            (None, Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, message)
-                            }
-                            (Some(title), None, None) => {
-                                format!("[{}] {}", token_d, title)
-                            }
-                            (None, Some(message), None) => {
-                                format!("[{}] {}", token_d, message)
-                            }
-                            (None, None, Some(percentage)) => {
-                                format!("[{}] {}%", token_d, percentage)
-                            }
-                            (None, None, None) => format!("[{}]", token_d),
-                        };
-
-                        if let lsp::WorkDoneProgress::End(_) = work {
-                            self.lsp_progress.end_progress(server_id, &token);
-                            if !self.lsp_progress.is_progressing(server_id) {
-                                editor_view.spinners_mut().get_or_create(server_id).stop();
-                            }
-                        } else {
-                            self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.load().editor.lsp.display_progress_messages {
-                            self.editor.set_status(status);
+                        match work {
+                            lsp::WorkDoneProgress::Begin(begin_status) => {
+                                self.lsp_progress
+                                    .begin(server_id, token.clone(), begin_status);
+                            }
+                            lsp::WorkDoneProgress::Report(report_status) => {
+                                self.lsp_progress
+                                    .update(server_id, token.clone(), report_status);
+                            }
+                            lsp::WorkDoneProgress::End(_) => {
+                                self.lsp_progress.end_progress(server_id, &token);
+                                if !self.lsp_progress.is_progressing(server_id) {
+                                    editor_view.spinners_mut().get_or_create(server_id).stop();
+                                };
+                            }
                         }
                     }
                     Notification::ProgressMessage(_params) => {
