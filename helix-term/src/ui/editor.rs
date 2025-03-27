@@ -124,8 +124,8 @@ impl EditorView {
                 "         to choose a theme".into(),
             ],
             [Left] vec![
-                Span::styled("<space>f", theme.get("markup.raw")),
-                "            to open a file".into(),
+                Span::styled("<space>e", theme.get("markup.raw")),
+                "            to open file explorer".into(),
             ],
             [Left] vec![
                 Span::styled("<space>?", theme.get("markup.raw")),
