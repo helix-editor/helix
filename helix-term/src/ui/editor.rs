@@ -156,7 +156,7 @@ impl EditorView {
         let y_center = view.area.x + view.area.width / 2;
 
         let x_start_left =
-            view.area.x + (view.area.width / 2).saturating_sub(longest_left as u16 / 2) + 1;
+            view.area.x + (view.area.width / 2).saturating_sub(longest_left as u16 / 2) + 2;
 
         let has_x_left_overflow = (x_start_left + longest_left as u16) > view.area.width;
         let has_x_center_overflow = longest_center as u16 > view.area.width;
