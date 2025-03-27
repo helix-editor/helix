@@ -155,23 +155,8 @@ impl EditorView {
         let y_start = view.area.y + (view.area.height / 2).saturating_sub(lines_count as u16 / 2);
         let y_center = view.area.x + view.area.width / 2;
 
-        // largest possible padding that still allows the text to fit within the screen
-        let max_padding = view.area.width as i16 / 2 - longest_left as i16 / 2 - view.area.x as i16;
-
-        // Despite being in the mathematical left, we want to start drawing the "left"
-        // lines a little bit extra to the right so it looks good
-        //
-        // this is because of text density: at the start the text density is high, but
-        // towards the end it is low. Therefore to achieve an optical balance we must
-        // do a little offset
-        //
-        // this padding is not cruicial though, so if we can't fit it on the screen
-        // we just decrease it until it is 0. Once that happens, if it still overflows
-        // we don't want to draw the welcome screen.
-        let padding = 2.min(max_padding.max(0) as u16);
-
         let x_start_left =
-            padding + view.area.x + (view.area.width / 2).saturating_sub(longest_left as u16 / 2);
+            view.area.x + (view.area.width / 2).saturating_sub(longest_left as u16 / 2) + 2;
 
         let has_x_left_overflow = (x_start_left + longest_left as u16) > view.area.width;
         let has_x_center_overflow = longest_center as u16 > view.area.width;
