@@ -152,11 +152,11 @@ where
     F: FnOnce() -> R,
 {
     let handler = INTERRUPT_HANDLER.get().unwrap();
-    handler.handle.thread().unpark();
-
     handler
         .running
         .store(true, std::sync::atomic::Ordering::Relaxed);
+
+    handler.handle.thread().unpark();
 
     let res = (f)();
 
@@ -1199,8 +1199,6 @@ impl super::PluginSystem for SteelScriptingEngine {
         event: PromptEvent,
     ) -> bool {
         if enter_engine(|x| x.global_exists(command)) {
-            // let shellwords = Shellwords::from(input);
-            // let args = shellwords.words();
             let args = parts;
 
             // We're finalizing the event - we actually want to call the function
