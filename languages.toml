@@ -2782,6 +2782,7 @@ file-types = [
   "rng",
   "shproj",
   "tld",
+  { glob = "*.tm[Tt]heme" },
   "tmx",
   "vbproj.user",
   "vcxproj",
