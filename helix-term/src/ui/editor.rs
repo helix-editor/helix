@@ -114,34 +114,29 @@ impl EditorView {
             ),
             [Left] "",
             [Left] vec![
-                "type ".into(),
                 Span::styled(":tutor", theme.get("markup.raw")),
                 Span::styled("<enter>", theme.get("comment")),
                 "       to learn helix".into(),
             ],
             [Left] vec![
-                "type ".into(),
                 Span::styled(":theme", theme.get("markup.raw")),
-                "              to choose a theme".into(),
+                Span::styled("<tab>", theme.get("comment")),
+                "         to choose a theme".into(),
             ],
             [Left] vec![
-                "type ".into(),
                 Span::styled("<space>f", theme.get("markup.raw")),
                 "            to open a file".into(),
             ],
             [Left] vec![
-                "type ".into(),
                 Span::styled("<space>?", theme.get("markup.raw")),
                 "            to see all commands".into(),
             ],
             [Left] vec![
-                "type ".into(),
                 Span::styled(":config-open", theme.get("markup.raw")),
                 Span::styled("<enter>", theme.get("comment")),
                 " to configure helix".into(),
             ],
             [Left] vec![
-                "type ".into(),
                 Span::styled(":quit", theme.get("markup.raw")),
                 Span::styled("<enter>", theme.get("comment")),
                 "        to exit helix".into(),
@@ -170,10 +165,10 @@ impl EditorView {
         // towards the end it is low. Therefore to achieve an optical balance we must
         // do a little offset
         //
-        // this padding of 3 is not cruicial though, so if we can't fit it on the screen
+        // this padding is not cruicial though, so if we can't fit it on the screen
         // we just decrease it until it is 0. Once that happens, if it still overflows
         // we don't want to draw the welcome screen.
-        let padding = 3.min(max_padding.max(0) as u16);
+        let padding = 2.min(max_padding.max(0) as u16);
 
         let x_start_left =
             padding + view.area.x + (view.area.width / 2).saturating_sub(longest_left as u16 / 2);
