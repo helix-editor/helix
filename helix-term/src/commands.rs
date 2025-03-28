@@ -44,6 +44,7 @@ use helix_core::{
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
+    icons::ICONS,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -3296,12 +3297,28 @@ fn changed_file_picker(cx: &mut Context) {
 
     let columns = [
         PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
+            let icons = ICONS.load();
             match change {
-                FileChange::Untracked { .. } => Span::styled("+ untracked", data.style_untracked),
-                FileChange::Modified { .. } => Span::styled("~ modified", data.style_modified),
-                FileChange::Conflict { .. } => Span::styled("x conflict", data.style_conflict),
-                FileChange::Deleted { .. } => Span::styled("- deleted", data.style_deleted),
-                FileChange::Renamed { .. } => Span::styled("> renamed", data.style_renamed),
+                FileChange::Untracked { .. } => Span::styled(
+                    format!("{}  untracked", icons.vcs().added()),
+                    data.style_untracked,
+                ),
+                FileChange::Modified { .. } => Span::styled(
+                    format!("{}  modified", icons.vcs().modified()),
+                    data.style_modified,
+                ),
+                FileChange::Conflict { .. } => Span::styled(
+                    format!("{}  conflict", icons.vcs().conflict()),
+                    data.style_conflict,
+                ),
+                FileChange::Deleted { .. } => Span::styled(
+                    format!("{}  deleted", icons.vcs().removed()),
+                    data.style_deleted,
+                ),
+                FileChange::Renamed { .. } => Span::styled(
+                    format!("{}  renamed", icons.vcs().renamed()),
+                    data.style_renamed,
+                ),
             }
             .into()
         }),
