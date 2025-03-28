@@ -55,7 +55,7 @@ once_cell = "1.21"
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
-crossterm = { version = "0.28", features = ["event-stream"] }
+crossterm = { workspace = true, features = ["event-stream"] }
 signal-hook = "0.3"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
@@ -96,7 +96,7 @@ signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 libc = "0.2.171"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc"] }
+crossterm = { workspace = true, features = ["event-stream", "use-dev-tty", "libc"] }
 
 [build-dependencies]
 helix-loader = { path = "../helix-loader" }
