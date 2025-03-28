@@ -5,6 +5,7 @@ use crossterm::{
         DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, DisableThemeModeUpdates,
         EnableBracketedPaste, EnableFocusChange, EnableMouseCapture, EnableThemeModeUpdates,
         KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+        SynchronizedOutputMode, TerminalFeatures,
     },
     execute, queue,
     style::{
@@ -19,12 +20,15 @@ use helix_view::{
     graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle},
     theme,
 };
-use once_cell::sync::OnceCell;
 use std::{
     fmt,
     io::{self, Write},
 };
 use termini::TermInfo;
+
+const KEYBOARD_ENHANCEMENT_FLAGS: KeyboardEnhancementFlags =
+    KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+        .union(KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS);
 
 fn term_program() -> Option<String> {
     // Some terminals don't set $TERM_PROGRAM
@@ -99,7 +103,7 @@ impl Capabilities {
 pub struct CrosstermBackend<W: Write> {
     buffer: W,
     capabilities: Capabilities,
-    supports_keyboard_enhancement_protocol: OnceCell<bool>,
+    features: std::cell::Cell<Option<TerminalFeatures>>,
     mouse_capture_enabled: bool,
     supports_bracketed_paste: bool,
 }
@@ -116,27 +120,31 @@ where
         CrosstermBackend {
             buffer,
             capabilities: Capabilities::from_env_or_default(config),
-            supports_keyboard_enhancement_protocol: OnceCell::new(),
+            features: std::cell::Cell::new(None),
             mouse_capture_enabled: false,
             supports_bracketed_paste: true,
         }
     }
 
-    #[inline]
-    fn supports_keyboard_enhancement_protocol(&self) -> bool {
-        *self.supports_keyboard_enhancement_protocol
-            .get_or_init(|| {
+    fn features(&self) -> TerminalFeatures {
+        match self.features.get() {
+            Some(features) => features,
+            None => {
                 use std::time::Instant;
 
                 let now = Instant::now();
-                let supported = matches!(terminal::supports_keyboard_enhancement(), Ok(true));
+                let features = terminal::terminal_features().unwrap_or_default();
                 log::debug!(
-                    "The keyboard enhancement protocol is {}supported in this terminal (checked in {:?})",
-                    if supported { "" } else { "not " },
-                    Instant::now().duration_since(now)
+                    "Detected terminal features in {:?}. Enhanced keyboard support: {}, Synchronized output support: {}. Theme mode updates support: {}",
+                    Instant::now().duration_since(now),
+                    features.keyboard_enhancement_flags.is_some(),
+                    features.synchronized_output_mode != SynchronizedOutputMode::NotSupported,
+                    features.theme_mode.is_some(),
                 );
-                supported
-            })
+                self.features.set(Some(features));
+                features
+            }
+        }
     }
 }
 
@@ -177,15 +185,28 @@ where
             execute!(self.buffer, EnableMouseCapture)?;
             self.mouse_capture_enabled = true;
         }
-        execute!(self.buffer, EnableThemeModeUpdates).ok();
-        if self.supports_keyboard_enhancement_protocol() {
+        let features = self.features();
+        if features.theme_mode.is_some() {
+            execute!(self.buffer, EnableThemeModeUpdates)?;
+        }
+        if features.keyboard_enhancement_flags.is_some() {
             execute!(
                 self.buffer,
-                PushKeyboardEnhancementFlags(
-                    KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-                        | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
-                )
+                PushKeyboardEnhancementFlags(KEYBOARD_ENHANCEMENT_FLAGS)
             )?;
+
+            // If the terminal supports a limited subset of the keyboard enhancement protocol,
+            // turn it off. We need both `DISAMBIGUATE_ESCAPE_CODES` and `REPORT_ALTERNATE_KEYS`.
+            if let Ok(Some(flags)) = terminal::query_keyboard_enhancement_flags() {
+                if !flags.contains(KEYBOARD_ENHANCEMENT_FLAGS) {
+                    log::info!("Turning off keyboard enhancement since the terminal didn't enable the required flags. Expected {KEYBOARD_ENHANCEMENT_FLAGS:?}, found {flags:?}");
+                    self.features.set(Some(TerminalFeatures {
+                        keyboard_enhancement_flags: None,
+                        ..features
+                    }));
+                    execute!(self.buffer, PopKeyboardEnhancementFlags)?;
+                }
+            }
         }
         Ok(())
     }
@@ -210,8 +231,12 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
-        if self.supports_keyboard_enhancement_protocol() {
+        let features = self.features();
+        if features.keyboard_enhancement_flags.is_some() {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
+        }
+        if features.theme_mode.is_some() {
+            execute!(self.buffer, DisableThemeModeUpdates)?;
         }
         if self.supports_bracketed_paste {
             execute!(self.buffer, DisableBracketedPaste,)?;
@@ -221,7 +246,6 @@ where
             DisableFocusChange,
             terminal::LeaveAlternateScreen
         )?;
-        execute!(self.buffer, DisableThemeModeUpdates).ok();
         terminal::disable_raw_mode()
     }
 
@@ -344,26 +368,10 @@ where
     }
 
     fn get_theme_mode(&self) -> Option<theme::Mode> {
-        use std::time::Instant;
-
-        let start = Instant::now();
-        let theme_mode = crossterm::terminal::query_terminal_theme_mode()
-            .ok()
-            .flatten()
-            .map(|theme_mode| match theme_mode {
-                crossterm::event::ThemeMode::Light => theme::Mode::Light,
-                crossterm::event::ThemeMode::Dark => theme::Mode::Dark,
-            });
-        let elapsed = Instant::now().duration_since(start).as_millis();
-        if theme_mode.is_some() {
-            log::debug!("detected terminal theme mode in {}ms", elapsed);
-        } else {
-            log::debug!(
-                "failed to detect terminal theme mode (checked in {}ms)",
-                elapsed
-            );
-        }
-        theme_mode
+        self.features().theme_mode.map(|mode| match mode {
+            crossterm::event::ThemeMode::Light => theme::Mode::Light,
+            crossterm::event::ThemeMode::Dark => theme::Mode::Dark,
+        })
     }
 }
 
