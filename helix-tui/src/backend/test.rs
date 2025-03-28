@@ -164,4 +164,8 @@ impl Backend for TestBackend {
     fn flush(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
+
+    fn get_theme_mode(&self) -> Option<helix_view::theme::Mode> {
+        None
+    }
 }
