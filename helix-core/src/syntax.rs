@@ -27,6 +27,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
+    time::Duration,
 };
 
 use once_cell::sync::{Lazy, OnceCell};
@@ -86,6 +87,13 @@ pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
     #[serde(default)]
     pub language_server: HashMap<String, LanguageServerConfiguration>,
+    #[serde(default = "default_syntax_timeout")]
+    /// Tree sitter syntax timeout in milliseconds
+    pub syntax_timeout: u64,
+}
+
+fn default_syntax_timeout() -> u64 {
+    500
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
@@ -915,6 +923,8 @@ pub struct Loader {
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
 
     scopes: ArcSwap<Vec<String>>,
+
+    timeout: Duration,
 }
 
 pub type LoaderError = globset::Error;
@@ -955,6 +965,7 @@ impl Loader {
             language_config_ids_by_shebang,
             language_server_configs: config.language_server,
             scopes: ArcSwap::from_pointee(Vec::new()),
+            timeout: Duration::from_millis(config.syntax_timeout),
         })
     }
 
@@ -1270,7 +1281,9 @@ impl Syntax {
 
         PARSER.with(|ts_parser| {
             let ts_parser = &mut ts_parser.borrow_mut();
-            ts_parser.parser.set_timeout_micros(1000 * 500); // half a second is pretty generours
+            ts_parser
+                .parser
+                .set_timeout_micros(loader.timeout.as_micros().try_into().unwrap_or(u64::MAX));
             let mut cursor = ts_parser.cursors.pop().unwrap_or_default();
             // TODO: might need to set cursor range
             cursor.set_byte_range(0..usize::MAX);
@@ -2789,6 +2802,7 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             language_server: HashMap::new(),
+            syntax_timeout: 500,
         })
         .unwrap();
         let language = get_language("rust").unwrap();
@@ -2857,6 +2871,7 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             language_server: HashMap::new(),
+            syntax_timeout: 500,
         })
         .unwrap();
 
@@ -2969,6 +2984,7 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             language_server: HashMap::new(),
+            syntax_timeout: 500,
         })
         .unwrap();
         let language = get_language(language_name).unwrap();
