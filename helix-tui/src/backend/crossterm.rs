@@ -146,6 +146,10 @@ where
             }
         }
     }
+
+    fn supports_synchronized_output(&self) -> bool {
+        self.features().synchronized_output_mode != SynchronizedOutputMode::NotSupported
+    }
 }
 
 impl<W> Write for CrosstermBackend<W>
@@ -268,6 +272,10 @@ where
     where
         I: Iterator<Item = (u16, u16, &'a Cell)>,
     {
+        if self.supports_synchronized_output() {
+            queue!(self.buffer, terminal::BeginSynchronizedUpdate)?;
+        }
+
         let mut fg = Color::Reset;
         let mut bg = Color::Reset;
         let mut underline_color = Color::Reset;
@@ -326,7 +334,13 @@ where
             SetForegroundColor(CColor::Reset),
             SetBackgroundColor(CColor::Reset),
             SetAttribute(CAttribute::Reset)
-        )
+        )?;
+
+        if self.supports_synchronized_output() {
+            execute!(self.buffer, terminal::EndSynchronizedUpdate)?;
+        }
+
+        Ok(())
     }
 
     fn hide_cursor(&mut self) -> io::Result<()> {
