@@ -30,7 +30,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
 dependencies = [
  "cfg-if",
- "getrandom 0.2.15",
  "once_cell",
  "version_check",
  "zerocopy",
@@ -1319,14 +1318,13 @@ dependencies = [
 name = "helix-core"
 version = "25.1.1"
 dependencies = [
- "ahash",
  "anyhow",
  "arc-swap",
  "bitflags",
  "chrono",
  "encoding_rs",
+ "foldhash",
  "globset",
- "hashbrown 0.14.5",
  "helix-loader",
  "helix-parsec",
  "helix-stdx",
@@ -1347,7 +1345,7 @@ dependencies = [
  "smartstring",
  "textwrap",
  "toml",
- "tree-sitter",
+ "tree-house",
  "unicode-general-category",
  "unicode-segmentation",
  "unicode-width 0.1.12",
@@ -1391,14 +1389,13 @@ dependencies = [
  "cc",
  "etcetera",
  "helix-stdx",
- "libloading",
  "log",
  "once_cell",
  "serde",
  "tempfile",
  "threadpool",
  "toml",
- "tree-sitter",
+ "tree-house",
 ]
 
 [[package]]
@@ -2665,13 +2662,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter"
-version = "0.22.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df7cc499ceadd4dcdf7ec6d4cbc34ece92c3fa07821e287aedecd4416c516dca"
+name = "tree-house"
+version = "0.1.0-beta.2"
+source = "git+https://github.com/helix-editor/tree-house#1fa65eca36fdbb2837e0655bfda53ed627fc25c0"
+dependencies = [
+ "arc-swap",
+ "hashbrown 0.15.2",
+ "kstring",
+ "once_cell",
+ "regex",
+ "regex-cursor",
+ "ropey",
+ "slab",
+ "tree-house-bindings",
+]
+
+[[package]]
+name = "tree-house-bindings"
+version = "0.1.0-beta.2"
+source = "git+https://github.com/helix-editor/tree-house#1fa65eca36fdbb2837e0655bfda53ed627fc25c0"
 dependencies = [
  "cc",
- "regex",
+ "libloading",
+ "regex-cursor",
+ "ropey",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
