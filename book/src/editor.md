@@ -104,6 +104,7 @@ separator = "│"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+version-control-prefix = "vcs: "
 ```
 The `[editor.statusline]` key takes the following sub-keys:
 
@@ -116,6 +117,7 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
+| `version-control-prefix` | A prefix for the `version-control` element | `"vcs: "` |
 
 The following statusline elements can be configured:
 
