@@ -1,3 +1,6 @@
+# Author : geonove <andre.novellini@gmail.com>
+# License : Vim License
+
 "ui.menu" = { fg = "light-gray", bg = "gray" }
 "ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.linenr" = "yellow"
