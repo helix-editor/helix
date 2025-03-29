@@ -71,5 +71,5 @@ pub fn format_relative_time(timestamp: i64, timezone_offset: i32) -> String {
         "from now"
     };
 
-    format!("{value} {unit} {label}")
+    crate::concat!(value, " ", unit, " ", label)
 }
