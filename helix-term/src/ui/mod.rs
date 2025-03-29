@@ -371,6 +371,7 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
 pub mod completers {
     use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
+    use helix_core::command_line::{self, Token, Tokenizer};
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
@@ -676,5 +677,78 @@ pub mod completers {
             .into_iter()
             .map(|(name, _)| ((0..), name.into()))
             .collect()
+    }
+
+    pub fn program(_editor: &Editor, input: &str) -> Vec<Completion> {
+        static PROGRAMS_IN_PATH: Lazy<Vec<String>> = Lazy::new(|| {
+            // Go through the entire PATH and read all files into a vec.
+            let Some(path) = std::env::var_os("PATH") else {
+                return Vec::new();
+            };
+
+            let mut vec = std::env::split_paths(&path)
+                .flat_map(|s| {
+                    std::fs::read_dir(s)
+                        .map_or_else(|_| vec![], |res| res.into_iter().collect::<Vec<_>>())
+                })
+                .filter_map(|it| it.ok())
+                .map(|f| f.path())
+                .filter(|p| !p.is_dir())
+                .filter_map(|p| p.file_name().and_then(|s| s.to_str().map(|s| s.to_owned())))
+                .collect::<Vec<_>>();
+
+            // Paths can share programs like /bin and /usr/bin sometimes contain the same.
+            vec.dedup();
+
+            vec
+        });
+
+        fuzzy_match(input, PROGRAMS_IN_PATH.iter(), false)
+            .into_iter()
+            .map(|(name, _)| ((0..), name.clone().into()))
+            .collect()
+    }
+
+    fn get_last_argument(input: &str) -> Option<Token> {
+        let tokenizer = Tokenizer::new(input, false);
+        let last = tokenizer.last()?;
+
+        Some(last.unwrap())
+    }
+
+    /// This expects input to be a raw string of arguments, because this is what Signature's raw_after does.
+    pub fn repeating_filenames(editor: &Editor, input: &str) -> Vec<Completion> {
+        let Some(token) = get_last_argument(input) else {
+            return Vec::new();
+        };
+
+        let offset = token.content_start;
+
+        // Theoretically one could now parse bash completion scripts, but filename should suffice for now.
+        let mut completions = filename(editor, &input[offset..]);
+        for completion in completions.iter_mut() {
+            completion.0.start += offset;
+        }
+        completions
+    }
+
+    pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
+        let (_, _, complete_command) = command_line::split(input);
+
+        if complete_command {
+            return program(editor, input);
+        }
+
+        let Some(token) = get_last_argument(input) else {
+            return Vec::new();
+        };
+
+        let mut completions = repeating_filenames(editor, &token.content);
+
+        for completion in completions.iter_mut() {
+            completion.0.start += token.content_start;
+        }
+
+        completions
     }
 }
