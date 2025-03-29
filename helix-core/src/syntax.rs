@@ -24,6 +24,7 @@ use std::{
     fmt::{self, Display, Write},
     hash::{Hash, Hasher},
     mem::replace,
+    num::NonZeroU8,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -127,6 +128,10 @@ pub struct LanguageConfiguration {
 
     /// If set, overrides `editor.path-completion`.
     pub path_completion: Option<bool>,
+    /// If set, overrides `editor.word-completion`.
+    pub word_completion: Option<bool>,
+    /// If set, overrides `editor.word-completion-trigger-length`.
+    pub word_completion_trigger_length: Option<NonZeroU8>,
 
     #[serde(default)]
     pub diagnostic_severity: Severity,
