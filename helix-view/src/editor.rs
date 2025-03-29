@@ -1778,6 +1778,8 @@ impl Editor {
                 Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, &doc);
             doc.replace_diagnostics(diagnostics, &[], None);
 
+            // When opening a *new* file, ensure its diff provider is loaded.
+            self.diff_providers.add(&path);
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base);
             }
@@ -1817,6 +1819,10 @@ impl Editor {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
         let doc = self.documents.remove(&doc_id).unwrap();
+
+        if let Some(path) = doc.path() {
+            self.diff_providers.remove(path);
+        }
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
