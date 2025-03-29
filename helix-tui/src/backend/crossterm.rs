@@ -77,7 +77,8 @@ impl Capabilities {
     pub fn from_env_or_default(config: &EditorConfig) -> Self {
         match termini::TermInfo::from_env() {
             Err(_) => Capabilities {
-                has_extended_underlines: config.undercurl,
+                has_extended_underlines: config.undercurl
+                    || matches!(term_program().as_deref(), Some("WezTerm")),
                 ..Capabilities::default()
             },
             Ok(t) => Capabilities {
