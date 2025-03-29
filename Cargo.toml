@@ -40,6 +40,9 @@ package.helix-term.opt-level = 2
 tree-sitter = { version = "0.22" }
 nucleo = "0.5.0"
 slotmap = "1.0.7"
+# If working locally, use the local path dependency
+# steel-core = { path = "/Users/matt/code/steel/crates/steel-core", version = "0.6.0", features = ["anyhow", "dylibs", "sync"] }
+steel-core = { git = "https://github.com/mattwparas/steel.git", version = "0.6.0", features = ["anyhow", "dylibs", "sync"] }
 thiserror = "2.0"
 tempfile = "3.19.1"
 bitflags = "2.9"
@@ -56,4 +59,5 @@ categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
-rust-version = "1.76"
+# TODO: Get this back to 1.76
+rust-version = "1.81"
