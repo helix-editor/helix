@@ -68,6 +68,9 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+
+    /// The theme mode (light/dark) detected from the terminal, if available.
+    theme_mode: Option<theme::Mode>,
 }
 
 #[cfg(feature = "integration")]
@@ -109,6 +112,7 @@ impl Application {
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
 
+        let theme_mode = backend.get_theme_mode();
         let terminal = Terminal::new(backend)?;
         let area = terminal.size().expect("couldn't get terminal size");
         let mut compositor = Compositor::new(area);
@@ -123,12 +127,15 @@ impl Application {
             })),
             handlers,
         );
-        Self::load_configured_theme(&mut editor, &config.load());
+        Self::load_configured_theme(&mut editor, &config.load(), theme_mode);
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+        let editor_view = Box::new(ui::EditorView::new(
+            Keymaps::new(keys),
+            Map::new(Arc::clone(&config), |config: &Config| &config.theme),
+        ));
         compositor.push(editor_view);
 
         if args.load_tutor {
@@ -242,6 +249,7 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
+            theme_mode,
         };
 
         Ok(app)
@@ -408,7 +416,7 @@ impl Application {
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
             // Refresh theme after config change
-            Self::load_configured_theme(&mut self.editor, &default_config);
+            Self::load_configured_theme(&mut self.editor, &default_config, self.theme_mode);
             self.terminal
                 .reconfigure(default_config.editor.clone().into())?;
             // Store new config
@@ -427,12 +435,13 @@ impl Application {
     }
 
     /// Load the theme set in configuration
-    fn load_configured_theme(editor: &mut Editor, config: &Config) {
+    fn load_configured_theme(editor: &mut Editor, config: &Config, mode: Option<theme::Mode>) {
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
             .theme
             .as_ref()
-            .and_then(|theme| {
+            .and_then(|theme_config| {
+                let theme = theme_config.choose(mode);
                 editor
                     .theme_loader
                     .load(theme)

@@ -2,9 +2,10 @@ use crate::{backend::Backend, buffer::Cell, terminal::Config};
 use crossterm::{
     cursor::{Hide, MoveTo, SetCursorStyle, Show},
     event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, KeyboardEnhancementFlags,
-        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, DisableThemeModeUpdates,
+        EnableBracketedPaste, EnableFocusChange, EnableMouseCapture, EnableThemeModeUpdates,
+        KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+        SynchronizedOutputMode, TerminalFeatures,
     },
     execute, queue,
     style::{
@@ -17,13 +18,17 @@ use crossterm::{
 use helix_view::{
     editor::Config as EditorConfig,
     graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle},
+    theme,
 };
-use once_cell::sync::OnceCell;
 use std::{
     fmt,
     io::{self, Write},
 };
 use termini::TermInfo;
+
+const KEYBOARD_ENHANCEMENT_FLAGS: KeyboardEnhancementFlags =
+    KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+        .union(KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS);
 
 fn term_program() -> Option<String> {
     // Some terminals don't set $TERM_PROGRAM
@@ -98,7 +103,7 @@ impl Capabilities {
 pub struct CrosstermBackend<W: Write> {
     buffer: W,
     capabilities: Capabilities,
-    supports_keyboard_enhancement_protocol: OnceCell<bool>,
+    features: std::cell::Cell<Option<TerminalFeatures>>,
     mouse_capture_enabled: bool,
     supports_bracketed_paste: bool,
 }
@@ -115,27 +120,35 @@ where
         CrosstermBackend {
             buffer,
             capabilities: Capabilities::from_env_or_default(config),
-            supports_keyboard_enhancement_protocol: OnceCell::new(),
+            features: std::cell::Cell::new(None),
             mouse_capture_enabled: false,
             supports_bracketed_paste: true,
         }
     }
 
-    #[inline]
-    fn supports_keyboard_enhancement_protocol(&self) -> bool {
-        *self.supports_keyboard_enhancement_protocol
-            .get_or_init(|| {
+    fn features(&self) -> TerminalFeatures {
+        match self.features.get() {
+            Some(features) => features,
+            None => {
                 use std::time::Instant;
 
                 let now = Instant::now();
-                let supported = matches!(terminal::supports_keyboard_enhancement(), Ok(true));
+                let features = terminal::terminal_features().unwrap_or_default();
                 log::debug!(
-                    "The keyboard enhancement protocol is {}supported in this terminal (checked in {:?})",
-                    if supported { "" } else { "not " },
-                    Instant::now().duration_since(now)
+                    "Detected terminal features in {:?}. Enhanced keyboard support: {}, Synchronized output support: {}. Theme mode updates support: {}",
+                    Instant::now().duration_since(now),
+                    features.keyboard_enhancement_flags.is_some(),
+                    features.synchronized_output_mode != SynchronizedOutputMode::NotSupported,
+                    features.theme_mode.is_some(),
                 );
-                supported
-            })
+                self.features.set(Some(features));
+                features
+            }
+        }
+    }
+
+    fn supports_synchronized_output(&self) -> bool {
+        self.features().synchronized_output_mode != SynchronizedOutputMode::NotSupported
     }
 }
 
@@ -176,14 +189,28 @@ where
             execute!(self.buffer, EnableMouseCapture)?;
             self.mouse_capture_enabled = true;
         }
-        if self.supports_keyboard_enhancement_protocol() {
+        let features = self.features();
+        if features.theme_mode.is_some() {
+            execute!(self.buffer, EnableThemeModeUpdates)?;
+        }
+        if features.keyboard_enhancement_flags.is_some() {
             execute!(
                 self.buffer,
-                PushKeyboardEnhancementFlags(
-                    KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-                        | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
-                )
+                PushKeyboardEnhancementFlags(KEYBOARD_ENHANCEMENT_FLAGS)
             )?;
+
+            // If the terminal supports a limited subset of the keyboard enhancement protocol,
+            // turn it off. We need both `DISAMBIGUATE_ESCAPE_CODES` and `REPORT_ALTERNATE_KEYS`.
+            if let Ok(Some(flags)) = terminal::query_keyboard_enhancement_flags() {
+                if !flags.contains(KEYBOARD_ENHANCEMENT_FLAGS) {
+                    log::info!("Turning off keyboard enhancement since the terminal didn't enable the required flags. Expected {KEYBOARD_ENHANCEMENT_FLAGS:?}, found {flags:?}");
+                    self.features.set(Some(TerminalFeatures {
+                        keyboard_enhancement_flags: None,
+                        ..features
+                    }));
+                    execute!(self.buffer, PopKeyboardEnhancementFlags)?;
+                }
+            }
         }
         Ok(())
     }
@@ -208,8 +235,12 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
-        if self.supports_keyboard_enhancement_protocol() {
+        let features = self.features();
+        if features.keyboard_enhancement_flags.is_some() {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
+        }
+        if features.theme_mode.is_some() {
+            execute!(self.buffer, DisableThemeModeUpdates)?;
         }
         if self.supports_bracketed_paste {
             execute!(self.buffer, DisableBracketedPaste,)?;
@@ -231,6 +262,7 @@ where
         // disable without calling enable previously
         let _ = execute!(stdout, DisableMouseCapture);
         let _ = execute!(stdout, PopKeyboardEnhancementFlags);
+        let _ = execute!(stdout, DisableThemeModeUpdates);
         let _ = execute!(stdout, DisableBracketedPaste);
         execute!(stdout, DisableFocusChange, terminal::LeaveAlternateScreen)?;
         terminal::disable_raw_mode()
@@ -240,6 +272,10 @@ where
     where
         I: Iterator<Item = (u16, u16, &'a Cell)>,
     {
+        if self.supports_synchronized_output() {
+            queue!(self.buffer, terminal::BeginSynchronizedUpdate)?;
+        }
+
         let mut fg = Color::Reset;
         let mut bg = Color::Reset;
         let mut underline_color = Color::Reset;
@@ -298,7 +334,13 @@ where
             SetForegroundColor(CColor::Reset),
             SetBackgroundColor(CColor::Reset),
             SetAttribute(CAttribute::Reset)
-        )
+        )?;
+
+        if self.supports_synchronized_output() {
+            execute!(self.buffer, terminal::EndSynchronizedUpdate)?;
+        }
+
+        Ok(())
     }
 
     fn hide_cursor(&mut self) -> io::Result<()> {
@@ -337,6 +379,13 @@ where
 
     fn flush(&mut self) -> io::Result<()> {
         self.buffer.flush()
+    }
+
+    fn get_theme_mode(&self) -> Option<theme::Mode> {
+        self.features().theme_mode.map(|mode| match mode {
+            crossterm::event::ThemeMode::Light => theme::Mode::Light,
+            crossterm::event::ThemeMode::Dark => theme::Mode::Dark,
+        })
     }
 }
 

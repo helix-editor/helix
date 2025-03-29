@@ -26,7 +26,7 @@ helix-vcs = { path = "../helix-vcs" }
 
 bitflags.workspace = true
 anyhow = "1"
-crossterm = { version = "0.28", optional = true }
+crossterm = { workspace = true, optional = true }
 
 tempfile.workspace = true
 

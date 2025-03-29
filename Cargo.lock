@@ -237,25 +237,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 
 [[package]]
-name = "crossterm"
-version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "829d955a0bb380ef178a640b91779e3987da38c9aea133b20614cfed8cdea9c6"
-dependencies = [
- "bitflags",
- "crossterm_winapi",
- "filedescriptor",
- "futures-core",
- "libc",
- "mio",
- "parking_lot",
- "rustix 0.38.44",
- "signal-hook",
- "signal-hook-mio",
- "winapi",
-]
-
-[[package]]
 name = "crossterm_winapi"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1355,6 +1336,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-crossterm"
+version = "0.1.0-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8938f95c101672e5084b377daac1f78ed5964c2a75046fc0d29d66cbed975f8c"
+dependencies = [
+ "bitflags",
+ "crossterm_winapi",
+ "filedescriptor",
+ "futures-core",
+ "libc",
+ "mio",
+ "parking_lot",
+ "rustix 0.38.44",
+ "signal-hook",
+ "signal-hook-mio",
+ "winapi",
+]
+
+[[package]]
 name = "helix-dap"
 version = "25.1.1"
 dependencies = [
@@ -1464,12 +1464,12 @@ dependencies = [
  "arc-swap",
  "chrono",
  "content_inspector",
- "crossterm",
  "fern",
  "futures-util",
  "grep-regex",
  "grep-searcher",
  "helix-core",
+ "helix-crossterm",
  "helix-dap",
  "helix-event",
  "helix-loader",
@@ -1508,8 +1508,8 @@ version = "25.1.1"
 dependencies = [
  "bitflags",
  "cassowary",
- "crossterm",
  "helix-core",
+ "helix-crossterm",
  "helix-view",
  "log",
  "once_cell",
@@ -1542,9 +1542,9 @@ dependencies = [
  "bitflags",
  "chardetng",
  "clipboard-win",
- "crossterm",
  "futures-util",
  "helix-core",
+ "helix-crossterm",
  "helix-dap",
  "helix-event",
  "helix-loader",
