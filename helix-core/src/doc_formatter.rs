@@ -136,10 +136,6 @@ impl<'a> GraphemeWithSource<'a> {
     fn width(&self) -> usize {
         self.grapheme.width()
     }
-
-    fn is_word_boundary(&self) -> bool {
-        self.grapheme.is_word_boundary()
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -168,6 +164,10 @@ impl Default for TextFormat {
             soft_wrap_at_text_width: false,
         }
     }
+}
+
+fn wrap_allowed(x: Option<&Grapheme>, y: &Grapheme) -> bool {
+    x.is_some_and(|x| x.is_word_boundary() && (x.is_whitespace() || !y.is_word_boundary()))
 }
 
 #[derive(Debug)]
@@ -352,17 +352,12 @@ impl<'t> DocumentFormatter<'t> {
         self.peeked_grapheme.as_ref()
     }
 
-    fn next_grapheme(&mut self, col: usize, char_pos: usize) -> Option<GraphemeWithSource<'t>> {
-        self.peek_grapheme(col, char_pos);
-        self.peeked_grapheme.take()
-    }
-
     fn advance_to_next_word(&mut self) {
         self.word_buf.clear();
         let mut word_width = 0;
         let mut word_chars = 0;
 
-        if self.exhausted {
+        if self.exhausted && self.peeked_grapheme.is_none() {
             return;
         }
 
@@ -384,7 +379,10 @@ impl<'t> DocumentFormatter<'t> {
                     if self.text_fmt.soft_wrap_at_text_width
                         && self
                             .peek_grapheme(col, char_pos)
-                            .is_some_and(|grapheme| grapheme.is_newline() || grapheme.is_eof()) => {
+                            .is_some_and(|grapheme| grapheme.is_newline() || grapheme.is_eof()) =>
+                {
+                    self.word_buf.push(self.peeked_grapheme.take().unwrap());
+                    return;
                 }
                 Ordering::Equal if word_width > self.text_fmt.max_wrap as usize => return,
                 Ordering::Greater if word_width > self.text_fmt.max_wrap as usize => {
@@ -398,9 +396,22 @@ impl<'t> DocumentFormatter<'t> {
                 Ordering::Less => (),
             }
 
-            let Some(grapheme) = self.next_grapheme(col, char_pos) else {
+            // It would be nice if this could be written as
+            //   let Some(grapheme) = self.peek_grapheme(col, char_pos)
+            // but the borrow checker can't see inside of peek_grapheme and
+            // assumes that the return value borrows mutably from self.
+            let _ = self.peek_grapheme(col, char_pos);
+            let Some(grapheme) = &self.peeked_grapheme else {
                 return;
             };
+            if wrap_allowed(
+                self.word_buf.last().map(|g| &g.grapheme),
+                &grapheme.grapheme,
+            ) {
+                return;
+            }
+
+            let grapheme = self.peeked_grapheme.take().unwrap();
             word_chars += grapheme.doc_chars();
 
             // Track indentation
@@ -410,13 +421,8 @@ impl<'t> DocumentFormatter<'t> {
                 self.indent_level = None;
             }
 
-            let is_word_boundary = grapheme.is_word_boundary();
             word_width += grapheme.width();
             self.word_buf.push(grapheme);
-
-            if is_word_boundary {
-                return;
-            }
         }
     }
 
