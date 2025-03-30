@@ -136,20 +136,22 @@ impl<'a> GraphemeWithSource<'a> {
     fn width(&self) -> usize {
         self.grapheme.width()
     }
+
+    fn is_word_boundary(&self) -> bool {
+        self.grapheme.is_word_boundary()
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct TextFormat {
     pub soft_wrap: bool,
     pub tab_width: u16,
-    pub max_wrap: Option<u16>,
+    pub max_wrap: u16,
     pub max_indent_retain: u16,
     pub wrap_indicator: Box<str>,
     pub wrap_indicator_highlight: Option<Highlight>,
     pub viewport_width: u16,
     pub soft_wrap_at_text_width: bool,
-    pub continue_comments: Vec<String>,
-    pub is_word_boundary: fn(&Grapheme) -> bool,
 }
 
 // test implementation is basically only used for testing or when softwrap is always disabled
@@ -158,14 +160,12 @@ impl Default for TextFormat {
         TextFormat {
             soft_wrap: false,
             tab_width: 4,
-            max_wrap: Some(3),
+            max_wrap: 3,
             max_indent_retain: 4,
             wrap_indicator: Box::from(" "),
             viewport_width: 17,
             wrap_indicator_highlight: None,
             soft_wrap_at_text_width: false,
-            continue_comments: Vec::new(),
-            is_word_boundary: |g| g.is_word_boundary(),
         }
     }
 }
@@ -386,22 +386,16 @@ impl<'t> DocumentFormatter<'t> {
                             .peek_grapheme(col, char_pos)
                             .is_some_and(|grapheme| grapheme.is_newline() || grapheme.is_eof()) => {
                 }
-                Ordering::Equal
-                    if word_width > self.text_fmt.max_wrap.map_or(usize::MAX, usize::from) =>
-                {
-                    return;
-                }
-                Ordering::Greater
-                    if word_width > self.text_fmt.max_wrap.map_or(usize::MAX, usize::from) =>
-                {
+                Ordering::Equal if word_width > self.text_fmt.max_wrap as usize => return,
+                Ordering::Greater if word_width > self.text_fmt.max_wrap as usize => {
                     self.peeked_grapheme = self.word_buf.pop();
                     return;
                 }
-                Ordering::Equal | Ordering::Greater if self.visual_pos.col > 0 => {
+                Ordering::Equal | Ordering::Greater => {
                     word_width = self.wrap_word();
                     col = self.visual_pos.col + word_width;
                 }
-                _ => (),
+                Ordering::Less => (),
             }
 
             let Some(grapheme) = self.next_grapheme(col, char_pos) else {
@@ -416,7 +410,7 @@ impl<'t> DocumentFormatter<'t> {
                 self.indent_level = None;
             }
 
-            let is_word_boundary = (self.text_fmt.is_word_boundary)(&grapheme.grapheme);
+            let is_word_boundary = grapheme.is_word_boundary();
             word_width += grapheme.width();
             self.word_buf.push(grapheme);
 
