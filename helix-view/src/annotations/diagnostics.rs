@@ -96,14 +96,12 @@ impl InlineDiagnosticsConfig {
         TextFormat {
             soft_wrap: true,
             tab_width: 4,
-            max_wrap: Some(self.max_wrap.min(width / 4)),
+            max_wrap: self.max_wrap.min(width / 4),
             max_indent_retain: 0,
             wrap_indicator: "".into(),
             wrap_indicator_highlight: None,
             viewport_width: width,
             soft_wrap_at_text_width: true,
-            continue_comments: Vec::new(),
-            is_word_boundary: |g| g.is_word_boundary(),
         }
     }
 }
