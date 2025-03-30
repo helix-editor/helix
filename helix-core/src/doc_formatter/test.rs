@@ -6,15 +6,13 @@ impl TextFormat {
         TextFormat {
             soft_wrap: softwrap,
             tab_width: 2,
-            max_wrap: Some(3),
+            max_wrap: 3,
             max_indent_retain: 4,
             wrap_indicator: ".".into(),
             wrap_indicator_highlight: None,
             // use a prime number to allow lining up too often with repeat
             viewport_width: 17,
             soft_wrap_at_text_width: false,
-            continue_comments: Vec::new(),
-            is_word_boundary: |g| g.is_word_boundary(),
         }
     }
 }
