@@ -7,7 +7,7 @@ use crate::job::Job;
 use super::*;
 
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
-use helix_core::doc_formatter::DocumentFormatter;
+use helix_core::doc_formatter::ReflowOpts;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
@@ -2165,33 +2165,22 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
 
     let rope = doc.text();
     let slice = rope.slice(..);
-    let format = TextFormat {
-        soft_wrap: true,
-        tab_width: 8,
-        max_wrap: None,
-        max_indent_retain: u16::try_from(text_width).unwrap_or(u16::MAX),
-        wrap_indicator: Box::from(""),
-        wrap_indicator_highlight: None,
-        viewport_width: u16::try_from(text_width).unwrap_or(u16::MAX),
-        soft_wrap_at_text_width: true,
-        continue_comments: Vec::from(
-            doc.language_config()
-                .and_then(|config| config.comment_tokens.as_deref())
-                .unwrap_or(&[]),
-        ),
-        is_word_boundary: |g| g.is_whitespace(),
+    let opts = ReflowOpts {
+        width: text_width,
+        line_ending: doc.line_ending,
+        comment_tokens: doc
+            .language_config()
+            .and_then(|config| config.comment_tokens.as_deref())
+            .unwrap_or(&[]),
     };
-    let annotations = TextAnnotations::default();
 
     let mut changes = Vec::new();
     for selection in doc.selection(view.id) {
-        let mut formatter = DocumentFormatter::new_at_prev_checkpoint(
+        changes.append(&mut helix_core::doc_formatter::reflow(
             slice.slice(..selection.to()),
-            &format,
-            &annotations,
             selection.from(),
-        );
-        changes.append(&mut formatter.reflow(rope, doc.line_ending));
+            &opts,
+        ));
     }
     let transaction = Transaction::change(rope, changes.into_iter());
 
