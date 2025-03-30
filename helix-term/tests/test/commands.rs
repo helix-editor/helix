@@ -840,9 +840,11 @@ bla]#",
         "// #[|This is a really long comment that we want to break onto multiple lines.]#",
         ":lang rust<ret>:reflow 13<ret>",
         "// #[|This is a
-// really long
-// comment that
-// we want to
+// really
+// long
+// comment
+// that we
+// want to
 // break onto
 // multiple
 // lines.]#",
@@ -859,9 +861,8 @@ bla]#",
 \t// mollit anim id est laborum.
 |]#",
         ":lang go<ret>:reflow 50<ret>",
-        "#[\t// Lorem ipsum dolor sit amet,
-\t// consectetur adipiscing elit, sed do
-\t// eiusmod
+        "#[\t// Lorem ipsum dolor sit amet, consectetur
+\t// adipiscing elit, sed do eiusmod
 \t// tempor incididunt ut labore et dolore
 \t// magna aliqua. Ut enim ad minim
 \t// veniam, quis nostrud exercitation
@@ -886,8 +887,8 @@ bla]#",
     // that each need wrapping
 
     /// currently we wrap each line
-    /// completely separately in order to
-    /// preserve existing newlines.]#"
+    /// completely separately in order
+    /// to preserve existing newlines.]#"
     ))
     .await?;
 
