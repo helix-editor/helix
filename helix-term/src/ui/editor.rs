@@ -254,13 +254,14 @@ impl EditorView {
         theme: &Theme,
     ) {
         const INLINE_BLAME_SCOPE: &str = "ui.virtual.inline-blame";
+        let text = doc.text();
         match inline_blame.behaviour {
             InlineBlameBehaviour::Hidden => (),
             InlineBlameBehaviour::CursorLine => {
                 let cursor_line_idx = doc.cursor_line(view.id);
 
                 // do not render inline blame for empty lines to reduce visual noise
-                if doc.text().line(cursor_line_idx) != doc.line_ending.as_str() {
+                if text.line(cursor_line_idx) != doc.line_ending.as_str() {
                     if let Ok(line_blame) =
                         doc.line_blame(cursor_line_idx as u32, &inline_blame.format)
                     {
@@ -275,22 +276,9 @@ impl EditorView {
                 }
             }
             InlineBlameBehaviour::AllLines => {
-                let text = doc.text();
-                let text_line_count = text.len_lines();
-                let view_height = view.inner_height();
-                let first_visible_line =
-                    text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
-                let first_line = first_visible_line.saturating_sub(view_height);
-                let last_line = first_visible_line
-                    .saturating_add(view_height.saturating_mul(2))
-                    .min(text_line_count);
+                let mut blame_lines = vec![None; text.len_lines()];
 
-                let mut blame_lines = vec![None; text_line_count];
-
-                // Compute ~3 times the current view height of inline blame, that way some scrolling
-                // will not show half the view with inline blame and half without while still being faster
-                // than rendering inline blame for the full file.
-                let blame_for_all_lines = (first_line..last_line).filter_map(|line_idx| {
+                let blame_for_all_lines = view.line_range(doc).filter_map(|line_idx| {
                     // do not render inline blame for empty lines to reduce visual noise
                     if text.line(line_idx) != doc.line_ending.as_str() {
                         doc.line_blame(line_idx as u32, &inline_blame.format)
