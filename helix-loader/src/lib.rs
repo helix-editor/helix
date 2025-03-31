@@ -107,8 +107,8 @@ fn find_runtime_file(rel_path: &Path) -> Option<PathBuf> {
 /// The valid runtime directories are searched in priority order and the first
 /// file found to exist is returned, otherwise the path to the final attempt
 /// that failed.
-pub fn runtime_file(rel_path: &Path) -> PathBuf {
-    find_runtime_file(rel_path).unwrap_or_else(|| {
+pub fn runtime_file(rel_path: impl AsRef<Path>) -> PathBuf {
+    find_runtime_file(rel_path.as_ref()).unwrap_or_else(|| {
         RUNTIME_DIRS
             .last()
             .map(|dir| dir.join(rel_path))

@@ -34,7 +34,7 @@
 "markup.raw" = "green"
 
 "diff.plus" = { fg = "green" }
-"diff.delta" = { fg = "orange" }
+"diff.delta" = { fg = "yellow" }
 "diff.minus" = { fg = "red" }
 
 # 背景
