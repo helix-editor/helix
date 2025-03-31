@@ -41,6 +41,7 @@ use helix_core::{
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
     Selection, SmallVec, Syntax, Tendril, Transaction,
 };
+use helix_lsp::lsp::TextEdit;
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
@@ -4904,15 +4905,30 @@ fn format_selections(cx: &mut Context) {
         )
         .unwrap();
 
-    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future))
-        .ok()
-        .flatten()
-        .unwrap_or_default();
+    tokio::spawn(async move {
+        match future.await {
+            Ok(Some(res)) => {
+                job::dispatch(move |editor, _compositor| {
+                    apply_format_selections(editor, offset_encoding, res)
+                })
+                .await
+            }
+            Err(err) => log::error!("format sections failed: {err}"),
+            Ok(None) => (),
+        }
+    });
+}
 
+fn apply_format_selections(
+    editor: &mut Editor,
+    offset_encoding: helix_lsp::OffsetEncoding,
+    edits: Vec<TextEdit>,
+) {
+    let (view, doc) = current!(editor);
     let transaction =
         helix_lsp::util::generate_transaction_from_edits(doc.text(), edits, offset_encoding);
 
-    doc.apply(&transaction, view_id);
+    doc.apply(&transaction, view.id);
 }
 
 fn join_selections_impl(cx: &mut Context, select_space: bool) {
