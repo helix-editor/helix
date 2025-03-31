@@ -518,7 +518,7 @@ pub fn reflow(text: RopeSlice, char_pos: usize, opts: &ReflowOpts) -> Vec<Change
     let mut word_width = 0;
     let mut last_word_boundary = None;
     let mut changes = Vec::new();
-    for grapheme in text.graphemes() {
+    for grapheme in text.slice(char_pos..).graphemes() {
         let grapheme_chars = grapheme.len_chars();
         let mut grapheme = Grapheme::new(GraphemeStr::from(Cow::from(grapheme)), col, TAB_WIDTH);
         if col + grapheme.width() > opts.width && !grapheme.is_whitespace() {

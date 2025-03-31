@@ -932,5 +932,22 @@ wrapping]#",
     ))
     .await?;
 
+    test((
+        "Test wrapping only part of the text
+#[|wrapping should only modify the lines that are currently selected
+]#",
+        ":reflow 11<ret>",
+        "Test wrapping only part of the text
+#[|wrapping
+should only
+modify the
+lines that
+are
+currently
+selected
+]#",
+    ))
+    .await?;
+
     Ok(())
 }
