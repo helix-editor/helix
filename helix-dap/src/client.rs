@@ -4,7 +4,7 @@ use crate::{
     types::*,
     Error, Result,
 };
-use helix_core::syntax::DebuggerQuirks;
+use helix_core::syntax::config::DebuggerQuirks;
 
 use serde_json::Value;
 

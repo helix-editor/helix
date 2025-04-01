@@ -89,11 +89,6 @@ impl From<(usize, usize)> for Position {
     }
 }
 
-impl From<Position> for tree_sitter::Point {
-    fn from(pos: Position) -> Self {
-        Self::new(pos.row, pos.col)
-    }
-}
 /// Convert a character index to (line, column) coordinates.
 ///
 /// column in `char` count which can be used for row:column display in

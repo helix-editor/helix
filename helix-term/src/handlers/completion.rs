@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use helix_core::chars::char_is_word;
 use helix_core::completion::CompletionProvider;
-use helix_core::syntax::LanguageServerFeature;
+use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{register_hook, TaskHandle};
 use helix_lsp::lsp;
 use helix_stdx::rope::RopeSliceExt;

@@ -1,4 +1,4 @@
-use crate::syntax::{Configuration, Loader, LoaderError};
+use crate::syntax::{config::Configuration, Loader, LoaderError};
 
 /// Language configuration based on built-in languages.toml.
 pub fn default_lang_config() -> Configuration {
