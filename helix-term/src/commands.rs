@@ -3746,33 +3746,35 @@ fn push_jump(view: &mut View, doc: &Document) {
 }
 
 fn goto_line(cx: &mut Context) {
-    if cx.count.is_some() {
-        let (view, doc) = current!(cx.editor);
-        push_jump(view, doc);
+	let (view, doc) = current!(cx.editor);
+	push_jump(view, doc);
 
-        goto_line_without_jumplist(cx.editor, cx.count);
-    }
+	goto_line_without_jumplist(cx.editor, cx.count);
 }
 
 fn goto_line_without_jumplist(editor: &mut Editor, count: Option<NonZeroUsize>) {
-    if let Some(count) = count {
-        let (view, doc) = current!(editor);
-        let text = doc.text().slice(..);
-        let max_line = if text.line(text.len_lines() - 1).len_chars() == 0 {
-            // If the last line is blank, don't jump to it.
-            text.len_lines().saturating_sub(2)
-        } else {
-            text.len_lines() - 1
-        };
-        let line_idx = std::cmp::min(count.get() - 1, max_line);
-        let pos = text.line_to_char(line_idx);
-        let selection = doc
-            .selection(view.id)
-            .clone()
-            .transform(|range| range.put_cursor(text, pos, editor.mode == Mode::Select));
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+    let max_line = if text.line(text.len_lines() - 1).len_chars() == 0 {
+        // If the last line is blank, don't jump to it.
+        text.len_lines().saturating_sub(2)
+    } else {
+        text.len_lines() - 1
+    };
 
-        doc.set_selection(view.id, selection);
-    }
+    let line_idx = if let Some(count) = count {
+        std::cmp::min(count.get() - 1, max_line)
+    } else {
+        max_line
+    };
+
+    let pos = text.line_to_char(line_idx);
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| range.put_cursor(text, pos, editor.mode == Mode::Select));
+
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_last_line(cx: &mut Context) {
