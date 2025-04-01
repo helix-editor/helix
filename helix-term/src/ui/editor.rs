@@ -1,5 +1,5 @@
 use crate::{
-    commands::{self, OnKeyCallback, OnKeyCallbackKind},
+    commands::{self, engine::ScriptingEngine, OnKeyCallback, OnKeyCallbackKind},
     compositor::{Component, Context, Event, EventResult},
     events::{OnModeSwitch, PostCommand},
     handlers::completion::CompletionItem,
@@ -887,7 +887,11 @@ impl EditorView {
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
-        let key_result = self.keymaps.get(mode, event);
+
+        // Check the engine for any buffer specific keybindings first
+        let key_result = ScriptingEngine::handle_keymap_event(self, mode, cxt, event)
+            .unwrap_or_else(|| self.keymaps.get(mode, event));
+
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
         let mut execute_command = |command: &commands::MappableCommand| {
@@ -1550,6 +1554,22 @@ impl Component for EditorView {
             BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
             _ => false,
         };
+
+        let mut area = area;
+
+        // TODO: This may need to get looked at!
+        if let Some(top) = cx.editor.editor_clipping.top {
+            area = area.clip_top(top);
+        }
+        if let Some(bottom) = cx.editor.editor_clipping.bottom {
+            area = area.clip_bottom(bottom);
+        }
+        if let Some(left) = cx.editor.editor_clipping.left {
+            area = area.clip_left(left);
+        }
+        if let Some(right) = cx.editor.editor_clipping.right {
+            area = area.clip_right(right);
+        }
 
         // -1 for commandline and -1 for bufferline
         let mut editor_area = area.clip_bottom(1);
