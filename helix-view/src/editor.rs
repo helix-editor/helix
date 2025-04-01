@@ -29,7 +29,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs,
     io::{self, stdin},
-    num::NonZeroUsize,
+    num::{NonZeroU8, NonZeroUsize},
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -276,6 +276,11 @@ pub struct Config {
     /// either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved).
     /// Defaults to true.
     pub path_completion: bool,
+    /// Enable completion of words from open buffers. Defaults to true.
+    pub word_completion: bool,
+    /// Minimum number of characters required to automatically trigger word completion, if
+    /// enabled. Defaults to `7`.
+    pub word_completion_trigger_length: NonZeroU8,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Default register used for yank/paste. Defaults to '"'
@@ -976,6 +981,8 @@ impl Default for Config {
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             path_completion: true,
+            word_completion: true,
+            word_completion_trigger_length: unsafe { NonZeroU8::new_unchecked(7) },
             auto_format: true,
             default_yank_register: '"',
             auto_save: AutoSave::default(),
