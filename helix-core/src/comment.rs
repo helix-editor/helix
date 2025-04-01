@@ -1,30 +1,95 @@
 //! This module contains the functionality toggle comments on lines over the selection
 //! using the comment character defined in the user's `languages.toml`
 
+use slotmap::DefaultKey as LayerId;
 use smallvec::SmallVec;
 
-use crate::{
-    syntax::BlockCommentToken, Change, Range, Rope, RopeSlice, Selection, Tendril, Transaction,
-};
+use crate::{syntax::BlockCommentToken, Change, Range, Rope, RopeSlice, Syntax, Tendril};
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
 
 pub const DEFAULT_COMMENT_TOKEN: &str = "#";
 
 /// Returns the longest matching comment token of the given line (if it exists).
-pub fn get_comment_token<'a, S: AsRef<str>>(
+pub fn get_comment_token(
+    syntax: Option<&Syntax>,
     text: RopeSlice,
-    tokens: &'a [S],
+    doc_default_tokens: Option<&Vec<String>>,
     line_num: usize,
-) -> Option<&'a str> {
+) -> Option<String> {
     let line = text.line(line_num);
     let start = line.first_non_whitespace_char()?;
+    let start_char = text.line_to_char(line_num) + start;
 
-    tokens
-        .iter()
-        .map(AsRef::as_ref)
-        .filter(|token| line.slice(start..).starts_with(token))
-        .max_by_key(|token| token.len())
+    let injected_tokens = get_injected_tokens(syntax, start_char, start_char)
+        // we only care about line comment tokens
+        .0
+        .and_then(|tokens| {
+            tokens
+                .into_iter()
+                .filter(|token| line.slice(start..).starts_with(token))
+                .max_by_key(|token| token.len())
+        });
+
+    injected_tokens.or(
+        // no comment tokens found for injection, use doc comments if exists
+        doc_default_tokens.and_then(|tokens| {
+            tokens
+                .iter()
+                .filter(|token| line.slice(start..).starts_with(token))
+                .max_by_key(|token| token.len())
+                .cloned()
+        }),
+    )
+}
+
+pub fn get_injected_tokens(
+    syntax: Option<&Syntax>,
+    start: usize,
+    end: usize,
+) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>) {
+    // Find the injection with the most tightly encompassing range.
+    syntax
+        .and_then(|syntax| {
+            injection_for_range(syntax, start, end).map(|language_id| {
+                let config = syntax.layer_config(language_id);
+                (
+                    config.comment_tokens.clone(),
+                    config.block_comment_tokens.clone(),
+                )
+            })
+        })
+        .unwrap_or_default()
+}
+
+/// For a given range in the document, get the most tightly encompassing
+/// injection layer corresponding to that range.
+pub fn injection_for_range(syntax: &Syntax, from: usize, to: usize) -> Option<LayerId> {
+    let mut best_fit = None;
+    let mut min_gap = usize::MAX;
+
+    for (layer_id, layer) in syntax.layers() {
+        for ts_range in &layer.ranges {
+            let is_encompassing = ts_range.start_byte <= from && ts_range.end_byte >= to;
+            if is_encompassing {
+                let gap = ts_range.end_byte - ts_range.start_byte;
+                let config = syntax.layer_config(layer_id);
+                // ignore the language family for which it won't make
+                // sense to consider their comment.
+                //
+                // This includes, for instance, `comment`, `jsdoc`, `regex`
+                let has_comment_tokens =
+                    config.comment_tokens.is_some() || config.block_comment_tokens.is_some();
+
+                if gap < min_gap && has_comment_tokens {
+                    best_fit = Some(layer_id);
+                    min_gap = gap;
+                }
+            }
+        }
+    }
+
+    best_fit
 }
 
 /// Given text, a comment token, and a set of line indices, returns the following:
@@ -78,32 +143,29 @@ fn find_line_comment(
 }
 
 #[must_use]
-pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&str>) -> Transaction {
+pub fn toggle_line_comments(doc: &Rope, range: &Range, token: Option<&str>) -> Vec<Change> {
     let text = doc.slice(..);
 
     let token = token.unwrap_or(DEFAULT_COMMENT_TOKEN);
     let comment = Tendril::from(format!("{} ", token));
 
-    let mut lines: Vec<usize> = Vec::with_capacity(selection.len());
+    let start = text.char_to_line(range.from());
+    let end = text.char_to_line(range.to().saturating_sub(1));
+    let line_count = text.len_lines();
+    let start = start.clamp(0, line_count);
+    let end = (end + 1).min(line_count);
 
-    let mut min_next_line = 0;
-    for selection in selection {
-        let (start, end) = selection.line_range(text);
-        let start = start.clamp(min_next_line, text.len_lines());
-        let end = (end + 1).min(text.len_lines());
+    let mut lines = vec![];
+    lines.extend(start..end);
 
-        lines.extend(start..end);
-        min_next_line = end;
-    }
-
-    let (commented, to_change, min, margin) = find_line_comment(token, text, lines);
+    let (was_commented, to_change, min, margin) = find_line_comment(token, text, lines);
 
     let mut changes: Vec<Change> = Vec::with_capacity(to_change.len());
 
     for line in to_change {
         let pos = text.line_to_char(line) + min;
 
-        if !commented {
+        if !was_commented {
             // comment line
             changes.push((pos, pos, Some(comment.clone())));
         } else {
@@ -112,7 +174,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
         }
     }
 
-    Transaction::change(doc, changes.into_iter())
+    changes
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -141,11 +203,11 @@ pub enum CommentChange {
 pub fn find_block_comments(
     tokens: &[BlockCommentToken],
     text: RopeSlice,
-    selection: &Selection,
+    ranges: &Vec<Range>,
 ) -> (bool, Vec<CommentChange>) {
-    let mut commented = true;
+    let mut was_commented = true;
     let mut only_whitespace = true;
-    let mut comment_changes = Vec::with_capacity(selection.len());
+    let mut comment_changes = Vec::with_capacity(ranges.len());
     let default_tokens = tokens.first().cloned().unwrap_or_default();
     let mut start_token = default_tokens.start.clone();
     let mut end_token = default_tokens.end.clone();
@@ -159,7 +221,7 @@ pub fn find_block_comments(
             b.start.len().cmp(&a.start.len())
         }
     });
-    for range in selection {
+    for range in ranges {
         let selection_slice = range.slice(text);
         if let (Some(start_pos), Some(end_pos)) = (
             selection_slice.first_non_whitespace_char(),
@@ -198,7 +260,7 @@ pub fn find_block_comments(
                     start_token: default_tokens.start.clone(),
                     end_token: default_tokens.end.clone(),
                 });
-                commented = false;
+                was_commented = false;
             } else {
                 comment_changes.push(CommentChange::Commented {
                     range: *range,
@@ -217,23 +279,22 @@ pub fn find_block_comments(
         }
     }
     if only_whitespace {
-        commented = false;
+        was_commented = false;
     }
-    (commented, comment_changes)
+    (was_commented, comment_changes)
 }
 
 #[must_use]
 pub fn create_block_comment_transaction(
-    doc: &Rope,
-    selection: &Selection,
-    commented: bool,
+    ranges: &[Range],
+    was_commented: bool,
     comment_changes: Vec<CommentChange>,
-) -> (Transaction, SmallVec<[Range; 1]>) {
-    let mut changes: Vec<Change> = Vec::with_capacity(selection.len() * 2);
-    let mut ranges: SmallVec<[Range; 1]> = SmallVec::with_capacity(selection.len());
+) -> (Vec<Change>, SmallVec<[Range; 1]>) {
+    let mut changes: Vec<Change> = Vec::with_capacity(ranges.len() * 2);
+    let mut ranges: SmallVec<[Range; 1]> = SmallVec::with_capacity(ranges.len());
     let mut offs = 0;
     for change in comment_changes {
-        if commented {
+        if was_commented {
             if let CommentChange::Commented {
                 range,
                 start_pos,
@@ -245,16 +306,12 @@ pub fn create_block_comment_transaction(
             } = change
             {
                 let from = range.from();
-                changes.push((
-                    from + start_pos,
-                    from + start_pos + start_token.len() + start_margin as usize,
-                    None,
-                ));
-                changes.push((
-                    from + end_pos - end_token.len() - end_margin as usize + 1,
-                    from + end_pos + 1,
-                    None,
-                ));
+                let keep_from = from + start_pos + start_token.len() + start_margin as usize;
+                changes.push((from + start_pos, keep_from, None));
+                let keep_until = from + end_pos - end_token.len() - end_margin as usize + 1;
+                changes.push((keep_until, from + end_pos + 1, None));
+                // The range of characters keep_from..keep_until remain in the document
+                ranges.push(Range::new(keep_from, keep_until).with_direction(range.direction()));
             }
         } else {
             // uncommented so manually map ranges through changes
@@ -291,37 +348,92 @@ pub fn create_block_comment_transaction(
             }
         }
     }
-    (Transaction::change(doc, changes.into_iter()), ranges)
+    (changes, ranges)
 }
 
 #[must_use]
 pub fn toggle_block_comments(
     doc: &Rope,
-    selection: &Selection,
+    ranges: &Vec<Range>,
     tokens: &[BlockCommentToken],
-) -> Transaction {
+    selections: &mut SmallVec<[Range; 1]>,
+    added_chars: &mut usize,
+    removed_chars: &mut usize,
+) -> Vec<Change> {
     let text = doc.slice(..);
-    let (commented, comment_changes) = find_block_comments(tokens, text, selection);
-    let (mut transaction, ranges) =
-        create_block_comment_transaction(doc, selection, commented, comment_changes);
-    if !commented {
-        transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+    let (was_commented, comment_changes) = find_block_comments(tokens, text, ranges);
+    let (changes, new_ranges) =
+        create_block_comment_transaction(ranges, was_commented, comment_changes);
+
+    if was_commented {
+        for (range, changes) in new_ranges.iter().zip(changes.chunks_exact(2)) {
+            // every 2 elements (from, to) in `changes` corresponds
+            // the `from` - `to` represents the range of text that will be deleted.
+            // to 1 element in `new_ranges`
+            //
+            // Left token:
+            //
+            // "<!-- "
+            //  ^ left_from
+            //       ^ left_to
+            //
+            // Right token:
+            //
+            // " -->"
+            //  ^ right_from
+            //      ^ right_to
+            let [(left_from, left_to, _), (right_from, right_to, _)] = changes else {
+                unreachable!()
+            };
+
+            *removed_chars += left_to - left_from;
+
+            // We slide the range to the left by the amount of characters
+            // we've deleted so far + the amount of chars deleted for
+            // the left comment token of the current iteration
+            selections.push(Range::new(
+                range.anchor + *added_chars - *removed_chars,
+                range.head + *added_chars - *removed_chars,
+            ));
+
+            *removed_chars += right_to - right_from;
+        }
+
+        changes
+    } else {
+        // we're never removing or
+        // creating ranges. Only shifting / increasing size
+        // of existing ranges to accomodate the newly added
+        // comment tokens.
+        //
+        // when we add comment tokens, we want to extend our selection to
+        // also include the added tokens.
+        for (range, old_range) in new_ranges.iter().zip(ranges) {
+            // Will not underflow because the new range must always be
+            // at least the same size as the old range, since we're
+            // adding comment token characters, never removing.
+            let range = Range::new(
+                range.anchor + *added_chars - *removed_chars,
+                range.head + *added_chars - *removed_chars,
+            );
+            selections.push(range);
+            *added_chars += range.len() - old_range.len();
+        }
+
+        changes
     }
-    transaction
 }
 
-pub fn split_lines_of_selection(text: RopeSlice, selection: &Selection) -> Selection {
-    let mut ranges = SmallVec::new();
-    for range in selection.ranges() {
-        let (line_start, line_end) = range.line_range(text.slice(..));
-        let mut pos = text.line_to_char(line_start);
-        for line in text.slice(pos..text.line_to_char(line_end + 1)).lines() {
-            let start = pos;
-            pos += line.len_chars();
-            ranges.push(Range::new(start, pos));
-        }
+pub fn split_lines_of_range(text: RopeSlice, range: &Range) -> Vec<Range> {
+    let mut ranges = vec![];
+    let (line_start, line_end) = range.line_range(text.slice(..));
+    let mut pos = text.line_to_char(line_start);
+    for line in text.slice(pos..text.line_to_char(line_end + 1)).lines() {
+        let start = pos;
+        pos += line.len_chars();
+        ranges.push(Range::new(start, pos));
     }
-    Selection::new(ranges, 0)
+    ranges
 }
 
 #[cfg(test)]
@@ -357,6 +469,8 @@ mod test {
 
     // TODO: account for uncommenting with uneven comment indentation
     mod toggle_line_comment {
+        use crate::Transaction;
+
         use super::*;
 
         #[test]
@@ -364,9 +478,11 @@ mod test {
             // four lines, two space indented, except for line 1 which is blank.
             let mut doc = Rope::from("  1\n\n  2\n  3");
             // select whole document
-            let selection = Selection::single(0, doc.len_chars() - 1);
+            let range = Range::new(0, doc.len_chars() - 1);
 
-            let transaction = toggle_line_comments(&doc, &selection, None);
+            let changes = toggle_line_comments(&doc, &range, None);
+            let transaction = Transaction::change(&doc, changes.into_iter());
+
             transaction.apply(&mut doc);
 
             assert_eq!(doc, "  # 1\n\n  # 2\n  # 3");
@@ -375,112 +491,136 @@ mod test {
         #[test]
         fn uncomment() {
             let mut doc = Rope::from("  # 1\n\n  # 2\n  # 3");
-            let mut selection = Selection::single(0, doc.len_chars() - 1);
+            let range = Range::new(0, doc.len_chars() - 1);
 
-            let transaction = toggle_line_comments(&doc, &selection, None);
+            let changes = toggle_line_comments(&doc, &range, None);
+            let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
-            selection = selection.map(transaction.changes());
+            _ = range.map(transaction.changes());
 
             assert_eq!(doc, "  1\n\n  2\n  3");
-            assert!(selection.len() == 1); // to ignore the selection unused warning
         }
 
         #[test]
         fn uncomment_0_margin_comments() {
             let mut doc = Rope::from("  #1\n\n  #2\n  #3");
-            let mut selection = Selection::single(0, doc.len_chars() - 1);
+            let range = Range::new(0, doc.len_chars() - 1);
 
-            let transaction = toggle_line_comments(&doc, &selection, None);
+            let changes = toggle_line_comments(&doc, &range, None);
+            let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
-            selection = selection.map(transaction.changes());
+            _ = range.map(transaction.changes());
 
             assert_eq!(doc, "  1\n\n  2\n  3");
-            assert!(selection.len() == 1); // to ignore the selection unused warning
         }
 
         #[test]
         fn uncomment_0_margin_comments_with_no_space() {
             let mut doc = Rope::from("#");
-            let mut selection = Selection::single(0, doc.len_chars() - 1);
+            let range = Range::new(0, doc.len_chars() - 1);
 
-            let transaction = toggle_line_comments(&doc, &selection, None);
+            let changes = toggle_line_comments(&doc, &range, None);
+            let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
-            selection = selection.map(transaction.changes());
+            _ = range.map(transaction.changes());
             assert_eq!(doc, "");
-            assert!(selection.len() == 1); // to ignore the selection unused warning
         }
-    }
 
-    #[test]
-    fn test_find_block_comments() {
-        // three lines 5 characters.
-        let mut doc = Rope::from("1\n2\n3");
-        // select whole document
-        let selection = Selection::single(0, doc.len_chars());
+        #[test]
+        fn test_find_block_comments() {
+            // three lines 5 characters.
+            let mut doc = Rope::from("1\n2\n3");
+            // select whole document
+            let range = Range::new(0, doc.len_chars());
 
-        let text = doc.slice(..);
+            let text = doc.slice(..);
 
-        let res = find_block_comments(&[BlockCommentToken::default()], text, &selection);
+            let res = find_block_comments(&[BlockCommentToken::default()], text, &vec![range]);
 
-        assert_eq!(
-            res,
-            (
-                false,
-                vec![CommentChange::Uncommented {
-                    range: Range::new(0, 5),
-                    start_pos: 0,
-                    end_pos: 4,
-                    start_token: "/*".to_string(),
-                    end_token: "*/".to_string(),
-                }]
-            )
-        );
+            assert_eq!(
+                res,
+                (
+                    false,
+                    vec![CommentChange::Uncommented {
+                        range: Range::new(0, 5),
+                        start_pos: 0,
+                        end_pos: 4,
+                        start_token: "/*".to_string(),
+                        end_token: "*/".to_string(),
+                    }]
+                )
+            );
 
-        // comment
-        let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
-        transaction.apply(&mut doc);
+            // comment
+            let changes = toggle_block_comments(
+                &doc,
+                &vec![range],
+                &[BlockCommentToken::default()],
+                &mut SmallVec::new(),
+                &mut 0,
+                &mut 0,
+            );
+            let transaction = Transaction::change(&doc, changes.into_iter());
+            transaction.apply(&mut doc);
 
-        assert_eq!(doc, "/* 1\n2\n3 */");
+            assert_eq!(doc, "/* 1\n2\n3 */");
 
-        // uncomment
-        let selection = Selection::single(0, doc.len_chars());
-        let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
-        transaction.apply(&mut doc);
-        assert_eq!(doc, "1\n2\n3");
+            // uncomment
+            let range = Range::new(0, doc.len_chars());
+            let changes = toggle_block_comments(
+                &doc,
+                &vec![range],
+                &[BlockCommentToken::default()],
+                &mut SmallVec::new(),
+                &mut 0,
+                &mut 0,
+            );
+            let transaction = Transaction::change(&doc, changes.into_iter());
+            transaction.apply(&mut doc);
+            assert_eq!(doc, "1\n2\n3");
 
-        // don't panic when there is just a space in comment
-        doc = Rope::from("/* */");
-        let selection = Selection::single(0, doc.len_chars());
-        let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
-        transaction.apply(&mut doc);
-        assert_eq!(doc, "");
-    }
+            // don't panic when there is just a space in comment
+            doc = Rope::from("/* */");
+            let range = Range::new(0, doc.len_chars());
+            let changes = toggle_block_comments(
+                &doc,
+                &vec![range],
+                &[BlockCommentToken::default()],
+                &mut SmallVec::new(),
+                &mut 0,
+                &mut 0,
+            );
+            let transaction = Transaction::change(&doc, changes.into_iter());
+            transaction.apply(&mut doc);
+            assert_eq!(doc, "");
+        }
 
-    /// Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose
-    /// byte size unequal the amount of chars
-    #[test]
-    fn test_get_comment_with_char_boundaries() {
-        let rope = Rope::from("··");
-        let tokens = ["//", "///"];
+        /// Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose
+        /// byte size unequal the amount of chars
+        #[test]
+        fn test_get_comment_with_char_boundaries() {
+            let rope = Rope::from("··");
+            let tokens = vec!["//".to_owned(), "///".to_owned()];
 
-        assert_eq!(
-            super::get_comment_token(rope.slice(..), tokens.as_slice(), 0),
-            None
-        );
-    }
+            assert_eq!(
+                super::get_comment_token(None, rope.slice(..), Some(&tokens), 0),
+                None
+            );
+        }
 
-    /// Test for `get_comment_token`.
-    ///
-    /// Assuming the comment tokens are stored as `["///", "//"]`, `get_comment_token` should still
-    /// return `///` instead of `//` if the user is in a doc-comment section.
-    #[test]
-    fn test_use_longest_comment() {
-        let text = Rope::from("    /// amogus");
-        let tokens = ["///", "//"];
+        /// Test for `get_comment_token`.
+        ///
+        /// Assuming the comment tokens are stored as `["///", "//"]`, `get_comment_token` should still
+        /// return `///` instead of `//` if the user is in a doc-comment section.
+        #[test]
+        fn test_use_longest_comment() {
+            let text = Rope::from("    /// amogus ඞ");
+            let tokens = vec!["///".to_owned(), "//".to_owned()];
 
-        assert_eq!(
-            super::get_comment_token(text.slice(..), tokens.as_slice(), 0),
-            Some("///")
-        );
+            assert_eq!(
+                super::get_comment_token(None, text.slice(..), Some(&tokens), 0),
+                Some("///".to_owned())
+            );
+        }
     }
 }
