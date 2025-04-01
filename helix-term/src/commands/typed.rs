@@ -100,34 +100,59 @@ fn force_quit(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
 }
 
 fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    fn parse(arg: Cow<str>) -> (Cow<Path>, Position) {
+        let (path, pos) = crate::args::parse_file(&arg);
+        let path = helix_stdx::path::expand_tilde(path);
+        (path, pos)
+    }
+
+    fn show_picker(cx: &mut compositor::Context, dirs: Vec<PathBuf>) {
+        let callback = async move {
+            let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = ui::file_picker_multiple_roots(editor, dirs);
+                    compositor.push(Box::new(overlaid(picker)));
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+    }
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    for arg in args {
-        let (path, pos) = crate::args::parse_file(&arg);
-        let path = helix_stdx::path::expand_tilde(path);
-        // If the path is a directory, open a file picker on that directory and update the status
-        // message
-        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
-            let callback = async move {
-                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
-                    move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(editor, path.into_owned());
-                        compositor.push(Box::new(overlaid(picker)));
-                    },
-                ));
-                Ok(call)
-            };
-            cx.jobs.callback(callback);
-        } else {
-            // Otherwise, just open the file
-            let _ = cx.editor.open(&path, Action::Replace)?;
-            let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-            doc.set_selection(view.id, pos);
-            // does not affect opening a buffer without pos
-            align_view(doc, view, Align::Center);
+    if args.has_flag("single_picker") {
+        let dirs: Vec<PathBuf> = args
+            .into_iter()
+            .map(|a| {
+                let path = std::fs::canonicalize(parse(a).0)?;
+                if !path.is_dir() {
+                    bail!("argument {} is not a directory", path.to_string_lossy());
+                }
+                Ok(path)
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        if !dirs.is_empty() {
+            show_picker(cx, dirs);
+        }
+    } else {
+        for arg in args {
+            let (path, pos) = parse(arg);
+            // If the path is a directory, open a file picker on that directory and update the
+            // status message
+            if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
+                let dirs = vec![path.into_owned()];
+                show_picker(cx, dirs);
+            } else {
+                // Otherwise, just open the file
+                let _ = cx.editor.open(&path, Action::Replace)?;
+                let (view, doc) = current!(cx.editor);
+                let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                doc.set_selection(view.id, pos);
+                // does not affect opening a buffer without pos
+                align_view(doc, view, Align::Center);
+            }
         }
     }
     Ok(())
@@ -2600,9 +2625,18 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["o", "edit", "e"],
         doc: "Open a file from disk into the current view.",
         fun: open,
+        // TODO: Use completers::directory if -s flag is supplied.
         completer: CommandCompleter::all(completers::filename),
         signature: Signature {
             positionals: (1, None),
+            flags: &[
+                Flag {
+                    name: "single_picker",
+                    alias: Some('s'),
+                    doc: "Show a single picker using multiple root directories.",
+                    ..Flag::DEFAULT
+                },
+            ],
             ..Signature::DEFAULT
         },
     },
