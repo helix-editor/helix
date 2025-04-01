@@ -1590,7 +1590,7 @@ impl Document {
                     // file in the file system into what gix::blame knows about (gix::blame only
                     // knows about commit history, it does not know about uncommitted changes)
                     diff_handle
-                        .load()
+                        .try_load()?
                         .hunks_intersecting_line_ranges(std::iter::once((0, cursor_line as usize)))
                         .try_fold(
                             (0, 0),

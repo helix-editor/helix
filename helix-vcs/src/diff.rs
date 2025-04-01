@@ -75,6 +75,13 @@ impl DiffHandle {
         }
     }
 
+    pub fn try_load(&self) -> Option<Diff> {
+        Some(Diff {
+            diff: self.diff.try_read()?,
+            inverted: self.inverted,
+        })
+    }
+
     /// Updates the document associated with this redraw handle
     /// This function is only intended to be called from within the rendering loop
     /// if called from elsewhere it may fail to acquire the render lock and panic
