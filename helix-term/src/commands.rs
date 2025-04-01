@@ -45,7 +45,7 @@ use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
     info::Info,
-    input::KeyEvent,
+    input::{Event, KeyEvent, KeyModifiers},
     keyboard::KeyCode,
     theme::Style,
     tree,
@@ -58,10 +58,13 @@ use insert::*;
 use movement::Movement;
 
 use crate::{
-    compositor::{self, Component, Compositor},
+    compositor::{self, Component, Compositor, EventResult},
     filter_picker_entry,
     job::Callback,
-    ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
+    ui::{
+        self, overlay::overlaid, picker::PickerSideEffect, Picker, PickerColumn, Popup, Prompt,
+        PromptEvent,
+    },
 };
 
 use crate::job::{self, Jobs};
@@ -78,6 +81,7 @@ use std::{
 
 use std::{
     borrow::Cow,
+    iter,
     path::{Path, PathBuf},
 };
 
@@ -402,6 +406,7 @@ impl MappableCommand {
         file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
         file_explorer_in_current_directory, "Open file explorer at current working directory",
         code_action, "Perform code action",
+        labelled_buffer_picker, "Open labelled buffer picker",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
@@ -3113,36 +3118,79 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     }
 }
 
-fn buffer_picker(cx: &mut Context) {
+fn iter_newbase(n: u32, base: u32) -> impl Iterator<Item = u32> {
+    let mut num = n;
+    let mut divisor = 1;
+    while divisor * base <= n {
+        divisor *= base;
+    }
+    iter::from_fn(move || {
+        if divisor <= 0 {
+            return None;
+        }
+        let digit = num / divisor;
+        num %= divisor;
+        divisor /= base;
+        Some(digit)
+    })
+}
+
+fn ord_label_nopad(ord: u32, labels: &[char]) -> impl Iterator<Item = char> + '_ {
+    iter_newbase(ord, labels.len() as u32)
+        .map(|i| labels.get(i as usize))
+        .filter_map(|o| o)
+        .map(|r| *r)
+}
+
+fn ord_label(ord: u32, max: u32, labels: &[char]) -> Vec<char> {
+    let max_len = ord_label_nopad(max, labels).count();
+    let label_nopad: Vec<char> = ord_label_nopad(ord, labels).collect();
+    iter::repeat(labels[0])
+        .take(max_len - label_nopad.len())
+        .chain(label_nopad.into_iter())
+        .collect()
+}
+
+#[derive(Clone)]
+struct BufferMeta {
+    id: DocumentId,
+    label: Vec<char>,
+    path: Option<PathBuf>,
+    is_modified: bool,
+    is_current: bool,
+    focused_at: std::time::Instant,
+}
+
+fn get_buffers(cx: &mut Context) -> Vec<BufferMeta> {
     let current = view!(cx.editor).doc;
 
-    struct BufferMeta {
-        id: DocumentId,
-        path: Option<PathBuf>,
-        is_modified: bool,
-        is_current: bool,
-        focused_at: std::time::Instant,
-    }
+    let labels = &cx.editor.config().buffer_picker.label_alphabet;
 
-    let new_meta = |doc: &Document| BufferMeta {
+    let new_meta = |(i, doc): (usize, &Document)| BufferMeta {
         id: doc.id(),
         path: doc.path().cloned(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
+        label: ord_label(i as u32, cx.editor.documents.len() as u32, labels),
     };
 
-    let mut items = cx
-        .editor
+    cx.editor
         .documents
         .values()
+        .enumerate()
         .map(new_meta)
-        .collect::<Vec<BufferMeta>>();
+        .collect::<Vec<BufferMeta>>()
+}
 
-    // mru
-    items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
+fn get_buffers_mru(cx: &mut Context) -> Vec<BufferMeta> {
+    let mut buffers = get_buffers(cx);
+    buffers.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
+    buffers
+}
 
-    let columns = [
+fn get_buffer_picker_columns<T>() -> impl IntoIterator<Item = PickerColumn<BufferMeta, T>> {
+    [
         PickerColumn::new("id", |meta: &BufferMeta, _| meta.id.to_string().into()),
         PickerColumn::new("flags", |meta: &BufferMeta, _| {
             let mut flags = String::new();
@@ -3165,10 +3213,97 @@ fn buffer_picker(cx: &mut Context) {
                 .to_string()
                 .into()
         }),
-    ];
-    let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
-        cx.editor.switch(meta.id, action);
-    })
+    ]
+}
+
+fn get_labelled_buffer_picker_columns<T>() -> impl IntoIterator<Item = PickerColumn<BufferMeta, T>>
+{
+    iter::once(PickerColumn::new("label", |meta: &BufferMeta, _| {
+        (&meta.label).into()
+    }))
+    .chain(get_buffer_picker_columns())
+}
+
+fn labelled_buffer_picker(cx: &mut Context) {
+    let items = get_buffers(cx);
+
+    let labels = &cx.editor.config().buffer_picker.label_alphabet;
+    let max_label = ord_label_nopad(cx.editor.documents.len() as u32, labels).count();
+
+    let mut chars_read = 0;
+    let mut matching: Vec<bool> = iter::repeat(true).take(items.len()).collect();
+
+    let picker = Picker::new(
+        get_labelled_buffer_picker_columns(),
+        2,
+        items.clone(),
+        (),
+        |cx, meta, action| {
+            cx.editor.switch(meta.id, action);
+        },
+    )
+    .with_text_typing_handler(
+        move |event: &Event, cx: &mut compositor::Context| -> (PickerSideEffect, EventResult) {
+            if let Event::Key(KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: KeyModifiers::NONE,
+            }) = event
+            {
+                chars_read += 1;
+                if chars_read > max_label {
+                    // TODO: raise message that match failed (invalid key sequence)
+                    chars_read = 0;
+                    matching.iter_mut().for_each(|v| *v = true);
+                    return (PickerSideEffect::None, EventResult::Consumed(None));
+                }
+                let idx = chars_read - 1;
+                items.iter().enumerate().for_each(|(i, item)| {
+                    if *c != item.label[idx] {
+                        matching[i] = false;
+                    }
+                });
+                let nmatches = matching.iter().fold(0, |acc, &c| acc + c as i32);
+                if nmatches == 0 {
+                    // TODO: raise message that match failed (invalid key sequence)
+                    chars_read = 0;
+                    matching.iter_mut().for_each(|v| *v = true);
+                } else if nmatches == 1 {
+                    // unique match found
+                    let match_idx = matching
+                        .iter()
+                        .enumerate()
+                        .find(|(_, c)| **c)
+                        .map(|(i, _)| i)
+                        .unwrap();
+                    cx.editor.switch(items[match_idx].id, Action::Replace);
+                    return (PickerSideEffect::Close, EventResult::Consumed(None));
+                }
+            }
+            (PickerSideEffect::None, EventResult::Consumed(None))
+        },
+    )
+    .with_preview(|editor, meta| {
+        let doc = &editor.documents.get(&meta.id)?;
+        let lines = doc.selections().values().next().map(|selection| {
+            let cursor_line = selection.primary().cursor_line(doc.text().slice(..));
+            (cursor_line, cursor_line)
+        });
+        Some((meta.id.into(), lines))
+    });
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn buffer_picker(cx: &mut Context) {
+    let items = get_buffers_mru(cx);
+    let picker = Picker::new(
+        get_buffer_picker_columns(),
+        2,
+        items,
+        (),
+        |cx, meta, action| {
+            cx.editor.switch(meta.id, action);
+        },
+    )
     .with_preview(|editor, meta| {
         let doc = &editor.documents.get(&meta.id)?;
         let lines = doc.selections().values().next().map(|selection| {
