@@ -5,6 +5,7 @@ use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;
 
 pub use crate::keyboard::{KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
+use crate::theme;
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Hash)]
 pub enum Event {
@@ -14,6 +15,7 @@ pub enum Event {
     Mouse(MouseEvent),
     Paste(String),
     Resize(u16, u16),
+    ThemeModeChanged(theme::Mode),
     IdleTimeout,
 }
 
@@ -468,6 +470,12 @@ impl From<crossterm::event::Event> for Event {
             crossterm::event::Event::FocusGained => Self::FocusGained,
             crossterm::event::Event::FocusLost => Self::FocusLost,
             crossterm::event::Event::Paste(s) => Self::Paste(s),
+            crossterm::event::Event::ThemeModeChanged(theme_mode) => {
+                Self::ThemeModeChanged(match theme_mode {
+                    crossterm::event::ThemeMode::Light => theme::Mode::Light,
+                    crossterm::event::ThemeMode::Dark => theme::Mode::Dark,
+                })
+            }
         }
     }
 }
