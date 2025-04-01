@@ -30,7 +30,7 @@ pub struct FileBlame {
 }
 
 impl FileBlame {
-    /// Get the blame information corresponing to a line in file and diff for that line
+    /// Get the blame information corresponding to a line in the file and diff for that line
     #[inline]
     pub fn blame_for_line(&self, line: u32, inserted_lines: u32, removed_lines: u32) -> LineBlame {
         // Because gix_blame doesn't care about stuff that is not commited, we have to "normalize" the
