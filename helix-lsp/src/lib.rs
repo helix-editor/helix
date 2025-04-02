@@ -971,11 +971,12 @@ pub fn find_lsp_workspace(
 
     let mut top_marker = None;
     for ancestor in file.ancestors() {
-        if root_markers
-            .iter()
-            .any(|marker| ancestor.join(marker).exists())
+        if top_marker.is_none()
+            && root_markers
+                .iter()
+                .any(|marker| ancestor.join(marker).exists())
         {
-            top_marker = Some(ancestor);
+            top_marker.replace(ancestor);
         }
 
         if root_dirs
