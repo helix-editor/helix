@@ -1740,9 +1740,9 @@ impl Editor {
     }
 
     /// Use when Helix is opened with no arguments passed
-    pub fn new_file_welcome(&mut self, action: Action) -> DocumentId {
+    pub fn new_file_welcome(&mut self) -> DocumentId {
         self.new_file_from_document(
-            action,
+            Action::VerticalSplit,
             Document::default(self.config.clone()).with_welcome(),
         )
     }
