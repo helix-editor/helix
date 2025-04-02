@@ -85,6 +85,10 @@ impl EditorView {
             Center,
         }
 
+        /// Declare the welcome screen declaratively using this macro
+        /// It avoids the performance overhead of calling `Vec<Option<_>>::flatten` and
+        /// makes it easy to get the longest line in the center and the left, without
+        /// having to iterate over the `Vec<_>` again.
         macro_rules! welcome {
             (
                 $([$align:ident] $line:expr, $(if $cond:expr;)?)* $(,)?
