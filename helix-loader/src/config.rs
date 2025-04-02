@@ -23,22 +23,6 @@ pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
     .collect::<Result<Vec<_>, _>>()?
     .into_iter()
     .fold(default_lang_config(), |a, b| {
-        // combines for example
-        // b:
-        //   [[language]]
-        //   name = "toml"
-        //   language-server = { command = "taplo", args = ["lsp", "stdio"] }
-        //
-        // a:
-        //   [[language]]
-        //   language-server = { command = "/usr/bin/taplo" }
-        //
-        // into:
-        //   [[language]]
-        //   name = "toml"
-        //   language-server = { command = "/usr/bin/taplo" }
-        //
-        // thus it overrides the third depth-level of b with values of a if they exist, but otherwise merges their values
         crate::merge_toml_values(a, b, 3)
     });
 
