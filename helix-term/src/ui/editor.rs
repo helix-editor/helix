@@ -109,7 +109,7 @@ impl EditorView {
             }};
         }
 
-        let (lines, longest_left, longest_center) = welcome! {
+        let (lines, len_of_longest_left, len_of_longest_center) = welcome! {
             [Center] vec!["helix ".into(), Span::styled(VERSION_AND_GIT_HASH, theme.get("comment"))],
             [Left] "",
             [Center] Span::styled(
@@ -157,13 +157,16 @@ impl EditorView {
 
         // the y-coordinate where we start drawing the welcome screen
         let y_start = view.area.y + (view.area.height / 2).saturating_sub(lines_count as u16 / 2);
+        // y-coordinate of the center of the viewport
         let y_center = view.area.x + view.area.width / 2;
 
+        // the x-coordinate where we start drawing the welcome screen
+        // +2 to make the text look like its in the center instead of on the side
         let x_start_left =
-            view.area.x + (view.area.width / 2).saturating_sub(longest_left as u16 / 2) + 2;
+            view.area.x + (view.area.width / 2).saturating_sub(len_of_longest_left as u16 / 2) + 2;
 
-        let has_x_left_overflow = (x_start_left + longest_left as u16) > view.area.width;
-        let has_x_center_overflow = longest_center as u16 > view.area.width;
+        let has_x_left_overflow = (x_start_left + len_of_longest_left as u16) > view.area.width;
+        let has_x_center_overflow = len_of_longest_center as u16 > view.area.width;
         let has_x_overflow = has_x_left_overflow || has_x_center_overflow;
 
         // we want lines_count < view.area.height so it does not get drawn
