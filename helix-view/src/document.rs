@@ -854,7 +854,7 @@ impl Document {
                 } else if !output.stderr.is_empty() {
                     log::debug!(
                         "Formatter printed to stderr: {}",
-                        String::from_utf8_lossy(&output.stderr).to_string()
+                        String::from_utf8_lossy(&output.stderr)
                     );
                 }
 
