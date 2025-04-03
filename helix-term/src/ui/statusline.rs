@@ -226,19 +226,39 @@ fn render_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (warnings, errors) = context
-        .doc
-        .diagnostics()
-        .iter()
-        .fold((0, 0), |mut counts, diag| {
-            use helix_core::diagnostic::Severity;
-            match diag.severity {
-                Some(Severity::Warning) => counts.0 += 1,
-                Some(Severity::Error) | None => counts.1 += 1,
-                _ => {}
-            }
-            counts
-        });
+    let (hints, info, warnings, errors) =
+        context
+            .doc
+            .diagnostics()
+            .iter()
+            .fold((0, 0, 0, 0), |mut counts, diag| {
+                use helix_core::diagnostic::Severity;
+                match diag.severity {
+                    Some(Severity::Hint) | None => counts.0 += 1,
+                    Some(Severity::Info) => counts.1 += 1,
+                    Some(Severity::Warning) => counts.2 += 1,
+                    Some(Severity::Error) => counts.3 += 1,
+                }
+                counts
+            });
+
+    if info > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("info")),
+        );
+        write(context, format!(" {} ", info), None);
+    }
+
+    if hints > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("hint")),
+        );
+        write(context, format!(" {} ", hints), None);
+    }
 
     if warnings > 0 {
         write(
@@ -272,7 +292,7 @@ where
             .fold((0, 0), |mut counts, (diag, _)| {
                 match diag.severity {
                     Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
-                    Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
+                    Some(DiagnosticSeverity::ERROR) => counts.1 += 1,
                     _ => {}
                 }
                 counts
