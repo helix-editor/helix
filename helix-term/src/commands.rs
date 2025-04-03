@@ -2697,9 +2697,8 @@ fn local_search_grep(cx: &mut Context) {
         }),
         PickerColumn::new("", |item: &FileResult, _config: &LocalSearchConfig| {
             // extract line content to be displayed in the picker
-            let line_content = item.line_content.clone();
             // create column value to be displayed in the picker
-            Cell::from(Spans::from(vec![Span::raw(line_content)]))
+            Cell::from(Spans::from(vec![Span::raw(&item.line_content)]))
         }),
     ];
 
