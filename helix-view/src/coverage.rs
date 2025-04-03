@@ -60,12 +60,12 @@ struct Class {
     name: String,
     #[serde(rename = "@filename")]
     filename: String,
-    lines: Option<Lines>,
+    lines: Lines,
 }
 
 #[derive(Deserialize, Debug)]
 struct Lines {
-    line: Vec<Line>,
+    line: Option<Vec<Line>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -148,8 +148,8 @@ impl From<RawCoverage> for Coverage {
         for package in coverage.packages.package {
             for class in package.classes.class {
                 let mut lines = HashMap::new();
-                if let Some(class_lines) = class.lines {
-                    for line in class_lines.line {
+                if let Some(class_lines) = class.lines.line {
+                    for line in class_lines {
                         lines.insert(line.number - 1, line.hits > 0);
                     }
                 }
