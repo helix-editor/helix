@@ -608,6 +608,9 @@ pub enum StatusLineElement {
 
     /// Indicator for selected register
     Register,
+
+    /// The current workspace along with working directory
+    Workspace,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
