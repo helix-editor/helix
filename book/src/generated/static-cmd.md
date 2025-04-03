@@ -80,7 +80,8 @@
 | `search_selection_detect_word_boundaries` | Use current selection as the search pattern, automatically wrapping with `\b` on word boundaries | normal: `` * ``, select: `` * `` |
 | `make_search_word_bounded` | Modify current search to make it word bounded |  |
 | `global_search` | Global search in workspace folder | normal: `` <space>/ ``, select: `` <space>/ `` |
-| `local_search` | Local search in buffer | normal: `` <space>l ``, select: `` <space>l `` |
+| `local_search_grep` | Local search in buffer | normal: `` <space>l ``, select: `` <space>l `` |
+| `local_search_fuzzy` | Fuzzy local search in buffer | normal: `` <space>L ``, select: `` <space>L `` |
 | `extend_line` | Select current line, if already selected, extend to another line based on the anchor |  |
 | `extend_line_below` | Select current line, if already selected, extend to next line | normal: `` x ``, select: `` x `` |
 | `extend_line_above` | Select current line, if already selected, extend to previous line |  |
