@@ -88,11 +88,11 @@
 
 ; TODO: Highlight builtin methods (`table.unpack`, etc) as @function.builtin
 ([
-  (symbol) @module.builtin
+  (symbol) @variable.builtin
   (multi_symbol
-    base: (symbol_fragment) @module.builtin)
+    base: (symbol_fragment) @variable.builtin)
 ]
-  (#any-of? @module.builtin
+  (#any-of? @variable.builtin
     "vim" "_G" "_ENV" "debug" "io" "jit" "math" "os" "package" "string" "table" "utf8"))
 
 ([
