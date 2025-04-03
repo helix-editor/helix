@@ -38,10 +38,10 @@
     "length"))
 
 (case_guard
-  call: (_) @keyword.conditional)
+  call: (_) @keyword.control.conditional)
 
 (case_guard_or_special
-  call: (_) @keyword.conditional)
+  call: (_) @keyword.control.conditional)
 
 (case_catch
   call: (symbol) @keyword)
@@ -55,19 +55,19 @@
 ((symbol) @keyword.function
   (#any-of? @keyword.function "fn" "lambda" "λ" "hashfn"))
 
-((symbol) @keyword.repeat
-  (#any-of? @keyword.repeat "for" "each" "while"))
+((symbol) @keyword.control.repeat
+  (#any-of? @keyword.control.repeat "for" "each" "while"))
 
-((symbol) @keyword.conditional
-  (#any-of? @keyword.conditional "if" "when" "match" "case" "match-try" "case-try"))
+((symbol) @keyword.control.conditional
+  (#any-of? @keyword.control.conditional "if" "when" "match" "case" "match-try" "case-try"))
 
 ((symbol) @keyword
   (#any-of? @keyword
     "global" "local" "let" "set" "var" "comment" "do" "doc" "eval-compiler" "lua" "macros" "unquote"
     "quote" "tset" "values" "tail!"))
 
-((symbol) @keyword.import
-  (#any-of? @keyword.import "require" "require-macros" "import-macros" "include"))
+((symbol) @keyword.control.import
+  (#any-of? @keyword.control.import "require" "require-macros" "import-macros" "include"))
 
 ((symbol) @function.macro
   (#any-of? @function.macro
@@ -104,22 +104,22 @@
   (#eq? @variable.builtin "arg"))
 (symbol_option) @keyword.directive
 
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 
 (multi_symbol
   "." @punctuation.delimiter
-  member: (symbol_fragment) @variable.member)
+  member: (symbol_fragment) @variable.other.member)
 
 (list
-  call: (symbol) @function.call)
+  call: (symbol) @function)
 
 (list
   call: (multi_symbol
-    member: (symbol_fragment) @function.call .))
+    member: (symbol_fragment) @function .))
 
 (multi_symbol_method
   ":" @punctuation.delimiter
-  method: (symbol_fragment) @function.method.call)
+  method: (symbol_fragment) @function.method)
 
 (quasi_quote_reader_macro
   macro: _ @punctuation.special)
@@ -136,7 +136,7 @@
 (hashfn_reader_macro
   macro: _ @keyword.function)
 
-(docstring) @string.documentation
+(docstring) @comment.block.documentation
 
 ; NOTE: The macro name is highlighted as @variable because it
 ; gives a nicer contrast instead of everything being the same
@@ -178,12 +178,12 @@
 [
   (boolean)
   (boolean_binding)
-] @boolean
+] @constant.builtin.boolean
 
 [
   (number)
   (number_binding)
-] @number
+] @constant.numeric
 
 [
   (string)
