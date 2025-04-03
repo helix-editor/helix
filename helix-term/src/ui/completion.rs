@@ -9,6 +9,7 @@ use crate::{
 use helix_core::snippets::{ActiveSnippet, RenderedSnippet, Snippet};
 use helix_core::{self as core, chars, fuzzy::MATCHER, Change, Transaction};
 use helix_lsp::{lsp, util, OffsetEncoding};
+use helix_view::icons::ICONS;
 use helix_view::{
     editor::CompleteAction,
     handlers::lsp::SignatureHelpInvoked,
@@ -45,7 +46,7 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { label, .. }) => label,
         };
 
-        let kind = match self {
+        let mut kind = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
                 Some(lsp::CompletionItemKind::TEXT) => "text".into(),
                 Some(lsp::CompletionItemKind::METHOD) => "method".into(),
@@ -78,9 +79,13 @@ impl menu::Item for CompletionItem {
                     })
                     .and_then(Color::from_hex)
                     .map_or("color".into(), |color| {
+                        let icons = ICONS.load();
                         Spans::from(vec![
                             Span::raw("color "),
-                            Span::styled("■", Style::default().fg(color)),
+                            Span::styled(
+                                icons.kind().color().glyph().to_string(),
+                                Style::default().fg(color),
+                            ),
                         ])
                     }),
                 Some(lsp::CompletionItemKind::FILE) => "file".into(),
@@ -100,6 +105,20 @@ impl menu::Item for CompletionItem {
             },
             CompletionItem::Other(core::CompletionItem { kind, .. }) => kind.as_ref().into(),
         };
+
+        let icons = ICONS.load();
+        let name = &kind.0[0].content;
+
+        if let Some(icon) = icons.kind().get(name) {
+            if let Some(color) = icon.color() {
+                kind.0[0].content = format!("{}  {name}", icon.glyph()).into();
+                kind.0[0].style = Style::default().fg(color);
+            } else {
+                kind.0[0].content = format!("{}  {name}", icon.glyph()).into();
+            }
+        } else {
+            kind.0[0].content = format!("{name}").into();
+        }
 
         let label = Span::styled(
             label,
