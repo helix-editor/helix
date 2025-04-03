@@ -89,7 +89,10 @@ pub fn get_coverage(document_path: &std::path::PathBuf) -> Option<FileCoverage> 
 
     log::debug!("document path: {:?}", document_path);
 
-    let file_coverage = coverage.files.get(document_path)?;
+    let file_coverage = coverage.files.get(document_path).or_else(|| {
+        log::warn!("file: {:?} not found in coverage", document_path);
+        None
+    })?;
 
     let coverage_time = file_coverage.modified_time?;
     let document_metadata = document_path.metadata().ok()?;
@@ -159,6 +162,7 @@ impl From<RawCoverage> for Coverage {
                     let raw_path: std::path::PathBuf =
                         [&source.name, &class.filename].iter().collect();
                     if let Ok(path) = std::fs::canonicalize(raw_path) {
+                        log::debug!("add file {:?} to coverage", path);
                         files.insert(
                             path,
                             FileCoverage {
@@ -168,6 +172,7 @@ impl From<RawCoverage> for Coverage {
                         );
                         break;
                     }
+                    log::warn!("could not add file {:?} to coverage", path);
                 }
             }
         }

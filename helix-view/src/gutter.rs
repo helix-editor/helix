@@ -154,7 +154,7 @@ pub fn coverage<'doc>(
 
     if let Some(document_path) = &doc.path {
         if let Some(file_coverage) = coverage::get_coverage(document_path) {
-            log::debug!("return valid coverage gutter");
+            log::info!("return valid coverage gutter for {:?}", document_path);
             return Box::new(
                 move |line: usize, _selected: bool, _first_visual_line: bool, out: &mut String| {
                     if let Some(line_coverage) = file_coverage.lines.get(&(line as u32)) {
@@ -172,7 +172,7 @@ pub fn coverage<'doc>(
             );
         }
     }
-    log::debug!("return empty coverage gutter");
+    log::info!("return empty coverage gutter for {:?}", document_path);
     return Box::new(move |_, _, _, _| None);
 }
 
