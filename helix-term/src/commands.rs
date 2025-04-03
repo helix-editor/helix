@@ -378,6 +378,7 @@ impl MappableCommand {
         search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
+        live_grep, "Live grep in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
@@ -2416,6 +2417,14 @@ fn make_search_word_bounded(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
+    global_search_impl(cx, 275);
+}
+
+fn live_grep(cx: &mut Context) {
+    global_search_impl(cx, 30);
+}
+
+fn global_search_impl(cx: &mut Context, debounce_ms: u64) {
     #[derive(Debug)]
     struct FileResult {
         path: PathBuf,
@@ -2640,7 +2649,7 @@ fn global_search(cx: &mut Context) {
         Some((path.as_path().into(), Some((*line_num, *line_num))))
     })
     .with_history_register(Some(reg))
-    .with_dynamic_query(get_files, Some(275));
+    .with_dynamic_query(get_files, Some(debounce_ms));
 
     cx.push_layer(Box::new(overlaid(picker)));
 }
