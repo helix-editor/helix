@@ -123,11 +123,22 @@ fn find_coverage_file() -> Option<std::path::PathBuf> {
 }
 
 fn read_cobertura_coverage(path: &std::path::PathBuf) -> Option<Coverage> {
-    let file = File::open(path).ok()?;
-    let metadata = file.metadata().ok()?;
+    let file = File::open(path)
+        .inspect_err(|e| log::info!("error opening {:?}: {:?}", path, e))
+        .ok()?;
+    let metadata = file
+        .metadata()
+        .inspect_err(|e| log::info!("error reading metadata for {:?}: {:?}", path, e))
+        .ok()?;
+    let modified = metadata
+        .modified()
+        .inspect_err(|e| log::info!("error reading timestamp for {:?}: {:?}", path, e))
+        .ok()?;
     let reader = BufReader::new(file);
-    let mut tmp: RawCoverage = from_reader(reader).ok()?;
-    tmp.modified_time = metadata.modified().ok();
+    let mut tmp: RawCoverage = from_reader(reader)
+        .inspect_err(|e| log::info!("error parsing coverage for {:?}: {:?}", path, e))
+        .ok()?;
+    tmp.modified_time = Some(modified);
     Some(tmp.into())
 }
 
