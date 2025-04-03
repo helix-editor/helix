@@ -240,15 +240,6 @@ where
             counts
         });
 
-    if warnings > 0 {
-        write(
-            context,
-            "●".to_string(),
-            Some(context.editor.theme.get("warning")),
-        );
-        write(context, format!(" {} ", warnings), None);
-    }
-
     if errors > 0 {
         write(
             context,
@@ -256,6 +247,15 @@ where
             Some(context.editor.theme.get("error")),
         );
         write(context, format!(" {} ", errors), None);
+    }
+
+    if warnings > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("warning")),
+        );
+        write(context, format!(" {} ", warnings), None);
     }
 }
 
@@ -282,15 +282,6 @@ where
         write(context, " W ".into(), None);
     }
 
-    if warnings > 0 {
-        write(
-            context,
-            "●".to_string(),
-            Some(context.editor.theme.get("warning")),
-        );
-        write(context, format!(" {} ", warnings), None);
-    }
-
     if errors > 0 {
         write(
             context,
@@ -298,6 +289,15 @@ where
             Some(context.editor.theme.get("error")),
         );
         write(context, format!(" {} ", errors), None);
+    }
+
+    if warnings > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("warning")),
+        );
+        write(context, format!(" {} ", warnings), None);
     }
 }
 
