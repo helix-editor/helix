@@ -732,7 +732,7 @@ impl Component for Prompt {
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         let area = area
             .clip_left(self.prompt.len() as u16)
-            .clip_right(if self.prompt.len() > 0 { 0 } else { 2 });
+            .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
 
         let anchor = self.anchor.min(self.line.len().saturating_sub(1));
         let mut col = area.left() as usize
