@@ -60,7 +60,7 @@ struct Class {
     name: String,
     #[serde(rename = "@filename")]
     filename: String,
-    lines: Lines,
+    lines: Option<Lines>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -148,8 +148,10 @@ impl From<RawCoverage> for Coverage {
         for package in coverage.packages.package {
             for class in package.classes.class {
                 let mut lines = HashMap::new();
-                for line in class.lines.line {
-                    lines.insert(line.number - 1, line.hits > 0);
+                if let Some(class_lines) = class.lines {
+                    for line in class_lines.line {
+                        lines.insert(line.number - 1, line.hits > 0);
+                    }
                 }
                 for source in &coverage.sources.source {
                     // it is ambiguous to which source a coverage class might belong
