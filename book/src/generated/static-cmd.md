@@ -298,3 +298,4 @@
 | `extend_to_word` | Extend to a two-character label | select: `` gw `` |
 | `goto_next_tabstop` | goto next snippet placeholder |  |
 | `goto_prev_tabstop` | goto next snippet placeholder |  |
+| `blame_line` | Show blame for the current line | normal: `` <space>B ``, select: `` <space>B `` |
