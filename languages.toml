@@ -400,7 +400,7 @@ source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "02a
 [[language]]
 name = "fennel"
 scope = "source.fennel"
-file-types = ["fnl"]
+file-types = ["fnl", "fnlm"]
 shebangs = ["fennel"]
 comment-token = ";"
 language-servers = ["fennel-ls"]
