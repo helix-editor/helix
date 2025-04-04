@@ -122,13 +122,6 @@ impl Prompt {
         self.recalculate_completion(editor);
     }
 
-    pub fn set_line_no_recalculate(&mut self, line: String) {
-        debug_assert!(self.completion.is_empty());
-        let cursor = line.len();
-        self.line = line;
-        self.cursor = cursor;
-    }
-
     pub fn with_language(
         mut self,
         language: &'static str,
