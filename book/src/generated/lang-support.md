@@ -248,6 +248,7 @@
 | wat | ✓ |  |  | `wat_server` |
 | webc | ✓ |  |  |  |
 | werk | ✓ |  |  |  |
+| wesl | ✓ | ✓ |  |  |
 | wgsl | ✓ |  |  | `wgsl-analyzer` |
 | wit | ✓ |  | ✓ |  |
 | wren | ✓ | ✓ | ✓ |  |
