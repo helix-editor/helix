@@ -522,7 +522,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self.show_preview = !self.show_preview;
     }
 
-    fn custom_event_handler(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
+    fn custom_key_event_handler(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
         if let (Some(callback), Some(selected)) =
             (self.custom_key_handlers.get(event), self.selection())
         {
@@ -1074,7 +1074,8 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             EventResult::Consumed(Some(callback))
         };
 
-        if let EventResult::Consumed(_) = self.custom_event_handler(&key_event, ctx) {
+        // handle custom keybindings, if exist
+        if let EventResult::Consumed(_) = self.custom_key_event_handler(&key_event, ctx) {
             return EventResult::Consumed(None);
         }
 

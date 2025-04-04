@@ -375,16 +375,13 @@ fn create_file_operation_prompt<F>(
 ) where
     F: Fn(&mut Context, &PathBuf, String) -> Option<Result<String, String>> + Send + 'static,
 {
-    cx.editor.file_explorer_selected_path = Some(path.to_path_buf());
+    let selected_path = path.to_path_buf();
     let callback = Box::pin(async move {
         let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
-            let mut prompt = Prompt::new(
-                editor
-                    .file_explorer_selected_path
-                    .as_ref()
-                    .map(|p| prompt(p))
-                    .unwrap_or_default()
-                    .into(),
+            // to be able to move selected_path
+            let path = selected_path.clone();
+            let prompt = Prompt::new(
+                prompt(&path).into(),
                 None,
                 crate::ui::completers::none,
                 move |cx, input: &str, event: PromptEvent| {
@@ -392,24 +389,14 @@ fn create_file_operation_prompt<F>(
                         return;
                     };
 
-                    let path = cx.editor.file_explorer_selected_path.clone();
-
-                    if let Some(path) = path {
-                        match file_op(cx, &path, input.to_owned()) {
-                            Some(Ok(msg)) => cx.editor.set_status(msg),
-                            Some(Err(msg)) => cx.editor.set_error(msg),
-                            None => cx.editor.clear_status(),
-                        };
-                    } else {
-                        cx.editor
-                            .set_error("Unable to determine path of selected file")
-                    }
+                    match file_op(cx, &path, input.to_owned()) {
+                        Some(Ok(msg)) => cx.editor.set_status(msg),
+                        Some(Err(msg)) => cx.editor.set_error(msg),
+                        None => cx.editor.clear_status(),
+                    };
                 },
-            );
-
-            if let Some(path_editing) = &editor.file_explorer_selected_path {
-                prompt.set_line_no_recalculate(prefill(path_editing));
-            }
+            )
+            .with_line(prefill(&selected_path), editor);
 
             compositor.push(Box::new(prompt));
         }));
