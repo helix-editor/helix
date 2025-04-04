@@ -55,10 +55,8 @@ where
                         return;
                     };
 
-                    match overwrite(cx, picker_root.clone(), &overwrite_with) {
-                        Some(Ok(msg)) => cx.editor.set_status(msg),
-                        Some(Err(msg)) => cx.editor.set_error(msg),
-                        None => (),
+                    if let Some(result) = overwrite(cx, picker_root.clone(), &overwrite_with) {
+                        cx.editor.set_result(result);
                     };
                 },
             );
@@ -99,10 +97,10 @@ fn create_file_operation_prompt<F>(
                         return;
                     };
 
-                    match file_op(cx, &path, input.to_owned()) {
-                        Some(Ok(msg)) => cx.editor.set_status(msg),
-                        Some(Err(msg)) => cx.editor.set_error(msg),
-                        None => cx.editor.clear_status(),
+                    if let Some(result) = file_op(cx, &path, input.to_owned()) {
+                        cx.editor.set_result(result);
+                    } else {
+                        cx.editor.clear_status();
                     };
                 },
             )
