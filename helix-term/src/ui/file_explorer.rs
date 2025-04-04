@@ -10,6 +10,7 @@ use tui::text::Span;
 
 use crate::{alt, compositor::Context, job::Callback};
 
+use super::prompt::Movement;
 use super::{
     directory_content, overlay, picker::PickerKeyHandler, Picker, PickerColumn, Prompt, PromptEvent,
 };
@@ -76,6 +77,8 @@ fn create_file_operation_prompt<F>(
     path: &Path,
     // Text value of the prompt
     prompt: fn(&Path) -> String,
+    // How to move the cursor
+    movement: Option<Movement>,
     // What to fill user's input with
     prefill: fn(&Path) -> String,
     // Action to take when the operation runs
@@ -88,7 +91,7 @@ fn create_file_operation_prompt<F>(
         let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
             // to be able to move selected_path
             let path = selected_path.clone();
-            let prompt = Prompt::new(
+            let mut prompt = Prompt::new(
                 prompt(&path).into(),
                 None,
                 crate::ui::completers::none,
@@ -103,8 +106,14 @@ fn create_file_operation_prompt<F>(
                         cx.editor.clear_status();
                     };
                 },
-            )
-            .with_line(prefill(&selected_path), editor);
+            );
+
+            prompt.set_line(prefill(&selected_path), editor);
+
+            if let Some(movement) = movement {
+                log::error!("{movement:?}");
+                prompt.move_cursor(movement);
+            }
 
             compositor.push(Box::new(prompt));
         }));
@@ -155,6 +164,7 @@ pub fn file_explorer(
             cx,
             path,
             |_| "Create: ".into(),
+            None,
             |path| {
                 path.parent()
                     .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
@@ -220,6 +230,14 @@ pub fn file_explorer(
             cx,
             path,
             |path| format!("Move {} -> ", path.display()),
+            // move cursor before the extension
+            // Yazi does this and it leads to good user experience
+            // Most of the time when we would like to rename a file we
+            // don't want to change its file extension
+            path.extension()
+                .inspect(|a| log::error!("{a:?}"))
+                // +1 to account for the dot in the extension (`.`)
+                .map(|ext| Movement::BackwardChar(ext.len() + 1)),
             |path| path.display().to_string(),
             move |cx, move_from, move_to_string| {
                 let root = data.0.clone();
@@ -261,6 +279,7 @@ pub fn file_explorer(
             cx,
             path,
             |path| format!("Delete {}? (y/n): ", path.display()),
+            None,
             |_| "".to_string(),
             move |cx, to_delete, confirmation| {
                 let root = data.0.clone();
@@ -300,6 +319,7 @@ pub fn file_explorer(
             cx,
             path,
             |path| format!("Copy {} -> ", path.display()),
+            None,
             |path| {
                 path.parent()
                     .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
