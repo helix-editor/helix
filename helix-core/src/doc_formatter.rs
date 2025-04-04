@@ -336,18 +336,15 @@ impl<'t> DocumentFormatter<'t> {
                 .change_position(visual_x, self.text_fmt.tab_width);
             word_width += grapheme.width();
         }
-        if let Some(grapheme) = &mut self.peeked_grapheme {
-            let visual_x = self.visual_pos.col + word_width;
-            grapheme
-                .grapheme
-                .change_position(visual_x, self.text_fmt.tab_width);
-        }
         word_width
     }
 
     fn peek_grapheme(&mut self, col: usize, char_pos: usize) -> Option<&GraphemeWithSource<'t>> {
-        if self.peeked_grapheme.is_none() {
-            self.peeked_grapheme = self.advance_grapheme(col, char_pos);
+        match &mut self.peeked_grapheme {
+            None => self.peeked_grapheme = self.advance_grapheme(col, char_pos),
+            Some(peeked_grapheme) => peeked_grapheme
+                .grapheme
+                .change_position(col, self.text_fmt.tab_width),
         }
         self.peeked_grapheme.as_ref()
     }
