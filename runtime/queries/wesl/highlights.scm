@@ -120,29 +120,37 @@
 [
   "if"
   "else"
+] @keyword.control.conditional
+[
   "loop"
   "for"
   "while"
+  "break"
+  "continue"
+] @keyword.control.repeat
+[
+  "return"
+] @keyword.control.return
+[
   "switch"
   "case"
   "default"
-  "break"
-  "continue"
-  "return"
   "discard"
 ] @keyword.control
-
 [ ; WESL import extension
   "import"
   "as"
 ] @keyword.control.import
-
+[
+  "fn"
+] @keyword.function
 [
   "var"
   "let"
   "const"
-  "fn"
   "struct"
+] @keyword.storage.type
+[
   "alias"
   "virtual" ; Bevy / naga_oil extension
   "override" ; Bevy / naga_oil extension
