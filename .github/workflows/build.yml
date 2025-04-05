@@ -11,7 +11,7 @@ on:
 env:
   MSRV: "1.76"
   # This key can be changed to bust the cache of tree-sitter grammars.
-  GRAMMAR_CACHE_VERSION: ""
+  GRAMMAR_CACHE_VERSION: "a"
 
 jobs:
   check:
@@ -76,7 +76,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest, ubuntu-24.04-arm]
 
   lints:
     name: Lints
