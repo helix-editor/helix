@@ -57,6 +57,7 @@ jedi = { command = "jedi-language-server" }
 jq-lsp = { command = "jq-lsp" }
 jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
+just-lsp = { command = "just-lsp" }
 koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 koto-ls = { command = "koto-ls" }
 kotlin-language-server = { command = "kotlin-language-server" }
@@ -3271,6 +3272,7 @@ file-types = ["just", { glob = "justfile" }, { glob = "Justfile" }, { glob = ".j
 injection-regex = "just"
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
+language-servers = ["just-lsp"]
 # auto-format = true
 # formatter = { command = "just", args = ["--dump"] } # Please see: https://github.com/helix-editor/helix/issues/9703
 
