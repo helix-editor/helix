@@ -11,7 +11,7 @@ on:
 env:
   MSRV: "1.76"
   # This key can be changed to bust the cache of tree-sitter grammars.
-  GRAMMAR_CACHE_VERSION: ""
+  GRAMMAR_CACHE_VERSION: "a"
 
 jobs:
   check:
