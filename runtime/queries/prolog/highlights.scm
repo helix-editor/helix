@@ -3,10 +3,7 @@
 (atom) @constant
 
 ((atom) @constant.builtin.boolean
-  (#eq? @constant.builtin.boolean "true"))
-
-((atom) @constant.builtin.boolean
-  (#eq? @constant.builtin.boolean "false"))
+  (#any-of? @constant.builtin.boolean "true" "false"))
 
 (functional_notation
   function: (atom) @function)
