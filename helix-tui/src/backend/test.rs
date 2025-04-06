@@ -119,10 +119,6 @@ impl Backend for TestBackend {
         Ok(())
     }
 
-    fn force_restore() -> Result<(), io::Error> {
-        Ok(())
-    }
-
     fn draw<'a, I>(&mut self, content: I) -> Result<(), io::Error>
     where
         I: Iterator<Item = (u16, u16, &'a Cell)>,
@@ -163,5 +159,9 @@ impl Backend for TestBackend {
 
     fn flush(&mut self) -> Result<(), io::Error> {
         Ok(())
+    }
+
+    fn supports_true_color(&self) -> bool {
+        false
     }
 }
