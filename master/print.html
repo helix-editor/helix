@@ -1398,8 +1398,10 @@ space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 <tr><td><code>add_newline_below</code></td><td>Add newline below</td><td>normal: <code>]&lt;space&gt;</code>, select: <code>]&lt;space&gt;</code></td></tr>
 <tr><td><code>goto_type_definition</code></td><td>Goto type definition</td><td>normal: <code>gy</code>, select: <code>gy</code></td></tr>
 <tr><td><code>goto_implementation</code></td><td>Goto implementation</td><td>normal: <code>gi</code>, select: <code>gi</code></td></tr>
-<tr><td><code>goto_file_start</code></td><td>Goto line number <n> else file start</td><td>normal: <code>gg</code>, select: <code>gg</code></td></tr>
+<tr><td><code>goto_file_start</code></td><td>Goto line number <n> else file start</td><td>normal: <code>gg</code></td></tr>
 <tr><td><code>goto_file_end</code></td><td>Goto file end</td><td></td></tr>
+<tr><td><code>extend_to_file_start</code></td><td>Extend to line number<n> else file start</td><td>select: <code>gg</code></td></tr>
+<tr><td><code>extend_to_file_end</code></td><td>Extend to file end</td><td></td></tr>
 <tr><td><code>goto_file</code></td><td>Goto files/URLs in selections</td><td>normal: <code>gf</code>, select: <code>gf</code></td></tr>
 <tr><td><code>goto_file_hsplit</code></td><td>Goto files in selections (hsplit)</td><td>normal: <code>&lt;C-w&gt;f</code>, <code>&lt;space&gt;wf</code>, select: <code>&lt;C-w&gt;f</code>, <code>&lt;space&gt;wf</code></td></tr>
 <tr><td><code>goto_file_vsplit</code></td><td>Goto files in selections (vsplit)</td><td>normal: <code>&lt;C-w&gt;F</code>, <code>&lt;space&gt;wF</code>, select: <code>&lt;C-w&gt;F</code>, <code>&lt;space&gt;wF</code></td></tr>
@@ -1411,7 +1413,8 @@ space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 <tr><td><code>goto_last_modified_file</code></td><td>Goto last modified file</td><td>normal: <code>gm</code>, select: <code>gm</code></td></tr>
 <tr><td><code>goto_last_modification</code></td><td>Goto last modification</td><td>normal: <code>g.</code>, select: <code>g.</code></td></tr>
 <tr><td><code>goto_line</code></td><td>Goto line</td><td>normal: <code>G</code>, select: <code>G</code></td></tr>
-<tr><td><code>goto_last_line</code></td><td>Goto last line</td><td>normal: <code>ge</code>, select: <code>ge</code></td></tr>
+<tr><td><code>goto_last_line</code></td><td>Goto last line</td><td>normal: <code>ge</code></td></tr>
+<tr><td><code>extend_to_last_line</code></td><td>Extend to last line</td><td>select: <code>ge</code></td></tr>
 <tr><td><code>goto_first_diag</code></td><td>Goto first diagnostic</td><td>normal: <code>[D</code>, select: <code>[D</code></td></tr>
 <tr><td><code>goto_last_diag</code></td><td>Goto last diagnostic</td><td>normal: <code>]D</code>, select: <code>]D</code></td></tr>
 <tr><td><code>goto_next_diag</code></td><td>Goto next diagnostic</td><td>normal: <code>]d</code>, select: <code>]d</code></td></tr>
