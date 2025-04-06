@@ -1,4 +1,4 @@
-(comment) @comment @spell
+(comment) @comment
 
 (atom) @constant
 
