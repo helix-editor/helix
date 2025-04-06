@@ -4261,3 +4261,18 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "werk"
 source = { git = "https://github.com/little-bonsai/tree-sitter-werk", rev = "92b0f7fe98465c4c435794a58e961306193d1c1e" }
+
+[[language]]
+name = "debian"
+scope = "text.debian"
+file-types = [
+  "dsc",
+  "changes",
+  { glob = "debian/**/control" },
+  { glob = "etc/apt/sources.list.d/*.sources"}
+]
+comment-tokens = "#"
+
+[[grammar]]
+name = "debian"
+source = { git = "https://gitlab.com/MggMuggins/tree-sitter-debian", rev = "9b3f4b78c45aab8a2f25a5f9e7bbc00995bc3dde" }
