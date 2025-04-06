@@ -2,12 +2,13 @@ use helix_core::{ChangeSet, Rope};
 use helix_event::events;
 use helix_lsp::LanguageServerId;
 
-use crate::{Document, DocumentId, Editor, ViewId};
+use crate::{editor::Config, Document, DocumentId, Editor, ViewId};
 
 events! {
     DocumentDidOpen<'a> {
         editor: &'a mut Editor,
-        doc: DocumentId
+        doc: DocumentId,
+        path: &'a std::path::PathBuf
     }
     DocumentDidChange<'a> {
         doc: &'a mut Document,
@@ -15,6 +16,10 @@ events! {
         old_text: &'a Rope,
         changes: &'a ChangeSet,
         ghost_transaction: bool
+    }
+    EditorConfigDidChange<'a> {
+        old_config: &'a Config,
+        editor: &'a mut Editor
     }
     DocumentDidClose<'a> {
         editor: &'a mut Editor,
