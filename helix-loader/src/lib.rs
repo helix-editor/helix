@@ -161,20 +161,26 @@ pub fn default_log_file() -> PathBuf {
 /// all keys in `left`'s table unioned with all keys in `right` with the values
 /// of `right` being merged recursively onto values of `left`.
 ///
-/// crate::merge_toml_values(a, b, 3) combines, for example:
-/// b:
-///   \[\[language\]\]
-///   name = "toml"
-///   language-server = { command = "taplo", args = ["lsp", "stdio"] }
+/// `crate::merge_toml_values(a, b, 3)` combines, for example:
 ///
+/// b:
+/// ```toml
+/// [[language]]
+/// name = "toml"
+/// language-server = { command = "taplo", args = ["lsp", "stdio"] }
+/// ```
 /// a:
-///   \[\[language\]\]
-///   language-server = { command = "/usr/bin/taplo" }
+/// ```toml
+/// [[language]]
+/// language-server = { command = "/usr/bin/taplo" }
+/// ```
 ///
 /// into:
-///   \[\[language\]\]
-///   name = "toml"
-///   language-server = { command = "/usr/bin/taplo" }
+/// ```toml
+/// [[language]]
+/// name = "toml"
+/// language-server = { command = "/usr/bin/taplo" }
+/// ```
 ///
 /// thus it overrides the third depth-level of b with values of a if they exist,
 /// but otherwise merges their values
