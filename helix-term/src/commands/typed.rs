@@ -1880,7 +1880,15 @@ fn update_goto_line_number_preview(cx: &mut compositor::Context, args: Args) -> 
 
     let scrolloff = cx.editor.config().scrolloff;
     let line = args[0].parse::<usize>()?;
-    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+    goto_line_without_jumplist(
+        cx.editor,
+        NonZeroUsize::new(line),
+        if cx.editor.mode == Mode::Select {
+            Movement::Extend
+        } else {
+            Movement::Move
+        },
+    );
 
     let (view, doc) = current!(cx.editor);
     view.ensure_cursor_in_view(doc, scrolloff);
