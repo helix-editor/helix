@@ -118,7 +118,7 @@
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ | `julia` |
-| just | ✓ | ✓ | ✓ |  |
+| just | ✓ | ✓ | ✓ | `just-lsp` |
 | kdl | ✓ | ✓ | ✓ |  |
 | koka | ✓ |  | ✓ | `koka` |
 | kotlin | ✓ | ✓ | ✓ | `kotlin-language-server` |
