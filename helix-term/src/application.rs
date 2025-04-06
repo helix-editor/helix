@@ -30,28 +30,27 @@ use crate::{
 };
 
 use log::{debug, error, info, warn};
-#[cfg(not(feature = "integration"))]
-use std::io::stdout;
-use std::{io::stdin, path::Path, sync::Arc};
+use std::{
+    io::{stdin, IsTerminal},
+    path::Path,
+    sync::Arc,
+};
 
-#[cfg(not(windows))]
-use anyhow::Context;
-use anyhow::Error;
+use anyhow::{Context, Error};
 
-use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
 #[cfg(not(feature = "integration"))]
-use tui::backend::CrosstermBackend;
+use tui::backend::TerminaBackend;
 
 #[cfg(feature = "integration")]
 use tui::backend::TestBackend;
 
 #[cfg(not(feature = "integration"))]
-type TerminalBackend = CrosstermBackend<std::io::Stdout>;
+type TerminalBackend = TerminaBackend;
 
 #[cfg(feature = "integration")]
 type TerminalBackend = TestBackend;
@@ -104,7 +103,8 @@ impl Application {
         let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), (&config.editor).into());
+        let backend = TerminaBackend::new((&config.editor).into())
+            .context("failed to create terminal backend")?;
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -123,7 +123,11 @@ impl Application {
             })),
             handlers,
         );
-        Self::load_configured_theme(&mut editor, &config.load());
+        Self::load_configured_theme(
+            &mut editor,
+            &config.load(),
+            terminal.backend().supports_true_color(),
+        );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -214,7 +218,7 @@ impl Application {
             } else {
                 editor.new_file(Action::VerticalSplit);
             }
-        } else if stdin().is_tty() || cfg!(feature = "integration") {
+        } else if stdin().is_terminal() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
         } else {
             editor
@@ -282,7 +286,7 @@ impl Application {
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<termina::Event>> + Unpin,
     {
         self.render().await;
 
@@ -295,7 +299,7 @@ impl Application {
 
     pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<termina::Event>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -396,7 +400,11 @@ impl Application {
             // the sake of locals highlighting.
             let lang_loader = helix_core::config::user_lang_loader()?;
             self.editor.syn_loader.store(Arc::new(lang_loader));
-            Self::load_configured_theme(&mut self.editor, &default_config);
+            Self::load_configured_theme(
+                &mut self.editor,
+                &default_config,
+                self.terminal.backend().supports_true_color(),
+            );
 
             // Re-parse any open documents with the new language config.
             let lang_loader = self.editor.syn_loader.load();
@@ -429,8 +437,8 @@ impl Application {
     }
 
     /// Load the theme set in configuration
-    fn load_configured_theme(editor: &mut Editor, config: &Config) {
-        let true_color = config.editor.true_color || crate::true_color();
+    fn load_configured_theme(editor: &mut Editor, config: &Config, terminal_true_color: bool) {
+        let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
         let theme = config
             .theme
             .as_ref()
@@ -634,7 +642,7 @@ impl Application {
         false
     }
 
-    pub async fn handle_terminal_events(&mut self, event: std::io::Result<CrosstermEvent>) {
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<termina::Event>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -642,9 +650,9 @@ impl Application {
         };
         // Handle key events
         let should_redraw = match event.unwrap() {
-            CrosstermEvent::Resize(width, height) => {
+            termina::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
                 self.terminal
-                    .resize(Rect::new(0, 0, width, height))
+                    .resize(Rect::new(0, 0, cols, rows))
                     .expect("Unable to resize terminal");
 
                 let area = self.terminal.size().expect("couldn't get terminal size");
@@ -652,11 +660,11 @@ impl Application {
                 self.compositor.resize(area);
 
                 self.compositor
-                    .handle_event(&Event::Resize(width, height), &mut cx)
+                    .handle_event(&Event::Resize(cols, rows), &mut cx)
             }
             // Ignore keyboard release events.
-            CrosstermEvent::Key(crossterm::event::KeyEvent {
-                kind: crossterm::event::KeyEventKind::Release,
+            termina::Event::Key(termina::event::KeyEvent {
+                kind: termina::event::KeyEventKind::Release,
                 ..
             }) => false,
             event => self.compositor.handle_event(&event.into(), &mut cx),
@@ -1107,21 +1115,39 @@ impl Application {
         self.terminal.restore()
     }
 
+    #[cfg(not(feature = "integration"))]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<termina::Event>> + Unpin {
+        use termina::Terminal as _;
+        let reader = self.terminal.backend().terminal().event_reader();
+        termina::EventStream::new(reader, |event| !event.is_escape())
+    }
+
+    #[cfg(feature = "integration")]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<termina::Event>> + Unpin {
+        use std::{
+            pin::Pin,
+            task::{Context, Poll},
+        };
+
+        /// A dummy stream that never polls as ready.
+        pub struct DummyEventStream;
+
+        impl Stream for DummyEventStream {
+            type Item = std::io::Result<termina::Event>;
+
+            fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                Poll::Pending
+            }
+        }
+
+        DummyEventStream
+    }
+
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<termina::Event>> + Unpin,
     {
         self.terminal.claim()?;
-
-        // Exit the alternate screen and disable raw mode before panicking
-        let hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(move |info| {
-            // We can't handle errors properly inside this closure.  And it's
-            // probably not a good idea to `unwrap()` inside a panic handler.
-            // So we just ignore the `Result`.
-            let _ = TerminalBackend::force_restore();
-            hook(info);
-        }));
 
         self.event_loop(input_stream).await;
 

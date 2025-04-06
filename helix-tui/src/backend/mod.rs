@@ -6,10 +6,10 @@ use crate::{buffer::Cell, terminal::Config};
 
 use helix_view::graphics::{CursorKind, Rect};
 
-#[cfg(feature = "crossterm")]
-mod crossterm;
-#[cfg(feature = "crossterm")]
-pub use self::crossterm::CrosstermBackend;
+#[cfg(feature = "termina")]
+mod termina;
+#[cfg(feature = "termina")]
+pub use self::termina::TerminaBackend;
 
 mod test;
 pub use self::test::TestBackend;
@@ -22,8 +22,6 @@ pub trait Backend {
     fn reconfigure(&mut self, config: Config) -> Result<(), io::Error>;
     /// Restores the terminal to a normal state, undoes `claim`
     fn restore(&mut self) -> Result<(), io::Error>;
-    /// Forcibly resets the terminal, ignoring errors and configuration
-    fn force_restore() -> Result<(), io::Error>;
     /// Draws styled text to the terminal
     fn draw<'a, I>(&mut self, content: I) -> Result<(), io::Error>
     where
@@ -42,4 +40,5 @@ pub trait Backend {
     fn size(&self) -> Result<Rect, io::Error>;
     /// Flushes the terminal buffer
     fn flush(&mut self) -> Result<(), io::Error>;
+    fn supports_true_color(&self) -> bool;
 }
