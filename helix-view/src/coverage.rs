@@ -115,6 +115,7 @@ fn find_coverage_file() -> Option<std::path::PathBuf> {
         return Some(std::path::PathBuf::from(coverage_path));
     }
     for entry in walkdir::WalkDir::new(".")
+        .max_depth(1)
         .into_iter()
         .filter_map(|e| e.ok())
     {
