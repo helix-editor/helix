@@ -304,7 +304,7 @@ where
         write(context, " W ".into(), None);
     }
 
-    for sev in &context.editor.config().statusline.w_diagnostics {
+    for sev in &context.editor.config().statusline.workspace_diagnostics {
         match sev {
             Severity::Hint if hints > 0 => {
                 write(
