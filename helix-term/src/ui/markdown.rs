@@ -132,6 +132,9 @@ pub struct Markdown {
 impl Markdown {
     const TEXT_STYLE: &'static str = "ui.text";
     const BLOCK_STYLE: &'static str = "markup.raw.inline";
+    const RULE_STYLE: &'static str = "punctuation.special";
+    const UNNUMBERED_LIST_STYLE: &'static str = "markup.list.unnumbered";
+    const NUMBERED_LIST_STYLE: &'static str = "markup.list.numbered";
     const HEADING_STYLES: [&'static str; 6] = [
         "markup.heading.1",
         "markup.heading.2",
@@ -178,6 +181,9 @@ impl Markdown {
         let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
         let text_style = get_theme(Self::TEXT_STYLE);
         let code_style = get_theme(Self::BLOCK_STYLE);
+        let numbered_list_style = get_theme(Self::NUMBERED_LIST_STYLE);
+        let unnumbered_list_style = get_theme(Self::UNNUMBERED_LIST_STYLE);
+        let rule_style = get_theme(Self::RULE_STYLE);
         let heading_styles: Vec<Style> = Self::HEADING_STYLES
             .iter()
             .map(|key| get_theme(key))
@@ -227,10 +233,12 @@ impl Markdown {
                     tags.push(Tag::Item);
 
                     // get the appropriate bullet for the current list
-                    let bullet = list_stack
+                    let (bullet, bullet_style) = list_stack
                         .last()
                         .unwrap_or(&None) // use the '- ' bullet in case the list stack would be empty
-                        .map_or(String::from("- "), |number| format!("{}. ", number));
+                        .map_or((String::from("• "), unnumbered_list_style), |number| {
+                            (format!("{}. ", number), numbered_list_style)
+                        });
 
                     // increment the current list number if there is one
                     if let Some(v) = list_stack.last_mut().unwrap_or(&mut None).as_mut() {
@@ -238,7 +246,7 @@ impl Markdown {
                     }
 
                     let prefix = get_indent(list_stack.len()) + bullet.as_str();
-                    spans.push(Span::from(prefix));
+                    spans.push(Span::styled(prefix, bullet_style));
                 }
                 Event::Start(tag) => {
                     tags.push(tag);
@@ -314,7 +322,7 @@ impl Markdown {
                     }
                 }
                 Event::Rule => {
-                    lines.push(Spans::from(Span::styled("---", code_style)));
+                    lines.push(Spans::from(Span::styled("───", rule_style)));
                     lines.push(Spans::default());
                 }
                 // TaskListMarker(bool) true if checked

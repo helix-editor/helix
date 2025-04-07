@@ -1,32 +1,3 @@
-; Opening elements
-; ----------------
-
-(jsx_opening_element ((identifier) @constructor
- (#match? @constructor "^[A-Z]")))
-
-(jsx_opening_element (identifier) @tag)
-
-; Closing elements
-; ----------------
-
-(jsx_closing_element ((identifier) @constructor
- (#match? @constructor "^[A-Z]")))
-
-(jsx_closing_element (identifier) @tag)
-
-; Self-closing elements
-; ---------------------
-
-(jsx_self_closing_element ((identifier) @constructor
- (#match? @constructor "^[A-Z]")))
-
-(jsx_self_closing_element (identifier) @tag)
-
-; Attributes
-; ----------
-
-(jsx_attribute (property_identifier) @attribute)
-
 ; Punctuation
 ; -----------
 
@@ -41,3 +12,32 @@
 
 ; <Component />
 (jsx_self_closing_element ["<" "/>"] @punctuation.bracket)
+
+; Attributes
+; ----------
+
+(jsx_attribute (property_identifier) @attribute)
+
+; Opening elements
+; ----------------
+
+(jsx_opening_element (identifier) @tag)
+
+(jsx_opening_element ((identifier) @constructor
+ (#match? @constructor "^[A-Z]")))
+
+; Closing elements
+; ----------------
+
+(jsx_closing_element (identifier) @tag)
+
+(jsx_closing_element ((identifier) @constructor
+ (#match? @constructor "^[A-Z]")))
+
+; Self-closing elements
+; ---------------------
+
+(jsx_self_closing_element (identifier) @tag)
+
+(jsx_self_closing_element ((identifier) @constructor
+ (#match? @constructor "^[A-Z]")))

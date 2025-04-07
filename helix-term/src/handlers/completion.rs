@@ -1,310 +1,90 @@
-use std::collections::HashSet;
-use std::sync::Arc;
-use std::time::Duration;
+use std::collections::HashMap;
 
-use arc_swap::ArcSwap;
-use futures_util::stream::FuturesUnordered;
-use futures_util::FutureExt;
 use helix_core::chars::char_is_word;
+use helix_core::completion::CompletionProvider;
 use helix_core::syntax::LanguageServerFeature;
-use helix_event::{cancelable_future, register_hook, send_blocking, TaskController, TaskHandle};
+use helix_event::{register_hook, TaskHandle};
 use helix_lsp::lsp;
-use helix_lsp::util::pos_to_lsp_pos;
 use helix_stdx::rope::RopeSliceExt;
-use helix_view::document::{Mode, SavePoint};
-use helix_view::handlers::lsp::CompletionEvent;
-use helix_view::{DocumentId, Editor, ViewId};
-use path::path_completion;
-use tokio::sync::mpsc::Sender;
-use tokio::time::Instant;
-use tokio_stream::StreamExt as _;
+use helix_view::document::Mode;
+use helix_view::handlers::completion::{CompletionEvent, ResponseContext};
+use helix_view::Editor;
+use tokio::task::JoinSet;
 
 use crate::commands;
 use crate::compositor::Compositor;
-use crate::config::Config;
 use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
-use crate::job::{dispatch, dispatch_blocking};
+use crate::handlers::completion::request::{request_incomplete_completion_list, Trigger};
+use crate::job::dispatch;
 use crate::keymap::MappableCommand;
-use crate::ui::editor::InsertEvent;
 use crate::ui::lsp::signature_help::SignatureHelp;
 use crate::ui::{self, Popup};
 
 use super::Handlers;
-pub use item::{CompletionItem, LspCompletionItem};
+
+pub use item::{CompletionItem, CompletionItems, CompletionResponse, LspCompletionItem};
+pub use request::CompletionHandler;
 pub use resolve::ResolveHandler;
+
 mod item;
 mod path;
+mod request;
 mod resolve;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum TriggerKind {
-    Auto,
-    TriggerChar,
-    Manual,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct Trigger {
-    pos: usize,
-    view: ViewId,
-    doc: DocumentId,
-    kind: TriggerKind,
-}
-
-#[derive(Debug)]
-pub(super) struct CompletionHandler {
-    /// currently active trigger which will cause a
-    /// completion request after the timeout
-    trigger: Option<Trigger>,
-    in_flight: Option<Trigger>,
-    task_controller: TaskController,
-    config: Arc<ArcSwap<Config>>,
-}
-
-impl CompletionHandler {
-    pub fn new(config: Arc<ArcSwap<Config>>) -> CompletionHandler {
-        Self {
-            config,
-            task_controller: TaskController::new(),
-            trigger: None,
-            in_flight: None,
+async fn handle_response(
+    requests: &mut JoinSet<CompletionResponse>,
+    is_incomplete: bool,
+) -> Option<CompletionResponse> {
+    loop {
+        let response = requests.join_next().await?.unwrap();
+        if !is_incomplete && !response.context.is_incomplete && response.items.is_empty() {
+            continue;
         }
+        return Some(response);
     }
 }
 
-impl helix_event::AsyncHook for CompletionHandler {
-    type Event = CompletionEvent;
-
-    fn handle_event(
-        &mut self,
-        event: Self::Event,
-        _old_timeout: Option<Instant>,
-    ) -> Option<Instant> {
-        if self.in_flight.is_some() && !self.task_controller.is_running() {
-            self.in_flight = None;
-        }
-        match event {
-            CompletionEvent::AutoTrigger {
-                cursor: trigger_pos,
-                doc,
-                view,
-            } => {
-                // techically it shouldn't be possible to switch views/documents in insert mode
-                // but people may create weird keymaps/use the mouse so lets be extra careful
-                if self
-                    .trigger
-                    .or(self.in_flight)
-                    .map_or(true, |trigger| trigger.doc != doc || trigger.view != view)
-                {
-                    self.trigger = Some(Trigger {
-                        pos: trigger_pos,
-                        view,
-                        doc,
-                        kind: TriggerKind::Auto,
-                    });
-                }
-            }
-            CompletionEvent::TriggerChar { cursor, doc, view } => {
-                // immediately request completions and drop all auto completion requests
-                self.task_controller.cancel();
-                self.trigger = Some(Trigger {
-                    pos: cursor,
-                    view,
-                    doc,
-                    kind: TriggerKind::TriggerChar,
-                });
-            }
-            CompletionEvent::ManualTrigger { cursor, doc, view } => {
-                // immediately request completions and drop all auto completion requests
-                self.trigger = Some(Trigger {
-                    pos: cursor,
-                    view,
-                    doc,
-                    kind: TriggerKind::Manual,
-                });
-                // stop debouncing immediately and request the completion
-                self.finish_debounce();
-                return None;
-            }
-            CompletionEvent::Cancel => {
-                self.trigger = None;
-                self.task_controller.cancel();
-            }
-            CompletionEvent::DeleteText { cursor } => {
-                // if we deleted the original trigger, abort the completion
-                if matches!(self.trigger.or(self.in_flight), Some(Trigger{ pos, .. }) if cursor < pos)
-                {
-                    self.trigger = None;
-                    self.task_controller.cancel();
-                }
-            }
-        }
-        self.trigger.map(|trigger| {
-            // if the current request was closed forget about it
-            // otherwise immediately restart the completion request
-            let timeout = if trigger.kind == TriggerKind::Auto {
-                self.config.load().editor.completion_timeout
-            } else {
-                // we want almost instant completions for trigger chars
-                // and restarting completion requests. The small timeout here mainly
-                // serves to better handle cases where the completion handler
-                // may fall behind (so multiple events in the channel) and macros
-                Duration::from_millis(5)
-            };
-            Instant::now() + timeout
-        })
-    }
-
-    fn finish_debounce(&mut self) {
-        let trigger = self.trigger.take().expect("debounce always has a trigger");
-        self.in_flight = Some(trigger);
-        let handle = self.task_controller.restart();
-        dispatch_blocking(move |editor, compositor| {
-            request_completion(trigger, handle, editor, compositor)
-        });
-    }
-}
-
-fn request_completion(
-    mut trigger: Trigger,
+async fn replace_completions(
     handle: TaskHandle,
-    editor: &mut Editor,
-    compositor: &mut Compositor,
+    mut requests: JoinSet<CompletionResponse>,
+    is_incomplete: bool,
 ) {
-    let (view, doc) = current!(editor);
-
-    if compositor
-        .find::<ui::EditorView>()
-        .unwrap()
-        .completion
-        .is_some()
-        || editor.mode != Mode::Insert
-    {
-        return;
-    }
-
-    let text = doc.text();
-    let selection = doc.selection(view.id);
-    let cursor = selection.primary().cursor(text.slice(..));
-    if trigger.view != view.id || trigger.doc != doc.id() || cursor < trigger.pos {
-        return;
-    }
-    // this looks odd... Why are we not using the trigger position from
-    // the `trigger` here? Won't that mean that the trigger char doesn't get
-    // send to the LS if we type fast enougn? Yes that is true but it's
-    // not actually a problem. The LSP will resolve the completion to the identifier
-    // anyway (in fact sending the later position is necessary to get the right results
-    // from LSPs that provide incomplete completion list). We rely on trigger offset
-    // and primary cursor matching for multi-cursor completions so this is definitely
-    // necessary from our side too.
-    trigger.pos = cursor;
-    let trigger_text = text.slice(..cursor);
-
-    let mut seen_language_servers = HashSet::new();
-    let mut futures: FuturesUnordered<_> = doc
-        .language_servers_with_feature(LanguageServerFeature::Completion)
-        .filter(|ls| seen_language_servers.insert(ls.id()))
-        .map(|ls| {
-            let language_server_id = ls.id();
-            let offset_encoding = ls.offset_encoding();
-            let pos = pos_to_lsp_pos(text, cursor, offset_encoding);
-            let doc_id = doc.identifier();
-            let context = if trigger.kind == TriggerKind::Manual {
-                lsp::CompletionContext {
-                    trigger_kind: lsp::CompletionTriggerKind::INVOKED,
-                    trigger_character: None,
-                }
-            } else {
-                let trigger_char =
-                    ls.capabilities()
-                        .completion_provider
-                        .as_ref()
-                        .and_then(|provider| {
-                            provider
-                                .trigger_characters
-                                .as_deref()?
-                                .iter()
-                                .find(|&trigger| trigger_text.ends_with(trigger))
-                        });
-
-                if trigger_char.is_some() {
-                    lsp::CompletionContext {
-                        trigger_kind: lsp::CompletionTriggerKind::TRIGGER_CHARACTER,
-                        trigger_character: trigger_char.cloned(),
-                    }
-                } else {
-                    lsp::CompletionContext {
-                        trigger_kind: lsp::CompletionTriggerKind::INVOKED,
-                        trigger_character: None,
-                    }
-                }
-            };
-
-            let completion_response = ls.completion(doc_id, pos, None, context).unwrap();
-            async move {
-                let json = completion_response.await?;
-                let response: Option<lsp::CompletionResponse> = serde_json::from_value(json)?;
-                let items = match response {
-                    Some(lsp::CompletionResponse::Array(items)) => items,
-                    // TODO: do something with is_incomplete
-                    Some(lsp::CompletionResponse::List(lsp::CompletionList {
-                        is_incomplete: _is_incomplete,
-                        items,
-                    })) => items,
-                    None => Vec::new(),
-                }
-                .into_iter()
-                .map(|item| {
-                    CompletionItem::Lsp(LspCompletionItem {
-                        item,
-                        provider: language_server_id,
-                        resolved: false,
-                    })
-                })
-                .collect();
-                anyhow::Ok(items)
-            }
-            .boxed()
-        })
-        .chain(path_completion(selection.clone(), doc, handle.clone()))
-        .collect();
-
-    let future = async move {
-        let mut items = Vec::new();
-        while let Some(lsp_items) = futures.next().await {
-            match lsp_items {
-                Ok(mut lsp_items) => items.append(&mut lsp_items),
-                Err(err) => {
-                    log::debug!("completion request failed: {err:?}");
-                }
-            };
-        }
-        items
-    };
-
-    let savepoint = doc.savepoint(view);
-
-    let ui = compositor.find::<ui::EditorView>().unwrap();
-    ui.last_insert.1.push(InsertEvent::RequestCompletion);
-    tokio::spawn(async move {
-        let items = cancelable_future(future, &handle).await;
-        let Some(items) = items.filter(|items| !items.is_empty()) else {
-            return;
-        };
+    while let Some(mut response) = handle_response(&mut requests, is_incomplete).await {
+        let handle = handle.clone();
         dispatch(move |editor, compositor| {
-            show_completion(editor, compositor, items, trigger, savepoint);
-            drop(handle)
+            let editor_view = compositor.find::<ui::EditorView>().unwrap();
+            let Some(completion) = &mut editor_view.completion else {
+                return;
+            };
+            if handle.is_canceled() {
+                log::info!("dropping outdated completion response");
+                return;
+            }
+
+            completion.replace_provider_completions(&mut response, is_incomplete);
+            if completion.is_empty() {
+                editor_view.clear_completion(editor);
+                // clearing completions might mean we want to immediately re-request them (usually
+                // this occurs if typing a trigger char)
+                trigger_auto_completion(editor, false);
+            } else {
+                editor
+                    .handlers
+                    .completions
+                    .active_completions
+                    .insert(response.provider, response.context);
+            }
         })
-        .await
-    });
+        .await;
+    }
 }
 
 fn show_completion(
     editor: &mut Editor,
     compositor: &mut Compositor,
     items: Vec<CompletionItem>,
+    context: HashMap<CompletionProvider, ResponseContext>,
     trigger: Trigger,
-    savepoint: Arc<SavePoint>,
 ) {
     let (view, doc) = current_ref!(editor);
     // check if the completion request is stale.
@@ -321,8 +101,9 @@ fn show_completion(
     if ui.completion.is_some() {
         return;
     }
+    editor.handlers.completions.active_completions = context;
 
-    let completion_area = ui.set_completion(editor, savepoint, items, trigger.pos, size);
+    let completion_area = ui.set_completion(editor, items, trigger.pos, size);
     let signature_help_area = compositor
         .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
         .map(|signature_help| signature_help.area(size, editor));
@@ -332,11 +113,7 @@ fn show_completion(
     }
 }
 
-pub fn trigger_auto_completion(
-    tx: &Sender<CompletionEvent>,
-    editor: &Editor,
-    trigger_char_only: bool,
-) {
+pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
     let config = editor.config.load();
     if !config.auto_completion {
         return;
@@ -364,15 +141,13 @@ pub fn trigger_auto_completion(
     #[cfg(not(windows))]
     let is_path_completion_trigger = matches!(cursor_char, Some(b'/'));
 
+    let handler = &editor.handlers.completions;
     if is_trigger_char || (is_path_completion_trigger && doc.path_completion_enabled()) {
-        send_blocking(
-            tx,
-            CompletionEvent::TriggerChar {
-                cursor,
-                doc: doc.id(),
-                view: view.id,
-            },
-        );
+        handler.event(CompletionEvent::TriggerChar {
+            cursor,
+            doc: doc.id(),
+            view: view.id,
+        });
         return;
     }
 
@@ -385,29 +160,29 @@ pub fn trigger_auto_completion(
             .all(char_is_word);
 
     if is_auto_trigger {
-        send_blocking(
-            tx,
-            CompletionEvent::AutoTrigger {
-                cursor,
-                doc: doc.id(),
-                view: view.id,
-            },
-        );
+        handler.event(CompletionEvent::AutoTrigger {
+            cursor,
+            doc: doc.id(),
+            view: view.id,
+        });
     }
 }
 
-fn update_completions(cx: &mut commands::Context, c: Option<char>) {
+fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
     cx.callback.push(Box::new(move |compositor, cx| {
         let editor_view = compositor.find::<ui::EditorView>().unwrap();
         if let Some(completion) = &mut editor_view.completion {
             completion.update_filter(c);
-            if completion.is_empty() {
+            if completion.is_empty() || c.is_some_and(|c| !char_is_word(c)) {
                 editor_view.clear_completion(cx.editor);
                 // clearing completions might mean we want to immediately rerequest them (usually
                 // this occurs if typing a trigger char)
                 if c.is_some() {
-                    trigger_auto_completion(&cx.editor.handlers.completions, cx.editor, false);
+                    trigger_auto_completion(cx.editor, false);
                 }
+            } else {
+                let handle = cx.editor.handlers.completions.request_controller.restart();
+                request_incomplete_completion_list(cx.editor, handle)
             }
         }
     }))
@@ -421,7 +196,6 @@ fn clear_completions(cx: &mut commands::Context) {
 }
 
 fn completion_post_command_hook(
-    tx: &Sender<CompletionEvent>,
     PostCommand { command, cx }: &mut PostCommand<'_, '_>,
 ) -> anyhow::Result<()> {
     if cx.editor.mode == Mode::Insert {
@@ -434,7 +208,7 @@ fn completion_post_command_hook(
                 MappableCommand::Static {
                     name: "delete_char_backward",
                     ..
-                } => update_completions(cx, None),
+                } => update_completion_filter(cx, None),
                 _ => clear_completions(cx),
             }
         } else {
@@ -460,33 +234,35 @@ fn completion_post_command_hook(
                 } => return Ok(()),
                 _ => CompletionEvent::Cancel,
             };
-            send_blocking(tx, event);
+            cx.editor.handlers.completions.event(event);
         }
     }
     Ok(())
 }
 
-pub(super) fn register_hooks(handlers: &Handlers) {
-    let tx = handlers.completions.clone();
-    register_hook!(move |event: &mut PostCommand<'_, '_>| completion_post_command_hook(&tx, event));
+pub(super) fn register_hooks(_handlers: &Handlers) {
+    register_hook!(move |event: &mut PostCommand<'_, '_>| completion_post_command_hook(event));
 
-    let tx = handlers.completions.clone();
     register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
         if event.old_mode == Mode::Insert {
-            send_blocking(&tx, CompletionEvent::Cancel);
+            event
+                .cx
+                .editor
+                .handlers
+                .completions
+                .event(CompletionEvent::Cancel);
             clear_completions(event.cx);
         } else if event.new_mode == Mode::Insert {
-            trigger_auto_completion(&tx, event.cx.editor, false)
+            trigger_auto_completion(event.cx.editor, false)
         }
         Ok(())
     });
 
-    let tx = handlers.completions.clone();
     register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
         if event.cx.editor.last_completion.is_some() {
-            update_completions(event.cx, Some(event.c))
+            update_completion_filter(event.cx, Some(event.c))
         } else {
-            trigger_auto_completion(&tx, event.cx.editor, false);
+            trigger_auto_completion(event.cx.editor, false);
         }
         Ok(())
     });

@@ -334,6 +334,7 @@ pub enum LanguageServerFeature {
     Diagnostics,
     RenameSymbol,
     InlayHints,
+    DocumentColors,
 }
 
 impl Display for LanguageServerFeature {
@@ -357,6 +358,7 @@ impl Display for LanguageServerFeature {
             Diagnostics => "diagnostics",
             RenameSymbol => "rename-symbol",
             InlayHints => "inlay-hints",
+            DocumentColors => "document-colors",
         };
         write!(f, "{feature}",)
     }
@@ -756,7 +758,7 @@ impl LanguageConfiguration {
             let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
                 .map_err(|err| {
                     log::error!(
-                        "Failed to load tree-sitter parser for language {:?}: {}",
+                        "Failed to load tree-sitter parser for language {:?}: {:#}",
                         self.language_id,
                         err
                     )
@@ -2502,15 +2504,17 @@ impl Iterator for HighlightIter<'_> {
                 }
             }
 
-            // Once a highlighting pattern is found for the current node, skip over
-            // any later highlighting patterns that also match this node. Captures
+            // Use the last capture found for the current node, skipping over any
+            // highlight patterns that also match this node. Captures
             // for a given node are ordered by pattern index, so these subsequent
             // captures are guaranteed to be for highlighting, not injections or
             // local variables.
             while let Some((next_match, next_capture_index)) = captures.peek() {
                 let next_capture = next_match.captures[*next_capture_index];
                 if next_capture.node == capture.node {
-                    captures.next();
+                    match_.remove();
+                    capture = next_capture;
+                    match_ = captures.next().unwrap().0;
                 } else {
                     break;
                 }

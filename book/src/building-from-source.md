@@ -184,11 +184,11 @@ cargo deb -- --locked
 > 💡 This locks you into the `--release` profile. But you can also build helix in any way you like.
 > As long as you leave a `target/release/hx` file, it will get packaged with `cargo deb --no-build` 
 
-> 💡 Don't worry about the repeated
+> 💡 Don't worry about the following:
 > ```
 > warning: Failed to find dependency specification
 > ```
-> warnings. Cargo deb just reports which packaged files it didn't derive dependencies for. But
+> Cargo deb just reports which packaged files it didn't derive dependencies for. But
 > so far the dependency deriving seams very good, even if some of the grammar files are skipped.
 
 You can find the resulted `.deb` in `target/debian/`. It should contain everything it needs, including the
