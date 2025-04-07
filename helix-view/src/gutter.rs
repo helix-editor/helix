@@ -172,7 +172,7 @@ pub fn coverage<'doc>(
             );
         }
     }
-    log::info!("return empty coverage gutter for {:?}", document_path);
+    log::info!("return empty coverage gutter");
     return Box::new(move |_, _, _, _| None);
 }
 
