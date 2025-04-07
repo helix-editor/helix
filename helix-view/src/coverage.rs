@@ -162,7 +162,7 @@ impl From<RawCoverage> for Coverage {
                     // so check each in the path
                     let raw_path: std::path::PathBuf =
                         [&source.name, &class.filename].iter().collect();
-                    if let Ok(path) = std::fs::canonicalize(raw_path) {
+                    if let Ok(path) = std::fs::canonicalize(raw_path.clone()) {
                         log::debug!("add file {:?} to coverage", path);
                         files.insert(
                             path,
