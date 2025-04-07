@@ -22,7 +22,7 @@ Helix' keymap and interaction model ([Using Helix](#usage.md)) is easier to adop
 | --- | --- 
 | Fish | [Feature Request](https://github.com/fish-shell/fish-shell/issues/7748) 
 | Fish | [fish-helix](https://github.com/sshilovsky/fish-helix/tree/main) 
-| Zsh | [helix-zsh](https://github.com/john-h-k/helix-zsh) 
+| Zsh | [helix-zsh](https://github.com/john-h-k/helix-zsh) or [zsh-helix-mode](https://github.com/Multirious/zsh-helix-mode)
 | Nushell | [Feature Request](https://github.com/nushell/reedline/issues/639) 
 
 ## Other software
