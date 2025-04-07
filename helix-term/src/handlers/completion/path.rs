@@ -3,28 +3,29 @@ use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr as _,
+    sync::Arc,
 };
 
-use futures_util::{future::BoxFuture, FutureExt as _};
-use helix_core as core;
-use helix_core::Transaction;
+use helix_core::{self as core, completion::CompletionProvider, Selection, Transaction};
 use helix_event::TaskHandle;
 use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
-use helix_view::Document;
+use helix_view::{document::SavePoint, handlers::completion::ResponseContext, Document};
 use url::Url;
 
-use super::item::CompletionItem;
+use crate::handlers::completion::{item::CompletionResponse, CompletionItem, CompletionItems};
 
 pub(crate) fn path_completion(
-    cursor: usize,
-    text: core::Rope,
+    selection: Selection,
     doc: &Document,
     handle: TaskHandle,
-) -> Option<BoxFuture<'static, anyhow::Result<Vec<CompletionItem>>>> {
+    savepoint: Arc<SavePoint>,
+) -> Option<impl FnOnce() -> CompletionResponse> {
     if !doc.path_completion_enabled() {
         return None;
     }
 
+    let text = doc.text().clone();
+    let cursor = selection.primary().cursor(text.slice(..));
     let cur_line = text.char_to_line(cursor);
     let start = text.line_to_char(cur_line).max(cursor.saturating_sub(1000));
     let line_until_cursor = text.slice(start..cursor);
@@ -67,12 +68,27 @@ pub(crate) fn path_completion(
         return None;
     }
 
-    let future = tokio::task::spawn_blocking(move || {
+    // TODO: handle properly in the future
+    const PRIORITY: i8 = 1;
+    let future = move || {
         let Ok(read_dir) = std::fs::read_dir(&dir_path) else {
-            return Vec::new();
+            return CompletionResponse {
+                items: CompletionItems::Other(Vec::new()),
+                provider: CompletionProvider::Path,
+                context: ResponseContext {
+                    is_incomplete: false,
+                    priority: PRIORITY,
+                    savepoint,
+                },
+            };
         };
 
-        read_dir
+        let edit_diff = typed_file_name
+            .as_ref()
+            .map(|s| s.chars().count())
+            .unwrap_or_default();
+
+        let res: Vec<_> = read_dir
             .filter_map(Result::ok)
             .filter_map(|dir_entry| {
                 dir_entry
@@ -88,27 +104,32 @@ pub(crate) fn path_completion(
                 let kind = path_kind(&md);
                 let documentation = path_documentation(&md, &dir_path.join(&file_name), kind);
 
-                let edit_diff = typed_file_name
-                    .as_ref()
-                    .map(|f| f.len())
-                    .unwrap_or_default();
-
-                let transaction = Transaction::change(
-                    &text,
-                    std::iter::once((cursor - edit_diff, cursor, Some((&file_name).into()))),
-                );
+                let transaction = Transaction::change_by_selection(&text, &selection, |range| {
+                    let cursor = range.cursor(text.slice(..));
+                    (cursor - edit_diff, cursor, Some((&file_name).into()))
+                });
 
                 Some(CompletionItem::Other(core::CompletionItem {
                     kind: Cow::Borrowed(kind),
                     label: file_name.into(),
                     transaction,
-                    documentation,
+                    documentation: Some(documentation),
+                    provider: CompletionProvider::Path,
                 }))
             })
-            .collect::<Vec<_>>()
-    });
+            .collect();
+        CompletionResponse {
+            items: CompletionItems::Other(res),
+            provider: CompletionProvider::Path,
+            context: ResponseContext {
+                is_incomplete: false,
+                priority: PRIORITY,
+                savepoint,
+            },
+        }
+    };
 
-    Some(async move { Ok(future.await?) }.boxed())
+    Some(future)
 }
 
 #[cfg(unix)]

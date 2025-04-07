@@ -19,10 +19,12 @@ mod test;
 
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 
+use helix_stdx::rope::{RopeGraphemes, RopeSliceExt};
+
 use crate::graphemes::{Grapheme, GraphemeStr};
 use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
-use crate::{Position, RopeGraphemes, RopeSlice};
+use crate::{Position, RopeSlice};
 
 /// TODO make Highlight a u32 to reduce the size of this enum to a single word.
 #[derive(Debug, Clone, Copy)]
@@ -219,7 +221,7 @@ impl<'t> DocumentFormatter<'t> {
             text_fmt,
             annotations,
             visual_pos: Position { row: 0, col: 0 },
-            graphemes: RopeGraphemes::new(text.slice(block_char_idx..)),
+            graphemes: text.slice(block_char_idx..).graphemes(),
             char_pos: block_char_idx,
             exhausted: false,
             indent_level: None,
@@ -370,8 +372,8 @@ impl<'t> DocumentFormatter<'t> {
             match col.cmp(&(self.text_fmt.viewport_width as usize)) {
                 // The EOF char and newline chars are always selectable in helix. That means
                 // that wrapping happens "too-early" if a word fits a line perfectly. This
-                // is intentional so that all selectable graphemes are always visisble (and
-                // therefore the cursor never dissapears). However if the user manually set a
+                // is intentional so that all selectable graphemes are always visible (and
+                // therefore the cursor never disappears). However if the user manually set a
                 // lower softwrap width then this is undesirable. Just increasing the viewport-
                 // width by one doesn't work because if a line is wrapped multiple times then
                 // some words may extend past the specified width.
@@ -380,9 +382,10 @@ impl<'t> DocumentFormatter<'t> {
                 // by a newline/eof character here.
                 Ordering::Equal
                     if self.text_fmt.soft_wrap_at_text_width
-                        && self.peek_grapheme(col, char_pos).map_or(false, |grapheme| {
-                            grapheme.is_newline() || grapheme.is_eof()
-                        }) => {}
+                        && self
+                            .peek_grapheme(col, char_pos)
+                            .is_some_and(|grapheme| grapheme.is_newline() || grapheme.is_eof()) => {
+                }
                 Ordering::Equal if word_width > self.text_fmt.max_wrap as usize => return,
                 Ordering::Greater if word_width > self.text_fmt.max_wrap as usize => {
                     self.peeked_grapheme = self.word_buf.pop();

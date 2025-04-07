@@ -57,4 +57,4 @@ second argument (a string).
 - `#any-of?` (standard):
 The first argument (a capture) must be one of the other arguments (strings).
 
-[upstream-docs]: http://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection
+[upstream-docs]: https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection

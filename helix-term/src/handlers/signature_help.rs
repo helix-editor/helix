@@ -16,7 +16,7 @@ use crate::commands::Open;
 use crate::compositor::Compositor;
 use crate::events::{OnModeSwitch, PostInsertChar};
 use crate::handlers::Handlers;
-use crate::ui::lsp::{Signature, SignatureHelp};
+use crate::ui::lsp::signature_help::{Signature, SignatureHelp};
 use crate::ui::Popup;
 use crate::{job, ui};
 
@@ -353,7 +353,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 
     let tx = handlers.signature_hints.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
-        if event.doc.config.load().lsp.auto_signature_help {
+        if event.doc.config.load().lsp.auto_signature_help && !event.ghost_transaction {
             send_blocking(&tx, SignatureHelpEvent::ReTrigger);
         }
         Ok(())

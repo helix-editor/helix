@@ -12,6 +12,7 @@
 "ui.gutter" = { fg = "fg3" } # Left gutter for diagnostics and breakpoints.
 
 "ui.text" = { fg = "fg1" } # Default text color.
+"ui.text.directory" = { fg = "blue-bright" } # Directory names in prompt completion.
 "ui.text.focus" = { bg = "sel1", fg = "fg1" } # Selection highlight in buffer-picker or file-picker.
 "ui.text.info" = { fg = "fg2", bg = "sel0" } # Info popup contents (space mode menu).
 
