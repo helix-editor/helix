@@ -28,6 +28,7 @@ pub struct Prompt {
     prompt: Cow<'static, str>,
     line: String,
     cursor: usize,
+    pub background: Option<helix_view::theme::Style>,
     completion: Vec<Completion>,
     selection: Option<usize>,
     history_register: Option<char>,
@@ -84,6 +85,7 @@ impl Prompt {
             selection: None,
             history_register,
             history_pos: None,
+            background: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
@@ -401,7 +403,9 @@ impl Prompt {
         let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
         let suggestion_color = theme.get("ui.text.inactive");
-        let background = theme.get("ui.background");
+        let background = self
+            .background
+            .unwrap_or_else(|| theme.get("ui.background"));
         // completion
 
         let max_len = self
