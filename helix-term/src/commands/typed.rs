@@ -3450,7 +3450,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "pipe",
-        aliases: &[],
+        aliases: &["|"],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
         completer: SHELL_COMPLETER,
@@ -3466,7 +3466,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "run-shell-command",
-        aliases: &["sh"],
+        aliases: &["sh", "!"],
         doc: "Run a shell command",
         fun: run_shell_command,
         completer: SHELL_COMPLETER,
