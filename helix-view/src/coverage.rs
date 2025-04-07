@@ -173,7 +173,7 @@ impl From<RawCoverage> for Coverage {
                         );
                         break;
                     }
-                    log::warn!("could not add file {:?} to coverage", path);
+                    log::warn!("could not add file {:?} to coverage", raw_path);
                 }
             }
         }
