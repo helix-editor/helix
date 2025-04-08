@@ -20,6 +20,17 @@ impl Default for Severity {
     }
 }
 
+impl Severity {
+    pub const fn indicator(&self) -> &'static str {
+        match self {
+            Self::Hint => "○",
+            Self::Info => "●",
+            Self::Warning => "▲",
+            Self::Error => "■",
+        }
+    }
+}
+
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Deserialize, Serialize)]
 pub enum NumberOrString {
     Number(i32),

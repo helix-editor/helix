@@ -237,24 +237,36 @@ where
     for sev in &context.editor.config().statusline.diagnostics {
         match sev {
             Severity::Hint if hints > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("hint")));
+                write(
+                    context,
+                    Span::styled(Severity::Hint.indicator(), context.editor.theme.get("hint")),
+                );
                 write(context, format!(" {} ", hints).into());
             }
             Severity::Info if info > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("info")));
+                write(
+                    context,
+                    Span::styled(Severity::Info.indicator(), context.editor.theme.get("info")),
+                );
                 write(context, format!(" {} ", info).into());
             }
             Severity::Warning if warnings > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("warning")),
+                    Span::styled(
+                        Severity::Warning.indicator(),
+                        context.editor.theme.get("warning"),
+                    ),
                 );
                 write(context, format!(" {} ", warnings).into());
             }
             Severity::Error if errors > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("error")),
+                    Span::styled(
+                        Severity::Error.indicator(),
+                        context.editor.theme.get("error"),
+                    ),
                 );
                 write(context, format!(" {} ", errors).into());
             }
@@ -304,24 +316,36 @@ where
     for sev in sevs_to_show {
         match sev {
             Severity::Hint if hints > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("hint")));
+                write(
+                    context,
+                    Span::styled(Severity::Hint.indicator(), context.editor.theme.get("hint")),
+                );
                 write(context, format!(" {} ", hints).into());
             }
             Severity::Info if info > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("info")));
+                write(
+                    context,
+                    Span::styled(Severity::Info.indicator(), context.editor.theme.get("info")),
+                );
                 write(context, format!(" {} ", info).into());
             }
             Severity::Warning if warnings > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("warning")),
+                    Span::styled(
+                        Severity::Warning.indicator(),
+                        context.editor.theme.get("warning"),
+                    ),
                 );
                 write(context, format!(" {} ", warnings).into());
             }
             Severity::Error if errors > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("error")),
+                    Span::styled(
+                        Severity::Error.indicator(),
+                        context.editor.theme.get("error"),
+                    ),
                 );
                 write(context, format!(" {} ", errors).into());
             }
