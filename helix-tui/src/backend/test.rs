@@ -107,7 +107,7 @@ impl TestBackend {
 }
 
 impl Backend for TestBackend {
-    fn claim(&mut self, _config: Config) -> Result<(), io::Error> {
+    fn claim(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
 
@@ -115,7 +115,7 @@ impl Backend for TestBackend {
         Ok(())
     }
 
-    fn restore(&mut self, _config: Config) -> Result<(), io::Error> {
+    fn restore(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
 

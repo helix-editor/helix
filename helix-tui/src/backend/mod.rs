@@ -17,11 +17,11 @@ pub use self::test::TestBackend;
 /// Representation of a terminal backend.
 pub trait Backend {
     /// Claims the terminal for TUI use.
-    fn claim(&mut self, config: Config) -> Result<(), io::Error>;
+    fn claim(&mut self) -> Result<(), io::Error>;
     /// Update terminal configuration.
     fn reconfigure(&mut self, config: Config) -> Result<(), io::Error>;
     /// Restores the terminal to a normal state, undoes `claim`
-    fn restore(&mut self, config: Config) -> Result<(), io::Error>;
+    fn restore(&mut self) -> Result<(), io::Error>;
     /// Forcibly resets the terminal, ignoring errors and configuration
     fn force_restore() -> Result<(), io::Error>;
     /// Draws styled text to the terminal
