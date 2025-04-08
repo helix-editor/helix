@@ -75,9 +75,9 @@ in
       mkdir -p $out/lib
       installShellCompletion ${./contrib/completion}/hx.{bash,fish,zsh}
       mkdir -p $out/share/{applications,icons/hicolor/{256x256,scalable}/apps}
-      cp ${./contrib/Helix.desktop} $out/share/applications
+      cp ${./contrib/Helix.desktop} $out/share/applications/Helix.desktop
       cp ${./logo.svg} $out/share/icons/hicolor/scalable/apps/helix.svg
-      cp ${./contrib/helix.png} $out/share/icons/hicolor/256x256/apps
+      cp ${./contrib/helix.png} $out/share/icons/hicolor/256x256/apps/helix.png
     '';
 
     meta.mainProgram = "hx";
