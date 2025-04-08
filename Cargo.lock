@@ -145,9 +145,9 @@ checksum = "df8670b8c7b9dae1793364eafadf7239c40d669904660c5960d74cfd80b46a53"
 
 [[package]]
 name = "cc"
-version = "1.2.17"
+version = "1.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fcb57c740ae1daf453ae85f16e37396f672b039e00d9d866e07ddb24e328e3a"
+checksum = "525046617d8376e3db1deffb079e91cef90a89fc3ca5c185bbf8c9ecdd15cd5c"
 dependencies = [
  "shlex",
 ]
@@ -1500,7 +1500,7 @@ dependencies = [
  "regex-automata",
  "regex-cursor",
  "ropey",
- "rustix 1.0.3",
+ "rustix 1.0.5",
  "tempfile",
  "unicode-segmentation",
  "which",
@@ -1607,7 +1607,7 @@ dependencies = [
  "log",
  "once_cell",
  "parking_lot",
- "rustix 1.0.3",
+ "rustix 1.0.5",
  "serde",
  "serde_json",
  "slotmap",
@@ -1823,9 +1823,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.8.0"
+version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3954d50fe15b02142bf25d3b8bdadb634ec3948f103d04ffe3031bc8fe9d7058"
+checksum = "cea70ddb795996207ad57735b50c5982d8844f38ba9ee5f1aedcfb708a2aa11e"
 dependencies = [
  "equivalent",
  "hashbrown 0.15.2",
@@ -2323,9 +2323,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "1.0.3"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e56a18552996ac8d29ecc3b190b4fdbb2d91ca4ec396de7bbffaf43f3d637e96"
+checksum = "d97817398dd4bb2e6da002002db259209759911da105da92bec29ccb12cf58bf"
 dependencies = [
  "bitflags",
  "errno",
@@ -2491,9 +2491,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.14.0"
+version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fcf8323ef1faaee30a44a340193b1ac6814fd9b7b4e88e9d4519a3e4abe1cfd"
+checksum = "8917285742e9f3e1683f0a9c4e6b57960b7314d0b08d30d1ecd426713ee2eee9"
 
 [[package]]
 name = "smartstring"
@@ -2571,7 +2571,7 @@ dependencies = [
  "fastrand",
  "getrandom 0.3.1",
  "once_cell",
- "rustix 1.0.3",
+ "rustix 1.0.5",
  "windows-sys 0.59.0",
 ]
 
@@ -2671,9 +2671,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.44.1"
+version = "1.44.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f382da615b842244d4b8738c82ed1275e6c5dd90c459a30941cd07080b06c91a"
+checksum = "e6b88822cbe49de4185e3a4cbf8321dd487cf5fe0c5c65695fef6346371e9c48"
 dependencies = [
  "backtrace",
  "bytes",
