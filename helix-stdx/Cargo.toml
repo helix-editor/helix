@@ -11,6 +11,9 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 dunce = "1.0"
 etcetera = "0.10"

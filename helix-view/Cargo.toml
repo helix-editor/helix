@@ -10,6 +10,9 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[lints]
+workspace = true
+
 [features]
 default = []
 term = ["crossterm"]

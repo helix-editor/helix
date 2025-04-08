@@ -12,6 +12,9 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.deb]
 # generate a .deb in target/debian/ with the command: cargo deb --no-build
 name = "helix"

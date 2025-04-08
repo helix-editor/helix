@@ -10,6 +10,9 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[lints]
+workspace = true
+
 [[bin]]
 name = "hx-loader"
 path = "src/main.rs"

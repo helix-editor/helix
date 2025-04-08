@@ -36,6 +36,9 @@ package.helix-core.opt-level = 2
 package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
 
+[workspace.lints.clippy]
+if_not_else = "warn"
+
 [workspace.dependencies]
 tree-sitter = { version = "0.22" }
 nucleo = "0.5.0"

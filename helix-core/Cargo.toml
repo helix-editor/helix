@@ -11,6 +11,9 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[lints]
+workspace = true
+
 [features]
 unicode-lines = ["ropey/unicode_lines"]
 integration = []

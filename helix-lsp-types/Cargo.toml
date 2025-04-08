@@ -20,6 +20,9 @@ keywords = ["language", "server", "lsp", "vscode", "lsif"]
 
 license = "MIT"
 
+[lints]
+workspace = true
+
 [dependencies]
 bitflags.workspace = true
 serde = { version = "1.0.219", features = ["derive"] }
