@@ -7,6 +7,157 @@ mod movement;
 mod write;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn find_prev_pair() -> anyhow::Result<()> {
+    // finds prev pair of 2 letters
+    test((
+        indoc! {"\
+            hi
+            hi
+            #[hi|]#
+            hi"},
+        "Hhi",
+        indoc! {"\
+            hi
+            #[|hi]#
+            hi
+            hi"},
+    ))
+    .await?;
+    // finds 3rd prev pair of 2 letters
+    test((
+        indoc! {"\
+            hi
+            hi
+            hi
+            #[hi|]#"},
+        "3Hhi",
+        indoc! {"\
+            #[|hi]#
+            hi
+            hi
+            hi"},
+    ))
+    .await?;
+    // finds prev two newlines
+    test((
+        indoc! {"\
+            hi
+            hi
+            hi
+
+            #[hi|]#"},
+        "H<ret><ret>",
+        indoc! {"\
+            hi
+            hi
+            hi#[|
+
+            ]#hi"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_next_pair() -> anyhow::Result<()> {
+    // finds next pair of 2 letters (non-extend)
+    test((
+        indoc! {"\
+            #[hi|]#
+            hi
+            hi
+            hi"},
+        "Lhi",
+        indoc! {"\
+            hi
+            #[hi|]#
+            hi
+            hi"},
+    ))
+    .await?;
+    // finds next pair of 2 letters (extend)
+    test((
+        indoc! {"\
+            hi
+            #[hi|]#
+            hi
+            hi"},
+        "vLhi",
+        indoc! {"\
+            hi
+            #[hi
+            hi|]#
+            hi"},
+    ))
+    .await?;
+    // finds 3rd next pair of 2 letters (non-extend)
+    test((
+        indoc! {"\
+            #[hi|]#
+            hi
+            hi
+            hi"},
+        "3Lhi",
+        indoc! {"\
+            hi
+            hi
+            hi
+            #[hi|]#"},
+    ))
+    .await?;
+    // finds 3rd next pair of 2 letters (extend)
+    test((
+        indoc! {"\
+            #[hi|]#
+            hi
+            hi
+            hi"},
+        "v3Lhi",
+        indoc! {"\
+            #[hi
+            hi
+            hi
+            hi|]#"},
+    ))
+    .await?;
+    // finds next char followed by newline
+    test((
+        indoc! {"\
+            #[hi|]#
+            hi
+            hi
+            hi"},
+        "L<ret>h",
+        indoc! {"\
+            hi#[
+            h|]#i
+            hi
+            hi"},
+    ))
+    .await?;
+    // finds next char followed by newline
+    test((
+        indoc! {"\
+            #[hi|]#
+            hi
+            hi
+
+            hi"},
+        "L<ret><ret>",
+        indoc! {"\
+            hi
+            hi
+            hi#[
+
+            |]#hi"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn search_selection_detect_word_boundaries_at_eof() -> anyhow::Result<()> {
     // <https://github.com/helix-editor/helix/issues/12609>
     test((
