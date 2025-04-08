@@ -254,6 +254,8 @@ separator = "│"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+diagnostics = ["warning", "error"]
+workspace-diagnostics = ["warning", "error"]
 </code></pre>
 <p>The <code>[editor.statusline]</code> key takes the following sub-keys:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
@@ -264,6 +266,8 @@ mode.select = "SELECT"
 <tr><td><code>mode.normal</code></td><td>The text shown in the <code>mode</code> element for normal mode</td><td><code>"NOR"</code></td></tr>
 <tr><td><code>mode.insert</code></td><td>The text shown in the <code>mode</code> element for insert mode</td><td><code>"INS"</code></td></tr>
 <tr><td><code>mode.select</code></td><td>The text shown in the <code>mode</code> element for select mode</td><td><code>"SEL"</code></td></tr>
+<tr><td><code>diagnostics</code></td><td>A list of severities which are displayed for the current buffer</td><td><code>["warning", "error"]</code></td></tr>
+<tr><td><code>workspace-diagnostics</code></td><td>A list of severities which are displayed for the workspace</td><td><code>["warning", "error"]</code></td></tr>
 </tbody></table>
 </div>
 <p>The following statusline elements can be configured:</p>
