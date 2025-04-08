@@ -104,7 +104,7 @@ impl Application {
         let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
+        let backend = CrosstermBackend::new(stdout(), (&config.editor).into());
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -365,7 +365,7 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
-                if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
+                if let Err(err) = self.terminal.reconfigure((&app_config.editor).into()) {
                     self.editor.set_error(err.to_string());
                 };
                 self.config.store(Arc::new(app_config));
@@ -409,8 +409,7 @@ impl Application {
             self.refresh_language_config()?;
             // Refresh theme after config change
             Self::load_configured_theme(&mut self.editor, &default_config);
-            self.terminal
-                .reconfigure(default_config.editor.clone().into())?;
+            self.terminal.reconfigure((&default_config.editor).into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -500,7 +499,7 @@ impl Application {
                 // https://github.com/neovim/neovim/issues/12322
                 // https://github.com/neovim/neovim/pull/13084
                 for retries in 1..=10 {
-                    match self.claim_term().await {
+                    match self.terminal.claim() {
                         Ok(()) => break,
                         Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
                         Err(_) => continue,
@@ -1088,26 +1087,20 @@ impl Application {
         lsp::ShowDocumentResult { success: true }
     }
 
-    async fn claim_term(&mut self) -> std::io::Result<()> {
-        let terminal_config = self.config.load().editor.clone().into();
-        self.terminal.claim(terminal_config)
-    }
-
     fn restore_term(&mut self) -> std::io::Result<()> {
-        let terminal_config = self.config.load().editor.clone().into();
         use helix_view::graphics::CursorKind;
         self.terminal
             .backend_mut()
             .show_cursor(CursorKind::Block)
             .ok();
-        self.terminal.restore(terminal_config)
+        self.terminal.restore()
     }
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
         S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
-        self.claim_term().await?;
+        self.terminal.claim()?;
 
         // Exit the alternate screen and disable raw mode before panicking
         let hook = std::panic::take_hook();
