@@ -61,7 +61,7 @@ tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 arc-swap = { version = "1.7.1" }
 termini = "1"
-indexmap = "2.8"
+indexmap = "2.9"
 
 # Logging
 fern = "0.7"
@@ -102,7 +102,7 @@ crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc
 helix-loader = { path = "../helix-loader" }
 
 [dev-dependencies]
-smallvec = "1.14"
+smallvec = "1.15"
 indoc = "2.0.6"
 tempfile.workspace = true
 same-file = "1.0.1"
