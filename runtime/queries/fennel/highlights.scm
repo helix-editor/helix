@@ -1,7 +1,7 @@
 ; Most primitive nodes
 (shebang) @keyword.directive
 
-(comment) @comment @spell
+(comment) @comment
 
 (fn_form
   name: [
