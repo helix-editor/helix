@@ -103,12 +103,12 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     for line in to_change {
         let pos = text.line_to_char(line) + min;
 
-        if !commented {
-            // comment line
-            changes.push((pos, pos, Some(comment.clone())));
-        } else {
+        if commented {
             // uncomment line
             changes.push((pos, pos + token.len() + margin, None));
+        } else {
+            // comment line
+            changes.push((pos, pos, Some(comment.clone())));
         }
     }
 
@@ -190,16 +190,7 @@ pub fn find_block_comments(
                 }
             }
 
-            if !line_commented {
-                comment_changes.push(CommentChange::Uncommented {
-                    range: *range,
-                    start_pos,
-                    end_pos,
-                    start_token: default_tokens.start.clone(),
-                    end_token: default_tokens.end.clone(),
-                });
-                commented = false;
-            } else {
+            if line_commented {
                 comment_changes.push(CommentChange::Commented {
                     range: *range,
                     start_pos,
@@ -210,6 +201,15 @@ pub fn find_block_comments(
                     start_token: start_token.to_string(),
                     end_token: end_token.to_string(),
                 });
+            } else {
+                comment_changes.push(CommentChange::Uncommented {
+                    range: *range,
+                    start_pos,
+                    end_pos,
+                    start_token: default_tokens.start.clone(),
+                    end_token: default_tokens.end.clone(),
+                });
+                commented = false;
             }
             only_whitespace = false;
         } else {

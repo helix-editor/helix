@@ -250,10 +250,10 @@ pub fn show_signature_help(
                 .active_signature()
                 .min(signatures.len() - 1);
 
-            if old_lsp_sig != lsp_signature {
-                lsp_signature.unwrap_or(old_sig)
-            } else {
+            if old_lsp_sig == lsp_signature {
                 old_sig
+            } else {
+                lsp_signature.unwrap_or(old_sig)
             }
         })
         .unwrap_or(lsp_signature.unwrap_or_default());

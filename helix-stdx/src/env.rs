@@ -110,15 +110,15 @@ fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>)
             continue;
         }
         let var = &bytes[captures.get_group(1).unwrap().range()];
-        let default = if pattern_id != 5 {
+        let default = if pattern_id == 5 {
+            &[]
+        } else {
             let Some(bracket_pos) = find_brace_end(&bytes[range.end..]) else {
                 break;
             };
             let default = &bytes[range.end..range.end + bracket_pos];
             range.end += bracket_pos + 1;
             default
-        } else {
-            &[]
         };
         // safety: this is a codepoint aligned substring of an osstr (always valid)
         let var = unsafe { OsStr::from_encoded_bytes_unchecked(var) };

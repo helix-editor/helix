@@ -177,13 +177,13 @@ mod external {
                 name: &'static str,
                 provider: &'static CommandProvider,
             ) -> Cow<'a, str> {
-                if provider.yank.command != provider.paste.command {
+                if provider.yank.command == provider.paste.command {
+                    Cow::Owned(format!("{} ({})", name, provider.yank.command))
+                } else {
                     Cow::Owned(format!(
                         "{} ({}+{})",
                         name, provider.yank.command, provider.paste.command
                     ))
-                } else {
-                    Cow::Owned(format!("{} ({})", name, provider.yank.command))
                 }
             }
 

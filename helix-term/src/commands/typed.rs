@@ -381,10 +381,10 @@ fn trim_trailing_whitespace(doc: &mut Document, view_id: ViewId) {
             // Char before the line ending character(s), or the final char in the text if there
             // is no line-ending on this line:
             let line_end = pos - line_end_len_chars;
-            if first_trailing_whitespace != line_end {
-                Some((first_trailing_whitespace, line_end))
-            } else {
+            if first_trailing_whitespace == line_end {
                 None
+            } else {
+                Some((first_trailing_whitespace, line_end))
             }
         }),
     );

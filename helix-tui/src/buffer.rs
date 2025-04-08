@@ -393,31 +393,7 @@ impl Buffer {
         let width = if ellipsis { width - 1 } else { width };
         let graphemes = string.grapheme_indices(true);
         let max_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
-        if !truncate_start {
-            for (byte_offset, s) in graphemes {
-                let width = s.width();
-                if width == 0 {
-                    continue;
-                }
-                // `x_offset + width > max_offset` could be integer overflow on 32-bit machines if we
-                // change dimensions to usize or u32 and someone resizes the terminal to 1x2^32.
-                if width > max_offset.saturating_sub(x_offset) {
-                    break;
-                }
-
-                self.content[index].set_symbol(s);
-                self.content[index].set_style(style(byte_offset));
-                // Reset following cells if multi-width (they would be hidden by the grapheme),
-                for i in index + 1..index + width {
-                    self.content[i].reset();
-                }
-                index += width;
-                x_offset += width;
-            }
-            if ellipsis && x_offset - (x as usize) < string.width() {
-                self.content[index].set_symbol("…");
-            }
-        } else {
+        if truncate_start {
             let mut start_index = self.index_of(x, y);
             let mut index = self.index_of(max_offset as u16, y);
 
@@ -446,6 +422,30 @@ impl Buffer {
                 }
                 index -= width;
                 x_offset += width;
+            }
+        } else {
+            for (byte_offset, s) in graphemes {
+                let width = s.width();
+                if width == 0 {
+                    continue;
+                }
+                // `x_offset + width > max_offset` could be integer overflow on 32-bit machines if we
+                // change dimensions to usize or u32 and someone resizes the terminal to 1x2^32.
+                if width > max_offset.saturating_sub(x_offset) {
+                    break;
+                }
+
+                self.content[index].set_symbol(s);
+                self.content[index].set_style(style(byte_offset));
+                // Reset following cells if multi-width (they would be hidden by the grapheme),
+                for i in index + 1..index + width {
+                    self.content[i].reset();
+                }
+                index += width;
+                x_offset += width;
+            }
+            if ellipsis && x_offset - (x as usize) < string.width() {
+                self.content[index].set_symbol("…");
             }
         }
         (x_offset as u16, y)

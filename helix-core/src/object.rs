@@ -85,10 +85,10 @@ fn select_children<'n>(
         .map(|child| Range::from_node(child, text, range.direction()))
         .collect::<Vec<_>>();
 
-    if !children.is_empty() {
-        children
-    } else {
+    if children.is_empty() {
         vec![range]
+    } else {
+        children
     }
 }
 

@@ -278,7 +278,9 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         }
 
         // ensure the revision matches the configured revision
-        if get_revision(&grammar_dir).as_ref() != Some(&revision) {
+        if get_revision(&grammar_dir).as_ref() == Some(&revision) {
+            Ok(FetchStatus::GitUpToDate)
+        } else {
             // Fetch the exact revision from the remote.
             // Supported by server-side git since v2.5.0 (July 2015),
             // enabled by default on major git hosts.
@@ -289,8 +291,6 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
             git(&grammar_dir, ["checkout", &revision])?;
 
             Ok(FetchStatus::GitUpdated { revision })
-        } else {
-            Ok(FetchStatus::GitUpToDate)
         }
     } else {
         Ok(FetchStatus::NonGit)

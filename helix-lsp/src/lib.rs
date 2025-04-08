@@ -107,10 +107,10 @@ pub mod util {
             })
             .collect();
 
-        let tags = if !new_tags.is_empty() {
-            Some(new_tags)
-        } else {
+        let tags = if new_tags.is_empty() {
             None
+        } else {
+            Some(new_tags)
         };
 
         lsp::Diagnostic {
@@ -421,10 +421,10 @@ pub mod util {
             doc,
             edits.into_iter().map(|edit| {
                 // simplify "" into None for cleaner changesets
-                let replacement = if !edit.new_text.is_empty() {
-                    Some(edit.new_text.into())
-                } else {
+                let replacement = if edit.new_text.is_empty() {
                     None
+                } else {
+                    Some(edit.new_text.into())
                 };
 
                 let start =

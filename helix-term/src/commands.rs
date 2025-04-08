@@ -1028,16 +1028,16 @@ fn trim_selections(cx: &mut Context) {
         })
         .collect();
 
-    if !ranges.is_empty() {
+    if ranges.is_empty() {
+        collapse_selection(cx);
+        keep_primary_selection(cx);
+    } else {
         let primary = doc.selection(view.id).primary();
         let idx = ranges
             .iter()
             .position(|range| range.overlaps(&primary))
             .unwrap_or(ranges.len() - 1);
         doc.set_selection(view.id, Selection::new(ranges, idx));
-    } else {
-        collapse_selection(cx);
-        keep_primary_selection(cx);
     };
 }
 
@@ -1707,7 +1707,10 @@ fn replace(cx: &mut Context) {
 
         if let Some(ch) = ch {
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-                if !range.is_empty() {
+                if range.is_empty() {
+                    // No change.
+                    (range.from(), range.to(), None)
+                } else {
                     let text: Tendril = doc
                         .text()
                         .slice(range.from()..range.to())
@@ -1715,9 +1718,6 @@ fn replace(cx: &mut Context) {
                         .map(|_g| ch)
                         .collect();
                     (range.from(), range.to(), Some(text))
-                } else {
-                    // No change.
-                    (range.from(), range.to(), None)
                 }
             });
 
@@ -4748,10 +4748,10 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
         .chain(repeat);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        if !range.is_empty() {
-            (range.from(), range.to(), Some(values.next().unwrap()))
-        } else {
+        if range.is_empty() {
             (range.from(), range.to(), None)
+        } else {
+            (range.from(), range.to(), Some(values.next().unwrap()))
         }
     });
     drop(values);
