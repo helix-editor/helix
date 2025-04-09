@@ -15,6 +15,7 @@ use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
 
 pub struct RenderContext<'a> {
+    pub position: RenderPosition,
     pub editor: &'a Editor,
     pub doc: &'a Document,
     pub view: &'a View,
@@ -37,9 +38,18 @@ impl<'a> RenderContext<'a> {
             view,
             focused,
             spinners,
+            position: RenderPosition::default(),
             parts: RenderBuffer::default(),
         }
     }
+}
+
+#[derive(Default)]
+pub enum RenderPosition {
+    #[default]
+    Left,
+    Center,
+    Right,
 }
 
 #[derive(Default)]
@@ -76,7 +86,10 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
-        .for_each(|render| render(context, write_left));
+        .for_each(|render| {
+            context.position = RenderPosition::Left;
+            render(context, write_left)
+        });
 
     surface.set_spans(
         viewport.x,
@@ -91,7 +104,10 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
-        .for_each(|render| render(context, write_right));
+        .for_each(|render| {
+            context.position = RenderPosition::Right;
+            render(context, write_right)
+        });
 
     surface.set_spans(
         viewport.x
@@ -109,7 +125,10 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
-        .for_each(|render| render(context, write_center));
+        .for_each(|render| {
+            context.position = RenderPosition::Center;
+            render(context, write_center)
+        });
 
     // Width of the empty space between the left and center area and between the center and right area.
     let spacing = 1u16;
@@ -537,6 +556,11 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let sep = &context.editor.config().statusline.separator;
+    let sep = match context.position {
+        RenderPosition::Left => &sep.left,
+        RenderPosition::Center => &sep.center,
+        RenderPosition::Right => &sep.right,
+    };
 
     write(
         context,
