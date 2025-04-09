@@ -267,8 +267,9 @@ impl MappableCommand {
                 } else {
                     // TODO: Update this
                     let args = args.split_whitespace().map(Cow::from).collect();
-                    ScriptingEngine::call_function_by_name(cx, name, args);
-                    cx.editor.set_error(format!("no such command: '{name}'"));
+                    if !ScriptingEngine::call_function_by_name(cx, name, args) {
+                        cx.editor.set_error(format!("no such command: '{name}'"));
+                    }
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
