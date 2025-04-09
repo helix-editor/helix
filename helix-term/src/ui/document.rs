@@ -247,6 +247,14 @@ pub fn render_text(
         last_line_end = grapheme.visual_pos.col + grapheme_width;
     }
 
+    let remaining_viewport_lines =
+        last_line_pos.visual_line..renderer.viewport.height.saturating_sub(1);
+    for _ in remaining_viewport_lines {
+        last_line_pos.doc_line += 1;
+        last_line_pos.visual_line += 1;
+        decorations.decorate_line(renderer, last_line_pos);
+    }
+
     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
     decorations.render_virtual_lines(renderer, last_line_pos, last_line_end)
 }
