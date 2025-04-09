@@ -164,9 +164,13 @@
 <p>Writing language injection queries allows one to highlight a specific node as a different language.
 In addition to the <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">standard</a> language injection options used by tree-sitter, there
 are a few Helix specific extensions that allow for more control.</p>
-<p>And example of a simple query that would highlight all strings as bash in Nix:</p>
+<p>An example of a simple query that would highlight all strings as bash in Nix:</p>
 <pre><code class="language-scm">((string_expression (string_fragment) @injection.content)
   (#set! injection.language "bash"))
+</code></pre>
+<p>Another example is this query, which highlights links in comments and keywords like "TODO", by reusing the dedicated "comment" language:</p>
+<pre><code>((comment) @injection.content
+  (#set! injection.language "comment"))
 </code></pre>
 <h2 id="capture-types"><a class="header" href="#capture-types">Capture Types</a></h2>
 <ul>
