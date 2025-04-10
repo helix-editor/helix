@@ -139,10 +139,6 @@ impl Backend for TestBackend {
         Ok(())
     }
 
-    fn get_cursor(&mut self) -> Result<(u16, u16), io::Error> {
-        Ok(self.pos)
-    }
-
     fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         self.pos = (x, y);
         Ok(())

@@ -216,10 +216,6 @@ where
         Ok(())
     }
 
-    pub fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
-        self.backend.get_cursor()
-    }
-
     pub fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {
         self.backend.set_cursor(x, y)
     }
