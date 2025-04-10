@@ -1078,7 +1078,7 @@ fn hover_impl(cx: &mut Context, hover_action: HoverDisplay) {
                 }
                 HoverDisplay::File => {
                     editor.new_file_from_document(
-                        Action::VerticalSplit,
+                        Action::Replace,
                         Document::from(
                             Rope::from(hover.content_string()),
                             None,
@@ -1100,7 +1100,7 @@ pub fn hover(cx: &mut Context) {
     hover_impl(cx, HoverDisplay::Popup)
 }
 
-pub fn hover_dump(cx: &mut Context) {
+pub fn goto_hover(cx: &mut Context) {
     hover_impl(cx, HoverDisplay::File)
 }
 
