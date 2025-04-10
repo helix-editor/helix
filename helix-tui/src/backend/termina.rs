@@ -514,25 +514,6 @@ impl Backend for TerminaBackend {
         self.flush()
     }
 
-    fn get_cursor(&mut self) -> Result<(u16, u16), io::Error> {
-        write!(
-            self.terminal,
-            "{}",
-            csi::Csi::Cursor(csi::Cursor::RequestActivePositionReport),
-        )?;
-        self.terminal.flush()?;
-        let event = self.terminal.read(|event| {
-            matches!(
-                event,
-                Event::Csi(Csi::Cursor(csi::Cursor::ActivePositionReport { .. }))
-            )
-        })?;
-        let Event::Csi(Csi::Cursor(csi::Cursor::ActivePositionReport { line, col })) = event else {
-            unreachable!();
-        };
-        Ok((line.get_zero_based(), col.get_zero_based()))
-    }
-
     fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {
         let col = OneBased::from_zero_based(x);
         let line = OneBased::from_zero_based(y);

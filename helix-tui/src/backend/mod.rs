@@ -30,8 +30,6 @@ pub trait Backend {
     fn hide_cursor(&mut self) -> Result<(), io::Error>;
     /// Sets the cursor to the given shape
     fn show_cursor(&mut self, kind: CursorKind) -> Result<(), io::Error>;
-    /// Gets the current position of the cursor
-    fn get_cursor(&mut self) -> Result<(u16, u16), io::Error>;
     /// Sets the cursor to the given position
     fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error>;
     /// Clears the terminal
