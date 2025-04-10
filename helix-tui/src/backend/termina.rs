@@ -159,7 +159,7 @@ impl TerminaBackend {
             )
         };
         if terminal.poll(device_attributes, Some(Duration::from_millis(20)))? {
-            loop {
+            while terminal.poll(Event::is_escape, Some(Duration::ZERO))? {
                 match terminal.read(Event::is_escape)? {
                     Event::Csi(Csi::Keyboard(csi::Keyboard::ReportFlags(_))) => {
                         capabilities.kitty_keyboard = KittyKeyboardSupport::Some;
@@ -179,7 +179,6 @@ impl TerminaBackend {
                         capabilities.extended_underlines =
                             sgrs.contains(&csi::Sgr::UnderlineColor(TEST_COLOR.into()));
                     }
-                    Event::Csi(Csi::Device(csi::Device::DeviceAttributes(_))) => break,
                     _ => (),
                 }
             }
