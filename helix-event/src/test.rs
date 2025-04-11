@@ -56,6 +56,7 @@ fn smoke_test() {
 }
 
 #[test]
+#[allow(dead_code)]
 fn dynamic() {
     events! {
         Event3 {}
