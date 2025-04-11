@@ -1,6 +1,7 @@
 use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
+use helix_view::icons::ICONS;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -242,12 +243,13 @@ where
                 counts
             });
 
+    let icons = ICONS.load();
     for sev in &context.editor.config().statusline.diagnostics {
         match sev {
             Severity::Hint if hints > 0 => {
                 write(
                     context,
-                    "●".to_string(),
+                    icons.diagnostic().hint().to_string(),
                     Some(context.editor.theme.get("hint")),
                 );
                 write(context, format!(" {} ", hints), None);
@@ -255,7 +257,7 @@ where
             Severity::Info if info > 0 => {
                 write(
                     context,
-                    "●".to_string(),
+                    icons.diagnostic().info().to_string(),
                     Some(context.editor.theme.get("info")),
                 );
                 write(context, format!(" {} ", info), None);
@@ -263,7 +265,7 @@ where
             Severity::Warning if warnings > 0 => {
                 write(
                     context,
-                    "●".to_string(),
+                    icons.diagnostic().warning().to_string(),
                     Some(context.editor.theme.get("warning")),
                 );
                 write(context, format!(" {} ", warnings), None);
@@ -271,7 +273,7 @@ where
             Severity::Error if errors > 0 => {
                 write(
                     context,
-                    "●".to_string(),
+                    icons.diagnostic().error().to_string(),
                     Some(context.editor.theme.get("error")),
                 );
                 write(context, format!(" {} ", errors), None);
@@ -300,8 +302,16 @@ where
         },
     );
 
+    let icons = ICONS.load();
     if hints > 0 || info > 0 || warnings > 0 || errors > 0 {
-        write(context, " W ".into(), None);
+        let icon = icons.kind().workspace();
+        if !icon.glyph().is_empty() {
+            write(
+                context,
+                format!("{} ", icon.glyph()),
+                icon.color().map(|color| Style::default().fg(color)),
+            );
+        }
     }
 
     for sev in &context.editor.config().statusline.workspace_diagnostics {
@@ -309,7 +319,7 @@ where
             Severity::Hint if hints > 0 => {
                 write(
                     context,
-                    "●".to_string(),
+                    icons.diagnostic().hint().to_string(),
                     Some(context.editor.theme.get("hint")),
                 );
                 write(context, format!(" {} ", hints), None);
@@ -317,7 +327,7 @@ where
             Severity::Info if info > 0 => {
                 write(
                     context,
-                    "●".to_string(),
+                    icons.diagnostic().info().to_string(),
                     Some(context.editor.theme.get("info")),
                 );
                 write(context, format!(" {} ", info), None);
@@ -325,7 +335,7 @@ where
             Severity::Warning if warnings > 0 => {
                 write(
                     context,
-                    "●".to_string(),
+                    icons.diagnostic().warning().to_string(),
                     Some(context.editor.theme.get("warning")),
                 );
                 write(context, format!(" {} ", warnings), None);
@@ -333,7 +343,7 @@ where
             Severity::Error if errors > 0 => {
                 write(
                     context,
-                    "●".to_string(),
+                    icons.diagnostic().error().to_string(),
                     Some(context.editor.theme.get("error")),
                 );
                 write(context, format!(" {} ", errors), None);
@@ -452,9 +462,31 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+    let icons = ICONS.load();
 
-    write(context, format!(" {} ", file_type), None);
+    if let Some(icon) = icons
+        .mime()
+        .get(context.doc.path(), context.doc.language_name())
+    {
+        if let Some(color) = icon.color() {
+            write(
+                context,
+                format!(" {} ", icon.glyph()),
+                Some(Style::default().fg(color)),
+            );
+        } else {
+            write(context, format!(" {} ", icon.glyph()), None);
+        }
+    } else {
+        write(
+            context,
+            format!(
+                " {} ",
+                context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME)
+            ),
+            None,
+        );
+    }
 }
 
 fn render_file_name<F>(context: &mut RenderContext, write: F)
@@ -556,13 +588,17 @@ fn render_version_control<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let head = context
-        .doc
-        .version_control_head()
-        .unwrap_or_default()
-        .to_string();
+    let head = context.doc.version_control_head().unwrap_or_default();
 
-    write(context, head, None);
+    let vcs = if head.is_empty() {
+        format!(" {head} ")
+    } else {
+        let icons = ICONS.load();
+        let icon = icons.vcs().branch();
+        format!(" {icon} {head} ")
+    };
+
+    write(context, vcs, None);
 }
 
 fn render_register<F>(context: &mut RenderContext, write: F)

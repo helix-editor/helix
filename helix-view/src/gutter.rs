@@ -5,6 +5,7 @@ use helix_core::syntax::LanguageServerFeature;
 use crate::{
     editor::GutterType,
     graphics::{Style, UnderlineStyle},
+    icons::ICONS,
     Document, Editor, Theme, View,
 };
 
@@ -46,7 +47,6 @@ impl GutterType {
 }
 
 pub fn diagnostic<'doc>(
-    _editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
@@ -74,15 +74,20 @@ pub fn diagnostic<'doc>(
                                 .any(|ls| ls.id() == id)
                         })
                 });
-            diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
-                write!(out, "●").ok();
-                match d.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                }
-            })
+
+            diagnostics_on_line
+                .max_by_key(|d| d.severity)
+                .map(move |d| {
+                    let icons = ICONS.load();
+                    let (style, symbol) = match d.severity {
+                        Some(Severity::Error) => (error, icons.diagnostic().error()),
+                        Some(Severity::Warning) | None => (warning, icons.diagnostic().warning()),
+                        Some(Severity::Info) => (info, icons.diagnostic().info()),
+                        Some(Severity::Hint) => (hint, icons.diagnostic().hint()),
+                    };
+                    out.push_str(symbol);
+                    style
+                })
         },
     )
 }
@@ -264,7 +269,13 @@ pub fn breakpoints<'doc>(
                 breakpoint_style
             };
 
-            let sym = if breakpoint.verified { "●" } else { "◯" };
+            let icons = ICONS.load();
+
+            let sym = if breakpoint.verified {
+                icons.dap().verified()
+            } else {
+                icons.dap().unverified()
+            };
             write!(out, "{}", sym).unwrap();
             Some(style)
         },
@@ -313,7 +324,7 @@ pub fn diagnostics_or_breakpoints<'doc>(
     theme: &Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
-    let mut diagnostics = diagnostic(editor, doc, view, theme, is_focused);
+    let mut diagnostics = diagnostic(doc, view, theme, is_focused);
     let mut breakpoints = breakpoints(editor, doc, view, theme, is_focused);
     let mut execution_pause_indicator = execution_pause_indicator(editor, doc, theme, is_focused);
 
