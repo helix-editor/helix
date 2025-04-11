@@ -1,7 +1,6 @@
 [book]
 authors = ["Blaž Hrastnik"]
 language = "en"
-multilingual = false
 src = "src"
 
 [output.html]
