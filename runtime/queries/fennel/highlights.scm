@@ -130,9 +130,6 @@
 (unquote_reader_macro
   macro: _ @punctuation.special)
 
-[ ":" ":until" "&" "&as" "?" ] @punctuation.special
-(vararg) @punctuation.special
-
 (hashfn_reader_macro
   macro: _ @keyword.function)
 
