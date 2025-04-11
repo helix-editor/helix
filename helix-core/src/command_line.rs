@@ -366,6 +366,15 @@ impl Token<'_> {
             is_terminated: false,
         }
     }
+
+    pub fn deep_clone(&self) -> Token<'static> {
+        Token {
+            kind: self.kind,
+            content_start: self.content_start,
+            content: Cow::Owned(self.content.to_string()),
+            is_terminated: self.is_terminated,
+        }
+    }
 }
 
 #[derive(Debug)]
