@@ -1,6 +1,6 @@
 use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
-use helix_loader::merge_toml_values;
+use helix_loader::{merge_toml_values_with_strategy, MergeMode, MergeStrategy};
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -79,9 +79,16 @@ impl Config {
                     (None, Some(val)) | (Some(val), None) => {
                         val.try_into().map_err(ConfigLoadError::BadConfig)?
                     }
-                    (Some(global), Some(local)) => merge_toml_values(global, local, 3)
-                        .try_into()
-                        .map_err(ConfigLoadError::BadConfig)?,
+                    (Some(global), Some(local)) => merge_toml_values_with_strategy(
+                        global,
+                        local,
+                        &MergeStrategy {
+                            array: MergeMode::Never,
+                            table: MergeMode::Always,
+                        },
+                    )
+                    .try_into()
+                    .map_err(ConfigLoadError::BadConfig)?,
                 };
 
                 Config {
@@ -131,9 +138,40 @@ mod tests {
     use super::*;
 
     impl Config {
-        fn load_test(config: &str) -> Config {
-            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default())).unwrap()
+        fn load_test(global: &str, local: &str) -> Config {
+            Config::load(Ok(global.to_owned()), Ok(local.to_owned())).unwrap()
         }
+    }
+
+    #[test]
+    fn should_merge_editor_config_tables() {
+        let global = r#"
+            [editor.statusline]
+            mode.insert = "INSERT"
+            mode.select = "SELECT"
+        "#;
+        let local = r#"
+            [editor.statusline]
+            mode.select = "VIS"
+        "#;
+        let config = Config::load_test(global, local);
+        assert_eq!(config.editor.statusline.mode.normal, "NOR"); // Default
+        assert_eq!(config.editor.statusline.mode.insert, "INSERT"); // Global
+        assert_eq!(config.editor.statusline.mode.select, "VIS"); // Local
+    }
+
+    #[test]
+    fn should_override_editor_config_arrays() {
+        let global = r#"
+            [editor]
+            shell = ["bash", "-c"]
+        "#;
+        let local = r#"
+            [editor]
+            shell = ["fish", "-c"]
+        "#;
+        let config = Config::load_test(global, local);
+        assert_eq!(config.editor.shell, ["fish", "-c"]);
     }
 
     #[test]
@@ -166,7 +204,7 @@ mod tests {
         );
 
         assert_eq!(
-            Config::load_test(sample_keymaps),
+            Config::load_test(sample_keymaps, ""),
             Config {
                 keys,
                 ..Default::default()
@@ -177,7 +215,7 @@ mod tests {
     #[test]
     fn keys_resolve_to_correct_defaults() {
         // From serde default
-        let default_keys = Config::load_test("").keys;
+        let default_keys = Config::load_test("", "").keys;
         assert_eq!(default_keys, keymap::default());
 
         // From the Default trait
