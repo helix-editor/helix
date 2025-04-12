@@ -14,10 +14,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install nix
-      uses: cachix/install-nix-action@v30
+      uses: cachix/install-nix-action@v31
 
     - name: Authenticate with Cachix
-      uses: cachix/cachix-action@v15
+      uses: cachix/cachix-action@v16
       with:
         name: helix
         authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}

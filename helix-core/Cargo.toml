@@ -21,7 +21,7 @@ helix-loader = { path = "../helix-loader" }
 helix-parsec = { path = "../helix-parsec" }
 
 ropey.workspace = true
-smallvec = "1.14"
+smallvec = "1.15"
 smartstring = "1.0.1"
 unicode-segmentation.workspace = true
 # unicode-width is changing width definitions
@@ -33,7 +33,7 @@ unicode-width = "=0.1.12"
 unicode-general-category = "1.0"
 slotmap.workspace = true
 tree-sitter.workspace = true
-once_cell = "1.20"
+once_cell = "1.21"
 arc-swap = "1"
 regex = "1"
 bitflags.workspace = true
@@ -56,7 +56,7 @@ chrono = { version = "0.4", default-features = false, features = ["alloc", "std"
 textwrap = "0.16.2"
 
 nucleo.workspace = true
-parking_lot = "0.12"
+parking_lot.workspace = true
 globset = "0.4.16"
 regex-cursor = "0.1.5"
 

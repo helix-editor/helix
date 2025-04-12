@@ -367,6 +367,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "v" => normal_mode,
         "g" => { "Goto"
+            "g" => extend_to_file_start,
+            "e" => extend_to_last_line,
             "k" => extend_line_up,
             "j" => extend_line_down,
             "w" => extend_to_word,

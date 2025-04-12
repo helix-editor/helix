@@ -303,7 +303,6 @@ fn request_completions_from_language_server(
     async move {
         let response: Option<lsp::CompletionResponse> = completion_response
             .await
-            .and_then(|json| serde_json::from_value(json).map_err(helix_lsp::Error::Parse))
             .inspect_err(|err| log::error!("completion request failed: {err}"))
             .ok()
             .flatten();

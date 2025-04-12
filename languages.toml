@@ -57,6 +57,7 @@ jedi = { command = "jedi-language-server" }
 jq-lsp = { command = "jq-lsp" }
 jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
+just-lsp = { command = "just-lsp" }
 koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 koto-ls = { command = "koto-ls" }
 kotlin-language-server = { command = "kotlin-language-server" }
@@ -68,7 +69,7 @@ markdown-oxide = { command = "markdown-oxide" }
 marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inlayHints = { typeParameters = {enable = true} , hintsInPatternMatch = {enable = true} }  } } }
 mesonlsp = { command = "mesonlsp", args = ["--lsp"] }
-mint = { command = "mint", args = ["ls"] }
+mint = { command = "mint", args = ["tool", "ls"] }
 mojo-lsp = { command = "magic", args = ["run", "mojo-lsp-server"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
@@ -125,7 +126,7 @@ vscode-css-language-server = { command = "vscode-css-language-server", args = ["
 vscode-html-language-server = { command = "vscode-html-language-server", args = ["--stdio"], config = { provideFormatter = true } }
 vscode-json-language-server = { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true, json = { validate = { enable = true } } } }
 vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
-wgsl_analyzer = { command = "wgsl_analyzer" }
+wgsl-analyzer = { command = "wgsl-analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
@@ -175,7 +176,7 @@ rangeVariableTypes = true
 command = "golangci-lint-langserver"
 
 [language-server.golangci-lint-lsp.config]
-command = ["golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"]
+command = ["golangci-lint", "run", "--output.json.path=stdout", "--show-stats=false", "--issues-exit-code=1"]
 
 
 [language-server.rust-analyzer]
@@ -1500,6 +1501,10 @@ comment-token = "%"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "swipl" ]
 
+[[grammar]]
+name = "prolog"
+source = { git = "https://codeberg.org/foxy/tree-sitter-prolog", subpath = "grammars/prolog", rev = "d8d415f6a1cf80ca138524bcc395810b176d40fa" }
+
 [[language]]
 name = "tsq"
 scope = "source.tsq"
@@ -1621,12 +1626,24 @@ name = "comment"
 source = { git = "https://github.com/stsewd/tree-sitter-comment", rev = "aefcc2813392eb6ffe509aa0fc8b4e9b57413ee1" }
 
 [[language]]
+name = "wesl"
+scope = "source.wesl"
+file-types = ["wesl"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "wesl"
+source = { git = "https://github.com/wgsl-tooling-wg/tree-sitter-wesl", rev = "94ee6122680ef8ce2173853ca7c99f7aaeeda8ce" }
+
+[[language]]
 name = "wgsl"
 scope = "source.wgsl"
 file-types = ["wgsl"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = [ "wgsl_analyzer" ]
+language-servers = [ "wgsl-analyzer" ]
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
@@ -1843,7 +1860,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-regex", rev = "e1cf
 [[language]]
 name = "git-config"
 scope = "source.gitconfig"
-file-types = [{ glob = ".gitmodules" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
+file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -2414,7 +2431,7 @@ indent = { tab-width = 2, unit = "\t" }
 
 [[grammar]]
 name = "openscad"
-source = { git = "https://github.com/bollian/tree-sitter-openscad", rev = "5c3ce93df0ac1da7197cf6ae125aade26d6b8972" }
+source = { git = "https://github.com/openscad/tree-sitter-openscad", rev = "acc196e969a169cadd8b7f8d9f81ff2d30e3e253" }
 
 [[language]]
 name = "prisma"
@@ -2782,6 +2799,7 @@ file-types = [
   "rng",
   "shproj",
   "tld",
+  { glob = "*.tm[Tt]heme" },
   "tmx",
   "vbproj.user",
   "vcxproj",
@@ -2875,15 +2893,18 @@ file-types = [
   # Systemd unit files
   "service",
   "automount",
+  "desktop",
   "device",
   "mount",
+  "nspawn",
   "path",
-  "service",
+  "scope",
   "slice",
   "socket",
   "swap",
   "target",
   "timer",
+  { glob = "systemd/**/*.conf" },
   # Podman quadlets
   "container",
   "volume",
@@ -2904,7 +2925,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "ini"
-source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "1b0498a89a1a4c0a3705846699f0b0bad887dd04" }
+source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "32b31863f222bf22eb43b07d4e9be8017e36fb31" }
 
 [[language]]
 name = "inko"
@@ -3177,7 +3198,7 @@ injection-regex = "vhdl"
 
 [[grammar]]
 name = "vhdl"
-source = { git = "https://github.com/teburd/tree-sitter-vhdl", rev = "c57313adee2231100db0a7880033f6865deeadb2" }
+source = { git = "https://github.com/jpt13653903/tree-sitter-vhdl", rev = "32d3e3daa745bf9f1665676f323be968444619e1" }
 
 [[language]]
 name = "rego"
@@ -3267,6 +3288,7 @@ file-types = ["just", { glob = "justfile" }, { glob = "Justfile" }, { glob = ".j
 injection-regex = "just"
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
+language-servers = ["just-lsp"]
 # auto-format = true
 # formatter = { command = "just", args = ["--dump"] } # Please see: https://github.com/helix-editor/helix/issues/9703
 
@@ -3406,7 +3428,7 @@ text-width = 72
 
 [[grammar]]
 name = "jjdescription"
-source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "d09205b52b5a0165b588a793e366c1116468d86f" }
+source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "1613b8c85b6ead48464d73668f39910dcbb41911" }
 
 [[language]]
 name = "jq"
@@ -4032,12 +4054,12 @@ block-comment-tokens = [
 language-servers = [ "spade-language-server" ]
 indent = { tab-width = 4, unit = "    " }
 
-[language.auto-pairs] 
-'(' = ')' 
-'{' = '}' 
-'[' = ']' 
-'"' = '"' 
-'<' = '>' 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'<' = '>'
 
 [[grammar]]
 name = "spade"
@@ -4047,7 +4069,7 @@ source = { git = "https://gitlab.com/spade-lang/tree-sitter-spade", rev = "78bf0
 name = "amber"
 scope = "source.ab"
 file-types = ["ab"]
-comment-token = "//"
+comment-token = ["//", "///"]
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
@@ -4101,7 +4123,7 @@ file-types = [
   { glob = "sites-available/*.conf" },
   { glob = "sites-enabled/*.conf" },
   { glob = "nginx.conf" },
-  { glob = "conf.d/*.conf" } 
+  { glob = "conf.d/*.conf" }
 ]
 roots = ["nginx.conf"]
 comment-token = "#"
@@ -4227,6 +4249,7 @@ language-servers = ["sourcepawn-studio"]
 name = "sourcepawn"
 source = { git = "https://github.com/nilshelmig/tree-sitter-sourcepawn", rev = "f2af8d0dc14c6790130cceb2a20027eb41a8297c" }
 
+
 [[grammar]]
 name = "vim"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-vim", rev = "f3cd62d8bd043ef20507e84bb6b4b53731ccf3a7" }
@@ -4241,3 +4264,43 @@ file-types = [
   "vim",
   { glob = ".vimrc" },
 ]
+
+[[language]]
+name = "tlaplus"
+scope = "scope.tlaplus"
+injection-regex = "tla"
+file-types = ["tla"]
+comment-tokens = "\\*"
+block-comment-tokens = {start = "(*", end="*)"}
+indent = {tab-width = 4, unit = " "}
+formatter = {command = "tlafmt", args = ["--stdin"]}
+
+[[grammar]]
+name = "tlaplus"
+source = { git = "https://github.com/tlaplus-community/tree-sitter-tlaplus", rev = "4ba91b07b97741a67f61221d0d50e6d962e4987e"}
+
+[[language]]
+name = "werk"
+scope = "source.werk"
+file-types = [ "werk", { glob = "Werkfile" } ]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "werk"
+source = { git = "https://github.com/little-bonsai/tree-sitter-werk", rev = "92b0f7fe98465c4c435794a58e961306193d1c1e" }
+
+[[language]]
+name = "debian"
+scope = "text.debian"
+file-types = [
+  "dsc",
+  "changes",
+  { glob = "debian/**/control" },
+  { glob = "etc/apt/sources.list.d/*.sources"}
+]
+comment-tokens = "#"
+
+[[grammar]]
+name = "debian"
+source = { git = "https://gitlab.com/MggMuggins/tree-sitter-debian", rev = "9b3f4b78c45aab8a2f25a5f9e7bbc00995bc3dde" }

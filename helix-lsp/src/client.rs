@@ -39,7 +39,7 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
     lsp::WorkspaceFolder {
         name: uri
             .path_segments()
-            .and_then(|segments| segments.last())
+            .and_then(|mut segments| segments.next_back())
             .map(|basename| basename.to_string())
             .unwrap_or_default(),
         uri,
@@ -356,6 +356,7 @@ impl Client {
                 capabilities.inlay_hint_provider,
                 Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
             ),
+            LanguageServerFeature::DocumentColors => capabilities.color_provider.is_some(),
         }
     }
 
@@ -386,22 +387,10 @@ impl Client {
     }
 
     /// Execute a RPC request on the language server.
-    async fn request<R: lsp::request::Request>(&self, params: R::Params) -> Result<R::Result>
-    where
-        R::Params: serde::Serialize,
-        R::Result: core::fmt::Debug, // TODO: temporary
-    {
-        // a future that resolves into the response
-        let json = self.call::<R>(params).await?;
-        let response = serde_json::from_value(json)?;
-        Ok(response)
-    }
-
-    /// Execute a RPC request on the language server.
     fn call<R: lsp::request::Request>(
         &self,
         params: R::Params,
-    ) -> impl Future<Output = Result<Value>>
+    ) -> impl Future<Output = Result<R::Result>>
     where
         R::Params: serde::Serialize,
     {
@@ -411,7 +400,7 @@ impl Client {
     fn call_with_ref<R: lsp::request::Request>(
         &self,
         params: &R::Params,
-    ) -> impl Future<Output = Result<Value>>
+    ) -> impl Future<Output = Result<R::Result>>
     where
         R::Params: serde::Serialize,
     {
@@ -422,7 +411,7 @@ impl Client {
         &self,
         params: &R::Params,
         timeout_secs: u64,
-    ) -> impl Future<Output = Result<Value>>
+    ) -> impl Future<Output = Result<R::Result>>
     where
         R::Params: serde::Serialize,
     {
@@ -458,6 +447,7 @@ impl Client {
                 .await
                 .map_err(|_| Error::Timeout(id))? // return Timeout
                 .ok_or(Error::StreamClosed)?
+                .and_then(|value| serde_json::from_value(value).map_err(Into::into))
         }
     }
 
@@ -697,11 +687,11 @@ impl Client {
             work_done_progress_params: lsp::WorkDoneProgressParams::default(),
         };
 
-        self.request::<lsp::request::Initialize>(params).await
+        self.call::<lsp::request::Initialize>(params).await
     }
 
     pub async fn shutdown(&self) -> Result<()> {
-        self.request::<lsp::request::Shutdown>(()).await
+        self.call::<lsp::request::Shutdown>(()).await
     }
 
     pub fn exit(&self) {
@@ -746,7 +736,7 @@ impl Client {
         old_path: &Path,
         new_path: &Path,
         is_dir: bool,
-    ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>>> {
         let capabilities = self.file_operations_intests();
         if !capabilities.will_rename.has_interest(old_path, is_dir) {
             return None;
@@ -763,16 +753,10 @@ impl Client {
             old_uri: url_from_path(old_path)?,
             new_uri: url_from_path(new_path)?,
         }];
-        let request = self.call_with_timeout::<lsp::request::WillRenameFiles>(
+        Some(self.call_with_timeout::<lsp::request::WillRenameFiles>(
             &lsp::RenameFilesParams { files },
             5,
-        );
-
-        Some(async move {
-            let json = request.await?;
-            let response: Option<lsp::WorkspaceEdit> = serde_json::from_value(json)?;
-            Ok(response.unwrap_or_default())
-        })
+        ))
     }
 
     pub fn did_rename(&self, old_path: &Path, new_path: &Path, is_dir: bool) -> Option<()> {
@@ -1016,7 +1000,7 @@ impl Client {
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
         context: lsp::CompletionContext,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::CompletionResponse>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support completion.
@@ -1042,14 +1026,13 @@ impl Client {
         &self,
         completion_item: &lsp::CompletionItem,
     ) -> impl Future<Output = Result<lsp::CompletionItem>> {
-        let res = self.call_with_ref::<lsp::request::ResolveCompletionItem>(completion_item);
-        async move { Ok(serde_json::from_value(res.await?)?) }
+        self.call_with_ref::<lsp::request::ResolveCompletionItem>(completion_item)
     }
 
     pub fn resolve_code_action(
         &self,
-        code_action: lsp::CodeAction,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+        code_action: &lsp::CodeAction,
+    ) -> Option<impl Future<Output = Result<lsp::CodeAction>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support resolving code actions.
@@ -1061,7 +1044,7 @@ impl Client {
             _ => return None,
         }
 
-        Some(self.call::<lsp::request::CodeActionResolveRequest>(code_action))
+        Some(self.call_with_ref::<lsp::request::CodeActionResolveRequest>(code_action))
     }
 
     pub fn text_document_signature_help(
@@ -1085,8 +1068,7 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        let res = self.call::<lsp::request::SignatureHelpRequest>(params);
-        Some(async move { Ok(serde_json::from_value(res.await?)?) })
+        Some(self.call::<lsp::request::SignatureHelpRequest>(params))
     }
 
     pub fn text_document_range_inlay_hints(
@@ -1094,7 +1076,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         range: lsp::Range,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::InlayHint>>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         match capabilities.inlay_hint_provider {
@@ -1112,6 +1094,25 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::InlayHintRequest>(params))
+    }
+
+    pub fn text_document_document_color(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Vec<lsp::ColorInformation>>>> {
+        self.capabilities.get().unwrap().color_provider.as_ref()?;
+        let params = lsp::DocumentColorParams {
+            text_document,
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: work_done_token.clone(),
+            },
+            partial_result_params: helix_lsp_types::PartialResultParams {
+                partial_result_token: work_done_token,
+            },
+        };
+
+        Some(self.call::<lsp::request::DocumentColor>(params))
     }
 
     pub fn text_document_hover(
@@ -1140,8 +1141,7 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        let res = self.call::<lsp::request::HoverRequest>(params);
-        Some(async move { Ok(serde_json::from_value(res.await?)?) })
+        Some(self.call::<lsp::request::HoverRequest>(params))
     }
 
     // formatting
@@ -1151,7 +1151,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         options: lsp::FormattingOptions,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Vec<lsp::TextEdit>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::TextEdit>>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support formatting.
@@ -1184,13 +1184,7 @@ impl Client {
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
-        let request = self.call::<lsp::request::Formatting>(params);
-
-        Some(async move {
-            let json = request.await?;
-            let response: Option<Vec<lsp::TextEdit>> = serde_json::from_value(json)?;
-            Ok(response.unwrap_or_default())
-        })
+        Some(self.call::<lsp::request::Formatting>(params))
     }
 
     pub fn text_document_range_formatting(
@@ -1199,7 +1193,7 @@ impl Client {
         range: lsp::Range,
         options: lsp::FormattingOptions,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Vec<lsp::TextEdit>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::TextEdit>>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support range formatting.
@@ -1215,13 +1209,7 @@ impl Client {
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
-        let request = self.call::<lsp::request::RangeFormatting>(params);
-
-        Some(async move {
-            let json = request.await?;
-            let response: Option<Vec<lsp::TextEdit>> = serde_json::from_value(json)?;
-            Ok(response.unwrap_or_default())
-        })
+        Some(self.call::<lsp::request::RangeFormatting>(params))
     }
 
     pub fn text_document_document_highlight(
@@ -1229,7 +1217,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::DocumentHighlight>>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support document highlight.
@@ -1262,7 +1250,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> impl Future<Output = Result<Value>> {
+    ) -> impl Future<Output = Result<T::Result>> {
         let params = lsp::GotoDefinitionParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -1282,7 +1270,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-definition.
@@ -1303,7 +1291,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-declaration.
@@ -1328,7 +1316,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-type-definition.
@@ -1352,7 +1340,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-definition.
@@ -1377,7 +1365,7 @@ impl Client {
         position: lsp::Position,
         include_declaration: bool,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::Location>>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-reference.
@@ -1406,7 +1394,7 @@ impl Client {
     pub fn document_symbols(
         &self,
         text_document: lsp::TextDocumentIdentifier,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::DocumentSymbolResponse>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support document symbols.
@@ -1428,7 +1416,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::PrepareRenameResponse>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         match capabilities.rename_provider {
@@ -1448,7 +1436,10 @@ impl Client {
     }
 
     // empty string to get all symbols
-    pub fn workspace_symbols(&self, query: String) -> Option<impl Future<Output = Result<Value>>> {
+    pub fn workspace_symbols(
+        &self,
+        query: String,
+    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceSymbolResponse>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support workspace symbols.
@@ -1471,7 +1462,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         range: lsp::Range,
         context: lsp::CodeActionContext,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CodeActionOrCommand>>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support code actions.
@@ -1499,7 +1490,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         new_name: String,
-    ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>>> {
         if !self.supports_feature(LanguageServerFeature::RenameSymbol) {
             return None;
         }
@@ -1515,16 +1506,13 @@ impl Client {
             },
         };
 
-        let request = self.call::<lsp::request::Rename>(params);
-
-        Some(async move {
-            let json = request.await?;
-            let response: Option<lsp::WorkspaceEdit> = serde_json::from_value(json)?;
-            Ok(response.unwrap_or_default())
-        })
+        Some(self.call::<lsp::request::Rename>(params))
     }
 
-    pub fn command(&self, command: lsp::Command) -> Option<impl Future<Output = Result<Value>>> {
+    pub fn command(
+        &self,
+        command: lsp::Command,
+    ) -> Option<impl Future<Output = Result<Option<Value>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the language server does not support executing commands.

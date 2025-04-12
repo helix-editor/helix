@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
-use helix_core::hashmap;
+use helix_core::{hashmap, syntax::Highlight};
 use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
@@ -293,9 +293,39 @@ fn build_theme_values(
 }
 
 impl Theme {
+    /// To allow `Highlight` to represent arbitrary RGB colors without turning it into an enum,
+    /// we interpret the last 3 bytes of a `Highlight` as RGB colors.
+    const RGB_START: usize = (usize::MAX << (8 + 8 + 8)) - 1;
+
+    /// Interpret a Highlight with the RGB foreground
+    fn decode_rgb_highlight(rgb: usize) -> Option<(u8, u8, u8)> {
+        (rgb > Self::RGB_START).then(|| {
+            let [b, g, r, ..] = rgb.to_ne_bytes();
+            (r, g, b)
+        })
+    }
+
+    /// Create a Highlight that represents an RGB color
+    pub fn rgb_highlight(r: u8, g: u8, b: u8) -> Highlight {
+        Highlight(usize::from_ne_bytes([
+            b,
+            g,
+            r,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+        ]))
+    }
+
     #[inline]
     pub fn highlight(&self, index: usize) -> Style {
-        self.highlights[index]
+        if let Some((red, green, blue)) = Self::decode_rgb_highlight(index) {
+            Style::new().fg(Color::Rgb(red, green, blue))
+        } else {
+            self.highlights[index]
+        }
     }
 
     #[inline]
@@ -588,5 +618,62 @@ mod tests {
                 .bg(Color::Rgb(0, 0, 0))
                 .add_modifier(Modifier::BOLD)
         );
+    }
+
+    // tests for parsing an RGB `Highlight`
+
+    #[test]
+    fn convert_to_and_from() {
+        let (r, g, b) = (0xFF, 0xFE, 0xFA);
+        let highlight = Theme::rgb_highlight(r, g, b);
+        assert_eq!(Theme::decode_rgb_highlight(highlight.0), Some((r, g, b)));
+    }
+
+    /// make sure we can store all the colors at the end
+    /// ```
+    /// FF FF FF FF FF FF FF FF
+    ///          xor
+    /// FF FF FF FF FF 00 00 00
+    ///           =
+    /// 00 00 00 00 00 FF FF FF
+    /// ```
+    ///
+    /// where the ending `(FF, FF, FF)` represents `(r, g, b)`
+    #[test]
+    fn full_numeric_range() {
+        assert_eq!(usize::MAX ^ Theme::RGB_START, 256_usize.pow(3));
+        assert_eq!(Theme::RGB_START + 256_usize.pow(3), usize::MAX);
+    }
+
+    #[test]
+    fn retrieve_color() {
+        // color in the middle
+        let (r, g, b) = (0x14, 0xAA, 0xF7);
+        assert_eq!(
+            Theme::default().highlight(Theme::rgb_highlight(r, g, b).0),
+            Style::new().fg(Color::Rgb(r, g, b))
+        );
+        // pure black
+        let (r, g, b) = (0x00, 0x00, 0x00);
+        assert_eq!(
+            Theme::default().highlight(Theme::rgb_highlight(r, g, b).0),
+            Style::new().fg(Color::Rgb(r, g, b))
+        );
+        // pure white
+        let (r, g, b) = (0xff, 0xff, 0xff);
+        assert_eq!(
+            Theme::default().highlight(Theme::rgb_highlight(r, g, b).0),
+            Style::new().fg(Color::Rgb(r, g, b))
+        );
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "index out of bounds: the len is 0 but the index is 18446744073692774399"
+    )]
+    fn out_of_bounds() {
+        let (r, g, b) = (0x00, 0x00, 0x00);
+
+        Theme::default().highlight(Theme::rgb_highlight(r, g, b).0 - 1);
     }
 }
