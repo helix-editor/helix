@@ -182,6 +182,7 @@
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
+| quarto | ✓ |  | ✓ |  |
 | quint | ✓ |  |  | `quint-language-server` |
 | r | ✓ |  |  | `R` |
 | racket | ✓ |  | ✓ | `racket` |
