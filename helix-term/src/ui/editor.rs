@@ -633,9 +633,8 @@ impl EditorView {
         let current_doc = view!(editor).doc;
 
         for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
+            let path = doc.path().unwrap_or(&scratch);
+            let fname = path
                 .file_name()
                 .unwrap_or_default()
                 .to_str()
@@ -647,7 +646,20 @@ impl EditorView {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let text = if editor.config().bufferline_show_parent {
+                let parent_dir = path
+                    .parent()
+                    .and_then(|p| p.file_name().unwrap_or_default().to_str())
+                    .unwrap_or_default();
+                format!(
+                    " {}/{}{} ",
+                    parent_dir,
+                    fname,
+                    if doc.is_modified() { "[+]" } else { "" }
+                )
+            } else {
+                format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" })
+            };
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
