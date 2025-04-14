@@ -104,7 +104,7 @@ impl EditorView {
                         Align::Center => longest_center = longest_center.max(width),
                     }
                 )*
-                (lines, longest_left, longest_center)
+                (lines, longest_left as u16, longest_center as u16)
             }};
         }
 
@@ -152,25 +152,25 @@ impl EditorView {
         };
 
         // how many total lines there are in the welcome screen
-        let lines_count = lines.len();
+        let lines_count = lines.len() as u16;
 
         // the y-coordinate where we start drawing the welcome screen
-        let y_start = view.area.y + (view.area.height / 2).saturating_sub(lines_count as u16 / 2);
+        let y_start = view.area.y + (view.area.height / 2).saturating_sub(lines_count / 2);
         // y-coordinate of the center of the viewport
         let y_center = view.area.x + view.area.width / 2;
 
         // the x-coordinate where we start drawing the welcome screen
         // +2 to make the text look like its in the center instead of on the side
         let x_start_left =
-            view.area.x + (view.area.width / 2).saturating_sub(len_of_longest_left as u16 / 2) + 2;
+            view.area.x + (view.area.width / 2).saturating_sub(len_of_longest_left / 2) + 2;
 
-        let has_x_left_overflow = (x_start_left + len_of_longest_left as u16) > view.area.width;
-        let has_x_center_overflow = len_of_longest_center as u16 > view.area.width;
+        let has_x_left_overflow = (x_start_left + len_of_longest_left) > view.area.width;
+        let has_x_center_overflow = len_of_longest_center > view.area.width;
         let has_x_overflow = has_x_left_overflow || has_x_center_overflow;
 
         // we want lines_count < view.area.height so it does not get drawn
         // over the status line
-        let has_y_overflow = lines_count as u16 >= view.area.height;
+        let has_y_overflow = lines_count >= view.area.height;
 
         if has_x_overflow || has_y_overflow {
             return;
