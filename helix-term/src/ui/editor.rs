@@ -25,7 +25,7 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{BufferLineDirectories, CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -633,90 +633,85 @@ impl EditorView {
         let current_doc = view!(editor).doc;
 
         let mut documents: HashMap<_, _>;
-        let fnames: HashMap<_, _> = match &editor.config().bufferline_directories {
-            BufferLineDirectories::Smart => {
-                documents = editor
-                    .documents()
-                    .map(|doc| {
-                        (
-                            doc.id(),
-                            doc.path().map(|p| {
-                                let mut p = p.clone();
-                                let f = PathBuf::from(p.file_name().unwrap_or_default());
-                                p.pop();
-                                (f, p)
-                            }),
-                        )
-                    })
-                    .collect();
-                let mut ids: Vec<_> = documents.keys().copied().collect();
-                let mut to_remove: Vec<usize> = Vec::with_capacity(ids.len());
-                while !ids.is_empty() {
-                    for (idx, id) in ids.iter().enumerate() {
-                        let Some((current, full)) = &documents[id] else {
-                            log::info!("to remove scratch");
-                            to_remove.push(idx);
-                            continue;
-                        };
-                        if documents
-                            .iter()
-                            .filter_map(|(id, o)| o.as_ref().map(|(p, _)| (id, p)))
-                            .all(|(i, p)| p != current || i == id)
-                            || full.as_os_str().is_empty()
-                        {
-                            log::info!("to remove idx");
-                            to_remove.push(idx);
-                        }
-                    }
-
-                    for idx in to_remove.iter().rev() {
-                        log::info!("removed idx");
-                        ids.remove(*idx);
-                    }
-                    to_remove.clear();
-
-                    for id in &ids {
-                        let Some((current, mut full)) = documents.remove(id).flatten() else {
-                            documents.insert(*id, None);
-                            continue;
-                        };
-                        let mut new = PathBuf::from(full.file_name().unwrap_or_default());
-                        new.push(current);
-                        full.pop();
-                        documents.insert(*id, Some((new, full)));
-                    }
-                }
-                log::info!("completed cycle");
-                documents
-                    .iter()
-                    .map(|(id, op)| {
-                        (
-                            *id,
-                            op.as_ref()
-                                .map(|(p, _)| p.to_str().unwrap_or_default())
-                                .unwrap_or(SCRATCH_BUFFER_NAME),
-                        )
-                    })
-                    .collect()
-            }
-            bufferline_directories => editor
+        let fnames: HashMap<_, _> = if editor.config().bufferline_show_directories {
+            documents = editor
                 .documents()
                 .map(|doc| {
                     (
                         doc.id(),
-                        if *bufferline_directories == BufferLineDirectories::Never {
-                            doc.path()
-                                .unwrap_or(&scratch)
-                                .file_name()
-                                .unwrap_or_default()
-                                .to_str()
-                                .unwrap_or_default()
-                        } else {
-                            doc.path().unwrap_or(&scratch).to_str().unwrap_or_default()
-                        },
+                        doc.path().map(|p| {
+                            let mut p = p.clone();
+                            let f = PathBuf::from(p.file_name().unwrap_or_default());
+                            p.pop();
+                            (f, p)
+                        }),
                     )
                 })
-                .collect(),
+                .collect();
+            let mut ids: Vec<_> = documents.keys().copied().collect();
+            let mut to_remove: Vec<usize> = Vec::with_capacity(ids.len());
+            while !ids.is_empty() {
+                for (idx, id) in ids.iter().enumerate() {
+                    let Some((current, full)) = &documents[id] else {
+                        log::info!("to remove scratch");
+                        to_remove.push(idx);
+                        continue;
+                    };
+                    if documents
+                        .iter()
+                        .filter_map(|(id, o)| o.as_ref().map(|(p, _)| (id, p)))
+                        .all(|(i, p)| p != current || i == id)
+                        || full.as_os_str().is_empty()
+                    {
+                        log::info!("to remove idx");
+                        to_remove.push(idx);
+                    }
+                }
+
+                for idx in to_remove.iter().rev() {
+                    log::info!("removed idx");
+                    ids.remove(*idx);
+                }
+                to_remove.clear();
+
+                for id in &ids {
+                    let Some((current, mut full)) = documents.remove(id).flatten() else {
+                        documents.insert(*id, None);
+                        continue;
+                    };
+                    let mut new = PathBuf::from(full.file_name().unwrap_or_default());
+                    new.push(current);
+                    full.pop();
+                    documents.insert(*id, Some((new, full)));
+                }
+            }
+            log::info!("completed cycle");
+            documents
+                .iter()
+                .map(|(id, op)| {
+                    (
+                        *id,
+                        op.as_ref()
+                            .map(|(p, _)| p.to_str().unwrap_or_default())
+                            .unwrap_or(SCRATCH_BUFFER_NAME),
+                    )
+                })
+                .collect()
+        } else {
+            editor
+                .documents()
+                .map(|doc| {
+                    (
+                        doc.id(),
+                        doc.path()
+                            .unwrap_or(&scratch)
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_str()
+                            .unwrap_or_default(),
+                    )
+                })
+                .collect()
         };
 
         for doc in editor.documents() {

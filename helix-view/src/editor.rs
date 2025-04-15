@@ -333,7 +333,7 @@ pub struct Config {
     /// Persistently display open buffers along the top
     pub bufferline: BufferLine,
     /// Show the parent directory of files in the bufferline.
-    pub bufferline_directories: BufferLineDirectories,
+    pub bufferline_show_directories: bool,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
@@ -683,19 +683,6 @@ pub enum BufferLine {
     Multiple,
 }
 
-/// bufferline directory render modes
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum BufferLineDirectories {
-    /// Only render filenames
-    #[default]
-    Never,
-    /// Always render one parent directory
-    One,
-    /// Only render directories for files with the same name
-    Smart,
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
@@ -1014,7 +1001,7 @@ impl Default for Config {
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
             bufferline: BufferLine::default(),
-            bufferline_directories: BufferLineDirectories::default(),
+            bufferline_show_directories: false,
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap {
