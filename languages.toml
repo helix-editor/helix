@@ -39,6 +39,7 @@ elm-language-server = { command = "elm-language-server" }
 elp = { command = "elp", args = ["server"] }
 elvish = { command = "elvish", args = ["-lsp"] }
 erlang-ls = { command = "erlang_ls" }
+fennel-ls = { command = "fennel-ls" }
 fish-lsp = { command = "fish-lsp", args = ["start"], environment = { fish_lsp_show_client_popups = "false" } }
 forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
@@ -396,6 +397,20 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "elixir"
 source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "02a6f7fd4be28dd94ee4dd2ca19cb777053ea74e" }
+
+[[language]]
+name = "fennel"
+scope = "source.fennel"
+file-types = ["fnl", "fnlm"]
+shebangs = ["fennel"]
+comment-token = ";"
+language-servers = ["fennel-ls"]
+formatter = { command = "fnlfmt", args = ["-"]}
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "fennel"
+source = { git = "https://github.com/alexmozaidze/tree-sitter-fennel", rev = "cfbfa478dc2dbef267ee94ae4323d9c886f45e94" }
 
 [[language]]
 name = "fish"

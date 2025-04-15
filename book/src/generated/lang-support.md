@@ -58,6 +58,7 @@
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |
+| fennel | ✓ |  |  | `fennel-ls` |
 | fga | ✓ | ✓ | ✓ |  |
 | fidl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ | `fish-lsp` |
