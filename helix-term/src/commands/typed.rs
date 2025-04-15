@@ -9,7 +9,7 @@ use super::*;
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
-use helix_core::line_ending;
+use helix_core::{line_ending, SmartString};
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
@@ -2148,6 +2148,115 @@ fn sort_impl(cx: &mut compositor::Context, reverse: bool) -> anyhow::Result<()> 
     Ok(())
 }
 
+fn index(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let step = if let Some(arg) = args.first() {
+        arg.parse()
+            .ok()
+            .filter(|&step| step != 0)
+            .context("Step must be a positive integer greater than zero")?
+    } else {
+        1
+    };
+
+    let start = if let Some(arg) = args.get_flag("start") {
+        arg.parse().context("Argument to --start must be an integer")?
+    } else {
+        1
+    };
+
+    index_impl(
+        cx,
+        args.has_flag("reverse"),
+        args.has_flag("desc"),
+        args.has_flag("pad"),
+        start,
+        step,
+    )
+}
+
+fn index_impl(
+    cx: &mut compositor::Context,
+    reverse: bool,
+    desc: bool,
+    pad: bool,
+    start: isize,
+    step: usize,
+) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id);
+
+    if selection.len() == 1 {
+        bail!("Sorting requires multiple selections. Hint: split selection first");
+    }
+
+    let mut fragments: Vec<_> = selection
+        .slices(text)
+        .map(|fragment| fragment.chunks().collect())
+        .collect();
+
+    let count_selections = fragments.len();
+
+    let mut iter: Vec<isize> = if desc {
+        let start_from = start - ((count_selections - 1) * step) as isize;
+        (start_from..=start)
+            .rev()
+            .step_by(step)
+            .take(count_selections)
+            .collect()
+    } else {
+        (start..).step_by(step).take(count_selections).collect()
+    };
+
+    if reverse {
+        iter.reverse();
+    }
+
+    fragments.iter_mut().zip(&iter).for_each(|(frag, index)| {
+        let index_str = if pad {
+            let width = iter
+                .iter()
+                .map(|&num| {
+                    if num == 0 {
+                        return 1;
+                    }
+                    let width = num.abs().ilog10() as usize + 1;
+                    if num > 0 {
+                        width
+                    } else {
+                        width + 1
+                    }
+                })
+                .max()
+                .unwrap(); // we already checked that we have multiple selections
+            format!("{:0width$}", index, width = width)
+        } else {
+            index.to_string()
+        };
+        *frag = SmartString::from(index_str);
+    });
+
+    let transaction = Transaction::change(
+        doc.text(),
+        selection
+            .into_iter()
+            .zip(fragments)
+            .map(|(s, fragment)| (s.from(), s.to(), Some(fragment))),
+    );
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
+
+    Ok(())
+}
+
 fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -3360,6 +3469,43 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
                     name: "reverse",
                     alias: Some('r'),
                     doc: "sort ranges in reverse order",
+                    ..Flag::DEFAULT
+                },
+            ],
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "index",
+        aliases: &["i"],
+        doc: "Inserts indexes into selections.",
+        fun: index,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[
+                Flag {
+                    name: "start",
+                    alias: Some('x'),
+                    doc: "Set the starting number to count from",
+                    completions: Some(&[])
+                },
+                Flag {
+                    name: "reverse",
+                    alias: Some('r'),
+                    doc: "Index in reverse order",
+                    ..Flag::DEFAULT
+                },
+                Flag {
+                    name: "desc",
+                    alias: Some('d'),
+                    doc: "Index in descending order",
+                    ..Flag::DEFAULT
+                },
+                Flag {
+                    name: "pad",
+                    alias: Some('p'),
+                    doc: "Add leading zeros to start",
                     ..Flag::DEFAULT
                 },
             ],
