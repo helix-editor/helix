@@ -282,7 +282,7 @@ fn handle_pull_diagnostics_response(
     for (url, report) in related_documents.into_iter().flatten() {
         let result_id = match report {
             lsp::DocumentDiagnosticReportKind::Full(report) => {
-                let Ok(uri) = Uri::try_from(url) else {
+                let Ok(uri) = Uri::try_from(&url) else {
                     continue;
                 };
 
@@ -292,7 +292,7 @@ fn handle_pull_diagnostics_response(
             lsp::DocumentDiagnosticReportKind::Unchanged(report) => Some(report.result_id),
         };
 
-        if let Some(doc) = editor.document_mut(document_id) {
+        if let Some(doc) = editor.document_by_path_mut(url.path()) {
             doc.previous_diagnostic_id = result_id;
         }
     }
