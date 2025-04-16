@@ -2063,6 +2063,16 @@ name = "gleam"
 source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "426e67087fd62be5f4533581b5916b2cf010fb5b" }
 
 [[language]]
+name = "quarto"
+scope = "source.qmd"
+language-id = "qmd"
+injection-regex = "qmd"
+file-types = ["qmd"]
+indent = { tab-width = 2, unit = "  " }
+grammar = "markdown"
+block-comment-tokens = { start = "<!--", end = "-->" }
+
+[[language]]
 name = "ron"
 scope = "source.ron"
 injection-regex = "ron"
