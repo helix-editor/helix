@@ -23,7 +23,7 @@
   (identifier) @local.definition)
 
 ; (i?: t)
-; (i?: t = 1) // Invalid but still posible to hihglight.
+; (i?: t = 1) // Invalid but still possible to highlight.
 (optional_parameter
   (identifier) @local.definition)
 

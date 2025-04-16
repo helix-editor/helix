@@ -1,6 +1,7 @@
 # Installing Helix
 
-To install Helix, follow the instructions specific to your operating system.
+The typical way to install Helix is via [your operating system's package manager](./package-managers.md).
+
 Note that:
 
 - To get the latest nightly version of Helix, you need to
@@ -8,7 +9,7 @@ Note that:
 
 - To take full advantage of Helix, install the language servers for your
   preferred programming languages. See the
-  [wiki](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
+  [wiki](https://github.com/helix-editor/helix/wiki/Language-Server-Configurations)
   for instructions.
 
 ## Pre-built binaries

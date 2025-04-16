@@ -100,7 +100,7 @@ fn test_normalize_path() -> Result<(), Box<dyn Error>> {
     assert_eq!(
         path::normalize(&path),
         expected,
-        "input {:?} and \"..\" should not erase the simlink that goes ahead",
+        "input {:?} and \"..\" should not erase the symlink that goes ahead",
         &path
     );
 

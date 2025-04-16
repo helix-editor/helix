@@ -181,7 +181,7 @@ We use a similar set of scopes as
     - `member` - Fields of composite data types (e.g. structs, unions)
       - `private` - Private fields that use a unique syntax (currently just ECMAScript-based languages)
 
-- `label`
+- `label` - `.class`, `#id` in CSS, etc.
 
 - `punctuation`
   - `delimiter` - Commas, colons
@@ -216,7 +216,7 @@ We use a similar set of scopes as
 
 - `namespace`
 
-- `special`
+- `special` - `derive` in Rust, etc.
 
 - `markup`
   - `heading`
@@ -336,5 +336,6 @@ These scopes are used for theming the editor interface:
 | `diagnostic.error`                | Diagnostics error (editing area)                                                               |
 | `diagnostic.unnecessary`          | Diagnostics with unnecessary tag (editing area)                                                |
 | `diagnostic.deprecated`           | Diagnostics with deprecated tag (editing area)                                                 |
+| `tabstop`                         | Snippet placeholder                                                                            |
 
 [editor-section]: ./configuration.md#editor-section
