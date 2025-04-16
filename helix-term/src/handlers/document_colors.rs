@@ -167,10 +167,14 @@ pub(super) fn register_hooks(handlers: &Handlers) {
             apply_color_swatch_changes(color_swatches_padding);
         }
 
-        // Cancel the ongoing request, if present.
-        event.doc.color_swatch_controller.cancel();
-
-        helix_event::send_blocking(&tx, DocumentColorsEvent(event.doc.id()));
+        // Avoid re-requesting document colors if the change is a ghost transaction (completion)
+        // because the language server will not know about the updates to the document and will
+        // give out-of-date locations.
+        if !event.ghost_transaction {
+            // Cancel the ongoing request, if present.
+            event.doc.color_swatch_controller.cancel();
+            helix_event::send_blocking(&tx, DocumentColorsEvent(event.doc.id()));
+        }
 
         Ok(())
     });
