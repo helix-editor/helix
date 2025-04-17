@@ -467,6 +467,17 @@ impl Backend for TerminaBackend {
                 underline_style = new_underline_style;
             }
 
+            // HACK: WezTerm doesn't like the underline color SGR in a sequence with other SGR
+            // changes. This needs further debugging but in the meantime we can work around it by
+            // emitting a separate SGR update for the underline color.
+            if let Some(color) = attributes.underline_color.take() {
+                write!(
+                    self.terminal,
+                    "{}",
+                    Csi::Sgr(csi::Sgr::UnderlineColor(color))
+                )?;
+            }
+
             // `attributes` will be empty if nothing changed between two cells. Empty
             // `SgrAttributes` behave the same as a `Sgr::Reset` rather than a 'no-op' though so
             // we should avoid writing them if they're empty.
