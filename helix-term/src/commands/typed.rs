@@ -9,7 +9,7 @@ use super::*;
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
-use helix_core::line_ending;
+use helix_core::{line_ending, SmartString};
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
@@ -2148,6 +2148,71 @@ fn sort_impl(cx: &mut compositor::Context, reverse: bool) -> anyhow::Result<()> 
     Ok(())
 }
 
+fn counter(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    counter_impl(
+        cx,
+        args.has_flag("reverse"),
+        args.has_flag("desc"),
+        args.first()
+            .and_then(|start| start.parse::<isize>().ok())
+            .unwrap_or(1),
+    )
+}
+
+fn counter_impl(
+    cx: &mut compositor::Context,
+    reverse: bool,
+    desc: bool,
+    start: isize,
+) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id);
+
+    if selection.len() == 1 {
+        bail!("Sorting requires multiple selections. Hint: split selection first");
+    }
+
+    let mut fragments: Vec<_> = selection
+        .slices(text)
+        .map(|fragment| fragment.chunks().collect())
+        .collect();
+
+    let count_selections = fragments.len() as isize;
+
+    let iter: &mut dyn Iterator<Item = isize> = match (reverse, desc) {
+        (true, true) => &mut (start - count_selections + 1..=start),
+        (true, false) => &mut (start..count_selections + start).rev(),
+        (false, true) => &mut (start - count_selections..=start).rev(),
+        (false, false) => &mut (start..=count_selections + start),
+    };
+
+    fragments.iter_mut().zip(iter).for_each(|(frag, index)| {
+        let index_str = index.to_string();
+        *frag = SmartString::from(index_str);
+    });
+
+    let transaction = Transaction::change(
+        doc.text(),
+        selection
+            .into_iter()
+            .zip(fragments)
+            .map(|(s, fragment)| (s.from(), s.to(), Some(fragment))),
+    );
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
+
+    Ok(())
+}
+
 fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -3360,6 +3425,31 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
                     name: "reverse",
                     alias: Some('r'),
                     doc: "sort ranges in reverse order",
+                    ..Flag::DEFAULT
+                },
+            ],
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "counter",
+        aliases: &[],
+        doc: "Inserts indexes from the X (default 1) to count of the selections",
+        fun: counter,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[
+                Flag {
+                    name: "reverse",
+                    alias: Some('r'),
+                    doc: "Counts from X to the beginning",
+                    ..Flag::DEFAULT
+                },
+                Flag {
+                    name: "desc",
+                    alias: Some('d'),
+                    doc: "Counts from the beginning to X in descending order",
                     ..Flag::DEFAULT
                 },
             ],
