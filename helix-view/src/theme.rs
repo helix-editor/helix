@@ -40,16 +40,24 @@ pub struct Loader {
     /// Theme directories to search from highest to lowest priority
     theme_dirs: Vec<PathBuf>,
 }
+
 impl Loader {
     /// Creates a new loader that can load themes from multiple directories.
     ///
     /// The provided directories should be ordered from highest to lowest priority.
-    /// The directories will have their "themes" subdirectory searched.
+    /// The directories will have their "themes/dark", "themes/light" and "themes" subdirectory searched.
     pub fn new(dirs: &[PathBuf]) -> Self {
+        let theme_dirs: Vec<_> = dirs.iter()
+            .flat_map(|p| {
+                vec![p.join("themes/dark"), p.join("themes/light"), p.join("themes")]
+            })
+            .collect();
+
         Self {
-            theme_dirs: dirs.iter().map(|p| p.join("themes")).collect(),
+            theme_dirs,
         }
     }
+
 
     /// Loads a theme searching directories in priority order.
     pub fn load(&self, name: &str) -> Result<Theme> {

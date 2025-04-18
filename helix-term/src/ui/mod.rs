@@ -399,13 +399,33 @@ pub mod completers {
             .collect()
     }
 
-    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
+    pub fn theme(_editor: &Editor, input: &str, themes_type : &str) -> Vec<Completion> {
+        let themes_dirs = match themes_type {
+            "dark" => vec!["themes/dark"],
+            "light" => vec!["themes/light"],
+            // The first element should not have any effect
+            _ => vec!["themes","themes/light","themes/dark"]
+        };
+
+        let mut names = Vec::new();
         for rt_dir in helix_loader::runtime_dirs() {
-            names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
-        }
-        names.push("default".into());
-        names.push("base16_default".into());
+            for themes_dir in &themes_dirs {
+                names.extend(theme::Loader::read_names(&rt_dir.join(themes_dir)));
+            };
+        };
+
+        for themes_dir in &themes_dirs {
+            names.extend(theme::Loader::read_names(&helix_loader::config_dir().join(themes_dir)));
+        };
+        
+        match themes_type {
+            "light" => (),
+            "dark" => { names.push("default".into());
+            },
+            _ => { names.push("base16_default".into());
+                names.push("default".into());
+            }
+        };
         names.sort();
         names.dedup();
 
