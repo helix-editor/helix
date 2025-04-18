@@ -31,6 +31,14 @@ There are three possible locations for a `languages.toml` file:
    `.helix` folder. Its settings will be merged with the language configuration
    in the configuration directory and the built-in configuration.
 
+## Top level configuration
+
+These top level configuration keys are available:
+
+| Key              | Description                                                                |
+| ---              | -----------                                                                |
+| `syntax-timeout` | How long to allow tree-sitter to parse a file. Default is 500 milliseconds |
+
 ## Language configuration
 
 Each language is configured by adding a `[[language]]` section to a
