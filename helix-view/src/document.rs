@@ -814,8 +814,22 @@ impl Document {
                 process.current_dir(doc_dir);
             }
 
+            let filename_in_args = fmt_args.iter().any(|arg| arg.contains("{}"));
+            let fmt_args = filename_in_args
+                .then_some(self.path().map(|path| {
+                    let path = path.to_string_lossy();
+                    Cow::Owned(
+                        fmt_args
+                            .iter()
+                            .map(|arg| arg.replace("{}", &path))
+                            .collect(),
+                    )
+                }))
+                .flatten()
+                .unwrap_or(Cow::Borrowed(fmt_args));
+
             process
-                .args(fmt_args)
+                .args(fmt_args.as_ref())
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
