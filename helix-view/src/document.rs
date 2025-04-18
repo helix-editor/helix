@@ -1778,6 +1778,12 @@ impl Document {
         self.version
     }
 
+    pub fn word_completion_enabled(&self) -> bool {
+        self.language_config()
+            .and_then(|lang_config| lang_config.word_completion)
+            .unwrap_or_else(|| self.config.load().word_completion)
+    }
+
     pub fn path_completion_enabled(&self) -> bool {
         self.language_config()
             .and_then(|lang_config| lang_config.path_completion)
