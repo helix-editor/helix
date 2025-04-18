@@ -1,4 +1,5 @@
 use crate::{
+    Document, DocumentId, View, ViewId,
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
     document::{
@@ -12,14 +13,13 @@ use crate::{
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
-    Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
-use futures_util::{future, StreamExt};
+use futures_util::{StreamExt, future};
 use helix_lsp::{Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -36,28 +36,28 @@ use std::{
 };
 
 use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-    time::{sleep, Duration, Instant, Sleep},
+    sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
+    time::{Duration, Instant, Sleep, sleep},
 };
 
-use anyhow::{anyhow, bail, Error};
+use anyhow::{Error, anyhow, bail};
 
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
+    Change, LineEnding, NATIVE_LINE_ENDING, Position, Range, Selection, Uri,
     auto_pairs::AutoPairs,
     diagnostic::DiagnosticProvider,
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
-    Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
 use helix_stdx::path::canonicalize;
 
-use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, ser::SerializeMap};
 
 use arc_swap::{
-    access::{DynAccess, DynGuard},
     ArcSwap,
+    access::{DynAccess, DynGuard},
 };
 
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
@@ -458,6 +458,8 @@ pub struct LspConfig {
     pub display_inlay_hints: bool,
     /// Display document color swatches
     pub display_color_swatches: bool,
+    /// Color swatches string. Defaults to `"■"`.
+    pub color_swatches_string: String,
     /// Whether to enable snippet support
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
@@ -476,6 +478,7 @@ impl Default for LspConfig {
             snippets: true,
             goto_reference_include_declaration: true,
             display_color_swatches: true,
+            color_swatches_string: "■".to_owned(),
         }
     }
 }
@@ -2249,12 +2252,15 @@ impl Editor {
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
     use helix_core::{
-        chars::char_is_whitespace, line_ending::line_end_char_index, Operation, Transaction,
+        Operation, Transaction, chars::char_is_whitespace, line_ending::line_end_char_index,
     };
 
     fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
-        if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
-            changes
+        if let [
+            Operation::Retain(move_pos),
+            Operation::Insert(ref inserted_str),
+            Operation::Retain(_),
+        ] = changes
         {
             move_pos + inserted_str.len() == pos
                 && inserted_str.starts_with('\n')
