@@ -1105,12 +1105,6 @@ impl EditorView {
         }
         on_next_key
     }
-
-    pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
-        commands::compute_inlay_hints_for_all_views(cx.editor, cx.jobs);
-
-        EventResult::Ignored(None)
-    }
 }
 
 impl EditorView {
@@ -1516,7 +1510,7 @@ impl Component for EditorView {
             }
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
-            Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
+            Event::IdleTimeout => EventResult::Ignored(None),
             Event::FocusGained => {
                 self.terminal_focused = true;
                 EventResult::Consumed(None)
