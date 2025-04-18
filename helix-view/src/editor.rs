@@ -1,6 +1,7 @@
 use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
+    commands::custom::CustomTypeableCommands,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
@@ -370,6 +371,10 @@ pub struct Config {
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
     /// `true`.
     pub editor_config: bool,
+
+    /// Custom typable commands
+    #[serde(skip)]
+    pub commands: CustomTypeableCommands,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1021,6 +1026,7 @@ impl Default for Config {
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
+            commands: CustomTypeableCommands::default(),
         }
     }
 }
