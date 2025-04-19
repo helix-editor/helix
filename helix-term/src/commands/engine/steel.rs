@@ -1444,7 +1444,9 @@ fn local_config_exists() -> bool {
 }
 
 fn preferred_config_path(file_name: &str) -> PathBuf {
-    if local_config_exists() {
+    if let Ok(steel_config_dir) = std::env::var("HELIX_STEEL_CONFIG") {
+        PathBuf::from(steel_config_dir).join(file_name)
+    } else if local_config_exists() {
         find_workspace().0.join(".helix").join(file_name)
     } else {
         helix_loader::config_dir().join(file_name)
