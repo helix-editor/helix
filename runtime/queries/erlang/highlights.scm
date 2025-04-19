@@ -120,13 +120,13 @@
 
 ; Macros
 (macro
+  "?"+ @keyword.directive
+  name: (_) @keyword.directive)
+
+(macro
   "?"+ @constant
   name: (_) @constant
   !arguments)
-
-(macro
-  "?"+ @keyword.directive
-  name: (_) @keyword.directive)
 
 ; Parameters
 ; specs
