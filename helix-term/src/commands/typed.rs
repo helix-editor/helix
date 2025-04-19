@@ -3657,7 +3657,7 @@ fn execute_command_line(
         None if event == PromptEvent::Validate => {
             let parts = rest.split_whitespace().collect::<Vec<_>>();
 
-            if ScriptingEngine::call_typed_command(cx, input, &parts, event) {
+            if ScriptingEngine::call_typed_command(cx, command, &parts, event) {
                 // Engine handles the other cases
                 if event == PromptEvent::Validate {
                     let mappable_command = MappableCommand::Typable {
