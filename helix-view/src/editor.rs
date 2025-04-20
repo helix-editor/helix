@@ -351,6 +351,8 @@ pub struct Config {
     pub trim_trailing_whitespace: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    /// Enables padding selection indecis register
+    pub padding_selection_index_register: bool,
     /// Draw border around popups.
     pub popup_border: PopupBorderConfig,
     /// Which indent heuristic to use when a new line is inserted
@@ -1014,6 +1016,7 @@ impl Default for Config {
             trim_final_newlines: false,
             trim_trailing_whitespace: false,
             smart_tab: Some(SmartTabConfig::default()),
+            padding_selection_index_register: false,
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
