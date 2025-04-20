@@ -46,11 +46,15 @@ impl Registers {
             '#' => {
                 let (view, doc) = current_ref!(editor);
                 let selections = doc.selection(view.id).len();
+                let mut number_of_digits = 0 as usize;
+                if editor.config().padding_selection_index_register {
+                    number_of_digits = (selections.ilog10() + 1) as usize;
+                }
                 // ExactSizeIterator is implemented for Range<usize> but
                 // not RangeInclusive<usize>.
-                Some(RegisterValues::new(
-                    (0..selections).map(|i| (i + 1).to_string().into()),
-                ))
+                Some(RegisterValues::new((0..selections).map(move |i| {
+                    format!("{:0width$}", i + 1, width = number_of_digits).into()
+                })))
             }
             '.' => {
                 let (view, doc) = current_ref!(editor);
