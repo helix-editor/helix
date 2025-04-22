@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, iter};
+use std::{borrow::Cow, collections::BTreeMap, collections::HashMap, iter};
 
 use helix_stdx::rope::RopeSliceExt;
 use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
@@ -1038,6 +1038,41 @@ pub fn get_scopes(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> Vec<&
 
     scopes.reverse();
     scopes
+}
+
+pub fn get_breadcrumbs(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> Vec<String> {
+    let mut breadcrumb_set: BTreeMap<usize, String> = BTreeMap::new();
+    if let Some(syntax) = syntax {
+        let pos = text.char_to_byte(pos);
+        let mut node = match syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(pos, pos)
+        {
+            Some(node) => node,
+            None => return vec![],
+        };
+
+        while let Some(parent) = node.parent() {
+            if node.is_extra() {
+                continue;
+            }
+            if node.is_named() {
+                let line_idx = text.byte_to_line(parent.start_byte());
+                let line: String = text.line(line_idx).into();
+                breadcrumb_set.insert(line_idx, format!("{}: {}", line_idx, line.trim_end()));
+            }
+            node = parent;
+        }
+    }
+
+    let breadcrumbs: Vec<String> = breadcrumb_set
+        .into_iter()
+        .map(|(_k, v)| v.into())
+        // Remove the `source_code` node
+        .skip(1)
+        .collect();
+    breadcrumbs
 }
 
 #[cfg(test)]
