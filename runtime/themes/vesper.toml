@@ -38,7 +38,7 @@ variable = { fg = "white" }
 string = { fg = "bright-green" }
 "string.regexp" = { fg = "gray" }
 "string.special.path" = { fg = "gray" }
-"string.special.url" = { fg = "white", modifiers = ["underline"] }
+"string.special.url" = { fg = "white", underline = { style = "line" } }
 
 punctuation = { fg = "gray" }
 "punctuation.bracket" = { fg = "gray" }
