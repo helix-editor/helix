@@ -248,9 +248,9 @@ fn handle_pull_diagnostics_response(
     uri: Uri,
     document_id: DocumentId,
 ) {
-    let related_documents = match result {
+    match result {
         lsp::DocumentDiagnosticReportResult::Report(report) => {
-            let (result_id, related_documents) = match report {
+            let result_id = match report {
                 lsp::DocumentDiagnosticReport::Full(report) => {
                     editor.handle_lsp_diagnostics(
                         &provider,
@@ -259,41 +259,17 @@ fn handle_pull_diagnostics_response(
                         report.full_document_diagnostic_report.items,
                     );
 
-                    (
-                        report.full_document_diagnostic_report.result_id,
-                        report.related_documents,
-                    )
+                    report.full_document_diagnostic_report.result_id
                 }
-                lsp::DocumentDiagnosticReport::Unchanged(report) => (
-                    Some(report.unchanged_document_diagnostic_report.result_id),
-                    report.related_documents,
-                ),
+                lsp::DocumentDiagnosticReport::Unchanged(report) => {
+                    Some(report.unchanged_document_diagnostic_report.result_id)
+                }
             };
 
             if let Some(doc) = editor.document_mut(document_id) {
                 doc.previous_diagnostic_id = result_id;
             };
-
-            related_documents
         }
-        lsp::DocumentDiagnosticReportResult::Partial(report) => report.related_documents,
+        lsp::DocumentDiagnosticReportResult::Partial(_) => {}
     };
-
-    for (url, report) in related_documents.into_iter().flatten() {
-        let result_id = match report {
-            lsp::DocumentDiagnosticReportKind::Full(report) => {
-                let Ok(uri) = Uri::try_from(&url) else {
-                    continue;
-                };
-
-                editor.handle_lsp_diagnostics(&provider, uri, None, report.items);
-                report.result_id
-            }
-            lsp::DocumentDiagnosticReportKind::Unchanged(report) => Some(report.result_id),
-        };
-
-        if let Some(doc) = editor.document_by_path_mut(url.path()) {
-            doc.previous_diagnostic_id = result_id;
-        }
-    }
 }
