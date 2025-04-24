@@ -219,3 +219,6 @@
 
 ;; Property
 (dot_index_expression field: (identifier) @variable.other.member)
+
+;; Method
+(function_call name: (dot_index_expression field: (identifier) @function.call))
