@@ -1,0 +1,181 @@
+# Theme  : kinda_nvim_light (light)
+# 
+# Author : Strash familev.imen.otchestvovich@gmail.com
+# License: MIT
+# 
+# GitHub : https://github.com/strash/kinda_nvim.hx
+
+"ui.background" = { bg ="bg", fg = "fg_4" }
+"ui.background.separator" = { bg = "bg", fg = "fg_4" }
+
+"ui.cursor.normal" = { bg = "fg_2", fg = "bg", modifiers = [ "slow_blink" ] }
+"ui.cursor.insert" = { bg = "fg_secondary", fg = "bg" }
+"ui.cursor.select" = { bg = "fg_tertiary", fg = "bg" }
+"ui.cursor.match" = { bg = "bg_3" }
+"ui.cursor.primary.normal" = { bg = "fg", fg = "bg", modifiers = [ "slow_blink" ] }
+"ui.cursor.primary.insert" = { bg = "fg_secondary", fg = "bg" }
+"ui.cursor.primary.select" = { bg = "fg_tertiary", fg = "bg" }
+
+"ui.debug.breakpoint" = { fg = "fg_hint" }
+
+"ui.gutter" = { bg = "bg", fg = "fg_4" }
+"ui.linenr" = { bg = "bg", fg = "fg_4" }
+"ui.gutter.selected" = { bg = "bg", fg = "fg_1" }
+"ui.linenr.selected" = { bg = "bg", fg = "fg_1", modifiers = [ "bold" ] }
+
+"ui.statusline" = { bg = "bg", fg = "fg" }
+"ui.statusline.inactive" = { bg = "bg", fg = "fg", modifiers = [ "dim" ] }
+"ui.statusline.normal" = { fg = "fg_primary"}
+"ui.statusline.insert" = { fg = "fg_secondary"}
+"ui.statusline.select" = { fg = "fg_tertiary"}
+
+"ui.bufferline.active" = { bg = "bg", fg = "fg" }
+"ui.bufferline" = { bg = "bg", fg = "fg", modifiers = [ "dim" ] }
+
+"ui.popup" = { bg = "bg_2", fg = "fg_4" }
+"ui.popup.info" = { bg = "bg_2", fg = "fg_4" }
+
+"ui.picker.header" = { fg = "fg_3", modifiers = [ "bold" ] }
+"ui.picker.header.column.active" = { fg = "fg", modifiers = [ "bold" ] }
+
+"ui.window" = { fg = "fg_4" }
+
+"ui.help" = { bg = "bg_2", fg = "fg_4" }
+
+"ui.text" = { fg = "fg" }
+"ui.text.focus" = { fg = "fg", modifiers = [ "bold" ] }
+"ui.text.inactive" = { fg = "fg_2" }
+"ui.text.info" = { fg = "fg_2" }
+"ui.text.directory" = { fg = "fg_secondary" }
+
+"ui.virtual" = { fg = "fg_4" }
+"ui.virtual.ruler" = { bg = "bg_1" }
+"ui.virtual.indent-guide" = { fg = "bg_4" }
+"ui.virtual.inlay-hint" = { fg = "fg_4" }
+"ui.virtual.wrap" = { fg = "fg_4" }
+"ui.virtual.jump-label" = { fg = "fg_4" }
+
+"ui.menu" = { bg = "bg_2", fg = "fg_2" }
+"ui.menu.selected" = { bg = "bg_3", fg = "fg" }
+"ui.menu.scroll" = { bg = "bg_1", fg = "bg_4" }
+
+"ui.selection" = { bg = "bg_3", modifiers = [ "dim" ] }
+"ui.selection.primary" = { bg = "bg_4" }
+
+"ui.highlight" = { bg = "bg_1" }
+"ui.highlight.frameline" = { bg = "bg_warn" }
+
+"ui.cursorline.primary" = { bg = "bg_1" }
+"ui.cursorline.secondary" = { bg = "bg_1" }
+"ui.cursorcolumn.primary" = { bg = "bg_1" }
+"ui.cursorcolumn.secondary" = { bg = "bg_1" }
+
+"error" = { fg = "fg_err" }
+"warning" = { fg = "fg_warn" }
+"info" = { fg = "fg_info" }
+"hint" = { fg = "fg_hint" }
+
+"diagnostic.error" = { bg = "bg_err", fg = "fg_err" }
+"diagnostic.warning" = { bg = "bg_warn", fg = "fg_warn" }
+"diagnostic.info" = { bg = "bg_info", fg = "fg_info" }
+"diagnostic.hint" = { bg = "bg_hint", fg = "fg_hint" }
+"diagnostic.unnecessary" = { bg = "bg_info", fg = "fg_info" }
+"diagnostic.deprecated" = { bg = "bg_err", fg = "fg_err", modifiers = [ "crossed_out" ] }
+
+"tabstop" = { modifiers = [ "italic" ] }
+
+"markup" = { bg = "bg_2", fg = "fg_2" }
+
+"attribute" = { fg = "fg_warn" }
+
+"type" = { fg = "fg_primary" }
+"type.builtin" = { fg = "fg_primary_variant" }
+"type.parameter" = { fg = "fg_primary_variant" }
+"type.enum" = { fg = "fg_primary" }
+"type.enum.variant" = { fg = "fg_primary_variant" }
+
+"constructor" = { fg = "fg_primary", modifiers = [ "bold" ] }
+
+"constant" = { fg = "fg", modifiers = [ "bold" ] }
+"constant.builtin" = { fg = "fg_primary_variant", modifiers = [ "bold" ] }
+"constant.character" = { fg = "fg_tertiary_variant", modifiers = [ "bold" ] }
+"constant.numeric" = { fg = "fg_err" }
+
+"string" = { fg = "fg_2" }
+"string.regexp" = { fg = "fg_tertiary_variant" }
+"string.special.url" = { fg = "fg_2", modifiers = [ "underlined" ] }
+
+"comment" = { fg = "fg_secondary_variant", modifiers = [ "italic" ] }
+
+"variable" = { fg = "fg_hint" }
+"variable.builtin" = { fg = "fg_tertiary" }
+"variable.parameter" = { fg = "fg_hint" }
+"variable.other" = { fg = "fg_tertiary" }
+"variable.other.member" = { fg = "fg_secondary" }
+
+"label" = { fg = "fg_1" }
+
+"punctuation.delimiter" = { fg = "fg_1" }
+"punctuation.bracket" = { fg = "fg_3" }
+"punctuation.special" = { fg = "fg_tertiary_variant" }
+
+"keyword" = { fg = "fg_tertiary" }
+"keyword.directive" = { fg = "fg_secondary", modifiers = [ "bold" ] }
+"keyword.control.import" = { fg = "fg_tertiary" }
+"keyword.control.return" = { fg = "fg_tertiary" }
+"keyword.control.exception" = { fg = "fg_tertiary" }
+"keyword.function" = { fg = "fg_tertiary", modifiers = [ "bold" ] }
+"keyword.storage" = { fg = "fg_tertiary", modifiers = [ "bold" ] }
+
+"operator" = { fg = "fg_2" }
+
+"function" = { fg = "fg_secondary" }
+
+"tag" = { fg = "fg_hint" }
+
+"namespace" = { fg = "fg_primary" }
+
+"special" = { fg = "fg_tertiary_variant" }
+
+"markup.heading" = { fg = "fg_primary" }
+"markup.bold" = { modifiers = [ "bold" ] }
+"markup.italic" = { modifiers = [ "italic" ] }
+"markup.strikethrough" = { modifiers = [ "crossed_out" ] }
+"markup.lint" = { modifiers = [ "underlined" ] }
+"markup.raw" = { fg = "fg_primary" }
+
+"diff.plus" = { fg = "fg_primary", bg = "bg_hint" }
+"diff.delta" = { fg = "fg_2", bg = "bg_3" }
+"diff.minus" = { fg = "fg_err", bg = "bg_err" }
+"diff.plus.gutter" = { fg = "fg_primary" }
+"diff.delta.gutter" = { fg = "fg_2" }
+"diff.minus.gutter" = { fg = "fg_err" }
+
+
+[palette]
+fg = "#414D49"
+fg_1 = "#62736D"
+fg_2 = "#738780"
+fg_3 = "#8FA8A0"
+fg_4 = "#BECFC9"
+fg_err = "#BF0020"
+fg_warn = "#B58200"
+fg_info = "#005BAB"
+fg_hint = "#119CA8"
+fg_primary = "#008C5D"
+fg_secondary = "#2470B2"
+fg_tertiary = "#9847B2"
+fg_primary_variant = "#2F9C77"
+fg_secondary_variant = "#759ABA"
+fg_tertiary_variant = "#A860BF"
+
+bg = "#F2F5F4"
+bg_1 = "#EDF0EF"
+bg_2 = "#FCFFFE"
+bg_3 = "#F7FAF9"
+bg_4 = "#E6E8E7"
+bg_err = "#E8D8DB"
+bg_warn = "#E8E3D8"
+bg_info = "#D3DCE3"
+bg_hint = "#D3E2E3"
+
