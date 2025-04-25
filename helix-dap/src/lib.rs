@@ -31,6 +31,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Request {
     RunInTerminal(<requests::RunInTerminal as types::Request>::Arguments),
+    StartDebugging(<requests::StartDebugging as types::Request>::Arguments),
 }
 
 impl Request {
@@ -40,6 +41,7 @@ impl Request {
         let arguments = arguments.unwrap_or_default();
         let request = match command {
             requests::RunInTerminal::COMMAND => Self::RunInTerminal(parse_value(arguments)?),
+            requests::StartDebugging::COMMAND => Self::StartDebugging(parse_value(arguments)?),
             _ => return Err(Error::Unhandled),
         };
 

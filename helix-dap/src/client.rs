@@ -4,7 +4,7 @@ use crate::{
     types::*,
     Error, Result,
 };
-use helix_core::syntax::config::DebuggerQuirks;
+use helix_core::syntax::config::{DebugAdapterConfig, DebuggerQuirks};
 
 use serde_json::Value;
 
@@ -41,6 +41,9 @@ pub struct Client {
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
     pub quirks: DebuggerQuirks,
+    /// The config which was used to start this debugger.
+    pub config: Option<DebugAdapterConfig>,
+    pub children: Vec<Client>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -91,6 +94,8 @@ impl Client {
             thread_id: None,
             active_frame: None,
             quirks: DebuggerQuirks::default(),
+            children: Vec::new(),
+            config: None,
         };
 
         tokio::spawn(Self::recv(server_rx, client_tx));
@@ -321,6 +326,47 @@ impl Client {
 
     pub fn capabilities(&self) -> &DebuggerCapabilities {
         self.caps.as_ref().expect("debugger not yet initialized!")
+    }
+
+    /// Create a child debugger that shares the same transport and config as the parent. Then return a reference to this client
+    pub async fn create_child_debugger(
+        &mut self,
+        id: usize,
+    ) -> Result<(&mut Client, UnboundedReceiver<Payload>)> {
+        // Check if the parent debugger has a config
+        let config = match self.config {
+            Some(ref config) => config.clone(),
+            None => {
+                return Err(Error::Other(anyhow!(
+                    "Config is needed on parent debugger before creating child"
+                )))
+            }
+        };
+
+        // Use the same config as the parent to start a new child debugger
+        let result = Client::process(
+            &config.transport,
+            &config.command,
+            config.args.iter().map(|arg| arg.as_str()).collect(),
+            config.port_arg.as_deref(),
+            id,
+        )
+        .await;
+
+        if let Err(e) = result {
+            return Err(Error::Other(anyhow!(
+                "Failed to start child debugger: {}",
+                e
+            )));
+        }
+
+        let (client, events) = match result {
+            Ok(r) => r,
+            Err(e) => return Err(e),
+        };
+
+        self.children.push(client);
+        Ok((self.children.last_mut().unwrap(), events))
     }
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
