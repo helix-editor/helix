@@ -138,6 +138,8 @@ pub fn dap_start_impl(
         Err(e) => bail!("Failed to start debug session: {}", e),
     };
 
+    debugger.config = Some(config.clone());
+
     let request = debugger.initialize(config.name.clone());
     if let Err(e) = block_on(request) {
         bail!("Failed to initialize debug adapter: {}", e);

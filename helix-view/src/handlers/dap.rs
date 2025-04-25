@@ -8,6 +8,7 @@ use log::warn;
 use serde_json::json;
 use std::fmt::Write;
 use std::path::PathBuf;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[macro_export]
 macro_rules! debugger {
@@ -391,6 +392,69 @@ impl Editor {
                         Ok(json!(dap::requests::RunInTerminalResponse {
                             process_id: Some(process.id()),
                             shell_process_id: None,
+                        }))
+                    }
+                    Ok(Request::StartDebugging(mut arguments)) => {
+                        let connection_type = match arguments.request {
+                            _ if arguments.request.contains("launch") => ConnectionType::Launch,
+                            _ if arguments.request.contains("attach") => ConnectionType::Attach,
+                            _ => {
+                                self.set_error("No starting request found, to be used in starting the debugging session.");
+                                return true;
+                            }
+                        };
+
+                        let child = debugger.create_child_debugger(4).await;
+
+                        let (child_debugger, events) = match child {
+                            Ok(child) => child,
+                            Err(err) => {
+                                self.set_error(format!(
+                                    "Failed to create child debugger: {:?}",
+                                    err
+                                ));
+                                return true;
+                            }
+                        };
+
+                        let init_response = child_debugger
+                            .initialize(
+                                arguments
+                                    .configuration
+                                    .as_object()
+                                    .unwrap()
+                                    .get("name")
+                                    .unwrap()
+                                    .as_str()
+                                    .unwrap()
+                                    .to_string(),
+                            )
+                            .await;
+
+                        if let Err(err) = init_response {
+                            self.set_error(format!(
+                                "Failed to initialize child debugger: {:?}",
+                                err
+                            ));
+                            return true;
+                        }
+
+                        let stream = UnboundedReceiverStream::new(events);
+                        self.debugger_events.push(stream);
+
+                        let relaunch_resp = if let ConnectionType::Launch = connection_type {
+                            child_debugger.launch(arguments.configuration).await
+                        } else {
+                            child_debugger.attach(arguments.configuration).await
+                        };
+                        if let Err(err) = relaunch_resp {
+                            self.set_error(format!("Failed to start debugging session: {:?}", err));
+                            return true;
+                        }
+
+                        // start the debugger here and set it as a child to the current debugger
+                        Ok(json!({
+                            "success": true,
                         }))
                     }
                     Err(err) => Err(err),
