@@ -226,36 +226,58 @@ fn render_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (warnings, errors) = context
-        .doc
-        .diagnostics()
-        .iter()
-        .fold((0, 0), |mut counts, diag| {
-            use helix_core::diagnostic::Severity;
-            match diag.severity {
-                Some(Severity::Warning) => counts.0 += 1,
-                Some(Severity::Error) | None => counts.1 += 1,
-                _ => {}
+    use helix_core::diagnostic::Severity;
+    let (hints, info, warnings, errors) =
+        context
+            .doc
+            .diagnostics()
+            .iter()
+            .fold((0, 0, 0, 0), |mut counts, diag| {
+                match diag.severity {
+                    Some(Severity::Hint) | None => counts.0 += 1,
+                    Some(Severity::Info) => counts.1 += 1,
+                    Some(Severity::Warning) => counts.2 += 1,
+                    Some(Severity::Error) => counts.3 += 1,
+                }
+                counts
+            });
+
+    for sev in &context.editor.config().statusline.diagnostics {
+        match sev {
+            Severity::Hint if hints > 0 => {
+                write(
+                    context,
+                    "●".to_string(),
+                    Some(context.editor.theme.get("hint")),
+                );
+                write(context, format!(" {} ", hints), None);
             }
-            counts
-        });
-
-    if warnings > 0 {
-        write(
-            context,
-            "●".to_string(),
-            Some(context.editor.theme.get("warning")),
-        );
-        write(context, format!(" {} ", warnings), None);
-    }
-
-    if errors > 0 {
-        write(
-            context,
-            "●".to_string(),
-            Some(context.editor.theme.get("error")),
-        );
-        write(context, format!(" {} ", errors), None);
+            Severity::Info if info > 0 => {
+                write(
+                    context,
+                    "●".to_string(),
+                    Some(context.editor.theme.get("info")),
+                );
+                write(context, format!(" {} ", info), None);
+            }
+            Severity::Warning if warnings > 0 => {
+                write(
+                    context,
+                    "●".to_string(),
+                    Some(context.editor.theme.get("warning")),
+                );
+                write(context, format!(" {} ", warnings), None);
+            }
+            Severity::Error if errors > 0 => {
+                write(
+                    context,
+                    "●".to_string(),
+                    Some(context.editor.theme.get("error")),
+                );
+                write(context, format!(" {} ", errors), None);
+            }
+            _ => {}
+        }
     }
 }
 
@@ -263,41 +285,61 @@ fn render_workspace_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (warnings, errors) =
-        context
-            .editor
-            .diagnostics
-            .values()
-            .flatten()
-            .fold((0, 0), |mut counts, (diag, _)| {
-                match diag.severity {
-                    Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
-                    Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
-                    _ => {}
-                }
-                counts
-            });
+    use helix_core::diagnostic::Severity;
+    let (hints, info, warnings, errors) = context.editor.diagnostics.values().flatten().fold(
+        (0, 0, 0, 0),
+        |mut counts, (diag, _)| {
+            match diag.severity {
+                Some(DiagnosticSeverity::HINT) | None => counts.0 += 1,
+                Some(DiagnosticSeverity::INFORMATION) => counts.1 += 1,
+                Some(DiagnosticSeverity::WARNING) => counts.2 += 1,
+                Some(DiagnosticSeverity::ERROR) => counts.3 += 1,
+                _ => {}
+            }
+            counts
+        },
+    );
 
-    if warnings > 0 || errors > 0 {
+    if hints > 0 || info > 0 || warnings > 0 || errors > 0 {
         write(context, " W ".into(), None);
     }
 
-    if warnings > 0 {
-        write(
-            context,
-            "●".to_string(),
-            Some(context.editor.theme.get("warning")),
-        );
-        write(context, format!(" {} ", warnings), None);
-    }
-
-    if errors > 0 {
-        write(
-            context,
-            "●".to_string(),
-            Some(context.editor.theme.get("error")),
-        );
-        write(context, format!(" {} ", errors), None);
+    for sev in &context.editor.config().statusline.workspace_diagnostics {
+        match sev {
+            Severity::Hint if hints > 0 => {
+                write(
+                    context,
+                    "●".to_string(),
+                    Some(context.editor.theme.get("hint")),
+                );
+                write(context, format!(" {} ", hints), None);
+            }
+            Severity::Info if info > 0 => {
+                write(
+                    context,
+                    "●".to_string(),
+                    Some(context.editor.theme.get("info")),
+                );
+                write(context, format!(" {} ", info), None);
+            }
+            Severity::Warning if warnings > 0 => {
+                write(
+                    context,
+                    "●".to_string(),
+                    Some(context.editor.theme.get("warning")),
+                );
+                write(context, format!(" {} ", warnings), None);
+            }
+            Severity::Error if errors > 0 => {
+                write(
+                    context,
+                    "●".to_string(),
+                    Some(context.editor.theme.get("error")),
+                );
+                write(context, format!(" {} ", errors), None);
+            }
+            _ => {}
+        }
     }
 }
 

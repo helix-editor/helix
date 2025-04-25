@@ -4,14 +4,13 @@
  "&&"
  "||"
  "|"
+ "&|"
+ "2>|"
  "&"
- "="
- "!="
  ".."
  "!"
  (direction)
  (stream_redirect)
- (test_option)
 ] @operator
 
 [
@@ -39,12 +38,12 @@
  "case"
 ] @keyword.control.conditional)
 
-(else_clause 
+(else_clause
 [
  "else"
 ] @keyword.control.conditional)
 
-(else_if_clause 
+(else_if_clause
 [
  "else"
  "if"
@@ -95,6 +94,16 @@
 
 ;; Commands
 
+(command name: (word) @function)
+
+(command
+  name: (word) @function.builtin (#match? @function.builtin "^test$")
+  argument: (word) @operator (#match? @operator "^(!?=|-[a-zA-Z]+)$"))
+
+(command
+  name: (word) @punctuation.bracket (#match? @punctuation.bracket "^\\[$")
+  argument: (word) @operator (#match? @operator "^(!?=|-[a-zA-Z]+)$"))
+
 (command
   argument: [
              (word) @variable.parameter (#match? @variable.parameter "^-")
@@ -109,11 +118,6 @@
   ]
 )
 
-(test_command "test" @function.builtin)
-
-; non-builtin command names
-(command name: (word) @function)
-
 ;; Functions
 
 (function_definition ["function" "end"] @keyword.function)
@@ -121,7 +125,7 @@
 (function_definition
   name: [
         (word) (concatenation)
-        ] 
+        ]
 @function)
 
 (function_definition
@@ -146,11 +150,6 @@
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
 (comment) @comment
-(test_option) @string
 
 ((word) @constant.builtin.boolean
 (#match? @constant.builtin.boolean "^(true|false)$"))
-
-;; Error
-
-(ERROR) @error

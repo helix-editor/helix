@@ -33,7 +33,9 @@ where
 }
 
 /// Expands tilde `~` into users home directory if available, otherwise returns the path
-/// unchanged. The tilde will only be expanded when present as the first component of the path
+/// unchanged.
+///
+/// The tilde will only be expanded when present as the first component of the path
 /// and only slash follows it.
 pub fn expand_tilde<'a, P>(path: P) -> Cow<'a, Path>
 where
@@ -54,11 +56,11 @@ where
 }
 
 /// Normalize a path without resolving symlinks.
-// Strategy: start from the first component and move up. Cannonicalize previous path,
+// Strategy: start from the first component and move up. Canonicalize previous path,
 // join component, canonicalize new path, strip prefix and join to the final result.
 pub fn normalize(path: impl AsRef<Path>) -> PathBuf {
     let mut components = path.as_ref().components().peekable();
-    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().copied() {
         components.next();
         PathBuf::from(c.as_os_str())
     } else {
@@ -209,7 +211,7 @@ fn path_component_regex(windows: bool) -> String {
     // TODO: support backslash path escape on windows (when using git bash for example)
     let space_escape = if windows { r"[\^`]\s" } else { r"[\\]\s" };
     // partially baesd on what's allowed in an url but with some care to avoid
-    // false positivies (like any kind of brackets or quotes)
+    // false positives (like any kind of brackets or quotes)
     r"[\w@.\-+#$%?!,;~&]|".to_owned() + space_escape
 }
 
