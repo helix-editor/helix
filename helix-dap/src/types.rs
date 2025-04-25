@@ -752,6 +752,21 @@ pub mod requests {
         type Result = RunInTerminalResponse;
         const COMMAND: &'static str = "runInTerminal";
     }
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct StartDebuggingArguments {
+        pub request: String,
+        pub configuration: Value,
+    }
+
+    #[derive(Debug)]
+    pub enum StartDebugging {}
+
+    impl Request for StartDebugging {
+        type Arguments = StartDebuggingArguments;
+        type Result = ();
+        const COMMAND: &'static str = "startDebugging";
+    }
 }
 
 // Events
