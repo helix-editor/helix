@@ -104,6 +104,8 @@ separator = "│"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+diagnostics = ["warning", "error"]
+workspace-diagnostics = ["warning", "error"]
 ```
 The `[editor.statusline]` key takes the following sub-keys:
 
@@ -116,6 +118,8 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
+| `diagnostics` | A list of severities which are displayed for the current buffer | `["warning", "error"]` |
+| `workspace-diagnostics` | A list of severities which are displayed for the workspace | `["warning", "error"]` |
 
 The following statusline elements can be configured:
 

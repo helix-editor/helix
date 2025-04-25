@@ -1880,7 +1880,15 @@ fn update_goto_line_number_preview(cx: &mut compositor::Context, args: Args) -> 
 
     let scrolloff = cx.editor.config().scrolloff;
     let line = args[0].parse::<usize>()?;
-    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+    goto_line_without_jumplist(
+        cx.editor,
+        NonZeroUsize::new(line),
+        if cx.editor.mode == Mode::Select {
+            Movement::Extend
+        } else {
+            Movement::Move
+        },
+    );
 
     let (view, doc) = current!(cx.editor);
     view.ensure_cursor_in_view(doc, scrolloff);
@@ -3442,7 +3450,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "pipe",
-        aliases: &[],
+        aliases: &["|"],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
         completer: SHELL_COMPLETER,
@@ -3458,7 +3466,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "run-shell-command",
-        aliases: &["sh"],
+        aliases: &["sh", "!"],
         doc: "Run a shell command",
         fun: run_shell_command,
         completer: SHELL_COMPLETER,

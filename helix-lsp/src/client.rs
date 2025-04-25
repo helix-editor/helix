@@ -39,7 +39,7 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
     lsp::WorkspaceFolder {
         name: uri
             .path_segments()
-            .and_then(|segments| segments.last())
+            .and_then(|mut segments| segments.next_back())
             .map(|basename| basename.to_string())
             .unwrap_or_default(),
         uri,
