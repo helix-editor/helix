@@ -6,7 +6,6 @@
 # License: MIT License
 
 "type" = "blue"
-"boolean" = "purple"
 "constant" = "fg"
 "constant.builtin" = "purple"
 "constant.numeric" = "purple"
