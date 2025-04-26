@@ -887,7 +887,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = 
 name = "css"
 scope = "source.css"
 injection-regex = "css"
-file-types = ["css", "scss"]
+file-types = ["css"]
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "vscode-css-language-server" ]
 auto-format = true
