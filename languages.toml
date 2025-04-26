@@ -761,7 +761,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "gomod"
-source = { git = "https://github.com/camdencheek/tree-sitter-go-mod", rev = "e8f51f8e4363a3d9a427e8f63f4c1bbc5ef5d8d0" }
+source = { git = "https://github.com/camdencheek/tree-sitter-go-mod", rev = "6efb59652d30e0e9cd5f3b3a669afd6f1a926d3c" }
 
 [[language]]
 name = "gotmpl"
