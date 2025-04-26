@@ -141,9 +141,11 @@ impl ScriptingEngine {
     }
 
     pub fn generate_sources() {
+        let now = std::time::Instant::now();
         for kind in PLUGIN_PRECEDENCE {
             manual_dispatch!(kind, generate_sources())
         }
+        println!("Time taken: {:?}", now.elapsed());
     }
 }
 
