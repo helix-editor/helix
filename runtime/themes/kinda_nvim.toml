@@ -32,15 +32,15 @@
 "ui.bufferline.active" = { bg = "bg", fg = "fg" }
 "ui.bufferline" = { bg = "bg", fg = "fg", modifiers = [ "dim" ] }
 
-"ui.popup" = { bg = "bg_2", fg = "fg_4" }
-"ui.popup.info" = { bg = "bg_2", fg = "fg_4" }
+"ui.popup" = { bg = "bg_2", fg = "fg_3" }
+"ui.popup.info" = { bg = "bg_2", fg = "fg_3" }
 
 "ui.picker.header" = { fg = "fg_3", modifiers = [ "bold" ] }
 "ui.picker.header.column.active" = { fg = "fg", modifiers = [ "bold" ] }
 
 "ui.window" = { fg = "fg_4" }
 
-"ui.help" = { bg = "bg_2", fg = "fg_4" }
+"ui.help" = { bg = "bg_2", fg = "fg_3" }
 
 "ui.text" = { fg = "fg" }
 "ui.text.focus" = { fg = "fg", modifiers = [ "bold" ] }
@@ -49,9 +49,9 @@
 "ui.text.directory" = { fg = "fg_secondary" }
 
 "ui.virtual" = { fg = "fg_4" }
-"ui.virtual.ruler" = { bg = "bg_2" }
+"ui.virtual.ruler" = { bg = "bg_1" }
 "ui.virtual.indent-guide" = { fg = "bg_4" }
-"ui.virtual.inlay-hint" = { fg = "fg_4" }
+"ui.virtual.inlay-hint" = { fg = "fg_2", modifiers = [ "dim" ] }
 "ui.virtual.wrap" = { fg = "fg_4" }
 "ui.virtual.jump-label" = { fg = "fg_4" }
 
