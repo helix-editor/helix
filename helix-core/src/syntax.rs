@@ -461,8 +461,7 @@ where
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
     pub command: String,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub environment: HashMap<String, String>,
@@ -470,6 +469,8 @@ pub struct LanguageServerConfiguration {
     pub config: Option<serde_json::Value>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub roots: Vec<String>,
     #[serde(
         default,
         skip_serializing,
