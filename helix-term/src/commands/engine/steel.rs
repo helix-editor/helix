@@ -70,7 +70,6 @@ pub static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
 // We just have to look at functions that have been defined at
 // the top level, _after_ they
 pub static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
-// pub static AVAILABLE_FUNCTIONS: Lazy<RwLock<Vec<String>>> = Lazy::new(|| RwLock::new(Vec::new()));
 
 // The Steel scripting engine instance. This is what drives the whole integration.
 pub static GLOBAL_ENGINE: Lazy<Mutex<steel::steel_vm::engine::Engine>> = Lazy::new(|| {
@@ -233,6 +232,22 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi, generate_sources: bool) 
     engine.register_module(module);
 }
 
+fn format_docstring(doc: &str) -> String {
+    let mut docstring = doc
+        .lines()
+        .map(|x| {
+            let mut line = ";;".to_string();
+            line.push_str(x);
+            line.push_str("\n");
+            line
+        })
+        .collect::<String>();
+
+    docstring.pop();
+
+    docstring
+}
+
 fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/static");
 
@@ -263,17 +278,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
             module.register_fn(name, fun);
 
             if generate_sources {
-                let mut docstring = doc
-                    .lines()
-                    .map(|x| {
-                        let mut line = ";;".to_string();
-                        line.push_str(x);
-                        line.push_str("\n");
-                        line
-                    })
-                    .collect::<String>();
-
-                docstring.pop();
+                let docstring = format_docstring(doc);
 
                 builtin_static_command_module.push_str(&format!(
                     r#"
@@ -291,17 +296,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
 
     let mut template_function_arity_1 = |name: &str, doc: &str| {
         if generate_sources {
-            let mut docstring = doc
-                .lines()
-                .map(|x| {
-                    let mut line = ";;".to_string();
-                    line.push_str(x);
-                    line.push_str("\n");
-                    line
-                })
-                .collect::<String>();
-
-            docstring.pop();
+            let docstring = format_docstring(doc);
 
             builtin_static_command_module.push_str(&format!(
                 r#"
@@ -367,43 +362,79 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         after the existing function context has exited."
     );
 
-    let mut template_function_arity_0 = |name: &str| {
+    let mut template_function_arity_0 = |name: &str, doc: &str| {
         if generate_sources {
+            let docstring = format_docstring(doc);
+
             builtin_static_command_module.push_str(&format!(
                 r#"
 (provide {})
+;;@doc
+{}
 (define ({})
     (helix.static.{} *helix.cx*))
 "#,
-                name, name, name
+                name, docstring, name, name
             ));
         }
     };
 
     macro_rules! function0 {
-        ($name:expr, $function:expr) => {{
+        ($name:expr, $function:expr, $doc:expr) => {{
             module.register_fn($name, $function);
-            template_function_arity_0($name);
+            template_function_arity_0($name, $doc);
         }};
     }
 
-    function0!("current_selection", get_selection);
-    function0!("load-buffer!", load_buffer);
-    function0!("current-highlighted-text!", get_highlighted_text);
-    function0!("get-current-line-number", current_line_number);
-    function0!("current-selection-object", current_selection);
-    function0!("get-helix-cwd", get_helix_cwd);
-    function0!("move-window-far-left", move_window_to_the_left);
-    function0!("move-window-far-right", move_window_to_the_right);
+    function0!(
+        "current_selection",
+        get_selection,
+        "Returns the current selection as a string"
+    );
+    function0!("load-buffer!", load_buffer, "Evaluates the current buffer");
+    function0!(
+        "current-highlighted-text!",
+        get_highlighted_text,
+        "Returns the currently highlighted text as a string"
+    );
+    function0!(
+        "get-current-line-number",
+        current_line_number,
+        "Returns the current line number"
+    );
+    function0!(
+        "current-selection-object",
+        current_selection,
+        "Returns the current selection object"
+    );
+    function0!(
+        "get-helix-cwd",
+        get_helix_cwd,
+        "Returns the current working directly that helix is using"
+    );
+    function0!(
+        "move-window-far-left",
+        move_window_to_the_left,
+        "Moves the current window to the far left"
+    );
+    function0!(
+        "move-window-far-right",
+        move_window_to_the_right,
+        "Moves the current window to the far right"
+    );
 
-    let mut template_function_no_context = |name: &str| {
+    let mut template_function_no_context = |name: &str, doc: &str| {
         if generate_sources {
+            let docstring = format_docstring(doc);
+
             builtin_static_command_module.push_str(&format!(
                 r#"
 (provide {})
+;;@doc
+{}
 (define {} helix.static.{})                
             "#,
-                name, name, name
+                name, docstring, name, name
             ))
         }
     };
@@ -411,8 +442,14 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
     module.register_fn("get-init-scm-path", get_init_scm_path);
 
-    template_function_no_context("get-helix-scm-path");
-    template_function_no_context("get-init-scm-path");
+    template_function_no_context(
+        "get-helix-scm-path",
+        "Returns the path to the helix.scm file as a string",
+    );
+    template_function_no_context(
+        "get-init-scm-path",
+        "Returns the path to the init.scm file as a string",
+    );
 
     if generate_sources {
         let mut target_directory = helix_runtime_search_path();
@@ -475,24 +512,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     (helix.{} *helix.cx* args))
 "#,
                 command.name,
-                {
-                    // Ugly hack to drop the extra newline from
-                    // the docstring
-                    let mut docstring = command
-                        .doc
-                        .lines()
-                        .map(|x| {
-                            let mut line = ";;".to_string();
-                            line.push_str(x);
-                            line.push_str("\n");
-                            line
-                        })
-                        .collect::<String>();
-
-                    docstring.pop();
-
-                    docstring
-                },
+                format_docstring(command.doc),
                 command.name,
                 command.name
             ));
@@ -3221,8 +3241,6 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                         let callback = move |engine: &mut Engine, args: Vec<SteelVal>| {
                             let context = args[0].clone();
                             engine.update_value("*helix.cx*", context);
-
-                            // args.push(inner);
                             engine.call_function_with_args(cloned_func.clone(), vec![inner])
                         };
 
