@@ -2566,6 +2566,9 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+// TODO: SHELL_SIGNATURE should specify var args for arguments, so that just completers::filename can be used,
+// but Signature does not yet allow for var args.
+
 /// This command handles all of its input as-is with no quoting or flags.
 const SHELL_SIGNATURE: Signature = Signature {
     positionals: (1, Some(2)),
@@ -2574,10 +2577,10 @@ const SHELL_SIGNATURE: Signature = Signature {
 };
 
 const SHELL_COMPLETER: CommandCompleter = CommandCompleter::positional(&[
-    // Command name (TODO: consider a command completer - Kakoune has prior art)
-    completers::none,
+    // Command name
+    completers::program,
     // Shell argument(s)
-    completers::filename,
+    completers::repeating_filenames,
 ]);
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
