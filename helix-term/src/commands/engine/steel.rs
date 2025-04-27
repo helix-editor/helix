@@ -425,7 +425,6 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
 
         std::fs::write(target_directory, &builtin_static_command_module).unwrap();
 
-        // Name the module? - `helix/commands.scm`
         engine.register_steel_module(
             "helix/static.scm".to_string(),
             builtin_static_command_module,
@@ -508,7 +507,12 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 
         target_directory.push("commands.scm");
 
-        std::fs::write(target_directory, builtin_typable_command_module).unwrap();
+        std::fs::write(target_directory, &builtin_typable_command_module).unwrap();
+
+        engine.register_steel_module(
+            "helix/commands.scm".to_string(),
+            builtin_typable_command_module,
+        );
     }
 
     if generate_sources {
@@ -897,7 +901,12 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
         target_directory.push("configuration.scm");
 
-        std::fs::write(target_directory, builtin_configuration_module).unwrap();
+        std::fs::write(target_directory, &builtin_configuration_module).unwrap();
+
+        engine.register_steel_module(
+            "helix/configuration.scm".to_string(),
+            builtin_configuration_module,
+        );
     }
 
     if generate_sources {
@@ -1113,7 +1122,12 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
 
         target_directory.push("editor.scm");
 
-        std::fs::write(target_directory, builtin_editor_command_module).unwrap();
+        std::fs::write(target_directory, &builtin_editor_command_module).unwrap();
+
+        engine.register_steel_module(
+            "helix/editor.scm".to_string(),
+            builtin_editor_command_module,
+        );
     }
 
     // Generate the lsp configuration
@@ -2532,7 +2546,9 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
 
         target_directory.push("misc.scm");
 
-        std::fs::write(target_directory, builtin_misc_module).unwrap();
+        std::fs::write(target_directory, &builtin_misc_module).unwrap();
+
+        engine.register_steel_module("helix/misc.scm".to_string(), builtin_misc_module);
     }
 
     if generate_sources {
