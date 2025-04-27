@@ -460,7 +460,12 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
 
         target_directory.push("static.scm");
 
-        std::fs::write(target_directory, builtin_static_command_module).unwrap();
+        std::fs::write(target_directory, &builtin_static_command_module).unwrap();
+
+        engine.register_steel_module(
+            "helix/static.scm".to_string(),
+            builtin_static_command_module,
+        );
     }
 
     if generate_sources {
@@ -522,7 +527,12 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 
         target_directory.push("commands.scm");
 
-        std::fs::write(target_directory, builtin_typable_command_module).unwrap();
+        std::fs::write(target_directory, &builtin_typable_command_module).unwrap();
+
+        engine.register_steel_module(
+            "helix/commands.scm".to_string(),
+            builtin_typable_command_module,
+        );
     }
 
     if generate_sources {
@@ -911,7 +921,12 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
         target_directory.push("configuration.scm");
 
-        std::fs::write(target_directory, builtin_configuration_module).unwrap();
+        std::fs::write(target_directory, &builtin_configuration_module).unwrap();
+
+        engine.register_steel_module(
+            "helix/configuration.scm".to_string(),
+            builtin_configuration_module,
+        );
     }
 
     if generate_sources {
@@ -1127,7 +1142,12 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
 
         target_directory.push("editor.scm");
 
-        std::fs::write(target_directory, builtin_editor_command_module).unwrap();
+        std::fs::write(target_directory, &builtin_editor_command_module).unwrap();
+
+        engine.register_steel_module(
+            "helix/editor.scm".to_string(),
+            builtin_editor_command_module,
+        );
     }
 
     // Generate the lsp configuration
@@ -2265,6 +2285,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
 }
 
 fn configure_lsp_globals() {
+    use std::fmt::Write;
     if let Ok(steel_lsp_home) = std::env::var("STEEL_LSP_HOME") {
         let mut path = PathBuf::from(steel_lsp_home);
         path.push("_helix-global-builtins.scm");
@@ -2290,8 +2311,24 @@ fn configure_lsp_globals() {
         ];
 
         for value in names {
-            use std::fmt::Write;
             writeln!(&mut output, "(#%register-global '{})", value).unwrap();
+        }
+
+        writeln!(&mut output, "").unwrap();
+        writeln!(
+            &mut output,
+            "(#%register-additional-search-path \"{}\")",
+            helix_loader::config_dir().to_str().unwrap()
+        )
+        .unwrap();
+
+        for dir in helix_loader::runtime_dirs() {
+            writeln!(
+                &mut output,
+                "(#%register-additional-search-path \"{}\")",
+                dir.to_str().unwrap()
+            )
+            .unwrap();
         }
 
         std::fs::write(path, output).unwrap();
@@ -2299,6 +2336,7 @@ fn configure_lsp_globals() {
 }
 
 fn configure_lsp_builtins(name: &str, module: &BuiltInModule) {
+    use std::fmt::Write;
     if let Ok(steel_lsp_home) = std::env::var("STEEL_LSP_HOME") {
         let mut path = PathBuf::from(steel_lsp_home);
         path.push(&format!("_helix-{}-builtins.scm", name));
@@ -2318,7 +2356,6 @@ fn configure_lsp_builtins(name: &str, module: &BuiltInModule) {
         output.push_str(&format!(r#"(register-values #%helix-{}-module '("#, name));
 
         for value in module.names() {
-            use std::fmt::Write;
             writeln!(&mut output, "{}", value).unwrap();
         }
 
@@ -2529,7 +2566,9 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
 
         target_directory.push("misc.scm");
 
-        std::fs::write(target_directory, builtin_misc_module).unwrap();
+        std::fs::write(target_directory, &builtin_misc_module).unwrap();
+
+        engine.register_steel_module("helix/misc.scm".to_string(), builtin_misc_module);
     }
 
     if generate_sources {
@@ -2543,6 +2582,7 @@ pub fn helix_runtime_search_path() -> PathBuf {
     helix_loader::config_dir().join("helix")
 }
 
+// Embed them in the binary... first
 pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     load_editor_api(engine, generate_sources);
     load_theme_api(engine, generate_sources);
@@ -2567,7 +2607,12 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
 fn configure_engine_impl(mut engine: Engine) -> Engine {
     log::info!("Loading engine!");
 
+    // Engine: Add search directories.
     engine.add_search_directory(helix_loader::config_dir());
+
+    for dir in helix_loader::runtime_dirs() {
+        engine.add_search_directory(dir.to_owned());
+    }
 
     engine.register_value("*helix.cx*", SteelVal::Void);
     engine.register_value("*helix.config*", SteelVal::Void);
