@@ -5,6 +5,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
+use helix_core::command_line::{ExpansionKind, TokenKind, Tokenizer};
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
@@ -42,6 +43,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
+use crate::expansion::Variable;
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
@@ -814,70 +816,120 @@ impl Document {
                 process.current_dir(doc_dir);
             }
 
-            let filename_in_args = fmt_args.iter().any(|arg| arg.contains("{}"));
-            let fmt_args = filename_in_args
-                .then_some(self.path().map(|path| {
-                    let path = path.to_string_lossy();
-                    Cow::Owned(
-                        fmt_args
-                            .iter()
-                            .map(|arg| arg.replace("{}", &path))
-                            .collect(),
-                    )
-                }))
-                .flatten()
-                .unwrap_or(Cow::Borrowed(fmt_args));
+            let fmt_args = fmt_args
+                .iter()
+                .map(|content| {
+                    let mut escaped = String::new();
+                    let mut start = 0;
 
-            process
-                .args(fmt_args.as_ref())
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped());
-
-            let formatting_future = async move {
-                let mut process = process
-                    .spawn()
-                    .map_err(|e| FormatterError::SpawningFailed {
-                        command: fmt_cmd.to_string_lossy().into(),
-                        error: e.kind(),
-                    })?;
-
-                let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                let input_text = text.clone();
-                let input_task = tokio::spawn(async move {
-                    to_writer(&mut stdin, (encoding::UTF_8, false), &input_text).await
-                    // Note that `stdin` is dropped here, causing the pipe to close. This can
-                    // avoid a deadlock with `wait_with_output` below if the process is waiting on
-                    // stdin to close before exiting.
-                });
-                let (input_result, output_result) = tokio::join! {
-                    input_task,
-                    process.wait_with_output(),
-                };
-                let _ = input_result.map_err(|_| FormatterError::BrokenStdin)?;
-                let output = output_result.map_err(|_| FormatterError::WaitForOutputFailed)?;
-
-                if !output.status.success() {
-                    if !output.stderr.is_empty() {
-                        let err = String::from_utf8_lossy(&output.stderr).to_string();
-                        log::error!("Formatter error: {}", err);
-                        return Err(FormatterError::NonZeroExitStatus(Some(err)));
+                    while let Some(offset) = content[start..].find('%') {
+                        let idx = start + offset;
+                        if content.as_bytes().get(idx + '%'.len_utf8()).copied() == Some(b'%') {
+                            // Treat two percents in a row as an escaped percent.
+                            escaped.push_str(&content[start..=idx]);
+                            // Skip over both percents.
+                            start = idx + ('%'.len_utf8() * 2);
+                        } else {
+                            // Otherwise interpret the percent as an expansion. Push up to (but not
+                            // including) the percent token.
+                            escaped.push_str(&content[start..idx]);
+                            // Then parse the expansion,
+                            let mut tokenizer = Tokenizer::new(&content[idx..], true);
+                            let token = tokenizer
+                                .parse_percent_token()
+                                .unwrap()
+                                .map_err(|err| anyhow!("{err}"))?;
+                            if matches!(token.kind, TokenKind::Expansion(ExpansionKind::Variable)) {
+                                let var = Variable::from_name(&token.content).ok_or_else(|| {
+                                    anyhow!("unknown variable '{}'", token.content)
+                                })?;
+                                if matches!(var, Variable::BufferName) {
+                                    let expanded = if let Some(path) = self.relative_path() {
+                                        Cow::Owned(path.to_string_lossy().into_owned())
+                                    } else {
+                                        Cow::Borrowed(crate::document::SCRATCH_BUFFER_NAME)
+                                    };
+                                    escaped.push_str(expanded.as_ref());
+                                } else {
+                                    bail!(
+                                        "unexpected variable in format command '{}'",
+                                        var.as_str()
+                                    );
+                                }
+                                // and move forward to the end of the expansion.
+                                start = idx + tokenizer.pos();
+                            } else {
+                                bail!("unexpected token in format command '{}'", token.content);
+                            }
+                        }
                     }
 
-                    return Err(FormatterError::NonZeroExitStatus(None));
-                } else if !output.stderr.is_empty() {
-                    log::debug!(
-                        "Formatter printed to stderr: {}",
-                        String::from_utf8_lossy(&output.stderr)
-                    );
+                    if escaped.is_empty() {
+                        Ok(Cow::Borrowed(content))
+                    } else {
+                        escaped.push_str(&content[start..]);
+                        Ok(Cow::Owned(escaped))
+                    }
+                })
+                .collect::<anyhow::Result<Vec<_>>>();
+
+            match fmt_args {
+                Ok(fmt_args) => {
+                    process
+                        .args(fmt_args.iter().map(Cow::as_ref))
+                        .stdin(Stdio::piped())
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped());
+
+                    let formatting_future = async move {
+                        let mut process =
+                            process
+                                .spawn()
+                                .map_err(|e| FormatterError::SpawningFailed {
+                                    command: fmt_cmd.to_string_lossy().into(),
+                                    error: e.kind(),
+                                })?;
+
+                        let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                        let input_text = text.clone();
+                        let input_task = tokio::spawn(async move {
+                            to_writer(&mut stdin, (encoding::UTF_8, false), &input_text).await
+                            // Note that `stdin` is dropped here, causing the pipe to close. This can
+                            // avoid a deadlock with `wait_with_output` below if the process is waiting on
+                            // stdin to close before exiting.
+                        });
+                        let (input_result, output_result) = tokio::join! {
+                            input_task,
+                            process.wait_with_output(),
+                        };
+                        let _ = input_result.map_err(|_| FormatterError::BrokenStdin)?;
+                        let output =
+                            output_result.map_err(|_| FormatterError::WaitForOutputFailed)?;
+
+                        if !output.status.success() {
+                            if !output.stderr.is_empty() {
+                                let err = String::from_utf8_lossy(&output.stderr).to_string();
+                                log::error!("Formatter error: {}", err);
+                                return Err(FormatterError::NonZeroExitStatus(Some(err)));
+                            }
+
+                            return Err(FormatterError::NonZeroExitStatus(None));
+                        } else if !output.stderr.is_empty() {
+                            log::debug!(
+                                "Formatter printed to stderr: {}",
+                                String::from_utf8_lossy(&output.stderr)
+                            );
+                        }
+
+                        let str = std::str::from_utf8(&output.stdout)
+                            .map_err(|_| FormatterError::InvalidUtf8Output)?;
+
+                        Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
+                    };
+                    return Some(formatting_future.boxed());
                 }
-
-                let str = std::str::from_utf8(&output.stdout)
-                    .map_err(|_| FormatterError::InvalidUtf8Output)?;
-
-                Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
-            };
-            return Some(formatting_future.boxed());
+                Err(e) => log::error!("{e}"),
+            }
         };
 
         let text = self.text.clone();
