@@ -114,6 +114,12 @@
 ] @keyword
 
 [
+  "defer"
+  "go"
+  "goto"
+] @keyword.control
+
+[
   "if"  
   "else"
   "switch"
@@ -153,12 +159,6 @@
 [
   "const"
 ] @keyword.storage.modifier
-
-[
-  "defer"
-  "goto"
-  "go"
-] @function.macro
 
 ; Delimiters
 
