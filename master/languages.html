@@ -221,7 +221,7 @@ language-servers = [ "mylang-lsp" ]
 <tr><td><code>indent</code></td><td>The indent to use. Has sub keys <code>unit</code> (the text inserted into the document when indenting; usually set to N spaces or <code>"\t"</code> for tabs) and <code>tab-width</code> (the number of spaces rendered for a tab)</td></tr>
 <tr><td><code>language-servers</code></td><td>The Language Servers used for this language. See below for more information in the section <a href="#configuring-language-servers-for-a-language">Configuring Language Servers for a language</a></td></tr>
 <tr><td><code>grammar</code></td><td>The tree-sitter grammar to use (defaults to the value of <code>name</code>)</td></tr>
-<tr><td><code>formatter</code></td><td>The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout</td></tr>
+<tr><td><code>formatter</code></td><td>The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout. The filename of the current buffer can be passed as argument by using the <code>%{buffer_name}</code> expansion variable. See below for more information in the <a href="#configuring-the-formatter-command">Configuring the formatter command</a></td></tr>
 <tr><td><code>soft-wrap</code></td><td><a href="./editor.html#editorsoft-wrap-section">editor.softwrap</a></td></tr>
 <tr><td><code>text-width</code></td><td>Maximum line length. Used for the <code>:reflow</code> command and soft-wrapping if <code>soft-wrap.wrap-at-text-width</code> is set, defaults to <code>editor.text-width</code></td></tr>
 <tr><td><code>rulers</code></td><td>Overrides the <code>editor.rulers</code> config key for the language.</td></tr>
@@ -254,6 +254,12 @@ If the glob isn't an absolute path or doesn't already start with a glob prefix,
 the file extension of a given file wins. In the example above, the <code>"toml"</code>
 config matches files like <code>Cargo.toml</code> or <code>languages.toml</code>.</li>
 </ol>
+<h3 id="configuring-the-formatter-command"><a class="header" href="#configuring-the-formatter-command">Configuring the formatter command</a></h3>
+<p><a href="./command-line.html#expansions">Command line expansions</a> are supported in the arguments
+of the formatter command. In particular, the <code>%{buffer_name}</code> variable can be passed as
+argument to the formatter:</p>
+<pre><code class="language-toml">formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename %{buffer_name}"] }
+</code></pre>
 <h2 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h2>
 <p>Language servers are configured separately in the table <code>language-server</code> in the same file as the languages <code>languages.toml</code></p>
 <p>For example:</p>
