@@ -324,22 +324,20 @@ fn buffer_previous(
 fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> anyhow::Result<()> {
     let config = cx.editor.config();
     let jobs = &mut cx.jobs;
-    {
-        let (view, doc) = current!(cx.editor);
+    let (view, doc) = current!(cx.editor);
 
-        if doc.trim_trailing_whitespace() {
-            trim_trailing_whitespace(doc, view.id);
-        }
-        if config.trim_final_newlines {
-            trim_final_newlines(doc, view.id);
-        }
-        if doc.insert_final_newline() {
-            insert_final_newline(doc, view.id);
-        }
-
-        // Save an undo checkpoint for any outstanding changes.
-        doc.append_changes_to_history(view);
+    if doc.trim_trailing_whitespace() {
+        trim_trailing_whitespace(doc, view.id);
     }
+    if config.trim_final_newlines {
+        trim_final_newlines(doc, view.id);
+    }
+    if doc.insert_final_newline() {
+        insert_final_newline(doc, view.id);
+    }
+
+    // Save an undo checkpoint for any outstanding changes.
+    doc.append_changes_to_history(view);
 
     let (view, doc) = current_ref!(cx.editor);
     let fmt = if config.auto_format {
@@ -738,26 +736,24 @@ pub fn write_all_impl(
         .collect();
 
     for (doc_id, target_view) in saves {
-        {
-            let doc = doc_mut!(cx.editor, &doc_id);
-            let view = view_mut!(cx.editor, target_view);
+        let doc = doc_mut!(cx.editor, &doc_id);
+        let view = view_mut!(cx.editor, target_view);
 
-            if doc.trim_trailing_whitespace() {
-                trim_trailing_whitespace(doc, target_view);
-            }
-            if config.trim_final_newlines {
-                trim_final_newlines(doc, target_view);
-            }
-            if doc.insert_final_newline() {
-                insert_final_newline(doc, target_view);
-            }
-
-            // Save an undo checkpoint for any outstanding changes.
-            doc.append_changes_to_history(view);
+        if doc.trim_trailing_whitespace() {
+            trim_trailing_whitespace(doc, target_view);
+        }
+        if config.trim_final_newlines {
+            trim_final_newlines(doc, target_view);
+        }
+        if doc.insert_final_newline() {
+            insert_final_newline(doc, target_view);
         }
 
-        let doc = doc!(cx.editor, &doc_id);
+        // Save an undo checkpoint for any outstanding changes.
+        doc.append_changes_to_history(view);
+
         let fmt = if options.auto_format && config.auto_format {
+            let doc = doc!(cx.editor, &doc_id);
             doc.auto_format(cx.editor).map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,

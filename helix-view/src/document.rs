@@ -5,7 +5,6 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
-
 use helix_core::command_line::Token;
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
@@ -44,10 +43,10 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::expansion::expand;
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
+    expansion,
     view::ViewPosition,
     DocumentId, Editor, Theme, View, ViewId,
 };
@@ -823,68 +822,68 @@ impl Document {
                 process.current_dir(doc_dir);
             }
 
-            let fmt_args = fmt_args
+            let args = match fmt_args
                 .iter()
-                .map(|content| expand(editor, Token::expand(content)))
-                .collect::<anyhow::Result<Vec<_>>>();
-
-            match fmt_args {
-                Ok(fmt_args) => {
-                    process
-                        .args(fmt_args.iter().map(Cow::as_ref))
-                        .stdin(Stdio::piped())
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped());
-
-                    let formatting_future = async move {
-                        let mut process =
-                            process
-                                .spawn()
-                                .map_err(|e| FormatterError::SpawningFailed {
-                                    command: fmt_cmd.to_string_lossy().into(),
-                                    error: e.kind(),
-                                })?;
-
-                        let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                        let input_text = text.clone();
-                        let input_task = tokio::spawn(async move {
-                            to_writer(&mut stdin, (encoding::UTF_8, false), &input_text).await
-                            // Note that `stdin` is dropped here, causing the pipe to close. This can
-                            // avoid a deadlock with `wait_with_output` below if the process is waiting on
-                            // stdin to close before exiting.
-                        });
-                        let (input_result, output_result) = tokio::join! {
-                            input_task,
-                            process.wait_with_output(),
-                        };
-                        let _ = input_result.map_err(|_| FormatterError::BrokenStdin)?;
-                        let output =
-                            output_result.map_err(|_| FormatterError::WaitForOutputFailed)?;
-
-                        if !output.status.success() {
-                            if !output.stderr.is_empty() {
-                                let err = String::from_utf8_lossy(&output.stderr).to_string();
-                                log::error!("Formatter error: {}", err);
-                                return Err(FormatterError::NonZeroExitStatus(Some(err)));
-                            }
-
-                            return Err(FormatterError::NonZeroExitStatus(None));
-                        } else if !output.stderr.is_empty() {
-                            log::debug!(
-                                "Formatter printed to stderr: {}",
-                                String::from_utf8_lossy(&output.stderr)
-                            );
-                        }
-
-                        let str = std::str::from_utf8(&output.stdout)
-                            .map_err(|_| FormatterError::InvalidUtf8Output)?;
-
-                        Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
-                    };
-                    return Some(formatting_future.boxed());
+                .map(|content| expansion::expand(editor, Token::expand(content)))
+                .collect::<Result<Vec<_>, _>>()
+            {
+                Ok(args) => args,
+                Err(err) => {
+                    log::error!("Failed to expand formatter arguments: {err}");
+                    return None;
                 }
-                Err(e) => log::error!("{e}"),
-            }
+            };
+
+            process
+                .args(args.iter().map(AsRef::as_ref))
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+
+            let formatting_future = async move {
+                let mut process = process
+                    .spawn()
+                    .map_err(|e| FormatterError::SpawningFailed {
+                        command: fmt_cmd.to_string_lossy().into(),
+                        error: e.kind(),
+                    })?;
+
+                let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                let input_text = text.clone();
+                let input_task = tokio::spawn(async move {
+                    to_writer(&mut stdin, (encoding::UTF_8, false), &input_text).await
+                    // Note that `stdin` is dropped here, causing the pipe to close. This can
+                    // avoid a deadlock with `wait_with_output` below if the process is waiting on
+                    // stdin to close before exiting.
+                });
+                let (input_result, output_result) = tokio::join! {
+                    input_task,
+                    process.wait_with_output(),
+                };
+                let _ = input_result.map_err(|_| FormatterError::BrokenStdin)?;
+                let output = output_result.map_err(|_| FormatterError::WaitForOutputFailed)?;
+
+                if !output.status.success() {
+                    if !output.stderr.is_empty() {
+                        let err = String::from_utf8_lossy(&output.stderr).to_string();
+                        log::error!("Formatter error: {}", err);
+                        return Err(FormatterError::NonZeroExitStatus(Some(err)));
+                    }
+
+                    return Err(FormatterError::NonZeroExitStatus(None));
+                } else if !output.stderr.is_empty() {
+                    log::debug!(
+                        "Formatter printed to stderr: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                }
+
+                let str = std::str::from_utf8(&output.stdout)
+                    .map_err(|_| FormatterError::InvalidUtf8Output)?;
+
+                Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
+            };
+            return Some(formatting_future.boxed());
         };
 
         let text = self.text.clone();
