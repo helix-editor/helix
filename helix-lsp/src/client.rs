@@ -356,7 +356,14 @@ impl Client {
                 capabilities.inlay_hint_provider,
                 Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
             ),
-            LanguageServerFeature::DocumentColors => capabilities.color_provider.is_some(),
+            LanguageServerFeature::DocumentColors => matches!(
+                capabilities.color_provider,
+                Some(
+                    ColorProviderCapability::Simple(true)
+                        | ColorProviderCapability::ColorProvider(_)
+                        | ColorProviderCapability::Options(_)
+                )
+            ),
         }
     }
 
