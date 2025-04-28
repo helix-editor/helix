@@ -5,7 +5,8 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
-use helix_core::command_line::{ExpansionKind, TokenKind, Tokenizer};
+
+use helix_core::command_line::Token;
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
@@ -43,7 +44,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::expansion::Variable;
+use crate::expansion::expand;
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
@@ -779,9 +780,12 @@ impl Document {
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
-    pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn auto_format(
+        &self,
+        editor: &Editor,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if self.language_config()?.auto_format {
-            self.format()
+            self.format(editor)
         } else {
             None
         }
@@ -791,7 +795,10 @@ impl Document {
     /// to format it nicely.
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
-    pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn format(
+        &self,
+        editor: &Editor,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
             .and_then(|c| c.formatter.as_ref())
@@ -818,59 +825,7 @@ impl Document {
 
             let fmt_args = fmt_args
                 .iter()
-                .map(|content| {
-                    let mut escaped = String::new();
-                    let mut start = 0;
-
-                    while let Some(offset) = content[start..].find('%') {
-                        let idx = start + offset;
-                        if content.as_bytes().get(idx + '%'.len_utf8()).copied() == Some(b'%') {
-                            // Treat two percents in a row as an escaped percent.
-                            escaped.push_str(&content[start..=idx]);
-                            // Skip over both percents.
-                            start = idx + ('%'.len_utf8() * 2);
-                        } else {
-                            // Otherwise interpret the percent as an expansion. Push up to (but not
-                            // including) the percent token.
-                            escaped.push_str(&content[start..idx]);
-                            // Then parse the expansion,
-                            let mut tokenizer = Tokenizer::new(&content[idx..], true);
-                            let token = tokenizer
-                                .parse_percent_token()
-                                .unwrap()
-                                .map_err(|err| anyhow!("{err}"))?;
-                            if matches!(token.kind, TokenKind::Expansion(ExpansionKind::Variable)) {
-                                let var = Variable::from_name(&token.content).ok_or_else(|| {
-                                    anyhow!("unknown variable '{}'", token.content)
-                                })?;
-                                if matches!(var, Variable::BufferName) {
-                                    let expanded = if let Some(path) = self.relative_path() {
-                                        Cow::Owned(path.to_string_lossy().into_owned())
-                                    } else {
-                                        Cow::Borrowed(crate::document::SCRATCH_BUFFER_NAME)
-                                    };
-                                    escaped.push_str(expanded.as_ref());
-                                } else {
-                                    bail!(
-                                        "unexpected variable in format command '{}'",
-                                        var.as_str()
-                                    );
-                                }
-                                // and move forward to the end of the expansion.
-                                start = idx + tokenizer.pos();
-                            } else {
-                                bail!("unexpected token in format command '{}'", token.content);
-                            }
-                        }
-                    }
-
-                    if escaped.is_empty() {
-                        Ok(Cow::Borrowed(content))
-                    } else {
-                        escaped.push_str(&content[start..]);
-                        Ok(Cow::Owned(escaped))
-                    }
-                })
+                .map(|content| expand(editor, Token::expand(content)))
                 .collect::<anyhow::Result<Vec<_>>>();
 
             match fmt_args {
