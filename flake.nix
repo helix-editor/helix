@@ -56,7 +56,6 @@
         };
       in {
         helix = self.packages.${system}.helix.override {
-          buildType = "debug";
           rustPlatform = msrvPlatform;
         };
       })
