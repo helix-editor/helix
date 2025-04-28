@@ -339,8 +339,9 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
+    let (view, doc) = current_ref!(cx.editor);
     let fmt = if config.auto_format {
-        doc.auto_format().map(|fmt| {
+        doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
@@ -483,8 +484,8 @@ fn format(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
         return Ok(());
     }
 
-    let (view, doc) = current!(cx.editor);
-    let format = doc.format().context(
+    let (view, doc) = current_ref!(cx.editor);
+    let format = doc.format(cx.editor).context(
         "A formatter isn't available, and no language server provides formatting capabilities",
     )?;
     let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
@@ -752,7 +753,8 @@ pub fn write_all_impl(
         doc.append_changes_to_history(view);
 
         let fmt = if options.auto_format && config.auto_format {
-            doc.auto_format().map(|fmt| {
+            let doc = doc!(cx.editor, &doc_id);
+            doc.auto_format(cx.editor).map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
                     doc.version(),

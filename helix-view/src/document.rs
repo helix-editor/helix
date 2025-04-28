@@ -5,6 +5,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
+use helix_core::command_line::Token;
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
@@ -45,6 +46,7 @@ use helix_core::{
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
+    expansion,
     view::ViewPosition,
     DocumentId, Editor, Theme, View, ViewId,
 };
@@ -777,9 +779,12 @@ impl Document {
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
-    pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn auto_format(
+        &self,
+        editor: &Editor,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if self.language_config()?.auto_format {
-            self.format()
+            self.format(editor)
         } else {
             None
         }
@@ -789,7 +794,10 @@ impl Document {
     /// to format it nicely.
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
-    pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn format(
+        &self,
+        editor: &Editor,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
             .and_then(|c| c.formatter.as_ref())
@@ -814,8 +822,20 @@ impl Document {
                 process.current_dir(doc_dir);
             }
 
+            let args = match fmt_args
+                .iter()
+                .map(|content| expansion::expand(editor, Token::expand(content)))
+                .collect::<Result<Vec<_>, _>>()
+            {
+                Ok(args) => args,
+                Err(err) => {
+                    log::error!("Failed to expand formatter arguments: {err}");
+                    return None;
+                }
+            };
+
             process
-                .args(fmt_args)
+                .args(args.iter().map(AsRef::as_ref))
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
