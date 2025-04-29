@@ -381,7 +381,22 @@ These colors are controlled by the theme attributes `diff.plus`, `diff.minus` an
 
 Other diff providers will eventually be supported by a future plugin system.
 
-There are currently no options for this section.
+Options for the diff gutter
+
+| Key               | Description                                             | Default |
+| ---               | ---                                                     | ---     |
+| `added-symbol`    | The symbol used to indicate addition in the gutter      | `▍`     |
+| `deleted-symbol`  | The symbol used to indicate deletion in the gutter      | `▔`     |
+| `modified-symbol` | The symbol used to indicate modification in the gutter  | `▍`     |
+
+Example:
+
+```toml
+[editor.gutters.diff]
+added-symbol = "+"
+deleted-symbol = "-"
+modified-symbol = "~"
+```
 
 #### `[editor.gutters.spacer]` Section
 
