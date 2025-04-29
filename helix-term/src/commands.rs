@@ -3847,7 +3847,7 @@ fn goto_column_impl(cx: &mut Context, movement: Movement) {
         let line = range.cursor_line(text);
         let line_start = text.line_to_char(line);
         let line_end = line_end_char_index(&text, line);
-        let pos = graphemes::prev_grapheme_boundary(text, line_start + count).min(line_end);
+        let pos = graphemes::nth_next_grapheme_boundary(text, line_start, count - 1).min(line_end);
         range.put_cursor(text, pos, movement == Movement::Extend)
     });
     doc.set_selection(view.id, selection);
