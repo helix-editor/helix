@@ -538,7 +538,7 @@ impl EditorView {
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
                 // add block cursors
-                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
+                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
                 if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
@@ -546,7 +546,7 @@ impl EditorView {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
                 // add block cursors
-                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
+                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
                 if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
@@ -1647,7 +1647,7 @@ impl Component for EditorView {
                 if self.terminal_focused {
                     (pos, CursorKind::Hidden)
                 } else {
-                    // use crossterm cursor when terminal loses focus
+                    // use terminal cursor when terminal loses focus
                     (pos, CursorKind::Underline)
                 }
             }
