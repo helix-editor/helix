@@ -451,6 +451,8 @@ impl MappableCommand {
         goto_last_change, "Goto last change",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
+        goto_column, "Goto column",
+        extend_to_column, "Extend to column",
         goto_next_buffer, "Goto next buffer",
         goto_previous_buffer, "Goto previous buffer",
         goto_line_end_newline, "Goto newline at line end",
@@ -3827,6 +3829,30 @@ fn goto_last_line_impl(cx: &mut Context, movement: Movement) {
 
     push_jump(view, doc);
     doc.set_selection(view.id, selection);
+}
+
+fn goto_column(cx: &mut Context) {
+    goto_column_impl(cx, Movement::Move);
+}
+
+fn extend_to_column(cx: &mut Context) {
+    goto_column_impl(cx, Movement::Extend);
+}
+
+fn goto_column_impl(cx: &mut Context, movement: Movement) {
+    if let Some(count) = cx.count {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let line = range.cursor_line(text);
+            let line_start = text.line_to_char(line);
+            let target = line_start + count.get();
+            let line_end = line_end_char_index(&text, line);
+            let pos = graphemes::prev_grapheme_boundary(text, target).min(line_end);
+            range.put_cursor(text, pos, movement == Movement::Extend)
+        });
+        doc.set_selection(view.id, selection);
+    }
 }
 
 fn goto_last_accessed_file(cx: &mut Context) {
