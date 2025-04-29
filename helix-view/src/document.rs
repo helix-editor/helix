@@ -1162,7 +1162,8 @@ impl Document {
         }
     }
 
-    pub(crate) fn detect_editor_config(&mut self) {
+    pub fn detect_editor_config(&mut self) {
+        self.editor_config = EditorConfig::default();
         if self.config.load().editor_config {
             if let Some(path) = self.path.as_ref() {
                 self.editor_config = EditorConfig::find(path);
