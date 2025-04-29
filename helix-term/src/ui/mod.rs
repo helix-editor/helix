@@ -473,7 +473,7 @@ pub mod completers {
     }
 
     pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
-        filename_with_git_ignore(editor, input, true)
+        filename_with_git_ignore(editor, input, editor.config().file_picker.git_ignore)
     }
 
     pub fn filename_with_git_ignore(
