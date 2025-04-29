@@ -174,7 +174,7 @@ pub fn find_nth_pairs_pos(
     if text.len_chars() < 2 {
         return Err(Error::PairNotFound);
     }
-    if range.to() >= text.len_chars() {
+    if range.to() > text.len_chars() {
         return Err(Error::RangeExceedsText);
     }
 
