@@ -3,6 +3,9 @@
 | `:quit`, `:q` | Close the current view. |
 | `:quit!`, `:q!` | Force close the current view, ignoring unsaved changes. |
 | `:open`, `:o`, `:edit`, `:e` | Open a file from disk into the current view. |
+| `:jump-to-buffer`, `:j` | Switch to a document buffer using its index in the buffer jumplist. |
+| `:add-buffer-to-jumplist`, `:ab` | Add the current document buffer to the buffer jumplist. |
+| `:remove-buffer-from-jumplist`, `:rb` | Remove the current document buffer from the buffer jumplist. |
 | `:buffer-close`, `:bc`, `:bclose` | Close the current buffer. |
 | `:buffer-close!`, `:bc!`, `:bclose!` | Close the current buffer forcefully, ignoring unsaved changes. |
 | `:buffer-close-others`, `:bco`, `:bcloseother` | Close all buffers but the currently focused one. |
