@@ -4323,4 +4323,4 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "pug"
-source = { git = "https://github.com/codepen/tree-sitter-pug", rev = "60a463fd725afd034045496b9018fa4a081469fd" }
+source = { git = "https://github.com/zealot128/tree-sitter-pug", rev = "13e9195370172c86a8b88184cc358b23b677cc46" }

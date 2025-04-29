@@ -6,20 +6,7 @@
   ((doctype_name) @type.enum.variant)
 )
 
-; Tags
 (tag_name) @constant
-(
-  link_tag
-  ("link" @constant)
-)
-(
-  script_tag
-  ("script" @constant)
-)
-(
-  style_tag
-  ("style" @constant)
-)
 
 ; Attributes
 (id) @attribute
@@ -29,7 +16,10 @@
 (quoted_attribute_value) @string
 
 ; Controls
-; NOTE: The grammar currently seems to be missing the "if" conditional
+(
+  conditional
+  ((keyword) @keyword.control.conditional)
+)
 (
   case
   ((keyword) @keyword.control)
@@ -41,12 +31,10 @@
 (
   each
   ((keyword) @keyword.control.repeat)
-  ((iteration_variable) @variable)
-  ((keyword) @keyword.operator)
-  (
-    else
-    ((keyword) @keyword.control.conditional)
-  )
+)
+(
+  else
+  ((keyword) @keyword.control.conditional)
 )
 (
   while
@@ -86,12 +74,10 @@
 (
   block_append
   ((keyword) @keyword.directive)
-  ((keyword) @keyword.directive)
   ((block_name) @function.method)
 )
 (
   block_prepend
-  ((keyword) @keyword.directive)
   ((keyword) @keyword.directive)
   ((block_name) @function.method)
 )
@@ -107,5 +93,5 @@
 ; Inline JavaScript
 (
   unbuffered_code
-  (("-") @operator)
+  (("-") @special)
 )
