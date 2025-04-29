@@ -89,6 +89,8 @@ pub struct GutterConfig {
     pub layout: Vec<GutterType>,
     /// Options specific to the "line-numbers" gutter
     pub line_numbers: GutterLineNumbersConfig,
+    /// Options specific to the "diff" gutter
+    pub diff: GutterDiffConfig,
 }
 
 impl Default for GutterConfig {
@@ -102,6 +104,7 @@ impl Default for GutterConfig {
                 GutterType::Diff,
             ],
             line_numbers: GutterLineNumbersConfig::default(),
+            diff: GutterDiffConfig::default(),
         }
     }
 }
@@ -169,6 +172,27 @@ pub struct GutterLineNumbersConfig {
 impl Default for GutterLineNumbersConfig {
     fn default() -> Self {
         Self { min_width: 3 }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GutterDiffConfig {
+    /// Symbol to show for added lines (pure insertion)
+    pub added_symbol: String,
+    /// Symbol to show for deleted lines (pure removal)
+    pub deleted_symbol: String,
+    /// Symbol to show for modified lines
+    pub modified_symbol: String,
+}
+
+impl Default for GutterDiffConfig {
+    fn default() -> Self {
+        Self {
+            added_symbol: "▍".to_string(),
+            deleted_symbol: "▔".to_string(),
+            modified_symbol: "▍".to_string(),
+        }
     }
 }
 

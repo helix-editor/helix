@@ -90,13 +90,18 @@ pub fn diagnostic<'doc>(
 pub fn diff<'doc>(
     _editor: &'doc Editor,
     doc: &'doc Document,
-    _view: &View,
+    view: &View,
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
     let added = theme.get("diff.plus.gutter");
     let deleted = theme.get("diff.minus.gutter");
     let modified = theme.get("diff.delta.gutter");
+
+    let added_symbol = view.gutters.diff.added_symbol.clone();
+    let deleted_symbol = view.gutters.diff.deleted_symbol.clone();
+    let modified_symbol = view.gutters.diff.modified_symbol.clone();
+
     if let Some(diff_handle) = doc.diff_handle() {
         let hunks = diff_handle.load();
         let mut hunk_i = 0;
@@ -120,14 +125,14 @@ pub fn diff<'doc>(
                 }
 
                 let (icon, style) = if hunk.is_pure_insertion() {
-                    ("▍", added)
+                    (&added_symbol, added)
                 } else if hunk.is_pure_removal() {
                     if !first_visual_line {
                         return None;
                     }
-                    ("▔", deleted)
+                    (&deleted_symbol, deleted)
                 } else {
-                    ("▍", modified)
+                    (&modified_symbol, modified)
                 };
 
                 write!(out, "{}", icon).unwrap();
@@ -330,7 +335,7 @@ mod tests {
 
     use super::*;
     use crate::document::Document;
-    use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig};
+    use crate::editor::{Config, GutterConfig, GutterDiffConfig, GutterLineNumbersConfig};
     use crate::graphics::Rect;
     use crate::DocumentId;
     use arc_swap::ArcSwap;
@@ -379,6 +384,7 @@ mod tests {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
+            ..Default::default()
         };
 
         let mut view = View::new(DocumentId::default(), gutters);
@@ -397,10 +403,38 @@ mod tests {
     }
 
     #[test]
+    fn test_default_gutter_diff() {
+        let view = View::new(DocumentId::default(), GutterConfig::default());
+
+        assert_eq!(view.gutters.diff.added_symbol, "▍");
+        assert_eq!(view.gutters.diff.deleted_symbol, "▔");
+        assert_eq!(view.gutters.diff.modified_symbol, "▍");
+    }
+
+    #[test]
+    fn test_configured_gutter_diff() {
+        let gutters = GutterConfig {
+            diff: GutterDiffConfig {
+                added_symbol: "+".to_string(),
+                deleted_symbol: "-".to_string(),
+                modified_symbol: "~".to_string(),
+            },
+            ..Default::default()
+        };
+
+        let view = View::new(DocumentId::default(), gutters);
+
+        assert_eq!(view.gutters.diff.added_symbol, "+");
+        assert_eq!(view.gutters.diff.deleted_symbol, "-");
+        assert_eq!(view.gutters.diff.modified_symbol, "~");
+    }
+
+    #[test]
     fn test_line_numbers_gutter_width_resizes() {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
+            ..Default::default()
         };
 
         let mut view = View::new(DocumentId::default(), gutters);
