@@ -3840,19 +3840,17 @@ fn extend_to_column(cx: &mut Context) {
 }
 
 fn goto_column_impl(cx: &mut Context, movement: Movement) {
-    if let Some(count) = cx.count {
-        let (view, doc) = current!(cx.editor);
-        let text = doc.text().slice(..);
-        let selection = doc.selection(view.id).clone().transform(|range| {
-            let line = range.cursor_line(text);
-            let line_start = text.line_to_char(line);
-            let target = line_start + count.get();
-            let line_end = line_end_char_index(&text, line);
-            let pos = graphemes::prev_grapheme_boundary(text, target).min(line_end);
-            range.put_cursor(text, pos, movement == Movement::Extend)
-        });
-        doc.set_selection(view.id, selection);
-    }
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line = range.cursor_line(text);
+        let line_start = text.line_to_char(line);
+        let line_end = line_end_char_index(&text, line);
+        let pos = graphemes::prev_grapheme_boundary(text, line_start + count).min(line_end);
+        range.put_cursor(text, pos, movement == Movement::Extend)
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn goto_last_accessed_file(cx: &mut Context) {
