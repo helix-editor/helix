@@ -3141,6 +3141,7 @@ fn buffer_picker(cx: &mut Context) {
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
+        index_in_buffer_jumplist: Option<usize>,
     }
 
     let new_meta = |doc: &Document| BufferMeta {
@@ -3149,6 +3150,11 @@ fn buffer_picker(cx: &mut Context) {
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
+        index_in_buffer_jumplist: cx
+            .editor
+            .buffer_jumplist
+            .iter()
+            .position(|id| id == &doc.id()),
     };
 
     let mut items = cx
@@ -3171,6 +3177,10 @@ fn buffer_picker(cx: &mut Context) {
             if meta.is_current {
                 flags.push('*');
             }
+            if let Some(index) = meta.index_in_buffer_jumplist {
+                flags.push_str(&index.to_string());
+            }
+
             flags.into()
         }),
         PickerColumn::new("path", |meta: &BufferMeta, _| {
