@@ -4323,4 +4323,4 @@ grammar = "dunstrc"
 
 [[grammar]]
 name = "dunstrc"
-source = { git = "https://github.com/rotmh/tree-sitter-dunstrc", rev = "b2d193553603c41762418d67827883492c9119a3" }
+source = { git = "https://github.com/rotmh/tree-sitter-dunstrc", rev = "f40e8b5b46ff43164fc32ef1debf6e23a3bfba24" }

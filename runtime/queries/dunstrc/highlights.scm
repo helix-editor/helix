@@ -1,6 +1,10 @@
 (assign
   (key) @attribute)
 
+(assign
+  (value
+    (quoted) @string))
+
 (comment) @comment.line
 
 [
