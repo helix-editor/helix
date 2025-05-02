@@ -104,6 +104,10 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
+    open_impl(cx, args, Action::Replace)
+}
+
+fn open_impl(cx: &mut compositor::Context, args: Args, action: Action) -> anyhow::Result<()> {
     for arg in args {
         let (path, pos) = crate::args::parse_file(&arg);
         let path = helix_stdx::path::expand_tilde(path);
@@ -113,7 +117,8 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(editor, path.into_owned());
+                        let picker =
+                            ui::file_picker(editor, path.into_owned()).with_default_action(action);
                         compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
@@ -122,7 +127,7 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
             cx.jobs.callback(callback);
         } else {
             // Otherwise, just open the file
-            let _ = cx.editor.open(&path, Action::Replace)?;
+            let _ = cx.editor.open(&path, action)?;
             let (view, doc) = current!(cx.editor);
             let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
             doc.set_selection(view.id, pos);
@@ -1750,10 +1755,7 @@ fn vsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     if args.is_empty() {
         split(cx.editor, Action::VerticalSplit);
     } else {
-        for arg in args {
-            cx.editor
-                .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
-        }
+        open_impl(cx, args, Action::VerticalSplit)?;
     }
 
     Ok(())
@@ -1767,10 +1769,7 @@ fn hsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     if args.is_empty() {
         split(cx.editor, Action::HorizontalSplit);
     } else {
-        for arg in args {
-            cx.editor
-                .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
-        }
+        open_impl(cx, args, Action::HorizontalSplit)?;
     }
 
     Ok(())
