@@ -4313,3 +4313,14 @@ comment-tokens = "#"
 [[grammar]]
 name = "debian"
 source = { git = "https://gitlab.com/MggMuggins/tree-sitter-debian", rev = "9b3f4b78c45aab8a2f25a5f9e7bbc00995bc3dde" }
+
+[[language]]
+name = "dunstrc"
+scope = "source.dunstrc"
+comment-tokens = ["#", ";"]
+file-types = [ { glob = "dunst/dunstrc" } ]
+grammar = "dunstrc"
+
+[[grammar]]
+name = "dunstrc"
+source = { git = "https://github.com/rotmh/tree-sitter-dunstrc", rev = "b2d193553603c41762418d67827883492c9119a3" }
