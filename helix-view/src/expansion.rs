@@ -220,8 +220,9 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             }
         }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
-        Variable::Language => Ok(Cow::Owned(
-            doc.language_name().unwrap_or("text").to_string(),
-        )),
+        Variable::Language => Ok(match doc.language_name() {
+            Some(lang) => Cow::Owned(lang.to_owned()),
+            None => Cow::Borrowed("text"),
+        }),
     }
 }
