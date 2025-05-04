@@ -451,7 +451,6 @@ fn build_tree_sitter_library(
         command
             .args(["/nologo", "/LD", "/I"])
             .arg(header_path)
-            .arg("/Od")
             .arg("/utf-8")
             .arg("/std:c11");
         if let Some(scanner_path) = scanner_path.as_ref() {
@@ -469,7 +468,6 @@ fn build_tree_sitter_library(
                 cpp_command
                     .args(["/nologo", "/LD", "/I"])
                     .arg(header_path)
-                    .arg("/Od")
                     .arg("/utf-8")
                     .arg("/std:c++14")
                     .arg(format!("/Fo{}", object_file.display()))
