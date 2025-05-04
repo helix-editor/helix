@@ -1035,6 +1035,7 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     // Arity 1
     module.register_fn("editor->text", document_id_to_text);
     module.register_fn("editor-document->path", document_path);
+    module.register_fn("register->value", cx_register_value);
 
     module.register_fn("set-editor-clip-right!", |cx: &mut Context, right: u16| {
         cx.editor.editor_clipping.right = Some(right);
@@ -1112,6 +1113,7 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         template_function_arity_1("editor-doc-exists?");
         template_function_arity_1("editor->text");
         template_function_arity_1("editor-document->path");
+        template_function_arity_1("register->value");
 
         template_function_arity_1("set-editor-clip-top!");
         template_function_arity_1("set-editor-clip-right!");
@@ -3067,6 +3069,15 @@ fn cx_is_document_in_view(cx: &mut Context, doc_id: DocumentId) -> Option<helix_
         .traverse()
         .find(|(_, v)| v.doc == doc_id)
         .map(|(id, _)| id)
+}
+
+fn cx_register_value(cx: &mut Context, name: char) -> Vec<String> {
+    let items = cx
+        .editor
+        .registers
+        .read(name, cx.editor)
+        .map_or(Vec::new(), |reg| reg.collect());
+    items.into_iter().map(|value| value.to_string()).collect()
 }
 
 fn cx_document_exists(cx: &mut Context, doc_id: DocumentId) -> bool {
