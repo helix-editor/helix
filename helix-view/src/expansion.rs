@@ -33,6 +33,8 @@ pub enum Variable {
     BufferName,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
+    // The name of current buffers language as set in `languages.toml`
+    Language,
 }
 
 impl Variable {
@@ -41,6 +43,7 @@ impl Variable {
         Self::CursorColumn,
         Self::BufferName,
         Self::LineEnding,
+        Self::Language,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -49,6 +52,7 @@ impl Variable {
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
             Self::LineEnding => "line_ending",
+            Self::Language => "language",
         }
     }
 
@@ -58,6 +62,7 @@ impl Variable {
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
             "line_ending" => Some(Self::LineEnding),
+            "language" => Some(Self::Language),
             _ => None,
         }
     }
@@ -215,5 +220,9 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             }
         }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
+        Variable::Language => Ok(match doc.language_name() {
+            Some(lang) => Cow::Owned(lang.to_owned()),
+            None => Cow::Borrowed("text"),
+        }),
     }
 }

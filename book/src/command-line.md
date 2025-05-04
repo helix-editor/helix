@@ -47,6 +47,7 @@ The following variables are supported:
 | `cursor_column` | The column number of the primary cursor in the currently focused document, starting at 1. This is counted as the number of grapheme clusters from the start of the line rather than bytes or codepoints. |
 | `buffer_name` | The relative path of the currently focused document. `[scratch]` is expanded instead for scratch buffers. |
 | `line_ending` | A string containing the line ending of the currently focused document. For example on Unix systems this is usually a line-feed character (`\n`) but on Windows systems this may be a carriage-return plus a line-feed (`\r\n`). The line ending kind of the currently focused document can be inspected with the `:line-ending` command. |
+| `language` | A string containing the language name of the currently focused document.|
 
 Aside from editor variables, the following expansions may be used:
 
