@@ -200,6 +200,7 @@
 | scala | ✓ | ✓ | ✓ | `metals` |
 | scheme | ✓ |  | ✓ |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
+| slang | ✓ | ✓ | ✓ | `slangd` |
 | slint | ✓ | ✓ | ✓ | `slint-lsp` |
 | smali | ✓ |  | ✓ |  |
 | smithy | ✓ |  |  | `cs` |

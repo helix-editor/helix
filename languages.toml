@@ -104,6 +104,7 @@ robotframework_ls = { command = "robotframework_ls" }
 ruff = { command = "ruff", args = ["server"] }
 ruby-lsp = { command = "ruby-lsp" }
 serve-d = { command = "serve-d" }
+slangd = { command = "slangd" }
 slint-lsp = { command = "slint-lsp", args = [] }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
@@ -2576,6 +2577,20 @@ formatter = { command = "cue", args = ["fmt", "-"] }
 [[grammar]]
 name = "cue"
 source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "8a5f273bfa281c66354da562f2307c2d394b6c81" }
+
+[[language]]
+name = "slang"
+scope = "source.lang"
+injection-regex = "slang"
+file-types = ["slang"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+language-servers = [ "slangd" ]
+indent = { tab-width = 4, unit = "  " }
+
+[[grammar]]
+name = "slang"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-slang", rev = "327b1b821c255867a4fb724c8eee48887e3d014b" }
 
 [[language]]
 name = "slint"
