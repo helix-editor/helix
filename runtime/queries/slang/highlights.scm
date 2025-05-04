@@ -20,8 +20,7 @@
   (field_identifier) @variable.other.member)
 
 (field_initializer
-  (field_identifier) @variable.other.member
-
+  (field_identifier) @variable.other.member)
 
 (function_declarator
   declarator: (field_identifier) @function.method)
