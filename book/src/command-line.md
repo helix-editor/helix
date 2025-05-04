@@ -48,6 +48,7 @@ The following variables are supported:
 | `buffer_name` | The relative path of the currently focused document. `[scratch]` is expanded instead for scratch buffers. |
 | `line_ending` | A string containing the line ending of the currently focused document. For example on Unix systems this is usually a line-feed character (`\n`) but on Windows systems this may be a carriage-return plus a line-feed (`\r\n`). The line ending kind of the currently focused document can be inspected with the `:line-ending` command. |
 | `language` | A string containing the language name of the currently focused document.|
+| `selection` | A string containing the contents of the primary selection of the currently focused document. |
 
 Aside from editor variables, the following expansions may be used:
 
