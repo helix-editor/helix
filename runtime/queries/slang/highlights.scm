@@ -16,16 +16,12 @@
 (optional_parameter_declaration
   declarator: (_) @variable.parameter)
 
-;(field_expression) @variable.parameter ;; How to highlight this?
-((field_expression
-  (field_identifier) @function.method) @_parent
-  (#has-parent? @_parent template_method function_declarator))
-
 (field_declaration
   (field_identifier) @variable.other.member)
 
 (field_initializer
-  (field_identifier) @property)
+  (field_identifier) @variable.other.member
+
 
 (function_declarator
   declarator: (field_identifier) @function.method)
@@ -373,4 +369,4 @@
 ] @keyword.control.import
 
 (property_declaration
-  (identifier) @property)
+  (identifier) @variable.other.member)
