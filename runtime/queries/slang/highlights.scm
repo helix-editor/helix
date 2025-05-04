@@ -1,8 +1,8 @@
 ; inherits: c
 
 ; cpp
-((identifier) @variable.member
-  (#match? @variable.member "^m_.*$"))
+((identifier) @variable.other.member
+  (#match? @variable.other.member "^m_.*$"))
 
 (parameter_declaration
   declarator: (reference_declarator) @variable.parameter)
@@ -22,7 +22,7 @@
   (#has-parent? @_parent template_method function_declarator))
 
 (field_declaration
-  (field_identifier) @variable.member)
+  (field_identifier) @variable.other.member)
 
 (field_initializer
   (field_identifier) @property)
@@ -31,12 +31,12 @@
   declarator: (field_identifier) @function.method)
 
 (concept_definition
-  name: (identifier) @type.definition)
+  name: (identifier) @type)
 
 (alias_declaration
-  name: (type_identifier) @type.definition)
+  name: (type_identifier) @type)
 
-(namespace_identifier) @module
+(namespace_identifier) @namespace
 
 ((namespace_identifier) @type
   (#match? @type "^[%u]"))
@@ -54,7 +54,7 @@
   [
     (qualified_identifier)
     (identifier)
-  ] @module)
+  ] @namespace)
 
 (destructor_name
   (identifier) @function.method)
@@ -75,13 +75,6 @@
       (qualified_identifier
         (identifier) @function))))
 
-((qualified_identifier
-  (qualified_identifier
-    (qualified_identifier
-      (qualified_identifier
-        (identifier) @function)))) @_parent
-  (#has-ancestor? @_parent function_declarator))
-
 (function_declarator
   (template_function
     (identifier) @function))
@@ -95,56 +88,41 @@
 
 (call_expression
   (qualified_identifier
-    (identifier) @function.call))
+    (identifier) @function))
 
 
 (call_expression
   (qualified_identifier
     (qualified_identifier
-      (identifier) @function.call)))
+      (identifier) @function)))
 
 (call_expression
   (qualified_identifier
     (qualified_identifier
       (qualified_identifier
-        (identifier) @function.call))))
-
-((qualified_identifier
-  (qualified_identifier
-    (qualified_identifier
-      (qualified_identifier
-        (identifier) @function.call)))) @_parent
-  (#has-ancestor? @_parent call_expression))
+        (identifier) @function))))
 
 (call_expression
   (template_function
-    (identifier) @function.call))
+    (identifier) @function))
 
 (call_expression
   (qualified_identifier
     (template_function
-      (identifier) @function.call)))
+      (identifier) @function)))
 
 (call_expression
   (qualified_identifier
     (qualified_identifier
       (template_function
-        (identifier) @function.call))))
+        (identifier) @function))))
 
 (call_expression
   (qualified_identifier
     (qualified_identifier
       (qualified_identifier
         (template_function
-          (identifier) @function.call)))))
-
-((qualified_identifier
-  (qualified_identifier
-    (qualified_identifier
-      (qualified_identifier
-        (template_function
-          (identifier) @function.call))))) @_parent
-  (#has-ancestor? @_parent call_expression))
+          (identifier) @function)))))
 
 ; methods
 (function_declarator
@@ -153,7 +131,7 @@
 
 (call_expression
   (field_expression
-    (field_identifier) @function.method.call))
+    (field_identifier) @function.method))
 
 ; constructors
 ((function_declarator
@@ -187,9 +165,9 @@
 (null
   "nullptr" @constant.builtin)
 
-(true) @boolean
+(true) @constant.builtin.boolean
 
-(false) @boolean
+(false) @constant.builtin.boolean
 
 ; Literals
 (raw_string_literal) @string
@@ -200,7 +178,7 @@
   "catch"
   "noexcept"
   "throw"
-] @keyword.exception
+] @keyword.control.exception
 
 [
   "decltype"
@@ -218,13 +196,13 @@
   "template"
   "typename"
   "concept"
-] @keyword.type
+] @keyword.storage.type
 
 [
   "co_await"
   "co_yield"
   "co_return"
-] @keyword.coroutine
+] @keyword
 
 [
   "public"
@@ -232,7 +210,7 @@
   "protected"
   "final"
   "virtual"
-] @keyword.modifier
+] @keyword.storage.modifier
 
 [
   "new"
@@ -293,7 +271,7 @@
   "triangleadj"
   "lineadj"
   "triangle"
-] @keyword.modifier
+] @keyword
 
 ((identifier) @variable.builtin
   (#match? @variable.builtin "^SV_"))
@@ -327,9 +305,9 @@
   "set"
 ] @function.builtin
 
-(call_expression) @function.call
+(call_expression) @function
 
-(call_expression (identifier)) @function.call
+(call_expression (identifier)) @function
 
 ((call_expression
   function: (identifier) @function.builtin)
@@ -392,7 +370,7 @@
 [
   "__exported"
   "import"
-] @keyword.import
+] @keyword.control.import
 
 (property_declaration
   (identifier) @property)
