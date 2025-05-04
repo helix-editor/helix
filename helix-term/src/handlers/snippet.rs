@@ -22,7 +22,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
     });
     register_hook!(move |event: &mut DocumentFocusLost<'_>| {
         let editor = &mut event.editor;
-        doc_mut!(editor).active_snippet = None;
+        doc_mut!(editor, event.client).active_snippet = None;
         Ok(())
     });
 }

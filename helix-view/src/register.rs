@@ -6,7 +6,7 @@ use helix_core::NATIVE_LINE_ENDING;
 
 use crate::{
     clipboard::{ClipboardError, ClipboardProvider, ClipboardType},
-    Editor,
+    ClientId, Editor,
 };
 
 /// A key-value store for saving sets of values.
@@ -40,11 +40,16 @@ impl Registers {
         }
     }
 
-    pub fn read<'a>(&'a self, name: char, editor: &'a Editor) -> Option<RegisterValues<'a>> {
+    pub fn read<'a>(
+        &'a self,
+        name: char,
+        editor: &'a Editor,
+        client_id: ClientId,
+    ) -> Option<RegisterValues<'a>> {
         match name {
             '_' => Some(RegisterValues::new(iter::empty())),
             '#' => {
-                let (view, doc) = current_ref!(editor);
+                let (_client, view, doc) = current_ref!(editor, client_id);
                 let selections = doc.selection(view.id).len();
                 // ExactSizeIterator is implemented for Range<usize> but
                 // not RangeInclusive<usize>.
@@ -53,12 +58,12 @@ impl Registers {
                 ))
             }
             '.' => {
-                let (view, doc) = current_ref!(editor);
+                let (_client, view, doc) = current_ref!(editor, client_id);
                 let text = doc.text().slice(..);
                 Some(RegisterValues::new(doc.selection(view.id).fragments(text)))
             }
             '%' => {
-                let path = doc!(editor).display_name();
+                let path = doc!(editor, client_id).display_name();
                 Some(RegisterValues::new(iter::once(path)))
             }
             '*' | '+' => Some(read_from_clipboard(
@@ -140,12 +145,23 @@ impl Registers {
         }
     }
 
-    pub fn first<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
-        self.read(name, editor).and_then(|mut values| values.next())
+    pub fn first<'a>(
+        &'a self,
+        name: char,
+        editor: &'a Editor,
+        client_id: ClientId,
+    ) -> Option<Cow<'a, str>> {
+        self.read(name, editor, client_id)
+            .and_then(|mut values| values.next())
     }
 
-    pub fn last<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
-        self.read(name, editor)
+    pub fn last<'a>(
+        &'a self,
+        name: char,
+        editor: &'a Editor,
+        client_id: ClientId,
+    ) -> Option<Cow<'a, str>> {
+        self.read(name, editor, client_id)
             .and_then(|mut values| values.next_back())
     }
 

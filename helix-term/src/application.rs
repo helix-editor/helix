@@ -14,7 +14,7 @@ use helix_view::{
     graphics::Rect,
     theme,
     tree::Layout,
-    Align, Editor,
+    Align, ClientId, Editor,
 };
 use serde_json::json;
 use tui::backend::Backend;
@@ -62,6 +62,7 @@ pub struct Application {
     compositor: Compositor,
     terminal: Terminal,
     pub editor: Editor,
+    pub client_id: ClientId,
 
     config: Arc<ArcSwap<Config>>,
 
@@ -115,7 +116,6 @@ impl Application {
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
         let mut editor = Editor::new(
-            area,
             Arc::new(theme_loader),
             Arc::new(ArcSwap::from_pointee(lang_loader)),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -123,6 +123,8 @@ impl Application {
             })),
             handlers,
         );
+        let client_id = editor.add_client(area);
+        editor.most_recent_client_id = Some(client_id);
         Self::load_configured_theme(&mut editor, &config.load());
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -133,15 +135,15 @@ impl Application {
 
         if args.load_tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
-            editor.open(&path, Action::VerticalSplit)?;
+            editor.open(client_id, &path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
-            doc_mut!(editor).set_path(None);
+            doc_mut!(editor, client_id).set_path(None);
         } else if !args.files.is_empty() {
             let mut files_it = args.files.into_iter().peekable();
 
             // If the first file is a directory, skip it and open a picker
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                let picker = ui::file_picker(&editor, first);
+                let picker = ui::file_picker(&editor, client_id, first);
                 compositor.push(Box::new(overlaid(picker)));
             }
 
@@ -167,7 +169,7 @@ impl Application {
                             None => Action::Load,
                         };
                         let old_id = editor.document_id_by_path(&file);
-                        let doc_id = match editor.open(&file, action) {
+                        let doc_id = match editor.open(client_id, &file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
                                 nr_of_files -= 1;
@@ -185,8 +187,8 @@ impl Application {
                         // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
-                        let view_id = editor.tree.focus;
-                        let doc = doc_mut!(editor, &doc_id);
+                        let view_id = client!(editor, client_id).tree.focus;
+                        let doc = doc_with_id_mut!(editor, &doc_id);
                         let selection = pos
                             .into_iter()
                             .map(|coords| {
@@ -199,7 +201,7 @@ impl Application {
 
                 // if all files were invalid, replace with empty buffer
                 if nr_of_files == 0 {
-                    editor.new_file(Action::VerticalSplit);
+                    editor.new_file(client_id, Action::VerticalSplit);
                 } else {
                     editor.set_status(format!(
                         "Loaded {} file{}.",
@@ -208,18 +210,18 @@ impl Application {
                     ));
                     // align the view to center after all files are loaded,
                     // does not affect views without pos since it is at the top
-                    let (view, doc) = current!(editor);
+                    let (_client, view, doc) = current!(editor, client_id);
                     align_view(doc, view, Align::Center);
                 }
             } else {
-                editor.new_file(Action::VerticalSplit);
+                editor.new_file(client_id, Action::VerticalSplit);
             }
         } else if stdin().is_tty() || cfg!(feature = "integration") {
-            editor.new_file(Action::VerticalSplit);
+            editor.new_file(client_id, Action::VerticalSplit);
         } else {
             editor
-                .new_file_from_stdin(Action::VerticalSplit)
-                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+                .new_file_from_stdin(client_id, Action::VerticalSplit)
+                .unwrap_or_else(|_| editor.new_file(client_id, Action::VerticalSplit));
         }
 
         #[cfg(windows)]
@@ -238,6 +240,7 @@ impl Application {
             compositor,
             terminal,
             editor,
+            client_id,
             config,
             signals,
             jobs: Jobs::new(),
@@ -255,6 +258,7 @@ impl Application {
 
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
+            client_id: self.client_id,
             jobs: &mut self.jobs,
             scroll: None,
         };
@@ -272,7 +276,7 @@ impl Application {
         let surface = self.terminal.current_buffer_mut();
 
         self.compositor.render(area, surface, &mut cx);
-        let (pos, kind) = self.compositor.cursor(area, &self.editor);
+        let (pos, kind) = self.compositor.cursor(area, &self.editor, self.client_id);
         // reset cursor cache
         self.editor.cursor_cache.reset();
 
@@ -378,8 +382,8 @@ impl Application {
 
         // reset view position in case softwrap was enabled/disabled
         let scrolloff = self.editor.config().scrolloff;
-        for (view, _) in self.editor.tree.views() {
-            let doc = doc_mut!(self.editor, &view.doc);
+        for view in self.editor.views.iter() {
+            let doc = doc_with_id_mut!(self.editor, &view.doc);
             view.ensure_cursor_in_view(doc, scrolloff);
         }
     }
@@ -531,6 +535,7 @@ impl Application {
     pub async fn handle_idle_timeout(&mut self) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
+            client_id: ClientId::default(),
             jobs: &mut self.jobs,
             scroll: None,
         };
@@ -602,7 +607,10 @@ impl Application {
                 helix_event::request_redraw();
             }
             EditorEvent::DebuggerEvent(payload) => {
-                let needs_render = self.editor.handle_debugger_message(payload).await;
+                let needs_render = self
+                    .editor
+                    .handle_debugger_message(self.editor.most_recent_client_id.unwrap(), payload)
+                    .await;
                 if needs_render {
                     self.render().await;
                 }
@@ -627,6 +635,7 @@ impl Application {
     pub async fn handle_terminal_events(&mut self, event: std::io::Result<CrosstermEvent>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
+            client_id: self.client_id,
             jobs: &mut self.jobs,
             scroll: None,
         };
@@ -905,9 +914,11 @@ impl Application {
                         let language_server = language_server!();
                         if language_server.is_initialized() {
                             let offset_encoding = language_server.offset_encoding();
-                            let res = self
-                                .editor
-                                .apply_workspace_edit(offset_encoding, &params.edit);
+                            let res = self.editor.apply_workspace_edit(
+                                self.editor.most_recent_client_id.unwrap(),
+                                offset_encoding,
+                                &params.edit,
+                            );
 
                             Ok(json!(lsp::ApplyWorkspaceEditResponse {
                                 applied: res.is_ok(),
@@ -1061,7 +1072,8 @@ impl Application {
             _ => helix_view::editor::Action::VerticalSplit,
         };
 
-        let doc_id = match self.editor.open(path, action) {
+        let most_recent_client = self.editor.most_recent_client_id.unwrap();
+        let doc_id = match self.editor.open(most_recent_client, path, action) {
             Ok(id) => id,
             Err(err) => {
                 log::error!("failed to open path: {:?}: {:?}", uri, err);
@@ -1069,11 +1081,11 @@ impl Application {
             }
         };
 
-        let doc = doc_mut!(self.editor, &doc_id);
+        let doc = doc_with_id_mut!(self.editor, &doc_id);
         if let Some(range) = selection {
             // TODO: convert inside server
             if let Some(new_range) = lsp_range_to_range(doc.text(), range, offset_encoding) {
-                let view = view_mut!(self.editor);
+                let view = client_view_mut!(self.editor, most_recent_client);
 
                 // we flip the range so that the cursor sits on the start of the symbol
                 // (for example start of the function).

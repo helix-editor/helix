@@ -13,7 +13,7 @@ use helix_lsp::util::pos_to_lsp_pos;
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::{Mode, SavePoint};
 use helix_view::handlers::completion::{CompletionEvent, ResponseContext};
-use helix_view::{Document, DocumentId, Editor, ViewId};
+use helix_view::{ClientId, Document, DocumentId, Editor, ViewId};
 use tokio::task::JoinSet;
 use tokio::time::{timeout_at, Instant};
 
@@ -24,7 +24,7 @@ use crate::handlers::completion::path::path_completion;
 use crate::handlers::completion::{
     handle_response, replace_completions, show_completion, CompletionItems,
 };
-use crate::job::{dispatch, dispatch_blocking};
+use crate::job::{dispatch_blocking_for_client, dispatch_for_client};
 use crate::ui;
 use crate::ui::editor::InsertEvent;
 
@@ -38,6 +38,7 @@ pub(super) enum TriggerKind {
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Trigger {
     pub(super) pos: usize,
+    pub(super) client: ClientId,
     pub(super) view: ViewId,
     pub(super) doc: DocumentId,
     pub(super) kind: TriggerKind,
@@ -77,6 +78,7 @@ impl helix_event::AsyncHook for CompletionHandler {
         match event {
             CompletionEvent::AutoTrigger {
                 cursor: trigger_pos,
+                client,
                 doc,
                 view,
             } => {
@@ -89,26 +91,39 @@ impl helix_event::AsyncHook for CompletionHandler {
                 {
                     self.trigger = Some(Trigger {
                         pos: trigger_pos,
+                        client,
                         view,
                         doc,
                         kind: TriggerKind::Auto,
                     });
                 }
             }
-            CompletionEvent::TriggerChar { cursor, doc, view } => {
+            CompletionEvent::TriggerChar {
+                cursor,
+                client,
+                doc,
+                view,
+            } => {
                 // immediately request completions and drop all auto completion requests
                 self.task_controller.cancel();
                 self.trigger = Some(Trigger {
                     pos: cursor,
+                    client,
                     view,
                     doc,
                     kind: TriggerKind::TriggerChar,
                 });
             }
-            CompletionEvent::ManualTrigger { cursor, doc, view } => {
+            CompletionEvent::ManualTrigger {
+                cursor,
+                client,
+                doc,
+                view,
+            } => {
                 // immediately request completions and drop all auto completion requests
                 self.trigger = Some(Trigger {
                     pos: cursor,
+                    client,
                     view,
                     doc,
                     kind: TriggerKind::Manual,
@@ -150,8 +165,8 @@ impl helix_event::AsyncHook for CompletionHandler {
         let trigger = self.trigger.take().expect("debounce always has a trigger");
         self.in_flight = Some(trigger);
         let handle = self.task_controller.restart();
-        dispatch_blocking(move |editor, compositor| {
-            request_completions(trigger, handle, editor, compositor)
+        dispatch_blocking_for_client(trigger.client, move |editor, compositor| {
+            request_completions(trigger, handle, editor, compositor, trigger.client)
         });
     }
 }
@@ -161,15 +176,16 @@ fn request_completions(
     handle: TaskHandle,
     editor: &mut Editor,
     compositor: &mut Compositor,
+    client_id: ClientId,
 ) {
-    let (view, doc) = current_ref!(editor);
+    let (client, view, doc) = current_ref!(editor, client_id);
 
     if compositor
         .find::<ui::EditorView>()
         .unwrap()
         .completion
         .is_some()
-        || editor.mode != Mode::Insert
+        || client.mode != Mode::Insert
     {
         return;
     }
@@ -187,7 +203,7 @@ fn request_completions(
     // rely on the trigger offset and primary cursor matching for multi-cursor completions so this
     // is definitely necessary from our side too.
     trigger.pos = cursor;
-    let doc = doc_mut!(editor, &doc.id());
+    let doc = doc_with_id_mut!(editor, &doc.id());
     let savepoint = doc.savepoint(view);
     let text = doc.text();
     let trigger_text = text.slice(..cursor);
@@ -271,12 +287,12 @@ fn request_completions(
             response.take_items(&mut items);
             context.insert(response.provider, response.context);
         }
-        dispatch(move |editor, compositor| {
-            show_completion(editor, compositor, items, context, trigger)
+        dispatch_for_client(client_id, move |editor, compositor| {
+            show_completion(editor, client_id, compositor, items, context, trigger)
         })
         .await;
         if !requests.is_empty() {
-            replace_completions(handle_, requests, false).await;
+            replace_completions(client_id, handle_, requests, false).await;
         }
     };
     tokio::spawn(cancelable_future(request_completions, handle));
@@ -331,7 +347,11 @@ fn request_completions_from_language_server(
     }
 }
 
-pub fn request_incomplete_completion_list(editor: &mut Editor, handle: TaskHandle) {
+pub fn request_incomplete_completion_list(
+    editor: &mut Editor,
+    client_id: ClientId,
+    handle: TaskHandle,
+) {
     let handler = &mut editor.handlers.completions;
     let mut requests = JoinSet::new();
     let mut savepoint = None;
@@ -346,7 +366,7 @@ pub fn request_incomplete_completion_list(editor: &mut Editor, handle: TaskHandl
         let Some(ls) = editor.language_servers.get_by_id(ls_id) else {
             continue;
         };
-        let (view, doc) = current!(editor);
+        let (_client, view, doc) = current!(editor, client_id);
         let savepoint = savepoint.get_or_insert_with(|| doc.savepoint(view)).clone();
         let request = request_completions_from_language_server(
             ls,
@@ -362,6 +382,6 @@ pub fn request_incomplete_completion_list(editor: &mut Editor, handle: TaskHandl
         requests.spawn(request);
     }
     if !requests.is_empty() {
-        tokio::spawn(replace_completions(handle, requests, true));
+        tokio::spawn(replace_completions(client_id, handle, requests, true));
     }
 }

@@ -5,7 +5,7 @@ use helix_core::syntax::LanguageServerFeature;
 use crate::{
     editor::GutterType,
     graphics::{Style, UnderlineStyle},
-    Document, Editor, Theme, View,
+    ClientId, Document, Editor, Theme, View,
 };
 
 fn count_digits(n: usize) -> usize {
@@ -20,6 +20,7 @@ impl GutterType {
     pub fn style<'doc>(
         self,
         editor: &'doc Editor,
+        client_id: ClientId,
         doc: &'doc Document,
         view: &View,
         theme: &Theme,
@@ -29,7 +30,9 @@ impl GutterType {
             GutterType::Diagnostics => {
                 diagnostics_or_breakpoints(editor, doc, view, theme, is_focused)
             }
-            GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
+            GutterType::LineNumbers => {
+                line_numbers(editor, client_id, doc, view, theme, is_focused)
+            }
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
             GutterType::Diff => diff(editor, doc, view, theme, is_focused),
         }
@@ -141,6 +144,7 @@ pub fn diff<'doc>(
 
 pub fn line_numbers<'doc>(
     editor: &'doc Editor,
+    client_id: ClientId,
     doc: &'doc Document,
     view: &View,
     theme: &Theme,
@@ -163,7 +167,7 @@ pub fn line_numbers<'doc>(
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
     let line_number = editor.config().line_number;
-    let mode = editor.mode;
+    let mode = client!(editor, client_id).mode;
 
     Box::new(
         move |line: usize, selected: bool, first_visual_line: bool, out: &mut String| {
