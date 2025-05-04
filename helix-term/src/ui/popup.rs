@@ -10,6 +10,7 @@ use tui::{
 
 use helix_core::Position;
 use helix_view::{
+    ClientId,
     graphics::{Margin, Rect},
     input::{MouseEvent, MouseEventKind},
     Editor,
@@ -119,12 +120,12 @@ impl<T: Component> Popup<T> {
         &mut self.contents
     }
 
-    pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
-        self.render_info(viewport, editor).area
+    pub fn area(&mut self, viewport: Rect, editor: &Editor, client_id: ClientId) -> Rect {
+        self.render_info(viewport, editor, client_id).area
     }
 
-    fn render_info(&mut self, viewport: Rect, editor: &Editor) -> RenderInfo {
-        let mut position = editor.cursor().0.unwrap_or_default();
+    fn render_info(&mut self, viewport: Rect, editor: &Editor, client_id: ClientId) -> RenderInfo {
+        let mut position = editor.cursor(client_id).0.unwrap_or_default();
         if let Some(old_position) = self
             .position
             .filter(|old_position| old_position.row == position.row)
@@ -306,7 +307,7 @@ impl<T: Component> Component for Popup<T> {
             child_height,
             render_borders,
             is_menu,
-        } = self.render_info(viewport, cx.editor);
+        } = self.render_info(viewport, cx.editor, cx.client_id);
         self.area = area;
 
         // clear area

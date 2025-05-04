@@ -3,7 +3,7 @@ use helix_event::send_blocking;
 use tokio::sync::mpsc::Sender;
 
 use crate::handlers::lsp::SignatureHelpInvoked;
-use crate::{DocumentId, Editor, ViewId};
+use crate::{ClientId, DocumentId, Editor, ViewId};
 
 pub mod completion;
 pub mod dap;
@@ -26,9 +26,16 @@ pub struct Handlers {
 
 impl Handlers {
     /// Manually trigger completion (c-x)
-    pub fn trigger_completions(&self, trigger_pos: usize, doc: DocumentId, view: ViewId) {
+    pub fn trigger_completions(
+        &self,
+        trigger_pos: usize,
+        client: ClientId,
+        doc: DocumentId,
+        view: ViewId,
+    ) {
         self.completions.event(CompletionEvent::ManualTrigger {
             cursor: trigger_pos,
+            client,
             doc,
             view,
         });

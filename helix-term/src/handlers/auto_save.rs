@@ -14,7 +14,7 @@ use helix_view::{
     document::Mode,
     events::DocumentDidChange,
     handlers::{AutoSaveEvent, Handlers},
-    Editor,
+    ClientId, Editor,
 };
 use tokio::time::Instant;
 
@@ -67,8 +67,12 @@ impl helix_event::AsyncHook for AutoSaveHandler {
 
     fn finish_debounce(&mut self) {
         let save_pending = self.save_pending.clone();
-        job::dispatch_blocking(move |editor, _| {
-            if editor.mode() == Mode::Insert {
+        job::dispatch_blocking(move |editor| {
+            if editor
+                .clients
+                .iter()
+                .any(|(_, c)| c.mode == Mode::Insert)
+            {
                 // Avoid saving while in insert mode since this mixes up
                 // the modification indicator and prevents future saves.
                 save_pending.store(true, atomic::Ordering::Relaxed);
@@ -83,6 +87,7 @@ impl helix_event::AsyncHook for AutoSaveHandler {
 fn request_auto_save(editor: &mut Editor) {
     let context = &mut compositor::Context {
         editor,
+        client_id: ClientId::default(),
         scroll: Some(0),
         jobs: &mut Jobs::new(),
     };

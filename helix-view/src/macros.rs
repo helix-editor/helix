@@ -11,20 +11,23 @@
 /// Returns `(&mut View, &mut Document)`
 #[macro_export]
 macro_rules! current {
-    ($editor:expr) => {{
-        let view = $crate::view_mut!($editor);
+    ($editor:expr, $client_id:expr) => {{
+        let client = $crate::client_mut!($editor, $client_id);
+        let view = $editor.views.get_mut(client.tree.focus);
         let id = view.doc;
-        let doc = $crate::doc_mut!($editor, &id);
-        (view, doc)
+        let doc = $crate::doc_with_id_mut!($editor, &id);
+        (client, view, doc)
     }};
 }
 
 #[macro_export]
 macro_rules! current_ref {
-    ($editor:expr) => {{
-        let view = $editor.tree.get($editor.tree.focus);
-        let doc = &$editor.documents[&view.doc];
-        (view, doc)
+    ($editor:expr, $client_id:expr) => {{
+        let client = $crate::client!($editor, $client_id);
+        let view = $editor.views.get(client.tree.focus);
+        let id = view.doc;
+        let doc = $crate::doc_with_id!($editor, &id);
+        (client, view, doc)
     }};
 }
 
@@ -32,11 +35,29 @@ macro_rules! current_ref {
 /// Returns `&mut Document`
 #[macro_export]
 macro_rules! doc_mut {
+    ($editor:expr, $client_id:expr) => {{
+        $crate::current!($editor, $client_id).2
+    }};
+}
+
+#[macro_export]
+macro_rules! doc_with_id_mut {
     ($editor:expr, $id:expr) => {{
         $editor.documents.get_mut($id).unwrap()
     }};
-    ($editor:expr) => {{
-        $crate::current!($editor).1
+}
+
+#[macro_export]
+macro_rules! client {
+    ($editor:expr, $id:expr) => {{
+        &$editor.clients[$id]
+    }};
+}
+
+#[macro_export]
+macro_rules! client_mut {
+    ($editor:expr, $id:expr) => {{
+        $editor.clients.get_mut($id).unwrap()
     }};
 }
 
@@ -44,11 +65,8 @@ macro_rules! doc_mut {
 /// Returns `&mut View`
 #[macro_export]
 macro_rules! view_mut {
-    ($editor:expr, $id:expr) => {{
-        $editor.tree.get_mut($id)
-    }};
-    ($editor:expr) => {{
-        $editor.tree.get_mut($editor.tree.focus)
+    ($editor:expr, $view_id:expr) => {{
+        $editor.views.get_mut($view_id)
     }};
 }
 
@@ -56,20 +74,41 @@ macro_rules! view_mut {
 /// Returns `&View`
 #[macro_export]
 macro_rules! view {
-    ($editor:expr, $id:expr) => {{
-        $editor.tree.get($id)
+    ($editor:expr, $view_id:expr) => {{
+        $editor.views.get($view_id)
     }};
-    ($editor:expr) => {{
-        $editor.tree.get($editor.tree.focus)
+}
+
+/// Get the current view mutably.
+/// Returns `&mut View`
+#[macro_export]
+macro_rules! client_view_mut {
+    ($editor:expr, $client_id:expr) => {{
+        let client = $crate::client_mut!($editor, $client_id);
+        $editor.views.get_mut(client.tree.focus)
+    }};
+}
+
+/// Get the current view immutably
+/// Returns `&View`
+#[macro_export]
+macro_rules! client_view {
+    ($editor:expr, $client_id:expr) => {{
+        let client = &mut $crate::client!($editor, $client_id);
+        $editor.views.get(client.tree.focus)
     }};
 }
 
 #[macro_export]
 macro_rules! doc {
+    ($editor:expr, $client_id:expr) => {{
+        $crate::current_ref!($editor, $client_id).2
+    }};
+}
+
+#[macro_export]
+macro_rules! doc_with_id {
     ($editor:expr, $id:expr) => {{
         &$editor.documents[$id]
-    }};
-    ($editor:expr) => {{
-        $crate::current_ref!($editor).1
     }};
 }

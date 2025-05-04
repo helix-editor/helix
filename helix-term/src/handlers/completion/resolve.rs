@@ -5,7 +5,7 @@ use tokio::sync::mpsc::Sender;
 use tokio::time::{Duration, Instant};
 
 use helix_event::{send_blocking, AsyncHook, TaskController, TaskHandle};
-use helix_view::Editor;
+use helix_view::{ClientId, Editor};
 
 use super::LspCompletionItem;
 use crate::handlers::completion::CompletionItem;
@@ -35,7 +35,7 @@ impl ResolveHandler {
         }
     }
 
-    pub fn ensure_item_resolved(&mut self, editor: &mut Editor, item: &mut LspCompletionItem) {
+    pub fn ensure_item_resolved(&mut self, editor: &mut Editor, client_id: ClientId, item: &mut LspCompletionItem) {
         if item.resolved {
             return;
         }
@@ -82,7 +82,14 @@ impl ResolveHandler {
         ) {
             let item = Arc::new(item.clone());
             self.last_request = Some(item.clone());
-            send_blocking(&self.resolver, ResolveRequest { item, ls })
+            send_blocking(
+                &self.resolver,
+                ResolveRequest {
+                    item,
+                    ls,
+                    client_id,
+                },
+            )
         } else {
             item.resolved = true;
         }
@@ -92,6 +99,7 @@ impl ResolveHandler {
 struct ResolveRequest {
     item: Arc<LspCompletionItem>,
     ls: Arc<helix_lsp::Client>,
+    client_id: ClientId,
 }
 
 #[derive(Default)]
@@ -144,7 +152,7 @@ impl ResolveRequest {
         let Some(resolved_item) = helix_event::cancelable_future(future, cancel).await else {
             return;
         };
-        job::dispatch(move |_, compositor| {
+        job::dispatch_for_client(self.client_id, move |_, compositor| {
             if let Some(completion) = &mut compositor
                 .find::<crate::ui::EditorView>()
                 .unwrap()
