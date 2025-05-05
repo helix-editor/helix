@@ -46,6 +46,7 @@
 | dot | ✓ |  |  | `dot-language-server` |
 | dtd | ✓ |  |  |  |
 | dune | ✓ |  |  |  |
+| dunstrc | ✓ |  |  |  |
 | earthfile | ✓ | ✓ | ✓ | `earthlyls` |
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |

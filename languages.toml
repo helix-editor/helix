@@ -4339,3 +4339,13 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "pug"
 source = { git = "https://github.com/zealot128/tree-sitter-pug", rev = "13e9195370172c86a8b88184cc358b23b677cc46" }
+
+[[language]]
+name = "dunstrc"
+scope = "source.dunstrc"
+comment-tokens = ["#", ";"]
+file-types = [ { glob = "dunst/dunstrc" } ]
+
+[[grammar]]
+name = "dunstrc"
+source = { git = "https://github.com/rotmh/tree-sitter-dunstrc", rev = "9cb9d5cc51cf5e2a47bb2a0e2f2e519ff11c1431" }
