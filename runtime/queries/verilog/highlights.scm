@@ -118,8 +118,6 @@
   "'{"
   "<="
   "@"
-  "or"
-  "and"
   "=="
   "!="
   "==="
@@ -133,6 +131,10 @@
   "<<"
   "|="
   (inc_or_dec_operator)
+] @operator
+[
+  "or"
+  "and"
 ] @keyword.operator
 
 (cast
