@@ -13,10 +13,10 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 #[macro_export]
 macro_rules! debugger {
     ($editor:expr) => {{
-        match &mut $editor.debugger {
-            Some(debugger) => debugger,
-            None => return,
-        }
+        let Some(debugger) = $editor.debugger.get_active_debugger_mut() else {
+            return;
+        };
+        debugger
     }};
 }
 
@@ -142,13 +142,18 @@ pub fn breakpoints_changed(
 }
 
 impl Editor {
-    pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) -> bool {
+    pub async fn handle_debugger_message(
+        &mut self,
+        id: usize,
+        payload: helix_dap::Payload,
+    ) -> bool {
         use helix_dap::{events, Event};
 
-        let debugger = match self.debugger.as_mut() {
+        let debugger = match self.debugger.get_debugger_mut(id) {
             Some(debugger) => debugger,
             None => return false,
         };
+
         match payload {
             Payload::Event(event) => {
                 let event = match Event::parse(&event.event, event.body) {
@@ -171,6 +176,7 @@ impl Editor {
                         all_threads_stopped,
                         ..
                     }) => {
+                        // Set the current debugger to be the active debugger
                         let all_threads_stopped = all_threads_stopped.unwrap_or_default();
 
                         if all_threads_stopped {
@@ -206,6 +212,7 @@ impl Editor {
                         }
 
                         self.set_status(status);
+                        self.debugger.set_active_debugger(id);
                     }
                     Event::Continued(events::ContinuedBody { thread_id, .. }) => {
                         debugger
@@ -343,7 +350,8 @@ impl Editor {
                                 }
                             }
                             None => {
-                                self.debugger = None;
+                                self.debugger.remove_debugger(id);
+                                self.debugger.unset_active_debugger();
                                 self.set_status(
                                     "Terminated debugging session and disconnected debugger.",
                                 );
@@ -394,7 +402,7 @@ impl Editor {
                             shell_process_id: None,
                         }))
                     }
-                    Ok(Request::StartDebugging(mut arguments)) => {
+                    Ok(Request::StartDebugging(arguments)) => {
                         let connection_type = match arguments.request {
                             _ if arguments.request.contains("launch") => ConnectionType::Launch,
                             _ if arguments.request.contains("attach") => ConnectionType::Attach,
@@ -404,7 +412,7 @@ impl Editor {
                             }
                         };
 
-                        let child = debugger.create_child_debugger(4).await;
+                        let child = debugger.create_child_debugger(2).await;
 
                         let (child_debugger, events) = match child {
                             Ok(child) => child,
@@ -416,6 +424,9 @@ impl Editor {
                                 return true;
                             }
                         };
+
+                        let stream = UnboundedReceiverStream::new(events);
+                        self.debugger_events.push(stream);
 
                         let init_response = child_debugger
                             .initialize(
@@ -439,9 +450,6 @@ impl Editor {
                             return true;
                         }
 
-                        let stream = UnboundedReceiverStream::new(events);
-                        self.debugger_events.push(stream);
-
                         let relaunch_resp = if let ConnectionType::Launch = connection_type {
                             child_debugger.launch(arguments.configuration).await
                         } else {
@@ -460,7 +468,7 @@ impl Editor {
                     Err(err) => Err(err),
                 };
 
-                if let Some(debugger) = self.debugger.as_mut() {
+                if let Some(debugger) = self.debugger.get_debugger_mut(id) {
                     debugger
                         .reply(request.seq, &request.command, reply)
                         .await
