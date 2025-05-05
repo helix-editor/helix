@@ -13,10 +13,10 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 #[macro_export]
 macro_rules! debugger {
     ($editor:expr) => {{
-        match &mut $editor.debugger {
-            Some(debugger) => debugger,
-            None => return,
-        }
+        let Some(debugger) = $editor.debugger.get_active_debugger_mut() else {
+            return;
+        };
+        debugger
     }};
 }
 
@@ -142,13 +142,18 @@ pub fn breakpoints_changed(
 }
 
 impl Editor {
-    pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) -> bool {
+    pub async fn handle_debugger_message(
+        &mut self,
+        id: usize,
+        payload: helix_dap::Payload,
+    ) -> bool {
         use helix_dap::{events, Event};
 
-        let debugger = match self.debugger.as_mut() {
+        let debugger = match self.debugger.get_debugger_mut(id) {
             Some(debugger) => debugger,
             None => return false,
         };
+
         match payload {
             Payload::Event(event) => {
                 let event = match Event::parse(&event.event, event.body) {
@@ -206,6 +211,7 @@ impl Editor {
                         }
 
                         self.set_status(status);
+                        self.debugger.set_active_debugger(id);
                     }
                     Event::Continued(events::ContinuedBody { thread_id, .. }) => {
                         debugger
@@ -343,7 +349,8 @@ impl Editor {
                                 }
                             }
                             None => {
-                                self.debugger = None;
+                                self.debugger.remove_debugger(id);
+                                self.debugger.unset_active_debugger();
                                 self.set_status(
                                     "Terminated debugging session and disconnected debugger.",
                                 );
@@ -394,7 +401,16 @@ impl Editor {
                             shell_process_id: None,
                         }))
                     }
-                    Ok(Request::StartDebugging(mut arguments)) => {
+                    Ok(Request::StartDebugging(arguments)) => {
+                        // Currently we only support starting a child debugger if the parent is using the TCP transport
+                        let socket = match debugger.socket {
+                            Some(socket) => socket,
+                            None => {
+                                self.set_error("Child debugger can only be started if the parent debugger is using TCP transport.");
+                                return true;
+                            }
+                        };
+
                         let connection_type = match arguments.request {
                             _ if arguments.request.contains("launch") => ConnectionType::Launch,
                             _ if arguments.request.contains("attach") => ConnectionType::Attach,
@@ -404,9 +420,9 @@ impl Editor {
                             }
                         };
 
-                        let child = debugger.create_child_debugger(4).await;
+                        let result = debugger.create_child_debugger(1, socket).await;
 
-                        let (child_debugger, events) = match child {
+                        let (child, events) = match result {
                             Ok(child) => child,
                             Err(err) => {
                                 self.set_error(format!(
@@ -417,7 +433,10 @@ impl Editor {
                             }
                         };
 
-                        let init_response = child_debugger
+                        let stream = UnboundedReceiverStream::new(events);
+                        self.debugger_events.push(stream);
+
+                        let init_response = child
                             .initialize(
                                 arguments
                                     .configuration
@@ -439,13 +458,10 @@ impl Editor {
                             return true;
                         }
 
-                        let stream = UnboundedReceiverStream::new(events);
-                        self.debugger_events.push(stream);
-
                         let relaunch_resp = if let ConnectionType::Launch = connection_type {
-                            child_debugger.launch(arguments.configuration).await
+                            child.launch(arguments.configuration).await
                         } else {
-                            child_debugger.attach(arguments.configuration).await
+                            child.attach(arguments.configuration).await
                         };
                         if let Err(err) = relaunch_resp {
                             self.set_error(format!("Failed to start debugging session: {:?}", err));
@@ -460,7 +476,7 @@ impl Editor {
                     Err(err) => Err(err),
                 };
 
-                if let Some(debugger) = self.debugger.as_mut() {
+                if let Some(debugger) = self.debugger.get_debugger_mut(id) {
                     debugger
                         .reply(request.seq, &request.command, reply)
                         .await
