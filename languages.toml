@@ -4345,7 +4345,6 @@ name = "dunstrc"
 scope = "source.dunstrc"
 comment-tokens = ["#", ";"]
 file-types = [ { glob = "dunst/dunstrc" } ]
-grammar = "dunstrc"
 
 [[grammar]]
 name = "dunstrc"
