@@ -14,7 +14,7 @@ use crate::{
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
 };
-use dap::StackFrame;
+use dap::{DebuggerService, StackFrame};
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
 
@@ -1083,8 +1083,8 @@ pub struct Editor {
     pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
 
-    pub debugger: Option<dap::Client>,
-    pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
+    pub debugger: DebuggerService,
+    pub debugger_events: SelectAll<UnboundedReceiverStream<(usize, dap::Payload)>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
     pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
@@ -1142,7 +1142,7 @@ pub enum EditorEvent {
     DocumentSaved(DocumentSavedEventResult),
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((LanguageServerId, Call)),
-    DebuggerEvent(dap::Payload),
+    DebuggerEvent((usize, dap::Payload)),
     IdleTimer,
     Redraw,
 }
@@ -1229,7 +1229,7 @@ impl Editor {
             language_servers,
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
-            debugger: None,
+            debugger: DebuggerService::new(),
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
             syn_loader,
@@ -2231,9 +2231,7 @@ impl Editor {
     }
 
     pub fn current_stack_frame(&self) -> Option<&StackFrame> {
-        self.debugger
-            .as_ref()
-            .and_then(|debugger| debugger.current_stack_frame())
+        self.debugger.current_stack_frame()
     }
 
     /// Returns the id of a view that this doc contains a selection for,

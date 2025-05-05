@@ -33,6 +33,8 @@ pub struct Client {
     request_counter: AtomicU64,
     connection_type: Option<ConnectionType>,
     starting_request_args: Option<Value>,
+    /// The socket address of the debugger, if using TCP transport.
+    pub socket: Option<SocketAddr>,
     pub caps: Option<DebuggerCapabilities>,
     // thread_id -> frames
     pub stack_frames: HashMap<ThreadId, Vec<StackFrame>>,
@@ -43,7 +45,7 @@ pub struct Client {
     pub quirks: DebuggerQuirks,
     /// The config which was used to start this debugger.
     pub config: Option<DebugAdapterConfig>,
-    pub children: Vec<Client>,
+    pub children: HashMap<usize, Client>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -54,13 +56,14 @@ pub enum ConnectionType {
 
 impl Client {
     // Spawn a process and communicate with it by either TCP or stdio
+    // The returned stream includes the Client ID so consumers can differentiate between multiple clients
     pub async fn process(
         transport: &str,
         command: &str,
         args: Vec<&str>,
         port_arg: Option<&str>,
         id: usize,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
         if command.is_empty() {
             return Result::Err(Error::Other(anyhow!("Command not provided")));
         }
@@ -77,7 +80,7 @@ impl Client {
         err: Option<Box<dyn AsyncBufRead + Unpin + Send>>,
         id: usize,
         process: Option<Child>,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
         let (server_rx, server_tx) = Transport::start(rx, tx, err, id);
         let (client_tx, client_rx) = unbounded_channel();
 
@@ -89,16 +92,17 @@ impl Client {
             caps: None,
             connection_type: None,
             starting_request_args: None,
+            socket: None,
             stack_frames: HashMap::new(),
             thread_states: HashMap::new(),
             thread_id: None,
             active_frame: None,
             quirks: DebuggerQuirks::default(),
-            children: Vec::new(),
+            children: HashMap::new(),
             config: None,
         };
 
-        tokio::spawn(Self::recv(server_rx, client_tx));
+        tokio::spawn(Self::recv(id, server_rx, client_tx));
 
         Ok((client, client_rx))
     }
@@ -106,7 +110,7 @@ impl Client {
     pub async fn tcp(
         addr: std::net::SocketAddr,
         id: usize,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
         let stream = TcpStream::connect(addr).await?;
         let (rx, tx) = stream.into_split();
         Self::streams(Box::new(BufReader::new(rx)), Box::new(tx), None, id, None)
@@ -116,7 +120,7 @@ impl Client {
         cmd: &str,
         args: Vec<&str>,
         id: usize,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
 
@@ -168,7 +172,7 @@ impl Client {
         args: Vec<&str>,
         port_format: &str,
         id: usize,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
         let port = Self::get_port().await.unwrap();
 
         let process = Command::new(cmd)
@@ -183,33 +187,42 @@ impl Client {
 
         // Wait for adapter to become ready for connection
         time::sleep(time::Duration::from_millis(500)).await;
-
-        let stream = TcpStream::connect(SocketAddr::new(
-            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            port,
-        ))
-        .await?;
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
+        let stream = TcpStream::connect(socket).await?;
 
         let (rx, tx) = stream.into_split();
-        Self::streams(
+        let mut result = Self::streams(
             Box::new(BufReader::new(rx)),
             Box::new(tx),
             None,
             id,
             Some(process),
-        )
+        );
+
+        // Set the socket address for the client
+        if let Ok((client, _)) = &mut result {
+            client.socket = Some(socket);
+        }
+
+        result
     }
 
-    async fn recv(mut server_rx: UnboundedReceiver<Payload>, client_tx: UnboundedSender<Payload>) {
+    async fn recv(
+        id: usize,
+        mut server_rx: UnboundedReceiver<Payload>,
+        client_tx: UnboundedSender<(usize, Payload)>,
+    ) {
         while let Some(msg) = server_rx.recv().await {
             match msg {
                 Payload::Event(ev) => {
-                    client_tx.send(Payload::Event(ev)).expect("Failed to send");
+                    client_tx
+                        .send((id, Payload::Event(ev)))
+                        .expect("Failed to send");
                 }
                 Payload::Response(_) => unreachable!(),
                 Payload::Request(req) => {
                     client_tx
-                        .send(Payload::Request(req))
+                        .send((id, Payload::Request(req)))
                         .expect("Failed to send");
                 }
             }
@@ -328,45 +341,22 @@ impl Client {
         self.caps.as_ref().expect("debugger not yet initialized!")
     }
 
-    /// Create a child debugger that shares the same transport and config as the parent. Then return a reference to this client
     pub async fn create_child_debugger(
         &mut self,
         id: usize,
-    ) -> Result<(&mut Client, UnboundedReceiver<Payload>)> {
-        // Check if the parent debugger has a config
-        let config = match self.config {
-            Some(ref config) => config.clone(),
-            None => {
-                return Err(Error::Other(anyhow!(
-                    "Config is needed on parent debugger before creating child"
-                )))
-            }
-        };
+        socket: SocketAddr,
+    ) -> Result<(&mut Client, UnboundedReceiver<(usize, Payload)>)> {
+        let (client, payload) = Self::tcp(socket, id).await?;
+        self.children.insert(id, client);
+        Ok((self.children.get_mut(&id).unwrap(), payload))
+    }
 
-        // Use the same config as the parent to start a new child debugger
-        let result = Client::process(
-            &config.transport,
-            &config.command,
-            config.args.iter().map(|arg| arg.as_str()).collect(),
-            config.port_arg.as_deref(),
-            id,
-        )
-        .await;
+    pub fn get_child(&self, id: usize) -> Option<&Client> {
+        self.children.get(&id)
+    }
 
-        if let Err(e) = result {
-            return Err(Error::Other(anyhow!(
-                "Failed to start child debugger: {}",
-                e
-            )));
-        }
-
-        let (client, events) = match result {
-            Ok(r) => r,
-            Err(e) => return Err(e),
-        };
-
-        self.children.push(client);
-        Ok((self.children.last_mut().unwrap(), events))
+    pub fn get_child_mut(&mut self, id: usize) -> Option<&mut Client> {
+        self.children.get_mut(&id)
     }
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {

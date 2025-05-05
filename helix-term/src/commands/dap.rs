@@ -59,7 +59,12 @@ fn thread_picker(
                 move |cx, thread, _action| callback_fn(cx.editor, thread),
             )
             .with_preview(move |editor, thread| {
-                let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
+                let frames = editor
+                    .debugger
+                    .get_active_debugger()
+                    .as_ref()?
+                    .stack_frames
+                    .get(&thread.id)?;
                 let frame = frames.first()?;
                 let path = frame.source.as_ref()?.path.as_ref()?.as_path();
                 let pos = Some((
@@ -224,14 +229,15 @@ pub fn dap_start_impl(
     };
 
     // TODO: either await "initialized" or buffer commands until event is received
-    cx.editor.debugger = Some(debugger);
+    cx.editor.debugger.add_debugger(0, debugger);
     let stream = UnboundedReceiverStream::new(events);
     cx.editor.debugger_events.push(stream);
     Ok(())
 }
 
 pub fn dap_launch(cx: &mut Context) {
-    if cx.editor.debugger.is_some() {
+    // TODO: Now that we support multiple Clients, we could run multiple debuggers at once but for now keep this as is
+    if cx.editor.debugger.get_active_debugger().is_some() {
         cx.editor.set_error("Debugger is already running");
         return;
     }
@@ -285,7 +291,7 @@ pub fn dap_launch(cx: &mut Context) {
 }
 
 pub fn dap_restart(cx: &mut Context) {
-    let debugger = match &cx.editor.debugger {
+    let debugger = match cx.editor.debugger.get_active_debugger() {
         Some(debugger) => debugger,
         None => {
             cx.editor.set_error("Debugger is not running");
@@ -589,7 +595,7 @@ pub fn dap_terminate(cx: &mut Context) {
     let request = debugger.disconnect(None);
     dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
         // editor.set_error(format!("Failed to disconnect: {}", e));
-        editor.debugger = None;
+        editor.debugger.unset_active_debugger();
     });
 }
 
