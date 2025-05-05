@@ -1,4 +1,5 @@
 use std::time::Duration;
+use tokio::time::Instant;
 
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::syntax::config::LanguageServerFeature;
@@ -13,7 +14,6 @@ use helix_view::handlers::diagnostics::DiagnosticEvent;
 use helix_view::handlers::lsp::PullDiagnosticsEvent;
 use helix_view::handlers::Handlers;
 use helix_view::{DocumentId, Editor};
-use tokio::time::Instant;
 
 use crate::events::OnModeSwitch;
 use crate::job;
@@ -74,85 +74,28 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 }
 
 #[derive(Debug)]
-pub(super) struct PullDiagnosticsHandler {
-    no_inter_file_dependency_timeout: Option<tokio::time::Instant>,
-}
+pub(super) struct PullDiagnosticsHandler {}
 
 impl PullDiagnosticsHandler {
-    pub fn new() -> PullDiagnosticsHandler {
-        PullDiagnosticsHandler {
-            no_inter_file_dependency_timeout: None,
-        }
+    pub fn new() -> Self {
+        PullDiagnosticsHandler {}
     }
 }
-
-const TIMEOUT: Duration = Duration::from_millis(500);
-const TIMEOUT_NO_INTER_FILE_DEPENDENCY: Duration = Duration::from_millis(125);
 
 impl helix_event::AsyncHook for PullDiagnosticsHandler {
     type Event = PullDiagnosticsEvent;
 
     fn handle_event(
         &mut self,
-        event: Self::Event,
-        timeout: Option<tokio::time::Instant>,
+        _event: Self::Event,
+        _timeout: Option<tokio::time::Instant>,
     ) -> Option<tokio::time::Instant> {
-        if timeout.is_none() {
-            dispatch_pull_diagnostic_for_document(event.document_id, false);
-            self.no_inter_file_dependency_timeout = Some(Instant::now());
-        }
-
-        if self
-            .no_inter_file_dependency_timeout
-            .is_some_and(|nifd_timeout| {
-                nifd_timeout.duration_since(Instant::now()) > TIMEOUT_NO_INTER_FILE_DEPENDENCY
-            })
-        {
-            dispatch_pull_diagnostic_for_document(event.document_id, true);
-            self.no_inter_file_dependency_timeout = Some(Instant::now());
-        };
-
-        Some(Instant::now() + TIMEOUT)
+        Some(Instant::now() + Duration::from_millis(125))
     }
 
     fn finish_debounce(&mut self) {
         dispatch_pull_diagnostic_for_open_documents();
     }
-}
-
-fn dispatch_pull_diagnostic_for_document(
-    document_id: DocumentId,
-    exclude_language_servers_without_inter_file_dependency: bool,
-) {
-    job::dispatch_blocking(move |editor, _| {
-        let Some(doc) = editor.document(document_id) else {
-            return;
-        };
-
-        let language_servers = doc
-            .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
-            .filter(|ls| ls.is_initialized())
-            .filter(|ls| {
-                if !exclude_language_servers_without_inter_file_dependency {
-                    return true;
-                };
-                ls.capabilities()
-                    .diagnostic_provider
-                    .as_ref()
-                    .is_some_and(|dp| match dp {
-                        lsp::DiagnosticServerCapabilities::Options(options) => {
-                            options.inter_file_dependencies
-                        }
-                        lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
-                            options.diagnostic_options.inter_file_dependencies
-                        }
-                    })
-            });
-
-        for language_server in language_servers {
-            pull_diagnostics_for_document(doc, language_server);
-        }
-    })
 }
 
 fn dispatch_pull_diagnostic_for_open_documents() {
@@ -204,9 +147,14 @@ pub fn pull_diagnostics_for_document(
     let document_id = doc.id();
 
     tokio::spawn(async move {
-        match future.await {
+        match future.0.await {
             Ok(result) => {
                 job::dispatch(move |editor, _| {
+                    if let Some(language_server) = editor.language_server_by_id(language_server_id)
+                    {
+                        language_server.mark_work_as_done(future.1);
+                    };
+
                     handle_pull_diagnostics_response(editor, result, provider, uri, document_id)
                 })
                 .await
@@ -230,7 +178,10 @@ pub fn pull_diagnostics_for_document(
                                 editor.document(document_id),
                                 editor.language_server_by_id(language_server_id),
                             ) {
-                                pull_diagnostics_for_document(doc, language_server);
+                                language_server.mark_work_as_done(future.1);
+                                if doc.supports_language_server(language_server_id) {
+                                    pull_diagnostics_for_document(doc, language_server);
+                                }
                             }
                         })
                         .await;
