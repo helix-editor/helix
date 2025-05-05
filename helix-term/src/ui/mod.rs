@@ -368,7 +368,14 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
     Ok(content)
 }
 
+pub enum ThemesType {
+    Dark,
+    Light,
+    All
+}
+
 pub mod completers {
+    use super::ThemesType;
     use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
     use helix_core::fuzzy::fuzzy_match;
@@ -399,12 +406,12 @@ pub mod completers {
             .collect()
     }
 
-    pub fn theme(_editor: &Editor, input: &str, themes_type : &str) -> Vec<Completion> {
+    pub fn theme(_editor: &Editor, input: &str, themes_type : ThemesType) -> Vec<Completion> {
         let themes_dirs = match themes_type {
-            "dark" => vec!["themes/dark"],
-            "light" => vec!["themes/light"],
+            ThemesType::Dark => vec!["themes/dark"],
+            ThemesType::Light => vec!["themes/light"],
             // The first element should not have any effect
-            _ => vec!["themes","themes/light","themes/dark"]
+            ThemesType::All => vec!["themes","themes/light","themes/dark"]
         };
 
         let mut names = Vec::new();
@@ -419,10 +426,10 @@ pub mod completers {
         };
         
         match themes_type {
-            "light" => (),
-            "dark" => { names.push("default".into());
+            ThemesType::Light => (),
+            ThemesType::Dark => { names.push("default".into());
             },
-            _ => { names.push("base16_default".into());
+            ThemesType::All => { names.push("base16_default".into());
                 names.push("default".into());
             }
         };
