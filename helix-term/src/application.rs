@@ -1012,10 +1012,15 @@ impl Application {
                     Ok(MethodCall::WorkspaceDiagnosticRefresh) => {
                         for document in self.editor.documents() {
                             let language_server = language_server!();
-                            handlers::diagnostics::pull_diagnostics_for_document(
-                                document,
-                                language_server,
-                            );
+                            if language_server.supports_feature(
+                                syntax::config::LanguageServerFeature::PullDiagnostics,
+                            ) && document.supports_language_server(language_server.id())
+                            {
+                                handlers::diagnostics::pull_diagnostics_for_document(
+                                    document,
+                                    language_server,
+                                );
+                            }
                         }
                         Ok(serde_json::Value::Null)
                     }
