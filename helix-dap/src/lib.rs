@@ -1,8 +1,10 @@
 mod client;
+mod debuger_service;
 mod transport;
 mod types;
 
 pub use client::{Client, ConnectionType};
+pub use debuger_service::DebuggerService;
 pub use transport::{Payload, Response, Transport};
 pub use types::*;
 
