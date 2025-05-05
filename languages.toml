@@ -4313,3 +4313,14 @@ comment-tokens = "#"
 [[grammar]]
 name = "debian"
 source = { git = "https://gitlab.com/MggMuggins/tree-sitter-debian", rev = "9b3f4b78c45aab8a2f25a5f9e7bbc00995bc3dde" }
+
+[[language]]
+name = "pug"
+scope = "source.pug"
+file-types = ["pug"]
+comment-tokens = ["//", "//-"]
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "pug"
+source = { git = "https://github.com/zealot128/tree-sitter-pug", rev = "13e9195370172c86a8b88184cc358b23b677cc46" }
