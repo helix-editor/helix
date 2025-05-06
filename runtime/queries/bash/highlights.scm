@@ -219,6 +219,9 @@
 
 (variable_name) @variable
 
+((variable_name) @constant
+  (#match? @constant "^[A-Z][A-Z_0-9]*$"))
+
 ((variable_name) @variable.builtin
   (#any-of? @variable.builtin
     ; https://www.gnu.org/software/bash/manual/html_node/Bourne-Shell-Variables.html
