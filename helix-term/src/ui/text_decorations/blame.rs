@@ -31,6 +31,17 @@ impl Decoration for InlineBlame {
         pos: LinePos,
         virt_off: Position,
     ) -> Position {
+        // Only render inline blame on the last visual line
+        // This prevents it being rendered multiple times per line, if the
+        // line is wrapping.
+        //
+        // We want to render it on the last visual line because unless the user
+        // has `soft-wrap.wrap-at-text-width` enabled, for a document line that wraps
+        // there will only be space to render inline blame at the last doc line
+        if !pos.is_last_visual_line {
+            return Position::new(0, 0);
+        }
+
         let blame = match &self.lines {
             LineBlame::OneLine((line, blame)) => {
                 if line == &pos.doc_line {
