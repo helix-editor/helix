@@ -58,6 +58,7 @@ impl FileBlame {
 
         let message = commit.as_ref().and_then(|c| c.message().ok());
         let author = commit.as_ref().and_then(|c| c.author().ok());
+        let time = author.and_then(|a| a.time.parse::<gix::date::Time>().ok());
 
         let line_blame = LineBlame {
             commit_hash: commit
@@ -65,12 +66,12 @@ impl FileBlame {
                 .and_then(|c| c.short_id().map(|id| id.to_string()).ok()),
             author_name: author.map(|a| a.name.to_string()),
             author_email: author.map(|a| a.email.to_string()),
-            commit_date: author.map(|a| a.time.format(gix::date::time::format::SHORT)),
+            commit_date: time.map(|time| time.format(gix::date::time::format::SHORT)),
             commit_message: message.as_ref().map(|msg| msg.title.to_string()),
             commit_body: message
                 .as_ref()
                 .and_then(|msg| msg.body.map(|body| body.to_string())),
-            time_stamp: author.map(|a| (a.time.seconds, a.time.offset)),
+            time_stamp: time.map(|time| (time.seconds, time.offset)),
             time_ago: None,
         };
 
