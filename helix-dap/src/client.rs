@@ -33,6 +33,8 @@ pub struct Client {
     request_counter: AtomicU64,
     connection_type: Option<ConnectionType>,
     starting_request_args: Option<Value>,
+    /// The socket address of the debugger, if using TCP transport.
+    pub socket: Option<SocketAddr>,
     pub caps: Option<DebuggerCapabilities>,
     // thread_id -> frames
     pub stack_frames: HashMap<ThreadId, Vec<StackFrame>>,
@@ -90,6 +92,7 @@ impl Client {
             caps: None,
             connection_type: None,
             starting_request_args: None,
+            socket: None,
             stack_frames: HashMap::new(),
             thread_states: HashMap::new(),
             thread_id: None,
@@ -184,21 +187,24 @@ impl Client {
 
         // Wait for adapter to become ready for connection
         time::sleep(time::Duration::from_millis(500)).await;
-
-        let stream = TcpStream::connect(SocketAddr::new(
-            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            port,
-        ))
-        .await?;
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
+        let stream = TcpStream::connect(socket).await?;
 
         let (rx, tx) = stream.into_split();
-        Self::streams(
+        let mut result = Self::streams(
             Box::new(BufReader::new(rx)),
             Box::new(tx),
             None,
             id,
             Some(process),
-        )
+        );
+
+        // Set the socket address for the client
+        if let Ok((client, _)) = &mut result {
+            client.socket = Some(socket);
+        }
+
+        result
     }
 
     async fn recv(
@@ -338,41 +344,11 @@ impl Client {
     pub async fn create_child_debugger(
         &mut self,
         id: usize,
+        socket: SocketAddr,
     ) -> Result<(&mut Client, UnboundedReceiver<(usize, Payload)>)> {
-        // Check if the parent debugger has a config
-        let config = match self.config {
-            Some(ref config) => config.clone(),
-            None => {
-                return Err(Error::Other(anyhow!(
-                    "Config is needed on parent debugger before creating child"
-                )))
-            }
-        };
-
-        // Use the same config as the parent to start a new child debugger
-        let result = Client::process(
-            &config.transport,
-            &config.command,
-            config.args.iter().map(|arg| arg.as_str()).collect(),
-            config.port_arg.as_deref(),
-            id,
-        )
-        .await;
-
-        if let Err(e) = result {
-            return Err(Error::Other(anyhow!(
-                "Failed to start child debugger: {}",
-                e
-            )));
-        }
-
-        let (client, events) = match result {
-            Ok(r) => r,
-            Err(e) => return Err(e),
-        };
-
+        let (client, payload) = Self::tcp(socket, id).await?;
         self.children.insert(id, client);
-        Ok((self.children.get_mut(&id).unwrap(), events))
+        Ok((self.children.get_mut(&id).unwrap(), payload))
     }
 
     pub fn get_child(&self, id: usize) -> Option<&Client> {

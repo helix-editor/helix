@@ -403,6 +403,15 @@ impl Editor {
                         }))
                     }
                     Ok(Request::StartDebugging(arguments)) => {
+                        // Currently we only support starting a child debugger if the parent is using the TCP transport
+                        let socket = match debugger.socket {
+                            Some(socket) => socket,
+                            None => {
+                                self.set_error("Child debugger can only be started if the parent debugger is using TCP transport.");
+                                return true;
+                            }
+                        };
+
                         let connection_type = match arguments.request {
                             _ if arguments.request.contains("launch") => ConnectionType::Launch,
                             _ if arguments.request.contains("attach") => ConnectionType::Attach,
@@ -412,9 +421,9 @@ impl Editor {
                             }
                         };
 
-                        let child = debugger.create_child_debugger(2).await;
+                        let result = debugger.create_child_debugger(1, socket).await;
 
-                        let (child_debugger, events) = match child {
+                        let (child, events) = match result {
                             Ok(child) => child,
                             Err(err) => {
                                 self.set_error(format!(
@@ -428,7 +437,7 @@ impl Editor {
                         let stream = UnboundedReceiverStream::new(events);
                         self.debugger_events.push(stream);
 
-                        let init_response = child_debugger
+                        let init_response = child
                             .initialize(
                                 arguments
                                     .configuration
@@ -451,9 +460,9 @@ impl Editor {
                         }
 
                         let relaunch_resp = if let ConnectionType::Launch = connection_type {
-                            child_debugger.launch(arguments.configuration).await
+                            child.launch(arguments.configuration).await
                         } else {
-                            child_debugger.attach(arguments.configuration).await
+                            child.attach(arguments.configuration).await
                         };
                         if let Err(err) = relaunch_resp {
                             self.set_error(format!("Failed to start debugging session: {:?}", err));
