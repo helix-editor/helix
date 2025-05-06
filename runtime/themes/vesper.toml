@@ -1,0 +1,121 @@
+# Author: IwantHappiness <IwantHappiness95@gmail.com>
+
+tag = { fg = "beige" }
+type = { fg = "beige" }
+
+label = { fg = "beige" }
+
+operator = { fg = "gray" }
+
+attribute = { fg = "gray" }
+
+function = { fg = "beige" }
+
+namespace = { fg = "beige" }
+
+comment = { fg = "comment" }
+
+constructor = { fg = "beige" }
+
+constant = { fg = "beige" }
+"constant.character.escape" = { fg = "gray" }
+
+"markup.bold" = { modifiers = ["bold"] }
+"markup.link" = { fg = "bright-green", underline = { style = "line" } }
+
+variable = { fg = "white" }
+"variable.builtin" = { fg = "gray" }
+"variable.parameter" = { modifiers = ["italic"] }
+
+"murkup.raw" = { bg = "white" }
+"murkup.normal" = { bg = "white" }
+"murkup.heading" = { bg = "white" }
+
+"diff.delta" = { fg = "beige" }
+"diff.minus" = { fg = "#FF808015" }
+"diff.plus" = { fg = "bright-green" }
+
+string = { fg = "bright-green" }
+"string.regexp" = { fg = "gray" }
+"string.special.path" = { fg = "gray" }
+"string.special.url" = { fg = "white", underline = { style = "line" } }
+
+punctuation = { fg = "gray" }
+"punctuation.bracket" = { fg = "gray" }
+"punctuation.delimiter" = { fg = "white" }
+"punctuation.special" = { fg = "bright-green" }
+
+keyword = { fg = "gray" }
+"keyword.operator" = { fg = "beige" }
+"keyword.function" = { fg = "beige" }
+"keyword.directive" = { fg = "beige" }
+"keyword.storage.type" = { fg = "beige" }
+"keyword.control.repeat" = { fg = "gray" }
+"keyword.control.import" = { fg = "beige" }
+"keyword.control.conditional" = { fg = "gray" }
+
+error = { fg = "red" }
+hint = { fg = "gray" }
+info = { fg = "white" }
+warning = { fg = "beige" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "beige"} }
+"diagnostic.info" = { underline = { style = "curl", color = "white"} }
+"diagnostic.hint" = { underline = { style = "curl", color = "gray" } }
+
+# tabstop = { bg = "white" }
+
+# UI
+# "ui.window" = { bg = "white" }
+
+"ui.popup" = { bg = "dark-gray" }
+ 
+"ui.selection" = { bg = "bg-selection" }
+
+"ui.help" = { bg = "dark-gray", fg = "beige" }
+
+"ui.background" = { bg = "black", fg = "white" }
+
+"ui.picker.header.column.active" = { bg = "gray" }
+
+"ui.linenr" = { fg = "dim-gray" }
+"ui.linenr.selected" = { fg = "white" }
+
+"ui.virtual.whitespace" = { fg = "dim-gray" }
+"ui.virtual.inlay-hint" = { bg = "dark-gray", fg = "gray" }
+
+"ui.text" = { fg = "white" }
+"ui.text.inactive" = { fg = "comment" }
+"ui.text.focus" = { bg = "bright-green", fg = "black" }
+
+"ui.menu.scroll" = { fg = "white" }
+"ui.menu.selected" = { bg = "dim-gray" }
+"ui.menu" = { fg = "white", bg = "dark-gray" }
+
+"ui.statusline" = { bg = "dark-gray" }
+"ui.statusline.inactive" = { bg = "dark-gray" }
+"ui.statusline.select" = { bg = "red", fg = "black" }
+"ui.statusline.normal" = { bg = "beige", fg = "black" }
+"ui.statusline.insert" = { bg = "bright-green", fg = "black" }
+
+"ui.cursor.insert" = { bg = "bright-green" }
+"ui.cursorline.primary" = { bg = "dark-gray" }
+"ui.cursorline.secondary" = { bg = "dark-gray" }
+"ui.cursor.primary" = { bg = "cursor", fg = "black" }
+"ui.cursor" = { fg = "white", modifiers = ["reversed"] }
+
+[palette]
+red = "#ff8080"
+gray = "#A0A0A0"
+white = "#ffffff"
+beige = "#ffc799"
+black = "#101010"
+dim-gray = "#505050"
+dark-gray = "#1C1C1C"
+bright-green = "#99FFE415"
+
+cursor = "#aeafad"
+comment = "#8b8b8b94"
+bg-selection = "#666666"
