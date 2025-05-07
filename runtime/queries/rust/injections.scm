@@ -1,5 +1,9 @@
-([(line_comment) (block_comment)] @injection.content
+([(line_comment !doc) (block_comment !doc)] @injection.content
  (#set! injection.language "comment"))
+
+((doc_comment) @injection.content
+ (#set! injection.language "markdown-rustdoc")
+ (#set! injection.combined))
 
 ((macro_invocation
    macro:
@@ -56,7 +60,7 @@
 
 (call_expression
   function: (scoped_identifier
-    path: (scoped_identifier (identifier) @_regex (#any-of? @_regex "Regex" "RegexBuilder") .)
+    path: (scoped_identifier (identifier) @_regex . (#any-of? @_regex "Regex" "RegexBuilder"))
     name: (identifier) @_new (#eq? @_new "new"))
   arguments: (arguments (raw_string_literal (string_content) @injection.content))
   (#set! injection.language "regex"))
