@@ -2407,7 +2407,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "v"
-source = {git = "https://github.com/vlang/v-analyzer", subpath = "tree_sitter_v", rev = "e14fdf6e661b10edccc744102e4ccf0b187aa8ad"}
+source = {git = "https://github.com/vlang/v-analyzer", subpath = "tree_sitter_v", rev = "59a8889d84a293d7c0366d14c8dbb0eec24fe889"}
 
 [[language]]
 name = "verilog"
