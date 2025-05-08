@@ -340,8 +340,9 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
+    let (view, doc) = current_ref!(cx.editor);
     let fmt = if config.auto_format {
-        doc.auto_format().map(|fmt| {
+        doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
@@ -484,8 +485,8 @@ fn format(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
         return Ok(());
     }
 
-    let (view, doc) = current!(cx.editor);
-    let format = doc.format().context(
+    let (view, doc) = current_ref!(cx.editor);
+    let format = doc.format(cx.editor).context(
         "A formatter isn't available, and no language server provides formatting capabilities",
     )?;
     let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
@@ -753,7 +754,8 @@ pub fn write_all_impl(
         doc.append_changes_to_history(view);
 
         let fmt = if options.auto_format && config.auto_format {
-            doc.auto_format().map(|fmt| {
+            let doc = doc!(cx.editor, &doc_id);
+            doc.auto_format(cx.editor).map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
                     doc.version(),
@@ -2567,6 +2569,9 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+// TODO: SHELL_SIGNATURE should specify var args for arguments, so that just completers::filename can be used,
+// but Signature does not yet allow for var args.
+
 /// This command handles all of its input as-is with no quoting or flags.
 const SHELL_SIGNATURE: Signature = Signature {
     positionals: (1, Some(2)),
@@ -2575,10 +2580,10 @@ const SHELL_SIGNATURE: Signature = Signature {
 };
 
 const SHELL_COMPLETER: CommandCompleter = CommandCompleter::positional(&[
-    // Command name (TODO: consider a command completer - Kakoune has prior art)
-    completers::none,
+    // Command name
+    completers::program,
     // Shell argument(s)
-    completers::filename,
+    completers::repeating_filenames,
 ]);
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[

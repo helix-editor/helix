@@ -46,6 +46,7 @@
 | dot | ✓ |  |  | `dot-language-server` |
 | dtd | ✓ |  |  |  |
 | dune | ✓ |  |  |  |
+| dunstrc | ✓ |  |  |  |
 | earthfile | ✓ | ✓ | ✓ | `earthlyls` |
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
@@ -58,6 +59,7 @@
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |
+| fennel | ✓ |  |  | `fennel-ls` |
 | fga | ✓ | ✓ | ✓ |  |
 | fidl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ | `fish-lsp` |
@@ -179,9 +181,11 @@
 | prolog | ✓ |  | ✓ | `swipl` |
 | protobuf | ✓ | ✓ | ✓ | `buf`, `pb`, `protols` |
 | prql | ✓ |  |  |  |
+| pug | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
+| quarto | ✓ |  | ✓ |  |
 | quint | ✓ |  |  | `quint-language-server` |
 | r | ✓ |  |  | `R` |
 | racket | ✓ |  | ✓ | `racket` |
@@ -198,6 +202,7 @@
 | scala | ✓ | ✓ | ✓ | `metals` |
 | scheme | ✓ |  | ✓ |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
+| slang | ✓ | ✓ | ✓ | `slangd` |
 | slint | ✓ | ✓ | ✓ | `slint-lsp` |
 | smali | ✓ |  | ✓ |  |
 | smithy | ✓ |  |  | `cs` |
