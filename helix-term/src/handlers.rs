@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
+use diagnostics::PullAllDocumentsDiagnosticHandler;
 use helix_event::AsyncHook;
 
 use crate::config::Config;
@@ -28,6 +29,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     let auto_save = AutoSaveHandler::new().spawn();
     let document_colors = DocumentColorsHandler::default().spawn();
     let pull_diagnostics = PullDiagnosticsHandler::new().spawn();
+    let pull_all_documents_diagnostics = PullAllDocumentsDiagnosticHandler::new().spawn();
 
     let handlers = Handlers {
         completions: helix_view::handlers::completion::CompletionHandler::new(event_tx),
@@ -35,6 +37,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
         auto_save,
         document_colors,
         pull_diagnostics,
+        pull_all_documents_diagnostics,
     };
 
     helix_view::handlers::register_hooks(&handlers);

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::Instant;
 
@@ -11,7 +12,7 @@ use helix_view::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidOpen, LanguageServerInitialized,
 };
 use helix_view::handlers::diagnostics::DiagnosticEvent;
-use helix_view::handlers::lsp::PullDiagnosticsEvent;
+use helix_view::handlers::lsp::{PullAllDocumentsDiagnosticsEvent, PullDiagnosticsEvent};
 use helix_view::handlers::Handlers;
 use helix_view::{DocumentId, Editor};
 
@@ -35,6 +36,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
 
     let tx = handlers.pull_diagnostics.clone();
+    let tx_all_documents = handlers.pull_all_documents_diagnostics.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
         if event
             .doc
@@ -42,6 +44,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         {
             let document_id = event.doc.id();
             send_blocking(&tx, PullDiagnosticsEvent { document_id });
+            send_blocking(&tx_all_documents, PullAllDocumentsDiagnosticsEvent {});
         }
         Ok(())
     });
@@ -74,11 +77,15 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 }
 
 #[derive(Debug)]
-pub(super) struct PullDiagnosticsHandler {}
+pub(super) struct PullDiagnosticsHandler {
+    document_ids: HashSet<DocumentId>,
+}
 
 impl PullDiagnosticsHandler {
     pub fn new() -> Self {
-        PullDiagnosticsHandler {}
+        PullDiagnosticsHandler {
+            document_ids: Default::default(),
+        }
     }
 }
 
@@ -87,31 +94,80 @@ impl helix_event::AsyncHook for PullDiagnosticsHandler {
 
     fn handle_event(
         &mut self,
-        _event: Self::Event,
+        event: Self::Event,
         _timeout: Option<tokio::time::Instant>,
     ) -> Option<tokio::time::Instant> {
+        self.document_ids.insert(event.document_id);
         Some(Instant::now() + Duration::from_millis(125))
     }
 
     fn finish_debounce(&mut self) {
-        dispatch_pull_diagnostic_for_open_documents();
+        let document_ids = self.document_ids.clone();
+        job::dispatch_blocking(move |editor, _| {
+            for document_id in document_ids {
+                let document = editor.document(document_id);
+
+                let Some(document) = document else {
+                    return;
+                };
+
+                let language_servers = document
+                    .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
+                    .filter(|ls| ls.is_initialized());
+
+                for language_server in language_servers {
+                    pull_diagnostics_for_document(document, language_server);
+                }
+            }
+        })
     }
 }
 
-fn dispatch_pull_diagnostic_for_open_documents() {
-    job::dispatch_blocking(move |editor, _| {
-        let documents = editor.documents.values();
+#[derive(Debug)]
+pub(super) struct PullAllDocumentsDiagnosticHandler {}
 
-        for document in documents {
-            let language_servers = document
-                .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
-                .filter(|ls| ls.is_initialized());
+impl PullAllDocumentsDiagnosticHandler {
+    pub fn new() -> Self {
+        PullAllDocumentsDiagnosticHandler {}
+    }
+}
 
-            for language_server in language_servers {
-                pull_diagnostics_for_document(document, language_server);
+impl helix_event::AsyncHook for PullAllDocumentsDiagnosticHandler {
+    type Event = PullAllDocumentsDiagnosticsEvent;
+
+    fn handle_event(
+        &mut self,
+        _event: Self::Event,
+        _timeout: Option<tokio::time::Instant>,
+    ) -> Option<tokio::time::Instant> {
+        Some(Instant::now() + Duration::from_millis(500))
+    }
+
+    fn finish_debounce(&mut self) {
+        job::dispatch_blocking(move |editor, _| {
+            for document in editor.documents.values() {
+                let language_servers = document
+                    .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
+                    .filter(|ls| ls.is_initialized())
+                    .filter(|ls| {
+                        ls.capabilities().diagnostic_provider.as_ref().is_some_and(
+                            |diagnostic_provider| match diagnostic_provider {
+                                lsp::DiagnosticServerCapabilities::Options(options) => {
+                                    options.inter_file_dependencies
+                                }
+                                lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
+                                    options.diagnostic_options.inter_file_dependencies
+                                }
+                            },
+                        )
+                    });
+
+                for language_server in language_servers {
+                    pull_diagnostics_for_document(document, language_server);
+                }
             }
-        }
-    })
+        })
+    }
 }
 
 pub fn pull_diagnostics_for_document(
