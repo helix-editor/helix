@@ -404,18 +404,28 @@ impl<'t> DocumentFormatter<'t> {
             word_chars += grapheme.doc_chars();
 
             // Track indentation
-            if !grapheme.is_whitespace() && self.indent_level.is_none() {
+            let is_whitespace = grapheme.is_whitespace();
+            if !is_whitespace && self.indent_level.is_none() {
                 self.indent_level = Some(self.visual_pos.col);
             } else if grapheme.grapheme == Grapheme::Newline {
                 self.indent_level = None;
             }
 
             let is_word_boundary = grapheme.is_word_boundary();
-            word_width += grapheme.width();
+            let grapheme_width = grapheme.width();
+            word_width += grapheme_width;
             self.word_buf.push(grapheme);
 
+            // Return if it's a word boundary character.
+            // When the boundary is a 1-width punctuation like `,` or `.`, everything works fine.
+            // However, when it's a 2-width punctuation like `，` or `。`, it might exceed the viewport under certain conditions.
+            // For example, with viewport width = 17 and current col(column) = 16, adding a 2-width grapheme would make col = 18,
+            // causing the last character to be clipped from view.
+            // Therefore, we skip returning for wide characters (width > 1) and let the `Ordering::Greater` branch handle them in the next iteration.
             if is_word_boundary {
-                return;
+                if is_whitespace || grapheme_width <= 1 {
+                    return;
+                }
             }
         }
     }
