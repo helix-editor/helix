@@ -157,6 +157,8 @@ where
             render_primary_selection_length
         }
         helix_view::editor::StatusLineElement::Position => render_position,
+        helix_view::editor::StatusLineElement::Row => render_row,
+        helix_view::editor::StatusLineElement::Col => render_col,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
@@ -386,6 +388,30 @@ where
     write(
         context,
         format!(" {}:{} ", position.row + 1, position.col + 1),
+        None,
+    );
+}
+
+fn render_row<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let position = get_position(context);
+    write(
+        context,
+        format!(" {} ", position.row + 1),
+        None,
+    );
+}
+
+fn render_col<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let position = get_position(context);
+    write(
+        context,
+        format!(" {} ", position.col + 1),
         None,
     );
 }
