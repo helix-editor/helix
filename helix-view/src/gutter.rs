@@ -32,6 +32,7 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
             GutterType::Diff => diff(editor, doc, view, theme, is_focused),
+            GutterType::Scrollbar => scrollbar(editor, doc, view, theme, is_focused),
         }
     }
 
@@ -41,6 +42,7 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
             GutterType::Diff => 1,
+            GutterType::Scrollbar => 1,
         }
     }
 }
@@ -139,6 +141,44 @@ pub fn diff<'doc>(
     }
 }
 
+pub fn scrollbar<'doc>(
+    _editor: &'doc Editor,
+    doc: &'doc Document,
+    view: &View,
+    theme: &Theme,
+    is_focused: bool,
+) -> GutterFn<'doc> {
+    let total_lines = doc.text().len_lines();
+    let view_height = view.inner_height();
+    let fits = view_height > total_lines;
+
+    if !is_focused || fits {
+        return Box::new(move |_, _, _, _| None);
+    }
+
+    let scroll_height = view_height.pow(2).div_ceil(total_lines).min(view_height);
+    let visual_pos = view.pos_at_visual_coords(doc, 0, 0, false).unwrap();
+    let view_vertical_offset = doc.text().char_to_line(visual_pos);
+
+    let scroll_line = ((view_height - scroll_height) * view_vertical_offset
+        / 1.max(total_lines.saturating_sub(view_height)))
+        + view_vertical_offset;
+
+    let style = theme.get("ui.menu.scroll");
+    Box::new(
+        move |line: usize, _selected: bool, _first_visual_line: bool, out: &mut String| {
+            let icon = if line >= scroll_line && line <= scroll_line + scroll_height {
+                "▐"
+            } else {
+                ""
+            };
+
+            write!(out, "{}", icon).unwrap();
+            Some(style)
+        },
+    )
+}
+
 pub fn line_numbers<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
@@ -167,7 +207,9 @@ pub fn line_numbers<'doc>(
 
     Box::new(
         move |line: usize, selected: bool, first_visual_line: bool, out: &mut String| {
-            if line == last_line_in_view && !draw_last {
+            if line > last_line_in_view {
+                None
+            } else if line == last_line_in_view && !draw_last {
                 write!(out, "{:>1$}", '~', width).unwrap();
                 Some(linenr)
             } else {
@@ -338,7 +380,11 @@ mod tests {
 
     #[test]
     fn test_default_gutter_widths() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -363,7 +409,11 @@ mod tests {
             ..Default::default()
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -381,7 +431,11 @@ mod tests {
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -403,7 +457,11 @@ mod tests {
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("a\nb");
