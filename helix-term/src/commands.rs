@@ -351,6 +351,7 @@ impl MappableCommand {
         extend_prev_char, "Extend to previous occurrence of char",
         repeat_last_motion, "Repeat last motion",
         replace, "Replace with new char",
+        overtype_mode, "Enter overtype mode",
         switch_case, "Switch (toggle) case",
         switch_to_uppercase, "Switch to uppercase",
         switch_to_lowercase, "Switch to lowercase",
@@ -3012,6 +3013,29 @@ fn insert_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+fn enter_overtype_mode(cx: &mut Context) {
+    cx.editor.mode = Mode::Overtype;
+}
+
+// inserts at the start of each selection
+fn overtype_mode(cx: &mut Context) {
+    enter_overtype_mode(cx);
+    let (view, doc) = current!(cx.editor);
+
+    log::trace!(
+        "entering replace mode with sel: {:?}, text: {:?}",
+        doc.selection(view.id),
+        doc.text().to_string()
+    );
+
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| Range::new(range.to(), range.from()));
+
+    doc.set_selection(view.id, selection);
+}
+
 // inserts at the end of each selection
 fn append_mode(cx: &mut Context) {
     enter_insert_mode(cx);
@@ -4117,7 +4141,7 @@ pub mod insert {
         Some(transaction)
     }
 
-    use helix_core::auto_pairs;
+    use helix_core::{auto_pairs, graphemes::nth_next_grapheme_boundary};
     use helix_view::editor::SmartTabConfig;
 
     pub fn insert_char(cx: &mut Context, c: char) {
@@ -4137,6 +4161,23 @@ pub mod insert {
         }
 
         helix_event::dispatch(PostInsertChar { c, cx });
+    }
+
+    pub fn replace_char(cx: &mut Context, c: char) {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text();
+        let selection = doc.selection(view.id);
+        let slice = text.slice(..);
+        let selection_update = selection.clone().transform(|range| {
+            let new_pos = nth_next_grapheme_boundary(slice, range.cursor(slice), 1);
+            range.put_cursor(slice, new_pos, false)
+        });
+        let mut t = Tendril::new();
+        t.push(c);
+        let transaction = Transaction::replace(text, &selection, t);
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view);
+        doc.set_selection(view.id, selection_update);
     }
 
     pub fn smart_tab(cx: &mut Context) {
@@ -4706,7 +4747,7 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
     let count = cx.count();
     let paste = match cx.editor.mode {
         Mode::Insert | Mode::Select => Paste::Cursor,
-        Mode::Normal => Paste::Before,
+        Mode::Normal | Mode::Overtype => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
     paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
