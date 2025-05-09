@@ -6,6 +6,7 @@ use crate::job::Job;
 
 use super::*;
 
+use anyhow::Result;
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
@@ -2328,8 +2329,11 @@ fn run_shell_command(
     let shell = cx.editor.config().shell.clone();
     let args = args.join(" ");
 
+    let cx_sh = ShellContext::for_editor(cx.editor);
+
     let callback = async move {
-        let output = shell_impl_async(&shell, &args, None).await?;
+        let output = shell_impl_async(&cx_sh, &shell, &args, None).await?;
+
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.is_empty() {

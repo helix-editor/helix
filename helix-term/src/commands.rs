@@ -61,6 +61,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
+    shell_context::ShellContext,
     ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
 };
 
@@ -6197,6 +6198,8 @@ fn shell_keep_pipe(cx: &mut Context) {
             if input.is_empty() {
                 return;
             }
+            let cx_sh = ShellContext::for_editor(cx.editor);
+
             let (view, doc) = current!(cx.editor);
             let selection = doc.selection(view.id);
 
@@ -6207,7 +6210,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                if let Err(err) = shell_impl(shell, input, Some(fragment.into())) {
+                if let Err(err) = shell_impl(&cx_sh, shell, input, Some(fragment.into())) {
                     log::debug!("Shell command failed: {}", err);
                 } else {
                     ranges.push(*range);
@@ -6228,11 +6231,17 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
-fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<Tendril> {
-    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
+fn shell_impl(
+    cx_sh: &ShellContext,
+    shell: &[String],
+    cmd: &str,
+    input: Option<Rope>,
+) -> anyhow::Result<Tendril> {
+    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(cx_sh, shell, cmd, input)))
 }
 
 async fn shell_impl_async(
+    cx_sh: &ShellContext,
     shell: &[String],
     cmd: &str,
     input: Option<Rope>,
@@ -6246,7 +6255,8 @@ async fn shell_impl_async(
         .args(&shell[1..])
         .arg(cmd)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stderr(Stdio::piped())
+        .envs(cx_sh.to_envs());
 
     if input.is_some() || cfg!(windows) {
         process.stdin(Stdio::piped());
@@ -6307,6 +6317,9 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     let config = cx.editor.config();
     let shell = &config.shell;
+
+    let cx_sh = ShellContext::for_editor(cx.editor);
+
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
 
@@ -6321,7 +6334,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             output.clone()
         } else {
             let input = range.slice(text);
-            match shell_impl(shell, cmd, pipe.then(|| input.into())) {
+            match shell_impl(&cx_sh, shell, cmd, pipe.then(|| input.into())) {
                 Ok(mut output) => {
                     if !input.ends_with("\n") && output.ends_with('\n') {
                         output.pop();
