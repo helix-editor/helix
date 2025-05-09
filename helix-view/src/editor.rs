@@ -495,7 +495,7 @@ pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
-    pub separator: String,
+    pub separator: StatusLineSeparator,
     pub mode: ModeConfig,
     pub diagnostics: Vec<Severity>,
     pub workspace_diagnostics: Vec<Severity>,
@@ -521,7 +521,7 @@ impl Default for StatusLineConfig {
                 E::Position,
                 E::FileEncoding,
             ],
-            separator: String::from("│"),
+            separator: StatusLineSeparator::default(),
             mode: ModeConfig::default(),
             diagnostics: vec![Severity::Warning, Severity::Error],
             workspace_diagnostics: vec![Severity::Warning, Severity::Error],
@@ -612,6 +612,135 @@ pub enum StatusLineElement {
 
     /// Indicator for selected register
     Register,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case", default)]
+pub struct StatusLineSeparator {
+    pub left: String,
+    pub center: String,
+    pub right: String,
+}
+
+impl From<String> for StatusLineSeparator {
+    fn from(v: String) -> Self {
+        Self {
+            left: v.clone(),
+            center: v.clone(),
+            right: v,
+        }
+    }
+}
+
+impl Default for StatusLineSeparator {
+    fn default() -> Self {
+        String::from("│").into()
+    }
+}
+
+enum StatusLineSeparatorField {
+    Left,
+    Center,
+    Right,
+}
+
+struct StatusLineSeparatorVisitor;
+
+impl<'de> serde::de::Visitor<'de> for StatusLineSeparatorVisitor {
+    type Value = StatusLineSeparator;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a string or a map with keys 'left', 'center', and 'right'")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(StatusLineSeparator::from(value.to_string()))
+    }
+
+    fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+    where
+        M: serde::de::MapAccess<'de>,
+    {
+        let mut left = None;
+        let mut center = None;
+        let mut right = None;
+
+        while let Some(key) = map.next_key()? {
+            match key {
+                StatusLineSeparatorField::Left => {
+                    if left.is_some() {
+                        return Err(serde::de::Error::duplicate_field("left"));
+                    }
+                    left = Some(map.next_value()?);
+                }
+                StatusLineSeparatorField::Center => {
+                    if center.is_some() {
+                        return Err(serde::de::Error::duplicate_field("center"));
+                    }
+                    center = Some(map.next_value()?);
+                }
+                StatusLineSeparatorField::Right => {
+                    if right.is_some() {
+                        return Err(serde::de::Error::duplicate_field("right"));
+                    }
+                    right = Some(map.next_value()?);
+                }
+            }
+        }
+
+        let left = left.unwrap_or_else(|| String::from("│"));
+        let center = center.unwrap_or_else(|| String::from("│"));
+        let right = right.unwrap_or_else(|| String::from("│"));
+
+        Ok(StatusLineSeparator {
+            left,
+            center,
+            right,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for StatusLineSeparatorField {
+    fn deserialize<D>(deserializer: D) -> Result<StatusLineSeparatorField, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct FieldVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for FieldVisitor {
+            type Value = StatusLineSeparatorField;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("`left`, `center`, or `right`")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<StatusLineSeparatorField, E>
+            where
+                E: serde::de::Error,
+            {
+                match value {
+                    "left" => Ok(StatusLineSeparatorField::Left),
+                    "center" => Ok(StatusLineSeparatorField::Center),
+                    "right" => Ok(StatusLineSeparatorField::Right),
+                    _ => Err(serde::de::Error::unknown_field(value, &["left", "center", "right"])),
+                }
+            }
+        }
+
+        deserializer.deserialize_identifier(FieldVisitor)
+    }
+}
+
+impl<'de> Deserialize<'de> for StatusLineSeparator {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(StatusLineSeparatorVisitor)
+    }
 }
 
 // Cursor shape is read and used on every rendered frame and so needs

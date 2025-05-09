@@ -115,6 +115,9 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `center`      | A list of elements aligned to the middle of the statusline | `[]` |
 | `right`       | A list of elements aligned to the right of the statusline | `["diagnostics", "selections", "register", "position", "file-encoding"]` |
 | `separator`   | The character used to separate elements in the statusline | `"│"` |
+| `separator.left`   | The character used to separate elements in the left statusline | `"│"` |
+| `separator.center`   | The character used to separate elements in the center statusline | `"│"` |
+| `separator.right`   | The character used to separate elements in the right statusline | `"│"` |
 | `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
@@ -142,7 +145,7 @@ The following statusline elements can be configured:
 | `primary-selection-length` | The number of characters currently in primary selection |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
-| `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
+| `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) (`separator`/`separator.left`/`separator.center`/`separator.right`/) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 | `version-control` | The current branch name or detached commit hash of the opened workspace |
 | `register` | The current selected register |
