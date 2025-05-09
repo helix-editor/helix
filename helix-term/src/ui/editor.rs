@@ -123,7 +123,8 @@ impl EditorView {
             ],
             [Left] vec![
                 Span::styled(":theme", theme.get("markup.raw")),
-                "              choose a theme".into(),
+                Span::styled("<space>", theme.get("comment")),
+                "       choose a theme".into(),
             ],
             [Left] vec![
                 Span::styled("<space>e", theme.get("markup.raw")),
