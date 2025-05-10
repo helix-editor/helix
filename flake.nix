@@ -69,20 +69,21 @@
           filter = ignorePaths;
         };
 
+
       helix-cogs = craneLibStable.buildPackage (commonArgs // {
         pname = "helix-cogs";
         version = "0.1.0";
-        cargoArtifacts = craneLibStable.buildDepsOnly commonArgs;
+        # cargoArtifacts = craneLibStable.buildDepsOnly commonArgs;
 
         buildPhase = ''
           export HOME=$PWD/build_home  # code-gen will write files relative to $HOME
-          cargoBuildLog=$(mktemp cargoBuildLogXXXX.json)
-          cargo run --package xtask -- code-gen --message-format json-render-diagnostics >"$cargoBuildLog"
+          mkdir -p $HOME
+          cargo run --package xtask -- code-gen
         '';
 
-        postInstall = ''
+        installPhase = ''
           mkdir -p $out/cogs
-          cp -r build_home/.config/helix/* "$out/cogs"
+          cp -r build_home/.steel/cogs/helix/* "$out/cogs"
         '';
 
       });
