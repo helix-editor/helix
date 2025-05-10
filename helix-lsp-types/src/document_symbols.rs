@@ -18,7 +18,7 @@ pub struct DocumentSymbolClientCapabilities {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub symbol_kind: Option<SymbolKindCapability>,
 
-    /// The client supports hierarchical document symbols.
+    /// The client support hierarchical document symbols.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hierarchical_document_symbol_support: Option<bool>,
 
@@ -92,11 +92,11 @@ pub struct DocumentSymbol {
     #[deprecated(note = "Use tags instead")]
     pub deprecated: Option<bool>,
     /// The range enclosing this symbol not including leading/trailing whitespace but everything else
-    /// like comments. This information is typically used to determine if the clients cursor is
+    /// like comments. This information is typically used to determine if the the clients cursor is
     /// inside the symbol to reveal in the symbol in the UI.
     pub range: Range,
     /// The range that should be selected and revealed when this symbol is being picked, e.g the name of a function.
-    /// Must be contained by the `range`.
+    /// Must be contained by the the `range`.
     pub selection_range: Range,
     /// Children of this symbol, e.g. properties of a class.
     #[serde(skip_serializing_if = "Option::is_none")]

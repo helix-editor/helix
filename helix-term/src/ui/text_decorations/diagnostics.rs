@@ -309,6 +309,6 @@ impl Decoration for InlineDiagnostics<'_> {
         grapheme: &FormattedGrapheme,
     ) -> usize {
         self.state
-            .process_anchor(grapheme, renderer.viewport.width, renderer.offset.col)
+            .proccess_anchor(grapheme, renderer.viewport.width, renderer.offset.col)
     }
 }
