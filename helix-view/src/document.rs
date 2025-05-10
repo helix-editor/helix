@@ -1849,7 +1849,7 @@ impl Document {
         self.diff_handle.as_ref()
     }
 
-    /// Intiialize/updates the differ for this document with a new base.
+    /// Initialize/updates the differ for this document with a new base.
     pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
         if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
             if let Some(differ) = &self.diff_handle {
