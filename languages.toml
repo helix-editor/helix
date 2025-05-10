@@ -192,6 +192,8 @@ inlayHints.discriminantHints.enable = "fieldless"
 inlayHints.lifetimeElisionHints.enable = "skip_trivial"
 inlayHints.typeHints.hideClosureInitialization = false
 
+[language-server.rust-analyzer.config.files]
+watcher = "server"
 
 [language-server.typescript-language-server]
 command = "typescript-language-server"
