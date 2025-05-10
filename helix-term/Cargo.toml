@@ -95,7 +95,7 @@ grep-searcher = "0.1.14"
 # plugin support
 steel-core = { workspace = true, optional = true }
 steel-doc = { git = "https://github.com/mattwparas/steel.git", version = "0.6.0" }
-# steel-doc = { path = "/Users/matt/code/steel/crates/steel-doc", version = "0.6.0" }
+# steel-doc = { path = "/Users/matt/code/scratch/reviews/steel/crates/steel-doc", version = "0.6.0" }
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }

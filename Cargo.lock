@@ -2673,12 +2673,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74765f6d916ee2faa39bc8e68e4f3ed8949b48cccdac59983d287a7cb71ce9c5"
 
 [[package]]
-name = "radix_fmt"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce082a9940a7ace2ad4a8b7d0b1eac6aa378895f18be598230c5f2284ac05426"
-
-[[package]]
 name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3088,7 +3082,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#7ab6cc8033be6312ae6d1b702dfa18b1463251c0"
+source = "git+https://github.com/mattwparas/steel.git#082e4b060fca0bcb2bd9381ff26ff783ce2cdf8d"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -3121,7 +3115,6 @@ dependencies = [
  "parking_lot",
  "polling",
  "quickscope",
- "radix_fmt",
  "rand 0.9.1",
  "serde",
  "serde_json",
@@ -3139,7 +3132,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.5.0"
-source = "git+https://github.com/mattwparas/steel.git#7ab6cc8033be6312ae6d1b702dfa18b1463251c0"
+source = "git+https://github.com/mattwparas/steel.git#082e4b060fca0bcb2bd9381ff26ff783ce2cdf8d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3149,7 +3142,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#7ab6cc8033be6312ae6d1b702dfa18b1463251c0"
+source = "git+https://github.com/mattwparas/steel.git#082e4b060fca0bcb2bd9381ff26ff783ce2cdf8d"
 dependencies = [
  "steel-core",
 ]
@@ -3157,7 +3150,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#7ab6cc8033be6312ae6d1b702dfa18b1463251c0"
+source = "git+https://github.com/mattwparas/steel.git#082e4b060fca0bcb2bd9381ff26ff783ce2cdf8d"
 dependencies = [
  "codegen",
  "serde",
@@ -3166,7 +3159,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#7ab6cc8033be6312ae6d1b702dfa18b1463251c0"
+source = "git+https://github.com/mattwparas/steel.git#082e4b060fca0bcb2bd9381ff26ff783ce2cdf8d"
 dependencies = [
  "compact_str",
  "fxhash",

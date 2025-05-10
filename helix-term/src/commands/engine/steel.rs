@@ -6,12 +6,13 @@ use helix_core::{
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     find_workspace, graphemes,
     syntax::{self, AutoPairConfig, IndentationConfiguration, LanguageConfiguration, SoftWrap},
+    text_annotations::InlineAnnotation,
     Range, Selection, Tendril,
 };
 use helix_event::register_hook;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
-    document::Mode,
+    document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
     editor::{
         Action, AutoSave, BufferLine, ConfigEvent, CursorShapeConfig, FilePickerConfig,
         GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig,
@@ -25,6 +26,7 @@ use helix_view::{
 };
 use once_cell::sync::{Lazy, OnceCell};
 use steel::{
+    compiler::modules::steel_home,
     gc::{unsafe_erased_pointers::CustomReference, ShareableMut},
     rvals::{as_underlying_type, IntoSteelVal, SteelString},
     steel_vm::{
@@ -452,15 +454,15 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     );
 
     if generate_sources {
-        let mut target_directory = helix_runtime_search_path();
+        if let Some(mut target_directory) = alternative_runtime_search_path() {
+            if !target_directory.exists() {
+                std::fs::create_dir_all(&target_directory).unwrap();
+            }
 
-        if !target_directory.exists() {
-            std::fs::create_dir(&target_directory).unwrap();
+            target_directory.push("static.scm");
+
+            std::fs::write(target_directory, &builtin_static_command_module).unwrap();
         }
-
-        target_directory.push("static.scm");
-
-        std::fs::write(target_directory, &builtin_static_command_module).unwrap();
 
         engine.register_steel_module(
             "helix/static.scm".to_string(),
@@ -520,14 +522,15 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     }
 
     if generate_sources {
-        let mut target_directory = helix_runtime_search_path();
-        if !target_directory.exists() {
-            std::fs::create_dir(&target_directory).unwrap();
+        if let Some(mut target_directory) = alternative_runtime_search_path() {
+            if !target_directory.exists() {
+                std::fs::create_dir_all(&target_directory).unwrap();
+            }
+
+            target_directory.push("commands.scm");
+
+            std::fs::write(target_directory, &builtin_typable_command_module).unwrap();
         }
-
-        target_directory.push("commands.scm");
-
-        std::fs::write(target_directory, &builtin_typable_command_module).unwrap();
 
         engine.register_steel_module(
             "helix/commands.scm".to_string(),
@@ -913,15 +916,15 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             template_function_arity_1(func);
         }
 
-        let mut target_directory = helix_runtime_search_path();
+        if let Some(mut target_directory) = alternative_runtime_search_path() {
+            if !target_directory.exists() {
+                std::fs::create_dir_all(&target_directory).unwrap();
+            }
 
-        if !target_directory.exists() {
-            std::fs::create_dir(&target_directory).unwrap();
+            target_directory.push("configuration.scm");
+
+            std::fs::write(target_directory, &builtin_configuration_module).unwrap();
         }
-
-        target_directory.push("configuration.scm");
-
-        std::fs::write(target_directory, &builtin_configuration_module).unwrap();
 
         engine.register_steel_module(
             "helix/configuration.scm".to_string(),
@@ -1131,18 +1134,17 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
 
         template_function_arity_2("editor-switch-action!");
 
-        let mut target_directory = helix_runtime_search_path();
+        if let Some(mut target_directory) = alternative_runtime_search_path() {
+            if !target_directory.exists() {
+                std::fs::create_dir_all(&target_directory).unwrap_or_else(|err| {
+                    panic!("Failed to create directory {:?}: {}", target_directory, err)
+                });
+            }
 
-        if !target_directory.exists() {
-            std::fs::create_dir_all(&target_directory).unwrap_or_else(|err| {
-                panic!("Failed to create directory {:?}: {}", target_directory, err)
-            });
-            eprintln!("Created directory: {:?}", target_directory);
+            target_directory.push("editor.scm");
+
+            std::fs::write(target_directory, &builtin_editor_command_module).unwrap();
         }
-
-        target_directory.push("editor.scm");
-
-        std::fs::write(target_directory, &builtin_editor_command_module).unwrap();
 
         engine.register_steel_module(
             "helix/editor.scm".to_string(),
@@ -2474,10 +2476,12 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
 
     // Arity 0
     module.register_fn("hx.cx->pos", cx_pos_within_text);
+    module.register_fn("cursor-position", cx_pos_within_text);
     module.register_fn("mode-switch-old", OnModeSwitchEvent::get_old_mode);
     module.register_fn("mode-switch-new", OnModeSwitchEvent::get_new_mode);
 
     template_function_arity_0("hx.cx->pos");
+    template_function_arity_0("cursor-position");
 
     let mut template_function_arity_1 = |name: &str| {
         if generate_sources {
@@ -2557,16 +2561,23 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     template_function_arity_2("enqueue-thread-local-callback-with-delay");
     template_function_arity_2("helix-await-callback");
 
+    module
+        .register_fn("add-inlay-hint", add_inlay_hint)
+        .register_fn("remove-inlay-hint", remove_inlay_hint);
+
+    template_function_arity_2("add-inlay-hint");
+    template_function_arity_2("remove-inlay-hint");
+
     if generate_sources {
-        let mut target_directory = helix_runtime_search_path();
+        if let Some(mut target_directory) = alternative_runtime_search_path() {
+            if !target_directory.exists() {
+                std::fs::create_dir_all(&target_directory).unwrap();
+            }
 
-        if !target_directory.exists() {
-            std::fs::create_dir(&target_directory).unwrap();
+            target_directory.push("misc.scm");
+
+            std::fs::write(target_directory, &builtin_misc_module).unwrap();
         }
-
-        target_directory.push("misc.scm");
-
-        std::fs::write(target_directory, &builtin_misc_module).unwrap();
 
         engine.register_steel_module("helix/misc.scm".to_string(), builtin_misc_module);
     }
@@ -2580,6 +2591,28 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
 
 pub fn helix_runtime_search_path() -> PathBuf {
     helix_loader::config_dir().join("helix")
+}
+
+// TODO: Generate sources into the cogs directory, so that the
+// LSP can go find it. When it comes to loading though, it'll look
+// up internally.
+pub fn alternative_runtime_search_path() -> Option<PathBuf> {
+    if let Some(path) = steel_home() {
+        Some(PathBuf::from(path).join("cogs").join("helix"))
+    } else {
+        None
+    }
+}
+
+pub fn generate_cog_file() {
+    if let Some(path) = alternative_runtime_search_path() {
+        std::fs::write(
+            path.join("cog.scm"),
+            r#"(define package-name 'helix)
+            (define version "0.1.0")"#,
+        )
+        .unwrap();
+    }
 }
 
 // Embed them in the binary... first
@@ -2600,7 +2633,11 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
         if std::env::var("STEEL_LSP_HOME").is_err() {
             eprintln!("Warning: STEEL_LSP_HOME is not set, so the steel lsp will not be configured with helix primitives");
         }
-        configure_lsp_globals()
+        configure_lsp_globals();
+
+        // Generate cog file for the stubs
+        // that are generated and written to the $STEEL_HOME directory
+        generate_cog_file()
     }
 }
 
@@ -2622,7 +2659,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     );
 
     // Don't generate source directories here
-    configure_builtin_sources(&mut engine, false);
+    configure_builtin_sources(&mut engine, true);
 
     // Hooks
     engine.register_fn("register-hook!", register_hook);
@@ -3540,4 +3577,71 @@ fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
     };
     cx.jobs.local_callback(callback);
     Ok(())
+}
+
+// "add-inlay-hint",
+pub fn add_inlay_hint(cx: &mut Context, char_index: usize, completion: SteelString) -> bool {
+    let view_id = cx.editor.tree.focus;
+    if !cx.editor.tree.contains(view_id) {
+        return false;
+    }
+    let view = cx.editor.tree.get(view_id);
+    let doc_id = cx.editor.tree.get(view_id).doc;
+    let doc = match cx.editor.documents.get_mut(&doc_id) {
+        Some(x) => x,
+        None => return false,
+    };
+    let mut new_inlay_hints = doc
+        .inlay_hints(view_id)
+        .map(|x| x.clone())
+        .unwrap_or_else(|| {
+            let doc_text = doc.text();
+            let len_lines = doc_text.len_lines();
+
+            let view_height = view.inner_height();
+            let first_visible_line =
+                doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
+            let first_line = first_visible_line.saturating_sub(view_height);
+            let last_line = first_visible_line
+                .saturating_add(view_height.saturating_mul(2))
+                .min(len_lines);
+
+            let new_doc_inlay_hints_id = DocumentInlayHintsId {
+                first_line,
+                last_line,
+            };
+
+            DocumentInlayHints::empty_with_id(new_doc_inlay_hints_id)
+        });
+    new_inlay_hints
+        .other_inlay_hints
+        .push(InlineAnnotation::new(char_index, completion.to_string()));
+
+    doc.set_inlay_hints(view_id, new_inlay_hints);
+    true
+}
+
+// "remove-inlay-hint",
+pub fn remove_inlay_hint(cx: &mut Context, char_index: usize, completion: SteelString) -> bool {
+    let text = completion.to_string();
+    let view_id = cx.editor.tree.focus;
+    if !cx.editor.tree.contains(view_id) {
+        return false;
+    }
+    let doc_id = cx.editor.tree.get_mut(view_id).doc;
+    let doc = match cx.editor.documents.get_mut(&doc_id) {
+        Some(x) => x,
+        None => return false,
+    };
+
+    let inlay_hints = match doc.inlay_hints(view_id) {
+        Some(inlay_hints) => inlay_hints,
+        None => return false,
+    };
+    let mut new_inlay_hints = inlay_hints.clone();
+    new_inlay_hints
+        .other_inlay_hints
+        .retain(|x| x.char_idx != char_index && x.text != text);
+    doc.set_inlay_hints(view_id, new_inlay_hints);
+    true
 }
