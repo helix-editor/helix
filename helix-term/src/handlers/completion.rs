@@ -7,6 +7,7 @@ use helix_event::{register_hook, TaskHandle};
 use helix_lsp::lsp;
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::Mode;
+use helix_view::ClientId;
 use helix_view::handlers::completion::{CompletionEvent, ResponseContext};
 use helix_view::Editor;
 use tokio::task::JoinSet;
@@ -15,7 +16,7 @@ use crate::commands;
 use crate::compositor::Compositor;
 use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
 use crate::handlers::completion::request::{request_incomplete_completion_list, Trigger};
-use crate::job::dispatch;
+use crate::job::dispatch_for_client;
 use crate::keymap::MappableCommand;
 use crate::ui::lsp::signature_help::SignatureHelp;
 use crate::ui::{self, Popup};
@@ -45,13 +46,14 @@ async fn handle_response(
 }
 
 async fn replace_completions(
+    client_id: ClientId,
     handle: TaskHandle,
     mut requests: JoinSet<CompletionResponse>,
     is_incomplete: bool,
 ) {
     while let Some(mut response) = handle_response(&mut requests, is_incomplete).await {
         let handle = handle.clone();
-        dispatch(move |editor, compositor| {
+        dispatch_for_client(client_id, move |editor, compositor| {
             let editor_view = compositor.find::<ui::EditorView>().unwrap();
             let Some(completion) = &mut editor_view.completion else {
                 return;
@@ -63,10 +65,10 @@ async fn replace_completions(
 
             completion.replace_provider_completions(&mut response, is_incomplete);
             if completion.is_empty() {
-                editor_view.clear_completion(editor);
+                editor_view.clear_completion(editor, client_id);
                 // clearing completions might mean we want to immediately re-request them (usually
                 // this occurs if typing a trigger char)
-                trigger_auto_completion(editor, false);
+                trigger_auto_completion(editor, client_id, false);
             } else {
                 editor
                     .handlers
@@ -81,18 +83,22 @@ async fn replace_completions(
 
 fn show_completion(
     editor: &mut Editor,
+    client_id: ClientId,
     compositor: &mut Compositor,
     items: Vec<CompletionItem>,
     context: HashMap<CompletionProvider, ResponseContext>,
     trigger: Trigger,
 ) {
-    let (view, doc) = current_ref!(editor);
+    let (_client, view, doc) = current_ref!(editor, client_id);
     // check if the completion request is stale.
     //
     // Completions are completed asynchronously and therefore the user could
     //switch document/view or leave insert mode. In all of thoise cases the
     // completion should be discarded
-    if editor.mode != Mode::Insert || view.id != trigger.view || doc.id() != trigger.doc {
+    if client!(editor, client_id).mode != Mode::Insert
+        || view.id != trigger.view
+        || doc.id() != trigger.doc
+    {
         return;
     }
 
@@ -103,22 +109,26 @@ fn show_completion(
     }
     editor.handlers.completions.active_completions = context;
 
-    let completion_area = ui.set_completion(editor, items, trigger.pos, size);
+    let completion_area = ui.set_completion(editor, client_id, items, trigger.pos, size);
     let signature_help_area = compositor
         .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
-        .map(|signature_help| signature_help.area(size, editor));
+        .map(|signature_help| signature_help.area(size, editor, client_id));
     // Delete the signature help popup if they intersect.
     if matches!((completion_area, signature_help_area),(Some(a), Some(b)) if a.intersects(b)) {
         compositor.remove(SignatureHelp::ID);
     }
 }
 
-pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
+pub fn trigger_auto_completion(editor: &Editor, client_id: ClientId, trigger_char_only: bool) {
     let config = editor.config.load();
     if !config.auto_completion {
         return;
     }
-    let (view, doc): (&helix_view::View, &helix_view::Document) = current_ref!(editor);
+    let (_client, view, doc): (
+        &helix_view::EditorClient,
+        &helix_view::View,
+        &helix_view::Document,
+    ) = current_ref!(editor, client_id);
     let mut text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(text);
     text = doc.text().slice(..cursor);
@@ -145,6 +155,7 @@ pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
     if is_trigger_char || (is_path_completion_trigger && doc.path_completion_enabled()) {
         handler.event(CompletionEvent::TriggerChar {
             cursor,
+            client: client_id,
             doc: doc.id(),
             view: view.id,
         });
@@ -162,6 +173,7 @@ pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
     if is_auto_trigger {
         handler.event(CompletionEvent::AutoTrigger {
             cursor,
+            client: client_id,
             doc: doc.id(),
             view: view.id,
         });
@@ -174,15 +186,15 @@ fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
         if let Some(completion) = &mut editor_view.completion {
             completion.update_filter(c);
             if completion.is_empty() || c.is_some_and(|c| !char_is_word(c)) {
-                editor_view.clear_completion(cx.editor);
+                editor_view.clear_completion(cx.editor, cx.client_id);
                 // clearing completions might mean we want to immediately rerequest them (usually
                 // this occurs if typing a trigger char)
                 if c.is_some() {
-                    trigger_auto_completion(cx.editor, false);
+                    trigger_auto_completion(cx.editor, cx.client_id, false);
                 }
             } else {
                 let handle = cx.editor.handlers.completions.request_controller.restart();
-                request_incomplete_completion_list(cx.editor, handle)
+                request_incomplete_completion_list(cx.editor, cx.client_id, handle)
             }
         }
     }))
@@ -191,14 +203,14 @@ fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
 fn clear_completions(cx: &mut commands::Context) {
     cx.callback.push(Box::new(|compositor, cx| {
         let editor_view = compositor.find::<ui::EditorView>().unwrap();
-        editor_view.clear_completion(cx.editor);
+        editor_view.clear_completion(cx.editor, cx.client_id);
     }))
 }
 
 fn completion_post_command_hook(
     PostCommand { command, cx }: &mut PostCommand<'_, '_>,
 ) -> anyhow::Result<()> {
-    if cx.editor.mode == Mode::Insert {
+    if client!(cx.editor, cx.client_id).mode == Mode::Insert {
         if cx.editor.last_completion.is_some() {
             match command {
                 MappableCommand::Static {
@@ -217,7 +229,7 @@ fn completion_post_command_hook(
                     name: "delete_char_backward" | "delete_word_forward" | "delete_char_forward",
                     ..
                 } => {
-                    let (view, doc) = current!(cx.editor);
+                    let (_client, view, doc) = current!(cx.editor, cx.client_id);
                     let primary_cursor = doc
                         .selection(view.id)
                         .primary()
@@ -253,7 +265,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
                 .event(CompletionEvent::Cancel);
             clear_completions(event.cx);
         } else if event.new_mode == Mode::Insert {
-            trigger_auto_completion(event.cx.editor, false)
+            trigger_auto_completion(event.cx.editor, event.cx.client_id, false)
         }
         Ok(())
     });
@@ -262,7 +274,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         if event.cx.editor.last_completion.is_some() {
             update_completion_filter(event.cx, Some(event.c))
         } else {
-            trigger_auto_completion(event.cx.editor, false);
+            trigger_auto_completion(event.cx.editor, event.cx.client_id, false);
         }
         Ok(())
     });

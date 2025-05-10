@@ -5,7 +5,7 @@ use crate::editor::Action;
 use crate::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
 };
-use crate::{DocumentId, Editor};
+use crate::{ClientId, DocumentId, Editor};
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
 use helix_event::register_hook;
@@ -72,6 +72,7 @@ impl Display for ApplyEditErrorKind {
 impl Editor {
     fn apply_text_edits(
         &mut self,
+        client_id: ClientId,
         url: &helix_lsp::Url,
         version: Option<i32>,
         text_edits: Vec<lsp::TextEdit>,
@@ -86,7 +87,7 @@ impl Editor {
         };
         let path = uri.as_path().expect("URIs are valid paths");
 
-        let doc_id = match self.open(path, Action::Load) {
+        let doc_id = match self.open(client_id, path, Action::Load) {
             Ok(doc_id) => doc_id,
             Err(err) => {
                 let err = format!(
@@ -100,7 +101,7 @@ impl Editor {
             }
         };
 
-        let doc = doc_mut!(self, &doc_id);
+        let doc = doc_with_id_mut!(self, &doc_id);
         if let Some(version) = version {
             if version != doc.version() {
                 let err = format!("outdated workspace edit for {path:?}");
@@ -111,8 +112,8 @@ impl Editor {
         }
 
         // Need to determine a view for apply/append_changes_to_history
-        let view_id = self.get_synced_view_id(doc_id);
-        let doc = doc_mut!(self, &doc_id);
+        let view_id = self.get_synced_view_id(client_id, doc_id);
+        let doc = doc_with_id_mut!(self, &doc_id);
 
         let transaction = generate_transaction_from_edits(doc.text(), text_edits, offset_encoding);
         let view = view_mut!(self, view_id);
@@ -124,6 +125,7 @@ impl Editor {
     // TODO make this transactional (and set failureMode to transactional)
     pub fn apply_workspace_edit(
         &mut self,
+        client_id: ClientId,
         offset_encoding: OffsetEncoding,
         workspace_edit: &lsp::WorkspaceEdit,
     ) -> Result<(), ApplyEditError> {
@@ -143,6 +145,7 @@ impl Editor {
                             .cloned()
                             .collect();
                         self.apply_text_edits(
+                            client_id,
                             &document_edit.text_document.uri,
                             document_edit.text_document.version,
                             edits,
@@ -159,12 +162,11 @@ impl Editor {
                     for (i, operation) in operations.iter().enumerate() {
                         match operation {
                             lsp::DocumentChangeOperation::Op(op) => {
-                                self.apply_document_resource_op(op).map_err(|err| {
-                                    ApplyEditError {
+                                self.apply_document_resource_op(client_id, op)
+                                    .map_err(|err| ApplyEditError {
                                         kind: err,
                                         failed_change_idx: i,
-                                    }
-                                })?;
+                                    })?;
                             }
 
                             lsp::DocumentChangeOperation::Edit(document_edit) => {
@@ -180,6 +182,7 @@ impl Editor {
                                     .cloned()
                                     .collect();
                                 self.apply_text_edits(
+                                    client_id,
                                     &document_edit.text_document.uri,
                                     document_edit.text_document.version,
                                     edits,
@@ -204,7 +207,7 @@ impl Editor {
             log::debug!("workspace changes: {:?}", changes);
             for (i, (uri, text_edits)) in changes.iter().enumerate() {
                 let text_edits = text_edits.to_vec();
-                self.apply_text_edits(uri, None, text_edits, offset_encoding)
+                self.apply_text_edits(client_id, uri, None, text_edits, offset_encoding)
                     .map_err(|kind| ApplyEditError {
                         kind,
                         failed_change_idx: i,
@@ -217,6 +220,7 @@ impl Editor {
 
     fn apply_document_resource_op(
         &mut self,
+        client_id: ClientId,
         op: &lsp::ResourceOp,
     ) -> Result<(), ApplyEditErrorKind> {
         use lsp::ResourceOp;
@@ -275,7 +279,7 @@ impl Editor {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
                 if !ignore_if_exists || !to.exists() {
-                    self.move_path(from, to)?;
+                    self.move_path(client_id, from, to)?;
                 }
             }
         }

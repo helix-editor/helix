@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use helix_core::completion::CompletionProvider;
 use helix_event::{send_blocking, TaskController};
 
-use crate::{document::SavePoint, DocumentId, ViewId};
+use crate::{document::SavePoint, ClientId, DocumentId, ViewId};
 
 use tokio::sync::mpsc::Sender;
 
@@ -41,6 +41,7 @@ pub enum CompletionEvent {
     /// Auto completion was triggered by typing a word char
     AutoTrigger {
         cursor: usize,
+        client: ClientId,
         doc: DocumentId,
         view: ViewId,
     },
@@ -48,12 +49,14 @@ pub enum CompletionEvent {
     /// specified by the LSP
     TriggerChar {
         cursor: usize,
+        client: ClientId,
         doc: DocumentId,
         view: ViewId,
     },
     /// A completion was manually requested (c-x)
     ManualTrigger {
         cursor: usize,
+        client: ClientId,
         doc: DocumentId,
         view: ViewId,
     },

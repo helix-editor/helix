@@ -1,5 +1,5 @@
 use crate::editor::{Action, Breakpoint};
-use crate::{align_view, Align, Editor};
+use crate::{align_view, Align, ClientId, Editor};
 use dap::requests::DisconnectArguments;
 use helix_core::Selection;
 use helix_dap::{self as dap, Client, ConnectionType, Payload, Request, ThreadId};
@@ -28,7 +28,12 @@ pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Opt
     Some(pos)
 }
 
-pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: bool) {
+pub async fn select_thread_id(
+    editor: &mut Editor,
+    client_id: ClientId,
+    thread_id: ThreadId,
+    force: bool,
+) {
     let debugger = debugger!(editor);
 
     if !force && debugger.thread_id.is_some() {
@@ -40,7 +45,7 @@ pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: b
 
     let frame = debugger.stack_frames[&thread_id].first().cloned();
     if let Some(frame) = &frame {
-        jump_to_stack_frame(editor, frame);
+        jump_to_stack_frame(editor, client_id, frame);
     }
 }
 
@@ -53,7 +58,11 @@ pub async fn fetch_stack_trace(debugger: &mut Client, thread_id: ThreadId) {
     debugger.active_frame = Some(0);
 }
 
-pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
+pub fn jump_to_stack_frame(
+    editor: &mut Editor,
+    client_id: ClientId,
+    frame: &helix_dap::StackFrame,
+) {
     let path = if let Some(helix_dap::Source {
         path: Some(ref path),
         ..
@@ -64,12 +73,12 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
         return;
     };
 
-    if let Err(e) = editor.open(&path, Action::Replace) {
+    if let Err(e) = editor.open(client_id, &path, Action::Replace) {
         editor.set_error(format!("Unable to jump to stack frame: {}", e));
         return;
     }
 
-    let (view, doc) = current!(editor);
+    let (_client, view, doc) = current!(editor, client_id);
 
     let text_end = doc.text().len_chars().saturating_sub(1);
     let start = dap_pos_to_pos(doc.text(), frame.line, frame.column).unwrap_or(0);
@@ -141,7 +150,11 @@ pub fn breakpoints_changed(
 }
 
 impl Editor {
-    pub async fn handle_debugger_message(&mut self, payload: helix_dap::Payload) -> bool {
+    pub async fn handle_debugger_message(
+        &mut self,
+        client_id: ClientId,
+        payload: helix_dap::Payload,
+    ) -> bool {
         use helix_dap::{events, Event};
 
         let debugger = match self.debugger.as_mut() {
@@ -179,13 +192,19 @@ impl Editor {
                                 for thread in response.threads {
                                     fetch_stack_trace(debugger, thread.id).await;
                                 }
-                                select_thread_id(self, thread_id.unwrap_or_default(), false).await;
+                                select_thread_id(
+                                    self,
+                                    client_id,
+                                    thread_id.unwrap_or_default(),
+                                    false,
+                                )
+                                .await;
                             }
                         } else if let Some(thread_id) = thread_id {
                             debugger.thread_states.insert(thread_id, reason.clone()); // TODO: dap uses "type" || "reason" here
 
                             // whichever thread stops is made "current" (if no previously selected thread).
-                            select_thread_id(self, thread_id, false).await;
+                            select_thread_id(self, client_id, thread_id, false).await;
                         }
 
                         let scope = match thread_id {

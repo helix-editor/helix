@@ -223,14 +223,14 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
             (
                 None,
                 Some(&|app| {
-                    let doc = doc!(app.editor);
+                    let doc = doc!(app.editor, app.client_id);
                     assert!(!doc.is_modified());
                 }),
             ),
             (
                 Some("ihello<esc>"),
                 Some(&|app| {
-                    let doc = doc!(app.editor);
+                    let doc = doc!(app.editor, app.client_id);
                     assert!(doc.is_modified());
                 }),
             ),
@@ -239,7 +239,7 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
                 Some(&|app| {
                     assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
 
-                    let doc = doc!(app.editor);
+                    let doc = doc!(app.editor, app.client_id);
                     assert!(doc.is_modified());
                 }),
             ),
@@ -335,7 +335,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
             (
                 Some("ii can eat glass, it will not hurt me<ret><esc>:w<ret>"),
                 Some(&|app| {
-                    let doc = doc!(app.editor);
+                    let doc = doc!(app.editor, app.client_id);
                     assert!(!app.editor.is_err());
                     assert_eq!(&path::normalize(file1.path()), doc.path().unwrap());
                 }),
@@ -343,7 +343,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
             (
                 Some(&format!(":w {}<ret>", file2.path().to_string_lossy())),
                 Some(&|app| {
-                    let doc = doc!(app.editor);
+                    let doc = doc!(app.editor, app.client_id);
                     assert!(!app.editor.is_err());
                     assert_eq!(&path::normalize(file2.path()), doc.path().unwrap());
                     assert!(app.editor.document_by_path(file1.path()).is_none());
@@ -377,7 +377,7 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
             (
                 None,
                 Some(&|app| {
-                    let doc = doc!(app.editor);
+                    let doc = doc!(app.editor, app.client_id);
                     assert_ne!(
                         Some(&Severity::Error),
                         app.editor.get_status().map(|status| status.1)
@@ -388,7 +388,7 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
             (
                 Some(&format!(":w {}<ret>", file.path().to_string_lossy())),
                 Some(&|app| {
-                    let doc = doc!(app.editor);
+                    let doc = doc!(app.editor, app.client_id);
                     assert_eq!(
                         Some(&Severity::Error),
                         app.editor.get_status().map(|status| status.1)

@@ -11,11 +11,13 @@ use helix_view::{
 use crate::ui::ProgressSpinners;
 
 use helix_view::editor::StatusLineElement as StatusLineElementID;
+use helix_view::ClientId;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
 
 pub struct RenderContext<'a> {
     pub editor: &'a Editor,
+    pub client_id: ClientId,
     pub doc: &'a Document,
     pub view: &'a View,
     pub focused: bool,
@@ -26,6 +28,7 @@ pub struct RenderContext<'a> {
 impl<'a> RenderContext<'a> {
     pub fn new(
         editor: &'a Editor,
+        client_id: ClientId,
         doc: &'a Document,
         view: &'a View,
         focused: bool,
@@ -33,6 +36,7 @@ impl<'a> RenderContext<'a> {
     ) -> Self {
         RenderContext {
             editor,
+            client_id,
             doc,
             view,
             focused,
@@ -178,7 +182,7 @@ where
         format!(
             " {} ",
             if visible {
-                match context.editor.mode() {
+                match client!(context.editor, context.client_id).mode {
                     Mode::Insert => &modenames.insert,
                     Mode::Select => &modenames.select,
                     Mode::Normal => &modenames.normal,
@@ -189,7 +193,7 @@ where
             }
         ),
         if visible && config.color_modes {
-            match context.editor.mode() {
+            match client!(context.editor, context.client_id).mode {
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
                 Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
@@ -569,7 +573,7 @@ fn render_register<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    if let Some(reg) = context.editor.selected_register {
+    if let Some(reg) = client!(context.editor, context.client_id).selected_register {
         write(context, format!(" reg={} ", reg), None)
     }
 }

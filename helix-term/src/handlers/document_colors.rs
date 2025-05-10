@@ -33,7 +33,7 @@ impl helix_event::AsyncHook for DocumentColorsHandler {
     fn finish_debounce(&mut self) {
         let docs = std::mem::take(&mut self.docs);
 
-        job::dispatch_blocking(move |editor, _compositor| {
+        job::dispatch_blocking(move |editor| {
             for doc in docs {
                 request_document_colors(editor, doc);
             }
@@ -92,7 +92,7 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
                 None => return,
             }
         }
-        job::dispatch(move |editor, _| attach_document_colors(editor, doc_id, all_colors)).await;
+        job::dispatch(move |editor| attach_document_colors(editor, doc_id, all_colors)).await;
     });
 }
 

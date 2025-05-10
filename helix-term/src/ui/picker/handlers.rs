@@ -7,18 +7,20 @@ use std::{
 use helix_event::AsyncHook;
 use tokio::time::Instant;
 
-use crate::{job, ui::overlay::Overlay};
+use crate::{job, ui::overlay::Overlay, ui::ClientId};
 
 use super::{CachedPreview, DynQueryCallback, Picker};
 
 pub(super) struct PreviewHighlightHandler<T: 'static + Send + Sync, D: 'static + Send + Sync> {
+    client_id: ClientId,
     trigger: Option<Arc<Path>>,
     phantom_data: std::marker::PhantomData<(T, D)>,
 }
 
-impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Default for PreviewHighlightHandler<T, D> {
-    fn default() -> Self {
+impl<T: 'static + Send + Sync, D: 'static + Send + Sync> PreviewHighlightHandler<T, D> {
+    pub fn new(client_id: ClientId) -> Self {
         Self {
+            client_id,
             trigger: None,
             phantom_data: Default::default(),
         }
@@ -53,7 +55,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
             return;
         };
 
-        job::dispatch_blocking(move |editor, compositor| {
+        let client_id = self.client_id;
+        job::dispatch_blocking_for_client(client_id, move |editor, compositor| {
             let Some(Overlay {
                 content: picker, ..
             }) = compositor.find::<Overlay<Picker<T, D>>>()
@@ -89,7 +92,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                     return;
                 };
 
-                job::dispatch_blocking(move |editor, compositor| {
+                job::dispatch_blocking_for_client(client_id, move |editor, compositor| {
                     let Some(Overlay {
                         content: picker, ..
                     }) = compositor.find::<Overlay<Picker<T, D>>>()
@@ -122,6 +125,7 @@ pub(super) struct DynamicQueryChange {
 
 pub(super) struct DynamicQueryHandler<T: 'static + Send + Sync, D: 'static + Send + Sync> {
     callback: Arc<DynQueryCallback<T, D>>,
+    client_id: ClientId,
     // Duration used as a debounce.
     // Defaults to 100ms if not provided via `Picker::with_dynamic_query`. Callers may want to set
     // this higher if the dynamic query is expensive - for example global search.
@@ -131,9 +135,14 @@ pub(super) struct DynamicQueryHandler<T: 'static + Send + Sync, D: 'static + Sen
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> DynamicQueryHandler<T, D> {
-    pub(super) fn new(callback: DynQueryCallback<T, D>, duration_ms: Option<u64>) -> Self {
+    pub(super) fn new(
+        callback: DynQueryCallback<T, D>,
+        client_id: ClientId,
+        duration_ms: Option<u64>,
+    ) -> Self {
         Self {
             callback: Arc::new(callback),
+            client_id,
             debounce: Duration::from_millis(duration_ms.unwrap_or(100)),
             last_query: "".into(),
             query: None,
@@ -168,8 +177,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook for DynamicQu
         };
         self.last_query = query.clone();
         let callback = self.callback.clone();
+        let client_id = self.client_id;
 
-        job::dispatch_blocking(move |editor, compositor| {
+        job::dispatch_blocking_for_client(client_id, move |editor, compositor| {
             let Some(Overlay {
                 content: picker, ..
             }) = compositor.find::<Overlay<Picker<T, D>>>()
@@ -180,7 +190,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook for DynamicQu
             picker.version.fetch_add(1, atomic::Ordering::Relaxed);
             picker.matcher.restart(false);
             let injector = picker.injector();
-            let get_options = (callback)(&query, editor, picker.editor_data.clone(), &injector);
+            let get_options = (callback)(
+                &query,
+                editor,
+                client_id,
+                picker.editor_data.clone(),
+                &injector,
+            );
             tokio::spawn(async move {
                 if let Err(err) = get_options.await {
                     log::info!("Dynamic request failed: {err}");
