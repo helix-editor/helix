@@ -27,7 +27,7 @@ pub trait Decoration {
     /// spread a single document line across multiple visual lines.
     ///
     /// This function is called before text is rendered as any decorations should
-    /// never overlap the document text. That means that setting the forground color
+    /// never overlap the document text. That means that setting the foreground color
     /// here is (essentially) useless as the text color is overwritten by the
     /// rendered text. This _of course_ doesn't apply when rendering inside virtual lines
     /// below the line reserved by `LineAnnotation`s as no text will be rendered here.
@@ -41,12 +41,12 @@ pub trait Decoration {
     /// horizontal positions on the line (see [`Decoration::decorate_grapheme`]) first and
     /// use those positions` while rendering
     /// virtual text.
-    /// That means that setting the forground color
+    /// That means that setting the foreground color
     /// here is (essentially) useless as the text color is overwritten by the
     /// rendered text. This -ofcourse- doesn't apply when rendering inside virtual lines
     /// below the line reserved by `LineAnnotation`s. e as no text will be rendered here.
     /// **Note**: To avoid overlapping decorations in the virtual lines, each decoration
-    /// must return the number of virtual text lines it has taken up. Each `Decoration` recieves
+    /// must return the number of virtual text lines it has taken up. Each `Decoration` receives
     /// an offset `virt_off` based on these return values where it can render virtual text:
     ///
     /// That means that a `render_line` implementation that returns `X` can render virtual text

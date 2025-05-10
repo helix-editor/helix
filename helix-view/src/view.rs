@@ -149,7 +149,7 @@ pub struct View {
     doc_revisions: HashMap<DocumentId, usize>,
     // HACKS: there should really only be a global diagnostics handler (the
     // non-focused views should just not have different handling for the cursor
-    // line). For that we would need accces to editor everywhere (we want to use
+    // line). For that we would need access to editor everywhere (we want to use
     // the positioning code) so this can only happen by refactoring View and
     // Document into entity component like structure. That is a huge refactor
     // left to future work. For now we treat all views as focused and give them

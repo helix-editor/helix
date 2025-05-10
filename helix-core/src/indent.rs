@@ -170,7 +170,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
         .max()
         .unwrap();
 
-    // Return the the auto-detected result if we're confident enough in its
+    // Return the auto-detected result if we're confident enough in its
     // accuracy, based on some heuristics.
     if indent_freq >= 1 && (indent_freq_2 as f64 / indent_freq as f64) < 0.66 {
         Some(match indent {
@@ -741,7 +741,7 @@ fn init_indent_query<'a, 'b>(
     new_line_byte_pos: Option<usize>,
 ) -> Option<(Node<'a>, HashMap<usize, Vec<IndentCapture<'b>>>)> {
     // The innermost tree-sitter node which is considered for the indent
-    // computation. It may change if some predeceding node is extended
+    // computation. It may change if some preceding node is extended
     let mut node = syntax
         .tree()
         .root_node()

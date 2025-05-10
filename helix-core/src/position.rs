@@ -261,7 +261,7 @@ pub fn visual_offset_from_anchor(
 /// character--on the border between the current line and the next.
 ///
 /// Usually you only want `limit_before_line_ending` to be `true` if you're working
-/// with left-side block-cursor positions, as this prevents the the block cursor
+/// with left-side block-cursor positions, as this prevents the block cursor
 /// from jumping to the next line.  Otherwise you typically want it to be `false`,
 /// such as when dealing with raw anchor/head positions.
 pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending: bool) -> usize {

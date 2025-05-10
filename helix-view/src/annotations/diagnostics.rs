@@ -209,7 +209,7 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
         false
     }
 
-    pub fn proccess_anchor(
+    pub fn process_anchor(
         &mut self,
         grapheme: &FormattedGrapheme,
         width: u16,
@@ -288,7 +288,7 @@ impl LineAnnotation for InlineDiagnostics<'_> {
 
     fn process_anchor(&mut self, grapheme: &FormattedGrapheme) -> usize {
         self.state
-            .proccess_anchor(grapheme, self.width, self.horizontal_off)
+            .process_anchor(grapheme, self.width, self.horizontal_off)
     }
 
     fn insert_virtual_lines(

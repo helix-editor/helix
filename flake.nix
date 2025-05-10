@@ -36,7 +36,7 @@
       The default Helix build. Uses the latest stable Rust toolchain, and unstable
       nixpkgs.
 
-      The build inputs can be overriden with the following:
+      The build inputs can be overridden with the following:
 
       packages.${system}.default.override { rustPlatform = newPlatform; };
 
