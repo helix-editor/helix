@@ -1,12 +1,14 @@
-use crate::keymap;
+use crate::keymap::{self};
 use crate::keymap::{merge_keys, KeyTrie};
 use helix_loader::merge_toml_values;
+use helix_view::commands::custom::CustomTypableCommand;
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::Error as IOError;
+use std::sync::Arc;
 use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,6 +24,7 @@ pub struct ConfigRaw {
     pub theme: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
+    commands: Option<Commands>,
 }
 
 impl Default for Config {
@@ -31,6 +34,24 @@ impl Default for Config {
             keys: keymap::default(),
             editor: helix_view::editor::Config::default(),
         }
+    }
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
+struct Commands {
+    #[serde(flatten)]
+    commands: HashMap<String, CustomTypableCommand>,
+}
+
+impl Commands {
+    /// Adds the `key` of the command as the `name` and checks for the `hidden` status
+    /// and adds it to the `CustomTypableCommand`.
+    fn process(mut self) -> Self {
+        for (key, value) in &mut self.commands {
+            value.name = key.trim_start_matches(':').to_string();
+            value.hidden = !key.starts_with(':');
+        }
+        self
     }
 }
 
@@ -65,7 +86,7 @@ impl Config {
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let res = match (global_config, local_config) {
-            (Ok(global), Ok(local)) => {
+            (Ok(mut global), Ok(local)) => {
                 let mut keys = keymap::default();
                 if let Some(global_keys) = global.keys {
                     merge_keys(&mut keys, global_keys)
@@ -74,7 +95,7 @@ impl Config {
                     merge_keys(&mut keys, local_keys)
                 }
 
-                let editor = match (global.editor, local.editor) {
+                let mut editor = match (global.editor, local.editor) {
                     (None, None) => helix_view::editor::Config::default(),
                     (None, Some(val)) | (Some(val), None) => {
                         val.try_into().map_err(ConfigLoadError::BadConfig)?
@@ -83,6 +104,28 @@ impl Config {
                         .try_into()
                         .map_err(ConfigLoadError::BadConfig)?,
                 };
+
+                // Merge locally defined commands, overwriting global space commands if encountered
+                if let Some(lcommands) = local.commands {
+                    if let Some(gcommands) = &mut global.commands {
+                        for (name, details) in lcommands.commands {
+                            gcommands.commands.insert(name, details);
+                        }
+                    } else {
+                        global.commands = Some(lcommands);
+                    }
+                }
+
+                // If any commands were defined anywhere, add to editor
+                if let Some(commands) = global.commands.map(Commands::process) {
+                    let mut holder = Vec::with_capacity(commands.commands.len());
+
+                    for (_, command) in commands.commands {
+                        holder.push(command);
+                    }
+
+                    editor.commands.commands = Arc::from(holder);
+                }
 
                 Config {
                     theme: local.theme.or(global.theme),
@@ -100,13 +143,27 @@ impl Config {
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
+
+                let mut editor = config.editor.map_or_else(
+                    || Ok(helix_view::editor::Config::default()),
+                    |val| val.try_into().map_err(ConfigLoadError::BadConfig),
+                )?;
+
+                // Add custom commands
+                if let Some(commands) = config.commands.map(Commands::process) {
+                    let mut holder = Vec::with_capacity(commands.commands.len());
+
+                    for (_, command) in commands.commands {
+                        holder.push(command);
+                    }
+
+                    editor.commands.commands = Arc::from(holder);
+                }
+
                 Config {
                     theme: config.theme,
                     keys,
-                    editor: config.editor.map_or_else(
-                        || Ok(helix_view::editor::Config::default()),
-                        |val| val.try_into().map_err(ConfigLoadError::BadConfig),
-                    )?,
+                    editor,
                 }
             }
 
@@ -128,11 +185,12 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     impl Config {
-        fn load_test(config: &str) -> Config {
-            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default())).unwrap()
+        fn load_test(config: &str) -> Result<Config, ConfigLoadError> {
+            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default()))
         }
     }
 
@@ -166,7 +224,7 @@ mod tests {
         );
 
         assert_eq!(
-            Config::load_test(sample_keymaps),
+            Config::load_test(sample_keymaps).unwrap(),
             Config {
                 keys,
                 ..Default::default()
@@ -177,11 +235,46 @@ mod tests {
     #[test]
     fn keys_resolve_to_correct_defaults() {
         // From serde default
-        let default_keys = Config::load_test("").keys;
+        let default_keys = Config::load_test("").unwrap().keys;
         assert_eq!(default_keys, keymap::default());
 
         // From the Default trait
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, keymap::default());
+    }
+
+    #[test]
+    fn should_deserialize_custom_commands() {
+        let config = r#"
+[commands]
+":wq" = [":write", ":quit"]
+":w" = ":write!"
+":wcd!" = { commands = [':write! %arg{0}', ':cd %sh{ %arg{0} | path dirname }'], desc = "writes buffer to disk forcefully, then changes to its directory", accepts = "<path>", completer = ":write" }
+":0" = { commands = [":goto 1"] }
+":static" = "no_op"
+":d" = "@100xd"
+":foo" = { commands = ["no_op", ":noop"] }
+
+[commands.":touch"]
+commands = [":noop %sh{ touch %arg{0} }"] 
+desc = "creates file at path" 
+accepts = "<path>" 
+completer = ":write"
+"#;
+
+        if let Err(err) = Config::load_test(config) {
+            panic!("{err:#?}")
+        };
+    }
+
+    #[test]
+    #[should_panic]
+    fn should_fail_to_deserialize_custom_command_with_macros_in_sequence() {
+        let config = r#"
+[commands]
+":fail" =  { commands = ["@100xd","@100xd"] }
+"#;
+
+        Config::load_test(config).unwrap();
     }
 }

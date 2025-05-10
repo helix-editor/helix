@@ -824,7 +824,7 @@ impl Document {
 
             let args = match fmt_args
                 .iter()
-                .map(|content| expansion::expand(editor, Token::expand(content)))
+                .map(|content| expansion::expand(editor, Token::expand(content), &[]))
                 .collect::<Result<Vec<_>, _>>()
             {
                 Ok(args) => args,

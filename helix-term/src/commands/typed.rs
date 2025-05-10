@@ -11,8 +11,9 @@ use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
 use helix_stdx::path::home_dir;
+use helix_view::commands::custom::CustomTypableCommand;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
-use helix_view::editor::{CloseError, ConfigEvent};
+use helix_view::editor::{CloseError, Config, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
 use ui::completers::{self, Completer};
@@ -31,10 +32,91 @@ pub struct TypableCommand {
 
 impl TypableCommand {
     fn completer_for_argument_number(&self, n: usize) -> &Completer {
-        match self.completer.positional_args.get(n) {
-            Some(completer) => completer,
-            _ => &self.completer.var_args,
+        self.completer
+            .positional_args
+            .get(n)
+            .unwrap_or(&self.completer.var_args)
+    }
+
+    /// Encapsulates creating rules for a custom command
+    ///
+    /// Mainly, this sets up how the arguments passed in should be parsed, which
+    /// are then used to potentially substitute `%arg{}` placeholders.
+    ///
+    /// This also sets up any completer that may be associated with the custom command.
+    fn custom_with_completer_from(command: &str) -> Self {
+        Self {
+            name: "custom",
+            aliases: &[],
+            doc: "",
+            fun: noop,
+            completer: typed::TYPABLE_COMMAND_MAP
+                .get(command)
+                .map_or_else(CommandCompleter::none, |command| command.completer.clone()),
+            signature: Signature::DEFAULT,
         }
+    }
+
+    /// Builds the typable commands' prompt documentation.
+    fn prompt(&self) -> Cow<'_, str> {
+        if self.aliases.is_empty() && self.signature.flags.is_empty() {
+            return Cow::Borrowed(self.doc);
+        }
+
+        let mut doc = self.doc.to_string();
+
+        if !self.aliases.is_empty() {
+            write!(doc, "\nAliases: {}", self.aliases.join(", ")).unwrap();
+        }
+
+        if !self.signature.flags.is_empty() {
+            const ARG_PLACEHOLDER: &str = " <arg>";
+
+            fn flag_len(flag: &Flag) -> usize {
+                let name_len = flag.name.len();
+                let alias_len = flag.alias.map_or(0, |alias| "/-".len() + alias.len_utf8());
+                let arg_len = if flag.completions.is_some() {
+                    ARG_PLACEHOLDER.len()
+                } else {
+                    0
+                };
+                name_len + alias_len + arg_len
+            }
+
+            doc.push_str("\nFlags:");
+
+            let max_flag_len = self.signature.flags.iter().map(flag_len).max().unwrap();
+
+            for flag in self.signature.flags {
+                let mut buf = [0u8; 4];
+                let this_flag_len = flag_len(flag);
+                write!(
+                    doc,
+                    "\n  --{flag_text}{spacer:spacing$}  {doc}",
+                    doc = flag.doc,
+                    // `fmt::Arguments` does not respect width controls so we must place the spacers
+                    // explicitly:
+                    spacer = "",
+                    spacing = max_flag_len - this_flag_len,
+                    flag_text = format_args!(
+                        "{}{}{}{}",
+                        flag.name,
+                        // Ideally this would be written as a `format_args!` too but the borrow
+                        // checker is not yet smart enough.
+                        if flag.alias.is_some() { "/-" } else { "" },
+                        flag.alias.map_or("", |alias| alias.encode_utf8(&mut buf)),
+                        if flag.completions.is_some() {
+                            ARG_PLACEHOLDER
+                        } else {
+                            ""
+                        }
+                    ),
+                )
+                .unwrap();
+            }
+        }
+
+        Cow::Owned(doc)
     }
 }
 
@@ -1970,7 +2052,12 @@ fn set_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     } else {
         arg.parse().map_err(field_error)?
     };
-    let config = serde_json::from_value(config).map_err(field_error)?;
+    let mut config: Box<Config> = serde_json::from_value(config).map_err(field_error)?;
+
+    // Copy custom commands over to new config.
+    //
+    // PERF: `CustomTypableCommands` is a wrapper around an `Arc`, and cheap to clone.
+    config.commands = cx.editor.config().commands.clone();
 
     cx.editor
         .config_events
@@ -2064,8 +2151,13 @@ fn toggle_option(
     };
 
     let status = format!("'{key}' is now set to {value}");
-    let config = serde_json::from_value(config)
+    let mut config: Box<Config> = serde_json::from_value(config)
         .map_err(|err| anyhow::anyhow!("Failed to parse config: {err}"))?;
+
+    // Copy custom commands over to new config.
+    //
+    // PERF: `CustomTypableCommands` is a wrapper around an `Arc`, and cheap to clone.
+    config.commands = cx.editor.config().commands.clone();
 
     cx.editor
         .config_events
@@ -3583,19 +3675,55 @@ fn execute_command_line(
     input: &str,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let (command, rest, _) = command_line::split(input);
+    let (command, args, _) = command_line::split(input);
     if command.is_empty() {
         return Ok(());
     }
 
+    let is_escaped = command.starts_with(CustomTypableCommand::ESCAPE);
+    let command = command.trim_start_matches(CustomTypableCommand::ESCAPE);
+
+    // Try custom command before anything else. Doing so means that numbers, for example `:0`, can now be
+    // mapped to a different command than `goto` if wanted.
+
+    // Escapes custom commands that might be shadowing a built in command.
+    //
+    // Example:
+    // This allows to have an `:w` custom command that could have formatting disabled but
+    // also allow the built-in `:w` to be callable.
+    if !is_escaped {
+        if let Some(custom) = cx.editor.config().commands.get(command) {
+            let posargs = Args::parse(
+                args,
+                TypableCommand::custom_with_completer_from(command).signature,
+                false,
+                |token| Ok(token.content),
+            )
+            .expect("arg parsing cannot fail when validation is turned off");
+
+            for command in &custom.commands {
+                let (command, args, _) = command_line::split(command);
+
+                if let Some(typed) = typed::TYPABLE_COMMAND_MAP.get(command) {
+                    execute_command(cx, typed, args, &posargs, event)?;
+                } else if let Some(r#macro) = command.strip_prefix('@') {
+                    execute_macro(cx, r#macro, event)?;
+                } else {
+                    execute_static_command(cx, command, event)?;
+                }
+            }
+            return Ok(());
+        }
+    }
+
     // If command is numeric, interpret as line number and go there.
-    if command.parse::<usize>().is_ok() && rest.trim().is_empty() {
+    if command.parse::<usize>().is_ok() && args.trim().is_empty() {
         let cmd = TYPABLE_COMMAND_MAP.get("goto").unwrap();
-        return execute_command(cx, cmd, command, event);
+        return execute_command(cx, cmd, command, &Args::empty(), event);
     }
 
     match typed::TYPABLE_COMMAND_MAP.get(command) {
-        Some(cmd) => execute_command(cx, cmd, rest, event),
+        Some(cmd) => execute_command(cx, cmd, args, &Args::empty(), event),
         None if event == PromptEvent::Validate => Err(anyhow!("no such command: '{command}'")),
         None => Ok(()),
     }
@@ -3605,19 +3733,87 @@ pub(super) fn execute_command(
     cx: &mut compositor::Context,
     cmd: &TypableCommand,
     args: &str,
+    posargs: &Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     let args = if event == PromptEvent::Validate {
         Args::parse(args, cmd.signature, true, |token| {
-            expansion::expand(cx.editor, token).map_err(|err| err.into())
+            expansion::expand(cx.editor, token, posargs.as_slice()).map_err(|err| err.into())
         })
         .map_err(|err| anyhow!("'{}': {err}", cmd.name))?
     } else {
-        Args::parse(args, cmd.signature, false, |token| Ok(token.content))
-            .expect("arg parsing cannot fail when validation is turned off")
+        Args::parse(args, cmd.signature, false, |token| {
+            expansion::expand_only_arg(token, posargs.as_slice()).map_err(|err| err.into())
+        })
+        .map_err(|err| anyhow!("'{}': {err}", cmd.name))?
     };
 
     (cmd.fun)(cx, args, event).map_err(|err| anyhow!("'{}': {err}", cmd.name))
+}
+
+fn execute_macro(
+    cx: &mut compositor::Context,
+    r#macro: &str,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let keys = helix_view::input::parse_macro(r#macro)?;
+
+    let mut cx = super::Context {
+        register: None,
+        count: None,
+        editor: cx.editor,
+        callback: vec![],
+        on_next_key_callback: None,
+        jobs: cx.jobs,
+    };
+
+    // Protect against recursive macros.
+    if cx.editor.macro_replaying.contains(&'@') {
+        bail!("Cannot execute macro because the [@] register is already playing a macro",);
+    }
+
+    cx.editor.macro_replaying.push('@');
+
+    cx.callback.push(Box::new(move |compositor, cx| {
+        for key in keys {
+            compositor.handle_event(&compositor::Event::Key(key), cx);
+        }
+        cx.editor.macro_replaying.pop();
+    }));
+
+    Ok(())
+}
+
+fn execute_static_command(
+    cx: &mut compositor::Context,
+    command: &str,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let mut cx = super::Context {
+        register: None,
+        count: None,
+        editor: cx.editor,
+        callback: vec![],
+        on_next_key_callback: None,
+        jobs: cx.jobs,
+    };
+
+    // TODO: benchmark `STATIC_COMMAND_LIST` against a `STATIC_COMMAND_MAP`
+    MappableCommand::STATIC_COMMAND_LIST
+        .iter()
+        .find(|cmd| cmd.name() == command)
+        .ok_or_else(|| anyhow!("No command named '{}'", command))?
+        .execute(&mut cx);
+
+    Ok(())
 }
 
 #[allow(clippy::unnecessary_unwrap)]
@@ -3632,100 +3828,86 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         },
     );
-    prompt.doc_fn = Box::new(command_line_doc);
+
+    let custom = cx.editor.config().commands.clone();
+
+    prompt.doc_fn = Box::new(move |input| {
+        let (command, _, _) = command_line::split(input);
+
+        let doc = match custom.get(command) {
+            Some(command) => {
+                if command.hidden {
+                    return None;
+                }
+
+                Cow::Owned(command.prompt())
+            }
+            None => TYPABLE_COMMAND_MAP.get(command)?.prompt(),
+        };
+
+        Some(doc)
+    });
 
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
 }
 
-fn command_line_doc(input: &str) -> Option<Cow<str>> {
-    let (command, _, _) = command_line::split(input);
-    let command = TYPABLE_COMMAND_MAP.get(command)?;
-
-    if command.aliases.is_empty() && command.signature.flags.is_empty() {
-        return Some(Cow::Borrowed(command.doc));
-    }
-
-    let mut doc = command.doc.to_string();
-
-    if !command.aliases.is_empty() {
-        write!(doc, "\nAliases: {}", command.aliases.join(", ")).unwrap();
-    }
-
-    if !command.signature.flags.is_empty() {
-        const ARG_PLACEHOLDER: &str = " <arg>";
-
-        fn flag_len(flag: &Flag) -> usize {
-            let name_len = flag.name.len();
-            let alias_len = if let Some(alias) = flag.alias {
-                "/-".len() + alias.len_utf8()
-            } else {
-                0
-            };
-            let arg_len = if flag.completions.is_some() {
-                ARG_PLACEHOLDER.len()
-            } else {
-                0
-            };
-            name_len + alias_len + arg_len
-        }
-
-        doc.push_str("\nFlags:");
-
-        let max_flag_len = command.signature.flags.iter().map(flag_len).max().unwrap();
-
-        for flag in command.signature.flags {
-            let mut buf = [0u8; 4];
-            let this_flag_len = flag_len(flag);
-            write!(
-                doc,
-                "\n  --{flag_text}{spacer:spacing$}  {doc}",
-                doc = flag.doc,
-                // `fmt::Arguments` does not respect width controls so we must place the spacers
-                // explicitly:
-                spacer = "",
-                spacing = max_flag_len - this_flag_len,
-                flag_text = format_args!(
-                    "{}{}{}{}",
-                    flag.name,
-                    // Ideally this would be written as a `format_args!` too but the borrow
-                    // checker is not yet smart enough.
-                    if flag.alias.is_some() { "/-" } else { "" },
-                    if let Some(alias) = flag.alias {
-                        alias.encode_utf8(&mut buf)
-                    } else {
-                        ""
-                    },
-                    if flag.completions.is_some() {
-                        ARG_PLACEHOLDER
-                    } else {
-                        ""
-                    }
-                ),
-            )
-            .unwrap();
-        }
-    }
-
-    Some(Cow::Owned(doc))
-}
-
 fn complete_command_line(editor: &Editor, input: &str) -> Vec<ui::prompt::Completion> {
     let (command, rest, complete_command) = command_line::split(input);
+    let config = editor.config();
+
+    let is_escaped = command.starts_with(CustomTypableCommand::ESCAPE);
+    let command = command.trim_start_matches(CustomTypableCommand::ESCAPE);
 
     if complete_command {
-        fuzzy_match(
-            input,
-            TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
-            false,
-        )
-        .into_iter()
-        .map(|(name, _)| (0.., name.into()))
-        .collect()
-    } else {
+        if is_escaped {
+            fuzzy_match(
+                command,
+                TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
+                false,
+            )
+            .into_iter()
+            .map(|(name, _)| (0.., name.into()))
+            .collect()
+        } else {
+            let custom = config
+                .commands
+                .non_hidden_names()
+                .map(|name| Cow::Owned(name.to_string()));
+
+            let builtin = TYPABLE_COMMAND_LIST
+                .iter()
+                .map(|command| Cow::Borrowed(command.name));
+
+            // NOTE: `custom.chain(builtin)` forces custom commands to be at the top of the list.
+            fuzzy_match(command, custom.chain(builtin), false)
+                .into_iter()
+                .map(|(name, _)| (0.., name.into()))
+                .collect()
+        }
+    } else if is_escaped {
         TYPABLE_COMMAND_MAP
             .get(command)
+            .map_or_else(Vec::new, |cmd| {
+                let args_offset = command.len() + 1;
+                complete_command_args(editor, cmd, rest, args_offset)
+            })
+    } else {
+        // If `:t` maps to `:theme` then the `real_command` would be `theme` while `command` would be `t`.
+        // We need this distinction when replacing based off of a completion so that the `t` len is used
+        // not `theme`; 1 vs 5.
+        let real_command =
+            config
+                .commands
+                .get(command)
+                .map_or(command, |custom| match custom.completer {
+                    Some(ref command) => command,
+                    None => command,
+                });
+
+        TYPABLE_COMMAND_MAP
+            .get(real_command)
             .map_or_else(Vec::new, |cmd| {
                 let args_offset = command.len() + 1;
                 complete_command_args(editor, cmd, rest, args_offset)
@@ -3835,6 +4017,9 @@ fn complete_command_args(
         TokenKind::Expansion(ExpansionKind::Unicode) => Vec::new(),
         TokenKind::ExpansionKind => {
             complete_expansion_kind(&token.content, offset + token.content_start)
+        }
+        TokenKind::Expansion(ExpansionKind::Arg) => {
+            unreachable!("Arg token should never be passed in")
         }
     }
 }
