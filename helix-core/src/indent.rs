@@ -170,7 +170,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
         .max()
         .unwrap();
 
-    //  Return the the auto-detected result if we're confident enough in its
+    // Return the the auto-detected result if we're confident enough in its
     // accuracy, based on some heuristics.
     if indent_freq >= 1 && (indent_freq_2 as f64 / indent_freq as f64) < 0.66 {
         Some(match indent {
