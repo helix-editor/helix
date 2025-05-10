@@ -99,6 +99,51 @@ fn force_quit(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
     Ok(())
 }
 
+fn buffer_jump(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let pos: usize = args.first().unwrap_or("0").parse().unwrap_or(0);
+    if let Some(doc_id) = cx.editor.buffer_jumplist.get(pos) {
+        cx.editor.switch(*doc_id, Action::Replace);
+    }
+
+    return Ok(());
+}
+
+fn add_buffer_to_jumplist(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let current = view!(cx.editor).doc;
+    cx.editor.buffer_jumplist.push(current);
+
+    return Ok(());
+}
+
+fn remove_buffer_from_jumplist(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let current = view!(cx.editor).doc;
+    cx.editor
+        .buffer_jumplist
+        .retain(|doc_id| *doc_id != current);
+
+    return Ok(());
+}
+
 fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -2616,6 +2661,39 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::all(completers::filename),
         signature: Signature {
             positionals: (1, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "jump-to-buffer",
+        aliases: &["j"],
+        doc: "Switch to a document buffer using its index in the buffer jumplist.",
+        fun: buffer_jump,
+        completer: CommandCompleter::all(completers::filename),
+        signature: Signature {
+            positionals: (1, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "add-buffer-to-jumplist",
+        aliases: &["ab"],
+        doc: "Add the current document buffer to the buffer jumplist.",
+        fun: add_buffer_to_jumplist,
+        completer: CommandCompleter::all(completers::filename),
+        signature: Signature {
+            positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "remove-buffer-from-jumplist",
+        aliases: &["rb"],
+        doc: "Remove the current document buffer from the buffer jumplist.",
+        fun: remove_buffer_from_jumplist,
+        completer: CommandCompleter::all(completers::filename),
+        signature: Signature {
+            positionals: (0, None),
             ..Signature::DEFAULT
         },
     },

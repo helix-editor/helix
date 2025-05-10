@@ -1123,6 +1123,9 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    /// Stores a manually curated list of document IDs for navigation.
+    pub buffer_jumplist: Vec<DocumentId>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1245,6 +1248,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            buffer_jumplist: Vec::new(),
         }
     }
 
@@ -1823,6 +1827,9 @@ impl Editor {
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
+
+        // Removes the document from the buffer jumplist when closed.
+        self.buffer_jumplist.retain(|doc| *doc != doc_id);
 
         enum Action {
             Close(ViewId),
