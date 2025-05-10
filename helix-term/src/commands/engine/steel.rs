@@ -3072,12 +3072,13 @@ fn cx_is_document_in_view(cx: &mut Context, doc_id: DocumentId) -> Option<helix_
 }
 
 fn cx_register_value(cx: &mut Context, name: char) -> Vec<String> {
-    let items = cx
-        .editor
+    cx.editor
         .registers
         .read(name, cx.editor)
-        .map_or(Vec::new(), |reg| reg.collect());
-    items.into_iter().map(|value| value.to_string()).collect()
+        .map_or(Vec::new(), |reg| reg.collect())
+        .into_iter()
+        .map(|value| value.to_string())
+        .collect()
 }
 
 fn cx_document_exists(cx: &mut Context, doc_id: DocumentId) -> bool {
