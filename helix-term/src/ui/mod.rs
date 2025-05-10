@@ -368,7 +368,14 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
     Ok(content)
 }
 
+pub enum ThemesType {
+    Dark,
+    Light,
+    All
+}
+
 pub mod completers {
+    use super::ThemesType;
     use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
     use helix_core::command_line::{self, Tokenizer};
@@ -401,13 +408,33 @@ pub mod completers {
             .collect()
     }
 
-    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
+    pub fn theme(_editor: &Editor, input: &str, themes_type : ThemesType) -> Vec<Completion> {
+        let themes_dirs = match themes_type {
+            ThemesType::Dark => vec!["themes/dark"],
+            ThemesType::Light => vec!["themes/light"],
+            // The first element should not have any effect
+            ThemesType::All => vec!["themes","themes/light","themes/dark"]
+        };
+
+        let mut names = Vec::new();
         for rt_dir in helix_loader::runtime_dirs() {
-            names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
-        }
-        names.push("default".into());
-        names.push("base16_default".into());
+            for themes_dir in &themes_dirs {
+                names.extend(theme::Loader::read_names(&rt_dir.join(themes_dir)));
+            };
+        };
+
+        for themes_dir in &themes_dirs {
+            names.extend(theme::Loader::read_names(&helix_loader::config_dir().join(themes_dir)));
+        };
+        
+        match themes_type {
+            ThemesType::Light => (),
+            ThemesType::Dark => { names.push("default".into());
+            },
+            ThemesType::All => { names.push("base16_default".into());
+                names.push("default".into());
+            }
+        };
         names.sort();
         names.dedup();
 
