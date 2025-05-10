@@ -1,267 +1,44 @@
-;; ----------------------------------------------------------------------------
-;; Literals and comments
+;----------------------------------------------------------------------------
+; Parameters and variables
+; NOTE: These are at the top, so that they have low priority,
+; and don't override destructured parameters
+(variable) @variable
 
+(pattern/wildcard) @variable
+
+(decl/function
+  patterns: (patterns
+    (_) @variable.parameter))
+
+(expression/lambda
+  (_)+ @variable.parameter
+  "->")
+
+(decl/function
+  (infix
+    (pattern) @variable.parameter))
+
+; ----------------------------------------------------------------------------
+; Literals and comments
 (integer) @constant.numeric.integer
-(exp_negation) @constant.numeric.integer
-(exp_literal (float)) @constant.numeric.float
+
+(negation) @constant.numeric
+
+(expression/literal
+  (float)) @constant.numeric.float
+
 (char) @constant.character
+
 (string) @string
 
-(exp_apply
- (exp_name
-  (variable) @function.builtin
-   (#any-of? @function.builtin
-    ; built in functions from the Haskell prelude (https://hackage.haskell.org/package/base-4.21.0.0/docs/Prelude.html)
-    ; basic data types
-    "not"
-    "maybe"
-    "either"
-
-    ; tuples
-    "fst"
-    "snd"
-    "curry"
-    "uncurry"
-
-    ; Ord
-    "compare"
-    "min"
-    "max"
-
-    ; Enum
-    "succ"
-    "pred"
-    "toEnum"
-    "fromEnum"
-    "enumFrom"
-    "enumFromThen"
-    "enumFromThenTo"
-
-    ; Num
-    "negate"
-    "abs"
-    "signum"
-    "fromInteger"
-
-    ; Real
-    "toRational"
-
-    ; Integral
-    "quot"
-    "rem"
-    "div"
-    "mod"
-    "quotRem"
-    "divMod"
-    "toInteger"
-
-    ; Fractional
-    "recip"
-    "fromRational"
-
-    ; Floating
-    "exp"
-    "log"
-    "sqrt"
-    "logBase"
-    "sin"
-    "cos"
-    "tan"
-    "asin"
-    "acos"
-    "atan"
-    "sinh"
-    "cosh"
-    "tanh"
-    "asinh"
-    "acosh"
-    "atanh"
-
-    ; RealFrac
-    "properFraction"
-    "truncate"
-    "round"
-    "ceiling"
-    "floor"
-
-    ; RealFloat
-    "floatRadix"
-    "floatDigits"
-    "floatRange"
-    "decodeFloat"
-    "encodeFloat"
-    "exponent"
-    "significand"
-    "scaleFloat"
-    "isNaN"
-    "isInfinite"
-    "isDenormalized"
-    "isNegativeZero"
-    "isIEEE"
-    "atan2"
-
-    ; Numeric functions
-    "subtract"
-    "even"
-    "odd"
-    "gcd"
-    "lcm"
-    "fromIntegral"
-    "realToFrac"
-
-    ; Monoid
-    "mempty"
-    "mconcat"
-    "mappend"
-
-    ; Functor
-    "fmap"
-
-    ; Applicative
-    "liftA2"
-    "pure"
-    
-    ; Monad
-    "return"
-
-    ; MonadFail
-    "fail"
-    "mapM_"
-    "sequence_"
-
-    ; Foldable
-    "foldMap"
-    "foldr"
-    "foldl"
-    "foldl'"
-    "foldr1"
-    "foldl1"
-    "elem"
-    "maximum"
-    "minimum"
-    "sum"
-    "product"
-
-    ; Traversable
-    "traverse"
-    "sequenceA"
-    "mapM"
-    "sequence"
-
-    ; miscellaneous
-    "id"
-    "const"
-    "flip"
-    "until"
-    "asTypeOf"
-    "error"
-    "errorWithoutStackTrace"
-    "undefined"
-
-    ; List
-    "map"
-    "filter"
-    "head"
-    "last"
-    "tail"
-    "init"
-    "null"
-    "length"
-    "reverse"
-
-    ; Foldable
-    "and"
-    "or"
-    "any"
-    "all"
-    "concat"
-    "concatMap"
-
-    ; Building lists
-    "scanl"
-    "scanl1"
-    "scanr"
-    "scanr1"
-
-    ; Infinite lists
-    "iterate"
-    "repeat"
-    "replicate"
-    "cycle"
-
-    ; Sublists
-    "take"
-    "drop"
-    "takeWhile"
-    "dropWhile"
-    "span"
-    "break"
-    "splitAt"
-
-    ; Searching lists
-    "notElem"
-    "lookup"
-
-    ; zipping and unzipping
-    "zip"
-    "zip3"
-    "zipWith"
-    "zipWith3"
-    "unzip"
-    "unzip3"
-
-    ; String
-    "lines"
-    "words"
-    "unlines"
-    "unwords"
-
-    ; Converting to String
-    "show"
-    "showList"
-    "shows"
-    "showChar"
-    "showString"
-    "showParen"
-
-    ; Converting from String
-    "readsPrec"
-    "readList"
-    "reads"
-    "readParen"
-    "read"
-    "lex"
-
-    ; Input and output
-    "putChar"
-    "putStr"
-    "putStrLn"
-    "print"
-    "getChar"
-    "getLine"
-    "getContents"
-    "interact"
-
-    ; Files 
-    "readFile"
-    "writeFile"
-    "appendFile"
-    "readIO"
-    "readLn"
-
-    ; Exception handling
-    "ioError"
-    "userError")
-  )
-)
-
+(unit) @string.special.symbol ; unit, as in ()
 
 (comment) @comment
 
+((haddock) @comment.documentation)
 
-;; ----------------------------------------------------------------------------
-;; Punctuation
-
+; ----------------------------------------------------------------------------
+; Punctuation
 [
   "("
   ")"
@@ -272,34 +49,18 @@
 ] @punctuation.bracket
 
 [
-  (comma)
+  ","
   ";"
 ] @punctuation.delimiter
 
-
-;; ----------------------------------------------------------------------------
-;; Literals and comments
-
-(integer) @constant.numeric.integer
-(exp_negation) @constant.numeric.integer
-(exp_literal (float)) @constant.numeric.float
-(char) @constant.character
-(string) @string
-
-(comment) @comment
-
-(con_unit [ "(" ")" ] @constant.builtin) ; unit, as in ()
-
-
-;; ----------------------------------------------------------------------------
-;; Keywords, operators, includes
-
+; ----------------------------------------------------------------------------
+; Keywords, operators, includes
 [
   "forall"
-  "∀"
-] @keyword.control.repeat
+  ; "∀" ; utf-8 is not cross-platform safe
+] @keyword.repeat
 
-(pragma) @constant.macro
+(pragma) @keyword.directive
 
 [
   "if"
@@ -307,22 +68,21 @@
   "else"
   "case"
   "of"
-] @keyword.control.conditional
+] @keyword.conditional
 
 [
   "import"
   "qualified"
   "module"
-] @keyword.control.import
+] @keyword.import
 
 [
   (operator)
   (constructor_operator)
-  (type_operator)
-  (tycon_arrow)
-  (qualified_module)  ; grabs the `.` (dot), ex: import System.IO
   (all_names)
   (wildcard)
+  "."
+  ".."
   "="
   "|"
   "::"
@@ -334,14 +94,22 @@
   "@"
 ] @operator
 
-(module) @namespace
+; TODO broken, also huh?
+; ((qualified_module
+;   (module) @constructor)
+;   .
+;   (module))
+
+(module
+  (module_id) @namespace)
 
 [
-  (where)
+  "where"
   "let"
   "in"
   "class"
   "instance"
+  "pattern"
   "data"
   "newtype"
   "family"
@@ -360,41 +128,311 @@
   "infixr"
 ] @keyword
 
+; ----------------------------------------------------------------------------
+; Functions and variables
+(decl
+  [
+   name: (variable) @function
+   names: (binding_list (variable) @function)
+  ])
 
-;; ----------------------------------------------------------------------------
-;; Functions and variables
+(decl/bind
+  name: (variable) @variable)
 
-(variable) @variable
+; Consider signatures (and accompanying functions)
+; with only one value on the rhs as variables
+(decl/signature
+  name: (variable) @variable
+  type: (type))
 
-(signature name: (variable) @type)
-(function
+((decl/signature
+  name: (variable) @variable.name
+  type: (type))
+  .
+  (decl
+    name: (variable) @variable)
+    match: (_)
+  (#eq? @variable.name @variable))
+
+; but consider a type that involves 'IO' a decl/function
+(decl/signature
   name: (variable) @function
-  patterns: (patterns))
-((signature (fun)) . (function (variable) @function))
-((signature (context (fun))) . (function (variable) @function))
-((signature (forall (context (fun)))) . (function (variable) @function))
+  type: (type/apply
+    constructor: (name) @type)
+  (#eq? @type "IO"))
 
-(exp_infix (variable) @operator)  ; consider infix functions as operators
+((decl/signature
+  name: (variable) @function.name
+  type: (type/apply
+    constructor: (name) @type)
+  (#eq? @type "IO"))
+  .
+  (decl
+    name: (variable) @function)
+    match: (_)
+  (#eq? @function.name @function))
 
-(exp_infix (exp_name) @function)
-(exp_apply . (exp_name (variable) @function))
-(exp_apply . (exp_name (qualified_variable (variable) @function)))
+((decl/signature) @function
+  .
+  (decl/function
+    name: (variable) @function))
 
-(pat_wildcard) @variable
+(decl/bind
+  name: (variable) @function
+  (match
+    expression: (expression/lambda)))
 
-;; ----------------------------------------------------------------------------
-;; Types
+; view patterns
+(view_pattern
+  [
+    (expression/variable) @function.call
+    (expression/qualified
+      (variable) @function.call)
+  ])
 
-(type) @type
-(type_variable) @type.parameter
+; consider infix functions as operators
+(infix_id
+  [
+    (variable) @operator
+    (qualified
+      (variable) @operator)
+  ])
+
+; decl/function calls with an infix operator
+; e.g. func <$> a <*> b
+(infix
+  [
+    (variable) @function.call
+    (qualified
+      ((module) @namespace
+        (variable) @function.call))
+  ]
+  .
+  (operator))
+
+; infix operators applied to variables
+((expression/variable) @variable
+  .
+  (operator))
+
+((operator)
+  .
+  [
+    (expression/variable) @variable
+    (expression/qualified
+      (variable) @variable)
+  ])
+
+; decl/function calls with infix operators
+([
+    (expression/variable) @function.call
+    (expression/qualified
+      (variable) @function.call)
+  ]
+  .
+  (operator) @operator
+  (#any-of? @operator "$" "<$>" ">>=" "=<<"))
+
+; right hand side of infix operator
+((infix
+  [
+    (operator)
+    (infix_id (variable))
+  ] ; infix or `func`
+  .
+  [
+    (variable) @function.call
+    (qualified
+      (variable) @function.call)
+  ])
+  .
+  (operator) @operator
+  (#any-of? @operator "$" "<$>" "=<<"))
+
+; decl/function composition, arrows, monadic composition (lhs)
+(
+  [
+    (expression/variable) @function
+    (expression/qualified
+      (variable) @function)
+  ]
+  .
+  (operator) @operator
+  (#any-of? @operator "." ">>>" "***" ">=>" "<=<"))
+
+; right hand side of infix operator
+((infix
+  [
+    (operator)
+    (infix_id (variable))
+  ] ; infix or `func`
+  .
+  [
+    (variable) @function
+    (qualified
+      (variable) @function)
+  ])
+  .
+  (operator) @operator
+  (#any-of? @operator "." ">>>" "***" ">=>" "<=<"))
+
+; function composition, arrows, monadic composition (rhs)
+((operator) @operator
+  .
+  [
+    (expression/variable) @function
+    (expression/qualified
+      (variable) @function)
+  ]
+  (#any-of? @operator "." ">>>" "***" ">=>" "<=<"))
+
+; function defined in terms of a function composition
+(decl/function
+  name: (variable) @function
+  (match
+    expression: (infix
+      operator: (operator) @operator
+      (#any-of? @operator "." ">>>" "***" ">=>" "<=<"))))
+
+(apply
+  [
+    (expression/variable) @function.call
+    (expression/qualified
+      (variable) @function.call)
+  ])
+
+; function compositions, in parentheses, applied
+; lhs
+(apply
+  .
+  (expression/parens
+    (infix
+      [
+        (variable) @function.call
+        (qualified
+          (variable) @function.call)
+      ]
+      .
+      (operator))))
+
+; rhs
+(apply
+  .
+  (expression/parens
+    (infix
+      (operator)
+      .
+      [
+        (variable) @function.call
+        (qualified
+          (variable) @function.call)
+      ])))
+
+; variables being passed to a function call
+(apply
+  (_)
+  .
+  [
+    (expression/variable) @variable
+    (expression/qualified
+      (variable) @variable)
+  ])
+
+; main is always a function
+; (this prevents `main = undefined` from being highlighted as a variable)
+(decl/bind
+  name: (variable) @function
+  (#eq? @function "main"))
+
+; scoped function types (func :: a -> b)
+(signature
+  pattern: (pattern/variable) @function
+  type: (quantified_type))
+
+; signatures that have a function type
+; + binds that follow them
+(decl/signature
+  name: (variable) @function
+  type: (quantified_type))
+
+((decl/signature
+  name: (variable) @function.name
+  type: (quantified_type))
+  .
+  (decl/bind
+    (variable) @function)
+  (#eq? @function @function.name))
+
+; ----------------------------------------------------------------------------
+; Types
+(name) @type
+
+(type/star) @type
+
+; (variable) @type
 
 (constructor) @constructor
 
 ; True or False
-((constructor) @_bool (#match? @_bool "(True|False)")) @constant.builtin.boolean
+((constructor) @constant.builtin.boolean
+  (#any-of? @constant.builtin.boolean "True" "False"))
 
-;; ----------------------------------------------------------------------------
-;; Quasi-quotes
+; otherwise (= True)
+((variable) @constant.builtin.boolean
+  (#eq? @constant.builtin.boolean "otherwise"))
 
-(quoter) @function
-; Highlighting of quasiquote_body is handled by injections.scm
+; ----------------------------------------------------------------------------
+; Quasi-quotes
+(quoter) @function.call
+
+(quasiquote
+  [
+    (quoter) @_name
+    (_
+      (variable) @_name)
+  ]
+  (#eq? @_name "qq")
+  (quasiquote_body) @string)
+
+(quasiquote
+  (_
+    (variable) @_name)
+  (#eq? @_name "qq")
+  (quasiquote_body) @string)
+
+; namespaced quasi-quoter
+(quasiquote
+  (_
+    (module) @namespace
+    .
+    (variable) @function.call))
+
+; Highlighting of quasiquote_body for other languages is handled by injections.scm
+; ----------------------------------------------------------------------------
+; Exceptions/error handling
+((variable) @keyword.exception
+  (#any-of? @keyword.exception
+    "error" "undefined" "try" "tryJust" "tryAny" "catch" "catches" "catchJust" "handle" "handleJust"
+    "throw" "throwIO" "throwTo" "throwError" "ioError" "mask" "mask_" "uninterruptibleMask"
+    "uninterruptibleMask_" "bracket" "bracket_" "bracketOnErrorSource" "finally" "fail"
+    "onException" "expectationFailure"))
+
+; ----------------------------------------------------------------------------
+; Debugging
+((variable) @keyword.debug
+  (#any-of? @keyword.debug
+    "trace" "traceId" "traceShow" "traceShowId" "traceWith" "traceShowWith" "traceStack" "traceIO"
+    "traceM" "traceShowM" "traceEvent" "traceEventWith" "traceEventIO" "flushEventLog" "traceMarker"
+    "traceMarkerIO"))
+
+; ----------------------------------------------------------------------------
+; Fields
+
+(field_name
+  (variable) @variable.member)
+
+(import_name
+  (name)
+  .
+  (children
+    (variable) @variable.member))
