@@ -3,15 +3,28 @@ use std::fmt::Display;
 use ropey::RopeSlice;
 use tree_sitter::{Node, QueryCursor};
 
-use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
+use crate::chars::{
+    categorize_char, char_is_subword_textobj_delimiter, char_is_whitespace, CharCategory,
+};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
-use crate::movement::Direction;
+use crate::movement::{is_sub_word_boundary, Direction};
 use crate::syntax::LanguageConfiguration;
 use crate::Range;
 use crate::{surround, Syntax};
 
-fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
+#[derive(PartialEq, Copy, Clone)]
+pub enum Word {
+    /// A WORD, which is always delimited by whitespace
+    Long,
+    /// A word, which is made up from alphanumeric characters and undescores
+    Short,
+    /// A subword, which is like [`Word::Short`] but also treats `-`, `/` and
+    /// camelCase transitions as delimiters
+    Sub,
+}
+
+fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, word: Word) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {
@@ -30,11 +43,30 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
         Direction::Backward => categorize_char(slice.char(pos)),
     };
 
+    let mut prev_ch = match direction {
+        // if we are at the beginning or end of the document
+        Direction::Forward if pos == 0 => ' ',
+        Direction::Backward if pos == slice.len_chars() => ' ',
+        Direction::Forward => slice.char(pos - 1),
+        Direction::Backward => slice.char(pos),
+    };
+
     for ch in iter {
         match categorize_char(ch) {
             Eol | Whitespace => return pos,
             category => {
-                if !long && category != prev_category && pos != 0 && pos != slice.len_chars() {
+                let matches_short_word = word == Word::Short
+                    && category != prev_category
+                    && pos != 0
+                    && pos != slice.len_chars();
+                let matches_subword = word == Word::Sub
+                    && match direction {
+                        Direction::Forward => is_sub_word_boundary(prev_ch, ch, Direction::Forward),
+                        Direction::Backward => {
+                            is_sub_word_boundary(prev_ch, ch, Direction::Backward)
+                        }
+                    };
+                if matches_subword || matches_short_word {
                     return pos;
                 } else {
                     match direction {
@@ -42,6 +74,7 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
                         Direction::Backward => pos = pos.saturating_sub(1),
                     }
                     prev_category = category;
+                    prev_ch = ch;
                 }
             }
         }
@@ -74,14 +107,14 @@ pub fn textobject_word(
     range: Range,
     textobject: TextObject,
     _count: usize,
-    long: bool,
+    word: Word,
 ) -> Range {
     let pos = range.cursor(slice);
 
-    let word_start = find_word_boundary(slice, pos, Direction::Backward, long);
+    let word_start = find_word_boundary(slice, pos, Direction::Backward, word);
     let word_end = match slice.get_char(pos).map(categorize_char) {
         None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
-        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long),
+        _ => find_word_boundary(slice, pos + 1, Direction::Forward, word),
     };
 
     // Special case.
@@ -89,9 +122,28 @@ pub fn textobject_word(
         return Range::new(word_start, word_end);
     }
 
-    match textobject {
-        TextObject::Inside => Range::new(word_start, word_end),
-        TextObject::Around => {
+    match (textobject, word) {
+        (TextObject::Inside, Word::Sub) => Range::new(word_start, word_end),
+        (TextObject::Around, Word::Sub) => {
+            let underscores_count_right = slice
+                .chars_at(word_end)
+                .take_while(|c| char_is_subword_textobj_delimiter(*c))
+                .count();
+
+            if underscores_count_right > 0 {
+                Range::new(word_start, word_end + underscores_count_right)
+            } else {
+                let underscore_count_left = {
+                    let mut iter = slice.chars_at(word_start);
+                    iter.reverse();
+                    iter.take_while(|c| char_is_subword_textobj_delimiter(*c))
+                        .count()
+                };
+                Range::new(word_start - underscore_count_left, word_end)
+            }
+        }
+        (TextObject::Inside, Word::Long | Word::Short) => Range::new(word_start, word_end),
+        (TextObject::Around, Word::Long | Word::Short) => {
             let whitespace_count_right = slice
                 .chars_at(word_end)
                 .take_while(|c| char_is_whitespace(*c))
@@ -108,7 +160,7 @@ pub fn textobject_word(
                 Range::new(word_start - whitespace_count_left, word_end)
             }
         }
-        TextObject::Movement => unreachable!(),
+        (TextObject::Movement, _) => unreachable!(),
     }
 }
 
@@ -299,6 +351,92 @@ mod test {
     use ropey::Rope;
 
     #[test]
+    fn test_textobject_subword() {
+        // (text, [(char position, textobject, final range), ...])
+        let tests = &[
+            (
+                "cursor at beginning of doc",
+                vec![(0, Inside, (0, 6)), (0, Around, (0, 6))],
+            ),
+            (
+                "cursor at middle of word",
+                vec![
+                    (13, Inside, (10, 16)),
+                    (11, Inside, (10, 16)),
+                    (12, Inside, (10, 16)),
+                    (13, Around, (10, 16)),
+                    (11, Around, (10, 16)),
+                    (12, Around, (10, 16)),
+                ],
+            ),
+            (
+                "cursor on camelCase",
+                vec![
+                    (15, Inside, (15, 19)),
+                    (14, Inside, (10, 15)),
+                    (15, Around, (15, 19)),
+                    (14, Around, (10, 15)),
+                ],
+            ),
+            (
+                "cursor on kebab-case",
+                vec![
+                    (12, Inside, (10, 15)),
+                    (12, Around, (10, 16)),
+                    (15, Inside, (15, 16)),
+                    (15, Around, (15, 16)),
+                ],
+            ),
+            (
+                "cursor on snake_case",
+                vec![
+                    (12, Inside, (10, 15)),
+                    (12, Around, (10, 16)),
+                    (15, Inside, (15, 16)),
+                    (15, Around, (15, 16)),
+                ],
+            ),
+            (
+                "cursor on path/with/slashes",
+                vec![
+                    (11, Inside, (10, 14)),
+                    (11, Around, (10, 15)),
+                    (14, Inside, (14, 15)),
+                    (14, Around, (14, 15)),
+                    (16, Inside, (15, 19)),
+                    (16, Around, (15, 20)),
+                ],
+            ),
+            (
+                "cursor at end of doc",
+                vec![
+                    (19, Inside, (17, 20)),
+                    (19, Around, (17, 20)),
+                    (17, Inside, (17, 20)),
+                    (17, Around, (17, 20)),
+                ],
+            ),
+        ];
+
+        for (sample, scenario) in tests {
+            let doc = Rope::from(*sample);
+            let slice = doc.slice(..);
+            for &case in scenario {
+                let (pos, objtype, expected_range) = case;
+                let range = Range::new(pos, pos + 1);
+                let result = textobject_word(slice, range, objtype, 1, Word::Sub);
+                assert_eq!(
+                    result,
+                    expected_range.into(),
+                    "\nCase failed: {:?} - {:?}",
+                    sample,
+                    case
+                );
+            }
+        }
+    }
+
+    #[test]
     fn test_textobject_word() {
         // (text, [(char position, textobject, final range), ...])
         let tests = &[
@@ -401,7 +539,7 @@ mod test {
                 let (pos, objtype, expected_range) = case;
                 // cursor is a single width selection
                 let range = Range::new(pos, pos + 1);
-                let result = textobject_word(slice, range, objtype, 1, false);
+                let result = textobject_word(slice, range, objtype, 1, Word::Short);
                 assert_eq!(
                     result,
                     expected_range.into(),
