@@ -20,6 +20,7 @@ use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
+use helix_view::icons::ICONS;
 use helix_view::theme::Style;
 pub use markdown::Markdown;
 pub use menu::Menu;
@@ -249,7 +250,21 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         "path",
         |item: &PathBuf, data: &FilePickerData| {
             let path = item.strip_prefix(&data.root).unwrap_or(item);
-            let mut spans = Vec::with_capacity(3);
+            let mut spans = Vec::with_capacity(4);
+
+            let icons = ICONS.load();
+
+            if let Some(icon) = icons.mime().get(Some(&path.to_path_buf()), None) {
+                if let Some(color) = icon.color() {
+                    spans.push(Span::styled(
+                        format!("{}  ", icon.glyph()),
+                        Style::default().fg(color),
+                    ));
+                } else {
+                    spans.push(Span::raw(format!("{}  ", icon.glyph())));
+                }
+            }
+
             if let Some(dirs) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
                 spans.extend([
                     Span::styled(dirs.to_string_lossy(), data.directory_style),
@@ -310,8 +325,27 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         "path",
         |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
             let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
+            let icons = ICONS.load();
             if *is_dir {
-                Span::styled(format!("{}/", name), *directory_style).into()
+                if let Some(icon) = icons.mime().directory() {
+                    Span::styled(format!("{icon}  {name}/"), *directory_style).into()
+                } else {
+                    Span::styled(format!("{name}/"), *directory_style).into()
+                }
+            } else if let Some(icon) = icons.mime().get(Some(path), None).cloned() {
+                let mut spans = Vec::with_capacity(2);
+                if let Some(color) = icon.color() {
+                    let icon =
+                        Span::styled(format!("{}  ", icon.glyph()), Style::default().fg(color));
+                    let filename = Span::raw(name);
+
+                    spans.push(icon);
+                    spans.push(filename);
+                } else {
+                    spans.push(Span::raw(format!("{}  ", icon.glyph())));
+                    spans.push(Span::raw(name));
+                }
+                Spans::from(spans).into()
             } else {
                 name.into()
             }
