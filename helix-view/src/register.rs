@@ -46,7 +46,7 @@ impl Registers {
             '#' => {
                 let (view, doc) = current_ref!(editor);
                 let selections = doc.selection(view.id).len();
-                let number_of_digits = if editor.config().padding_selection_index_register {
+                let number_of_digits = if editor.config().pad_selection_index_register {
                     selections.ilog10() as usize + 1
                 } else {
                     0
