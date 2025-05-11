@@ -6,7 +6,7 @@ use crate::{
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::config::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
-use helix_dap::{self as dap, Client};
+use helix_dap::{self as dap, requests::TerminateArguments, Client};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
 
@@ -592,7 +592,11 @@ pub fn dap_variables(cx: &mut Context) {
 pub fn dap_terminate(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    let request = debugger.disconnect(None);
+    let terminate_arguments = Some(TerminateArguments {
+        restart: Some(false),
+    });
+
+    let request = debugger.terminate(terminate_arguments);
     dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
         // editor.set_error(format!("Failed to disconnect: {}", e));
         editor.debugger.unset_active_debugger();

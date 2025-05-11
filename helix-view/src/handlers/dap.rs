@@ -5,7 +5,7 @@ use helix_core::Selection;
 use helix_dap::{self as dap, Client, ConnectionType, Payload, Request, ThreadId};
 use helix_lsp::block_on;
 use log::warn;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::fmt::Write;
 use std::path::PathBuf;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -303,14 +303,14 @@ impl Editor {
                         }; // TODO: do we need to handle error?
                     }
                     Event::Terminated(terminated) => {
-                        let restart_args = if let Some(terminated) = terminated {
-                            terminated.restart
+                        let restart_arg = if let Some(terminated) = terminated {
+                            terminated.restart.unwrap_or(false)
                         } else {
-                            None
+                            false
                         };
 
                         let disconnect_args = Some(DisconnectArguments {
-                            restart: Some(restart_args.is_some()),
+                            restart: Some(restart_arg),
                             terminate_debuggee: None,
                             suspend_debuggee: None,
                         });
@@ -323,37 +323,41 @@ impl Editor {
                             return false;
                         }
 
-                        match restart_args {
-                            Some(restart_args) => {
-                                log::info!("Attempting to restart debug session.");
-                                let connection_type = match debugger.connection_type() {
-                                    Some(connection_type) => connection_type,
-                                    None => {
-                                        self.set_error("No starting request found, to be used in restarting the debugging session.");
-                                        return false;
-                                    }
-                                };
-
-                                let relaunch_resp = if let ConnectionType::Launch = connection_type
-                                {
-                                    debugger.launch(restart_args).await
-                                } else {
-                                    debugger.attach(restart_args).await
-                                };
-
-                                if let Err(err) = relaunch_resp {
-                                    self.set_error(format!(
-                                        "Failed to restart debugging session: {:?}",
-                                        err
-                                    ));
+                        if restart_arg {
+                            log::info!("Attempting to restart debug session.");
+                            let connection_type = match debugger.connection_type() {
+                                Some(connection_type) => connection_type,
+                                None => {
+                                    self.set_error("No starting request found, to be used in restarting the debugging session.");
+                                    return false;
                                 }
+                            };
+
+                            let relaunch_resp = if let ConnectionType::Launch = connection_type {
+                                debugger.launch(Value::Bool(restart_arg)).await
+                            } else {
+                                debugger.attach(Value::Bool(restart_arg)).await
+                            };
+
+                            if let Err(err) = relaunch_resp {
+                                self.set_error(format!(
+                                    "Failed to restart debugging session: {:?}",
+                                    err
+                                ));
                             }
-                            None => {
-                                self.debugger.remove_debugger(id);
-                                self.debugger.unset_active_debugger();
-                                self.set_status(
-                                    "Terminated debugging session and disconnected debugger.",
-                                );
+                        } else {
+                            self.debugger.remove_debugger(id);
+                            self.debugger.unset_active_debugger();
+                            self.set_status(
+                                "Terminated debugging session and disconnected debugger.",
+                            );
+
+                            // Go through all breakpoints and set verfified to false
+                            // this should update the UI to show the breakpoints are no longer connected
+                            for breakpoints in self.breakpoints.values_mut() {
+                                for breakpoint in breakpoints.iter_mut() {
+                                    breakpoint.verified = false;
+                                }
                             }
                         }
                     }

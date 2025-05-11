@@ -438,6 +438,21 @@ pub mod requests {
         const COMMAND: &'static str = "disconnect";
     }
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TerminateArguments {
+        pub restart: Option<bool>,
+    }
+
+    #[derive(Debug)]
+    pub enum Terminate {}
+
+    impl Request for Terminate {
+        type Arguments = Option<TerminateArguments>;
+        type Result = ();
+        const COMMAND: &'static str = "terminate";
+    }
+
     #[derive(Debug)]
     pub enum ConfigurationDone {}
 
@@ -855,7 +870,7 @@ pub mod events {
     #[serde(rename_all = "camelCase")]
     pub struct TerminatedBody {
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub restart: Option<Value>,
+        pub restart: Option<bool>,
     }
 
     #[derive(Debug)]
