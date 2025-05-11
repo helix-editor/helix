@@ -1106,7 +1106,7 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
 {}
 (define ({} arg)
     (helix.{} *helix.cx* arg))
-    "#,
+"#,
                     name, docstring, name, name
                 ));
             }
