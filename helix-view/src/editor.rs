@@ -1630,7 +1630,7 @@ impl Editor {
                     && !self
                         .tree
                         .traverse()
-                        .any(|(_, v)| v.doc == doc.id && v.id != view.id);
+                        .all(|(_, v)| v.doc == doc.id || v.id != view.id);
 
                 let (view, doc) = current!(self);
                 let view_id = view.id;
