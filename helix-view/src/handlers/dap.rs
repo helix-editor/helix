@@ -176,7 +176,6 @@ impl Editor {
                         all_threads_stopped,
                         ..
                     }) => {
-                        // Set the current debugger to be the active debugger
                         let all_threads_stopped = all_threads_stopped.unwrap_or_default();
 
                         if all_threads_stopped {

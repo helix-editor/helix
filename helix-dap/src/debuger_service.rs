@@ -11,7 +11,7 @@ pub struct DebuggerService {
     ///
     /// TODO: You can have multiple active debuggers, so the concept of a single active debugger
     /// may need to be changed
-    active_debugger: Option<usize>,
+    current_debugger_id: Option<usize>,
     /// This is used to generate unique ids for each debugger
     pub counter: usize,
 }
@@ -21,7 +21,7 @@ impl DebuggerService {
     pub fn new() -> Self {
         Self {
             debuggers: HashMap::new(),
-            active_debugger: None,
+            current_debugger_id: None,
             counter: 0,
         }
     }
@@ -64,24 +64,25 @@ impl DebuggerService {
     }
 
     pub fn get_active_debugger(&self) -> Option<&Client> {
-        self.active_debugger.and_then(|id| self.debuggers.get(&id))
+        self.current_debugger_id
+            .and_then(|id| self.get_debugger(id))
     }
 
     pub fn get_active_debugger_mut(&mut self) -> Option<&mut Client> {
-        self.active_debugger
-            .and_then(|id| self.debuggers.get_mut(&id))
+        self.current_debugger_id
+            .and_then(|id| self.get_debugger_mut(id))
     }
 
     pub fn set_active_debugger(&mut self, id: usize) {
-        if self.debuggers.contains_key(&id) {
-            self.active_debugger = Some(id);
+        if self.get_debugger(id).is_some() {
+            self.current_debugger_id = Some(id);
         } else {
-            self.active_debugger = None;
+            self.current_debugger_id = None;
         }
     }
 
     pub fn unset_active_debugger(&mut self) {
-        self.active_debugger = None;
+        self.current_debugger_id = None;
     }
 
     pub fn current_stack_frame(&self) -> Option<&StackFrame> {
