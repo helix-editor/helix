@@ -1,5 +1,5 @@
 use crate::{
-    requests::DisconnectArguments,
+    requests::{DisconnectArguments, TerminateArguments},
     transport::{Payload, Request, Response, Transport},
     types::*,
     Error, Result,
@@ -388,6 +388,14 @@ impl Client {
     ) -> impl Future<Output = Result<Value>> {
         self.connection_type = None;
         self.call::<requests::Disconnect>(args)
+    }
+
+    pub fn terminate(
+        &mut self,
+        args: Option<TerminateArguments>,
+    ) -> impl Future<Output = Result<Value>> {
+        self.connection_type = None;
+        self.call::<requests::Terminate>(args)
     }
 
     pub fn launch(&mut self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
