@@ -6,9 +6,11 @@ use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::Highlight;
 use helix_core::syntax::HighlightEvent;
 use helix_core::text_annotations::TextAnnotations;
-use helix_core::{visual_offset_from_block, Position, RopeSlice};
+use helix_core::{visual_offset_from_block, Position, RopeSlice, Selection};
 use helix_stdx::rope::RopeSliceExt;
-use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
+use helix_view::editor::{
+    WhitespaceCharacters, WhitespaceConfig, WhitespaceRender, WhitespaceRenderValue,
+};
 use helix_view::graphics::Rect;
 use helix_view::theme::Style;
 use helix_view::view::ViewPosition;
@@ -88,6 +90,7 @@ pub fn render_document(
     surface: &mut Surface,
     viewport: Rect,
     doc: &Document,
+    selection: Option<&Selection>,
     offset: ViewPosition,
     doc_annotations: &TextAnnotations,
     syntax_highlight_iter: impl Iterator<Item = HighlightEvent>,
@@ -105,6 +108,7 @@ pub fn render_document(
     render_text(
         &mut renderer,
         doc.text().slice(..),
+        selection,
         offset.anchor,
         &doc.text_format(viewport.width, Some(theme)),
         doc_annotations,
@@ -119,6 +123,7 @@ pub fn render_document(
 pub fn render_text(
     renderer: &mut TextRenderer,
     text: RopeSlice<'_>,
+    selection: Option<&Selection>,
     anchor: usize,
     text_fmt: &TextFormat,
     text_annotations: &TextAnnotations,
@@ -235,11 +240,20 @@ pub fn render_text(
         };
         decorations.decorate_grapheme(renderer, &grapheme);
 
-        let virt = grapheme.is_virtual();
+        let is_virtual = grapheme.is_virtual();
+        let is_selected = selection.is_some_and(|selection| {
+            selection
+                .iter()
+                .any(|range| range.contains(grapheme.char_idx))
+        });
+        let grapheme_render_data = GraphemeRenderData {
+            is_virtual,
+            is_selected,
+        };
         let grapheme_width = renderer.draw_grapheme(
             grapheme.raw,
             grapheme_style,
-            virt,
+            grapheme_render_data,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             grapheme.visual_pos,
@@ -254,16 +268,11 @@ pub fn render_text(
 #[derive(Debug)]
 pub struct TextRenderer<'a> {
     surface: &'a mut Surface,
+    whitespace_entries: WhitespaceEntries,
     pub text_style: Style,
     pub whitespace_style: Style,
     pub indent_guide_char: String,
     pub indent_guide_style: Style,
-    pub newline: String,
-    pub nbsp: String,
-    pub nnbsp: String,
-    pub space: String,
-    pub tab: String,
-    pub virtual_tab: String,
     pub indent_width: u16,
     pub starting_indent: usize,
     pub draw_indent_guides: bool,
@@ -274,6 +283,11 @@ pub struct TextRenderer<'a> {
 pub struct GraphemeStyle {
     syntax_style: Style,
     overlay_style: Style,
+}
+
+pub struct GraphemeRenderData {
+    is_virtual: bool,
+    is_selected: bool,
 }
 
 impl<'a> TextRenderer<'a> {
@@ -291,36 +305,7 @@ impl<'a> TextRenderer<'a> {
         } = &editor_config.whitespace;
 
         let tab_width = doc.tab_width();
-        let tab = if ws_render.tab() == WhitespaceRenderValue::All {
-            std::iter::once(ws_chars.tab)
-                .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
-                .collect()
-        } else {
-            " ".repeat(tab_width)
-        };
-        let virtual_tab = " ".repeat(tab_width);
-        let newline = if ws_render.newline() == WhitespaceRenderValue::All {
-            ws_chars.newline.into()
-        } else {
-            " ".to_owned()
-        };
-
-        let space = if ws_render.space() == WhitespaceRenderValue::All {
-            ws_chars.space.into()
-        } else {
-            " ".to_owned()
-        };
-        let nbsp = if ws_render.nbsp() == WhitespaceRenderValue::All {
-            ws_chars.nbsp.into()
-        } else {
-            " ".to_owned()
-        };
-        let nnbsp = if ws_render.nnbsp() == WhitespaceRenderValue::All {
-            ws_chars.nnbsp.into()
-        } else {
-            " ".to_owned()
-        };
-
+        let whitespace_entries = WhitespaceEntries::new(ws_render, ws_chars, tab_width);
         let text_style = theme.get("ui.text");
 
         let indent_width = doc.indent_style.indent_width(tab_width) as u16;
@@ -328,12 +313,7 @@ impl<'a> TextRenderer<'a> {
         TextRenderer {
             surface,
             indent_guide_char: editor_config.indent_guides.character.into(),
-            newline,
-            nbsp,
-            nnbsp,
-            space,
-            tab,
-            virtual_tab,
+            whitespace_entries,
             whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
             starting_indent: offset.col / indent_width as usize
@@ -370,10 +350,11 @@ impl<'a> TextRenderer<'a> {
             style = style.patch(self.whitespace_style);
         }
 
+        let virtual_tab = &self.whitespace_entries.tab.render(true, false);
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
-                let grapheme_tab_width = char_to_byte_idx(&self.virtual_tab, width);
-                &self.virtual_tab[..grapheme_tab_width]
+                let grapheme_tab_width = char_to_byte_idx(virtual_tab, width);
+                &virtual_tab[..grapheme_tab_width]
             }
             Grapheme::Other { ref g } if g == "\u{00A0}" => " ",
             Grapheme::Other { ref g } => g,
@@ -394,7 +375,7 @@ impl<'a> TextRenderer<'a> {
         &mut self,
         grapheme: Grapheme,
         grapheme_style: GraphemeStyle,
-        is_virtual: bool,
+        grapheme_render_data: GraphemeRenderData,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
         mut position: Position,
@@ -414,14 +395,18 @@ impl<'a> TextRenderer<'a> {
         style = style.patch(grapheme_style.overlay_style);
 
         let width = grapheme.width();
-        let space = if is_virtual { " " } else { &self.space };
-        let nbsp = if is_virtual { " " } else { &self.nbsp };
-        let nnbsp = if is_virtual { " " } else { &self.nnbsp };
-        let tab = if is_virtual {
-            &self.virtual_tab
-        } else {
-            &self.tab
-        };
+
+        let GraphemeRenderData {
+            is_virtual,
+            is_selected,
+        } = grapheme_render_data;
+        let ws = &self.whitespace_entries;
+        let tab = &ws.tab.render(is_virtual, is_selected);
+        let space = &ws.space.render(is_virtual, is_selected);
+        let nbsp = &ws.nbsp.render(is_virtual, is_selected);
+        let nnbsp = &ws.nnbsp.render(is_virtual, is_selected);
+        let newline = &ws.newline.render(false, is_selected);
+
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
                 let grapheme_tab_width = char_to_byte_idx(tab, width);
@@ -432,7 +417,7 @@ impl<'a> TextRenderer<'a> {
             Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
             Grapheme::Other { ref g } if g == "\u{202F}" => nnbsp,
             Grapheme::Other { ref g } => g,
-            Grapheme::Newline => &self.newline,
+            Grapheme::Newline => newline,
         };
 
         let in_bounds = self.column_in_bounds(position.col, width);
@@ -547,5 +532,101 @@ impl<'a> TextRenderer<'a> {
             ellipsis,
             truncate_start,
         )
+    }
+}
+
+#[derive(Debug)]
+struct WhitespacePadding {
+    grapheme_width: usize,
+    padding_character: char,
+}
+
+#[derive(Debug)]
+struct Whitespace {
+    render_value: WhitespaceRenderValue,
+    character: char,
+    padding: Option<WhitespacePadding>,
+}
+
+impl Whitespace {
+    fn render_hidden(&self) -> String {
+        let target_width = self.padding.as_ref().map(|p| p.grapheme_width).unwrap_or(1);
+        " ".repeat(target_width)
+    }
+    fn render_visible(&self) -> String {
+        match self.padding {
+            Some(WhitespacePadding {
+                grapheme_width,
+                padding_character,
+            }) => std::iter::once(self.character)
+                .chain(std::iter::repeat(padding_character).take(grapheme_width - 1))
+                .collect(),
+            None => self.character.to_string(),
+        }
+    }
+    fn is_visible(&self, is_virtual: bool, is_selected: bool) -> bool {
+        if is_virtual {
+            return false;
+        }
+        match self.render_value {
+            WhitespaceRenderValue::All => true,
+            WhitespaceRenderValue::Selection => is_selected,
+            WhitespaceRenderValue::None => false,
+        }
+    }
+    fn render(&self, is_virtual: bool, is_selected: bool) -> String {
+        if self.is_visible(is_virtual, is_selected) {
+            self.render_visible()
+        } else {
+            self.render_hidden()
+        }
+    }
+}
+
+#[derive(Debug)]
+struct WhitespaceEntries {
+    space: Whitespace,
+    nbsp: Whitespace,
+    nnbsp: Whitespace,
+    tab: Whitespace,
+    newline: Whitespace,
+}
+
+impl WhitespaceEntries {
+    fn new(
+        whitespace_render: &WhitespaceRender,
+        whitespace_characters: &WhitespaceCharacters,
+        tab_width: usize,
+    ) -> Self {
+        WhitespaceEntries {
+            space: Whitespace {
+                render_value: whitespace_render.space(),
+                character: whitespace_characters.space,
+                padding: None,
+            },
+            nbsp: Whitespace {
+                render_value: whitespace_render.nbsp(),
+                character: whitespace_characters.nbsp,
+                padding: None,
+            },
+            nnbsp: Whitespace {
+                render_value: whitespace_render.nnbsp(),
+                character: whitespace_characters.nnbsp,
+                padding: None,
+            },
+            tab: Whitespace {
+                render_value: whitespace_render.tab(),
+                character: whitespace_characters.tab,
+                padding: Some(WhitespacePadding {
+                    grapheme_width: tab_width,
+                    padding_character: whitespace_characters.tabpad,
+                }),
+            },
+            newline: Whitespace {
+                render_value: whitespace_render.newline(),
+                character: whitespace_characters.newline,
+                padding: None,
+            },
+        }
     }
 }

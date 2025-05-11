@@ -974,6 +974,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 surface,
                 inner,
                 doc,
+                None,
                 offset,
                 // TODO: compute text annotations asynchronously here (like inlay hints)
                 &TextAnnotations::default(),
