@@ -1096,32 +1096,52 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         template_function_arity_0("cx->cursor");
         template_function_arity_0("editor-focused-buffer-area");
 
-        let mut template_function_arity_1 = |name: &str| {
-            builtin_editor_command_module.push_str(&format!(
-                r#"
+        let mut template_function_arity_1 = |name: &str, doc: &str| {
+            if generate_sources {
+                let docstring = format_docstring(doc);
+                builtin_editor_command_module.push_str(&format!(
+                    r#"
 (provide {})
+;;@doc
+{}
 (define ({} arg)
     (helix.{} *helix.cx* arg))
-"#,
-                name, name, name
-            ));
+    "#,
+                    name, docstring, name, name
+                ));
+            }
         };
 
-        template_function_arity_1("editor->doc-id");
-        template_function_arity_1("editor-switch!");
-        template_function_arity_1("editor-set-focus!");
-        template_function_arity_1("editor-set-mode!");
-        template_function_arity_1("editor-doc-in-view?");
-        template_function_arity_1("set-scratch-buffer-name!");
-        template_function_arity_1("editor-doc-exists?");
-        template_function_arity_1("editor->text");
-        template_function_arity_1("editor-document->path");
-        template_function_arity_1("register->value");
+        template_function_arity_1("editor->doc-id", "Get the document from a given view");
+        template_function_arity_1("editor-switch!", "Open the document in a vertical split");
+        template_function_arity_1("editor-set-focus!", "Set focus on the view");
+        template_function_arity_1("editor-set-mode!", "Set the editor mode");
+        template_function_arity_1(
+            "editor-doc-in-view?",
+            "Check whether the current view contains a document",
+        );
+        template_function_arity_1(
+            "set-scratch-buffer-name!",
+            "Set the name of a scratch buffer",
+        );
+        template_function_arity_1("editor-doc-exists?", "Check if a document exists");
+        template_function_arity_1("editor->text", "Get the document text as a rope");
+        template_function_arity_1("editor-document->path", "Get the path to a document");
+        template_function_arity_1("register->value", "Get register value as a list of strings");
 
-        template_function_arity_1("set-editor-clip-top!");
-        template_function_arity_1("set-editor-clip-right!");
-        template_function_arity_1("set-editor-clip-left!");
-        template_function_arity_1("set-editor-clip-bottom!");
+        template_function_arity_1("set-editor-clip-top!", "Set the editor clipping at the top");
+        template_function_arity_1(
+            "set-editor-clip-right!",
+            "Set the editor clipping at the right",
+        );
+        template_function_arity_1(
+            "set-editor-clip-left!",
+            "Set the editor clipping at the left",
+        );
+        template_function_arity_1(
+            "set-editor-clip-bottom!",
+            "Set the editor clipping at the bottom",
+        );
 
         let mut template_function_arity_2 = |name: &str| {
             builtin_editor_command_module.push_str(&format!(
