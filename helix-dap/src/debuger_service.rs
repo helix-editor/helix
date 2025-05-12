@@ -26,6 +26,12 @@ impl DebuggerService {
         }
     }
 
+    pub fn get_new_id(&mut self) -> usize {
+        let id = self.counter;
+        self.counter += 1;
+        id
+    }
+
     pub fn add_debugger(&mut self, id: usize, client: Client) {
         self.debuggers.insert(id, client);
     }
