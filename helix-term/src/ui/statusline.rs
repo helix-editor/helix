@@ -158,6 +158,7 @@ where
         }
         helix_view::editor::StatusLineElement::Position => render_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
+        helix_view::editor::StatusLineElement::TreeSitterPath => render_tree_sitter_path,
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
@@ -425,6 +426,55 @@ where
 
     if enc != encoding::UTF_8 {
         write(context, format!(" {} ", enc.name()), None);
+    }
+}
+
+fn render_tree_sitter_path<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    if let Some(syntax) = context.doc.syntax() {
+        let text = context.doc.text().slice(..);
+
+        let pos = text.char_to_byte(
+            context
+                .doc
+                .selection(context.view.id)
+                .primary()
+                .cursor(text),
+        );
+        let mut node = match syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(pos, pos)
+        {
+            Some(node) => node,
+            None => return,
+        };
+
+        let mut scopes = Vec::new();
+
+        loop {
+            match node.child_by_field_name("name") {
+                Some(child) => {
+                    let child_id = text.byte_slice(child.byte_range());
+                    scopes.push(format!("\u{203A}{}", child_id));
+                }
+                None => {}
+            }
+
+            match node.parent() {
+                Some(parent) => {
+                    node = parent;
+                }
+                None => {
+                    break;
+                }
+            }
+        }
+
+        scopes.reverse();
+        write(context, scopes.join(""), None);
     }
 }
 

@@ -601,6 +601,9 @@ pub enum StatusLineElement {
     /// The cursor position as a percent of the total file
     PositionPercentage,
 
+    // Path of tree sitter elements
+    TreeSitterPath,
+
     /// The total line numbers of the current file
     TotalLineNumbers,
 
