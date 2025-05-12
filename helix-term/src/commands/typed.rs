@@ -326,21 +326,22 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
 
-    if config.trim_trailing_whitespace {
+    if doc.trim_trailing_whitespace() {
         trim_trailing_whitespace(doc, view.id);
     }
     if config.trim_final_newlines {
         trim_final_newlines(doc, view.id);
     }
-    if config.insert_final_newline {
+    if doc.insert_final_newline() {
         insert_final_newline(doc, view.id);
     }
 
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
+    let (view, doc) = current_ref!(cx.editor);
     let fmt = if config.auto_format {
-        doc.auto_format().map(|fmt| {
+        doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
@@ -483,8 +484,8 @@ fn format(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
         return Ok(());
     }
 
-    let (view, doc) = current!(cx.editor);
-    let format = doc.format().context(
+    let (view, doc) = current_ref!(cx.editor);
+    let format = doc.format(cx.editor).context(
         "A formatter isn't available, and no language server provides formatting capabilities",
     )?;
     let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
@@ -738,13 +739,13 @@ pub fn write_all_impl(
         let doc = doc_mut!(cx.editor, &doc_id);
         let view = view_mut!(cx.editor, target_view);
 
-        if config.trim_trailing_whitespace {
+        if doc.trim_trailing_whitespace() {
             trim_trailing_whitespace(doc, target_view);
         }
         if config.trim_final_newlines {
             trim_final_newlines(doc, target_view);
         }
-        if config.insert_final_newline {
+        if doc.insert_final_newline() {
             insert_final_newline(doc, target_view);
         }
 
@@ -752,7 +753,8 @@ pub fn write_all_impl(
         doc.append_changes_to_history(view);
 
         let fmt = if options.auto_format && config.auto_format {
-            doc.auto_format().map(|fmt| {
+            let doc = doc!(cx.editor, &doc_id);
+            doc.auto_format(cx.editor).map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
                     doc.version(),
@@ -1456,7 +1458,7 @@ fn lsp_workspace_command(
                         commands,
                         (),
                         move |cx, (ls_id, command), _action| {
-                            execute_lsp_command(cx.editor, *ls_id, command.clone());
+                            cx.editor.execute_lsp_command(command.clone(), *ls_id);
                         },
                     );
                     compositor.push(Box::new(overlaid(picker)))
@@ -1484,14 +1486,13 @@ fn lsp_workspace_command(
                     .transpose()?
                     .filter(|args| !args.is_empty());
 
-                execute_lsp_command(
-                    cx.editor,
-                    *ls_id,
+                cx.editor.execute_lsp_command(
                     helix_lsp::lsp::Command {
                         title: command.clone(),
                         arguments,
                         command,
                     },
+                    *ls_id,
                 );
             }
             [] => {
@@ -1623,7 +1624,7 @@ fn lsp_stop(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
 
         for doc in cx.editor.documents_mut() {
             if let Some(client) = doc.remove_language_server_by_name(ls_name) {
-                doc.clear_diagnostics(Some(client.id()));
+                doc.clear_diagnostics_for_language_server(client.id());
                 doc.reset_all_inlay_hints();
                 doc.inlay_hints_oudated = true;
             }
@@ -1881,7 +1882,15 @@ fn update_goto_line_number_preview(cx: &mut compositor::Context, args: Args) -> 
 
     let scrolloff = cx.editor.config().scrolloff;
     let line = args[0].parse::<usize>()?;
-    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+    goto_line_without_jumplist(
+        cx.editor,
+        NonZeroUsize::new(line),
+        if cx.editor.mode == Mode::Select {
+            Movement::Extend
+        } else {
+            Movement::Move
+        },
+    );
 
     let (view, doc) = current!(cx.editor);
     view.ensure_cursor_in_view(doc, scrolloff);
@@ -2147,7 +2156,6 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     }
 
     let scrolloff = cx.editor.config().scrolloff;
-    let cfg_text_width: usize = cx.editor.config().text_width;
     let (view, doc) = current!(cx.editor);
 
     // Find the text_width by checking the following sources in order:
@@ -2158,8 +2166,7 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
         .first()
         .map(|num| num.parse::<usize>())
         .transpose()?
-        .or_else(|| doc.language_config().and_then(|config| config.text_width))
-        .unwrap_or(cfg_text_width);
+        .unwrap_or_else(|| doc.text_width());
 
     let rope = doc.text();
 
@@ -2561,6 +2568,9 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+// TODO: SHELL_SIGNATURE should specify var args for arguments, so that just completers::filename can be used,
+// but Signature does not yet allow for var args.
+
 /// This command handles all of its input as-is with no quoting or flags.
 const SHELL_SIGNATURE: Signature = Signature {
     positionals: (1, Some(2)),
@@ -2569,10 +2579,10 @@ const SHELL_SIGNATURE: Signature = Signature {
 };
 
 const SHELL_COMPLETER: CommandCompleter = CommandCompleter::positional(&[
-    // Command name (TODO: consider a command completer - Kakoune has prior art)
-    completers::none,
+    // Command name
+    completers::program,
     // Shell argument(s)
-    completers::filename,
+    completers::repeating_filenames,
 ]);
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
@@ -2616,7 +2626,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: buffer_close,
         completer: CommandCompleter::all(completers::buffer),
         signature: Signature {
-            positionals: (0, Some(0)),
+            positionals: (0, None),
             ..Signature::DEFAULT
         },
     },
@@ -2627,7 +2637,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: force_buffer_close,
         completer: CommandCompleter::all(completers::buffer),
         signature: Signature {
-            positionals: (0, Some(0)),
+            positionals: (0, None),
             ..Signature::DEFAULT
         },
     },
@@ -2927,7 +2937,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: theme,
         completer: CommandCompleter::positional(&[completers::theme]),
         signature: Signature {
-            positionals: (1, Some(1)),
+            positionals: (0, Some(1)),
             ..Signature::DEFAULT
         },
     },
@@ -3445,7 +3455,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "pipe",
-        aliases: &[],
+        aliases: &["|"],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
         completer: SHELL_COMPLETER,
@@ -3461,7 +3471,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "run-shell-command",
-        aliases: &["sh"],
+        aliases: &["sh", "!"],
         doc: "Run a shell command",
         fun: run_shell_command,
         completer: SHELL_COMPLETER,

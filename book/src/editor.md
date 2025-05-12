@@ -60,6 +60,7 @@
 | `jump-label-alphabet` | The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. | `"abcdefghijklmnopqrstuvwxyz"`
 | `end-of-line-diagnostics` | Minimum severity of diagnostics to render at the end of the line. Set to `disable` to disable entirely. Refer to the setting about `inline-diagnostics` for more details | "disable"
 | `clipboard-provider` | Which API to use for clipboard interaction. One of `pasteboard` (MacOS), `wayland`, `x-clip`, `x-sel`, `win-32-yank`, `termux`, `tmux`, `windows`, `termcode`, `none`, or a custom command set. | Platform and environment specific. |
+| `editor-config` | Whether to read settings from [EditorConfig](https://editorconfig.org) files | `true` |
 
 ### `[editor.clipboard-provider]` Section
 
@@ -103,6 +104,8 @@ separator = "│"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+diagnostics = ["warning", "error"]
+workspace-diagnostics = ["warning", "error"]
 ```
 The `[editor.statusline]` key takes the following sub-keys:
 
@@ -115,6 +118,8 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
+| `diagnostics` | A list of severities which are displayed for the current buffer | `["warning", "error"]` |
+| `workspace-diagnostics` | A list of severities which are displayed for the workspace | `["warning", "error"]` |
 
 The following statusline elements can be configured:
 
@@ -151,6 +156,7 @@ The following statusline elements can be configured:
 | `display-progress-messages` | Display LSP progress messages below statusline[^1]    | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
+| `display-color-swatches` | Show color swatches next to colors | `true` |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
 | `snippets`      | Enables snippet completions. Requires a server restart (`:lsp-restart`) to take effect after `:config-reload`/`:set`. | `true`  |
 | `goto-reference-include-declaration` | Include declaration in the goto references popup. | `true`  |

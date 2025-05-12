@@ -8,6 +8,7 @@ type DynError = Box<dyn Error>;
 
 pub mod tasks {
     use crate::DynError;
+    use std::collections::HashSet;
 
     pub fn docgen() -> Result<(), DynError> {
         use crate::docgen::*;
@@ -17,7 +18,7 @@ pub mod tasks {
         Ok(())
     }
 
-    pub fn querycheck() -> Result<(), DynError> {
+    pub fn querycheck(languages: impl Iterator<Item = String>) -> Result<(), DynError> {
         use crate::helpers::lang_config;
         use helix_core::{syntax::read_query, tree_sitter::Query};
         use helix_loader::grammar::get_language;
@@ -30,7 +31,14 @@ pub mod tasks {
             "indents.scm",
         ];
 
+        let languages_to_check: HashSet<_> = languages.collect();
+
         for language in lang_config().language {
+            if !languages_to_check.is_empty() && !languages_to_check.contains(&language.language_id)
+            {
+                continue;
+            }
+
             let language_name = &language.language_id;
             let grammar_name = language.grammar.as_ref().unwrap_or(language_name);
             for query_file in query_files {
@@ -55,8 +63,10 @@ pub mod tasks {
         Ok(())
     }
 
-    pub fn themecheck() -> Result<(), DynError> {
+    pub fn themecheck(themes: impl Iterator<Item = String>) -> Result<(), DynError> {
         use helix_view::theme::Loader;
+
+        let themes_to_check: HashSet<_> = themes.collect();
 
         let theme_names = [
             vec!["default".to_string(), "base16_default".to_string()],
@@ -67,6 +77,10 @@ pub mod tasks {
         let mut errors_present = false;
 
         for name in theme_names {
+            if !themes_to_check.is_empty() && !themes_to_check.contains(&name) {
+                continue;
+            }
+
             let (_, warnings) = loader.load_with_warnings(&name).unwrap();
 
             if !warnings.is_empty() {
@@ -93,22 +107,25 @@ pub mod tasks {
 Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
 
     Tasks:
-        docgen: Generate files to be included in the mdbook output.
-        query-check: Check that tree-sitter queries are valid.
-        theme-check: Check that theme files in runtime/themes are valid.
+        docgen                     Generate files to be included in the mdbook output.
+        query-check [languages]    Check that tree-sitter queries are valid for the given
+                                   languages, or all languages if none are specified.
+        theme-check [themes]       Check that the theme files in runtime/themes/ are valid for the
+                                   given themes, or all themes if none are specified.
 "
         );
     }
 }
 
 fn main() -> Result<(), DynError> {
-    let task = env::args().nth(1);
+    let mut args = env::args().skip(1);
+    let task = args.next();
     match task {
         None => tasks::print_help(),
         Some(t) => match t.as_str() {
             "docgen" => tasks::docgen()?,
-            "query-check" => tasks::querycheck()?,
-            "theme-check" => tasks::themecheck()?,
+            "query-check" => tasks::querycheck(args)?,
+            "theme-check" => tasks::themecheck(args)?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };

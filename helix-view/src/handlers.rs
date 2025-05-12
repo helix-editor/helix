@@ -21,6 +21,7 @@ pub struct Handlers {
     pub completions: CompletionHandler,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
+    pub document_colors: Sender<lsp::DocumentColorsEvent>,
 }
 
 impl Handlers {
@@ -45,4 +46,8 @@ impl Handlers {
         };
         send_blocking(&self.signature_hints, event)
     }
+}
+
+pub fn register_hooks(handlers: &Handlers) {
+    lsp::register_hooks(handlers);
 }

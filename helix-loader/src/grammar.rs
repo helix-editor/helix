@@ -451,7 +451,6 @@ fn build_tree_sitter_library(
         command
             .args(["/nologo", "/LD", "/I"])
             .arg(header_path)
-            .arg("/Od")
             .arg("/utf-8")
             .arg("/std:c11");
         if let Some(scanner_path) = scanner_path.as_ref() {
@@ -469,7 +468,6 @@ fn build_tree_sitter_library(
                 cpp_command
                     .args(["/nologo", "/LD", "/I"])
                     .arg(header_path)
-                    .arg("/Od")
                     .arg("/utf-8")
                     .arg("/std:c++14")
                     .arg(format!("/Fo{}", object_file.display()))
@@ -496,9 +494,11 @@ fn build_tree_sitter_library(
             .arg("/link")
             .arg(format!("/out:{}", library_path.to_str().unwrap()));
     } else {
+        #[cfg(not(windows))]
+        command.arg("-fPIC");
+
         command
             .arg("-shared")
-            .arg("-fPIC")
             .arg("-fno-exceptions")
             .arg("-I")
             .arg(header_path)
@@ -517,8 +517,11 @@ fn build_tree_sitter_library(
                 cpp_command.args(compiler.args());
                 let object_file =
                     library_path.with_file_name(format!("{}_scanner.o", &grammar.grammar_id));
+
+                #[cfg(not(windows))]
+                cpp_command.arg("-fPIC");
+
                 cpp_command
-                    .arg("-fPIC")
                     .arg("-fno-exceptions")
                     .arg("-I")
                     .arg(header_path)
@@ -592,6 +595,6 @@ fn mtime(path: &Path) -> Result<SystemTime> {
 /// Gives the contents of a file from a language's `runtime/queries/<lang>`
 /// directory
 pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let path = crate::runtime_file(&PathBuf::new().join("queries").join(language).join(filename));
+    let path = crate::runtime_file(PathBuf::new().join("queries").join(language).join(filename));
     std::fs::read_to_string(path)
 }
