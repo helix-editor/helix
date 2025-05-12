@@ -1076,7 +1076,7 @@ pub struct Editor {
     pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
 
-    pub debugger: DebuggerService,
+    pub debugger_service: DebuggerService,
     pub debugger_events: SelectAll<UnboundedReceiverStream<(usize, dap::Payload)>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
@@ -1222,7 +1222,7 @@ impl Editor {
             language_servers,
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
-            debugger: DebuggerService::new(),
+            debugger_service: DebuggerService::new(),
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
             syn_loader,
@@ -2220,7 +2220,7 @@ impl Editor {
     }
 
     pub fn current_stack_frame(&self) -> Option<&StackFrame> {
-        self.debugger.current_stack_frame()
+        self.debugger_service.current_stack_frame()
     }
 
     /// Returns the id of a view that this doc contains a selection for,
