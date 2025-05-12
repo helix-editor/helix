@@ -822,8 +822,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "js-debug-dap"
 transport = "tcp"
 port-arg = "{} 127.0.0.1"
-command = "node"
-args = ["dapDebugServer.js"]
+# args consisting of cmd (node) and path to adapter should be added to user's configuration
 quirks = { absolute-paths = true }
 
 [[language.debugger.templates]]
