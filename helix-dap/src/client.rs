@@ -39,7 +39,8 @@ pub struct Client {
     // thread_id -> frames
     pub stack_frames: HashMap<ThreadId, Vec<StackFrame>>,
     pub thread_states: ThreadStates,
-    pub thread_id: Option<ThreadId>,
+    /// The currently active thread (usually the one we've broken at).
+    pub active_thread_id: Option<ThreadId>,
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
     pub quirks: DebuggerQuirks,
@@ -95,7 +96,7 @@ impl Client {
             socket: None,
             stack_frames: HashMap::new(),
             thread_states: HashMap::new(),
-            thread_id: None,
+            active_thread_id: None,
             active_frame: None,
             quirks: DebuggerQuirks::default(),
             children: HashMap::new(),
@@ -243,12 +244,12 @@ impl Client {
 
     // Internal, called by specific DAP commands when resuming
     pub fn resume_application(&mut self) {
-        if let Some(thread_id) = self.thread_id {
+        if let Some(thread_id) = self.active_thread_id {
             self.thread_states.insert(thread_id, "running".to_string());
             self.stack_frames.remove(&thread_id);
         }
         self.active_frame = None;
-        self.thread_id = None;
+        self.active_thread_id = None;
     }
 
     /// Execute a RPC request on the debugger.
@@ -346,7 +347,12 @@ impl Client {
         id: usize,
         socket: SocketAddr,
     ) -> Result<(&mut Client, UnboundedReceiver<(usize, Payload)>)> {
-        let (client, payload) = Self::tcp(socket, id).await?;
+        let (mut client, payload) = Self::tcp(socket, id).await?;
+        client.config = self.config.clone();
+        client.quirks = self.quirks.clone();
+        client.connection_type = self.connection_type;
+        client.starting_request_args = self.starting_request_args.clone();
+
         self.children.insert(id, client);
         Ok((self.children.get_mut(&id).unwrap(), payload))
     }
@@ -553,7 +559,7 @@ impl Client {
 
     pub fn current_stack_frame(&self) -> Option<&StackFrame> {
         self.stack_frames
-            .get(&self.thread_id?)?
+            .get(&self.active_thread_id?)?
             .get(self.active_frame?)
     }
 }

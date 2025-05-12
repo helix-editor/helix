@@ -13,7 +13,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 #[macro_export]
 macro_rules! debugger {
     ($editor:expr) => {{
-        let Some(debugger) = $editor.debugger.get_active_debugger_mut() else {
+        let Some(debugger) = $editor.debugger_service.get_active_debugger_mut() else {
             return;
         };
         debugger
@@ -32,11 +32,11 @@ pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Opt
 pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: bool) {
     let debugger = debugger!(editor);
 
-    if !force && debugger.thread_id.is_some() {
+    if !force && debugger.active_thread_id.is_some() {
         return;
     }
 
-    debugger.thread_id = Some(thread_id);
+    debugger.active_thread_id = Some(thread_id);
     fetch_stack_trace(debugger, thread_id).await;
 
     let frame = debugger.stack_frames[&thread_id].first().cloned();
@@ -149,11 +149,6 @@ impl Editor {
     ) -> bool {
         use helix_dap::{events, Event};
 
-        let debugger = match self.debugger.get_debugger_mut(id) {
-            Some(debugger) => debugger,
-            None => return false,
-        };
-
         match payload {
             Payload::Event(event) => {
                 let event = match Event::parse(&event.event, event.body) {
@@ -176,6 +171,11 @@ impl Editor {
                         all_threads_stopped,
                         ..
                     }) => {
+                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                            Some(debugger) => debugger,
+                            None => return false,
+                        };
+
                         let all_threads_stopped = all_threads_stopped.unwrap_or_default();
 
                         if all_threads_stopped {
@@ -190,6 +190,7 @@ impl Editor {
                         } else if let Some(thread_id) = thread_id {
                             debugger.thread_states.insert(thread_id, reason.clone()); // TODO: dap uses "type" || "reason" here
 
+                            fetch_stack_trace(debugger, thread_id).await;
                             // whichever thread stops is made "current" (if no previously selected thread).
                             select_thread_id(self, thread_id, false).await;
                         }
@@ -211,18 +212,30 @@ impl Editor {
                         }
 
                         self.set_status(status);
-                        self.debugger.set_active_debugger(id);
+                        self.debugger_service.set_active_debugger(id);
                     }
                     Event::Continued(events::ContinuedBody { thread_id, .. }) => {
+                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                            Some(debugger) => debugger,
+                            None => return false,
+                        };
+
                         debugger
                             .thread_states
                             .insert(thread_id, "running".to_owned());
-                        if debugger.thread_id == Some(thread_id) {
+                        if debugger.active_thread_id == Some(thread_id) {
                             debugger.resume_application();
                         }
                     }
-                    Event::Thread(_) => {
-                        // TODO: update thread_states, make threads request
+                    Event::Thread(thread) => {
+                        self.set_status(format!("Thread {}: {}", thread.thread_id, thread.reason));
+                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                            Some(debugger) => debugger,
+                            None => return false,
+                        };
+
+                        debugger.active_thread_id = Some(thread.thread_id);
+                        // set the stack frame for the thread
                     }
                     Event::Breakpoint(events::BreakpointBody { reason, breakpoint }) => {
                         match &reason[..] {
@@ -291,6 +304,12 @@ impl Editor {
                         self.set_status(format!("{} {}", prefix, output));
                     }
                     Event::Initialized(_) => {
+                        self.set_status("Debugger initialized...");
+                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                            Some(debugger) => debugger,
+                            None => return false,
+                        };
+
                         // send existing breakpoints
                         for (path, breakpoints) in &mut self.breakpoints {
                             // TODO: call futures in parallel, await all
@@ -303,6 +322,11 @@ impl Editor {
                         }; // TODO: do we need to handle error?
                     }
                     Event::Terminated(terminated) => {
+                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                            Some(debugger) => debugger,
+                            None => return false,
+                        };
+
                         let restart_arg = if let Some(terminated) = terminated {
                             terminated.restart.unwrap_or(false)
                         } else {
@@ -346,8 +370,8 @@ impl Editor {
                                 ));
                             }
                         } else {
-                            self.debugger.remove_debugger(id);
-                            self.debugger.unset_active_debugger();
+                            self.debugger_service.remove_debugger(id);
+                            self.debugger_service.unset_active_debugger();
                             self.set_status(
                                 "Terminated debugging session and disconnected debugger.",
                             );
@@ -406,6 +430,14 @@ impl Editor {
                         }))
                     }
                     Ok(Request::StartDebugging(arguments)) => {
+                        let new_id = self.debugger_service.get_new_id();
+                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                            Some(debugger) => debugger,
+                            None => {
+                                self.set_error("No active debugger found.");
+                                return true;
+                            }
+                        };
                         // Currently we only support starting a child debugger if the parent is using the TCP transport
                         let socket = match debugger.socket {
                             Some(socket) => socket,
@@ -424,7 +456,7 @@ impl Editor {
                             }
                         };
 
-                        let result = debugger.create_child_debugger(1, socket).await;
+                        let result = debugger.create_child_debugger(new_id, socket).await;
 
                         let (child, events) = match result {
                             Ok(child) => child,
@@ -472,7 +504,6 @@ impl Editor {
                             return true;
                         }
 
-                        // start the debugger here and set it as a child to the current debugger
                         Ok(json!({
                             "success": true,
                         }))
@@ -480,7 +511,7 @@ impl Editor {
                     Err(err) => Err(err),
                 };
 
-                if let Some(debugger) = self.debugger.get_debugger_mut(id) {
+                if let Some(debugger) = self.debugger_service.get_debugger_mut(id) {
                     debugger
                         .reply(request.seq, &request.command, reply)
                         .await

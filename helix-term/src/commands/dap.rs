@@ -60,7 +60,7 @@ fn thread_picker(
             )
             .with_preview(move |editor, thread| {
                 let frames = editor
-                    .debugger
+                    .debugger_service
                     .get_active_debugger()
                     .as_ref()?
                     .stack_frames
@@ -121,6 +121,7 @@ pub fn dap_start_impl(
     params: Option<Vec<std::borrow::Cow<str>>>,
 ) -> Result<(), anyhow::Error> {
     let doc = doc!(cx.editor);
+    let id = cx.editor.debugger_service.get_new_id();
 
     let config = doc
         .language_config()
@@ -128,13 +129,13 @@ pub fn dap_start_impl(
         .ok_or_else(|| anyhow!("No debug adapter available for language"))?;
 
     let result = match socket {
-        Some(socket) => block_on(Client::tcp(socket, 0)),
+        Some(socket) => block_on(Client::tcp(socket, id)),
         None => block_on(Client::process(
             &config.transport,
             &config.command,
             config.args.iter().map(|arg| arg.as_str()).collect(),
             config.port_arg.as_deref(),
-            0,
+            id,
         )),
     };
 
@@ -229,7 +230,7 @@ pub fn dap_start_impl(
     };
 
     // TODO: either await "initialized" or buffer commands until event is received
-    cx.editor.debugger.add_debugger(0, debugger);
+    cx.editor.debugger_service.add_debugger(0, debugger);
     let stream = UnboundedReceiverStream::new(events);
     cx.editor.debugger_events.push(stream);
     Ok(())
@@ -237,7 +238,7 @@ pub fn dap_start_impl(
 
 pub fn dap_launch(cx: &mut Context) {
     // TODO: Now that we support multiple Clients, we could run multiple debuggers at once but for now keep this as is
-    if cx.editor.debugger.get_active_debugger().is_some() {
+    if cx.editor.debugger_service.get_active_debugger().is_some() {
         cx.editor.set_error("Debugger is already running");
         return;
     }
@@ -291,7 +292,7 @@ pub fn dap_launch(cx: &mut Context) {
 }
 
 pub fn dap_restart(cx: &mut Context) {
-    let debugger = match cx.editor.debugger.get_active_debugger() {
+    let debugger = match cx.editor.debugger_service.get_active_debugger() {
         Some(debugger) => debugger,
         None => {
             cx.editor.set_error("Debugger is not running");
@@ -435,7 +436,7 @@ pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) 
 pub fn dap_continue(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    if let Some(thread_id) = debugger.thread_id {
+    if let Some(thread_id) = debugger.active_thread_id {
         let request = debugger.continue_thread(thread_id);
 
         dap_callback(
@@ -465,7 +466,7 @@ pub fn dap_pause(cx: &mut Context) {
 pub fn dap_step_in(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    if let Some(thread_id) = debugger.thread_id {
+    if let Some(thread_id) = debugger.active_thread_id {
         let request = debugger.step_in(thread_id);
 
         dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
@@ -480,7 +481,7 @@ pub fn dap_step_in(cx: &mut Context) {
 pub fn dap_step_out(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    if let Some(thread_id) = debugger.thread_id {
+    if let Some(thread_id) = debugger.active_thread_id {
         let request = debugger.step_out(thread_id);
         dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
             debugger!(editor).resume_application();
@@ -494,7 +495,7 @@ pub fn dap_step_out(cx: &mut Context) {
 pub fn dap_next(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    if let Some(thread_id) = debugger.thread_id {
+    if let Some(thread_id) = debugger.active_thread_id {
         let request = debugger.next(thread_id);
         dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
             debugger!(editor).resume_application();
@@ -508,12 +509,12 @@ pub fn dap_next(cx: &mut Context) {
 pub fn dap_variables(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    if debugger.thread_id.is_none() {
+    if debugger.active_thread_id.is_none() {
         cx.editor
             .set_status("Cannot access variables while target is running.");
         return;
     }
-    let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
+    let (frame, thread_id) = match (debugger.active_frame, debugger.active_thread_id) {
         (Some(frame), Some(thread_id)) => (frame, thread_id),
         _ => {
             cx.editor
@@ -590,6 +591,7 @@ pub fn dap_variables(cx: &mut Context) {
 }
 
 pub fn dap_terminate(cx: &mut Context) {
+    cx.editor.set_status("Terminating debug session...");
     let debugger = debugger!(cx.editor);
 
     let terminate_arguments = Some(TerminateArguments {
@@ -599,7 +601,7 @@ pub fn dap_terminate(cx: &mut Context) {
     let request = debugger.terminate(terminate_arguments);
     dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
         // editor.set_error(format!("Failed to disconnect: {}", e));
-        editor.debugger.unset_active_debugger();
+        editor.debugger_service.unset_active_debugger();
     });
 }
 
@@ -728,7 +730,7 @@ pub fn dap_switch_thread(cx: &mut Context) {
 pub fn dap_switch_stack_frame(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    let thread_id = match debugger.thread_id {
+    let thread_id = match debugger.active_thread_id {
         Some(thread_id) => thread_id,
         None => {
             cx.editor.set_error("No thread is currently active");

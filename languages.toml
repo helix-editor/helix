@@ -819,16 +819,20 @@ language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
-name = "node-debug2"
-transport = "stdio"
-# args consisting of cmd (node) and path to adapter should be added to user's configuration
+name = "js-debug-dap"
+transport = "tcp"
+port-arg = "{} 127.0.0.1"
+command = "node"
+args = ["dapDebugServer.js"]
 quirks = { absolute-paths = true }
 
 [[language.debugger.templates]]
 name = "source"
 request = "launch"
 completion = [ { name = "main", completion = "filename", default = "index.js" } ]
-args = { program = "{0}" }
+args = { program = "{0}", skipFiles = [ "<node_internals>/**" ] }
+
+[[language.debugger.templates]]
 
 [[grammar]]
 name = "javascript"
