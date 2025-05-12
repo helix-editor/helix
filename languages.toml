@@ -819,7 +819,9 @@ quirks = { absolute-paths = true }
 name = "source"
 request = "launch"
 completion = [ { name = "main", completion = "filename", default = "index.js" } ]
-args = { program = "{0}" }
+args = { program = "{0}", skipFiles = [ "<node_internals>/**" ] }
+
+[[language.debugger.templates]]
 
 [[grammar]]
 name = "javascript"
