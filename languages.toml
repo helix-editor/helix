@@ -4360,13 +4360,3 @@ file-types = [ { glob = "dunst/dunstrc" } ]
 [[grammar]]
 name = "dunstrc"
 source = { git = "https://github.com/rotmh/tree-sitter-dunstrc", rev = "9cb9d5cc51cf5e2a47bb2a0e2f2e519ff11c1431" }
-
-[[language]]
-name = "rustfmt"
-scope = "source.rustfmt"
-file-types = []
-injection-regex = "rustfmt"
-
-[[grammar]]
-name = "rustfmt"
-source = { git = "https://github.com/nik-rev/tree-sitter-rustfmt", rev = "d8e517d9aca1905261a378b25688e4500ae4dd22" }

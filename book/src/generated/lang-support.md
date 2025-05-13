@@ -199,7 +199,6 @@
 | rst | ✓ |  |  |  |
 | ruby | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
-| rustfmt | ✓ |  |  |  |
 | sage | ✓ | ✓ |  |  |
 | scala | ✓ | ✓ | ✓ | `metals` |
 | scheme | ✓ |  | ✓ |  |
