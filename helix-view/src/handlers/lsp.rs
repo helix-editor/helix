@@ -5,9 +5,8 @@ use crate::editor::Action;
 use crate::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
 };
-use crate::{DocumentId, Editor};
-use helix_core::diagnostic::DiagnosticProvider;
-use helix_core::Uri;
+use crate::{DocumentId, Editor, ViewId};
+use helix_core::{diagnostic::DiagnosticProvider, Uri};
 use helix_event::register_hook;
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
@@ -28,6 +27,16 @@ pub enum SignatureHelpEvent {
     ReTrigger,
     Cancel,
     RequestComplete { open: bool },
+}
+
+#[derive(Debug)]
+pub enum InlayHintEvent {
+    /// The contents of a document changed.
+    /// This event should request annotations after a long debounce.
+    DocumentChanged(DocumentId),
+    /// The viewport was scrolled and/or the selection changed.
+    /// This event should request annotations after a short debounce.
+    ViewportScrolled(ViewId),
 }
 
 #[derive(Debug)]
