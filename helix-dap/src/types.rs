@@ -770,7 +770,7 @@ pub mod requests {
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StartDebuggingArguments {
-        pub request: String,
+        pub request: ConnectionType,
         pub configuration: Value,
     }
 
@@ -1019,6 +1019,29 @@ pub mod events {
         pub memory_reference: String,
         pub offset: usize,
         pub count: usize,
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum ConnectionType {
+    Launch,
+    Attach,
+}
+
+impl<'de> Deserialize<'de> for ConnectionType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "launch" => Ok(ConnectionType::Launch),
+            "attach" => Ok(ConnectionType::Attach),
+            _ => Err(serde::de::Error::custom(format!(
+                "Invalid request type: {}",
+                s
+            ))),
+        }
     }
 }
 
