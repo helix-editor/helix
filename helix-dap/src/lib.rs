@@ -3,7 +3,7 @@ mod debuger_service;
 mod transport;
 mod types;
 
-pub use client::{Client, ConnectionType};
+pub use client::Client;
 pub use debuger_service::DebuggerService;
 pub use transport::{Payload, Response, Transport};
 pub use types::*;

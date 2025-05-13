@@ -49,12 +49,6 @@ pub struct Client {
     pub children: HashMap<usize, Client>,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum ConnectionType {
-    Launch,
-    Attach,
-}
-
 impl Client {
     // Spawn a process and communicate with it by either TCP or stdio
     // The returned stream includes the Client ID so consumers can differentiate between multiple clients
