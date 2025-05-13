@@ -49,7 +49,7 @@ use helix_view::{
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
     view::ViewPosition,
-    Document, DocumentId, Editor,
+    ClientId, Document, DocumentId, Editor,
 };
 
 use self::handlers::{DynamicQueryChange, DynamicQueryHandler, PreviewHighlightHandler};
@@ -235,10 +235,17 @@ impl<T, D> Column<T, D> {
 
 /// Returns a new list of options to replace the contents of the picker
 /// when called with the current picker query,
-type DynQueryCallback<T, D> =
-    fn(&str, &mut Editor, Arc<D>, &Injector<T, D>) -> BoxFuture<'static, anyhow::Result<()>>;
+type DynQueryCallback<T, D> = fn(
+    &str,
+    &mut Editor,
+    ClientId,
+    Arc<D>,
+    &Injector<T, D>,
+) -> BoxFuture<'static, anyhow::Result<()>>;
 
 pub struct Picker<T: 'static + Send + Sync, D: 'static> {
+    client_id: ClientId,
+
     columns: Arc<[Column<T, D>]>,
     primary_column: usize,
     editor_data: Arc<D>,
@@ -296,6 +303,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     pub fn new<C, O, F>(
+        client_id: ClientId,
         columns: C,
         primary_column: usize,
         options: O,
@@ -321,6 +329,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             inject_nucleo_item(&injector, &columns, item, &editor_data);
         }
         Self::with(
+            client_id,
             matcher,
             columns,
             primary_column,
@@ -331,12 +340,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     pub fn with_stream(
+        client_id: ClientId,
         matcher: Nucleo<T>,
         primary_column: usize,
         injector: Injector<T, D>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         Self::with(
+            client_id,
             matcher,
             injector.columns,
             primary_column,
@@ -347,6 +358,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     fn with(
+        client_id: ClientId,
         matcher: Nucleo<T>,
         columns: Arc<[Column<T, D>]>,
         default_column: usize,
@@ -371,6 +383,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let query = PickerQuery::new(columns.iter().map(|col| &col.name).cloned(), default_column);
 
         Self {
+            client_id,
             columns,
             primary_column: default_column,
             matcher,
@@ -387,7 +400,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
-            preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
+            preview_highlight_handler: PreviewHighlightHandler::<T, D>::new(client_id).spawn(),
             dynamic_query_handler: None,
         }
     }
@@ -429,7 +442,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         callback: DynQueryCallback<T, D>,
         debounce_ms: Option<u64>,
     ) -> Self {
-        let handler = DynamicQueryHandler::new(callback, debounce_ms).spawn();
+        let handler = DynamicQueryHandler::new(callback, self.client_id, debounce_ms).spawn();
         let event = DynamicQueryChange {
             query: self.primary_query(),
             // Treat the initial query as a paste.
@@ -1076,7 +1089,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 // that completion
                 if let Some(completion) = self
                     .prompt
-                    .first_history_completion(ctx.editor)
+                    .first_history_completion(ctx.editor, ctx.client_id)
                     .filter(|_| self.prompt.line().is_empty())
                 {
                     // The percent character is used by the query language and needs to be
@@ -1086,7 +1099,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     } else {
                         completion.into_owned()
                     };
-                    self.prompt.set_line(completion, ctx.editor);
+                    self.prompt.set_line(completion, ctx.editor, ctx.client_id);
 
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
@@ -1129,7 +1142,12 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         EventResult::Consumed(None)
     }
 
-    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(
+        &self,
+        area: Rect,
+        editor: &Editor,
+        client_id: ClientId,
+    ) -> (Option<Position>, CursorKind) {
         let block = Block::bordered();
         // calculate the inner area inside the box
         let inner = block.inner(area);
@@ -1145,7 +1163,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         };
         let area = inner.clip_left(1).with_height(1).with_width(picker_width);
 
-        self.prompt.cursor(area, editor)
+        self.prompt.cursor(area, editor, client_id)
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {

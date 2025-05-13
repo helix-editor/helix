@@ -118,7 +118,7 @@ pub async fn test_key_sequences(
     let num_inputs = inputs.len();
 
     for (i, (in_keys, test_fn)) in inputs.into_iter().enumerate() {
-        let (view, doc) = current_ref!(app.editor);
+        let (_client, view, doc) = current_ref!(app.editor, app.client_id);
         let state = test::plain(doc.text().slice(..), doc.selection(view.id));
 
         log::debug!("executing test with document state:\n\n-----\n\n{}", state);
@@ -134,7 +134,7 @@ pub async fn test_key_sequences(
         let app_exited = !app.event_loop_until_idle(&mut rx_stream).await;
 
         if !app_exited {
-            let (view, doc) = current_ref!(app.editor);
+            let (_client, view, doc) = current_ref!(app.editor, app.client_id);
             let state = test::plain(doc.text().slice(..), doc.selection(view.id));
 
             log::debug!(
@@ -196,7 +196,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
         None => Application::new(Args::default(), test_config(), test_syntax_loader(None))?,
     };
 
-    let (view, doc) = helix_view::current!(app.editor);
+    let (_client, view, doc) = helix_view::current!(app.editor, app.client_id);
     let sel = doc.selection(view.id).clone();
 
     // replace the initial text with the input text
@@ -243,7 +243,7 @@ pub async fn test_with_config<T: Into<TestCase>>(
         Some(app),
         test_case.clone(),
         &|app| {
-            let doc = doc!(app.editor);
+            let doc = doc!(app.editor, app.client_id);
             assert_eq!(&test_case.out_text, doc.text());
 
             let mut selections: Vec<_> = doc.selections().values().cloned().collect();
@@ -383,7 +383,7 @@ impl AppBuilder {
         let mut app = Application::new(self.args, self.config, self.syn_loader)?;
 
         if let Some((text, selection)) = self.input {
-            let (view, doc) = helix_view::current!(app.editor);
+            let (_client, view, doc) = helix_view::current!(app.editor, app.client_id);
             let sel = doc.selection(view.id).clone();
             let trans = Transaction::change_by_selection(doc.text(), &sel, |_| {
                 (0, doc.text().len_chars(), Some((text.clone()).into()))

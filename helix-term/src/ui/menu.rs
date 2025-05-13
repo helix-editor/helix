@@ -6,7 +6,7 @@ use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
-use helix_view::{editor::SmartTabConfig, graphics::Rect, Editor};
+use helix_view::{ClientId, editor::SmartTabConfig, graphics::Rect, Editor};
 use tui::layout::Constraint;
 
 pub trait Item: Sync + Send + 'static {
@@ -16,7 +16,7 @@ pub trait Item: Sync + Send + 'static {
     fn format(&self, data: &Self::Data) -> Row;
 }
 
-pub type MenuCallback<T> = Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>;
+pub type MenuCallback<T> = Box<dyn Fn(&mut Editor, ClientId, Option<&T>, MenuEvent)>;
 
 pub struct Menu<T: Item> {
     options: Vec<T>,
@@ -45,7 +45,7 @@ impl<T: Item> Menu<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: <T as Item>::Data,
-        callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
+        callback_fn: impl Fn(&mut Editor, ClientId, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
         let matches = (0..options.len() as u32).map(|i| (i, 0)).collect();
         Self {
@@ -236,24 +236,29 @@ impl<T: Item + 'static> Component for Menu<T> {
         match event {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
-                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
+                (self.callback_fn)(cx.editor, cx.client_id, self.selection(), MenuEvent::Abort);
                 return EventResult::Consumed(close_fn);
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
             shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_up();
-                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                (self.callback_fn)(cx.editor, cx.client_id, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
             key!(Tab) | key!(Down) | ctrl!('n') => {
                 // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
                 self.move_down();
-                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                (self.callback_fn)(cx.editor, cx.client_id, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
             key!(Enter) => {
                 if let Some(selection) = self.selection() {
-                    (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
+                    (self.callback_fn)(
+                        cx.editor,
+                        cx.client_id,
+                        Some(selection),
+                        MenuEvent::Validate,
+                    );
                     return EventResult::Consumed(close_fn);
                 } else {
                     return EventResult::Ignored(close_fn);

@@ -44,6 +44,7 @@ use helix_core::{
 };
 
 use crate::{
+    ClientId,
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
     expansion,
@@ -782,9 +783,10 @@ impl Document {
     pub fn auto_format(
         &self,
         editor: &Editor,
+        client_id: ClientId,
     ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if self.language_config()?.auto_format {
-            self.format(editor)
+            self.format(editor, client_id)
         } else {
             None
         }
@@ -797,6 +799,7 @@ impl Document {
     pub fn format(
         &self,
         editor: &Editor,
+        client_id: ClientId,
     ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
@@ -824,7 +827,7 @@ impl Document {
 
             let args = match fmt_args
                 .iter()
-                .map(|content| expansion::expand(editor, Token::expand(content)))
+                .map(|content| expansion::expand(editor, client_id, Token::expand(content)))
                 .collect::<Result<Vec<_>, _>>()
             {
                 Ok(args) => args,

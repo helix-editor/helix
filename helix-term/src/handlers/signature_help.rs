@@ -8,6 +8,7 @@ use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::Mode;
 use helix_view::events::{DocumentDidChange, SelectionDidChange};
 use helix_view::handlers::lsp::{SignatureHelpEvent, SignatureHelpInvoked};
+use helix_view::ClientId;
 use helix_view::Editor;
 use tokio::sync::mpsc::Sender;
 use tokio::time::Instant;
@@ -95,7 +96,7 @@ impl helix_event::AsyncHook for SignatureHelpHandler {
         let invocation = self.trigger.take().unwrap();
         self.state = State::Pending;
         let handle = self.task_controller.restart();
-        job::dispatch_blocking(move |editor, _| request_signature_help(editor, invocation, handle))
+        job::dispatch_blocking(move |editor| request_signature_help(editor, invocation, handle))
     }
 }
 
@@ -104,7 +105,8 @@ pub fn request_signature_help(
     invoked: SignatureHelpInvoked,
     cancel: TaskHandle,
 ) {
-    let (view, doc) = current!(editor);
+    let client_id = editor.most_recent_client_id.unwrap();
+    let (_client, view, doc) = current!(editor, client_id);
 
     // TODO merge multiple language server signature help into one instead of just taking the first language server that supports it
     let future = doc
@@ -126,8 +128,8 @@ pub fn request_signature_help(
     tokio::spawn(async move {
         match cancelable_future(future, cancel).await {
             Some(Ok(res)) => {
-                job::dispatch(move |editor, compositor| {
-                    show_signature_help(editor, compositor, invoked, res)
+                job::dispatch_for_client(client_id, move |editor, compositor| {
+                    show_signature_help(editor, client_id, compositor, invoked, res)
                 })
                 .await
             }
@@ -164,6 +166,7 @@ fn active_param_range(
 
 pub fn show_signature_help(
     editor: &mut Editor,
+    client_id: ClientId,
     compositor: &mut Compositor,
     invoked: SignatureHelpInvoked,
     response: Option<lsp::SignatureHelp>,
@@ -183,7 +186,9 @@ pub fn show_signature_help(
     // annoyance, see https://github.com/helix-editor/helix/issues/3112
     // For the most part this should not be needed as the request gets canceled automatically now
     // but it's technically possible for the mode change to just preempt this callback so better safe than sorry
-    if invoked == SignatureHelpInvoked::Automatic && editor.mode != Mode::Insert {
+    if invoked == SignatureHelpInvoked::Automatic
+        && client!(editor, client_id).mode != Mode::Insert
+    {
         return;
     }
 
@@ -205,7 +210,7 @@ pub fn show_signature_help(
         SignatureHelpEvent::RequestComplete { open: true },
     );
 
-    let doc = doc!(editor);
+    let doc = doc!(editor, client_id);
     let language = doc.language_name().unwrap_or("");
 
     if response.signatures.is_empty() {
@@ -278,8 +283,8 @@ pub fn show_signature_help(
         .unwrap()
         .completion
         .as_mut()
-        .map(|completion| completion.area(size, editor))
-        .filter(|area| area.intersects(popup.area(size, editor)))
+        .map(|completion| completion.area(size, editor, client_id))
+        .filter(|area| area.intersects(popup.area(size, editor, client_id)))
         .is_some()
     {
         return;
@@ -295,7 +300,7 @@ fn signature_help_post_insert_char_hook(
     if !cx.editor.config().lsp.auto_signature_help {
         return Ok(());
     }
-    let (view, doc) = current!(cx.editor);
+    let (_client, view, doc) = current!(cx.editor, cx.client_id);
     // TODO support multiple language servers (not just the first that is found), likely by merging UI somehow
     let Some(language_server) = doc
         .language_servers_with_feature(LanguageServerFeature::SignatureHelp)

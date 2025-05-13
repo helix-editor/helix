@@ -1,5 +1,6 @@
 use helix_core::Position;
 use helix_view::{
+    ClientId,
     graphics::{CursorKind, Rect},
     Editor,
 };
@@ -65,9 +66,14 @@ impl<T: Component + 'static> Component for Overlay<T> {
         self.content.handle_event(event, ctx)
     }
 
-    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(
+        &self,
+        area: Rect,
+        ctx: &Editor,
+        client_id: ClientId,
+    ) -> (Option<Position>, CursorKind) {
         let dimensions = (self.calc_child_size)(area);
-        self.content.cursor(dimensions, ctx)
+        self.content.cursor(dimensions, ctx, client_id)
     }
 
     fn id(&self) -> Option<&'static str> {

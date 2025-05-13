@@ -40,6 +40,7 @@ impl std::fmt::Display for DocumentId {
 
 slotmap::new_key_type! {
     pub struct ViewId;
+    pub struct ClientId;
 }
 
 pub enum Align {
@@ -74,7 +75,7 @@ pub fn align_view(doc: &mut Document, view: &View, align: Align) {
 }
 
 pub use document::Document;
-pub use editor::Editor;
+pub use editor::{Editor, EditorClient};
 use helix_core::char_idx_at_visual_offset;
 pub use theme::Theme;
 pub use view::View;

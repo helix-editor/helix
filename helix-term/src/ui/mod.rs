@@ -29,6 +29,7 @@ pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
+use helix_view::ClientId;
 use helix_view::Editor;
 use tui::text::{Span, Spans};
 
@@ -50,12 +51,12 @@ pub fn prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, ClientId, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
     // Calculate the initial completion
-    prompt.recalculate_completion(cx.editor);
+    prompt.recalculate_completion(cx.editor, cx.client_id);
     cx.push_layer(Box::new(prompt));
 }
 
@@ -64,11 +65,14 @@ pub fn prompt_with_input(
     prompt: std::borrow::Cow<'static, str>,
     input: String,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, ClientId, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
-        .with_line(input, cx.editor);
+    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn).with_line(
+        input,
+        cx.editor,
+        cx.client_id,
+    );
     cx.push_layer(Box::new(prompt));
 }
 
@@ -76,7 +80,7 @@ pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, ClientId, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, PromptEvent) + 'static,
 ) {
     raw_regex_prompt(
@@ -91,10 +95,10 @@ pub fn raw_regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, ClientId, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
 ) {
-    let (view, doc) = current!(cx.editor);
+    let (_client, view, doc) = current!(cx.editor, cx.client_id);
     let doc_id = view.doc;
     let snapshot = doc.selection(view.id).clone();
     let offset_snapshot = doc.view_offset(view.id);
@@ -107,7 +111,7 @@ pub fn raw_regex_prompt(
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
-                    let (view, doc) = current!(cx.editor);
+                    let (_client, view, doc) = current!(cx.editor, cx.client_id);
                     doc.set_selection(view.id, snapshot.clone());
                     doc.set_view_offset(view.id, offset_snapshot);
                 }
@@ -132,7 +136,7 @@ pub fn raw_regex_prompt(
                         .build(input)
                     {
                         Ok(regex) => {
-                            let (view, doc) = current!(cx.editor);
+                            let (_client, view, doc) = current!(cx.editor, cx.client_id);
 
                             // revert state to what it was before the last update
                             doc.set_selection(view.id, snapshot.clone());
@@ -144,17 +148,18 @@ pub fn raw_regex_prompt(
 
                             fun(cx, regex, input, event);
 
-                            let (view, doc) = current!(cx.editor);
+                            let (_client, view, doc) = current!(cx.editor, cx.client_id);
                             view.ensure_cursor_in_view(doc, config.scrolloff);
                         }
                         Err(err) => {
-                            let (view, doc) = current!(cx.editor);
+                            let (_client, view, doc) = current!(cx.editor, cx.client_id);
                             doc.set_selection(view.id, snapshot.clone());
                             doc.set_view_offset(view.id, offset_snapshot);
 
                             if event == PromptEvent::Validate {
+                                let client_id = cx.client_id;
                                 let callback = async move {
-                                    let call: job::Callback = Callback::EditorCompositor(Box::new(
+                                    let call: job::Callback = Callback::EditorCompositor(client_id, Box::new(
                                         move |_editor: &mut Editor, compositor: &mut Compositor| {
                                             let contents = Text::new(format!("{}", err));
                                             let size = compositor.size();
@@ -180,7 +185,7 @@ pub fn raw_regex_prompt(
     )
     .with_language("regex", std::sync::Arc::clone(&cx.editor.syn_loader));
     // Calculate initial completion
-    prompt.recalculate_completion(cx.editor);
+    prompt.recalculate_completion(cx.editor, cx.client_id);
     // prompt
     cx.push_layer(Box::new(prompt));
 }
@@ -192,7 +197,7 @@ pub struct FilePickerData {
 }
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
-pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
+pub fn file_picker(editor: &Editor, client_id: ClientId, root: PathBuf) -> FilePicker {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
@@ -264,16 +269,23 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
             Spans::from(spans).into()
         },
     )];
-    let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
-        if let Err(e) = cx.editor.open(path, action) {
-            let err = if let Some(err) = e.source() {
-                format!("{}", err)
-            } else {
-                format!("unable to open \"{}\"", path.display())
-            };
-            cx.editor.set_error(err);
-        }
-    })
+    let picker = Picker::new(
+        client_id,
+        columns,
+        0,
+        [],
+        data,
+        move |cx, path: &PathBuf, action| {
+            if let Err(e) = cx.editor.open(cx.client_id, path, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+    )
     .with_preview(|_editor, path| Some((path.as_path().into(), None)));
     let injector = picker.injector();
     let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
@@ -302,7 +314,11 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
-pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
+pub fn file_explorer(
+    root: PathBuf,
+    editor: &Editor,
+    client_id: ClientId,
+) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
 
@@ -318,6 +334,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
     )];
     let picker = Picker::new(
+        client_id,
         columns,
         0,
         directory_content,
@@ -325,17 +342,20 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
                 let new_root = helix_stdx::path::normalize(path);
+                let client_id = cx.client_id;
                 let callback = Box::pin(async move {
-                    let call: Callback =
-                        Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                            if let Ok(picker) = file_explorer(new_root, editor) {
+                    let call: Callback = Callback::EditorCompositor(
+                        client_id,
+                        Box::new(move |editor, compositor| {
+                            if let Ok(picker) = file_explorer(new_root, editor, client_id) {
                                 compositor.push(Box::new(overlay::overlaid(picker)));
                             }
-                        }));
+                        }),
+                    );
                     Ok(call)
                 });
                 cx.jobs.callback(callback);
-            } else if let Err(e) = cx.editor.open(path, action) {
+            } else if let Err(e) = cx.editor.open(cx.client_id, path, action) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
                 } else {
@@ -376,19 +396,19 @@ pub mod completers {
     use helix_core::syntax::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
-    use helix_view::{editor::Config, Editor};
+    use helix_view::{ClientId, editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::collections::BTreeSet;
     use tui::text::Span;
 
-    pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
+    pub type Completer = fn(&Editor, ClientId, &str) -> Vec<Completion>;
 
-    pub fn none(_editor: &Editor, _input: &str) -> Vec<Completion> {
+    pub fn none(_editor: &Editor, _client_id: ClientId, _input: &str) -> Vec<Completion> {
         Vec::new()
     }
 
-    pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn buffer(editor: &Editor, _client_id: ClientId, input: &str) -> Vec<Completion> {
         let names = editor.documents.values().map(|doc| {
             doc.relative_path()
                 .map(|p| p.display().to_string().into())
@@ -401,7 +421,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn theme(_editor: &Editor, _client_id: ClientId, input: &str) -> Vec<Completion> {
         let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
         for rt_dir in helix_loader::runtime_dirs() {
             names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
@@ -434,8 +454,14 @@ pub mod completers {
     }
 
     /// Completes names of language servers which are running for the current document.
-    pub fn active_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
-        let language_servers = doc!(editor).language_servers().map(|ls| ls.name());
+    pub fn active_language_servers(
+        editor: &Editor,
+        client_id: ClientId,
+        input: &str,
+    ) -> Vec<Completion> {
+        let language_servers = doc!(editor, client_id)
+            .language_servers()
+            .map(|ls| ls.name());
 
         fuzzy_match(input, language_servers, false)
             .into_iter()
@@ -445,8 +471,12 @@ pub mod completers {
 
     /// Completes names of language servers which are configured for the language of the current
     /// document.
-    pub fn configured_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
-        let language_servers = doc!(editor)
+    pub fn configured_language_servers(
+        editor: &Editor,
+        client_id: ClientId,
+        input: &str,
+    ) -> Vec<Completion> {
+        let language_servers = doc!(editor, client_id)
             .language_config()
             .into_iter()
             .flat_map(|config| &config.language_servers)
@@ -458,7 +488,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn setting(_editor: &Editor, _client_id: ClientId, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
             let json = serde_json::json!(Config::default());
@@ -472,7 +502,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn filename(editor: &Editor, _client_id: ClientId, input: &str) -> Vec<Completion> {
         filename_with_git_ignore(editor, input, true)
     }
 
@@ -492,7 +522,7 @@ pub mod completers {
         })
     }
 
-    pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn language(editor: &Editor, _client_id: ClientId, input: &str) -> Vec<Completion> {
         let text: String = "text".into();
 
         let loader = editor.syn_loader.load();
@@ -507,8 +537,12 @@ pub mod completers {
             .collect()
     }
 
-    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
-        let commands = doc!(editor)
+    pub fn lsp_workspace_command(
+        editor: &Editor,
+        client_id: ClientId,
+        input: &str,
+    ) -> Vec<Completion> {
+        let commands = doc!(editor, client_id)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
             .flat_map(|ls| {
                 ls.capabilities()
@@ -523,7 +557,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn directory(editor: &Editor, _client_id: ClientId, input: &str) -> Vec<Completion> {
         directory_with_git_ignore(editor, input, true)
     }
 
@@ -666,7 +700,7 @@ pub mod completers {
         }
     }
 
-    pub fn register(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn register(editor: &Editor, _client_id: ClientId, input: &str) -> Vec<Completion> {
         let iter = editor
             .registers
             .iter_preview()
@@ -680,7 +714,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn program(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn program(_editor: &Editor, _client_id: ClientId, input: &str) -> Vec<Completion> {
         static PROGRAMS_IN_PATH: Lazy<BTreeSet<String>> = Lazy::new(|| {
             // Go through the entire PATH and read all files into a set.
             let Some(path) = std::env::var_os("PATH") else {
@@ -708,29 +742,33 @@ pub mod completers {
     }
 
     /// This expects input to be a raw string of arguments, because this is what Signature's raw_after does.
-    pub fn repeating_filenames(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn repeating_filenames(
+        editor: &Editor,
+        client_id: ClientId,
+        input: &str,
+    ) -> Vec<Completion> {
         let token = match Tokenizer::new(input, false).last() {
             Some(token) => token.unwrap(),
-            None => return filename(editor, input),
+            None => return filename(editor, client_id, input),
         };
 
         let offset = token.content_start;
 
-        let mut completions = filename(editor, &input[offset..]);
+        let mut completions = filename(editor, client_id, &input[offset..]);
         for completion in completions.iter_mut() {
             completion.0.start += offset;
         }
         completions
     }
 
-    pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn shell(editor: &Editor, client_id: ClientId, input: &str) -> Vec<Completion> {
         let (command, args, complete_command) = command_line::split(input);
 
         if complete_command {
-            return program(editor, command);
+            return program(editor, client_id, command);
         }
 
-        let mut completions = repeating_filenames(editor, args);
+        let mut completions = repeating_filenames(editor, client_id, args);
         for completion in completions.iter_mut() {
             // + 1 for separator between `command` and `args`
             completion.0.start += command.len() + 1;

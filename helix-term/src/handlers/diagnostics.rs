@@ -8,16 +8,24 @@ use crate::events::OnModeSwitch;
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
     register_hook!(move |event: &mut DiagnosticsDidChange<'_>| {
-        if event.editor.mode != Mode::Insert {
-            for (view, _) in event.editor.tree.views_mut() {
-                send_blocking(&view.diagnostics_handler.events, DiagnosticEvent::Refresh)
+        for (_, c) in event.editor.clients.iter() {
+            if c.mode != Mode::Insert {
+                for (view, _) in c.tree.views(&event.editor.views) {
+                    send_blocking(&view.diagnostics_handler.events, DiagnosticEvent::Refresh)
+                }
             }
         }
         Ok(())
     });
     register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
-        for (view, _) in event.cx.editor.tree.views_mut() {
-            view.diagnostics_handler.active = event.new_mode != Mode::Insert;
+        let ids = client!(event.cx.editor, event.cx.client_id)
+            .tree
+            .views(&event.cx.editor.views)
+            .map(|(v, _)| v.id)
+            .collect::<Vec<_>>();
+        for id in ids {
+            view_mut!(event.cx.editor, id).diagnostics_handler.active =
+                event.new_mode != Mode::Insert;
         }
         Ok(())
     });
