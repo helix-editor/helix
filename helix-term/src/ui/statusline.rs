@@ -287,14 +287,19 @@ where
 {
     use helix_core::diagnostic::Severity;
     let (hints, info, warnings, errors) = context.editor.diagnostics.values().flatten().fold(
-        (0, 0, 0, 0),
+        (0u32, 0u32, 0u32, 0u32),
         |mut counts, (diag, _)| {
             match diag.severity {
-                Some(DiagnosticSeverity::HINT) | None => counts.0 += 1,
-                Some(DiagnosticSeverity::INFORMATION) => counts.1 += 1,
+                // PERF: For large workspace diagnostics, this loop can be very tight.
+                //
+                // Most often the diagnostics will be for warnings and errors.
+                // Errors should tend to be fixed fast, leaving warnings as the most common.
                 Some(DiagnosticSeverity::WARNING) => counts.2 += 1,
                 Some(DiagnosticSeverity::ERROR) => counts.3 += 1,
-                _ => {}
+                Some(DiagnosticSeverity::HINT) => counts.0 += 1,
+                Some(DiagnosticSeverity::INFORMATION) => counts.1 += 1,
+                // Fallback to `hint`.
+                _ => counts.0 += 1,
             }
             counts
         },

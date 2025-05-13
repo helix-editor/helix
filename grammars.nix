@@ -1,22 +1,13 @@
 {
   stdenv,
   lib,
-  runCommandLocal,
   runCommand,
-  yj,
   includeGrammarIf ? _: true,
   grammarOverlays ? [],
   ...
 }: let
-  # HACK: nix < 2.6 has a bug in the toml parser, so we convert to JSON
-  # before parsing
-  languages-json = runCommandLocal "languages-toml-to-json" {} ''
-    ${yj}/bin/yj -t < ${./languages.toml} > $out
-  '';
   languagesConfig =
-    if lib.versionAtLeast builtins.nixVersion "2.6.0"
-    then builtins.fromTOML (builtins.readFile ./languages.toml)
-    else builtins.fromJSON (builtins.readFile (builtins.toPath languages-json));
+    builtins.fromTOML (builtins.readFile ./languages.toml);
   isGitGrammar = grammar:
     builtins.hasAttr "source" grammar
     && builtins.hasAttr "git" grammar.source
