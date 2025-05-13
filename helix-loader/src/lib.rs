@@ -1,5 +1,6 @@
 pub mod config;
 pub mod grammar;
+pub mod env_expander;
 
 use helix_stdx::{env::current_working_dir, path};
 

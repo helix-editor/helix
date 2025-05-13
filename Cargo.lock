@@ -1475,6 +1475,7 @@ dependencies = [
  "libloading",
  "log",
  "once_cell",
+ "regex",
  "serde",
  "tempfile",
  "threadpool",
