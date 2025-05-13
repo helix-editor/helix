@@ -926,6 +926,9 @@ impl EditorView {
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
+            KeymapResult::Fallback(fallback, ch) => {
+                fallback.execute(cxt, *ch);
+            }
         }
         None
     }
