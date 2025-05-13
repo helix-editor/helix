@@ -447,15 +447,6 @@ impl Editor {
                             }
                         };
 
-                        let connection_type = match arguments.request {
-                            _ if arguments.request.contains("launch") => ConnectionType::Launch,
-                            _ if arguments.request.contains("attach") => ConnectionType::Attach,
-                            _ => {
-                                self.set_error("No starting request found, to be used in starting the debugging session.");
-                                return true;
-                            }
-                        };
-
                         let result = debugger.create_child_debugger(new_id, socket).await;
 
                         let (child, events) = match result {
@@ -494,7 +485,7 @@ impl Editor {
                             return true;
                         }
 
-                        let relaunch_resp = if let ConnectionType::Launch = connection_type {
+                        let relaunch_resp = if let ConnectionType::Launch = arguments.request {
                             child.launch(arguments.configuration).await
                         } else {
                             child.attach(arguments.configuration).await
