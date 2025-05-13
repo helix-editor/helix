@@ -209,6 +209,9 @@ pub struct Document {
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
+
+    /// Whether to render the welcome screen when opening the document
+    pub is_welcome: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -721,6 +724,7 @@ impl Document {
             jump_labels: HashMap::new(),
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
+            is_welcome: false,
         }
     }
 
@@ -728,6 +732,11 @@ impl Document {
         let line_ending: LineEnding = config.load().default_line_ending.into();
         let text = Rope::from(line_ending.as_str());
         Self::from(text, None, config)
+    }
+
+    pub fn with_welcome(mut self) -> Self {
+        self.is_welcome = true;
+        self
     }
 
     // TODO: async fn?
