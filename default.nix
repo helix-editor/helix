@@ -6,7 +6,6 @@
   installShellFiles,
   git,
   gitRev ? null,
-  ...
 }: let
   fs = lib.fileset;
 

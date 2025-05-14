@@ -339,8 +339,9 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
+    let (view, doc) = current_ref!(cx.editor);
     let fmt = if config.auto_format {
-        doc.auto_format().map(|fmt| {
+        doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
@@ -483,8 +484,8 @@ fn format(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
         return Ok(());
     }
 
-    let (view, doc) = current!(cx.editor);
-    let format = doc.format().context(
+    let (view, doc) = current_ref!(cx.editor);
+    let format = doc.format(cx.editor).context(
         "A formatter isn't available, and no language server provides formatting capabilities",
     )?;
     let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
@@ -752,7 +753,8 @@ pub fn write_all_impl(
         doc.append_changes_to_history(view);
 
         let fmt = if options.auto_format && config.auto_format {
-            doc.auto_format().map(|fmt| {
+            let doc = doc!(cx.editor, &doc_id);
+            doc.auto_format(cx.editor).map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
                     doc.version(),
@@ -1670,16 +1672,14 @@ fn tree_sitter_highlight_name(
     _args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    fn find_highlight_at_cursor(
-        cx: &mut compositor::Context<'_>,
-    ) -> Option<helix_core::syntax::Highlight> {
-        use helix_core::syntax::HighlightEvent;
+    use helix_core::syntax::Highlight;
 
-        let (view, doc) = current!(cx.editor);
+    fn find_highlight_at_cursor(editor: &Editor) -> Option<Highlight> {
+        let (view, doc) = current_ref!(editor);
         let syntax = doc.syntax()?;
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
-        let byte = text.char_to_byte(cursor);
+        let byte = text.char_to_byte(cursor) as u32;
         let node = syntax.descendant_for_byte_range(byte, byte)?;
         // Query the same range as the one used in syntax highlighting.
         let range = {
@@ -1689,25 +1689,22 @@ fn tree_sitter_highlight_name(
             let last_line = text.len_lines().saturating_sub(1);
             let height = view.inner_area(doc).height;
             let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-            let start = text.line_to_byte(row.min(last_line));
-            let end = text.line_to_byte(last_visible_line + 1);
+            let start = text.line_to_byte(row.min(last_line)) as u32;
+            let end = text.line_to_byte(last_visible_line + 1) as u32;
 
             start..end
         };
 
-        let mut highlight = None;
+        let loader = editor.syn_loader.load();
+        let mut highlighter = syntax.highlighter(text, &loader, range);
 
-        for event in syntax.highlight_iter(text, Some(range), None) {
-            match event.unwrap() {
-                HighlightEvent::Source { start, end }
-                    if start == node.start_byte() && end == node.end_byte() =>
-                {
-                    return highlight;
-                }
-                HighlightEvent::HighlightStart(hl) => {
-                    highlight = Some(hl);
-                }
-                _ => (),
+        while highlighter.next_event_offset() != u32::MAX {
+            let start = highlighter.next_event_offset();
+            highlighter.advance();
+            let end = highlighter.next_event_offset();
+
+            if start <= node.start_byte() && end >= node.end_byte() {
+                return highlighter.active_highlights().next_back();
             }
         }
 
@@ -1718,11 +1715,11 @@ fn tree_sitter_highlight_name(
         return Ok(());
     }
 
-    let Some(highlight) = find_highlight_at_cursor(cx) else {
+    let Some(highlight) = find_highlight_at_cursor(cx.editor) else {
         return Ok(());
     };
 
-    let content = cx.editor.theme.scope(highlight.0).to_string();
+    let content = cx.editor.theme.scope(highlight).to_string();
 
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
@@ -2088,10 +2085,11 @@ fn language(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
 
     let doc = doc_mut!(cx.editor);
 
+    let loader = cx.editor.syn_loader.load();
     if &args[0] == DEFAULT_LANGUAGE_NAME {
-        doc.set_language(None, None)
+        doc.set_language(None, &loader)
     } else {
-        doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
+        doc.set_language_by_language_id(&args[0], &loader)?;
     }
     doc.detect_indent_and_line_ending();
 
@@ -2197,8 +2195,8 @@ fn tree_sitter_subtree(
     if let Some(syntax) = doc.syntax() {
         let primary_selection = doc.selection(view.id).primary();
         let text = doc.text();
-        let from = text.char_to_byte(primary_selection.from());
-        let to = text.char_to_byte(primary_selection.to());
+        let from = text.char_to_byte(primary_selection.from()) as u32;
+        let to = text.char_to_byte(primary_selection.to()) as u32;
         if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
             let mut contents = String::from("```tsq\n");
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
@@ -2566,6 +2564,9 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+// TODO: SHELL_SIGNATURE should specify var args for arguments, so that just completers::filename can be used,
+// but Signature does not yet allow for var args.
+
 /// This command handles all of its input as-is with no quoting or flags.
 const SHELL_SIGNATURE: Signature = Signature {
     positionals: (1, Some(2)),
@@ -2574,10 +2575,10 @@ const SHELL_SIGNATURE: Signature = Signature {
 };
 
 const SHELL_COMPLETER: CommandCompleter = CommandCompleter::positional(&[
-    // Command name (TODO: consider a command completer - Kakoune has prior art)
-    completers::none,
+    // Command name
+    completers::program,
     // Shell argument(s)
-    completers::filename,
+    completers::repeating_filenames,
 ]);
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[

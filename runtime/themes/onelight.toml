@@ -162,7 +162,7 @@
 "ui.highlight" = { bg = "grey-300" }
 
 "ui.picker.header" = { fg = "purple"}
-"ui.picker.header.active" = { fg = "blue"}
+"ui.picker.header.column.active" = { fg = "blue"}
 
 "diagnostic.info" = { underline = { color = "blue", style = "dotted" } }
 "diagnostic.hint" = { underline = { color = "green", style = "dashed" } }
