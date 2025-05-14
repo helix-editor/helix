@@ -328,13 +328,17 @@ impl Editor {
                         };
 
                         let restart_arg = if let Some(terminated) = terminated {
-                            terminated.restart.unwrap_or(false)
+                            terminated.restart
                         } else {
-                            false
+                            None
                         };
 
+                        let restart_bool = restart_arg
+                            .as_ref()
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
                         let disconnect_args = Some(DisconnectArguments {
-                            restart: Some(restart_arg),
+                            restart: Some(restart_bool),
                             terminate_debuggee: None,
                             suspend_debuggee: None,
                         });
@@ -347,40 +351,44 @@ impl Editor {
                             return false;
                         }
 
-                        if restart_arg {
-                            log::info!("Attempting to restart debug session.");
-                            let connection_type = match debugger.connection_type() {
-                                Some(connection_type) => connection_type,
-                                None => {
-                                    self.set_error("No starting request found, to be used in restarting the debugging session.");
-                                    return false;
+                        match restart_arg {
+                            Some(Value::Bool(false)) | None => {
+                                self.debugger_service.remove_debugger(id);
+                                self.debugger_service.unset_active_debugger();
+                                self.set_status(
+                                    "Terminated debugging session and disconnected debugger.",
+                                );
+
+                                // Go through all breakpoints and set verfified to false
+                                // this should update the UI to show the breakpoints are no longer connected
+                                for breakpoints in self.breakpoints.values_mut() {
+                                    for breakpoint in breakpoints.iter_mut() {
+                                        breakpoint.verified = false;
+                                    }
                                 }
-                            };
-
-                            let relaunch_resp = if let ConnectionType::Launch = connection_type {
-                                debugger.launch(Value::Bool(restart_arg)).await
-                            } else {
-                                debugger.attach(Value::Bool(restart_arg)).await
-                            };
-
-                            if let Err(err) = relaunch_resp {
-                                self.set_error(format!(
-                                    "Failed to restart debugging session: {:?}",
-                                    err
-                                ));
                             }
-                        } else {
-                            self.debugger_service.remove_debugger(id);
-                            self.debugger_service.unset_active_debugger();
-                            self.set_status(
-                                "Terminated debugging session and disconnected debugger.",
-                            );
+                            Some(val) => {
+                                log::info!("Attempting to restart debug session.");
+                                let connection_type = match debugger.connection_type() {
+                                    Some(connection_type) => connection_type,
+                                    None => {
+                                        self.set_error("No starting request found, to be used in restarting the debugging session.");
+                                        return false;
+                                    }
+                                };
 
-                            // Go through all breakpoints and set verfified to false
-                            // this should update the UI to show the breakpoints are no longer connected
-                            for breakpoints in self.breakpoints.values_mut() {
-                                for breakpoint in breakpoints.iter_mut() {
-                                    breakpoint.verified = false;
+                                let relaunch_resp = if let ConnectionType::Launch = connection_type
+                                {
+                                    debugger.launch(val).await
+                                } else {
+                                    debugger.attach(val).await
+                                };
+
+                                if let Err(err) = relaunch_resp {
+                                    self.set_error(format!(
+                                        "Failed to restart debugging session: {:?}",
+                                        err
+                                    ));
                                 }
                             }
                         }
