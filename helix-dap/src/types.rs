@@ -1022,27 +1022,11 @@ pub mod events {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ConnectionType {
     Launch,
     Attach,
-}
-
-impl<'de> Deserialize<'de> for ConnectionType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        match s.as_str() {
-            "launch" => Ok(ConnectionType::Launch),
-            "attach" => Ok(ConnectionType::Attach),
-            _ => Err(serde::de::Error::custom(format!(
-                "Invalid request type: {}",
-                s
-            ))),
-        }
-    }
 }
 
 #[test]
