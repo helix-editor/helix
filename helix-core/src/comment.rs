@@ -54,19 +54,27 @@ pub fn get_injected_tokens(
 ) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>) {
     // Find the injection with the most tightly encompassing range.
     syntax
-        .map(|syntax| {
-            let config = loader
-                .language(
-                    syntax
-                        .layer(syntax.layer_for_byte_range(start, end))
-                        .language,
-                )
-                .config();
+        .and_then(|syntax| {
+            syntax
+                .layers_for_byte_range(start, end)
+                .into_iter()
+                .rev()
+                .find_map(|layer| {
+                    let lang_config = loader.language(syntax.layer(layer).language).config();
 
-            (
-                config.comment_tokens.clone(),
-                config.block_comment_tokens.clone(),
-            )
+                    let has_any_comment_tokens = lang_config.comment_tokens.is_some()
+                        || lang_config.block_comment_tokens.is_some();
+
+                    // if the language does not have any comment tokens, it does not make
+                    // any sense to consider it.
+                    //
+                    // This includes languages such as comment, jsdoc and regex: These
+                    // languages are injected and never found in files by themselves
+                    has_any_comment_tokens.then_some((
+                        lang_config.comment_tokens.clone(),
+                        lang_config.block_comment_tokens.clone(),
+                    ))
+                })
         })
         .unwrap_or_default()
 }
