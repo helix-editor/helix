@@ -107,8 +107,8 @@ fn find_runtime_file(rel_path: &Path) -> Option<PathBuf> {
 /// The valid runtime directories are searched in priority order and the first
 /// file found to exist is returned, otherwise the path to the final attempt
 /// that failed.
-pub fn runtime_file(rel_path: &Path) -> PathBuf {
-    find_runtime_file(rel_path).unwrap_or_else(|| {
+pub fn runtime_file(rel_path: impl AsRef<Path>) -> PathBuf {
+    find_runtime_file(rel_path.as_ref()).unwrap_or_else(|| {
         RUNTIME_DIRS
             .last()
             .map(|dir| dir.join(rel_path))
@@ -154,17 +154,36 @@ pub fn default_log_file() -> PathBuf {
 
 /// Merge two TOML documents, merging values from `right` onto `left`
 ///
-/// When an array exists in both `left` and `right`, `right`'s array is
-/// used. When a table exists in both `left` and `right`, the merged table
-/// consists of all keys in `left`'s table unioned with all keys in `right`
-/// with the values of `right` being merged recursively onto values of
-/// `left`.
+/// `merge_depth` sets the nesting depth up to which values are merged instead
+/// of overridden.
 ///
-/// `merge_toplevel_arrays` controls whether a top-level array in the TOML
-/// document is merged instead of overridden. This is useful for TOML
-/// documents that use a top-level array of values like the `languages.toml`,
-/// where one usually wants to override or add to the array instead of
-/// replacing it altogether.
+/// When a table exists in both `left` and `right`, the merged table consists of
+/// all keys in `left`'s table unioned with all keys in `right` with the values
+/// of `right` being merged recursively onto values of `left`.
+///
+/// `crate::merge_toml_values(a, b, 3)` combines, for example:
+///
+/// b:
+/// ```toml
+/// [[language]]
+/// name = "toml"
+/// language-server = { command = "taplo", args = ["lsp", "stdio"] }
+/// ```
+/// a:
+/// ```toml
+/// [[language]]
+/// language-server = { command = "/usr/bin/taplo" }
+/// ```
+///
+/// into:
+/// ```toml
+/// [[language]]
+/// name = "toml"
+/// language-server = { command = "/usr/bin/taplo" }
+/// ```
+///
+/// thus it overrides the third depth-level of b with values of a if they exist,
+/// but otherwise merges their values
 pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usize) -> toml::Value {
     use toml::Value;
 
@@ -174,11 +193,6 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
 
     match (left, right) {
         (Value::Array(mut left_items), Value::Array(right_items)) => {
-            // The top-level arrays should be merged but nested arrays should
-            // act as overrides. For the `languages.toml` config, this means
-            // that you can specify a sub-set of languages in an overriding
-            // `languages.toml` but that nested arrays like Language Server
-            // arguments are replaced instead of merged.
             if merge_depth > 0 {
                 left_items.reserve(right_items.len());
                 for rvalue in right_items {

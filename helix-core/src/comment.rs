@@ -4,7 +4,10 @@
 use slotmap::DefaultKey as LayerId;
 use smallvec::SmallVec;
 
-use crate::{syntax::BlockCommentToken, Change, Range, Rope, RopeSlice, Syntax, Tendril};
+use crate::{
+    syntax::config::BlockCommentToken, Change, Range, Rope, RopeSlice, Selection, Tendril,
+    Transaction,
+};
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
 

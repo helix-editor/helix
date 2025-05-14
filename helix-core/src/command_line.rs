@@ -223,7 +223,11 @@ impl fmt::Display for ParseArgsError<'_> {
                 write!(f, "flag '--{flag}' missing an argument")
             }
             Self::MissingExpansionDelimiter { expansion } => {
-                write!(f, "missing a string delimiter after '%{expansion}'")
+                if expansion.is_empty() {
+                    write!(f, "'%' was not properly escaped. Please use '%%'")
+                } else {
+                    write!(f, "missing a string delimiter after '%{expansion}'")
+                }
             }
             Self::UnknownExpansion { kind } => {
                 write!(f, "unknown expansion '{kind}'")
@@ -353,13 +357,22 @@ pub struct Token<'a> {
     pub is_terminated: bool,
 }
 
-impl Token<'_> {
+impl<'a> Token<'a> {
     pub fn empty_at(content_start: usize) -> Self {
         Self {
             kind: TokenKind::Unquoted,
             content_start,
             content: Cow::Borrowed(""),
             is_terminated: false,
+        }
+    }
+
+    pub fn expand(content: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            kind: TokenKind::Expand,
+            content_start: 0,
+            content: content.into(),
+            is_terminated: true,
         }
     }
 }

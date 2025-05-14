@@ -90,3 +90,14 @@ async fn shell_expansion() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn percent_escaping() -> anyhow::Result<()> {
+    test_statusline(
+        r#":sh echo hello 10%"#,
+        "'run-shell-command': '%' was not properly escaped. Please use '%%'",
+        Severity::Error,
+    )
+    .await?;
+    Ok(())
+}
