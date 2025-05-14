@@ -32,11 +32,11 @@ pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Opt
 pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: bool) {
     let debugger = debugger!(editor);
 
-    if !force && debugger.active_thread_id.is_some() {
+    if !force && debugger.thread_id.is_some() {
         return;
     }
 
-    debugger.active_thread_id = Some(thread_id);
+    debugger.thread_id = Some(thread_id);
     fetch_stack_trace(debugger, thread_id).await;
 
     let frame = debugger.stack_frames[&thread_id].first().cloned();
@@ -223,7 +223,7 @@ impl Editor {
                         debugger
                             .thread_states
                             .insert(thread_id, "running".to_owned());
-                        if debugger.active_thread_id == Some(thread_id) {
+                        if debugger.thread_id == Some(thread_id) {
                             debugger.resume_application();
                         }
                     }
@@ -234,7 +234,7 @@ impl Editor {
                             None => return false,
                         };
 
-                        debugger.active_thread_id = Some(thread.thread_id);
+                        debugger.thread_id = Some(thread.thread_id);
                         // set the stack frame for the thread
                     }
                     Event::Breakpoint(events::BreakpointBody { reason, breakpoint }) => {

@@ -1797,7 +1797,7 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     }
 
     if let Some(debugger) = cx.editor.debugger_service.get_active_debugger() {
-        let (frame, thread_id) = match (debugger.active_frame, debugger.active_thread_id) {
+        let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
             (Some(frame), Some(thread_id)) => (frame, thread_id),
             _ => {
                 bail!("Cannot find current stack frame to access variables")
