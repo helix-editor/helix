@@ -2335,6 +2335,7 @@ fn configure_lsp_globals() {
             "SteelDynamicComponent?",
             "prompt",
             "picker",
+            "#%exp-picker",
             "Component::Text",
             "hx.create-directory",
         ];
@@ -2900,6 +2901,73 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
             inner: Some(Box::new(ui::overlay::overlaid(picker))),
         }
     });
+
+    // Experimental - use at your own risk.
+    engine.register_fn(
+        "#%exp-picker",
+        |values: Vec<String>, callback_fn: SteelVal| -> WrappedDynComponent {
+            let columns = [PickerColumn::new(
+                "path",
+                |item: &PathBuf, root: &PathBuf| {
+                    item.strip_prefix(root)
+                        .unwrap_or(item)
+                        .to_string_lossy()
+                        .into()
+                },
+            )];
+            let cwd = helix_stdx::env::current_working_dir();
+
+            let rooted = callback_fn.as_rooted();
+
+            let picker = ui::Picker::new(columns, 0, [], cwd, move |cx, path: &PathBuf, action| {
+                if let Err(e) = cx.editor.open(path, action) {
+                    let err = if let Some(err) = e.source() {
+                        format!("{}", err)
+                    } else {
+                        format!("unable to open \"{}\"", path.display())
+                    };
+                    cx.editor.set_error(err);
+
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor: cx.editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+
+                    let cloned_func = rooted.value();
+
+                    enter_engine(|guard| {
+                        if let Err(e) = guard
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            .consume(move |engine, args| {
+                                let context = args[0].clone();
+                                engine.update_value("*helix.cx*", context);
+                                engine.call_function_with_args(cloned_func.clone(), Vec::new())
+                            })
+                        {
+                            present_error_inside_engine_context(&mut ctx, guard, e);
+                        }
+                    })
+                }
+            })
+            .with_preview(|_editor, path| Some((PathOrId::Path(path), None)));
+
+            let injector = picker.injector();
+
+            for file in values {
+                if injector.push(PathBuf::from(file)).is_err() {
+                    break;
+                }
+            }
+
+            WrappedDynComponent {
+                inner: Some(Box::new(ui::overlay::overlaid(picker))),
+            }
+        },
+    );
 
     engine.register_fn("Component::Text", |contents: String| WrappedDynComponent {
         inner: Some(Box::new(crate::ui::Text::new(contents))),
