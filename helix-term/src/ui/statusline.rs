@@ -305,11 +305,21 @@ where
         },
     );
 
-    if hints > 0 || info > 0 || warnings > 0 || errors > 0 {
-        write(context, " W ".into(), None);
+    let sevs_to_show = &context.editor.config().statusline.workspace_diagnostics;
+
+    // Avoid showing the " W " if no diagnostic counts will be shown.
+    if !sevs_to_show.iter().any(|sev| match sev {
+        Severity::Hint => hints != 0,
+        Severity::Info => info != 0,
+        Severity::Warning => warnings != 0,
+        Severity::Error => errors != 0,
+    }) {
+        return;
     }
 
-    for sev in &context.editor.config().statusline.workspace_diagnostics {
+    write(context, " W ".into(), None);
+
+    for sev in sevs_to_show {
         match sev {
             Severity::Hint if hints > 0 => {
                 write(
