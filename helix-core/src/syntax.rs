@@ -427,7 +427,7 @@ impl FileTypeGlobMatcher {
 
 #[derive(Debug)]
 pub struct Syntax {
-    inner: tree_house::Syntax,
+    pub inner: tree_house::Syntax,
 }
 
 const PARSE_TIMEOUT: Duration = Duration::from_millis(500); // half a second is pretty generous
@@ -463,6 +463,10 @@ impl Syntax {
 
     pub fn layer_for_byte_range(&self, start: u32, end: u32) -> Layer {
         self.inner.layer_for_byte_range(start, end)
+    }
+
+    pub fn layers_for_byte_range(&self, start: u32, end: u32) -> Vec<Layer> {
+        self.inner.layers_for_byte_range(start, end)
     }
 
     pub fn root_language(&self) -> Language {
