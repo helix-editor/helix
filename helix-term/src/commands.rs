@@ -35,7 +35,10 @@ use helix_core::{
     regex::{self, Regex},
     search::{self, CharMatcher},
     selection, surround,
-    syntax::config::{BlockCommentToken, LanguageServerFeature},
+    syntax::{
+        self,
+        config::{BlockCommentToken, LanguageServerFeature},
+    },
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
@@ -3669,7 +3672,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
         let continue_comment_token =
-            comment::get_comment_token(syntax, text, doc_default_tokens, curr_line_num)
+            comment::get_comment_token(&loader, syntax, text, doc_default_tokens, curr_line_num)
                 .filter(|_| continue_comments);
 
         // Index to insert newlines after, as well as the char width
@@ -4222,9 +4225,14 @@ pub mod insert {
             let current_line = text.char_to_line(pos);
             let line_start = text.line_to_char(current_line);
 
-            let continue_comment_token =
-                comment::get_comment_token(syntax, text, doc_default_comment_token, current_line)
-                    .filter(|_| config.continue_comments);
+            let continue_comment_token = comment::get_comment_token(
+                &doc.syn_loader.load(),
+                syntax,
+                text,
+                doc_default_comment_token,
+                current_line,
+            )
+            .filter(|_| config.continue_comments);
 
             let (from, to, local_offs) = if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_char()
@@ -5170,6 +5178,7 @@ where
         Option<&str>,
         Option<&[BlockCommentToken]>,
         Option<&Syntax>,
+        &syntax::Loader,
     ) -> Transaction,
 {
     let (view, doc) = current!(cx.editor);
@@ -5189,8 +5198,14 @@ where
         .map(|tc| &tc[..]);
 
     // Call the custom logic provided by the caller (the original functions).
-    let transaction =
-        comments_transaction(rope, selection, doc_line_token, doc_block_tokens, syntax);
+    let transaction = comments_transaction(
+        rope,
+        selection,
+        doc_line_token,
+        doc_block_tokens,
+        syntax,
+        &doc.syn_loader.load(),
+    );
 
     doc.apply(&transaction, view.id);
     exit_select_mode(cx);
@@ -5199,12 +5214,17 @@ where
 fn toggle_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
-        |rope, selection, doc_line_token, doc_block_tokens, syntax| {
+        |rope, selection, doc_line_token, doc_block_tokens, syntax, loader| {
             Transaction::change(
                 rope,
                 selection.iter().flat_map(|range| {
                     let (injected_line_tokens, injected_block_tokens) =
-                        comment::get_injected_tokens(syntax, range.from(), range.to());
+                        comment::get_injected_tokens(
+                            loader,
+                            syntax,
+                            range.from() as u32,
+                            range.to() as u32,
+                        );
 
                     let line_token = injected_line_tokens
                         .as_ref()
@@ -5272,7 +5292,7 @@ fn toggle_comments(cx: &mut Context) {
 fn toggle_line_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
-        |rope, selection, doc_line_token, doc_block_tokens, syntax| {
+        |rope, selection, doc_line_token, doc_block_tokens, syntax, loader| {
             let mut selections = SmallVec::new();
             let mut added_chars = 0;
             let mut removed_chars = 0;
@@ -5281,7 +5301,12 @@ fn toggle_line_comments(cx: &mut Context) {
                 rope,
                 selection.iter().flat_map(|range| {
                     let (injected_line_tokens, injected_block_tokens) =
-                        comment::get_injected_tokens(syntax, range.from(), range.to());
+                        comment::get_injected_tokens(
+                            loader,
+                            syntax,
+                            range.from() as u32,
+                            range.to() as u32,
+                        );
 
                     let line_token = injected_line_tokens
                         .as_ref()
@@ -5321,7 +5346,7 @@ fn toggle_line_comments(cx: &mut Context) {
 fn toggle_block_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
-        |rope, selection, doc_line_token, doc_block_tokens, syntax| {
+        |rope, selection, doc_line_token, doc_block_tokens, syntax, loader| {
             let mut selections = SmallVec::new();
             let mut added_chars = 0;
             let mut removed_chars = 0;
@@ -5330,7 +5355,12 @@ fn toggle_block_comments(cx: &mut Context) {
                 rope,
                 selection.iter().flat_map(|range| {
                     let (injected_line_tokens, injected_block_tokens) =
-                        comment::get_injected_tokens(syntax, range.from(), range.to());
+                        comment::get_injected_tokens(
+                            loader,
+                            syntax,
+                            range.from() as u32,
+                            range.to() as u32,
+                        );
 
                     let line_token = injected_line_tokens
                         .as_ref()

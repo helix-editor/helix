@@ -213,7 +213,7 @@ pub struct Document {
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
-    syn_loader: Arc<ArcSwap<syntax::Loader>>,
+    pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1787,7 +1787,7 @@ impl Document {
     pub fn language_name(&self) -> Option<&str> {
         self.language
             .as_ref()
-            .map(|language| language.language_name.as_str())
+            .map(|language| language.language_id.as_str())
     }
 
     /// Language ID for the document. Either the `language-id`,

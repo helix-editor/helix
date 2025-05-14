@@ -1,103 +1,116 @@
 use super::*;
 
-/// Comment and uncomment
-#[tokio::test(flavor = "multi_thread")]
-async fn test_injected_comment_tokens_simple() -> anyhow::Result<()> {
-    // Uncomment inner injection
-    test((
-        indoc! {r#"\
+mod simple {
+    use super::*;
+    #[tokio::test(flavor = "multi_thread")]
+    async fn uncomment_inner_injection() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
-        ":lang html<ret> c",
-        indoc! {r#"\
+            ":lang html<ret> c",
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
-    ))
-    .await?;
+        ))
+        .await?;
 
-    // Comment inner injection
-    test((
-        indoc! {r#"\
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn comment_inner_injection() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
-        ":lang html<ret> c",
-        indoc! {r#"\
+            ":lang html<ret> c",
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
-    ))
-    .await?;
+        ))
+        .await?;
 
-    // Block comment inner injection
-    test((
-        indoc! {r#"\
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn block_comment_inner_injection() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
-        ":lang html<ret> C",
-        indoc! {r#"\
+            ":lang html<ret> C",
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle #[|/* on this line s */]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
-    ))
-    .await?;
+        ))
+        .await?;
 
-    // Block uncomment inner injection
-    test((
-        indoc! {r#"\
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn block_uncomment_inner_injection() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle #[|/* on this line s */]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
-        ":lang html<ret> C",
-        indoc! {r#"\
+            ":lang html<ret> C",
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
-    ))
-    .await?;
+        ))
+        .await?;
 
-    Ok(())
+        Ok(())
+    }
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn test_injected_comment_tokens_continue_comment() -> anyhow::Result<()> {
-    test((
-        indoc! {r#"\
+mod injected_comment_tokens_continue_comment {
+    use super::*;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn adds_new_comment_on_newline() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"
             <p>Some text 1234</p>
             <script type="text/javascript">
               // This line should #[|c]#ontinue comments
               foo();
             </script>
         "#},
-        ":lang html<ret>i<ret>",
-        indoc! {r#"\
+            ":lang html<ret>i<ret>",
+            indoc! {r#"
             <p>Some text 1234</p>
             <script type="text/javascript">
               // This line should
@@ -105,11 +118,15 @@ async fn test_injected_comment_tokens_continue_comment() -> anyhow::Result<()> {
               foo();
             </script>
         "#},
-    ))
-    .await?;
+        ))
+        .await?;
+        Ok(())
+    }
 
-    test((
-        indoc! {r#"\
+    #[tokio::test(flavor = "multi_thread")]
+    async fn continues_comment() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <p>Some text 1234</p>
             <script type="text/javascript">
               // This line should
@@ -117,8 +134,8 @@ async fn test_injected_comment_tokens_continue_comment() -> anyhow::Result<()> {
               foo();
             </script>
         "#},
-        ":lang html<ret>i<ret>",
-        indoc! {r#"\
+            ":lang html<ret>i<ret>",
+            indoc! {r#"\
             <p>Some text 1234</p>
             <script type="text/javascript">
               // This line should
@@ -127,29 +144,14 @@ async fn test_injected_comment_tokens_continue_comment() -> anyhow::Result<()> {
               foo();
             </script>
         "#},
-    ))
-    .await?;
+        ))
+        .await?;
+        Ok(())
+    }
+}
 
-    test((
-        indoc! {r#"\
-            <p>Some text 1234</p>
-            <script type="text/javascript">
-              // This line should #[|c]#ontinue comments
-              foo();
-            </script>
-        "#},
-        ":lang html<ret>i<ret>",
-        indoc! {r#"\
-            <p>Some text 1234</p>
-            <script type="text/javascript">
-              // This line should
-              // #[|c]#ontinue comments
-              foo();
-            </script>
-        "#},
-    ))
-    .await?;
-
+#[tokio::test(flavor = "multi_thread")]
+async fn test_injected_comment_tokens_continue_comment_d() -> anyhow::Result<()> {
     test((
         indoc! {r#"\
             <p>Some text 1234</p>
@@ -173,72 +175,81 @@ async fn test_injected_comment_tokens_continue_comment() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Selections in different regions
-#[tokio::test(flavor = "multi_thread")]
-async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()> {
-    // Comments two different injection layers with different comments
-    test((
-        indoc! {r#"\
+mod multiple_selections_different_injection_layers {
+    use super::*;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn comments_two_different_injection_layers_with_different_comments() -> anyhow::Result<()>
+    {
+        test((
+            indoc! {r#"\
             <p>Comment toggle #[|on this line ]#should use the HTML comment token(s).</p>
             <script type="text/javascript">
               Comment toggle #(|on this line )#should use the javascript comment token(s).
               foo();
             </script>
         "#},
-        ":lang html<ret> c",
-        indoc! {r#"\
+            ":lang html<ret> c",
+            indoc! {r#"\
             <!-- <p>Comment toggle #[|on this line ]#should use the HTML comment token(s).</p> -->
             <script type="text/javascript">
               // Comment toggle #(|on this line )#should use the javascript comment token(s).
               foo();
             </script>
         "#},
-    ))
-    .await?;
-
-    // Uncomments two different injection layers with different comments
-    test((
-        indoc! {r#"\
+        ))
+        .await?;
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn uncomments_two_different_injection_layers_with_different_comments(
+    ) -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <!-- <p>Comment toggle #[|on this line ]#should use the HTML comment token(s).</p> -->
             <script type="text/javascript">
               // Comment toggle #(|on this line )#should use the javascript comment token(s).
               foo();
             </script>
         "#},
-        ":lang html<ret> c",
-        indoc! {r#"\
+            ":lang html<ret> c",
+            indoc! {r#"\
             <p>Comment toggle #[|on this line ]#should use the HTML comment token(s).</p>
             <script type="text/javascript">
               Comment toggle #(|on this line )#should use the javascript comment token(s).
               foo();
             </script>
         "#},
-    ))
-    .await?;
-
-    // Works with multiple selections
-    test((
-        indoc! {r#"\
+        ))
+        .await?;
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn works_with_multiple_selections() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <p>Comment toggle #(|on this line )#should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle #[|on this line ]#should use the javascript comment token(s).
               foo();
             </script>
         "#},
-        ":lang html<ret> c",
-        indoc! {r#"\
+            ":lang html<ret> c",
+            indoc! {r#"\
             <!-- <p>Comment toggle #(|on this line )#should use the HTML comment token(s).</p> -->
             <script type="text/javascript">
               Comment toggle #[|on this line ]#should use the javascript comment token(s).
               foo();
             </script>
         "#},
-    ))
-    .await?;
-
-    // Works with nested injection layers: html, js then css
-    test((
-        indoc! {r#"\
+        ))
+        .await?;
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn works_with_nested_injection_layers_html_js_then_css() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <!-- <p>Comment toggle #(|on this line)# should use the HTML comment token(s).</p> -->
             <script type="text/javascript">
               // Comment toggle #(|on this line)# should use the javascript comment token(s).
@@ -250,8 +261,8 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
               `
             </script>
         "#},
-        ":lang html<ret> c",
-        indoc! {r#"\
+            ":lang html<ret> c",
+            indoc! {r#"\
             <p>Comment toggle #(|on this line)# should use the HTML comment token(s).</p>
             <script type="text/javascript">
               Comment toggle #(|on this line)# should use the javascript comment token(s).
@@ -263,12 +274,14 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
               `
             </script>
         "#},
-    ))
-    .await?;
-
-    // Full-line selection commenting
-    test((
-        indoc! {r#"\
+        ))
+        .await?;
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn full_line_selection_commenting() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle on this line should use the javascript comment token(s).
@@ -280,8 +293,8 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
               `;
             </script>
         "#},
-        ":lang html<ret> c",
-        indoc! {r#"\
+            ":lang html<ret> c",
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle on this line should use the javascript comment token(s).
@@ -293,10 +306,10 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
               `;
             </script>
         "#},
-    ))
-    .await?;
-    test((
-        indoc! {r#"\
+        ))
+        .await?;
+        test((
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle on this line should use the javascript comment token(s).
@@ -308,8 +321,8 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
               `;
             </script>
         "#},
-        ":lang html<ret> c",
-        indoc! {r#"\
+            ":lang html<ret> c",
+            indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle on this line should use the javascript comment token(s).
@@ -321,146 +334,152 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
               `;
             </script>
         "#},
-    ))
-    .await?;
-
-    // Works with block comment toggle across different layers
-    test((
-        indoc! {r#"\
+        ))
+        .await?;
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn block_comment_toggle_across_different_layers() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
             <p>Comment toggle #(|on this line)# should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle #[|on this line]# should use the javascript comment token(s).
               foo();
             </script>
         "#},
-        ":lang html<ret> C",
-        indoc! {r#"\
+            ":lang html<ret> C",
+            indoc! {r#"\
             <p>Comment toggle #(|<!-- on this line -->)# should use the HTML comment token(s).</p>
             <script type="text/javascript">
               // Comment toggle #[|/* on this line */]# should use the javascript comment token(s).
               foo();
             </script>
         "#},
-    ))
-    .await?;
-
-    // Many selections on the same line
-    test((
-        indoc! {r#"\
-            <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
-            <script type="text/javascript">
-              // Comment toggle on this line should use the javascript comment token(s).
-              foo();
-              css`
-                html {
-                  background-color: red;
-                }
-              `;
-            </script>
-        "#},
-        ":lang html<ret> C",
-        indoc! {r#"\
-            <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
-            <script type="text/javascript">
-              // Comment toggle on this line should use the javascript comment token(s).
-              foo();
-              css`
-                html {
-                  background-color: red;
-                }
-              `;
-            </script>
-        "#},
-    ))
-    .await?;
-    test((
-        indoc! {r#"\
-            <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
-            <script type="text/javascript">
-              // Comment toggle on this line should use the javascript comment token(s).
-              foo();
-              css`
-                html {
-                  background-color: red;
-                }
-              `;
-            </script>
-        "#},
-        ":lang html<ret> C",
-        indoc! {r#"\
-            <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
-            <script type="text/javascript">
-              // Comment toggle on this line should use the javascript comment token(s).
-              foo();
-              css`
-                html {
-                  background-color: red;
-                }
-              `;
-            </script>
-        "#},
-    ))
-    .await?;
-
-    // Many single-selections
-    test((
-        indoc! {r#"\
-            <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
-            <script type="text/javascript">
-              // C#(|o)#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the javascript c#(|o)#mment t#(|o)#ken(s).
-              f#(|o)##(|o)#();
-              css`
-                html {
-                  backgr#(|o)#und-c#(|o)#l#(|o)#r: red;
-                }
-              `;
-            </script>
-        "#},
-        ":lang html<ret> C",
-        indoc! {r#"\
-            <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
-            <script type="text/javascript">
-              // C#(|/* o */)#mment t#(|/* o */)#ggle #(|/* o */)#n this line sh#(|/* o */)#uld use the javascript c#(|/* o */)#mment t#(|/* o */)#ken(s).
-              f#(|/* o */)##(|/* o */)#();
-              css`
-                html {
-                  backgr#(|/* o */)#und-c#(|/* o */)#l#(|/* o */)#r: red;
-                }
-              `;
-            </script>
-        "#},
-    ))
-    .await?;
-    test((
-        indoc! {r#"\
-            <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
-            <script type="text/javascript">
-              // C#(|/* o */)#mment t#(|/* o */)#ggle #(|/* o */)#n this line sh#(|/* o */)#uld use the javascript c#(|/* o */)#mment t#(|/* o */)#ken(s).
-              f#(|/* o */)##(|/* o */)#();
-              css`
-                html {
-                  backgr#(|/* o */)#und-c#(|/* o */)#l#(|/* o */)#r: red;
-                }
-              `;
-            </script>
-        "#},
-        ":lang html<ret> C",
-        indoc! {r#"\
-            <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
-            <script type="text/javascript">
-              // C#(|o)#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the javascript c#(|o)#mment t#(|o)#ken(s).
-              f#(|o)##(|o)#();
-              css`
-                html {
-                  backgr#(|o)#und-c#(|o)#l#(|o)#r: red;
-                }
-              `;
-            </script>
-        "#},
-    ))
-    .await?;
-
-    Ok(())
+        ))
+        .await?;
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn multiple_selections_same_line() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
+                <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
+                <script type="text/javascript">
+                  // Comment toggle on this line should use the javascript comment token(s).
+                  foo();
+                  css`
+                    html {
+                      background-color: red;
+                    }
+                  `;
+                </script>
+            "#},
+            ":lang html<ret> C",
+            indoc! {r#"\
+                <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
+                <script type="text/javascript">
+                  // Comment toggle on this line should use the javascript comment token(s).
+                  foo();
+                  css`
+                    html {
+                      background-color: red;
+                    }
+                  `;
+                </script>
+            "#},
+        ))
+        .await?;
+        test((
+            indoc! {r#"\
+                <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
+                <script type="text/javascript">
+                  // Comment toggle on this line should use the javascript comment token(s).
+                  foo();
+                  css`
+                    html {
+                      background-color: red;
+                    }
+                  `;
+                </script>
+            "#},
+            ":lang html<ret> C",
+            indoc! {r#"\
+                <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
+                <script type="text/javascript">
+                  // Comment toggle on this line should use the javascript comment token(s).
+                  foo();
+                  css`
+                    html {
+                      background-color: red;
+                    }
+                  `;
+                </script>
+            "#},
+        ))
+        .await?;
+        Ok(())
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn many_single_line_selections() -> anyhow::Result<()> {
+        test((
+            indoc! {r#"\
+                <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
+                <script type="text/javascript">
+                  // C#(|o)#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the javascript c#(|o)#mment t#(|o)#ken(s).
+                  f#(|o)##(|o)#();
+                  css`
+                    html {
+                      backgr#(|o)#und-c#(|o)#l#(|o)#r: red;
+                    }
+                  `;
+                </script>
+            "#},
+            ":lang html<ret> C",
+            indoc! {r#"\
+                <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
+                <script type="text/javascript">
+                  // C#(|/* o */)#mment t#(|/* o */)#ggle #(|/* o */)#n this line sh#(|/* o */)#uld use the javascript c#(|/* o */)#mment t#(|/* o */)#ken(s).
+                  f#(|/* o */)##(|/* o */)#();
+                  css`
+                    html {
+                      backgr#(|/* o */)#und-c#(|/* o */)#l#(|/* o */)#r: red;
+                    }
+                  `;
+                </script>
+            "#},
+        ))
+        .await?;
+        test((
+            indoc! {r#"\
+                <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
+                <script type="text/javascript">
+                  // C#(|/* o */)#mment t#(|/* o */)#ggle #(|/* o */)#n this line sh#(|/* o */)#uld use the javascript c#(|/* o */)#mment t#(|/* o */)#ken(s).
+                  f#(|/* o */)##(|/* o */)#();
+                  css`
+                    html {
+                      backgr#(|/* o */)#und-c#(|/* o */)#l#(|/* o */)#r: red;
+                    }
+                  `;
+                </script>
+            "#},
+            ":lang html<ret> C",
+            indoc! {r#"\
+                <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
+                <script type="text/javascript">
+                  // C#(|o)#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the javascript c#(|o)#mment t#(|o)#ken(s).
+                  f#(|o)##(|o)#();
+                  css`
+                    html {
+                      backgr#(|o)#und-c#(|o)#l#(|o)#r: red;
+                    }
+                  `;
+                </script>
+            "#},
+        ))
+        .await?;
+        Ok(())
+    }
 }
 
 /// A selection that spans across several injections takes comment tokens

@@ -498,7 +498,7 @@ pub mod completers {
         let loader = editor.syn_loader.load();
         let language_ids = loader
             .language_configs()
-            .map(|config| &config.language_name)
+            .map(|config| &config.language_id)
             .chain(std::iter::once(&text));
 
         fuzzy_match(input, language_ids, false)
