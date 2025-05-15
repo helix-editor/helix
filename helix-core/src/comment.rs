@@ -46,13 +46,13 @@ pub fn get_comment_token(
     )
 }
 
+/// Find the injection with the most tightly encompassing range.
 pub fn get_injected_tokens(
     loader: &syntax::Loader,
     syntax: Option<&Syntax>,
     start: u32,
     end: u32,
 ) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>) {
-    // Find the injection with the most tightly encompassing range.
     syntax
         .and_then(|syntax| {
             syntax
