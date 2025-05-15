@@ -192,6 +192,8 @@ inlayHints.discriminantHints.enable = "fieldless"
 inlayHints.lifetimeElisionHints.enable = "skip_trivial"
 inlayHints.typeHints.hideClosureInitialization = false
 
+[language-server.rust-analyzer.config.files]
+watcher = "server"
 
 [language-server.typescript-language-server]
 command = "typescript-language-server"
@@ -626,7 +628,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "cpp"
-source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "670404d7c689be1c868a46f919ba2a3912f2b7ef" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "56455f4245baf4ea4e0881c5169de69d7edd5ae7" }
 
 [[language]]
 name = "crystal"
@@ -1084,7 +1086,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "bash"
-source = { git = "https://github.com/tree-sitter/tree-sitter-bash", rev = "f8fb3274f72a30896075585b32b0c54cad65c086" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-bash", rev = "487734f87fd87118028a65a4599352fa99c9cde8" }
 
 [[language]]
 name = "php"
@@ -1738,6 +1740,15 @@ name = "markdown"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "62516e8c78380e3b51d5b55727995d2c511436d8", subpath = "tree-sitter-markdown" }
 
 [[language]]
+name = "markdown-rustdoc"
+scope = "source.markdown-rustdoc"
+grammar = "markdown"
+injection-regex = "markdown-rustdoc"
+file-types = []
+indent = { tab-width = 2, unit = "  " }
+block-comment-tokens = { start = "<!--", end = "-->" }
+
+[[language]]
 name = "markdown.inline"
 scope = "source.markdown.inline"
 injection-regex = "markdown\\.inline"
@@ -2378,7 +2389,7 @@ source = { git = "https://github.com/metio/tree-sitter-ssh-client-config", rev =
 name = "scheme"
 scope = "source.scheme"
 injection-regex = "scheme"
-file-types = ["ss", "scm"]
+file-types = ["ss", "scm", "sld"]
 shebangs = ["scheme", "guile", "chicken"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
@@ -2407,7 +2418,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "v"
-source = {git = "https://github.com/vlang/v-analyzer", subpath = "tree_sitter_v", rev = "e14fdf6e661b10edccc744102e4ccf0b187aa8ad"}
+source = {git = "https://github.com/vlang/v-analyzer", subpath = "tree_sitter_v", rev = "59a8889d84a293d7c0366d14c8dbb0eec24fe889"}
 
 [[language]]
 name = "verilog"

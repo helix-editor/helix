@@ -34,7 +34,7 @@ use helix_core::{
     regex::{self, Regex},
     search::{self, CharMatcher},
     selection, surround,
-    syntax::{BlockCommentToken, LanguageServerFeature},
+    syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
@@ -3513,12 +3513,12 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
     enter_insert_mode(cx);
 
     let (view, doc) = current!(cx.editor);
+    let loader = cx.editor.syn_loader.load();
 
     let text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
 
-    let language_config = doc.language_config();
     let syntax = doc.syntax();
     let tab_width = doc.tab_width();
 
@@ -3534,7 +3534,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             let line_end_index = cursor_line_start;
 
             let indent = indent::indent_for_newline(
-                language_config,
+                &loader,
                 syntax,
                 &doc.config.load().indent_heuristic,
                 &doc.indent_style,
@@ -3644,6 +3644,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
     enter_insert_mode(cx);
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
+    let loader = cx.editor.syn_loader.load();
 
     let text = doc.text().slice(..);
     let contents = doc.text();
@@ -3693,7 +3694,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
         let indent = match line.first_non_whitespace_char() {
             Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
             _ => indent::indent_for_newline(
-                doc.language_config(),
+                &loader,
                 doc.syntax(),
                 &config.indent_heuristic,
                 &doc.indent_style,
@@ -4195,6 +4196,7 @@ pub mod insert {
     pub fn insert_newline(cx: &mut Context) {
         let config = cx.editor.config();
         let (view, doc) = current_ref!(cx.editor);
+        let loader = cx.editor.syn_loader.load();
         let text = doc.text().slice(..);
         let line_ending = doc.line_ending.as_str();
 
@@ -4240,7 +4242,7 @@ pub mod insert {
                 let indent = match line.first_non_whitespace_char() {
                     Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
                     _ => indent::indent_for_newline(
-                        doc.language_config(),
+                        &loader,
                         doc.syntax(),
                         &config.indent_heuristic,
                         &doc.indent_style,
@@ -5797,19 +5799,14 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
     let count = cx.count();
     let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
-        if let Some((lang_config, syntax)) = doc.language_config().zip(doc.syntax()) {
+        let loader = editor.syn_loader.load();
+        if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             let root = syntax.tree().root_node();
 
             let selection = doc.selection(view.id).clone().transform(|range| {
                 let new_range = movement::goto_treesitter_object(
-                    text,
-                    range,
-                    object,
-                    direction,
-                    root,
-                    lang_config,
-                    count,
+                    text, range, object, direction, &root, syntax, &loader, count,
                 );
 
                 if editor.mode == Mode::Select {
@@ -5897,21 +5894,15 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         if let Some(ch) = event.char() {
             let textobject = move |editor: &mut Editor| {
                 let (view, doc) = current!(editor);
+                let loader = editor.syn_loader.load();
                 let text = doc.text().slice(..);
 
                 let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
-                    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
-                        Some(t) => t,
-                        None => return range,
+                    let Some(syntax) = doc.syntax() else {
+                        return range;
                     };
                     textobject::textobject_treesitter(
-                        text,
-                        range,
-                        objtype,
-                        obj_name,
-                        syntax.tree().root_node(),
-                        lang_config,
-                        count,
+                        text, range, objtype, obj_name, syntax, &loader, count,
                     )
                 };
 
