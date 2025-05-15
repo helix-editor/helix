@@ -57,6 +57,7 @@ pub fn get_injected_tokens(
         .and_then(|syntax| {
             syntax
                 .layers_for_byte_range(start, end)
+                .collect::<Vec<_>>()
                 .into_iter()
                 .rev()
                 .find_map(|layer| {

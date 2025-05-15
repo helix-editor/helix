@@ -450,7 +450,7 @@ impl Syntax {
         self.inner.layer_for_byte_range(start, end)
     }
 
-    pub fn layers_for_byte_range(&self, start: u32, end: u32) -> Vec<Layer> {
+    pub fn layers_for_byte_range(&self, start: u32, end: u32) -> impl Iterator<Item = Layer> + use<'_> {
         self.inner.layers_for_byte_range(start, end)
     }
 
