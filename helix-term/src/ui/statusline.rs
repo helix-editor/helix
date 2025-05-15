@@ -336,13 +336,11 @@ where
     let count = selection.len();
     write(
         context,
-        format!(
-            "{}/{} sel{} ",
-            selection.primary_index() + 1,
-            count,
-            if count == 1 { "" } else { "s" }
-        )
-        .into(),
+        if count == 1 {
+            " 1 sel ".into()
+        } else {
+            format!(" {}/{count} sels ", selection.primary_index() + 1).into()
+        },
     );
 }
 
