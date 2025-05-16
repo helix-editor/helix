@@ -37,7 +37,7 @@ package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
 
 [workspace.dependencies]
-tree-house = { git = "https://github.com/nik-rev/tree-house", rev = "ae033326f7c5355f2fb8673cefc579ffcb92f508", default-features = false }
+tree-house = { git = "https://github.com/nik-rev/tree-house", rev = "a6c231c7f935eed9015ae7ef500dc99e4fa15c93", default-features = false }
 nucleo = "0.5.0"
 slotmap = "1.0.7"
 thiserror = "2.0"
