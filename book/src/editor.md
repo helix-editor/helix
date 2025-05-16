@@ -3,6 +3,7 @@
 - [`[editor]` Section](#editor-section)
 - [`[editor.clipboard-provider]` Section](#editorclipboard-provider-section)
 - [`[editor.statusline]` Section](#editorstatusline-section)
+- [`[editor.bufferline]` Section](#editorbufferline-section)
 - [`[editor.lsp]` Section](#editorlsp-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
@@ -151,6 +152,32 @@ The following statusline elements can be configured:
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 | `version-control` | The current branch name or detached commit hash of the opened workspace |
 | `register` | The current selected register |
+
+### `[editor.bufferline]` Section
+
+For simplicity, `editor.bufferline` accepts a render mode, which will use
+default settings for the rest of the configuration.
+
+```toml
+[editor]
+bufferline = "always"
+```
+
+To customize the behavior of the bufferline, the `[editor.bufferline]` section
+must be used.
+
+| Key       | Description                                                                                                         | Default     |
+| --------- | ------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `show`    | When to show the bufferline. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use). | `"never"`   |
+| `context` | Whether to provide additional filepath context. Can be `minimal` or `none`.                                         | `"minimal"` |
+
+Example:
+
+```toml
+[editor.bufferline]
+show = "always"
+context = "none"
+```
 
 ### `[editor.lsp]` Section
 
