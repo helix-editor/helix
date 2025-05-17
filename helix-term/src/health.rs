@@ -1,11 +1,11 @@
 use crate::config::{Config, ConfigLoadError};
-use crossterm::{
-    style::{Color, StyledContent, Stylize},
-    tty::IsTty,
-};
 use helix_core::config::{default_lang_config, user_lang_config};
 use helix_loader::grammar::load_runtime_file;
-use std::io::Write;
+use std::io::{IsTerminal, Write};
+use termina::{
+    style::{ColorSpec, StyleExt as _, Stylized},
+    Terminal as _,
+};
 
 #[derive(Copy, Clone)]
 pub enum TsFeature {
@@ -160,21 +160,24 @@ pub fn languages_all() -> std::io::Result<()> {
         headings.push(feat.short_title())
     }
 
-    let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
+    let terminal_cols = termina::PlatformTerminal::new()
+        .and_then(|terminal| terminal.get_dimensions())
+        .map(|size| size.cols)
+        .unwrap_or(80);
     let column_width = terminal_cols as usize / headings.len();
-    let is_terminal = std::io::stdout().is_tty();
+    let is_terminal = std::io::stdout().is_terminal();
 
-    let fit = |s: &str| -> StyledContent<String> {
+    let fit = |s: &str| -> Stylized<'static> {
         format!(
             "{:column_width$}",
             s.get(..column_width - 2)
                 .map(|s| format!("{}…", s))
                 .unwrap_or_else(|| s.to_string())
         )
-        .stylize()
+        .stylized()
     };
-    let color = |s: StyledContent<String>, c: Color| if is_terminal { s.with(c) } else { s };
-    let bold = |s: StyledContent<String>| if is_terminal { s.bold() } else { s };
+    let color = |s: Stylized<'static>, c: ColorSpec| if is_terminal { s.foreground(c) } else { s };
+    let bold = |s: Stylized<'static>| if is_terminal { s.bold() } else { s };
 
     for heading in headings {
         write!(stdout, "{}", bold(fit(heading)))?;
@@ -187,10 +190,10 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let check_binary = |cmd: Option<&str>| match cmd {
         Some(cmd) => match helix_stdx::env::which(cmd) {
-            Ok(_) => color(fit(&format!("✓ {}", cmd)), Color::Green),
-            Err(_) => color(fit(&format!("✘ {}", cmd)), Color::Red),
+            Ok(_) => color(fit(&format!("✓ {}", cmd)), ColorSpec::BRIGHT_GREEN),
+            Err(_) => color(fit(&format!("✘ {}", cmd)), ColorSpec::BRIGHT_RED),
         },
-        None => color(fit("None"), Color::Yellow),
+        None => color(fit("None"), ColorSpec::BRIGHT_YELLOW),
     };
 
     for lang in &syn_loader_conf.language {
@@ -215,8 +218,8 @@ pub fn languages_all() -> std::io::Result<()> {
 
         for ts_feat in TsFeature::all() {
             match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
-                true => write!(stdout, "{}", color(fit("✓"), Color::Green))?,
-                false => write!(stdout, "{}", color(fit("✘"), Color::Red))?,
+                true => write!(stdout, "{}", color(fit("✓"), ColorSpec::BRIGHT_GREEN))?,
+                false => write!(stdout, "{}", color(fit("✘"), ColorSpec::BRIGHT_RED))?,
             }
         }
 
