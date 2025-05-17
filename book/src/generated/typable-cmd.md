@@ -63,6 +63,8 @@
 | `:vsplit-new`, `:vnew` | Open a scratch buffer in a vertical split. |
 | `:hsplit`, `:hs`, `:sp` | Open the file in a horizontal split. |
 | `:hsplit-new`, `:hnew` | Open a scratch buffer in a horizontal split. |
+| `:save-splits` | Save the current split with the name specified as argument or a default name is none provided. |
+| `:load-splits` | Loads the specified split or the default one if not name is provided. |
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Goto line number. |
 | `:set-language`, `:lang` | Set the language of current buffer (show current language if no value specified). |
