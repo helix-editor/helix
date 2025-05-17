@@ -16,6 +16,7 @@ use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
 use ui::completers::{self, Completer};
+use crate::ui::ThemesType;
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -2931,7 +2932,29 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Change the editor theme (show current theme if no name specified).",
         fun: theme,
-        completer: CommandCompleter::positional(&[completers::theme]),
+        completer: CommandCompleter::positional(&[|_editor, input| completers::theme(_editor, input, ThemesType::All)]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "theme-dark",
+        aliases: &[],
+        doc: "Change the editor theme to a dark theme (show current theme if no name specified).",
+        fun: theme,
+        completer: CommandCompleter::positional(&[|_editor, input| completers::theme(_editor, input, ThemesType::Dark)]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "theme-light",
+        aliases: &[],
+        doc: "Change the editor theme to a light theme (show current theme if no name specified).",
+        fun: theme,
+        completer: CommandCompleter::positional(&[|_editor, input| completers::theme(_editor, input, ThemesType::Light)]),
         signature: Signature {
             positionals: (0, Some(1)),
             ..Signature::DEFAULT
