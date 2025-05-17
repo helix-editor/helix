@@ -303,7 +303,72 @@ style: Style?,
         "#
     );
 
-    register!("new-component!", SteelDynamicComponent::new_dyn);
+    // name: String,
+    // state: SteelVal,
+    // render: SteelVal,
+    // h: HashMap<String, SteelVal>,
+    // handle_event: h.get("handle_event").cloned(),
+    // _should_update: h.get("should_update").cloned(),
+    // cursor: h.get("cursor").cloned(),
+    // required_size: h.get("required_size").cloned(),
+
+    register!(
+        "SteelEventResult?",
+        |value: SteelVal| { SteelEventResult::as_ref(&value).is_ok() },
+        r#"
+Check whether the given value is a `SteelEventResult`.
+
+```scheme
+(SteelEventResult? value) -> bool?
+```
+
+value : any?
+
+        "#
+    );
+
+    register!(
+        "new-component!",
+        SteelDynamicComponent::new_dyn,
+        r#"
+Construct a new dynamic component. This is used for creating widgets or floating windows
+that exist outside of the buffer. This just constructs the component, it does not push the component
+on to the component stack. For that, you'll use `push-component!`.
+
+```scheme
+(new-component! name state render function-map)
+```
+
+name : string? - This is the name of the comoponent itself.
+state : any? - Typically this is a struct that holds the state of the component.
+render : (-> state? Rect? Buffer?)
+    This is a function that will get called with each frame. The first argument is the state object provided,
+    and the second is the `Rect?` to render against, ultimately against the `Buffer?`.
+
+function-map : (hashof string? function?)
+    This is a hashmap of strings -> function that contains a few important functions:
+
+    "handle_event" : (-> state? Event?) -> SteelEventResult?
+
+        This is called on every event with an event object. There are multiple options you can use
+        when returning from this function:
+
+        * event-result/consume
+        * event-result/consume-without-rerender
+        * event-result/ignore
+        * event-result/close
+
+        See the associated docs for those to understand the implications for each.
+        
+    "cursor" : (-> state? Rect?) -> Position?
+
+        This tells helix where to put the cursor.
+    
+    "required_size": (-> state? (pair? int?)) -> (pair? int?)
+
+        Seldom used: TODO
+    "#
+    );
 
     register!(
         "position",
@@ -898,51 +963,283 @@ Construct a new indexed color.
         "#
     );
 
-    register!("set-style-fg!", |style: &mut Style, color: Color| {
-        style.fg = Some(color);
-    });
-    register!("style-fg", Style::fg);
-    register!("style-bg", Style::bg);
-    register!("style-with-italics", |style: &Style| {
-        let patch = Style::default().add_modifier(Modifier::ITALIC);
-        style.patch(patch)
-    });
-    register!("style-with-bold", |style: Style| {
-        let patch = Style::default().add_modifier(Modifier::BOLD);
-        style.patch(patch)
-    });
-    register!("style-with-dim", |style: &Style| {
-        let patch = Style::default().add_modifier(Modifier::DIM);
-        style.patch(patch)
-    });
-    register!("style-with-slow-blink", |style: Style| {
-        let patch = Style::default().add_modifier(Modifier::SLOW_BLINK);
-        style.patch(patch)
-    });
-    register!("style-with-rapid-blink", |style: Style| {
-        let patch = Style::default().add_modifier(Modifier::RAPID_BLINK);
-        style.patch(patch)
-    });
-    register!("style-with-reversed", |style: Style| {
-        let patch = Style::default().add_modifier(Modifier::REVERSED);
-        style.patch(patch)
-    });
-    register!("style-with-hidden", |style: Style| {
-        let patch = Style::default().add_modifier(Modifier::HIDDEN);
-        style.patch(patch)
-    });
-    register!("style-with-crossed-out", |style: Style| {
-        let patch = Style::default().add_modifier(Modifier::CROSSED_OUT);
-        style.patch(patch)
-    });
-    register!("style->fg", |style: &Style| style.fg);
-    register!("style->bg", |style: &Style| style.bg);
-    register!("set-style-bg!", |style: &mut Style, color: Color| {
-        style.bg = Some(color);
-    });
+    register!(
+        "set-style-fg!",
+        |style: &mut Style, color: Color| {
+            style.fg = Some(color);
+        },
+        r#"
 
-    register!("style-underline-color", Style::underline_color);
-    register!("style-underline-style", Style::underline_style);
+Mutates the given `Style` to have the fg with the provided color.
+
+```scheme
+(set-style-fg! style color)
+```
+
+style : `Style?`
+color : `Color?`
+        "#
+    );
+
+    register!(
+        "style-fg",
+        Style::fg,
+        r#"
+
+Constructs a new `Style` with the provided `Color` for the fg.
+
+```scheme
+(style-fg style color) -> Style
+```
+
+style : Style?
+color: Color?
+        "#
+    );
+    register!(
+        "style-bg",
+        Style::bg,
+        r#"
+
+Constructs a new `Style` with the provided `Color` for the bg.
+
+```scheme
+(style-bg style color) -> Style
+```
+
+style : Style?
+color: Color?
+        "#
+    );
+    register!(
+        "style-with-italics",
+        |style: &Style| {
+            let patch = Style::default().add_modifier(Modifier::ITALIC);
+            style.patch(patch)
+        },
+        r#"
+
+Constructs a new `Style` with italcs.
+
+```scheme
+(style-with-italics style) -> Style
+```
+
+style : Style?
+        "#
+    );
+    register!(
+        "style-with-bold",
+        |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::BOLD);
+            style.patch(patch)
+        },
+        r#"
+
+Constructs a new `Style` with bold styling.
+
+```scheme
+(style-with-bold style) -> Style
+```
+
+style : Style?
+        "#
+    );
+    register!(
+        "style-with-dim",
+        |style: &Style| {
+            let patch = Style::default().add_modifier(Modifier::DIM);
+            style.patch(patch)
+        },
+        r#"
+
+Constructs a new `Style` with dim styling.
+
+```scheme
+(style-with-dim style) -> Style
+```
+
+style : Style?
+        "#
+    );
+    register!(
+        "style-with-slow-blink",
+        |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::SLOW_BLINK);
+            style.patch(patch)
+        },
+        r#"
+
+Constructs a new `Style` with slow blink.
+
+```scheme
+(style-with-slow-blink style) -> Style
+```
+
+style : Style?
+        "#
+    );
+    register!(
+        "style-with-rapid-blink",
+        |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::RAPID_BLINK);
+            style.patch(patch)
+        },
+        r#"
+
+Constructs a new `Style` with rapid blink.
+
+```scheme
+(style-with-rapid-blink style) -> Style
+```
+
+style : Style?
+        "#
+    );
+    register!(
+        "style-with-reversed",
+        |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::REVERSED);
+            style.patch(patch)
+        },
+        r#"
+
+Constructs a new `Style` with revered styling.
+
+```scheme
+(style-with-reversed style) -> Style
+```
+
+style : Style?
+        "#
+    );
+    register!(
+        "style-with-hidden",
+        |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::HIDDEN);
+            style.patch(patch)
+        },
+        r#"
+Constructs a new `Style` with hidden styling.
+
+```scheme
+(style-with-hidden style) -> Style
+```
+
+style : Style?
+        "#
+    );
+    register!(
+        "style-with-crossed-out",
+        |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::CROSSED_OUT);
+            style.patch(patch)
+        },
+        r#"
+
+Constructs a new `Style` with crossed out styling.
+
+```scheme
+(style-with-crossed-out style) -> Style
+```
+
+style : Style?
+        "#
+    );
+    register!(
+        "style->fg",
+        |style: &Style| style.fg,
+        r#"
+
+Return the color on the style, or #false if not present.
+
+```scheme
+(style->fg style) -> (or Color? #false)
+```
+
+style : Style?
+            
+        "#
+    );
+    register!(
+        "style->bg",
+        |style: &Style| style.bg,
+        r#"
+
+Return the color on the style, or #false if not present.
+
+```scheme
+(style->bg style) -> (or Color? #false)
+```
+
+style : Style?
+            
+        "#
+    );
+    register!(
+        "set-style-bg!",
+        |style: &mut Style, color: Color| {
+            style.bg = Some(color);
+        },
+        r#"
+
+Mutate the background style on the given style to a given color.
+
+```scheme
+(set-style-bg! style color)
+```
+
+style : Style?
+color : Color?
+            
+        "#
+    );
+
+    register!(
+        "style-underline-color",
+        Style::underline_color,
+        r#"
+
+Return a new style with the provided underline color.
+
+```scheme
+(style-underline-color style color) -> Style?
+
+```
+style : Style?
+color : Color?
+            
+        "#
+    );
+    register!(
+        "style-underline-style",
+        Style::underline_style,
+        r#"
+Return a new style with the provided underline style.
+
+```scheme
+(style-underline-style style underline-style) -> Style?
+
+```
+
+style : Style?
+underline-style : UnderlineStyle?
+
+"#
+    );
+
+    register!(
+        "UnderlineStyle?",
+        |value: SteelVal| { UnderlineStyle::as_ref(&value).is_ok() },
+        r#"
+Check if the provided value is an `UnderlineStyle`.
+
+```scheme
+(UnderlineStyle? value) -> bool?
+
+```
+value : any?"#
+    );
 
     register!(
         value,
