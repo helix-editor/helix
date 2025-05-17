@@ -16,7 +16,9 @@ members = [
   "xtask",
 ]
 
-default-members = ["helix-term"]
+default-members = [
+  "helix-term"
+]
 
 [profile.release]
 lto = "thin"
