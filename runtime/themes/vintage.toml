@@ -1,5 +1,6 @@
 # Vintage Theme for the Helix Editor
 # Author: rojebd<roniellberrios@gmail.com>
+# Modified by: Md Atiquz Zaman
 # Repo: https://github.com/rojebd/vintage
 # This theme is vintage inspired
 # Info: I made this theme one afternoon because my bus was late and I stayed home :)
@@ -47,7 +48,7 @@ label = "#abcc8a"
 "ui.background.separator" = { fg = "white" } 
 "ui.linenr" = { fg = "#747575" } 
 "ui.linenr.selected" = { fg = "#c7dddd" } 
-"ui.statusline" = { fg = "black", bg = "gray" } 
+"ui.statusline" = { fg = "light-gray", bg = "darker" } 
 "ui.statusline.inactive" = { fg = "gray", bg = "#3c3836" } 
 "ui.popup" = { bg = "#3b3b3d" } 
 "ui.window" = { fg = "yellow" } 
@@ -100,3 +101,4 @@ purple-ish = "#997B66"
 bright-green = "#4F6F52"
 blueish = "#3876BF"
 redish = "#B80000"
+darker = "#282828"
