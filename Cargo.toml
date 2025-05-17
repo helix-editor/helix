@@ -16,9 +16,7 @@ members = [
   "xtask",
 ]
 
-default-members = [
-  "helix-term"
-]
+default-members = ["helix-term"]
 
 [profile.release]
 lto = "thin"
@@ -37,7 +35,7 @@ package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
 
 [workspace.dependencies]
-tree-house = { version = "0.1.0", default-features = false }
+tree-house = { git = "https://github.com/nik-rev/tree-house.git", rev = "c5b3f53dbffce5cf8dc42fb5597deddeaa5c9d0a", default-features = false }
 nucleo = "0.5.0"
 slotmap = "1.0.7"
 thiserror = "2.0"

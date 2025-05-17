@@ -418,8 +418,13 @@ pub struct Syntax {
 const PARSE_TIMEOUT: Duration = Duration::from_millis(500); // half a second is pretty generous
 
 impl Syntax {
-    pub fn new(source: RopeSlice, language: Language, loader: &Loader) -> Result<Self, Error> {
-        let inner = tree_house::Syntax::new(source, language, PARSE_TIMEOUT, loader)?;
+    pub fn new(
+        source: RopeSlice,
+        language: Language,
+        loader: &Loader,
+        path: Option<std::path::PathBuf>,
+    ) -> Result<Self, Error> {
+        let inner = tree_house::Syntax::new(source, language, PARSE_TIMEOUT, loader, path)?;
         Ok(Self { inner })
     }
 
@@ -966,7 +971,7 @@ mod test {
         let grammar = LOADER.get_config(language).unwrap().grammar;
         let query = Query::new(grammar, query_str, |_, _| Ok(())).unwrap();
         let textobject = TextObjectQuery::new(query);
-        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER, None).unwrap();
 
         let root = syntax.tree().root_node();
         let test = |capture, range| {
@@ -1055,7 +1060,7 @@ mod test {
     ) {
         let source = Rope::from_str(source);
         let language = LOADER.language_for_name(language_name).unwrap();
-        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER, None).unwrap();
 
         let root = syntax
             .tree()

@@ -54,7 +54,7 @@ pub fn highlighted_code_block<'a>(
     let ropeslice = RopeSlice::from(text);
     let Some(syntax) = loader
         .language_for_match(RopeSlice::from(language))
-        .and_then(|lang| Syntax::new(ropeslice, lang, loader).ok())
+        .and_then(|lang| Syntax::new(ropeslice, lang, loader, None).ok())
     else {
         return styled_multiline_text(text, code_style);
     };
