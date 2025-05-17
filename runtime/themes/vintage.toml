@@ -48,7 +48,10 @@ label = "#abcc8a"
 "ui.linenr" = { fg = "#747575" } 
 "ui.linenr.selected" = { fg = "#c7dddd" } 
 "ui.statusline" = { fg = "black", bg = "gray" } 
-"ui.statusline.inactive" = { fg = "gray", bg = "#3c3836" } 
+"ui.statusline.inactive" = { fg = "gray", bg = "#3c3836" }
+"ui.statusline.normal" = { fg = "black", bg = "#BD93F9", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "black", bg = "#50fa7b", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "black", bg = "#8be9fd", modifiers = ["bold"] }
 "ui.popup" = { bg = "#3b3b3d" } 
 "ui.window" = { fg = "yellow" } 
 "ui.help" = { bg = "#35353a", fg = "light-gray" } 
