@@ -235,7 +235,9 @@ pub fn helix_component_module(generate_sources: bool) -> BuiltInModule {
         |position: SteelVal| { Position::as_ref(&position).is_ok() },
         r#"Check if the given value is a `Position`
 
+```scheme
 (Position? value) -> bool?
+```
 
 value : any?
 
@@ -247,7 +249,9 @@ value : any?
         |style: SteelVal| Style::as_ref(&style).is_ok(),
         r#"Check if the given valuie is `Style`
 
+```scheme
 (Style? value) -> bool?
+```
 
 value : any?
 "#
@@ -259,7 +263,9 @@ value : any?
         r#"
 Checks if the given value is a `Buffer`
 
+```scheme
 (Buffer? value) -> bool?
+```
 
 value : any?
         "#
@@ -271,7 +277,9 @@ value : any?
         r#"
 Get the `Rect` associated with the given `Buffer`
 
+```scheme
 (buffer-area buffer)
+```
 
 * buffer : Buffer?
         "#
@@ -283,13 +291,15 @@ Get the `Rect` associated with the given `Buffer`
         r#"
 Set the string at the given `x` and `y` positions for the given `Buffer`, with a provided `Style`.
 
+```scheme
 (frame-set-string! buffer x y string style)
+```
 
-    buffer : Buffer?,
-    x : int?,
-    y : int?,
-    string: string?,
-    style: Style?,
+buffer : Buffer?,
+x : int?,
+y : int?,
+string: string?,
+style: Style?,
         "#
     );
 
@@ -301,7 +311,9 @@ Set the string at the given `x` and `y` positions for the given `Buffer`, with a
         r#"
 Construct a new `Position`.
 
+```scheme
 (position row col) -> Position?
+```
 
 row : int?
 col : int?
@@ -313,7 +325,9 @@ col : int?
         r#"
 Get the row associated with the given `Position`.
 
+```scheme
 (position-row pos) -> int?
+```
 
 pos : `Position?`
         "#
@@ -324,7 +338,9 @@ pos : `Position?`
         r#"
 Get the col associated with the given `Position`.
 
+```scheme
 (position-col pos) -> int?
+```
 
 pos : `Position?`
 "#
@@ -336,7 +352,10 @@ pos : `Position?`
             position.row = row;
         },
         r#"Set the row for the given `Position`
+
+```scheme
 (set-position-row! pos row)
+```
 
 pos : Position?
 row : int?
@@ -349,10 +368,26 @@ row : int?
         },
         r#"Set the col for the given `Position`
 
+```scheme
 (set-position-col! pos col)
+```
 
 pos : Position?
 col : int?
+        "#
+    );
+
+    register!(
+        "Rect?",
+        |value: SteelVal| { Rect::as_ref(&value).is_ok() },
+        r#"Check if the given value is a `Rect`
+
+```scheme
+(Rect? value) -> bool?
+```
+
+value : any?
+
         "#
     );
 
@@ -379,22 +414,50 @@ Constructs a new `Rect`.
     register!(
         "area-x",
         |area: &helix_view::graphics::Rect| area.x,
-        "Get the `x` value of the given `Rect`"
+        r#"Get the `x` value of the given `Rect`
+
+```scheme
+(area-x area) -> int?
+```
+
+area : Rect?
+        "#
     );
     register!(
         "area-y",
         |area: &helix_view::graphics::Rect| area.y,
-        "Get the `y` value of the given `Rect`"
+        r#"Get the `y` value of the given `Rect`
+
+```scheme
+(area-y area) -> int?
+```
+
+area : Rect?
+        "#
     );
     register!(
         "area-width",
         |area: &helix_view::graphics::Rect| area.width,
-        "Get the `width` value of the given `Rect`"
+        r#"Get the `width` value of the given `Rect`
+
+```scheme
+(area-width area) -> int?
+```
+
+area : Rect?
+        "#
     );
     register!(
         "area-height",
         |area: &helix_view::graphics::Rect| { area.height },
-        "Get the `height` value of the given `Rect`"
+        r#"Get the `height` value of the given `Rect`
+
+```scheme
+(area-height area) -> int?
+```
+
+area : Rect?
+        "#
     );
 
     register!("overlaid", |component: &mut WrappedDynComponent| {
@@ -406,26 +469,78 @@ Constructs a new `Rect`.
 
         component.inner = inner;
     });
-    register!("widget/list", |items: Vec<String>| {
-        widgets::List::new(
-            items
-                .into_iter()
-                .map(|x| ListItem::new(Text::from(x)))
-                .collect::<Vec<_>>(),
-        )
-    });
+
+    register!(
+        "Widget/list?",
+        |value: SteelVal| { widgets::List::as_ref(&value).is_ok() },
+        r#"Check whether the given value is a list widget.
+
+```scheme
+(Widget/list? value) -> bool?
+```
+
+value : any?
+        "#
+    );
+
+    register!(
+        "widget/list",
+        |items: Vec<String>| {
+            widgets::List::new(
+                items
+                    .into_iter()
+                    .map(|x| ListItem::new(Text::from(x)))
+                    .collect::<Vec<_>>(),
+            )
+        },
+        r#"Creates a new `List` widget with the given items.
+
+```scheme
+(widget/list lst) -> Widget?
+```
+
+* lst : (listof string?)
+        "#
+    );
 
     register!(
         "widget/list/render",
-        |buf: &mut Buffer, area: Rect, list: widgets::List| list.render(area, buf)
+        |buf: &mut Buffer, area: Rect, list: widgets::List| list.render(area, buf),
+        r#"
+
+Render the given `Widget/list` onto the provided `Rect` within the given `Buffer`.
+
+```scheme
+(widget/list/render buf area lst)
+```
+
+* buf : `Buffer?`
+* area : `Rect?`
+* lst : `Widget/list?`
+        "#
     );
-    register!("block", || {
-        Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::White))
-            .border_type(BorderType::Rounded)
-            .style(Style::default().bg(Color::Black))
-    });
+
+    register!(
+        "block",
+        || {
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::White))
+                .border_type(BorderType::Rounded)
+                .style(Style::default().bg(Color::Black))
+        },
+        r#"Creates a block with the following styling:
+
+```scheme
+(block)
+```
+
+* borders - all
+* border-style - default style + white fg
+* border-type - rounded
+* style - default + black bg
+        "#
+    );
 
     register!(
         "make-block",
@@ -456,7 +571,10 @@ Constructs a new `Rect`.
         r#"
 Create a `Block` with the provided styling, borders, and border type.
 
+
+```scheme
 (make-block style border-style borders border_type)
+```
 
 * style : Style?
 * border-style : Style?
@@ -480,104 +598,305 @@ Valid borders include:
 
     register!(
         "block/render",
-        |buf: &mut Buffer, area: Rect, block: Block| block.render(area, buf)
+        |buf: &mut Buffer, area: Rect, block: Block| block.render(area, buf),
+        r#"
+Render the given `Block` over the given `Rect` onto the provided `Buffer`.
+
+```scheme
+(block/render buf area block)
+```
+
+buf : Buffer?
+area: Rect?
+block: Block?
+            
+        "#
     );
+
     register!(
         "buffer/clear",
         Buffer::clear,
-        "Clear a `Rect` in the `Buffer`"
+        r#"Clear a `Rect` in the `Buffer`
+
+```scheme
+(buffer/clear area)
+```
+
+area : Rect?
+        "#
     );
 
     register!(
         "buffer/clear-with",
         Buffer::clear_with,
-        "Clear a `Rect` in the `Buffer` with a default `Style`"
+        r#"Clear a `Rect` in the `Buffer` with a default `Style`
+
+```scheme
+(buffer/clear-with area style)
+```
+
+area : Rect?
+style : Style?
+        "#
     );
 
     // Mutate a color in place, to save some headache.
-    register!("set-color-rgb!", |color: &mut Color,
-                                 r: u8,
-                                 g: u8,
-                                 b: u8| {
-        *color = Color::Rgb(r, g, b);
-    });
+    register!(
+        "set-color-rgb!",
+        |color: &mut Color, r: u8, g: u8, b: u8| {
+            *color = Color::Rgb(r, g, b);
+        },
+        r#"
+Mutate the r/g/b of a color in place, to avoid allocation.
 
-    register!("set-color-indexed!", |color: &mut Color, index: u8| {
-        *color = Color::Indexed(index);
-    });
+```scheme
+(set-color-rgb! color r g b)
+```
+
+color : Color?
+r : int?
+g : int?
+b : int?
+"#
+    );
+
+    register!(
+        "set-color-indexed!",
+        |color: &mut Color, index: u8| {
+            *color = Color::Indexed(index);
+        },
+        r#"
+Mutate this color to be an indexed color.
+
+```scheme
+(set-color-indexed! color index)
+```
+
+color : Color?
+index: int?
+    
+"#
+    );
 
     register!(
         "Color?",
         |color: SteelVal| { Color::as_ref(&color).is_ok() },
         r#"Check if the given value is a `Color`.
 
+```scheme
 (Color? value) -> bool?
+```
 
 value : any?
 
         "#
     );
 
-    register!(value, "Color/Reset", Color::Reset.into_steelval().unwrap());
-    register!(value, "Color/Black", Color::Black.into_steelval().unwrap());
-    register!(value, "Color/Red", Color::Red.into_steelval().unwrap());
-    register!(value, "Color/White", Color::White.into_steelval().unwrap());
-    register!(value, "Color/Green", Color::Green.into_steelval().unwrap());
+    register!(
+        value,
+        "Color/Reset",
+        Color::Reset.into_steelval().unwrap(),
+        r#"
+Singleton for the reset color.
+        "#
+    );
+    register!(
+        value,
+        "Color/Black",
+        Color::Black.into_steelval().unwrap(),
+        r#"
+Singleton for the color black.
+        "#
+    );
+    register!(
+        value,
+        "Color/Red",
+        Color::Red.into_steelval().unwrap(),
+        r#"
+Singleton for the color red.
+        "#
+    );
+    register!(
+        value,
+        "Color/White",
+        Color::White.into_steelval().unwrap(),
+        r#"
+Singleton for the color white.
+        "#
+    );
+    register!(
+        value,
+        "Color/Green",
+        Color::Green.into_steelval().unwrap(),
+        r#"
+Singleton for the color green.
+        "#
+    );
     register!(
         value,
         "Color/Yellow",
-        Color::Yellow.into_steelval().unwrap()
+        Color::Yellow.into_steelval().unwrap(),
+        r#"
+Singleton for the color yellow.
+        "#
     );
-    register!(value, "Color/Blue", Color::Blue.into_steelval().unwrap());
+    register!(
+        value,
+        "Color/Blue",
+        Color::Blue.into_steelval().unwrap(),
+        r#"
+Singleton for the color blue.
+        "#
+    );
     register!(
         value,
         "Color/Magenta",
-        Color::Magenta.into_steelval().unwrap()
+        Color::Magenta.into_steelval().unwrap(),
+        r#"
+Singleton for the color magenta.
+        "#
     );
-    register!(value, "Color/Cyan", Color::Cyan.into_steelval().unwrap());
-    register!(value, "Color/Gray", Color::Gray.into_steelval().unwrap());
+    register!(
+        value,
+        "Color/Cyan",
+        Color::Cyan.into_steelval().unwrap(),
+        r#"
+Singleton for the color cyan.
+        "#
+    );
+    register!(
+        value,
+        "Color/Gray",
+        Color::Gray.into_steelval().unwrap(),
+        r#"
+Singleton for the color gray.
+        "#
+    );
     register!(
         value,
         "Color/LightRed",
-        Color::LightRed.into_steelval().unwrap()
+        Color::LightRed.into_steelval().unwrap(),
+        r#"
+Singleton for the color light read.
+        "#
     );
-
     register!(
         value,
         "Color/LightGreen",
-        Color::LightGreen.into_steelval().unwrap()
+        Color::LightGreen.into_steelval().unwrap(),
+        r#"
+Singleton for the color light green.
+        "#
     );
     register!(
         value,
         "Color/LightYellow",
-        Color::LightYellow.into_steelval().unwrap()
+        Color::LightYellow.into_steelval().unwrap(),
+        r#"
+Singleton for the color light yellow.
+        "#
     );
     register!(
         value,
         "Color/LightBlue",
-        Color::LightBlue.into_steelval().unwrap()
+        Color::LightBlue.into_steelval().unwrap(),
+        r#"
+Singleton for the color light blue.
+        "#
     );
     register!(
         value,
         "Color/LightMagenta",
-        Color::LightMagenta.into_steelval().unwrap()
+        Color::LightMagenta.into_steelval().unwrap(),
+        r#"
+Singleton for the color light magenta.
+        "#
     );
     register!(
         value,
         "Color/LightCyan",
-        Color::LightCyan.into_steelval().unwrap()
+        Color::LightCyan.into_steelval().unwrap(),
+        r#"
+Singleton for the color light cyan.
+        "#
     );
     register!(
         value,
         "Color/LightGray",
-        Color::LightGray.into_steelval().unwrap()
+        Color::LightGray.into_steelval().unwrap(),
+        r#"
+Singleton for the color light gray.
+        "#
     );
 
-    register!("Color/rgb", Color::Rgb);
-    register!("Color-red", Color::red);
-    register!("Color-green", Color::green);
-    register!("Color-blue", Color::blue);
-    register!("Color/Indexed", Color::Indexed);
+    register!(
+        "Color/rgb",
+        Color::Rgb,
+        r#"
+Construct a new color via rgb.
+
+```scheme
+(Color/rgb r g b) -> Color?
+```
+
+r : int?
+g : int?
+b : int?
+        "#
+    );
+    register!(
+        "Color-red",
+        Color::red,
+        r#"
+Get the red component of the `Color?`.
+
+```scheme
+(Color-red color) -> int?
+```
+
+color * Color?
+        "#
+    );
+    register!(
+        "Color-green",
+        Color::green,
+        r#"
+Get the green component of the `Color?`.
+
+```scheme
+(Color-green color) -> int?
+```
+
+color * Color?
+"#
+    );
+    register!(
+        "Color-blue",
+        Color::blue,
+        r#"
+Get the blue component of the `Color?`.
+
+```scheme
+(Color-blue color) -> int?
+```
+
+color * Color?
+"#
+    );
+    register!(
+        "Color/Indexed",
+        Color::Indexed,
+        r#"
+
+Construct a new indexed color.
+
+```scheme
+(Color/Indexed index) -> Color?
+```
+
+* index : int?
+        "#
+    );
 
     register!("set-style-fg!", |style: &mut Style, color: Color| {
         style.fg = Some(color);
@@ -621,152 +940,341 @@ value : any?
     register!("set-style-bg!", |style: &mut Style, color: Color| {
         style.bg = Some(color);
     });
+
     register!("style-underline-color", Style::underline_color);
     register!("style-underline-style", Style::underline_style);
 
     register!(
         value,
         "Underline/Reset",
-        UnderlineStyle::Reset.into_steelval().unwrap()
+        UnderlineStyle::Reset.into_steelval().unwrap(),
+        r#"
+Singleton for resetting the underling style.
+        "#
     );
     register!(
         value,
         "Underline/Line",
-        UnderlineStyle::Line.into_steelval().unwrap()
+        UnderlineStyle::Line.into_steelval().unwrap(),
+        r#"
+Singleton for the line underline style.
+        "#
     );
     register!(
         value,
         "Underline/Curl",
-        UnderlineStyle::Curl.into_steelval().unwrap()
+        UnderlineStyle::Curl.into_steelval().unwrap(),
+        r#"
+Singleton for the curl underline style.
+        "#
     );
     register!(
         value,
         "Underline/Dotted",
-        UnderlineStyle::Dotted.into_steelval().unwrap()
+        UnderlineStyle::Dotted.into_steelval().unwrap(),
+        r#"
+Singleton for the dotted underline style.
+        "#
     );
     register!(
         value,
         "Underline/Dashed",
-        UnderlineStyle::Dashed.into_steelval().unwrap()
+        UnderlineStyle::Dashed.into_steelval().unwrap(),
+        r#"
+Singleton for the dashed underline style.
+        "#
     );
     register!(
         value,
         "Underline/DoubleLine",
-        UnderlineStyle::DoubleLine.into_steelval().unwrap()
+        UnderlineStyle::DoubleLine.into_steelval().unwrap(),
+        r#"
+Singleton for the double line underline style.
+        "#
     );
     register!(
         value,
         "event-result/consume",
-        SteelEventResult::Consumed.into_steelval().unwrap()
+        SteelEventResult::Consumed.into_steelval().unwrap(),
+        r#"
+Singleton for consuming an event. If this is returned from an event handler, the event
+will not continue to be propagated down the component stack. This also will trigger a
+re-render.
+        "#
     );
     register!(
         value,
         "event-result/consume-without-rerender",
         SteelEventResult::ConsumedWithoutRerender
             .into_steelval()
-            .unwrap()
+            .unwrap(),
+        r#"
+Singleton for consuming an event. If this is returned from an event handler, the event
+will not continue to be propagated down the component stack. This will _not_ trigger
+a re-render.
+        "#
     );
     register!(
         value,
         "event-result/ignore",
-        SteelEventResult::Ignored.into_steelval().unwrap()
+        SteelEventResult::Ignored.into_steelval().unwrap(),
+        r#"
+Singleton for ignoring an event. If this is returned from an event handler, the event
+will not continue to be propagated down the component stack. This will _not_ trigger
+a re-render.
+        "#
     );
     register!(
         value,
         "event-result/close",
-        SteelEventResult::Close.into_steelval().unwrap()
+        SteelEventResult::Close.into_steelval().unwrap(),
+        r#"
+Singleton for consuming an event. If this is returned from an event handler, the event
+will not continue to be propagated down the component stack, and the component will
+be popped off of the stack and removed.
+        "#
     );
-    register!("style", || Style::default());
 
-    register!("key-event-char", |event: Event| {
-        if let Event::Key(event) = event {
-            event.char()
-        } else {
-            None
-        }
-    });
-    register!("key-event-modifier", |event: Event| {
-        if let Event::Key(KeyEvent { modifiers, .. }) = event {
-            Some(modifiers.bits())
-        } else {
-            None
-        }
-    });
+    register!(
+        "style",
+        || Style::default(),
+        r#"
+Constructs a new default style.
+
+```scheme
+(style) -> Style?
+```
+        "#
+    );
+
+    register!(
+        "Event?",
+        |value: SteelVal| { Event::as_ref(&value).is_ok() },
+        r#"Check if this value is an `Event`
+
+```scheme
+(Event? value) -> bool?
+```
+value : any?
+        "#
+    );
+
+    register!(
+        "key-event-char",
+        |event: Event| {
+            if let Event::Key(event) = event {
+                event.char()
+            } else {
+                None
+            }
+        },
+        r#"Get the character off of the event, if there is one.
+
+```scheme
+(key-event-char event) -> (or char? #false)
+```
+event : Event?
+        "#
+    );
+
+    register!(
+        "key-event-modifier",
+        |event: Event| {
+            if let Event::Key(KeyEvent { modifiers, .. }) = event {
+                Some(modifiers.bits())
+            } else {
+                None
+            }
+        },
+        r#"
+Get the key event modifier off of the evnet, if there is one.
+
+```scheme
+(key-event-modifier event) -> (or int? #false)
+```
+event : Event?
+        "#
+    );
 
     register!(
         value,
         "key-modifier-ctrl",
-        SteelVal::IntV(KeyModifiers::CONTROL.bits() as isize)
+        SteelVal::IntV(KeyModifiers::CONTROL.bits() as isize),
+        r#"
+The key modifier bits associated with the ctrl key modifier.
+        "#
     );
     register!(
         value,
         "key-modifier-shift",
-        SteelVal::IntV(KeyModifiers::SHIFT.bits() as isize)
+        SteelVal::IntV(KeyModifiers::SHIFT.bits() as isize),
+        r#"
+The key modifier bits associated with the shift key modifier.
+        "#
     );
     register!(
         value,
         "key-modifier-alt",
-        SteelVal::IntV(KeyModifiers::ALT.bits() as isize)
+        SteelVal::IntV(KeyModifiers::ALT.bits() as isize),
+        r#"
+The key modifier bits associated with the alt key modifier.
+        "#
     );
 
-    register!("key-event-F?", |event: Event, number: u8| match event {
-        Event::Key(KeyEvent {
-            code: KeyCode::F(x),
-            ..
-        }) if number == x => true,
-        _ => false,
-    });
-    register!("mouse-event?", |event: Event| {
-        matches!(event, Event::Mouse(_))
-    });
-    register!("event-mouse-kind", |event: Event| {
-        if let Event::Mouse(MouseEvent { kind, .. }) = event {
-            match kind {
-                helix_view::input::MouseEventKind::Down(MouseButton::Left) => 0,
-                helix_view::input::MouseEventKind::Down(MouseButton::Right) => 1,
-                helix_view::input::MouseEventKind::Down(MouseButton::Middle) => 2,
-                helix_view::input::MouseEventKind::Up(MouseButton::Left) => 3,
-                helix_view::input::MouseEventKind::Up(MouseButton::Right) => 4,
-                helix_view::input::MouseEventKind::Up(MouseButton::Middle) => 5,
-                helix_view::input::MouseEventKind::Drag(MouseButton::Left) => 6,
-                helix_view::input::MouseEventKind::Drag(MouseButton::Right) => 7,
-                helix_view::input::MouseEventKind::Drag(MouseButton::Middle) => 8,
-                helix_view::input::MouseEventKind::Moved => 9,
-                helix_view::input::MouseEventKind::ScrollDown => 10,
-                helix_view::input::MouseEventKind::ScrollUp => 11,
-                helix_view::input::MouseEventKind::ScrollLeft => 12,
-                helix_view::input::MouseEventKind::ScrollRight => 13,
+    register!(
+        "key-event-F?",
+        |event: Event, number: u8| match event {
+            Event::Key(KeyEvent {
+                code: KeyCode::F(x),
+                ..
+            }) if number == x => true,
+            _ => false,
+        },
+        r#"Check if this key event is associated with an `F<x>` key, e.g. F1, F2, etc.
+
+```scheme
+(key-event-F? event number) -> bool?
+```
+event : Event?
+number : int?
+        "#
+    );
+
+    register!(
+        "mouse-event?",
+        |event: Event| { matches!(event, Event::Mouse(_)) },
+        r#"
+Check if this event is a mouse event.
+
+```scheme
+(mouse-event event) -> bool?
+```
+event : Event?
+"#
+    );
+
+    register!(
+        "event-mouse-kind",
+        |event: Event| {
+            if let Event::Mouse(MouseEvent { kind, .. }) = event {
+                match kind {
+                    helix_view::input::MouseEventKind::Down(MouseButton::Left) => 0,
+                    helix_view::input::MouseEventKind::Down(MouseButton::Right) => 1,
+                    helix_view::input::MouseEventKind::Down(MouseButton::Middle) => 2,
+                    helix_view::input::MouseEventKind::Up(MouseButton::Left) => 3,
+                    helix_view::input::MouseEventKind::Up(MouseButton::Right) => 4,
+                    helix_view::input::MouseEventKind::Up(MouseButton::Middle) => 5,
+                    helix_view::input::MouseEventKind::Drag(MouseButton::Left) => 6,
+                    helix_view::input::MouseEventKind::Drag(MouseButton::Right) => 7,
+                    helix_view::input::MouseEventKind::Drag(MouseButton::Middle) => 8,
+                    helix_view::input::MouseEventKind::Moved => 9,
+                    helix_view::input::MouseEventKind::ScrollDown => 10,
+                    helix_view::input::MouseEventKind::ScrollUp => 11,
+                    helix_view::input::MouseEventKind::ScrollLeft => 12,
+                    helix_view::input::MouseEventKind::ScrollRight => 13,
+                }
+                .into_steelval()
+            } else {
+                false.into_steelval()
             }
-            .into_steelval()
-        } else {
-            false.into_steelval()
-        }
-    });
-    register!("event-mouse-row", |event: Event| {
-        if let Event::Mouse(MouseEvent { row, .. }) = event {
-            row.into_steelval()
-        } else {
-            false.into_steelval()
-        }
-    });
-    register!("event-mouse-col", |event: Event| {
-        if let Event::Mouse(MouseEvent { column, .. }) = event {
-            column.into_steelval()
-        } else {
-            false.into_steelval()
-        }
-    });
+        },
+        r#"Convert the mouse event kind into an integer representing the state.
+
+```scheme
+(event-mouse-kind event) -> (or int? #false)
+```
+
+event : Event?
+
+This is the current mapping today:
+
+```rust
+match kind {
+    helix_view::input::MouseEventKind::Down(MouseButton::Left) => 0,
+    helix_view::input::MouseEventKind::Down(MouseButton::Right) => 1,
+    helix_view::input::MouseEventKind::Down(MouseButton::Middle) => 2,
+    helix_view::input::MouseEventKind::Up(MouseButton::Left) => 3,
+    helix_view::input::MouseEventKind::Up(MouseButton::Right) => 4,
+    helix_view::input::MouseEventKind::Up(MouseButton::Middle) => 5,
+    helix_view::input::MouseEventKind::Drag(MouseButton::Left) => 6,
+    helix_view::input::MouseEventKind::Drag(MouseButton::Right) => 7,
+    helix_view::input::MouseEventKind::Drag(MouseButton::Middle) => 8,
+    helix_view::input::MouseEventKind::Moved => 9,
+    helix_view::input::MouseEventKind::ScrollDown => 10,
+    helix_view::input::MouseEventKind::ScrollUp => 11,
+    helix_view::input::MouseEventKind::ScrollLeft => 12,
+    helix_view::input::MouseEventKind::ScrollRight => 13,
+}
+```
+
+Any unhandled event that does not match this will return `#false`.
+"#
+    );
+
+    register!(
+        "event-mouse-row",
+        |event: Event| {
+            if let Event::Mouse(MouseEvent { row, .. }) = event {
+                row.into_steelval()
+            } else {
+                false.into_steelval()
+            }
+        },
+        r#"
+
+Get the row from the mouse event, of #false if it isn't a mouse event.
+
+```scheme
+(event-mouse-row event) -> (or int? #false)
+```
+
+event : Event?
+            
+        "#
+    );
+    register!(
+        "event-mouse-col",
+        |event: Event| {
+            if let Event::Mouse(MouseEvent { column, .. }) = event {
+                column.into_steelval()
+            } else {
+                false.into_steelval()
+            }
+        },
+        r#"
+
+Get the col from the mouse event, of #false if it isn't a mouse event.
+
+```scheme
+(event-mouse-row event) -> (or int? #false)
+```
+
+event : Event?
+        "#
+    );
     // Is this mouse event within the area provided
-    register!("mouse-event-within-area?", |event: Event, area: Rect| {
-        if let Event::Mouse(MouseEvent { row, column, .. }) = event {
-            column > area.x
-                && column < area.x + area.width
-                && row > area.y
-                && row < area.y + area.height
-        } else {
-            false
-        }
-    });
+    register!(
+        "mouse-event-within-area?",
+        |event: Event, area: Rect| {
+            if let Event::Mouse(MouseEvent { row, column, .. }) = event {
+                column > area.x
+                    && column < area.x + area.width
+                    && row > area.y
+                    && row < area.y + area.height
+            } else {
+                false
+            }
+        },
+        r#"Check whether the given mouse event occurred within a given `Rect`.
+
+```scheme
+(mouse-event-within-area? event area) -> bool?
+```
+
+event : Event?
+area : Rect?
+        "#
+    );
 
     macro_rules! register_key_events {
         ($ ( $name:expr => $key:tt ) , *, ) => {
@@ -780,7 +1288,14 @@ value : any?
                               ..
                           }
                       ))
-                  });
+                  },
+                &format!(r#"
+Check whether the given event is the key: {}
+
+```scheme
+(key-event-{}? event)
+```
+event: Event?"#, $name, $name));
             )*
         };
     }
