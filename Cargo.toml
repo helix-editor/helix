@@ -59,5 +59,4 @@ categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
-# TODO: Get this back to 1.76
-rust-version = "1.81"
+rust-version = "1.82"
