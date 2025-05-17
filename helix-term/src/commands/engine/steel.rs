@@ -199,7 +199,7 @@ pub static REVERSE_BUFFER_MAP: Lazy<SteelVal> =
     Lazy::new(|| SteelVal::boxed(SteelVal::empty_hashmap()));
 
 fn load_component_api(engine: &mut Engine, generate_sources: bool) {
-    let module = helix_component_module();
+    let module = helix_component_module(generate_sources);
 
     if generate_sources {
         configure_lsp_builtins("component", &module);
@@ -234,7 +234,7 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi, generate_sources: bool) 
     engine.register_module(module);
 }
 
-fn format_docstring(doc: &str) -> String {
+pub fn format_docstring(doc: &str) -> String {
     let mut docstring = doc
         .lines()
         .map(|x| {

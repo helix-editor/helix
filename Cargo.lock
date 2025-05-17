@@ -206,6 +206,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "block-buffer"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
+dependencies = [
+ "generic-array",
+]
+
+[[package]]
 name = "bstr"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -510,6 +519,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-common"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bfb12502f3fc46cca1bb51ac28df9d618d813cdc3d2f25b9fe775a34af26bb3"
+dependencies = [
+ "generic-array",
+ "typenum",
+]
+
+[[package]]
 name = "dashmap"
 version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -521,6 +540,16 @@ dependencies = [
  "lock_api",
  "once_cell",
  "parking_lot_core",
+]
+
+[[package]]
+name = "digest"
+version = "0.10.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
+dependencies = [
+ "block-buffer",
+ "crypto-common",
 ]
 
 [[package]]
@@ -745,6 +774,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877e94aff08e743b651baaea359664321055749b398adff8740a7399af7796e7"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "generic-array"
+version = "0.14.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
+dependencies = [
+ "typenum",
+ "version_check",
 ]
 
 [[package]]
@@ -1531,6 +1570,12 @@ dependencies = [
  "gix-path",
  "gix-validate 0.9.4",
 ]
+
+[[package]]
+name = "glob"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "globset"
@@ -2355,6 +2400,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "md-5"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
+dependencies = [
+ "cfg-if",
+ "digest",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3082,7 +3137,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#77f8c352f3a140821c078900e1cf3ce4d64cc8c9"
+source = "git+https://github.com/mattwparas/steel.git#54c703795bf0e960674dce5091ed377fa4e3e1cb"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -3101,12 +3156,14 @@ dependencies = [
  "futures-util",
  "fxhash",
  "getrandom 0.3.2",
+ "glob",
  "httparse",
  "im",
  "im-lists",
  "im-rc",
  "lasso",
  "log",
+ "md-5",
  "num-bigint",
  "num-integer",
  "num-rational",
@@ -3132,7 +3189,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.5.0"
-source = "git+https://github.com/mattwparas/steel.git#77f8c352f3a140821c078900e1cf3ce4d64cc8c9"
+source = "git+https://github.com/mattwparas/steel.git#54c703795bf0e960674dce5091ed377fa4e3e1cb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3142,7 +3199,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#77f8c352f3a140821c078900e1cf3ce4d64cc8c9"
+source = "git+https://github.com/mattwparas/steel.git#54c703795bf0e960674dce5091ed377fa4e3e1cb"
 dependencies = [
  "steel-core",
 ]
@@ -3150,7 +3207,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#77f8c352f3a140821c078900e1cf3ce4d64cc8c9"
+source = "git+https://github.com/mattwparas/steel.git#54c703795bf0e960674dce5091ed377fa4e3e1cb"
 dependencies = [
  "codegen",
  "serde",
@@ -3159,7 +3216,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#77f8c352f3a140821c078900e1cf3ce4d64cc8c9"
+source = "git+https://github.com/mattwparas/steel.git#54c703795bf0e960674dce5091ed377fa4e3e1cb"
 dependencies = [
  "compact_str",
  "fxhash",

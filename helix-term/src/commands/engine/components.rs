@@ -9,7 +9,10 @@ use helix_view::{
     Editor,
 };
 use steel::{
-    rvals::{as_underlying_type, Custom, FromSteelVal, IntoSteelVal, SteelString},
+    rvals::{
+        as_underlying_type, AsRefSteelVal, AsRefSteelValFromRef, Custom, FromSteelVal,
+        IntoSteelVal, SteelString,
+    },
     steel_vm::{builtin::BuiltInModule, engine::Engine, register_fn::RegisterFn},
     SteelVal,
 };
@@ -26,7 +29,9 @@ use crate::{
     ui::overlay::overlaid,
 };
 
-use super::steel::{enter_engine, present_error_inside_engine_context, WrappedDynComponent};
+use super::steel::{
+    enter_engine, format_docstring, present_error_inside_engine_context, WrappedDynComponent,
+};
 
 #[derive(Clone)]
 struct AsyncReader {
@@ -99,346 +104,674 @@ impl std::io::Write for AsyncWriter {
     }
 }
 
-// TODO: Move the main configuration function to use this instead
-pub fn helix_component_module() -> BuiltInModule {
+pub fn helix_component_module(generate_sources: bool) -> BuiltInModule {
     let mut module = BuiltInModule::new("helix/components");
 
-    module
-        .register_fn("async-read-line", AsyncReader::read_line)
-        // TODO:
-        .register_fn("make-async-reader-writer", || {
-            let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
+    let mut builtin_components_module = if generate_sources {
+        "(require-builtin helix/components as helix.components.)".to_string()
+    } else {
+        String::new()
+    };
 
-            let writer = AsyncWriter { channel: sender };
-            let reader = AsyncReader {
-                channel: Arc::new(Mutex::new(receiver)),
+    macro_rules! register {
+        (value, $name:expr, $function:expr, $doc:expr) => {
+            module.register_value($name, $function);
+            {
+                let doc = format_docstring($doc);
+                builtin_components_module.push_str(&format!(
+                    r#"
+(provide {})
+;;@doc
+{}
+(define {} helix.components.{})
+                    "#,
+                    $name, doc, $name, $name
+                ));
+            }
+        };
+
+        (value, $name:expr, $function:expr) => {
+            module.register_value($name, $function);
+            {
+                builtin_components_module.push_str(&format!(
+                    r#"
+(provide {})
+(define {} helix.components.{})
+                    "#,
+                    $name, $name, $name
+                ));
+            }
+        };
+
+        ($name:expr, $function:expr, $doc:expr) => {
+            module.register_fn($name, $function);
+            {
+                let doc = format_docstring($doc);
+                builtin_components_module.push_str(&format!(
+                    r#"
+(provide {})
+;;@doc
+{}
+(define {} helix.components.{})
+                    "#,
+                    $name, doc, $name, $name
+                ));
+            }
+        };
+
+        ($name:expr, $function:expr) => {
+            module.register_fn($name, $function);
+            {
+                builtin_components_module.push_str(&format!(
+                    r#"
+(provide {})
+(define {} helix.components.{})
+                    "#,
+                    $name, $name, $name
+                ));
+            }
+        };
+
+        (ctx, $name:expr, $function:expr, $arity:expr, $doc:expr) => {
+            module.register_fn($name, $function);
+            let mut function_expr = Vec::with_capacity($arity);
+            for arg in 0..$arity {
+                function_expr.push(format!("arg{}", arg));
+            }
+
+            let formatted = function_expr.join(" ");
+
+            {
+                let doc = format_docstring($doc);
+                builtin_components_module.push_str(&format!(
+                    r#"
+(provide {})
+;;@doc
+{}
+(define ({} {}) (helix.components.{} {}))
+                    "#,
+                    $name, doc, $name, &formatted, $name, &formatted
+                ));
+            }
+        };
+    }
+
+    register!("async-read-line", AsyncReader::read_line);
+    register!("make-async-reader-writer", || {
+        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
+
+        let writer = AsyncWriter { channel: sender };
+        let reader = AsyncReader {
+            channel: Arc::new(Mutex::new(receiver)),
+        };
+
+        vec![
+            SteelVal::new_dyn_writer_port(writer),
+            reader.into_steelval().unwrap(),
+        ]
+    });
+    register!(
+        "theme->bg",
+        |ctx: &mut Context| { ctx.editor.theme.get("ui.background") },
+        "Gets the `Style` associated with the bg for the current theme"
+    );
+    register!(
+        "theme->fg",
+        |ctx: &mut Context| { ctx.editor.theme.get("ui.text") },
+        "Gets the `style` associated with the fg for the current theme"
+    );
+    register!(
+        ctx,
+        "theme-scope",
+        |ctx: &mut Context, scope: SteelString| {
+            ctx.editor.theme.get(scope.as_str());
+        },
+        1,
+        "Get the `Style` associated with the given scope from the current theme"
+    );
+
+    register!(
+        "Position?",
+        |position: SteelVal| { Position::as_ref(&position).is_ok() },
+        r#"Check if the given value is a `Position`
+
+(Position? value) -> bool?
+
+value : any?
+
+        "#
+    );
+
+    register!(
+        "Style?",
+        |style: SteelVal| Style::as_ref(&style).is_ok(),
+        r#"Check if the given valuie is `Style`
+
+(Style? value) -> bool?
+
+value : any?
+"#
+    );
+
+    register!(
+        "Buffer?",
+        |value: SteelVal| { Buffer::as_ref_from_ref(&value).is_ok() },
+        r#"
+Checks if the given value is a `Buffer`
+
+(Buffer? value) -> bool?
+
+value : any?
+        "#
+    );
+
+    register!(
+        "buffer-area",
+        |buffer: &mut Buffer| buffer.area,
+        r#"
+Get the `Rect` associated with the given `Buffer`
+
+(buffer-area buffer)
+
+* buffer : Buffer?
+        "#
+    );
+
+    register!(
+        "frame-set-string!",
+        buffer_set_string,
+        r#"
+Set the string at the given `x` and `y` positions for the given `Buffer`, with a provided `Style`.
+
+(frame-set-string! buffer x y string style)
+
+    buffer : Buffer?,
+    x : int?,
+    y : int?,
+    string: string?,
+    style: Style?,
+        "#
+    );
+
+    register!("new-component!", SteelDynamicComponent::new_dyn);
+
+    register!(
+        "position",
+        Position::new,
+        r#"
+Construct a new `Position`.
+
+(position row col) -> Position?
+
+row : int?
+col : int?
+        "#
+    );
+    register!(
+        "position-row",
+        |position: &Position| position.row,
+        r#"
+Get the row associated with the given `Position`.
+
+(position-row pos) -> int?
+
+pos : `Position?`
+        "#
+    );
+    register!(
+        "position-col",
+        |position: &Position| position.col,
+        r#"
+Get the col associated with the given `Position`.
+
+(position-col pos) -> int?
+
+pos : `Position?`
+"#
+    );
+
+    register!(
+        "set-position-row!",
+        |position: &mut Position, row: usize| {
+            position.row = row;
+        },
+        r#"Set the row for the given `Position`
+(set-position-row! pos row)
+
+pos : Position?
+row : int?
+        "#
+    );
+    register!(
+        "set-position-col!",
+        |position: &mut Position, col: usize| {
+            position.col = col;
+        },
+        r#"Set the col for the given `Position`
+
+(set-position-col! pos col)
+
+pos : Position?
+col : int?
+        "#
+    );
+
+    register!(
+        "area",
+        helix_view::graphics::Rect::new,
+        r#"
+Constructs a new `Rect`.
+
+(area x y width height)
+
+* x : int?
+* y : int?
+* width: int?
+* height: int?
+
+# Examples
+
+```scheme
+(area 0 0 100 200)
+```
+"#
+    );
+    register!(
+        "area-x",
+        |area: &helix_view::graphics::Rect| area.x,
+        "Get the `x` value of the given `Rect`"
+    );
+    register!(
+        "area-y",
+        |area: &helix_view::graphics::Rect| area.y,
+        "Get the `y` value of the given `Rect`"
+    );
+    register!(
+        "area-width",
+        |area: &helix_view::graphics::Rect| area.width,
+        "Get the `width` value of the given `Rect`"
+    );
+    register!(
+        "area-height",
+        |area: &helix_view::graphics::Rect| { area.height },
+        "Get the `height` value of the given `Rect`"
+    );
+
+    register!("overlaid", |component: &mut WrappedDynComponent| {
+        let inner: Option<Box<dyn Component + Send + Sync + 'static>> =
+            component.inner.take().map(|x| {
+                Box::new(overlaid(BoxDynComponent::new(x)))
+                    as Box<dyn Component + Send + Sync + 'static>
+            });
+
+        component.inner = inner;
+    });
+    register!("widget/list", |items: Vec<String>| {
+        widgets::List::new(
+            items
+                .into_iter()
+                .map(|x| ListItem::new(Text::from(x)))
+                .collect::<Vec<_>>(),
+        )
+    });
+
+    register!(
+        "widget/list/render",
+        |buf: &mut Buffer, area: Rect, list: widgets::List| list.render(area, buf)
+    );
+    register!("block", || {
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::White))
+            .border_type(BorderType::Rounded)
+            .style(Style::default().bg(Color::Black))
+    });
+
+    register!(
+        "make-block",
+        |style: Style, border_style: Style, borders: SteelString, border_type: SteelString| {
+            let border_type = match border_type.as_str() {
+                "plain" => BorderType::Plain,
+                "rounded" => BorderType::Rounded,
+                "double" => BorderType::Double,
+                "thick" => BorderType::Thick,
+                _ => BorderType::Plain,
             };
 
-            vec![
-                SteelVal::new_dyn_writer_port(writer),
-                reader.into_steelval().unwrap(),
-            ]
-        })
-        // Attempt to pop off a specific component
-        .register_fn(
-            "pop-dynamic-component-by-name",
-            |ctx: &mut Context, name: SteelString| {
-                // Removing a component by name here will be important!
-                todo!()
-            },
-        )
-        .register_fn("theme->bg", |ctx: &mut Context| {
-            ctx.editor.theme.get("ui.background")
-        })
-        .register_fn("theme->fg", |ctx: &mut Context| {
-            ctx.editor.theme.get("ui.text")
-        })
-        .register_fn("buffer-area", |buffer: &mut Buffer| buffer.area)
-        .register_fn("frame-set-string!", buffer_set_string)
-        .register_fn("new-component!", SteelDynamicComponent::new_dyn)
-        .register_fn("position", Position::new)
-        .register_fn("position-row", |position: &Position| position.row)
-        .register_fn("position-col", |position: &Position| position.col)
-        .register_fn(
-            "set-position-row!",
-            |position: &mut Position, row: usize| {
-                position.row = row;
-            },
-        )
-        .register_fn(
-            "set-position-col!",
-            |position: &mut Position, col: usize| {
-                position.col = col;
-            },
-        )
-        .register_fn("area", helix_view::graphics::Rect::new)
-        .register_fn("area-x", |area: &helix_view::graphics::Rect| area.x)
-        .register_fn("area-y", |area: &helix_view::graphics::Rect| area.y)
-        .register_fn("area-width", |area: &helix_view::graphics::Rect| area.width)
-        .register_fn("area-height", |area: &helix_view::graphics::Rect| {
-            area.height
-        })
-        .register_fn("overlaid", |component: &mut WrappedDynComponent| {
-            let inner: Option<Box<dyn Component + Send + Sync + 'static>> =
-                component.inner.take().map(|x| {
-                    Box::new(overlaid(BoxDynComponent::new(x)))
-                        as Box<dyn Component + Send + Sync + 'static>
-                });
+            let borders = match borders.as_str() {
+                "top" => Borders::TOP,
+                "left" => Borders::LEFT,
+                "right" => Borders::RIGHT,
+                "bottom" => Borders::BOTTOM,
+                "all" => Borders::ALL,
+                _ => Borders::empty(),
+            };
 
-            component.inner = inner;
-        })
-        .register_fn("widget/list", |items: Vec<String>| {
-            widgets::List::new(
-                items
-                    .into_iter()
-                    .map(|x| ListItem::new(Text::from(x)))
-                    .collect::<Vec<_>>(),
-            )
-        })
-        // Pass references in as well?
-        .register_fn(
-            "widget/list/render",
-            |buf: &mut Buffer, area: Rect, list: widgets::List| list.render(area, buf),
-        )
-        .register_fn("block", || {
             Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::White))
-                .border_type(BorderType::Rounded)
-                .style(Style::default().bg(Color::Black))
-        })
-        // TODO: Expose these accordingly
-        .register_fn(
-            "make-block",
-            |style: Style, border_style: Style, borders: SteelString, border_type: SteelString| {
-                let border_type = match border_type.as_str() {
-                    "plain" => BorderType::Plain,
-                    "rounded" => BorderType::Rounded,
-                    "double" => BorderType::Double,
-                    "thick" => BorderType::Thick,
-                    _ => BorderType::Plain,
-                };
+                .borders(borders)
+                .border_style(border_style)
+                .border_type(border_type)
+                .style(style)
+        },
+        r#"
+Create a `Block` with the provided styling, borders, and border type.
 
-                let borders = match borders.as_str() {
-                    "top" => Borders::TOP,
-                    "left" => Borders::LEFT,
-                    "right" => Borders::RIGHT,
-                    "bottom" => Borders::BOTTOM,
-                    "all" => Borders::ALL,
-                    _ => Borders::empty(),
-                };
+(make-block style border-style borders border_type)
 
-                Block::default()
-                    .borders(borders)
-                    .border_style(border_style)
-                    .border_type(border_type)
-                    .style(style)
-            },
-        )
-        .register_fn(
-            "block/render",
-            |buf: &mut Buffer, area: Rect, block: Block| block.render(area, buf),
-        )
-        .register_fn("buffer/clear", Buffer::clear)
-        .register_fn("buffer/clear-with", Buffer::clear_with)
-        // Mutate a color in place, to save some headache.
-        .register_fn(
-            "set-color-rgb!",
-            |color: &mut Color, r: u8, g: u8, b: u8| {
-                *color = Color::Rgb(r, g, b);
-            },
-        )
-        .register_fn("set-color-indexed!", |color: &mut Color, index: u8| {
-            *color = Color::Indexed(index);
-        })
-        .register_value("Color/Reset", Color::Reset.into_steelval().unwrap())
-        .register_value("Color/Black", Color::Black.into_steelval().unwrap())
-        .register_value("Color/Red", Color::Red.into_steelval().unwrap())
-        .register_value("Color/White", Color::White.into_steelval().unwrap())
-        .register_value("Color/Green", Color::Green.into_steelval().unwrap())
-        .register_value("Color/Yellow", Color::Yellow.into_steelval().unwrap())
-        .register_value("Color/Blue", Color::Blue.into_steelval().unwrap())
-        .register_value("Color/Magenta", Color::Magenta.into_steelval().unwrap())
-        .register_value("Color/Cyan", Color::Cyan.into_steelval().unwrap())
-        .register_value("Color/Gray", Color::Gray.into_steelval().unwrap())
-        .register_value("Color/LightRed", Color::LightRed.into_steelval().unwrap())
-        .register_value(
-            "Color/LightGreen",
-            Color::LightGreen.into_steelval().unwrap(),
-        )
-        .register_value(
-            "Color/LightYellow",
-            Color::LightYellow.into_steelval().unwrap(),
-        )
-        .register_value("Color/LightBlue", Color::LightBlue.into_steelval().unwrap())
-        .register_value(
-            "Color/LightMagenta",
-            Color::LightMagenta.into_steelval().unwrap(),
-        )
-        .register_value("Color/LightCyan", Color::LightCyan.into_steelval().unwrap())
-        .register_value("Color/LightGray", Color::LightGray.into_steelval().unwrap())
-        .register_fn("Color/rgb", Color::Rgb)
-        .register_fn("Color-red", Color::red)
-        .register_fn("Color-green", Color::green)
-        .register_fn("Color-blue", Color::blue)
-        .register_fn("Color/Indexed", Color::Indexed)
-        .register_fn("set-style-fg!", |style: &mut Style, color: Color| {
-            style.fg = Some(color);
-        })
-        .register_fn("style-fg", Style::fg)
-        .register_fn("style-bg", Style::bg)
-        .register_fn("style-with-italics", |style: &Style| {
-            let patch = Style::default().add_modifier(Modifier::ITALIC);
-            style.patch(patch)
-        })
-        .register_fn("style-with-bold", |style: Style| {
-            let patch = Style::default().add_modifier(Modifier::BOLD);
-            style.patch(patch)
-        })
-        .register_fn("style-with-dim", |style: &Style| {
-            let patch = Style::default().add_modifier(Modifier::DIM);
-            style.patch(patch)
-        })
-        .register_fn("style-with-slow-blink", |style: Style| {
-            let patch = Style::default().add_modifier(Modifier::SLOW_BLINK);
-            style.patch(patch)
-        })
-        .register_fn("style-with-rapid-blink", |style: Style| {
-            let patch = Style::default().add_modifier(Modifier::RAPID_BLINK);
-            style.patch(patch)
-        })
-        .register_fn("style-with-reversed", |style: Style| {
-            let patch = Style::default().add_modifier(Modifier::REVERSED);
-            style.patch(patch)
-        })
-        .register_fn("style-with-hidden", |style: Style| {
-            let patch = Style::default().add_modifier(Modifier::HIDDEN);
-            style.patch(patch)
-        })
-        .register_fn("style-with-crossed-out", |style: Style| {
-            let patch = Style::default().add_modifier(Modifier::CROSSED_OUT);
-            style.patch(patch)
-        })
-        .register_fn("style->fg", |style: &Style| style.fg)
-        .register_fn("style->bg", |style: &Style| style.bg)
-        .register_fn("set-style-bg!", |style: &mut Style, color: Color| {
-            style.bg = Some(color);
-        })
-        .register_fn("style-underline-color", Style::underline_color)
-        .register_fn("style-underline-style", Style::underline_style)
-        .register_value(
-            "Underline/Reset",
-            UnderlineStyle::Reset.into_steelval().unwrap(),
-        )
-        .register_value(
-            "Underline/Line",
-            UnderlineStyle::Line.into_steelval().unwrap(),
-        )
-        .register_value(
-            "Underline/Curl",
-            UnderlineStyle::Curl.into_steelval().unwrap(),
-        )
-        .register_value(
-            "Underline/Dotted",
-            UnderlineStyle::Dotted.into_steelval().unwrap(),
-        )
-        .register_value(
-            "Underline/Dashed",
-            UnderlineStyle::Dashed.into_steelval().unwrap(),
-        )
-        .register_value(
-            "Underline/DoubleLine",
-            UnderlineStyle::DoubleLine.into_steelval().unwrap(),
-        )
-        .register_fn("style", || Style::default())
-        .register_value(
-            "event-result/consume",
-            SteelEventResult::Consumed.into_steelval().unwrap(),
-        )
-        .register_value(
-            "event-result/consume-without-rerender",
-            SteelEventResult::ConsumedWithoutRerender
-                .into_steelval()
-                .unwrap(),
-        )
-        .register_value(
-            "event-result/ignore",
-            SteelEventResult::Ignored.into_steelval().unwrap(),
-        )
-        .register_value(
-            "event-result/close",
-            SteelEventResult::Close.into_steelval().unwrap(),
-        )
-        // TODO: Use a reference here instead of passing by value.
-        .register_fn("key-event-char", |event: Event| {
-            if let Event::Key(event) = event {
-                event.char()
-            } else {
-                None
+* style : Style?
+* border-style : Style?
+* borders : string?
+* border-type: String?
+
+Valid border-types include:
+* "plain"
+* "rounded"
+* "double"
+* "thick"
+
+Valid borders include:
+* "top"
+* "left"
+* "right"
+* "bottom"
+* "all"
+        "#
+    );
+
+    register!(
+        "block/render",
+        |buf: &mut Buffer, area: Rect, block: Block| block.render(area, buf)
+    );
+    register!(
+        "buffer/clear",
+        Buffer::clear,
+        "Clear a `Rect` in the `Buffer`"
+    );
+
+    register!(
+        "buffer/clear-with",
+        Buffer::clear_with,
+        "Clear a `Rect` in the `Buffer` with a default `Style`"
+    );
+
+    // Mutate a color in place, to save some headache.
+    register!("set-color-rgb!", |color: &mut Color,
+                                 r: u8,
+                                 g: u8,
+                                 b: u8| {
+        *color = Color::Rgb(r, g, b);
+    });
+
+    register!("set-color-indexed!", |color: &mut Color, index: u8| {
+        *color = Color::Indexed(index);
+    });
+
+    register!(
+        "Color?",
+        |color: SteelVal| { Color::as_ref(&color).is_ok() },
+        r#"Check if the given value is a `Color`.
+
+(Color? value) -> bool?
+
+value : any?
+
+        "#
+    );
+
+    register!(value, "Color/Reset", Color::Reset.into_steelval().unwrap());
+    register!(value, "Color/Black", Color::Black.into_steelval().unwrap());
+    register!(value, "Color/Red", Color::Red.into_steelval().unwrap());
+    register!(value, "Color/White", Color::White.into_steelval().unwrap());
+    register!(value, "Color/Green", Color::Green.into_steelval().unwrap());
+    register!(
+        value,
+        "Color/Yellow",
+        Color::Yellow.into_steelval().unwrap()
+    );
+    register!(value, "Color/Blue", Color::Blue.into_steelval().unwrap());
+    register!(
+        value,
+        "Color/Magenta",
+        Color::Magenta.into_steelval().unwrap()
+    );
+    register!(value, "Color/Cyan", Color::Cyan.into_steelval().unwrap());
+    register!(value, "Color/Gray", Color::Gray.into_steelval().unwrap());
+    register!(
+        value,
+        "Color/LightRed",
+        Color::LightRed.into_steelval().unwrap()
+    );
+
+    register!(
+        value,
+        "Color/LightGreen",
+        Color::LightGreen.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Color/LightYellow",
+        Color::LightYellow.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Color/LightBlue",
+        Color::LightBlue.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Color/LightMagenta",
+        Color::LightMagenta.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Color/LightCyan",
+        Color::LightCyan.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Color/LightGray",
+        Color::LightGray.into_steelval().unwrap()
+    );
+
+    register!("Color/rgb", Color::Rgb);
+    register!("Color-red", Color::red);
+    register!("Color-green", Color::green);
+    register!("Color-blue", Color::blue);
+    register!("Color/Indexed", Color::Indexed);
+
+    register!("set-style-fg!", |style: &mut Style, color: Color| {
+        style.fg = Some(color);
+    });
+    register!("style-fg", Style::fg);
+    register!("style-bg", Style::bg);
+    register!("style-with-italics", |style: &Style| {
+        let patch = Style::default().add_modifier(Modifier::ITALIC);
+        style.patch(patch)
+    });
+    register!("style-with-bold", |style: Style| {
+        let patch = Style::default().add_modifier(Modifier::BOLD);
+        style.patch(patch)
+    });
+    register!("style-with-dim", |style: &Style| {
+        let patch = Style::default().add_modifier(Modifier::DIM);
+        style.patch(patch)
+    });
+    register!("style-with-slow-blink", |style: Style| {
+        let patch = Style::default().add_modifier(Modifier::SLOW_BLINK);
+        style.patch(patch)
+    });
+    register!("style-with-rapid-blink", |style: Style| {
+        let patch = Style::default().add_modifier(Modifier::RAPID_BLINK);
+        style.patch(patch)
+    });
+    register!("style-with-reversed", |style: Style| {
+        let patch = Style::default().add_modifier(Modifier::REVERSED);
+        style.patch(patch)
+    });
+    register!("style-with-hidden", |style: Style| {
+        let patch = Style::default().add_modifier(Modifier::HIDDEN);
+        style.patch(patch)
+    });
+    register!("style-with-crossed-out", |style: Style| {
+        let patch = Style::default().add_modifier(Modifier::CROSSED_OUT);
+        style.patch(patch)
+    });
+    register!("style->fg", |style: &Style| style.fg);
+    register!("style->bg", |style: &Style| style.bg);
+    register!("set-style-bg!", |style: &mut Style, color: Color| {
+        style.bg = Some(color);
+    });
+    register!("style-underline-color", Style::underline_color);
+    register!("style-underline-style", Style::underline_style);
+
+    register!(
+        value,
+        "Underline/Reset",
+        UnderlineStyle::Reset.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Underline/Line",
+        UnderlineStyle::Line.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Underline/Curl",
+        UnderlineStyle::Curl.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Underline/Dotted",
+        UnderlineStyle::Dotted.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Underline/Dashed",
+        UnderlineStyle::Dashed.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "Underline/DoubleLine",
+        UnderlineStyle::DoubleLine.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "event-result/consume",
+        SteelEventResult::Consumed.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "event-result/consume-without-rerender",
+        SteelEventResult::ConsumedWithoutRerender
+            .into_steelval()
+            .unwrap()
+    );
+    register!(
+        value,
+        "event-result/ignore",
+        SteelEventResult::Ignored.into_steelval().unwrap()
+    );
+    register!(
+        value,
+        "event-result/close",
+        SteelEventResult::Close.into_steelval().unwrap()
+    );
+    register!("style", || Style::default());
+
+    register!("key-event-char", |event: Event| {
+        if let Event::Key(event) = event {
+            event.char()
+        } else {
+            None
+        }
+    });
+    register!("key-event-modifier", |event: Event| {
+        if let Event::Key(KeyEvent { modifiers, .. }) = event {
+            Some(modifiers.bits())
+        } else {
+            None
+        }
+    });
+
+    register!(
+        value,
+        "key-modifier-ctrl",
+        SteelVal::IntV(KeyModifiers::CONTROL.bits() as isize)
+    );
+    register!(
+        value,
+        "key-modifier-shift",
+        SteelVal::IntV(KeyModifiers::SHIFT.bits() as isize)
+    );
+    register!(
+        value,
+        "key-modifier-alt",
+        SteelVal::IntV(KeyModifiers::ALT.bits() as isize)
+    );
+
+    register!("key-event-F?", |event: Event, number: u8| match event {
+        Event::Key(KeyEvent {
+            code: KeyCode::F(x),
+            ..
+        }) if number == x => true,
+        _ => false,
+    });
+    register!("mouse-event?", |event: Event| {
+        matches!(event, Event::Mouse(_))
+    });
+    register!("event-mouse-kind", |event: Event| {
+        if let Event::Mouse(MouseEvent { kind, .. }) = event {
+            match kind {
+                helix_view::input::MouseEventKind::Down(MouseButton::Left) => 0,
+                helix_view::input::MouseEventKind::Down(MouseButton::Right) => 1,
+                helix_view::input::MouseEventKind::Down(MouseButton::Middle) => 2,
+                helix_view::input::MouseEventKind::Up(MouseButton::Left) => 3,
+                helix_view::input::MouseEventKind::Up(MouseButton::Right) => 4,
+                helix_view::input::MouseEventKind::Up(MouseButton::Middle) => 5,
+                helix_view::input::MouseEventKind::Drag(MouseButton::Left) => 6,
+                helix_view::input::MouseEventKind::Drag(MouseButton::Right) => 7,
+                helix_view::input::MouseEventKind::Drag(MouseButton::Middle) => 8,
+                helix_view::input::MouseEventKind::Moved => 9,
+                helix_view::input::MouseEventKind::ScrollDown => 10,
+                helix_view::input::MouseEventKind::ScrollUp => 11,
+                helix_view::input::MouseEventKind::ScrollLeft => 12,
+                helix_view::input::MouseEventKind::ScrollRight => 13,
             }
-        })
-        .register_fn("key-event-modifier", |event: Event| {
-            if let Event::Key(KeyEvent { modifiers, .. }) = event {
-                Some(modifiers.bits())
-            } else {
-                None
-            }
-        })
-        .register_value(
-            "key-modifier-ctrl",
-            SteelVal::IntV(KeyModifiers::CONTROL.bits() as isize),
-        )
-        .register_value(
-            "key-modifier-shift",
-            SteelVal::IntV(KeyModifiers::SHIFT.bits() as isize),
-        )
-        .register_value(
-            "key-modifier-alt",
-            SteelVal::IntV(KeyModifiers::ALT.bits() as isize),
-        )
-        .register_fn("key-event-F?", |event: Event, number: u8| match event {
-            Event::Key(KeyEvent {
-                code: KeyCode::F(x),
-                ..
-            }) if number == x => true,
-            _ => false,
-        })
-        .register_fn("mouse-event?", |event: Event| {
-            matches!(event, Event::Mouse(_))
-        })
-        .register_fn("event-mouse-kind", |event: Event| {
-            if let Event::Mouse(MouseEvent { kind, .. }) = event {
-                match kind {
-                    helix_view::input::MouseEventKind::Down(MouseButton::Left) => 0,
-                    helix_view::input::MouseEventKind::Down(MouseButton::Right) => 1,
-                    helix_view::input::MouseEventKind::Down(MouseButton::Middle) => 2,
-                    helix_view::input::MouseEventKind::Up(MouseButton::Left) => 3,
-                    helix_view::input::MouseEventKind::Up(MouseButton::Right) => 4,
-                    helix_view::input::MouseEventKind::Up(MouseButton::Middle) => 5,
-                    helix_view::input::MouseEventKind::Drag(MouseButton::Left) => 6,
-                    helix_view::input::MouseEventKind::Drag(MouseButton::Right) => 7,
-                    helix_view::input::MouseEventKind::Drag(MouseButton::Middle) => 8,
-                    helix_view::input::MouseEventKind::Moved => 9,
-                    helix_view::input::MouseEventKind::ScrollDown => 10,
-                    helix_view::input::MouseEventKind::ScrollUp => 11,
-                    helix_view::input::MouseEventKind::ScrollLeft => 12,
-                    helix_view::input::MouseEventKind::ScrollRight => 13,
-                }
-                .into_steelval()
-            } else {
-                false.into_steelval()
-            }
-        })
-        .register_fn("event-mouse-row", |event: Event| {
-            if let Event::Mouse(MouseEvent { row, .. }) = event {
-                row.into_steelval()
-            } else {
-                false.into_steelval()
-            }
-        })
-        .register_fn("event-mouse-col", |event: Event| {
-            if let Event::Mouse(MouseEvent { column, .. }) = event {
-                column.into_steelval()
-            } else {
-                false.into_steelval()
-            }
-        })
-        // Is this mouse event within the area provided
-        .register_fn("mouse-event-within-area?", |event: Event, area: Rect| {
-            if let Event::Mouse(MouseEvent { row, column, .. }) = event {
-                column > area.x
-                    && column < area.x + area.width
-                    && row > area.y
-                    && row < area.y + area.height
-            } else {
-                false
-            }
-        });
+            .into_steelval()
+        } else {
+            false.into_steelval()
+        }
+    });
+    register!("event-mouse-row", |event: Event| {
+        if let Event::Mouse(MouseEvent { row, .. }) = event {
+            row.into_steelval()
+        } else {
+            false.into_steelval()
+        }
+    });
+    register!("event-mouse-col", |event: Event| {
+        if let Event::Mouse(MouseEvent { column, .. }) = event {
+            column.into_steelval()
+        } else {
+            false.into_steelval()
+        }
+    });
+    // Is this mouse event within the area provided
+    register!("mouse-event-within-area?", |event: Event, area: Rect| {
+        if let Event::Mouse(MouseEvent { row, column, .. }) = event {
+            column > area.x
+                && column < area.x + area.width
+                && row > area.y
+                && row < area.y + area.height
+        } else {
+            false
+        }
+    });
 
     macro_rules! register_key_events {
         ($ ( $name:expr => $key:tt ) , *, ) => {
             $(
-              module.register_fn(concat!("key-event-", $name, "?"), |event: Event| {
+              register!(concat!("key-event-", $name, "?"), |event: Event| {
                   matches!(
                       event,
                       Event::Key(
@@ -477,18 +810,20 @@ pub fn helix_component_module() -> BuiltInModule {
         "keypad-begin" => KeypadBegin,
     );
 
+    if generate_sources {
+        if let Some(mut target_directory) =
+            crate::commands::engine::steel::alternative_runtime_search_path()
+        {
+            if !target_directory.exists() {
+                std::fs::create_dir_all(&target_directory).unwrap();
+            }
+            target_directory.push("components.scm");
+            std::fs::write(target_directory, &builtin_components_module).unwrap();
+        }
+    }
+
     module
 }
-
-// fn buffer_set_string(
-//     buffer: &mut tui::buffer::Buffer,
-//     x: u16,
-//     y: u16,
-//     string: steel::rvals::SteelString,
-//     style: Style,
-// ) {
-//     buffer.set_string(x, y, string.as_str(), style)
-// }
 
 fn buffer_set_string(
     buffer: &mut tui::buffer::Buffer,
@@ -531,7 +866,7 @@ pub struct SteelDynamicComponent {
     // passed to the functions in the remainder of the struct.
     state: SteelVal,
     handle_event: Option<SteelVal>,
-    should_update: Option<SteelVal>,
+    _should_update: Option<SteelVal>,
     render: SteelVal,
     cursor: Option<SteelVal>,
     required_size: Option<SteelVal>,
@@ -554,7 +889,7 @@ impl SteelDynamicComponent {
             state,
             render,
             handle_event: h.get("handle_event").cloned(),
-            should_update: h.get("should_update").cloned(),
+            _should_update: h.get("should_update").cloned(),
             cursor: h.get("cursor").cloned(),
             required_size: h.get("required_size").cloned(),
             key_event: None,
@@ -573,30 +908,6 @@ impl SteelDynamicComponent {
         WrappedDynComponent {
             inner: Some(Box::new(s)),
         }
-    }
-
-    pub fn get_state(&self) -> SteelVal {
-        self.state.clone()
-    }
-
-    pub fn get_render(&self) -> SteelVal {
-        self.render.clone()
-    }
-
-    pub fn get_handle_event(&self) -> Option<SteelVal> {
-        self.handle_event.clone()
-    }
-
-    pub fn get_should_update(&self) -> Option<SteelVal> {
-        self.should_update.clone()
-    }
-
-    pub fn get_cursor(&self) -> Option<SteelVal> {
-        self.cursor.clone()
-    }
-
-    pub fn get_required_size(&self) -> Option<SteelVal> {
-        self.required_size.clone()
     }
 }
 
