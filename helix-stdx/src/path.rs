@@ -210,7 +210,7 @@ pub fn get_truncated_path(path: impl AsRef<Path>) -> PathBuf {
 fn path_component_regex(windows: bool) -> String {
     // TODO: support backslash path escape on windows (when using git bash for example)
     let space_escape = if windows { r"[\^`]\s" } else { r"[\\]\s" };
-    // partially baesd on what's allowed in an url but with some care to avoid
+    // partially based on what's allowed in an url but with some care to avoid
     // false positives (like any kind of brackets or quotes)
     r"[\w@.\-+#$%?!,;~&]|".to_owned() + space_escape
 }
