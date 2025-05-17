@@ -6,6 +6,16 @@
  (#set! injection.combined))
 
 ((macro_invocation
+  (token_tree) @injection.content)
+ (#set! injection.language "rust")
+ (#set! injection.include-children))
+
+((macro_rule
+  (token_tree) @injection.content)
+ (#set! injection.language "rust")
+ (#set! injection.include-children))
+
+((macro_invocation
    macro:
      [
        (scoped_identifier
@@ -27,16 +37,6 @@
    (token_tree) @injection.content)
  (#eq? @_macro_name "slint")
  (#set! injection.language "slint")
- (#set! injection.include-children))
-
-((macro_invocation
-  (token_tree) @injection.content)
- (#set! injection.language "rust")
- (#set! injection.include-children))
-
-((macro_rule
-  (token_tree) @injection.content)
- (#set! injection.language "rust")
  (#set! injection.include-children))
 
 ((macro_invocation
