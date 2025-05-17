@@ -865,6 +865,9 @@ impl TextObjectQuery {
             .find_map(|cap| self.query.get_capture(cap))?;
 
         let mut cursor = InactiveQueryCursor::new();
+        // TODO: this line can be dropped when we update tree-house to automatically reset cursors
+        // back to defaults when reusing them from the cursor cache.
+        cursor.set_byte_range(0..u32::MAX);
         cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
         let mut cursor = cursor.execute_query(&self.query, node, RopeInput::new(slice));
         let capture_node = iter::from_fn(move || {
