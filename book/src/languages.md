@@ -73,6 +73,7 @@ These configuration keys are available:
 | `path-completion`     | Overrides the `editor.path-completion` config key for the language. |
 | `workspace-lsp-roots`     | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml`. Overwrites the setting of the same name in `config.toml` if set. |
 | `persistent-diagnostic-sources` | An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.
+| `rainbow-brackets` | Overrides the `editor.rainbow-brackets` config key for the language |
 
 ### File-type detection and the `file-types` key
 
