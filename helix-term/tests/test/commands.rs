@@ -734,7 +734,7 @@ async fn surround_replace_ts() -> anyhow::Result<()> {
     const INPUT: &str = r#"\
 fn foo() {
     if let Some(_) = None {
-        todo!("f#[|o]#o)");
+        testing!("f#[|o]#o)");
     }
 }
 "#;
@@ -744,7 +744,7 @@ fn foo() {
         r#"\
 fn foo() {
     if let Some(_) = None {
-        todo!('f#[|o]#o)');
+        testing!('f#[|o]#o)');
     }
 }
 "#,
@@ -757,7 +757,7 @@ fn foo() {
         r#"\
 fn foo() {
     if let Some(_) = None [
-        todo!("f#[|o]#o)");
+        testing!("f#[|o]#o)");
     ]
 }
 "#,
@@ -770,7 +770,7 @@ fn foo() {
         r#"\
 fn foo() {
     if let Some(_) = None {
-        todo!{"f#[|o]#o)"};
+        testing!{"f#[|o]#o)"};
     }
 }
 "#,
