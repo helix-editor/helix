@@ -1350,6 +1350,7 @@ roots = [".luarc.json", ".luacheckrc", ".stylua.toml", "selene.toml", ".git"]
 comment-token = "--"
 block-comment-tokens = { start = "--[[", end = "--]]" }
 indent = { tab-width = 2, unit = "  " }
+auto-format = true
 language-servers = [ "lua-language-server" ]
 
 [[grammar]]
