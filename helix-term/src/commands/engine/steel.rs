@@ -1269,8 +1269,7 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
             builtin_editor_command_module.push_str(&format!(
                 r#"
 (provide {})
-(define ({})
-    (helix.{}))
+(define {} helix.{})
 "#,
                 name, name, name
             ));
@@ -2692,15 +2691,18 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
         "".to_string()
     };
 
-    let mut template_function_arity_0 = |name: &str| {
+    let mut template_function_arity_0 = |name: &str, doc: &str| {
         if generate_sources {
+            let doc = format_docstring(doc);
             builtin_misc_module.push_str(&format!(
                 r#"
 (provide {})
+;;@doc
+{}
 (define ({})
     (helix.{} *helix.cx*))
 "#,
-                name, name, name
+                name, doc, name, name
             ));
         }
     };
@@ -2711,34 +2713,115 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("mode-switch-old", OnModeSwitchEvent::get_old_mode);
     module.register_fn("mode-switch-new", OnModeSwitchEvent::get_new_mode);
 
-    template_function_arity_0("hx.cx->pos");
-    template_function_arity_0("cursor-position");
+    template_function_arity_0("hx.cx->pos", "DEPRECATED: Please use `cursor-position`");
+    template_function_arity_0(
+        "cursor-position",
+        "Returns the cursor position within the current buffer as an integer",
+    );
 
-    let mut template_function_arity_1 = |name: &str| {
+    let mut template_function_arity_1 = |name: &str, doc: &str| {
+        let doc = format_docstring(doc);
         if generate_sources {
             builtin_misc_module.push_str(&format!(
                 r#"
 (provide {})
+;;@doc
+{}
 (define ({} arg)
     (helix.{} *helix.cx* arg))
 "#,
-                name, name, name
+                name, doc, name, name
             ));
         }
     };
 
-    // Arity 1
-    module.register_fn("hx.custom-insert-newline", custom_insert_newline);
-    module.register_fn("push-component!", push_component);
-    module.register_fn("pop-last-component!", pop_last_component_by_name);
-    module.register_fn("enqueue-thread-local-callback", enqueue_command);
-    module.register_fn("set-status!", set_status);
+    macro_rules! register_1 {
+        ($name:expr, $func:expr, $doc:expr) => {{
+            module.register_fn($name, $func);
+            template_function_arity_1($name, $doc);
+        }};
+    }
 
-    template_function_arity_1("pop-last-component!");
-    template_function_arity_1("hx.custom-insert-newline");
-    template_function_arity_1("push-component!");
-    template_function_arity_1("enqueue-thread-local-callback");
-    template_function_arity_1("set-status!");
+    // TODO: Get rid of the `hx.` prefix
+    register_1!(
+        "hx.custom-insert-newline",
+        custom_insert_newline,
+        "DEPRECATED: Please use `insert-newline-hook`"
+    );
+    register_1!(
+        "insert-newline-hook",
+        custom_insert_newline,
+        r#"Inserts a new line with the provided indentation.
+
+```scheme
+(insert-newline-hook indent-string)
+```
+
+indent-string : string?
+
+"#
+    );
+    register_1!(
+        "push-component!",
+        push_component,
+        r#"
+Push a component on to the top of the stack.
+
+```scheme
+(push-component! component)
+```
+
+component : WrappedDynComponent?
+        "#
+    );
+
+    // Arity 1
+    register_1!(
+        "pop-last-component!",
+        pop_last_component_by_name,
+        "DEPRECATED: Please use `pop-last-component-by-name!`"
+    );
+    register_1!(
+        "pop-last-component-by-name!",
+        pop_last_component_by_name,
+        r#"Pops the last component off of the stack by name. In other words,
+it removes the component matching this name from the stack.
+
+```scheme
+(pop-last-component-by-name! name)
+```
+
+name : string?
+        "#
+    );
+
+    register_1!(
+        "enqueue-thread-local-callback",
+        enqueue_command,
+        r#"
+Enqueue a function to be run following this context of execution. This could
+be useful for yielding back to the editor in the event you want updates to happen
+before your function is run.
+
+```scheme
+(enqueue-thread-local-callback callback)
+```
+
+callback : (-> any?)
+    Function with no arguments.
+
+# Examples
+
+```scheme
+(enqueue-thread-local-callback (lambda () (theme "focus_nova")))
+```
+        "#
+    );
+    register_1!(
+        "set-status!",
+        set_status,
+        "Sets the content of the status line"
+    );
 
     module.register_fn("send-lsp-command", send_arbitrary_lsp_command);
     if generate_sources {
@@ -2767,37 +2850,206 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
         );
     }
 
-    let mut template_function_arity_2 = |name: &str| {
+    let mut template_function_arity_2 = |name: &str, doc: &str| {
         if generate_sources {
+            let doc = format_docstring(doc);
             builtin_misc_module.push_str(&format!(
                 r#"
 (provide {})
+;;@doc
+{}
 (define ({} arg1 arg2)
     (helix.{} *helix.cx* arg1 arg2))
 "#,
-                name, name, name
+                name, doc, name, name
             ));
         }
     };
 
-    // Arity 2
-    module.register_fn(
-        "enqueue-thread-local-callback-with-delay",
-        enqueue_command_with_delay,
+    macro_rules! register_2 {
+        ($name:expr, $func:expr, $doc:expr) => {{
+            module.register_fn($name, $func);
+            template_function_arity_2($name, $doc);
+        }};
+    }
+
+    register_2!(
+        "acquire-context-lock",
+        |callback_fn: SteelVal, place: Option<SteelVal>| {
+            match (&callback_fn, &place) {
+                (SteelVal::Closure(_), Some(SteelVal::CustomStruct(_))) => {}
+                _ => {
+                    steel::stop!(TypeMismatch => "acquire-context-lock expected a 
+                        callback function and a task object")
+                }
+            }
+
+            let rooted = callback_fn.as_rooted();
+            let rooted_place = place.map(|x| x.as_rooted());
+
+            let callback =
+                move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs,
+                    };
+
+                    let cloned_func = rooted.value();
+                    let cloned_place = rooted_place.as_ref().map(|x| x.value());
+
+                    enter_engine(|guard| {
+                        if let Err(e) = guard
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            // Block until the other thread is finished in its critical
+                            // section...
+                            .consume(move |engine, args| {
+                                let context = args[0].clone();
+                                engine.update_value("*helix.cx*", context);
+
+                                let mut lock = None;
+
+                                if let Some(SteelVal::CustomStruct(s)) = cloned_place {
+                                    let mutex = s.get_mut_index(0).unwrap();
+                                    lock = Some(mutex_lock(&mutex).unwrap());
+                                }
+
+                                // Acquire lock, wait until its done
+                                let result =
+                                    engine.call_function_with_args(cloned_func.clone(), Vec::new());
+
+                                if let Some(SteelVal::CustomStruct(s)) = cloned_place {
+                                    match result {
+                                        Ok(result) => {
+                                            // Store the result of the callback so that the
+                                            // next downstream user can handle it.
+                                            s.set_index(2, result);
+                                            s.set_index(1, SteelVal::BoolV(true));
+                                            mutex_unlock(&lock.unwrap()).unwrap();
+                                        }
+
+                                        Err(e) => {
+                                            return Err(e);
+                                        }
+                                    }
+                                }
+
+                                Ok(())
+                            })
+                        {
+                            present_error_inside_engine_context(&mut ctx, guard, e);
+                        }
+                    })
+                };
+            job::dispatch_blocking_jobs(callback);
+
+            Ok(())
+        },
+        r#"
+Schedule a function to run on the main thread. This is a fairly low level function, and odds are
+you'll want to use some abstractions on top of this.
+
+The provided function will get enqueued to run on the main thread, and during the duration of the functions
+execution, the provided mutex will be locked.
+
+```scheme
+(acquire-context-lock? callback-fn mutex)
+```
+
+callback-fn : (-> void?)
+    Function with no arguments
+
+mutex : mutex?
+"#
     );
 
     // Arity 2
-    module.register_fn("helix-await-callback", await_value);
+    register_2!(
+        "enqueue-thread-local-callback-with-delay",
+        enqueue_command_with_delay,
+        r#"
+Enqueue a function to be run following this context of execution, after a delay. This could
+be useful for yielding back to the editor in the event you want updates to happen
+before your function is run.
 
-    template_function_arity_2("enqueue-thread-local-callback-with-delay");
-    template_function_arity_2("helix-await-callback");
+```scheme
+(enqueue-thread-local-callback-with-delay delay callback)
+```
 
-    module
-        .register_fn("add-inlay-hint", add_inlay_hint)
-        .register_fn("remove-inlay-hint", remove_inlay_hint);
+delay : int?
+    Time to delay the callback by in milliseconds
 
-    template_function_arity_2("add-inlay-hint");
-    template_function_arity_2("remove-inlay-hint");
+callback : (-> any?)
+    Function with no arguments.
+
+# Examples
+
+```scheme
+(enqueue-thread-local-callback-with-delay 1000 (lambda () (theme "focus_nova"))) ;; Run after 1 second
+``
+        "#
+    );
+
+    register_2!(
+        "helix-await-callback",
+        await_value,
+        "DEPRECATED: Please use `await-callback`"
+    );
+
+    // Arity 2
+    register_2!(
+        "await-callback",
+        await_value,
+        r#"
+Await the given value, and call the callback function on once the future is completed.
+
+```scheme
+(await-callback future callback)
+```
+
+* future : future?
+* callback (-> any?)
+    Function with no arguments"#
+    );
+
+    register_2!(
+        "add-inlay-hint",
+        add_inlay_hint,
+        r#"
+Warning: this is experimental
+
+Adds an inlay hint at the given character index.
+
+```scheme
+(add-inlay-hint char-index completion)
+```
+
+char-index : int?
+completion : string?
+
+"#
+    );
+    register_2!(
+        "remove-inlay-hint",
+        remove_inlay_hint,
+        r#"
+Warning: this is experimental
+
+Removes an inlay hint at the given character index. Note - to remove
+properly, the completion must match what was already there.
+
+```scheme
+(remove-inlay-hint char-index completion)
+```
+
+char-index : int?
+completion : string?
+
+"#
+    );
 
     if generate_sources {
         if let Some(mut target_directory) = alternative_runtime_search_path() {
@@ -2919,6 +3171,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
     engine.register_fn("doc-id->usize", document_id_to_usize);
 
+    // TODO: Remove that this is now in helix/core/misc
     engine.register_fn(
         "acquire-context-lock",
         |callback_fn: SteelVal, place: Option<SteelVal>| {
