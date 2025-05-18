@@ -13,7 +13,7 @@ Some suggestions to get started:
 - Instead of running a release version of Helix, while developing you may want to run in debug mode with `cargo run` which is way faster to compile
 - Looking for even faster compile times? Give a try to [mold](https://github.com/rui314/mold)
 - If your preferred language is missing, integrating a tree-sitter grammar for
-    it and defining syntax highlight queries for it is straight forward and
+    it and defining syntax highlight queries for it is straightforward and
     doesn't require much knowledge of the internals.
 - If you don't use the Nix development shell and are getting your rust-analyzer binary from rustup, you may need to run `rustup component add rust-analyzer`.
   This is because `rust-toolchain.toml` selects our MSRV for the development toolchain but doesn't download the matching rust-analyzer automatically.

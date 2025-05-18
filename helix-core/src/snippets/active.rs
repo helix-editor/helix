@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use hashbrown::HashSet;
+use foldhash::HashSet;
 use helix_stdx::range::{is_exact_subset, is_subset};
 use helix_stdx::Range;
 use ropey::Rope;
@@ -35,7 +35,7 @@ impl ActiveSnippet {
         let snippet = Self {
             ranges: snippet.ranges,
             tabstops: snippet.tabstops,
-            active_tabstops: HashSet::new(),
+            active_tabstops: HashSet::default(),
             current_tabstop: TabstopIdx(0),
         };
         (snippet.tabstops.len() != 1).then_some(snippet)

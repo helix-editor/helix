@@ -45,6 +45,7 @@ jobs:
     name: Test Suite
     runs-on: ${{ matrix.os }}
     if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
+    timeout-minutes: 30
     env:
       RUST_BACKTRACE: 1
       HELIX_LOG_LEVEL: info

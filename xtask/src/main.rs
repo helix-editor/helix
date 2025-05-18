@@ -8,6 +8,7 @@ type DynError = Box<dyn Error>;
 
 pub mod tasks {
     use crate::DynError;
+    use std::collections::HashSet;
 
     pub fn docgen() -> Result<(), DynError> {
         use crate::docgen::*;
@@ -17,37 +18,24 @@ pub mod tasks {
         Ok(())
     }
 
-    pub fn querycheck() -> Result<(), DynError> {
-        use crate::helpers::lang_config;
-        use helix_core::{syntax::read_query, tree_sitter::Query};
-        use helix_loader::grammar::get_language;
+    pub fn querycheck(languages: impl Iterator<Item = String>) -> Result<(), DynError> {
+        use helix_core::syntax::LanguageData;
 
-        let query_files = [
-            "highlights.scm",
-            "locals.scm",
-            "injections.scm",
-            "textobjects.scm",
-            "indents.scm",
-        ];
-
-        for language in lang_config().language {
-            let language_name = &language.language_id;
-            let grammar_name = language.grammar.as_ref().unwrap_or(language_name);
-            for query_file in query_files {
-                let language = get_language(grammar_name);
-                let query_text = read_query(language_name, query_file);
-                if let Ok(lang) = language {
-                    if !query_text.is_empty() {
-                        if let Err(reason) = Query::new(&lang, &query_text) {
-                            return Err(format!(
-                                "Failed to parse {} queries for {}: {}",
-                                query_file, language_name, reason
-                            )
-                            .into());
-                        }
-                    }
-                }
+        let languages_to_check: HashSet<_> = languages.collect();
+        let loader = crate::helpers::syn_loader();
+        for (_language, lang_data) in loader.languages() {
+            if !languages_to_check.is_empty()
+                && !languages_to_check.contains(&lang_data.config().language_id)
+            {
+                continue;
             }
+            let config = lang_data.config();
+            let Some(syntax_config) = LanguageData::compile_syntax_config(config, &loader)? else {
+                continue;
+            };
+            let grammar = syntax_config.grammar;
+            LanguageData::compile_indent_query(grammar, config)?;
+            LanguageData::compile_textobject_query(grammar, config)?;
         }
 
         println!("Query check succeeded");
@@ -55,8 +43,10 @@ pub mod tasks {
         Ok(())
     }
 
-    pub fn themecheck() -> Result<(), DynError> {
+    pub fn themecheck(themes: impl Iterator<Item = String>) -> Result<(), DynError> {
         use helix_view::theme::Loader;
+
+        let themes_to_check: HashSet<_> = themes.collect();
 
         let theme_names = [
             vec!["default".to_string(), "base16_default".to_string()],
@@ -67,6 +57,10 @@ pub mod tasks {
         let mut errors_present = false;
 
         for name in theme_names {
+            if !themes_to_check.is_empty() && !themes_to_check.contains(&name) {
+                continue;
+            }
+
             let (_, warnings) = loader.load_with_warnings(&name).unwrap();
 
             if !warnings.is_empty() {
@@ -93,22 +87,25 @@ pub mod tasks {
 Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
 
     Tasks:
-        docgen: Generate files to be included in the mdbook output.
-        query-check: Check that tree-sitter queries are valid.
-        theme-check: Check that theme files in runtime/themes are valid.
+        docgen                     Generate files to be included in the mdbook output.
+        query-check [languages]    Check that tree-sitter queries are valid for the given
+                                   languages, or all languages if none are specified.
+        theme-check [themes]       Check that the theme files in runtime/themes/ are valid for the
+                                   given themes, or all themes if none are specified.
 "
         );
     }
 }
 
 fn main() -> Result<(), DynError> {
-    let task = env::args().nth(1);
+    let mut args = env::args().skip(1);
+    let task = args.next();
     match task {
         None => tasks::print_help(),
         Some(t) => match t.as_str() {
             "docgen" => tasks::docgen()?,
-            "query-check" => tasks::querycheck()?,
-            "theme-check" => tasks::themecheck()?,
+            "query-check" => tasks::querycheck(args)?,
+            "theme-check" => tasks::themecheck(args)?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };

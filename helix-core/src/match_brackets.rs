@@ -1,7 +1,7 @@
 use std::iter;
 
+use crate::tree_sitter::Node;
 use ropey::RopeSlice;
-use tree_sitter::Node;
 
 use crate::movement::Direction::{self, Backward, Forward};
 use crate::Syntax;
@@ -75,7 +75,7 @@ fn find_pair(
     pos_: usize,
     traverse_parents: bool,
 ) -> Option<usize> {
-    let pos = doc.char_to_byte(pos_);
+    let pos = doc.char_to_byte(pos_) as u32;
 
     let root = syntax.tree_for_byte_range(pos, pos).root_node();
     let mut node = root.descendant_for_byte_range(pos, pos)?;
@@ -128,7 +128,7 @@ fn find_pair(
                 if find_pair_end(doc, sibling.prev_sibling(), start_char, end_char, Backward)
                     .is_some()
                 {
-                    return doc.try_byte_to_char(sibling.start_byte()).ok();
+                    return doc.try_byte_to_char(sibling.start_byte() as usize).ok();
                 }
             }
         } else if node.is_named() {
@@ -144,9 +144,9 @@ fn find_pair(
     if node.child_count() != 0 {
         return None;
     }
-    let node_start = doc.byte_to_char(node.start_byte());
-    find_matching_bracket_plaintext(doc.byte_slice(node.byte_range()), pos_ - node_start)
-        .map(|pos| pos + node_start)
+    let node_start = doc.byte_to_char(node.start_byte() as usize);
+    let node_text = doc.byte_slice(node.start_byte() as usize..node.end_byte() as usize);
+    find_matching_bracket_plaintext(node_text, pos_ - node_start).map(|pos| pos + node_start)
 }
 
 /// Returns the position of the matching bracket under cursor.
@@ -304,7 +304,7 @@ fn as_char(doc: RopeSlice, node: &Node) -> Option<(usize, char)> {
     if node.byte_range().len() != 1 {
         return None;
     }
-    let pos = doc.try_byte_to_char(node.start_byte()).ok()?;
+    let pos = doc.try_byte_to_char(node.start_byte() as usize).ok()?;
     Some((pos, doc.char(pos)))
 }
 

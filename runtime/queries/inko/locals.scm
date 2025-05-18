@@ -3,8 +3,7 @@
   (block)
 ] @local.scope
 
-(argument name: _ @local.definition)
-(define_variable name: _ @local.definition)
-(named_argument name: _ @local.definition)
+(argument name: _ @local.definition.variable.parameter)
+(named_argument name: _ @local.definition.variable.parameter)
 
 (identifier) @local.reference

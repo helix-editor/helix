@@ -23,6 +23,7 @@ The following [captures][tree-sitter-captures] are recognized:
 | `test.inside`      |
 | `test.around`      |
 | `parameter.inside` |
+| `parameter.around` |
 | `comment.inside`   |
 | `comment.around`   |
 | `entry.inside`     |

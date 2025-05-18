@@ -9,7 +9,7 @@
 ; Definitions
 
 (param
-  (identifier) @local.definition)
+  (identifier) @local.definition.variable.parameter)
 
 ; References
 
