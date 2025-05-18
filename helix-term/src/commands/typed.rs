@@ -330,15 +330,13 @@ fn buffer_reopen(
         return Ok(());
     }
 
-    let last_closed_doc_path: Option<PathBuf> = if let Some(last_closed_doc_path) = cx.editor.document_history
+    if let Some(last_closed_doc_path) = cx.editor.document_history
         .iter()
         .filter(|path| cx.editor.document_by_path(path).is_none())
         .last()
+        .cloned()
     {
-        Some(last_closed_doc_path.clone())
-    } else { None };
-    if let Some(path) = last_closed_doc_path {
-        cx.editor.open(&path, Action::Load)?;
+        cx.editor.open(&last_closed_doc_path, Action::Load)?;
     }
     Ok(())
 }
