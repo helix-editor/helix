@@ -40,10 +40,11 @@ RUSTFLAGS="-C target-feature=-crt-static"
    ```
    ```sh
    # Optimized
-   cargo +stable install \
+   cargo install \
       --profile opt \
       --config 'build.rustflags="-C target-cpu=native"' \
-      --path helix-term
+      --path helix-term \
+      --locked
    ```
 
    Either command will create the `hx` executable and construct the tree-sitter
