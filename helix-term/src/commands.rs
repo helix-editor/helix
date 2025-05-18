@@ -20,14 +20,14 @@ pub use engine::steel::{helix_module_file, steel_init_file};
 
 use tui::{
     text::{Span, Spans},
-    widgets::{Cell, Row},
+    widgets::Cell,
 };
 pub use typed::*;
 
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    command_line::{self, Args},
+    command_line::{self},
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,

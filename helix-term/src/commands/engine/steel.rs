@@ -73,8 +73,7 @@ pub static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
 // the top level, _after_ they
 pub static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
 
-// The Steel scripting engine instance. This is what drives the whole integration.
-pub static GLOBAL_ENGINE: Lazy<Mutex<steel::steel_vm::engine::Engine>> = Lazy::new(|| {
+fn setup() -> Engine {
     let engine = steel::steel_vm::engine::Engine::new();
 
     // Any function after this point can be used for looking at "new" functions
@@ -126,8 +125,12 @@ pub static GLOBAL_ENGINE: Lazy<Mutex<steel::steel_vm::engine::Engine>> = Lazy::n
         })
         .ok();
 
-    Mutex::new(configure_engine_impl(engine))
-});
+    configure_engine_impl(engine)
+}
+
+// The Steel scripting engine instance. This is what drives the whole integration.
+pub static GLOBAL_ENGINE: Lazy<Mutex<steel::steel_vm::engine::Engine>> =
+    Lazy::new(|| Mutex::new(setup()));
 
 fn acquire_engine_lock() -> MutexGuard<'static, Engine> {
     GLOBAL_ENGINE.lock().unwrap()
@@ -728,7 +731,6 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn("whitespace", HelixConfiguration::whitespace)
         .register_fn("bufferline", HelixConfiguration::bufferline)
         .register_fn("indent-guides", HelixConfiguration::indent_guides)
-        .register_fn("soft-wrap", HelixConfiguration::soft_wrap)
         .register_fn(
             "workspace-lsp-roots",
             HelixConfiguration::workspace_lsp_roots,
@@ -835,9 +837,92 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             template_file_picker_function(name);
         }
 
+        builtin_configuration_module.push_str(
+            r#"
+(provide file-picker-kw)
+;;@doc
+;; Sets the configuration for the file picker using keywords.
+;;
+;; ```scheme
+;; (file-picker-kw #:hidden #t
+;;                 #:follow-symlinks #t
+;;                 #:deduplicate-links #t
+;;                 #:parents #t
+;;                 #:ignore #t
+;;                 #:git-ignore #t
+;;                 #:git-exclude #t
+;;                 #:git-global #t
+;;                 #:max-depth #f) ;; Expects either #f or an int?
+;; ```
+;; By default, max depth is `#f` while everything else is an int?
+;;
+;; To use this, call this in your `init.scm` or `helix.scm`:
+;;
+;; # Examples
+;; ```scheme
+;; (file-picker-kw #:hidden #f)
+;; ```
+(define (file-picker-kw
+            #:hidden [hidden #t]
+            #:follow-symlinks [follow-symlinks #t]
+            #:deduplicate-links [deduplicate-links #t]
+            #:parents [parents #t]
+            #:ignore [ignore #t]
+            #:git-ignore [git-ignore #t]
+            #:git-global [git-global #t]
+            #:git-exclude [git-exclude #t]
+            #:max-depth [max-depth #f])
+
+    (define picker (helix.raw-file-picker))
+    (unless hidden (helix.fp-hidden picker hidden))
+    (unless follow-symlinks (helix.fp-follow-symlinks picker follow-symlinks))
+    (unless deduplicate-links (helix.fp-deduplicate-links picker deduplicate-links))
+    (unless parents (helix.fp-parents picker parents))
+    (unless ignore (helix.fp-ignore picker ignore))
+    (unless git-ignore (helix.fp-git-ignore picker git-ignore))
+    (unless git-global (helix.fp-git-global picker git-global))
+    (unless git-exclude (helix.fp-git-exclude picker git-exclude))
+    (when max-depth (helix.fp-max-depth picker max-depth))
+    (helix.register-file-picker *helix.config* picker))
+            "#,
+        );
+
         builtin_configuration_module.push_str(&format!(
             r#"
 (provide file-picker)
+;;@doc
+;; Sets the configuration for the file picker using var args.
+;;
+;; ```scheme
+;; (file-picker . args)
+;; ```
+;;
+;; The args are expected to be something of the value:
+;; ```scheme
+;; (-> FilePickerConfiguration? bool?)    
+;; ```
+;;
+;; These other functions in this module which follow this behavior are all
+;; prefixed `fp-`, and include:
+;;
+;; * fp-hidden
+;; * fp-follow-symlinks
+;; * fp-deduplicate-links
+;; * fp-parents
+;; * fp-ignore"
+;; * fp-git-ignore
+;; * fp-git-global
+;; * fp-git-exclude
+;; * fp-max-depth
+;; 
+;; By default, max depth is `#f` while everything else is an int?
+;;
+;; To use this, call this in your `init.scm` or `helix.scm`:
+;;
+;; # Examples
+;; ```scheme
+;; (file-picker (fp-hidden #f) (fp-parents #f))
+;; ```
 (define (file-picker . args)
     (helix.register-file-picker
         *helix.config*
@@ -847,7 +932,108 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
         builtin_configuration_module.push_str(&format!(
             r#"
+(provide soft-wrap-kw)
+;;@doc
+;; Sets the configuration for soft wrap using keyword args.
+;;
+;; ```scheme
+;; (soft-wrap-kw #:enable #f
+;;               #:max-wrap 20
+;;               #:max-indent-retain 40
+;;               #:wrap-indicator "↪"
+;;               #:wrap-at-text-width #f)
+;; ```
+;;
+;; The options are as follows:
+;;
+;; * #:enable:
+;;   Soft wrap lines that exceed viewport width. Default to off
+;; * #:max-wrap:
+;;   Maximum space left free at the end of the line.
+;;   This space is used to wrap text at word boundaries. If that is not possible within this limit
+;;   the word is simply split at the end of the line.
+;;
+;;   This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+;;
+;;   Default to 20
+;; * #:max-indent-retain
+;;   Maximum number of indentation that can be carried over from the previous line when softwrapping.
+;;   If a line is indented further then this limit it is rendered at the start of the viewport instead.
+;;
+;;   This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+;; 
+;;   Default to 40
+;; * #:wrap-indicator
+;;   Indicator placed at the beginning of softwrapped lines
+;; 
+;;   Defaults to ↪
+;; * #:wrap-at-text-width
+;;   Softwrap at `text_width` instead of viewport width if it is shorter
+;; 
+;; # Examples
+;; ```scheme
+;; (soft-wrap-kw #:sw-enable #t)
+;; ```
+(define (soft-wrap-kw #:enable [enable #f]
+                      #:max-wrap [max-wrap 20]
+                      #:max-indent-retain [max-indent-retain 40]
+                      #:wrap-indicator [wrap-indicator 4]
+                      #:wrap-at-text-width [wrap-at-text-width #f])
+    (define sw (helix.raw-soft-wrap))
+    (helix.sw-enable sw enable)
+    (helix.sw-max-wrap sw max-wrap)
+    (helix.sw-max-indent-retain sw max-indent-retain)
+    (helix.sw-wrap-indicator sw wrap-indicator)
+    (helix.sw-wrap-at-text-width sw wrap-at-text-width)
+    (helix.register-soft-wrap *helix.config* sw))
+"#,
+        ));
+
+        builtin_configuration_module.push_str(&format!(
+            r#"
+
 (provide soft-wrap)
+;;@doc
+;; Sets the configuration for soft wrap using var args.
+;;
+;; ```scheme
+;; (soft-wrap . args)
+;; ```
+;;
+;; The args are expected to be something of the value:
+;; ```scheme
+;; (-> SoftWrapConfiguration? bool?)    
+;; ```
+;; The options are as follows:
+;;
+;; * sw-enable:
+;;   Soft wrap lines that exceed viewport width. Default to off
+;; * sw-max-wrap:
+;;   Maximum space left free at the end of the line.
+;;   This space is used to wrap text at word boundaries. If that is not possible within this limit
+;;   the word is simply split at the end of the line.
+;;
+;;   This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+;;
+;;   Default to 20
+;; * sw-max-indent-retain
+;;   Maximum number of indentation that can be carried over from the previous line when softwrapping.
+;;   If a line is indented further then this limit it is rendered at the start of the viewport instead.
+;;
+;;   This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+;; 
+;;   Default to 40
+;; * sw-wrap-indicator
+;;   Indicator placed at the beginning of softwrapped lines
+;; 
+;;   Defaults to ↪
+;; * sw-wrap-at-text-width
+;;   Softwrap at `text_width` instead of viewport width if it is shorter
+;;
+;; # Examples
+;; ```scheme
+;; (soft-wrap (sw-enable #t))
+;; ```
 (define (soft-wrap . args)
     (helix.register-soft-wrap
         *helix.config*
@@ -855,65 +1041,82 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 "#,
         ));
 
-        let mut template_function_arity_1 = |name: &str| {
+        let mut template_function_arity_1 = |name: &str, doc: &str| {
+            let doc = format_docstring(doc);
             builtin_configuration_module.push_str(&format!(
                 r#"
 (provide {})
+;;@doc
+;;{}
 (define ({} arg)
     (helix.{} *helix.config* arg))
 "#,
-                name, name, name
+                name, doc, name, name
             ));
         };
 
         let functions = &[
-            "scrolloff",
-            "scroll_lines",
-            "mouse",
-            "shell",
-            "line-number",
-            "cursorline",
-            "cursorcolumn",
-            "middle-click-paste",
-            "auto-pairs",
-            "auto-completion",
-            "auto-format",
-            "auto-save",
-            "text-width",
-            "idle-timeout",
-            "completion-timeout",
-            "preview-completion-insert",
-            "completion-trigger-len",
-            "completion-replace",
-            "auto-info",
-            "cursor-shape",
-            "true-color",
-            "insert-final-newline",
-            "color-modes",
-            "gutters",
-            "statusline",
-            "undercurl",
-            "search",
-            "lsp",
-            "terminal",
-            "rulers",
-            "whitespace",
-            "bufferline",
-            "indent-guides",
-            "workspace-lsp-roots",
-            "default-line-ending",
-            "smart-tab",
-            "keybindings",
-            "inline-diagnostics-cursor-line-enable",
-            "inline-diagnostics-end-of-line-enable",
+            ("scrolloff", "Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5."),
+            ("scroll_lines", "Number of lines to scroll at once. Defaults to 3
+"),
+            ("mouse", "Mouse support. Defaults to true."),
+            ("shell", r#"Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise."#),
+            ("line-number", "Line number mode."),
+            ("cursorline", "Highlight the lines cursors are currently on. Defaults to false"),
+            ("cursorcolumn", "Highlight the columns cursors are currently on. Defaults to false"),
+            ("middle-click-paste", "Middle click paste support. Defaults to true"),
+            ("auto-pairs", r#"
+Automatic insertion of pairs to parentheses, brackets,
+etc. Optionally, this can be a list of 2-tuples to specify a
+global list of characters to pair. Defaults to true."#),
+            ("auto-completion", "Automatic auto-completion, automatically pop up without user trigger. Defaults to true."),
+            // TODO: Put in path_completion
+            ("auto-format", "Automatic formatting on save. Defaults to true."),
+            ("auto-save", r#"Automatic save on focus lost and/or after delay.
+Time delay in milliseconds since last edit after which auto save timer triggers.
+Time delay defaults to false with 3000ms delay. Focus lost defaults to false.
+                "#),
+            ("text-width", "Set a global text_width"),
+            ("idle-timeout", r#"Time in milliseconds since last keypress before idle timers trigger.
+Used for various UI timeouts. Defaults to 250ms."#),
+            ("completion-timeout", r#"
+Time in milliseconds after typing a word character before auto completions
+are shown, set to 5 for instant. Defaults to 250ms.
+                "#),
+            ("preview-completion-insert", "Whether to insert the completion suggestion on hover. Defaults to true."),
+            ("completion-trigger-len", "Length to trigger completions"),
+            ("completion-replace", r#"Whether to instruct the LSP to replace the entire word when applying a completion
+ or to only insert new text
+"#),
+            ("auto-info", "Whether to display infoboxes. Defaults to true."),
+            ("cursor-shape", "Shape for cursor in each mode"),
+            ("true-color", "Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`."),
+            ("insert-final-newline", "Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`"),
+            ("color-modes", "Whether to color modes with different colors. Defaults to `false`."),
+            ("gutters", "Gutter configuration"),
+            ("statusline", "Configuration of the statusline elements"),
+            ("undercurl", "Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`."),
+            ("search", "Search configuration"),
+            ("lsp", "Lsp config"),
+            ("terminal", "Terminal config"),
+            ("rulers", "Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers"),
+            ("whitespace", "Whitespace config"),
+            ("bufferline", "Persistently display open buffers along the top"),
+            ("indent-guides", "Vertical indent width guides"),
+            ("workspace-lsp-roots", "Workspace specific lsp ceiling dirs"),
+            ("default-line-ending", "Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`."),
+            ("smart-tab", "Enables smart tab"),
+            ("keybindings", "Keybindings config"),
+            ("inline-diagnostics-cursor-line-enable", "Inline diagnostics cursor line"),
+            ("inline-diagnostics-end-of-line-enable", "Inline diagnostics end of line"),
             // language configuration functions
-            "get-language-config",
-            "get-language-config-by-filename",
-            "set-language-config!",
+            ("get-language-config", "Get the configuration for a specific language"),
+            ("get-language-config-by-filename", "Get the language configuration for a specific file"),
+            ("set-language-config!", "Set the language configuration"),
         ];
 
-        for func in functions {
-            template_function_arity_1(func);
+        for (func, doc) in functions {
+            template_function_arity_1(func, doc);
         }
 
         if let Some(mut target_directory) = alternative_runtime_search_path() {
@@ -939,7 +1142,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     engine.register_module(module);
 }
 
-fn languages_api(engine: &mut Engine, generate_sources: bool) {
+fn _languages_api(_engine: &mut Engine, _generate_sources: bool) {
     // TODO: Just look at the `cx.editor.syn_loader` for how to
     // manipulate the languages bindings
     todo!()
@@ -1543,7 +1746,7 @@ struct IndividualLanguageConfiguration {
 impl Custom for IndividualLanguageConfiguration {}
 
 impl IndividualLanguageConfiguration {
-    pub fn set_indentation_config(&mut self, tab_width: usize, unit: String) {
+    pub fn _set_indentation_config(&mut self, tab_width: usize, unit: String) {
         self.config.indent = Some(IndentationConfiguration { tab_width, unit });
     }
 
@@ -1556,7 +1759,7 @@ impl IndividualLanguageConfiguration {
 impl Custom for HelixConfiguration {}
 
 // Set the configuration for an individual file.
-fn update_configuration_for_file(ctx: &mut Context, doc: DocumentId) {
+fn _update_configuration_for_file(ctx: &mut Context, doc: DocumentId) {
     if let Some(document) = ctx.editor.documents.get_mut(&doc) {
         let path = document.path().unwrap();
         let config_for_file = ctx
@@ -1580,7 +1783,7 @@ fn set_configuration_for_file(
 }
 
 impl HelixConfiguration {
-    fn store_language_configuration(&self, language_config: syntax::Loader) {
+    fn _store_language_configuration(&self, language_config: syntax::Loader) {
         self.language_configuration.store(Arc::new(language_config))
     }
 
@@ -2686,7 +2889,6 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
         SteelVal::IntV(engine.engine_id().as_usize() as _),
     );
 
-    // Don't generate source directories here
     configure_builtin_sources(&mut engine, true);
 
     // Hooks
@@ -2694,8 +2896,6 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     engine.register_fn("log::info!", |message: String| log::info!("{}", message));
 
     engine.register_fn("fuzzy-match", |pattern: SteelString, items: SteelVal| {
-        // Match against how they would be rendered?
-
         if let SteelVal::ListV(l) = items {
             let res = helix_core::fuzzy::fuzzy_match(
                 pattern.as_str(),
@@ -2718,8 +2918,6 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     });
 
     engine.register_fn("doc-id->usize", document_id_to_usize);
-
-    engine.register_fn("new-component!", SteelDynamicComponent::new_dyn);
 
     engine.register_fn(
         "acquire-context-lock",

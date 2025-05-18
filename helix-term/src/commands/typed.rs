@@ -2342,39 +2342,6 @@ fn pipe_impl(
     Ok(())
 }
 
-fn run_shell_command_text(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    let shell = cx.editor.config().shell.clone();
-    let args = args.join(" ");
-
-    let callback = async move {
-        let output = shell_impl_async(&shell, &args, None).await?;
-        let call: job::Callback = Callback::EditorCompositor(Box::new(
-            move |editor: &mut Editor, compositor: &mut Compositor| {
-                if !output.is_empty() {
-                    let contents = ui::Text::new(format!("{}", output));
-                    let popup = Popup::new("shell", contents).position(Some(
-                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
-                    ));
-                    compositor.replace_or_push("shell", popup);
-                }
-                editor.set_status("Command succeeded");
-            },
-        ));
-        Ok(call)
-    };
-    cx.jobs.callback(callback);
-
-    Ok(())
-}
-
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: Args,
@@ -3527,14 +3494,6 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
     },
-    // TypableCommand {
-    //     name: "run-shell-command-text",
-    //     aliases: &["sh"],
-    //     doc: "Run a shell command",
-    //     fun: run_shell_command_text,
-    //     completer: SHELL_COMPLETER,
-    //     signature: CommandSignature::all(completers::filename)
-    // },
     TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
