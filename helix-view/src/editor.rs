@@ -1060,7 +1060,8 @@ pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
-
+    pub document_history: Vec<PathBuf>,
+    
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
     // https://stackoverflow.com/a/66875668
     pub saves: HashMap<DocumentId, UnboundedSender<Once<DocumentSavedEventFuture>>>,
@@ -1211,6 +1212,7 @@ impl Editor {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
+            document_history: Vec::new(),
             saves: HashMap::new(),
             save_queue: SelectAll::new(),
             write_count: 0,
@@ -1797,6 +1799,7 @@ impl Editor {
 
             let id = self.new_document(doc);
             self.launch_language_servers(id);
+            self.document_history.push(path);
 
             helix_event::dispatch(DocumentDidOpen {
                 editor: self,
