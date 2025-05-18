@@ -1211,6 +1211,30 @@ fn current_buffer_area(cx: &mut Context) -> Option<helix_view::graphics::Rect> {
 fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/editor");
 
+    let mut builtin_editor_command_module =
+        "(require-builtin helix/core/editor as helix.)".to_string();
+
+    let mut template_function_arity_0 = |name: &str, doc: &str| {
+        let doc = format_docstring(doc);
+        builtin_editor_command_module.push_str(&format!(
+            r#"
+(provide {})
+;;@doc
+{}
+(define ({})
+    (helix.{} *helix.cx*))
+"#,
+            name, doc, name, name
+        ));
+    };
+
+    macro_rules! register_0 {
+        ($name:expr, $func:expr, $doc:expr) => {
+            module.register_fn($name, $func);
+            template_function_arity_0($name, $doc);
+        };
+    }
+
     // Types
     module.register_fn("Action/Load", || Action::Load);
     module.register_fn("Action/Replace", || Action::Replace);
@@ -1218,11 +1242,87 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("Action/VerticalSplit", || Action::VerticalSplit);
 
     // Arity 0
-    module.register_fn("editor-focus", cx_current_focus);
-    module.register_fn("editor-mode", cx_get_mode);
-    module.register_fn("cx->themes", get_themes);
-    module.register_fn("editor-all-documents", cx_editor_all_documents);
-    module.register_fn("cx->cursor", |cx: &mut Context| cx.editor.cursor());
+    register_0!(
+        "editor-focus",
+        cx_current_focus,
+        r#"
+Get the current focus of the editor, as a `ViewId`.
+
+```scheme
+(editor-focus) -> ViewId
+```
+        "#
+    );
+    register_0!(
+        "editor-mode",
+        cx_get_mode,
+        r#"
+Get the current mode of the editor
+
+```scheme
+(editor-mode) -> Mode?
+```
+        "#
+    );
+
+    register_0!(
+        "cx->themes",
+        get_themes,
+        "DEPRECATED: Please use `themes->list`"
+    );
+
+    register_0!(
+        "themes->list",
+        get_themes,
+        r#"
+Get the current themes as a list of strings.
+
+```scheme
+(themes->list) -> (listof string?)
+```
+        "#
+    );
+
+    register_0!(
+        "editor-all-documents",
+        cx_editor_all_documents,
+        r#"
+Get a list of all of the document ids that are currently open.
+
+```scheme
+(editor-all-documents) -> (listof DocumentId?)
+```
+        "#
+    );
+    register_0!(
+        "cx->cursor",
+        |cx: &mut Context| cx.editor.cursor(),
+        r#"DEPRECATED: Please use `current-cursor`"#
+    );
+
+    register_0!(
+        "current-cursor",
+        |cx: &mut Context| cx.editor.cursor(),
+        r#"Gets the primary cursor position in screen coordinates,
+or `#false` if the primary cursor is not visible on screen.
+
+```scheme
+(current-cursor) -> (listof? (or Position? #false) CursorKind)
+```
+        "#
+    );
+
+    register_0!(
+        "editor-focused-buffer-area",
+        current_buffer_area,
+        r#"
+Get the `Rect` associated with the currently focused buffer.
+
+```scheme
+(editor-focused-buffer-area) -> (or Rect? #false)
+```
+        "#
+    );
 
     // Arity 1
     module.register_fn("editor->doc-id", cx_get_document_id);
@@ -1259,12 +1359,7 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         },
     );
 
-    module.register_fn("editor-focused-buffer-area", current_buffer_area);
-
     if generate_sources {
-        let mut builtin_editor_command_module =
-            "(require-builtin helix/core/editor as helix.)".to_string();
-
         let mut template_function_type_constructor = |name: &str| {
             builtin_editor_command_module.push_str(&format!(
                 r#"
@@ -1279,24 +1374,6 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         template_function_type_constructor("Action/Replace");
         template_function_type_constructor("Action/HorizontalSplit");
         template_function_type_constructor("Action/VerticalSplit");
-
-        let mut template_function_arity_0 = |name: &str| {
-            builtin_editor_command_module.push_str(&format!(
-                r#"
-(provide {})
-(define ({})
-    (helix.{} *helix.cx*))
-"#,
-                name, name, name
-            ));
-        };
-
-        template_function_arity_0("editor-focus");
-        template_function_arity_0("editor-mode");
-        template_function_arity_0("cx->themes");
-        template_function_arity_0("editor-all-documents");
-        template_function_arity_0("cx->cursor");
-        template_function_arity_0("editor-focused-buffer-area");
 
         let mut template_function_arity_1 = |name: &str, doc: &str| {
             if generate_sources {
