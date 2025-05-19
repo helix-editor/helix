@@ -305,26 +305,19 @@ fn diag_picker(
                 .immediately_show_diagnostic(doc, view.id);
         },
     )
-    .with_preview(move |_editor, diag| {
-        // let a: Option<(PathOrId, Option<(usize, usize)>)> =
-        // location_to_file_location(&diag.location);
-        // let document = Document::default(editor.config.clone(), editor.syn_loader.clone());
-        // editor.document_by_path(path)
-        match diag.diag.data {
-            Some(ref data) => Some((
-                PathOrId::Document(
-                    data.as_object()
-                        .unwrap()
-                        .get("rendered")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .to_string(),
-                ),
-                Some((0, 0)),
-            )),
-            None => location_to_file_location(&diag.location),
+    .with_preview(move |_editor, diag| match diag.diag.data {
+        Some(ref data) => {
+            if let Some(error_string) = data
+                .as_object()
+                .and_then(|object| object.get("rendered"))
+                .and_then(|rendered| rendered.as_str())
+            {
+                Some((PathOrId::Document(error_string.to_string()), Some((0, 0))))
+            } else {
+                location_to_file_location(&diag.location)
+            }
         }
+        None => location_to_file_location(&diag.location),
     })
     .truncate_start(false)
 }
