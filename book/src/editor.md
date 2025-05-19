@@ -193,7 +193,9 @@ The `auto-fetch` key determines under which circumstances the blame is fetched, 
 
   Directly requesting the blame with `space + B` will be instant. Inline blame will show as soon as the blame is available when loading new files.
 
-`inline-blame-format` allows customization of the blame message, and can be set to any string. Variables can be used like so: `{variable}`. These are the available variables:
+Set a format string for `format` to customize the blame message displayed. Variables are text placeholders wrapped in curly braces: `{variable}`.
+
+The following variables are available:
 
 - `author`: The author of the commit
 - `date`: When the commit was made
@@ -202,19 +204,6 @@ The `auto-fetch` key determines under which circumstances the blame is fetched, 
 - `body`: The body of the commit
 - `commit`: The short hex SHA1 hash of the commit
 - `email`: The email of the author of the commit
-
-Any of the variables can potentially be empty.
-In this case, the content before the variable will not be included in the string.
-If the variable is at the beginning of the string, the content after the variable will not be included.
-
-Some examples, using the default value `format` value:
-
-- If `author` is empty: `"{time-ago} • {message} • {commit}"`
-- If `time-ago` is empty: `"{author} • {message} • {commit}"`
-- If `message` is empty: `"{author}, {time-ago} • {commit}"`
-- If `commit` is empty: `"{author}, {time-ago} • {message}"`
-- If `time-ago` and `message` is empty: `"{author} • {commit}"`
-- If `author` and `message` is empty: `"{time-ago} • {commit}"`
 
 ### `[editor.cursor-shape]` Section
 
