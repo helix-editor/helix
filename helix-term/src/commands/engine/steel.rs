@@ -2614,6 +2614,7 @@ fn configure_lsp_globals() {
             "log::info!",
             "fuzzy-match",
             "helix-find-workspace",
+            "find-workspace",
             "doc-id->usize",
             "new-component!",
             "acquire-context-lock",
@@ -3249,6 +3250,11 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
     // Find the workspace
     engine.register_fn("helix-find-workspace", || {
+        helix_core::find_workspace().0.to_str().unwrap().to_string()
+    });
+
+    // TODO: Deprecate the above
+    engine.register_fn("find-worksapce", || {
         helix_core::find_workspace().0.to_str().unwrap().to_string()
     });
 
