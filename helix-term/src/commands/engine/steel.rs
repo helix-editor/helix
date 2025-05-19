@@ -2200,15 +2200,21 @@ impl HelixConfiguration {
 // Get doc from function ptr table, hack
 fn get_doc_for_global(engine: &mut Engine, ident: &str) -> Option<String> {
     if engine.global_exists(ident) {
-        let expr = format!("(#%function-ptr-table-get #%function-ptr-table {})", ident);
-        Some(
-            engine
-                .run(expr)
-                .ok()
-                .and_then(|x| x.first().cloned())
-                .and_then(|x| x.as_string().map(|x| x.as_str().to_string()))
-                .unwrap_or_else(|| "Undocumented plugin command".to_string()),
-        )
+        let readable_globals = engine.readable_globals(*GLOBAL_OFFSET.get().unwrap());
+
+        for global in readable_globals {
+            if global.resolve() == ident {
+                let expr = format!("(#%function-ptr-table-get #%function-ptr-table {})", ident);
+
+                let doc = engine.run(expr).ok().and_then(|x| x.first().cloned());
+
+                if let Some(doc) = doc {
+                    return doc.as_string().map(|x| x.as_str().to_string());
+                }
+            }
+        }
+
+        None
     } else {
         None
     }
@@ -3504,7 +3510,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     // Create directory since we can't do that in the current state
     engine.register_fn("hx.create-directory", create_directory);
 
-    GLOBAL_OFFSET.set(engine.readable_globals(0).len()).unwrap();
+    GLOBAL_OFFSET.set(engine.globals().len()).unwrap();
 
     engine
 }
