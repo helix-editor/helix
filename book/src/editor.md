@@ -181,8 +181,6 @@ Inline blame is virtual text that appears at the end of a line, displaying infor
 - `"cursor-line"`: Inline blame is only on the line of the primary cursor.
 - `"hidden"`: Inline blame is hidden.
 
-Inline blame will only show if the blame for the file has already been fetched.
-
 The `auto-fetch` key determines under which circumstances the blame is fetched, and can be one of the following:
 - `false`: Blame for the file is fetched only when explicitly requested, such as when using `space + B` to blame the line of the cursor. There may be a little delay when loading the blame.
 
