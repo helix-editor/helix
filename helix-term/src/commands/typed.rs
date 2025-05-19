@@ -330,8 +330,7 @@ fn buffer_reopen(
         return Ok(());
     }
 
-    if let Some(last_closed_doc_path) = cx.editor.closed_document_paths.pop()
-    {
+    if let Some(last_closed_doc_path) = cx.editor.closed_document_paths.pop() {
         cx.editor.open(&last_closed_doc_path, Action::Replace)?;
     }
     Ok(())
