@@ -193,9 +193,7 @@ The `auto-fetch` key determines under which circumstances the blame is fetched, 
 
   Directly requesting the blame with `space + B` will be instant. Inline blame will show as soon as the blame is available when loading new files.
 
-Set a format string for `format` to customize the blame message displayed. Variables are text placeholders wrapped in curly braces: `{variable}`.
-
-The following variables are available:
+Change the `format` string to customize the blame message displayed. Variables are text placeholders wrapped in curly braces: `{variable}`. The following variables are available:
 
 - `author`: The author of the commit
 - `date`: When the commit was made
