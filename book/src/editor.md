@@ -181,9 +181,13 @@ Inline blame is virtual text that appears at the end of a line, displaying infor
 - `"cursor-line"`: Inline blame is only on the line of the primary cursor.
 - `"hidden"`: Inline blame is hidden.
 
-By default (or with `auto-fetch` set to false), blame for the current file is fetched only when explicitly requested, such as when using `space + B` to display the blame for the line of the cursor. There may be a little delay when loading the blame. When `auto-fetch` is enabled, blame for the file is fetched in the background; this will have zero effect on performance of the editor, but will use a little bit extra resources. Directly requesting the blame with `space + B` will be instant. Inline blame will show as soon as the blame is available when loading new files.
+With `auto-fetch` set to `false`, blame for the current file is fetched only when explicitly requested, such as when using `space + B` to display the blame for the line of the cursor. There may be a little delay when loading the blame.
+
+When `auto-fetch` is set to `true`, blame for the file is fetched in the background; this will have no effect on performance, but will use a little bit extra resources in the background. Directly requesting the blame with `space + B` will be instant. Inline blame will show as soon as the blame is available when loading new files.
 
 When opening new files, even with `show` set to `"all-lines"` or `"cursor-line"`, the inline blame won't show. It needs to be fetched first in order to become available, which can be triggered manually with `space + B`.
+
+#### `format`
 
 Change the `format` string to customize the blame message displayed. Variables are text placeholders wrapped in curly braces: `{variable}`. The following variables are available:
 
