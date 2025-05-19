@@ -77,7 +77,7 @@ fn setup() -> Engine {
     let engine = steel::steel_vm::engine::Engine::new();
 
     // Any function after this point can be used for looking at "new" functions
-    GLOBAL_OFFSET.set(engine.readable_globals(0).len()).unwrap();
+    // GLOBAL_OFFSET.set(engine.readable_globals(0).len()).unwrap();
 
     let controller = engine.get_thread_state_controller();
     let running = Arc::new(AtomicBool::new(false));
@@ -3503,6 +3503,8 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
     // Create directory since we can't do that in the current state
     engine.register_fn("hx.create-directory", create_directory);
+
+    GLOBAL_OFFSET.set(engine.readable_globals(0).len()).unwrap();
 
     engine
 }
