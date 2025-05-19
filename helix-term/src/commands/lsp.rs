@@ -29,7 +29,7 @@ use helix_view::{
 use crate::{
     compositor::{self, Compositor},
     job::Callback,
-    ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
+    ui::{self, overlay::overlaid, picker::PathOrId, FileLocation, Picker, Popup, PromptEvent},
 };
 
 use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
@@ -305,7 +305,27 @@ fn diag_picker(
                 .immediately_show_diagnostic(doc, view.id);
         },
     )
-    .with_preview(move |_editor, diag| location_to_file_location(&diag.location))
+    .with_preview(move |_editor, diag| {
+        // let a: Option<(PathOrId, Option<(usize, usize)>)> =
+        // location_to_file_location(&diag.location);
+        // let document = Document::default(editor.config.clone(), editor.syn_loader.clone());
+        // editor.document_by_path(path)
+        match diag.diag.data {
+            Some(ref data) => Some((
+                PathOrId::Document(
+                    data.as_object()
+                        .unwrap()
+                        .get("rendered")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
+                ),
+                Some((0, 0)),
+            )),
+            None => location_to_file_location(&diag.location),
+        }
+    })
     .truncate_start(false)
 }
 
