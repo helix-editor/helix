@@ -174,7 +174,7 @@ Inline blame is virtual text that appears at the end of a line, displaying infor
 | ------- | ------------------------------------------ | ------- |
 | `show` | When to show inline blame | `"never"` |
 | `auto-fetch` | Automatically fetch blame information in the background | `false` |
-| `format` | The format in which to show the inline blame | `"{author}, {time-ago} • {title} • {commit}"` |
+| `format` | Inline blame message format | `"{author}, {time-ago} • {title} • {commit}"` |
 
 `show` can be one of the following:
 - `"all-lines"`: Inline blame is on every line.
