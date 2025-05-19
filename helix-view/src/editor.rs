@@ -1060,7 +1060,7 @@ pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
-    pub document_history: Vec<PathBuf>,
+    pub closed_document_paths: Vec<PathBuf>,
     
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
     // https://stackoverflow.com/a/66875668
@@ -1212,7 +1212,7 @@ impl Editor {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
-            document_history: Vec::new(),
+            closed_document_paths: Vec::new(),
             saves: HashMap::new(),
             save_queue: SelectAll::new(),
             write_count: 0,
@@ -1799,7 +1799,6 @@ impl Editor {
 
             let id = self.new_document(doc);
             self.launch_language_servers(id);
-            self.document_history.push(path);
 
             helix_event::dispatch(DocumentDidOpen {
                 editor: self,
@@ -1872,6 +1871,9 @@ impl Editor {
         }
 
         let doc = self.documents.remove(&doc_id).unwrap();
+        if let Some(path) = doc.path() {
+            self.closed_document_paths.push(path.clone());
+        }
 
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view

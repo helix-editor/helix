@@ -330,13 +330,10 @@ fn buffer_reopen(
         return Ok(());
     }
 
-    if let Some(last_closed_doc_path) = cx.editor.document_history
-        .iter()
-        .filter(|path| cx.editor.document_by_path(path).is_none())
-        .last()
-        .cloned()
+    if let Some(last_closed_doc_path) = cx.editor.closed_document_paths.pop()
     {
-        cx.editor.open(&last_closed_doc_path, Action::Load)?;
+        let id = cx.editor.open(&last_closed_doc_path, Action::Load)?;
+        cx.editor.switch(id, Action::Load);
     }
     Ok(())
 }
