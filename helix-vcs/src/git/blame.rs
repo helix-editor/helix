@@ -163,7 +163,7 @@ impl LineBlame {
                 "commit" => &self.commit_hash,
                 "author" => &self.author_name,
                 "date" => &self.commit_date,
-                "message" => &self.commit_title,
+                "title" => &self.commit_title,
                 "email" => &self.author_email,
                 "body" => &self.commit_body,
                 "time-ago" => {
