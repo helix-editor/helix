@@ -3,7 +3,6 @@ use std::{mem, time::Duration};
 use helix_event::register_hook;
 use helix_vcs::FileBlame;
 use helix_view::{
-    editor::InlineBlameCompute,
     events::{DocumentDidOpen, EditorConfigDidChange},
     handlers::{BlameEvent, Handlers},
     DocumentId,
@@ -44,7 +43,7 @@ impl helix_event::AsyncHook for BlameHandler {
                         return;
                     };
                     doc.file_blame = Some(result);
-                    if editor.config().inline_blame.compute == InlineBlameCompute::OnDemand {
+                    if !editor.config().inline_blame.auto_fetch {
                         if let Some(line) = line_blame {
                             crate::commands::blame_line_impl(editor, doc_id, line);
                         } else {
@@ -61,7 +60,7 @@ impl helix_event::AsyncHook for BlameHandler {
 pub(super) fn register_hooks(handlers: &Handlers) {
     let tx = handlers.blame.clone();
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
-        if event.editor.config().inline_blame.compute != InlineBlameCompute::OnDemand {
+        if event.editor.config().inline_blame.auto_fetch {
             helix_event::send_blocking(
                 &tx,
                 BlameEvent {
@@ -75,9 +74,8 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
     let tx = handlers.blame.clone();
     register_hook!(move |event: &mut EditorConfigDidChange<'_>| {
-        let has_enabled_inline_blame = event.old_config.inline_blame.compute
-            == InlineBlameCompute::OnDemand
-            && event.editor.config().inline_blame.compute == InlineBlameCompute::Background;
+        let has_enabled_inline_blame = !event.old_config.inline_blame.auto_fetch
+            && event.editor.config().inline_blame.auto_fetch;
 
         if has_enabled_inline_blame {
             // request blame for all documents, since any of them could have

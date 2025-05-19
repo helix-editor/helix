@@ -25,7 +25,7 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig, InlineBlameBehaviour, InlineBlameConfig},
+    editor::{CompleteAction, CursorShapeConfig, InlineBlameConfig, InlineBlameShow},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -238,9 +238,9 @@ impl EditorView {
     ) {
         const INLINE_BLAME_SCOPE: &str = "ui.virtual.inline-blame";
         let text = doc.text();
-        match inline_blame.behaviour {
-            InlineBlameBehaviour::Hidden => (),
-            InlineBlameBehaviour::CursorLine => {
+        match inline_blame.show {
+            InlineBlameShow::Never => (),
+            InlineBlameShow::CursorLine => {
                 let cursor_line_idx = doc.cursor_line(view.id);
 
                 // do not render inline blame for empty lines to reduce visual noise
@@ -258,7 +258,7 @@ impl EditorView {
                     };
                 }
             }
-            InlineBlameBehaviour::AllLines => {
+            InlineBlameShow::AllLines => {
                 let mut blame_lines = vec![None; text.len_lines()];
 
                 let blame_for_all_lines = view.line_range(doc).filter_map(|line_idx| {

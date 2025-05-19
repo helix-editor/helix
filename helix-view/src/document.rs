@@ -43,7 +43,6 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::editor::InlineBlameCompute;
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
@@ -749,11 +748,11 @@ impl Document {
         }
     }
 
-    pub fn should_request_full_file_blame(&mut self, blame_fetch: InlineBlameCompute) -> bool {
-        if blame_fetch == InlineBlameCompute::OnDemand {
-            self.is_blame_potentially_out_of_date
-        } else {
+    pub fn should_request_full_file_blame(&mut self, auto_fetch: bool) -> bool {
+        if auto_fetch {
             true
+        } else {
+            self.is_blame_potentially_out_of_date
         }
     }
 

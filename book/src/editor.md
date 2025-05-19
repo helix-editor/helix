@@ -172,20 +172,26 @@ Inline blame is virtual text that appears at the end of a line, displaying infor
 
 | Key     | Description                                | Default |
 | ------- | ------------------------------------------ | ------- |
-| `behaviour` | Choose when to show inline blame | `"hidden"` |
-| `compute` | Choose when inline blame should be computed | `"on-demand"` |
+| `show` | Choose when to show inline blame | `"never"` |
+| `auto-fetch` | Choose when inline blame should be computed | `false` |
 | `format` | The format in which to show the inline blame | `"{author}, {time-ago} • {message} • {commit}"` |
 
-The `behaviour` can be one of the following:
+`show` can be one of the following:
 - `"all-lines"`: Inline blame is on every line.
 - `"cursor-line"`: Inline blame is only on the line of the primary cursor.
-- `"hidden"`: Inline blame is not shown.
+- `"hidden"`: Inline blame is hidden.
 
-Inline blame will only show if the blame for the file has already been computed.
+Inline blame will only show if the blame for the file has already been fetched.
 
-The `compute` key determines under which circumstances the blame is computed, and can be one of the following:
-- `"on-demand"`: Blame for the file is computed only when explicitly requested, such as when using `space + B` to blame the line of the cursor. There may be a little delay when loading the blame. When opening new files, even with `behaviour` not set to `"hidden"`, the inline blame won't show. It needs to be computed first in order to become available. This computation can be manually triggered by requesting it with `space + B`.
-- `"background"`: Blame for the file is loaded in the background. This will have zero effect on performance of the Editor, but will use a little bit extra resources. Directly requesting the blame with `space + B` will be instant. Inline blame will show as soon as the blame is available when loading new files.
+The `auto-fetch` key determines under which circumstances the blame is fetched, and can be one of the following:
+- `false`: Blame for the file is fetched only when explicitly requested, such as when using `space + B` to blame the line of the cursor. There may be a little delay when loading the blame.
+
+  When opening new files, even with `show` set to `"all-lines"` or `"cursor-line"`, the inline blame won't show. It needs to be fetched first in order to become available, which can be triggered manually with `space + B`.
+- `true`: Blame for the file is fetched in the background.
+
+  This will have zero effect on performance of the Editor, but will use a little bit extra resources.
+
+  Directly requesting the blame with `space + B` will be instant. Inline blame will show as soon as the blame is available when loading new files.
 
 `inline-blame-format` allows customization of the blame message, and can be set to any string. Variables can be used like so: `{variable}`. These are the available variables:
 

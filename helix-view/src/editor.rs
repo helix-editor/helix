@@ -177,33 +177,24 @@ impl Default for GutterLineNumbersConfig {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum InlineBlameBehaviour {
+pub enum InlineBlameShow {
     /// Do not show inline blame, and do not request it in the background
     ///
     /// When manually requesting the inline blame, it may take several seconds to appear.
-    Hidden,
+    Never,
     /// Show the inline blame on the cursor line
     CursorLine,
     /// Show the inline blame on every other line
     AllLines,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum InlineBlameCompute {
-    /// Inline blame for a file will be fetched when a document is opened or reloaded, for example
-    Background,
-    /// Inline blame for a file will be fetched when explicitly requested, e.g. when using `space + B`
-    OnDemand,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct InlineBlameConfig {
     /// How to show the inline blame
-    pub behaviour: InlineBlameBehaviour,
+    pub show: InlineBlameShow,
     /// Whether the inline blame should be fetched in the background
-    pub compute: InlineBlameCompute,
+    pub auto_fetch: bool,
     /// How the inline blame should look like and the information it includes
     pub format: String,
 }
@@ -211,9 +202,9 @@ pub struct InlineBlameConfig {
 impl Default for InlineBlameConfig {
     fn default() -> Self {
         Self {
-            behaviour: InlineBlameBehaviour::Hidden,
+            show: InlineBlameShow::Never,
             format: "{author}, {time-ago} • {message} • {commit}".to_owned(),
-            compute: InlineBlameCompute::OnDemand,
+            auto_fetch: false,
         }
     }
 }
