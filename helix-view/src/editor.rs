@@ -203,7 +203,7 @@ impl Default for InlineBlameConfig {
     fn default() -> Self {
         Self {
             show: InlineBlameShow::Never,
-            format: "{author}, {time-ago} • {message} • {commit}".to_owned(),
+            format: "{author}, {time-ago} • {title} • {commit}".to_owned(),
             auto_fetch: false,
         }
     }

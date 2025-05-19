@@ -174,7 +174,7 @@ Inline blame is virtual text that appears at the end of a line, displaying infor
 | ------- | ------------------------------------------ | ------- |
 | `show` | Choose when to show inline blame | `"never"` |
 | `auto-fetch` | Choose when inline blame should be computed | `false` |
-| `format` | The format in which to show the inline blame | `"{author}, {time-ago} • {message} • {commit}"` |
+| `format` | The format in which to show the inline blame | `"{author}, {time-ago} • {title} • {commit}"` |
 
 `show` can be one of the following:
 - `"all-lines"`: Inline blame is on every line.
@@ -200,7 +200,7 @@ The following variables are available:
 - `author`: The author of the commit
 - `date`: When the commit was made
 - `time-ago`: How long ago the commit was made
-- `message`: The message of the commit, excluding the body
+- `title`: The title of the commit
 - `body`: The body of the commit
 - `commit`: The short hex SHA1 hash of the commit
 - `email`: The email of the author of the commit

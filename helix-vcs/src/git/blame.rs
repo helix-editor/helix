@@ -51,8 +51,12 @@ impl FileBlame {
         let line_blame_unit = blame.get_mut(&blame_line);
 
         let commit = match line_blame_unit {
+            // Slow path: This is the first time we're trying to get the blame for this line
             Some(LineBlameUnit::Unprocessed(object_id)) => repo.find_commit(*object_id).ok(),
+            // Fast path: We've already processed this line before so we don't need to
+            // search all of the repo's commits to compute the blame
             Some(LineBlameUnit::Processed(line_blame)) => return line_blame.clone(),
+            // This line does not have any blame associated with it
             None => None,
         };
 
@@ -67,7 +71,7 @@ impl FileBlame {
             author_name: author.map(|a| a.name.to_string()),
             author_email: author.map(|a| a.email.to_string()),
             commit_date: time.map(|time| time.format(gix::date::time::format::SHORT)),
-            commit_message: message.as_ref().map(|msg| msg.title.to_string()),
+            commit_title: message.as_ref().map(|msg| msg.title.to_string()),
             commit_body: message
                 .as_ref()
                 .and_then(|msg| msg.body.map(|body| body.to_string())),
@@ -129,7 +133,7 @@ pub struct LineBlame {
     author_name: Option<String>,
     author_email: Option<String>,
     commit_date: Option<String>,
-    commit_message: Option<String>,
+    commit_title: Option<String>,
     commit_body: Option<String>,
     /// Used to compute `time-ago`
     time_stamp: Option<(i64, i32)>,
@@ -159,7 +163,7 @@ impl LineBlame {
                 "commit" => &self.commit_hash,
                 "author" => &self.author_name,
                 "date" => &self.commit_date,
-                "message" => &self.commit_message,
+                "message" => &self.commit_title,
                 "email" => &self.author_email,
                 "body" => &self.commit_body,
                 "time-ago" => {
@@ -555,7 +559,7 @@ mod test {
             author_name: Some("Bob TheBuilder".to_owned()),
             author_email: Some("bob@bob.com".to_owned()),
             commit_date: Some("2028-01-10".to_owned()),
-            commit_message: Some("feat!: extend house".to_owned()),
+            commit_title: Some("feat!: extend house".to_owned()),
             commit_body: Some("BREAKING CHANGE: Removed door".to_owned()),
             time_stamp: None,
             time_ago: None,
@@ -588,7 +592,7 @@ mod test {
         );
         assert_eq!(
             LineBlame {
-                commit_message: None,
+                commit_title: None,
                 author_email: None,
                 ..bob()
             }
@@ -615,7 +619,7 @@ mod test {
         assert_eq!(
             LineBlame {
                 author_name: None,
-                commit_message: None,
+                commit_title: None,
                 ..bob()
             }
             .parse_format(format),
