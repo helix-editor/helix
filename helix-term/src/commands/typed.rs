@@ -2721,7 +2721,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "buffer-reopen",
-        aliases: &["bro"],
+        aliases: &["br", "breopen"],
         doc: "Re-open the most previously closed buffer.",
         fun: buffer_reopen,
         completer: CommandCompleter::none(),
