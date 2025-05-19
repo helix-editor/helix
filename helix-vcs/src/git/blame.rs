@@ -568,7 +568,7 @@ mod test {
 
     #[test]
     pub fn inline_blame_format_parser() {
-        let format = "{author}, {date} • {message} • {commit}";
+        let format = "{author}, {date} • {title} • {commit}";
 
         assert_eq!(
             bob().parse_format(format),
