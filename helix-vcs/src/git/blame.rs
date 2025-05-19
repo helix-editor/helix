@@ -415,7 +415,7 @@ mod test {
                                 FileBlame::try_new(file.clone())
                                     .unwrap()
                                     .blame_for_line(line_number, added_lines, removed_lines)
-                                    .commit_message;
+                                    .commit_title;
 
                             assert_eq!(
                                 blame_result,
