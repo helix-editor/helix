@@ -312,7 +312,22 @@ impl Loader {
     }
 
     pub fn language_for_shebang(&self, text: RopeSlice) -> Option<Language> {
-        let shebang: Cow<str> = text.into();
+        // NOTE: this is slightly different than the one for injection markers in tree-house. It
+        // is anchored at the beginning.
+        use helix_stdx::rope::Regex;
+        use once_cell::sync::Lazy;
+        const SHEBANG: &str = r"^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
+        static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(SHEBANG).unwrap());
+
+        let marker = SHEBANG_REGEX
+            .captures_iter(regex_cursor::Input::new(text))
+            .map(|cap| text.byte_slice(cap.get_group(1).unwrap().range()))
+            .next()?;
+        self.language_for_shebang_marker(marker)
+    }
+
+    fn language_for_shebang_marker(&self, marker: RopeSlice) -> Option<Language> {
+        let shebang: Cow<str> = marker.into();
         self.languages_by_shebang.get(shebang.as_ref()).copied()
     }
 
@@ -351,7 +366,7 @@ impl LanguageLoader for Loader {
                 let path: Cow<str> = text.into();
                 self.language_for_filename(Path::new(path.as_ref()))
             }
-            InjectionLanguageMarker::Shebang(text) => self.language_for_shebang(text),
+            InjectionLanguageMarker::Shebang(text) => self.language_for_shebang_marker(text),
         }
     }
 
@@ -850,6 +865,9 @@ impl TextObjectQuery {
             .find_map(|cap| self.query.get_capture(cap))?;
 
         let mut cursor = InactiveQueryCursor::new();
+        // TODO: this line can be dropped when we update tree-house to automatically reset cursors
+        // back to defaults when reusing them from the cursor cache.
+        cursor.set_byte_range(0..u32::MAX);
         cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
         let mut cursor = cursor.execute_query(&self.query, node, RopeInput::new(slice));
         let capture_node = iter::from_fn(move || {

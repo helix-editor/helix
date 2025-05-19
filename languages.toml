@@ -1441,7 +1441,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "haskell"
-source = { git = "https://github.com/tree-sitter/tree-sitter-haskell", rev = "d7ac98f49e3ed7e17541256fe3881a967d7ffdd3" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-haskell", rev = "0975ef72fc3c47b530309ca93937d7d143523628" }
 
 [[language]]
 name = "haskell-persistent"
@@ -1899,7 +1899,7 @@ source = { git = "https://github.com/the-mikedavis/tree-sitter-git-config", rev 
 [[language]]
 name = "git-attributes"
 scope = "source.gitattributes"
-file-types = [{ glob = ".gitattributes" }]
+file-types = [{ glob = ".gitattributes" }, { glob = ".config/git/attributes" }]
 injection-regex = "git-attributes"
 comment-token = "#"
 grammar = "gitattributes"
