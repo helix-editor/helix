@@ -223,9 +223,7 @@ pub fn helix_component_module(generate_sources: bool) -> BuiltInModule {
     register!(
         ctx,
         "theme-scope",
-        |ctx: &mut Context, scope: SteelString| {
-            ctx.editor.theme.get(scope.as_str());
-        },
+        |ctx: &mut Context, scope: SteelString| { ctx.editor.theme.get(scope.as_str()) },
         1,
         "Get the `Style` associated with the given scope from the current theme"
     );
