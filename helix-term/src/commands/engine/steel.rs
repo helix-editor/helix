@@ -3559,7 +3559,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     });
 
     // TODO: Deprecate the above
-    engine.register_fn("find-worksapce", || {
+    engine.register_fn("find-workspace", || {
         helix_core::find_workspace().0.to_str().unwrap().to_string()
     });
 
