@@ -632,6 +632,11 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         HelixConfiguration::update_language_config,
     );
 
+    module.register_fn(
+        "refresh-all-language-configs!",
+        update_configuration_for_all_open_documents,
+    );
+
     module
         .register_fn("raw-file-picker", || FilePickerConfig::default())
         .register_fn("register-file-picker", HelixConfiguration::file_picker)
@@ -738,6 +743,14 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         let mut builtin_configuration_module =
             "(require-builtin helix/core/configuration as helix.)".to_string();
 
+        builtin_configuration_module.push_str(
+            r#"
+(provide refresh-all-language-configs!)
+(define (refresh-all-language-configs!)
+    (helix.refresh-all-language-configs! *helix.cx*))
+            "#,
+        );
+
         builtin_configuration_module.push_str(&format!(
             r#"
 (provide update-configuration!)
@@ -802,7 +815,8 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             r#"
 (provide update-language-config!)
 (define (update-language-config! lsp config)
-    (helix.update-language-config! *helix.config* lsp config))
+    (helix.update-language-config! *helix.config* lsp config)
+    (refresh-all-language-configs!))
 "#,
         );
 
@@ -1889,6 +1903,19 @@ fn _update_configuration_for_file(ctx: &mut Context, doc: DocumentId) {
     }
 }
 
+fn update_configuration_for_all_open_documents(ctx: &mut Context) {
+    for document in ctx.editor.documents.values_mut() {
+        if let Some(name) = document.language_name() {
+            let config_for_file = ctx
+                .editor
+                .syn_loader
+                .load()
+                .language_config_for_language_id(name);
+            document.language = config_for_file;
+        }
+    }
+}
+
 fn set_configuration_for_file(
     ctx: &mut Context,
     file_name: SteelString,
@@ -1925,7 +1952,7 @@ impl HelixConfiguration {
         let value = serde_json::Value::try_from(config)?;
 
         // Horrendous, disgusting
-        let toml_value: toml::Value = toml::from_str(&serde_json::to_string(&value)?)?;
+        let toml_value: toml::Value = serde_json::from_str(&serde_json::to_string(&value)?)?;
 
         // Existing language config:
         let existing_config = self
