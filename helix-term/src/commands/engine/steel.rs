@@ -2074,8 +2074,6 @@ impl HelixConfiguration {
                 new_config.persistent_diagnostic_sources;
         }
 
-        log::info!("{:#?}", &existing_config);
-
         self.update_individual_language_config(IndividualLanguageConfiguration {
             config: existing_config,
         });
