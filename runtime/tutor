@@ -316,7 +316,7 @@
  Insert mode, so it is a very common shorthand for di.
 
  1. Move the cursor to the line marked '-->' below.
- 2. Move to the start of an incorrect word and type w to
+ 2. Move to the start of an incorrect word and type e to
     select it.
  3. Type c to delete the word and enter Insert mode.
  4. Type the correct word.
