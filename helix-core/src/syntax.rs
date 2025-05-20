@@ -1099,6 +1099,12 @@ impl Loader {
         self.language_configs.iter_mut()
     }
 
+    pub fn language_server_configs_mut(
+        &mut self,
+    ) -> &mut HashMap<String, LanguageServerConfiguration> {
+        &mut self.language_server_configs
+    }
+
     pub fn language_server_configs(&self) -> &HashMap<String, LanguageServerConfiguration> {
         &self.language_server_configs
     }

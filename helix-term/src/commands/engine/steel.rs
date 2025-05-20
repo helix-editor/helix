@@ -28,14 +28,13 @@ use once_cell::sync::{Lazy, OnceCell};
 use steel::{
     compiler::modules::steel_home,
     gc::{unsafe_erased_pointers::CustomReference, ShareableMut},
-    rvals::{as_underlying_type, IntoSteelVal, SteelString},
+    rvals::{as_underlying_type, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{
         engine::Engine, mutex_lock, mutex_unlock, register_fn::RegisterFn, ThreadStateController,
     },
     steelerr, SteelErr, SteelVal,
 };
 
-use std::sync::Arc;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -44,6 +43,7 @@ use std::{
     sync::{atomic::AtomicBool, Mutex, MutexGuard},
     time::Duration,
 };
+use std::{str::FromStr as _, sync::Arc};
 
 use steel::{rvals::Custom, steel_vm::builtin::BuiltInModule};
 
@@ -644,6 +644,11 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             HelixConfiguration::update_individual_language_config,
         );
 
+    module.register_fn(
+        "set-lsp-config!",
+        HelixConfiguration::update_language_server_config,
+    );
+
     module
         .register_fn("raw-file-picker", || FilePickerConfig::default())
         .register_fn("register-file-picker", HelixConfiguration::file_picker)
@@ -773,6 +778,42 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     (helix.set-configuration-for-file! *helix.cx* path config))
 "#,
         ));
+
+        builtin_configuration_module.push_str(
+            r#"
+(provide set-lsp-config!)
+;;@doc
+;; Sets the language server config for a specific language server.
+;;
+;; ```scheme
+;; (set-lsp-config! lsp config)
+;; ```
+;; * lsp : string?
+;; * config: hash?
+;;
+;; This will overlay the existing configuration, much like the existing
+;; toml definition does.
+;;
+;; Available options for the config hash are:
+;; ```scheme
+;; (hash "command" "<command>"
+;;       "args" (list "args" ...)
+;;       "environment" (hash "ENV" "VAR" ...)
+;;       "config" (hash ...)
+;;       "timeout" 100 ;; number
+;;       "required-root-patterns" (listof "pattern" ...))
+;;
+;; ```
+;;
+;; # Examples
+;; ```
+;; (set-lsp-config! "jdtls"
+;;    (hash "args" (list "-data" "/home/matt/code/java-scratch/workspace")))
+;; ```
+(define (set-lsp-config! lsp config)
+    (helix.set-lsp-config! *helix.config* lsp config))
+"#,
+        );
 
         // Register the get keybindings function
         builtin_configuration_module.push_str(&format!(
@@ -1333,6 +1374,9 @@ Get the `Rect` associated with the currently focused buffer.
     module.register_fn("editor-set-mode!", cx_set_mode);
     module.register_fn("editor-doc-in-view?", cx_is_document_in_view);
     module.register_fn("set-scratch-buffer-name!", set_scratch_buffer_name);
+
+    module.register_fn("set-buffer-uri!", set_buffer_uri);
+
     module.register_fn("editor-doc-exists?", cx_document_exists);
 
     // Arity 2
@@ -1403,6 +1447,9 @@ Get the `Rect` associated with the currently focused buffer.
             "set-scratch-buffer-name!",
             "Set the name of a scratch buffer.",
         );
+
+        // TODO: Lift this up
+        template_function_arity_1("set-buffer-uri!", "Set the URI of the buffer");
         template_function_arity_1("editor-doc-exists?", "Check if a document exists.");
         template_function_arity_1("editor->text", "Get the document as a rope.");
         template_function_arity_1("editor-document->path", "Get the path to a document.");
@@ -1819,6 +1866,7 @@ struct IndividualLanguageConfiguration {
     config: LanguageConfiguration,
 }
 
+// TODO: @Matt 5/19/2025 - Finish up writing these bindings.
 impl Custom for IndividualLanguageConfiguration {}
 
 impl IndividualLanguageConfiguration {
@@ -1887,6 +1935,58 @@ impl HelixConfiguration {
             })
     }
 
+    fn update_language_server_config(
+        &mut self,
+        lsp: SteelString,
+        map: HashMap<String, SteelVal>,
+    ) -> anyhow::Result<()> {
+        let mut loader = (*(*self.language_configuration.load())).clone();
+        let lsp_configs = loader.language_server_configs_mut();
+        let individual_config = lsp_configs.get_mut(lsp.as_str());
+
+        if let Some(config) = individual_config {
+            if let Some(args) = map.get("args") {
+                config.args = <Vec<String>>::from_steelval(args)?;
+            }
+
+            if let Some(command) = map.get("command") {
+                config.command = String::from_steelval(command)?;
+            }
+
+            if let Some(environment) = map.get("environment") {
+                config.environment = <HashMap<String, String>>::from_steelval(environment)?;
+            }
+
+            if let Some(config_json) = map.get("config") {
+                let serialized = serde_json::Value::try_from(config_json.clone())?;
+                config.config = Some(serialized);
+            }
+
+            if let Some(timeout) = map.get("timeout") {
+                config.timeout = u64::from_steelval(timeout)?;
+            }
+
+            if let Some(required_root_patterns) = map.get("required-root-patterns") {
+                let patterns = <Vec<String>>::from_steelval(required_root_patterns)?;
+
+                if !patterns.is_empty() {
+                    let mut builder = globset::GlobSetBuilder::new();
+                    for pattern in patterns {
+                        let glob = globset::Glob::new(&pattern)?;
+                        builder.add(glob);
+                    }
+                    config.required_root_patterns = Some(builder.build()?);
+                }
+            }
+        } else {
+            anyhow::bail!("Invalid lsp: {}", lsp);
+        }
+
+        self.language_configuration.store(Arc::new(loader));
+
+        Ok(())
+    }
+
     // Update the language config - this does not immediately flush it
     // to the actual config.
     fn update_individual_language_config(&mut self, config: IndividualLanguageConfiguration) {
@@ -1906,12 +2006,9 @@ impl HelixConfiguration {
                 break;
             }
         }
-    }
 
-    // // Refresh configuration for a specific file
-    // fn refresh_language_configuration(&mut self) {
-    //     todo!()
-    // }
+        self.language_configuration.store(Arc::new(loader));
+    }
 
     fn load_config(&self) -> Config {
         (*self.configuration.load().clone()).clone()
@@ -2246,19 +2343,21 @@ fn run_initialization_script(
             .unwrap(),
         );
 
-        let res = guard.run_with_reference(
-            cx,
-            "*helix.cx*",
-            &format!(r#"(require {:?})"#, helix_module_path.to_str().unwrap()),
-        );
+        if helix_module_path.exists() {
+            let res = guard.run_with_reference(
+                cx,
+                "*helix.cx*",
+                &format!(r#"(require {:?})"#, helix_module_path.to_str().unwrap()),
+            );
 
-        // Present the error in the helix.scm loading
-        if let Err(e) = res {
-            present_error_inside_engine_context(cx, guard, e);
-            return;
+            // Present the error in the helix.scm loading
+            if let Err(e) = res {
+                present_error_inside_engine_context(cx, guard, e);
+                return;
+            }
+        } else {
+            println!("Unable to find the `helix.scm` file.");
         }
-
-        let helix_module_path = steel_init_file();
 
         // These contents need to be registered with the path?
         if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
@@ -3718,6 +3817,24 @@ fn set_scratch_buffer_name(cx: &mut Context, name: String) {
     if let Some(current_doc) = current_doc {
         current_doc.name = Some(name);
     }
+}
+
+fn set_buffer_uri(cx: &mut Context, uri: SteelString) -> anyhow::Result<()> {
+    let current_focus = cx.editor.tree.focus;
+    let view = cx.editor.tree.get(current_focus);
+    let doc = &view.doc;
+    // Lifetime of this needs to be tied to the existing document
+    let current_doc = cx.editor.documents.get_mut(doc);
+
+    if let Some(current_doc) = current_doc {
+        if let Ok(url) = url::Url::from_str(uri.as_str()) {
+            current_doc.uri = Some(Box::new(url));
+        } else {
+            anyhow::bail!("Unable to parse uri: {:?}", uri);
+        }
+    }
+
+    Ok(())
 }
 
 fn cx_current_focus(cx: &mut Context) -> helix_view::ViewId {
