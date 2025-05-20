@@ -188,7 +188,7 @@ pub fn helix_component_module(generate_sources: bool) -> BuiltInModule {
 (provide {})
 ;;@doc
 {}
-(define ({} {}) (helix.components.{} {}))
+(define ({} {}) (helix.components.{} *helix.cx* {}))
                     "#,
                     $name, doc, $name, &formatted, $name, &formatted
                 ));
