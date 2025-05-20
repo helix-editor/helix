@@ -1684,12 +1684,13 @@ impl super::PluginSystem for SteelScriptingEngine {
         let mut engine = Engine::new();
         configure_builtin_sources(&mut engine, true);
         // Generate documentation as well
-        let target = helix_runtime_search_path();
+        if let Some(target) = alternative_runtime_search_path() {
+            let mut writer =
+                std::io::BufWriter::new(std::fs::File::create("steel-docs.md").unwrap());
 
-        let mut writer = std::io::BufWriter::new(std::fs::File::create("steel-docs.md").unwrap());
-
-        // Generate markdown docs
-        steel_doc::walk_dir(&mut writer, target, &mut engine).unwrap();
+            // Generate markdown docs
+            steel_doc::walk_dir(&mut writer, target, &mut engine).unwrap();
+        }
     }
 }
 
