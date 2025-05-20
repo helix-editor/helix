@@ -1169,11 +1169,11 @@ letters! that is not good grammar. you can fix this.
 =================================================================
 
  Using the selections and multi-cursor functionality, you can
- comment multiple lines as long as it is under the selection or
+ comment multiple lines as long as they are under the selection or
  cursors.
 
  1. Move your cursor to the line marked with '-->' below.
- 2. Now try to select or add more cursors the other lines marked
+ 2. Now try to select or add more cursors to the other lines marked
     with '-->'.
  3. Comment those lines.
 
