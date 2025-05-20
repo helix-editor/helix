@@ -5,12 +5,14 @@ use helix_core::{
     diagnostic::Severity,
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     find_workspace, graphemes,
-    syntax::{self, AutoPairConfig, IndentationConfiguration, LanguageConfiguration, SoftWrap},
+    syntax::{
+        self, default_timeout, AutoPairConfig, IndentationConfiguration, LanguageConfiguration,
+        LanguageServerConfiguration, SoftWrap,
+    },
     text_annotations::InlineAnnotation,
     Range, Selection, Tendril,
 };
 use helix_event::register_hook;
-use helix_loader::merge_toml_values;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
@@ -2072,6 +2074,8 @@ impl HelixConfiguration {
                 new_config.persistent_diagnostic_sources;
         }
 
+        log::info!("{:#?}", &existing_config);
+
         self.update_individual_language_config(IndividualLanguageConfiguration {
             config: existing_config,
         });
@@ -2098,6 +2102,7 @@ impl HelixConfiguration {
     ) -> anyhow::Result<()> {
         let mut loader = (*(*self.language_configuration.load())).clone();
         let lsp_configs = loader.language_server_configs_mut();
+
         let individual_config = lsp_configs.get_mut(lsp.as_str());
 
         if let Some(config) = individual_config {
@@ -2135,7 +2140,50 @@ impl HelixConfiguration {
                 }
             }
         } else {
-            anyhow::bail!("Invalid lsp: {}", lsp);
+            let command = if let Some(command) = map.get("command") {
+                String::from_steelval(command)?
+            } else {
+                anyhow::bail!("LSP config missing required `command` field.");
+            };
+
+            let mut config = LanguageServerConfiguration {
+                command,
+                args: Vec::new(),
+                environment: HashMap::new(),
+                config: None,
+                timeout: default_timeout(),
+                required_root_patterns: None,
+            };
+
+            if let Some(args) = map.get("args") {
+                config.args = <Vec<String>>::from_steelval(args)?;
+            }
+
+            if let Some(environment) = map.get("environment") {
+                config.environment = <HashMap<String, String>>::from_steelval(environment)?;
+            }
+
+            if let Some(config_json) = map.get("config") {
+                let serialized = serde_json::Value::try_from(config_json.clone())?;
+                config.config = Some(serialized);
+            }
+
+            if let Some(timeout) = map.get("timeout") {
+                config.timeout = u64::from_steelval(timeout)?;
+            }
+
+            if let Some(required_root_patterns) = map.get("required-root-patterns") {
+                let patterns = <Vec<String>>::from_steelval(required_root_patterns)?;
+
+                if !patterns.is_empty() {
+                    let mut builder = globset::GlobSetBuilder::new();
+                    for pattern in patterns {
+                        let glob = globset::Glob::new(&pattern)?;
+                        builder.add(glob);
+                    }
+                    config.required_root_patterns = Some(builder.build()?);
+                }
+            }
         }
 
         self.language_configuration.store(Arc::new(loader));

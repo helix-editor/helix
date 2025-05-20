@@ -76,7 +76,7 @@ where
     Ok(Option::<AutoPairConfig>::deserialize(deserializer)?.and_then(AutoPairConfig::into))
 }
 
-fn default_timeout() -> u64 {
+pub fn default_timeout() -> u64 {
     20
 }
 
