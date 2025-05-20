@@ -10,6 +10,7 @@ use helix_core::{
     Range, Selection, Tendril,
 };
 use helix_event::register_hook;
+use helix_loader::merge_toml_values;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
@@ -172,28 +173,6 @@ where
     res
 }
 
-pub struct KeyMapApi {
-    default_keymap: fn() -> EmbeddedKeyMap,
-    empty_keymap: fn() -> EmbeddedKeyMap,
-    string_to_embedded_keymap: fn(String) -> EmbeddedKeyMap,
-    merge_keybindings: fn(&mut EmbeddedKeyMap, EmbeddedKeyMap),
-    is_keymap: fn(SteelVal) -> bool,
-    deep_copy_keymap: fn(EmbeddedKeyMap) -> EmbeddedKeyMap,
-}
-
-impl KeyMapApi {
-    fn new() -> Self {
-        KeyMapApi {
-            default_keymap,
-            empty_keymap,
-            string_to_embedded_keymap,
-            merge_keybindings,
-            is_keymap,
-            deep_copy_keymap,
-        }
-    }
-}
-
 // Handle buffer and extension specific keybindings in userspace.
 pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: Lazy<SteelVal> =
     Lazy::new(|| SteelVal::boxed(SteelVal::empty_hashmap()));
@@ -211,16 +190,15 @@ fn load_component_api(engine: &mut Engine, generate_sources: bool) {
     engine.register_module(module);
 }
 
-fn load_keymap_api(engine: &mut Engine, api: KeyMapApi, generate_sources: bool) {
+fn load_keymap_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/keymaps");
 
-    module.register_fn("helix-empty-keymap", api.empty_keymap);
-    module.register_fn("helix-default-keymap", api.default_keymap);
-    module.register_fn("helix-merge-keybindings", api.merge_keybindings);
-    module.register_fn("helix-string->keymap", api.string_to_embedded_keymap);
-    module.register_fn("keymap?", api.is_keymap);
-
-    module.register_fn("helix-deep-copy-keymap", api.deep_copy_keymap);
+    module.register_fn("helix-empty-keymap", empty_keymap);
+    module.register_fn("helix-default-keymap", default_keymap);
+    module.register_fn("helix-merge-keybindings", merge_keybindings);
+    module.register_fn("helix-string->keymap", string_to_embedded_keymap);
+    module.register_fn("keymap?", is_keymap);
+    module.register_fn("helix-deep-copy-keymap", deep_copy_keymap);
 
     // This should be associated with a corresponding scheme module to wrap this up
     module.register_value(
@@ -649,6 +627,11 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         HelixConfiguration::update_language_server_config,
     );
 
+    module.register_fn(
+        "update-language-config!",
+        HelixConfiguration::update_language_config,
+    );
+
     module
         .register_fn("raw-file-picker", || FilePickerConfig::default())
         .register_fn("register-file-picker", HelixConfiguration::file_picker)
@@ -812,6 +795,14 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 ;; ```
 (define (set-lsp-config! lsp config)
     (helix.set-lsp-config! *helix.config* lsp config))
+"#,
+        );
+
+        builtin_configuration_module.push_str(
+            r#"
+(provide update-language-config!)
+(define (update-language-config! lsp config)
+    (helix.update-language-config! *helix.config* lsp config))
 "#,
         );
 
@@ -1863,6 +1854,8 @@ struct HelixConfiguration {
 
 #[derive(Clone)]
 struct IndividualLanguageConfiguration {
+    // Lets go ahead and just deserialize it that way.
+    // It's ugly and annoying.
     config: LanguageConfiguration,
 }
 
@@ -1921,6 +1914,35 @@ impl HelixConfiguration {
             .map(|config| IndividualLanguageConfiguration {
                 config: (*config).clone(),
             })
+    }
+
+    fn update_language_config(
+        &mut self,
+        language: SteelString,
+        config: SteelVal,
+    ) -> anyhow::Result<()> {
+        // Do some gross json -> toml conversion
+        let value = serde_json::Value::try_from(config)?;
+
+        // Horrendous, disgusting
+        let toml_value: toml::Value = toml::from_str(&serde_json::to_string(&value)?)?;
+
+        // Existing language config:
+        let existing_config = self
+            .language_configuration
+            .load()
+            .language_config_for_language_id(language.as_str())
+            .unwrap();
+
+        let existing_toml: toml::Value = toml::from_str(&toml::to_string(&existing_config)?)?;
+
+        let combined = merge_toml_values(existing_toml, toml_value, 3);
+
+        self.update_individual_language_config(IndividualLanguageConfiguration {
+            config: combined.try_into()?,
+        });
+
+        Ok(())
     }
 
     fn get_individual_language_config_for_filename(
@@ -2358,6 +2380,8 @@ fn run_initialization_script(
         } else {
             println!("Unable to find the `helix.scm` file.");
         }
+
+        let helix_module_path = steel_init_file();
 
         // These contents need to be registered with the path?
         if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
@@ -3289,7 +3313,7 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     load_typed_commands(engine, generate_sources);
     load_static_commands(engine, generate_sources);
     // Note: This is going to be completely revamped soon.
-    load_keymap_api(engine, KeyMapApi::new(), generate_sources);
+    load_keymap_api(engine, generate_sources);
     load_rope_api(engine, generate_sources);
     load_misc_api(engine, generate_sources);
     load_component_api(engine, generate_sources);
