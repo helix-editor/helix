@@ -1952,21 +1952,128 @@ impl HelixConfiguration {
         let value = serde_json::Value::try_from(config)?;
 
         // Horrendous, disgusting
-        let toml_value: toml::Value = serde_json::from_str(&serde_json::to_string(&value)?)?;
+        let mut toml_value: toml::Value = serde_json::from_str(&serde_json::to_string(&value)?)?;
+
+        let auto_format_present = toml_value.get("auto-format").is_some();
+        let diagnostic_severity_present = toml_value.get("diagnostic-severity").is_some();
+        let language_servers_present = toml_value.get("language-servers").is_some();
+        let persistent_diagnostic_sources_present =
+            toml_value.get("persistent-diagnostic-sources").is_some();
 
         // Existing language config:
-        let existing_config = self
+        let mut existing_config = (*self
             .language_configuration
             .load()
             .language_config_for_language_id(language.as_str())
-            .unwrap();
+            .unwrap())
+        .clone();
 
-        let existing_toml: toml::Value = toml::from_str(&toml::to_string(&existing_config)?)?;
+        if toml_value.get("scope").is_none() {
+            toml_value
+                .as_table_mut()
+                .and_then(|x| x.insert("scope".to_string(), existing_config.scope.into()));
+        }
 
-        let combined = merge_toml_values(existing_toml, toml_value, 3);
+        for need_empty in ["file-types", "shebangs", "roots"] {
+            if toml_value.get(need_empty).is_none() {
+                toml_value.as_table_mut().and_then(|x| {
+                    x.insert(need_empty.to_owned(), <Vec<toml::Value>>::new().into())
+                });
+            }
+        }
+
+        let new_config: LanguageConfiguration = toml_value.try_into()?;
+
+        if let Some(id) = new_config.language_server_language_id {
+            existing_config.language_server_language_id = Some(id);
+        }
+
+        // Take the new scope, since its already set to the old one as a default.
+        existing_config.scope = new_config.scope;
+
+        if !new_config.file_types.is_empty() {
+            existing_config.file_types = new_config.file_types;
+        }
+
+        if !new_config.shebangs.is_empty() {
+            existing_config.shebangs = new_config.shebangs;
+        }
+
+        if !new_config.roots.is_empty() {
+            existing_config.roots = new_config.roots;
+        }
+
+        if let Some(comment_tokens) = new_config.comment_tokens {
+            existing_config.comment_tokens = Some(comment_tokens);
+        }
+
+        if let Some(block_comment_tokens) = new_config.block_comment_tokens {
+            existing_config.block_comment_tokens = Some(block_comment_tokens);
+        }
+
+        if let Some(text_width) = new_config.text_width {
+            existing_config.text_width = Some(text_width);
+        }
+
+        if let Some(soft_wrap) = new_config.soft_wrap {
+            existing_config.soft_wrap = Some(soft_wrap);
+        }
+
+        if auto_format_present {
+            existing_config.auto_format = new_config.auto_format;
+        }
+
+        if let Some(formatter) = new_config.formatter {
+            existing_config.formatter = Some(formatter);
+        }
+
+        if let Some(path_complation) = new_config.path_completion {
+            existing_config.path_completion = Some(path_complation);
+        }
+
+        if diagnostic_severity_present {
+            existing_config.diagnostic_severity = new_config.diagnostic_severity;
+        }
+
+        if let Some(grammar) = new_config.grammar {
+            existing_config.grammar = Some(grammar);
+        }
+
+        if let Some(injection_regex) = new_config.injection_regex {
+            existing_config.injection_regex = Some(injection_regex);
+        }
+
+        if language_servers_present {
+            existing_config.language_servers = new_config.language_servers;
+        }
+
+        if let Some(indent) = new_config.indent {
+            existing_config.indent = Some(indent);
+        }
+
+        if let Some(debugger) = new_config.debugger {
+            existing_config.debugger = Some(debugger);
+        }
+
+        if let Some(auto_pairs) = new_config.auto_pairs {
+            existing_config.auto_pairs = Some(auto_pairs);
+        }
+
+        if let Some(rulers) = new_config.rulers {
+            existing_config.rulers = Some(rulers);
+        }
+
+        if let Some(workspace_lsp_roots) = new_config.workspace_lsp_roots {
+            existing_config.workspace_lsp_roots = Some(workspace_lsp_roots);
+        }
+
+        if persistent_diagnostic_sources_present {
+            existing_config.persistent_diagnostic_sources =
+                new_config.persistent_diagnostic_sources;
+        }
 
         self.update_individual_language_config(IndividualLanguageConfiguration {
-            config: combined.try_into()?,
+            config: existing_config,
         });
 
         Ok(())
