@@ -2184,6 +2184,8 @@ impl HelixConfiguration {
                     config.required_root_patterns = Some(builder.build()?);
                 }
             }
+
+            lsp_configs.insert(lsp.as_str().to_owned(), config);
         }
 
         self.language_configuration.store(Arc::new(loader));
