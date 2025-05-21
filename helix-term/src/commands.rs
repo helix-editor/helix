@@ -4651,6 +4651,7 @@ fn paste_impl(
         out
     };
 
+    let values_len = values.len();
     let repeat = std::iter::repeat(
         // `values` is asserted to have at least one entry above.
         map_value(values.last().unwrap()),
@@ -4681,7 +4682,27 @@ fn paste_impl(
             (Paste::Cursor, _) => range.cursor(text.slice(..)),
         };
 
-        let value = values.next();
+        let value =
+            if (&selection).len() == 1 {
+                /*
+                Special case:
+                If there's only one target selection, join all values with
+                newlines and use the result as the value to be inserted.
+                */
+                let line_ending = doc.line_ending.as_str();
+                Some(values.clone().take(values_len).fold(
+                    Tendril::new_const(),
+                    |mut acc, value| {
+                        if !acc.trim().is_empty() {
+                            acc.push_str(line_ending);
+                        }
+                        acc.push_str(&value);
+                        acc
+                    },
+                ))
+            } else {
+                values.next()
+            };
 
         let value_len = value
             .as_ref()
@@ -4746,10 +4767,11 @@ fn replace_with_yanked(cx: &mut Context) {
 }
 
 fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
-    let Some(values) = editor
+    let Some(register_values) = editor
         .registers
         .read(register, editor)
         .filter(|values| values.len() > 0)
+        .map(|values| values.collect::<Vec<_>>())
     else {
         return;
     };
@@ -4764,18 +4786,38 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
         }
         out
     };
-    let mut values_rev = values.rev().peekable();
+    let mut values_rev = register_values.iter().rev().peekable();
     // `values` is asserted to have at least one entry above.
     let last = values_rev.peek().unwrap();
     let repeat = std::iter::repeat(map_value(last));
-    let mut values = values_rev
-        .rev()
-        .map(|value| map_value(&value))
-        .chain(repeat);
+    let mut values = values_rev.rev().map(map_value).chain(repeat);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         if !range.is_empty() {
-            (range.from(), range.to(), Some(values.next().unwrap()))
+            (
+                range.from(),
+                range.to(),
+                if selection.len() == 1 {
+                    /*
+                    Special case:
+                    If there's only one target selection, join all values with
+                    newlines and use the result as the value to be inserted.
+                    */
+                    let line_ending = doc.line_ending.as_str();
+                    Some(register_values.iter().take(register_values.len()).fold(
+                        Tendril::new_const(),
+                        |mut acc, value| {
+                            if !acc.is_empty() {
+                                acc.push_str(line_ending);
+                            }
+                            acc.push_str(&value);
+                            acc
+                        },
+                    ))
+                } else {
+                    values.next()
+                },
+            )
         } else {
             (range.from(), range.to(), None)
         }
