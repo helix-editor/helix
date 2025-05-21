@@ -156,6 +156,7 @@ where
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::Workspace => render_workspace,
     }
 }
 
@@ -553,4 +554,85 @@ where
     if let Some(reg) = context.editor.selected_register {
         write(context, format!(" reg={} ", reg).into())
     }
+}
+
+fn render_workspace<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    // full current working directory
+    let cwd = helix_stdx::env::current_working_dir();
+
+    // current workspace
+    let (workspace, _) = helix_loader::find_workspace();
+
+    let canon_cwd_path = std::fs::canonicalize(&cwd);
+    let canon_workspace_path = std::fs::canonicalize(&workspace);
+    let ret: String = match (canon_cwd_path, canon_workspace_path) {
+        (Ok(canon_cwd), Ok(canon_workspace)) => {
+            if canon_cwd == canon_workspace {
+                canon_workspace
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default()
+                    .to_string()
+            } else {
+                // assumption: cwd path is always atleast has the same length with workspace.
+                let workspace_fullpath_str =
+                    canon_workspace.to_str().unwrap_or_default().to_string();
+
+                let cwd_fullpath_str = canon_cwd.to_str().unwrap_or_default().to_string();
+
+                let cwd_dirs_remainder =
+                    string_incision(&cwd_fullpath_str, &workspace_fullpath_str);
+
+                match cwd_dirs_remainder {
+                    Some(remainder) => {
+                        let canon_workspace_base = canon_workspace
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_str()
+                            .unwrap_or_default()
+                            .to_string();
+                        let ret = format!("{}{}", canon_workspace_base, remainder);
+                        ret
+                    }
+                    None => canon_workspace
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or_default()
+                        .to_string(),
+                }
+            }
+        }
+        (Err(_), _) | (_, Err(_)) => workspace
+            .file_name()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default()
+            .to_string(),
+    };
+
+    write(context, ret, None)
+}
+
+// find incision between two string,
+// e.g.
+// longer_str: /Users/this/that/thus
+// shorter_str: /Users/this
+// ret: /that/thus
+fn string_incision(str1: &str, str2: &str) -> Option<String> {
+    let (longer_str, shorter_str) = if str1.len() > str2.len() {
+        (str1, str2)
+    } else {
+        (str2, str1)
+    };
+    if longer_str.starts_with(shorter_str) {
+        let start_pos = shorter_str.len();
+        let remainder = &longer_str[start_pos..];
+        return Some(remainder.into());
+    }
+    None
 }
