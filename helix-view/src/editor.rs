@@ -1430,6 +1430,10 @@ impl Editor {
                 log::error!("failed to apply workspace edit: {err:?}")
             }
         }
+        // Create the target directory if it doesn't exist. fs::rename won't do that implicitly.
+        if let Some(parent) = new_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
         fs::rename(old_path, &new_path)?;
         if let Some(doc) = self.document_by_path(old_path) {
             self.set_doc_path(doc.id(), &new_path);
