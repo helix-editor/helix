@@ -1779,7 +1779,15 @@ impl Component for SteelDynamicComponent {
                     (thunk)(engine, buffer)
                 })
             {
-                present_error_inside_engine_context(&mut ctx, guard, e)
+                let name = self.name.clone();
+                super::steel::present_error_inside_engine_context_with_callback(
+                    &mut ctx,
+                    guard,
+                    e,
+                    move |compositor| {
+                        compositor.remove_by_dynamic_name(&name);
+                    },
+                );
             }
         })
     }

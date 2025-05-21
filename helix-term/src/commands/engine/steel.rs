@@ -1791,6 +1791,38 @@ pub fn present_error_inside_engine_context(cx: &mut Context, engine: &mut Engine
     cx.jobs.callback(callback);
 }
 
+pub fn present_error_inside_engine_context_with_callback(
+    cx: &mut Context,
+    engine: &mut Engine,
+    e: SteelErr,
+    mut callback: impl FnMut(&mut Compositor) + Send + Sync + 'static,
+) {
+    cx.editor.set_error(e.to_string());
+
+    let backtrace = engine.raise_error_to_string(e);
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if let Some(backtrace) = backtrace {
+                    let contents = ui::Markdown::new(
+                        format!("```\n{}\n```", backtrace),
+                        editor.syn_loader.clone(),
+                    );
+                    let popup = Popup::new("engine", contents).position(Some(
+                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                    ));
+                    compositor.replace_or_push("engine", popup);
+
+                    callback(compositor);
+                }
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+}
+
 // Key maps
 #[derive(Clone, Debug)]
 pub struct EmbeddedKeyMap(pub HashMap<Mode, KeyTrie>);
