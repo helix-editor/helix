@@ -237,6 +237,12 @@ impl EditorView {
             empty_line(),
         ];
 
+        debug_assert!(
+            raw_help_lines.len() >= LOGO_STR.lines().count(),
+            "help lines get chained with lines of logo. if there are not \
+             enough help lines, logo will be cut off. add `empty_line()`s if necessary"
+        );
+
         let mut help_lines = Vec::with_capacity(raw_help_lines.len());
         let mut len_of_longest_left_align = 0;
         let mut len_of_longest_center_align = 0;
