@@ -202,11 +202,6 @@ impl EditorView {
                 "            see all commands".into(),
             ],
             [Left] vec![
-                Span::styled(":config-open", theme.get("markup.raw")),
-                Span::styled("<enter>", theme.get("comment")),
-                " configure helix".into(),
-            ],
-            [Left] vec![
                 Span::styled(":quit", theme.get("markup.raw")),
                 Span::styled("<enter>", theme.get("comment")),
                 "        quit helix".into(),
@@ -216,6 +211,7 @@ impl EditorView {
                 Span::styled("docs: ", theme.get("ui.text")),
                 Span::styled("docs.helix-editor.com", theme.get("markup.link.url")),
             ],
+            [Left] "",
         };
 
         // how many total lines there are in the welcome screen
