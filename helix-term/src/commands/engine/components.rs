@@ -1319,6 +1319,18 @@ will not continue to be propagated down the component stack. This will _not_ tri
 a re-render.
         "#
     );
+
+    register!(
+        value,
+        "event-result/ignore-and-close",
+        SteelEventResult::IgnoreAndClose.into_steelval().unwrap(),
+        r#"
+Singleton for ignoring an event. If this is returned from an event handler, the event
+will continue to be propagated down the component stack, and the component will be
+popped off of the stack and removed.
+        "#
+    );
+
     register!(
         value,
         "event-result/close",
@@ -1742,6 +1754,7 @@ impl Custom for Box<dyn Component> {}
 enum SteelEventResult {
     Consumed,
     Ignored,
+    IgnoreAndClose,
     Close,
     ConsumedWithoutRerender,
 }
@@ -1850,13 +1863,6 @@ impl Component for SteelDynamicComponent {
                 )
             };
 
-            let close_fn = compositor::EventResult::Consumed(Some(Box::new(
-                |compositor: &mut compositor::Compositor, _| {
-                    // remove the layer
-                    compositor.pop();
-                },
-            )));
-
             // let event = match event {
             //     Event::Key(event) => *event,
             //     _ => return compositor::EventResult::Ignored(None),
@@ -1876,12 +1882,23 @@ impl Component for SteelDynamicComponent {
                     let value = SteelEventResult::from_steelval(&v);
 
                     match value {
-                        Ok(SteelEventResult::Close) => close_fn,
+                        Ok(SteelEventResult::Close) => compositor::EventResult::Consumed(Some(
+                            Box::new(|compositor: &mut compositor::Compositor, _| {
+                                // remove the layer
+                                compositor.pop();
+                            }),
+                        )),
                         Ok(SteelEventResult::Consumed) => compositor::EventResult::Consumed(None),
                         Ok(SteelEventResult::ConsumedWithoutRerender) => {
                             compositor::EventResult::ConsumedWithoutRerender
                         }
                         Ok(SteelEventResult::Ignored) => compositor::EventResult::Ignored(None),
+                        Ok(SteelEventResult::IgnoreAndClose) => compositor::EventResult::Ignored(
+                            Some(Box::new(|compositor: &mut compositor::Compositor, _| {
+                                // remove the layer
+                                compositor.pop();
+                            })),
+                        ),
                         _ => match event {
                             // ctrl!('c') | key!(Esc) => close_fn,
                             _ => compositor::EventResult::Ignored(None),
