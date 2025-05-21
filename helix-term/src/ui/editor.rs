@@ -121,9 +121,13 @@ impl EditorView {
                             '*' | ':' | '=' | '-' => Span::styled(
                                 ch.to_string(),
                                 Style::new().fg(match ch {
+                                    // Dark purple
                                     '*' => Color::Rgb(112, 107, 200),
+                                    // Dark blue
                                     ':' => Color::Rgb(132, 221, 234),
+                                    // Bright purple
                                     '=' => Color::Rgb(153, 123, 200),
+                                    // Bright blue
                                     '-' => Color::Rgb(85, 197, 228),
                                     _ => unreachable!(),
                                 }),
