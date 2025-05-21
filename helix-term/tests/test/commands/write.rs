@@ -130,7 +130,7 @@ async fn test_write() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn test_overwrite_protection() -> anyhow::Result<()> {
+async fn test_file_overwrite_protection() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
@@ -150,6 +150,42 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
 
+    assert_eq!("extremely important content", file_content);
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_directory_overwrite_protection() -> anyhow::Result<()> {
+    let directory = tempfile::TempDir::new()?;
+    assert!(!directory
+        .path()
+        .to_string_lossy()
+        .ends_with(std::path::MAIN_SEPARATOR_STR));
+
+    let mut file = tempfile::NamedTempFile::new_in(directory.path())?;
+    file.as_file_mut()
+        .write_all("extremely important content".as_bytes())?;
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_input_text("some text#[|]#")
+        .build()?;
+
+    helpers::run_event_loop_until_idle(&mut app).await;
+
+    test_key_sequence(
+        &mut app,
+        Some(&format!(":w {}", directory.path().to_string_lossy())),
+        None,
+        false,
+    )
+    .await?;
+
+    // reload_file(&mut file).unwrap();
+    // let mut file_content = String::new();
+    let file_content = std::fs::read_to_string(file.path())?;
     assert_eq!("extremely important content", file_content);
 
     Ok(())
