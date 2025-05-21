@@ -3618,6 +3618,14 @@ pub(super) fn execute_command(
 
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
+    let mut prompt = command_mode_prompt();
+
+    // Calculate initial completion
+    prompt.recalculate_completion(cx.editor);
+    cx.push_layer(Box::new(prompt));
+}
+
+pub(super) fn command_mode_prompt() -> Prompt {
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -3630,9 +3638,7 @@ pub(super) fn command_mode(cx: &mut Context) {
     );
     prompt.doc_fn = Box::new(command_line_doc);
 
-    // Calculate initial completion
-    prompt.recalculate_completion(cx.editor);
-    cx.push_layer(Box::new(prompt));
+    prompt
 }
 
 fn command_line_doc(input: &str) -> Option<Cow<str>> {
