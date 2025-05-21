@@ -872,7 +872,7 @@ fn start_client(
     enable_snippets: bool,
 ) -> Result<NewClient, StartupError> {
     let (workspace, workspace_is_cwd) = helix_loader::find_workspace();
-    let workspace = path::normalize(workspace);
+    let workspace = helix_stdx::path::canonicalize(&workspace).map_err(|err| StartupError::Error(anyhow::anyhow!("failed to canonicalize workspace {:?}: {}", workspace, err)))?;
     let root = find_lsp_workspace(
         doc_path
             .and_then(|x| x.parent().and_then(|x| x.to_str()))
@@ -885,8 +885,8 @@ fn start_client(
 
     // `root_uri` and `workspace_folder` can be empty in case there is no workspace
     // `root_url` can not, use `workspace` as a fallback
-    let root_path = root.clone().unwrap_or_else(|| workspace.clone());
-    let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
+    let root_path = root.clone().unwrap_or_else(|| workspace.clone()); // workspace is now canonical
+    let root_uri = root.as_ref().and_then(|r| lsp::Url::from_file_path(r).ok()); // root is now canonical
 
     if let Some(globset) = &ls_config.required_root_patterns {
         if !root_path
@@ -956,46 +956,62 @@ pub fn find_lsp_workspace(
     workspace: &Path,
     workspace_is_cwd: bool,
 ) -> Option<PathBuf> {
-    let file = std::path::Path::new(file);
-    let mut file = if file.is_absolute() {
-        file.to_path_buf()
+    let file_path = std::path::Path::new(file);
+    let initial_file_path = if file_path.is_absolute() {
+        file_path.to_path_buf()
     } else {
         let current_dir = helix_stdx::env::current_working_dir();
-        current_dir.join(file)
+        current_dir.join(file_path)
     };
-    file = path::normalize(&file);
 
+    // Attempt to canonicalize the initial file path. If it fails, we might not be able to proceed.
+    // For now, let's return None if canonicalization of the base file path fails.
+    let file = match helix_stdx::path::canonicalize(&initial_file_path) {
+        Ok(p) => p,
+        Err(_) => return None, // Or handle error more explicitly
+    };
+
+    // Workspace itself should be canonical. The caller (start_client) ensures this.
     if !file.starts_with(workspace) {
         return None;
     }
 
-    let mut top_marker = None;
+    let mut top_marker_path = None;
     for ancestor in file.ancestors() {
+        // Canonicalize ancestor before joining and checking for markers/root_dirs
+        // However, ancestor itself is already part of a canonical path `file`.
+        // The paths joined (marker, root_dir) should be relative to a canonical ancestor.
+        // And `workspace.join(root_dir)` should be canonicalized for comparison.
+
         if root_markers
             .iter()
             .any(|marker| ancestor.join(marker).exists())
         {
-            top_marker = Some(ancestor);
+            // Store the canonical ancestor if a marker is found
+            top_marker_path = Some(ancestor.to_path_buf());
         }
 
-        if root_dirs
-            .iter()
-            .any(|root_dir| path::normalize(workspace.join(root_dir)) == ancestor)
-        {
-            // if the worskapce is the cwd do not search any higher for workspaces
-            // but specify
-            return Some(top_marker.unwrap_or(workspace).to_owned());
+        if root_dirs.iter().any(|root_dir| {
+            match helix_stdx::path::canonicalize(&workspace.join(root_dir)) {
+                Ok(canonical_root_dir) => canonical_root_dir == ancestor,
+                Err(_) => false,
+            }
+        }) {
+            // If a root_dir matches the current ancestor, decide what to return.
+            // The path returned must be canonical.
+            return top_marker_path.or_else(|| Some(ancestor.to_path_buf()));
         }
+
         if ancestor == workspace {
-            // if the workspace is the CWD, let the LSP decide what the workspace
-            // is
-            return top_marker
-                .or_else(|| (!workspace_is_cwd).then_some(workspace))
-                .map(Path::to_owned);
+            // If we've reached the workspace root.
+            // `top_marker_path` would be a canonical path if set.
+            // `workspace` is already canonical.
+            return top_marker_path
+                .or_else(|| (!workspace_is_cwd).then_some(workspace.to_path_buf()));
         }
     }
 
-    debug_assert!(false, "workspace must be an ancestor of <file>");
+    debug_assert!(false, "workspace must be an ancestor of <file> or logic error in loop");
     None
 }
 
