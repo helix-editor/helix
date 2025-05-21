@@ -273,7 +273,9 @@ impl EditorView {
         let is_help_x_overflowing =
             are_any_left_aligned_lines_overflowing_x || are_any_center_aligned_lines_overflowing_x;
 
-        // we want `<` so it does not get drawn over the status line
+        // we want `>=` so it does not get drawn over the status line
+        // (essentially, it WON'T be marked as "overflowing" if the help
+        // fully fits vertically in the viewport without touching the status line)
         let is_help_y_overflowing = (help_lines.len() as u16) >= view.area.height;
 
         // Not enough space to render the help text even without the logo. Render nothing.
@@ -291,6 +293,7 @@ impl EditorView {
         // If we get here we know that there IS enough space to show just the help
         let show_logo = width_of_help_with_logo <= view.area.width;
 
+        // Each "help" line is effectively "chained" with a line of the logo (if present).
         for (lines_drawn, (line, align)) in help_lines.iter().enumerate() {
             // Where to start drawing `AlignLine::Left` rows
             let x_start_left_help =
@@ -309,9 +312,11 @@ impl EditorView {
 
             let y = start_drawing_at_y + lines_drawn as u16;
 
+            // Draw a single line of the help text
             surface.set_spans(x_start_help, y, line, line.width() as u16);
 
             if show_logo {
+                // Draw a single line of the logo
                 surface.set_spans(
                     x_start_left_help - LOGO_LEFT_PADDING - *LOGO_WIDTH,
                     y,
