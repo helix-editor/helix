@@ -229,6 +229,7 @@
 | teal | ✓ |  |  | `teal-language-server` |
 | templ | ✓ |  |  | `templ` |
 | tera | ✓ |  |  |  |
+| test | ✓ |  |  |  |
 | textproto | ✓ | ✓ | ✓ |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
 | thrift | ✓ |  |  |  |
