@@ -289,25 +289,27 @@ impl EditorView {
 
         for (lines_drawn, (line, align)) in help_lines.iter().enumerate() {
             // Where to start drawing `AlignLine::Left` rows
-            let x_start_left =
+            let x_start_left_help =
                 start_drawing_left_align_at_x + if show_logo { *HELP_X_LOGO_OFFSET } else { 0 };
 
             // Where to start drawing `AlignLine::Center` rows
-            let x_start_center = x_view_center - line.width() as u16 / 2
+            let x_start_center_help = x_view_center - line.width() as u16 / 2
                 + if show_logo { *HELP_X_LOGO_OFFSET } else { 0 };
 
-            let x = match align {
-                Left => x_start_left,
-                Center => x_start_center,
+            // Where to start drawing rows for the "help" section
+            // Includes tips about commands. Excludes the logo.
+            let x_start_help = match align {
+                Left => x_start_left_help,
+                Center => x_start_center_help,
             };
 
             let y = start_drawing_at_y + lines_drawn as u16;
 
-            surface.set_spans(x, y, line, line.width() as u16);
+            surface.set_spans(x_start_help, y, line, line.width() as u16);
 
             if show_logo {
                 surface.set_spans(
-                    x_start_left - LOGO_LEFT_PADDING - *LOGO_WIDTH,
+                    x_start_left_help - LOGO_LEFT_PADDING - *LOGO_WIDTH,
                     y,
                     &logo[lines_drawn],
                     *LOGO_WIDTH,
