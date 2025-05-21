@@ -19,12 +19,12 @@
 - [`[editor.soft-wrap]` Section](#editorsoft-wrap-section)
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
+- [`[editor.scrolloff]`]
 
 ### `[editor]` Section
 
 | Key | Description | Default |
 |--|--|---------|
-| `scrolloff` | Number of lines of padding around the edge of the screen when scrolling | `5` |
 | `mouse` | Enable mouse mode | `true` |
 | `default-yank-register` | Default register used for yank/paste | `"` |
 | `middle-click-paste` | Middle click paste support | `true` |
@@ -474,3 +474,15 @@ end-of-line-diagnostics = "hint"
 [editor.inline-diagnostics]
 cursor-line = "warning" # show warnings and errors on the cursorline inline
 ```
+
+### `[editor.scrolloff]` Section
+
+Options for setting scrolloff shown below
+
+
+| Key        | Description | Default |
+|------------|-------------|---------|
+| `vertical` | Number of lines of padding around the top and bottom of the screen when scrolling | `5` |
+| `horizontal` | Number of lines of padding around the left and right of the screen when scrolling | `5` |
+
+Settings the scrolloff to `999` for `vertical` will center the line with the cursor.
