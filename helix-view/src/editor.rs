@@ -1753,7 +1753,7 @@ impl Editor {
     pub fn new_file_welcome(&mut self) -> DocumentId {
         self.new_file_from_document(
             Action::VerticalSplit,
-            Document::default(self.config.clone()).with_welcome(),
+            Document::default(self.config.clone(), self.syn_loader.clone()).with_welcome(),
         )
     }
 

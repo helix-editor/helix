@@ -32,7 +32,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
+use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc, sync::LazyLock};
 
 use tui::{
     buffer::Buffer as Surface,
@@ -78,12 +78,79 @@ impl EditorView {
         &mut self.spinners
     }
 
-    pub fn render_welcome(theme: &Theme, view: &View, surface: &mut Surface) {
+    pub fn render_welcome(theme: &Theme, view: &View, surface: &mut Surface, is_colorful: bool) {
         #[derive(PartialEq, PartialOrd, Eq, Ord)]
         enum Align {
             Left,
             Center,
         }
+
+        /// Logo for Helix
+        const LOGO: &str = "\
+**             
+*****        ::
+ ******** :::::
+     **::::::: 
+   ::::::::***=
+:::::::    ====
+::::    =======
+:---========   
+ =======--     
+===== -------- 
+==        -----
+             --";
+
+        /// Size of the maximum line of the logo
+        static LOGO_WIDTH: LazyLock<u16> = LazyLock::new(|| {
+            LOGO.lines()
+                .max_by(|line, other| line.len().cmp(&other.len()))
+                .unwrap_or("")
+                .len() as u16
+        });
+
+        /// Use when true color is not supported
+        static COLORLESS_LOGO: LazyLock<Vec<Spans>> = LazyLock::new(|| {
+            LOGO.lines()
+                .map(|line| Spans(vec![Span::raw(line)]))
+                .collect::<Vec<Spans>>()
+        });
+
+        /// The logo is colored using Helix's colors
+        static COLORED_LOGO: LazyLock<Vec<Spans>> = LazyLock::new(|| {
+            LOGO.lines()
+                .map(|line| {
+                    line.chars()
+                        .map(|ch| match ch {
+                            '*' | ':' | '=' | '-' => {
+                                let (ch, fg) = match ch {
+                                    '*' => ("*", Color::Rgb(112, 107, 200)),
+                                    ':' => (":", Color::Rgb(132, 221, 234)),
+                                    '=' => ("=", Color::Rgb(153, 123, 200)),
+                                    '-' => ("-", Color::Rgb(85, 197, 228)),
+                                    _ => unreachable!(),
+                                };
+                                Span::styled(ch, Style::new().fg(fg))
+                            }
+                            ' ' => Span::raw(" "),
+                            _ => unreachable!(),
+                        })
+                        .collect::<Spans>()
+                })
+                .collect::<Vec<Spans>>()
+        });
+
+        let logo = if is_colorful {
+            &COLORED_LOGO
+        } else {
+            &COLORLESS_LOGO
+        };
+
+        /// How much space to put between the help text and the logo
+        const LOGO_LEFT_PADDING: u16 = 6;
+
+        // Shift the help text to the right by this amount, to add space
+        // for the logo
+        let help_offset: u16 = *LOGO_WIDTH / 2 + LOGO_LEFT_PADDING / 2;
 
         /// Declare the welcome screen declaratively using this macro
         /// It makes it easy to get the longest line in the center and the left, without
@@ -108,7 +175,7 @@ impl EditorView {
             }};
         }
 
-        let (lines, len_of_longest_left, len_of_longest_center) = welcome! {
+        let (help_lines, len_of_longest_left_help_line, len_of_longest_center_help_line) = welcome! {
             [Center] vec!["helix ".into(), Span::styled(VERSION_AND_GIT_HASH, theme.get("comment"))],
             [Left] "",
             [Center] Span::styled(
@@ -152,36 +219,71 @@ impl EditorView {
         };
 
         // how many total lines there are in the welcome screen
-        let lines_count = lines.len() as u16;
+        let lines_count = help_lines.len() as u16;
 
         // the y-coordinate where we start drawing the welcome screen
         let y_start = view.area.y + (view.area.height / 2).saturating_sub(lines_count / 2);
-        // y-coordinate of the center of the viewport
-        let y_center = view.area.x + view.area.width / 2;
+        // x-coordinate of the center of the viewport
+        let x_center = view.area.x + view.area.width / 2;
 
         // the x-coordinate where we start drawing the welcome screen
         // +2 to make the text look like its in the center instead of on the side
-        let x_start_left =
-            view.area.x + (view.area.width / 2).saturating_sub(len_of_longest_left / 2) + 2;
+        let x_start_left_help_line = view.area.x
+            + (view.area.width / 2).saturating_sub(len_of_longest_left_help_line / 2)
+            + 2;
 
-        let has_x_left_overflow = (x_start_left + len_of_longest_left) > view.area.width;
-        let has_x_center_overflow = len_of_longest_center > view.area.width;
-        let has_x_overflow = has_x_left_overflow || has_x_center_overflow;
+        let has_x_left_help_overflow =
+            (x_start_left_help_line + len_of_longest_left_help_line) > view.area.width;
+        let has_x_center_help_overflow = len_of_longest_center_help_line > view.area.width;
+        let has_x_help_overflow = has_x_left_help_overflow || has_x_center_help_overflow;
 
         // we want lines_count < view.area.height so it does not get drawn
         // over the status line
-        let has_y_overflow = lines_count >= view.area.height;
+        let has_y_help_overflow = lines_count >= view.area.height;
 
-        if has_x_overflow || has_y_overflow {
+        // Not enough space to render the help text even without the logo. Render nothing.
+        if has_x_help_overflow || has_y_help_overflow {
             return;
         }
 
-        for (lines_drawn, (line, align)) in lines.iter().enumerate() {
+        // At this point we know that there is enough vertical
+        // and horizontal space to render the help text
+
+        // +3 +3 for extra padding at either side
+        let width_of_help_with_logo =
+            3 + *LOGO_WIDTH + LOGO_LEFT_PADDING + len_of_longest_left_help_line + 3;
+
+        // If there is not enough space to show LOGO + HELP, then don't show the logo at all
+        //
+        // If we get here we know that there IS enough space to show just the help
+        let show_logo = width_of_help_with_logo < view.area.width;
+
+        for (lines_drawn, (line, align)) in help_lines.iter().enumerate() {
+            let x_start_left = if show_logo {
+                x_start_left_help_line + help_offset
+            } else {
+                x_start_left_help_line
+            };
+
+            let x_start_center =
+                x_center - line.width() as u16 / 2 + if show_logo { help_offset } else { 0 };
+
             let x = match align {
                 Align::Left => x_start_left,
-                Align::Center => y_center - line.width() as u16 / 2,
+                Align::Center => x_start_center,
             };
-            surface.set_spans(x, y_start + lines_drawn as u16, line, line.width() as u16);
+
+            let y = y_start + lines_drawn as u16;
+            surface.set_spans(x, y, line, line.width() as u16);
+
+            if show_logo {
+                surface.set_spans(
+                    x_start_left - LOGO_LEFT_PADDING - *LOGO_WIDTH,
+                    y,
+                    &logo[lines_drawn],
+                    *LOGO_WIDTH,
+                );
+            }
         }
     }
 
@@ -273,7 +375,12 @@ impl EditorView {
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         if config.welcome_screen && doc.version() == 0 && doc.is_welcome {
-            Self::render_welcome(theme, view, surface);
+            Self::render_welcome(
+                theme,
+                view,
+                surface,
+                config.true_color || crate::true_color(),
+            );
         }
 
         let primary_cursor = doc
