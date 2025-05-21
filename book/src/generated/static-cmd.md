@@ -126,8 +126,10 @@
 | `add_newline_below` | Add newline below | normal: `` ]<space> ``, select: `` ]<space> `` |
 | `goto_type_definition` | Goto type definition | normal: `` gy ``, select: `` gy `` |
 | `goto_implementation` | Goto implementation | normal: `` gi ``, select: `` gi `` |
-| `goto_file_start` | Goto line number <n> else file start | normal: `` gg ``, select: `` gg `` |
+| `goto_file_start` | Goto line number <n> else file start | normal: `` gg `` |
 | `goto_file_end` | Goto file end |  |
+| `extend_to_file_start` | Extend to line number<n> else file start | select: `` gg `` |
+| `extend_to_file_end` | Extend to file end |  |
 | `goto_file` | Goto files/URLs in selections | normal: `` gf ``, select: `` gf `` |
 | `goto_file_hsplit` | Goto files in selections (hsplit) | normal: `` <C-w>f ``, `` <space>wf ``, select: `` <C-w>f ``, `` <space>wf `` |
 | `goto_file_vsplit` | Goto files in selections (vsplit) | normal: `` <C-w>F ``, `` <space>wF ``, select: `` <C-w>F ``, `` <space>wF `` |
@@ -139,7 +141,8 @@
 | `goto_last_modified_file` | Goto last modified file | normal: `` gm ``, select: `` gm `` |
 | `goto_last_modification` | Goto last modification | normal: `` g. ``, select: `` g. `` |
 | `goto_line` | Goto line | normal: `` G ``, select: `` G `` |
-| `goto_last_line` | Goto last line | normal: `` ge ``, select: `` ge `` |
+| `goto_last_line` | Goto last line | normal: `` ge `` |
+| `extend_to_last_line` | Extend to last line | select: `` ge `` |
 | `goto_first_diag` | Goto first diagnostic | normal: `` [D ``, select: `` [D `` |
 | `goto_last_diag` | Goto last diagnostic | normal: `` ]D ``, select: `` ]D `` |
 | `goto_next_diag` | Goto next diagnostic | normal: `` ]d ``, select: `` ]d `` |
@@ -150,6 +153,8 @@
 | `goto_last_change` | Goto last change | normal: `` ]G ``, select: `` ]G `` |
 | `goto_line_start` | Goto line start | normal: `` gh ``, `` <home> ``, select: `` gh ``, insert: `` <home> `` |
 | `goto_line_end` | Goto line end | normal: `` gl ``, `` <end> ``, select: `` gl `` |
+| `goto_column` | Goto column | normal: `` g\| `` |
+| `extend_to_column` | Extend to column | select: `` g\| `` |
 | `goto_next_buffer` | Goto next buffer | normal: `` gn ``, select: `` gn `` |
 | `goto_previous_buffer` | Goto previous buffer | normal: `` gp ``, select: `` gp `` |
 | `goto_line_end_newline` | Goto newline at line end | insert: `` <end> `` |

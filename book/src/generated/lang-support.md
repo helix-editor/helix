@@ -36,6 +36,7 @@
 | d | ✓ | ✓ | ✓ | `serve-d` |
 | dart | ✓ | ✓ | ✓ | `dart` |
 | dbml | ✓ |  |  |  |
+| debian | ✓ |  |  |  |
 | devicetree | ✓ |  |  |  |
 | dhall | ✓ | ✓ |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |
@@ -45,6 +46,7 @@
 | dot | ✓ |  |  | `dot-language-server` |
 | dtd | ✓ |  |  |  |
 | dune | ✓ |  |  |  |
+| dunstrc | ✓ |  |  |  |
 | earthfile | ✓ | ✓ | ✓ | `earthlyls` |
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
@@ -57,6 +59,7 @@
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |
+| fennel | ✓ |  |  | `fennel-ls` |
 | fga | ✓ | ✓ | ✓ |  |
 | fidl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ | `fish-lsp` |
@@ -118,7 +121,7 @@
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ | `julia` |
-| just | ✓ | ✓ | ✓ |  |
+| just | ✓ | ✓ | ✓ | `just-lsp` |
 | kdl | ✓ | ✓ | ✓ |  |
 | koka | ✓ |  | ✓ | `koka` |
 | kotlin | ✓ | ✓ | ✓ | `kotlin-language-server` |
@@ -138,6 +141,7 @@
 | make | ✓ |  | ✓ |  |
 | markdoc | ✓ |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | `marksman`, `markdown-oxide` |
+| markdown-rustdoc | ✓ |  |  |  |
 | markdown.inline | ✓ |  |  |  |
 | matlab | ✓ | ✓ | ✓ |  |
 | mermaid | ✓ |  |  |  |
@@ -175,12 +179,14 @@
 | ponylang | ✓ | ✓ | ✓ |  |
 | powershell | ✓ |  |  |  |
 | prisma | ✓ | ✓ |  | `prisma-language-server` |
-| prolog |  |  |  | `swipl` |
+| prolog | ✓ |  | ✓ | `swipl` |
 | protobuf | ✓ | ✓ | ✓ | `buf`, `pb`, `protols` |
 | prql | ✓ |  |  |  |
+| pug | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
+| quarto | ✓ |  | ✓ |  |
 | quint | ✓ |  |  | `quint-language-server` |
 | r | ✓ |  |  | `R` |
 | racket | ✓ |  | ✓ | `racket` |
@@ -197,6 +203,7 @@
 | scala | ✓ | ✓ | ✓ | `metals` |
 | scheme | ✓ |  | ✓ |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
+| slang | ✓ | ✓ | ✓ | `slangd` |
 | slint | ✓ | ✓ | ✓ | `slint-lsp` |
 | smali | ✓ |  | ✓ |  |
 | smithy | ✓ |  |  | `cs` |
@@ -248,6 +255,7 @@
 | wat | ✓ |  |  | `wat_server` |
 | webc | ✓ |  |  |  |
 | werk | ✓ |  |  |  |
+| wesl | ✓ | ✓ |  |  |
 | wgsl | ✓ |  |  | `wgsl-analyzer` |
 | wit | ✓ |  | ✓ |  |
 | wren | ✓ | ✓ | ✓ |  |

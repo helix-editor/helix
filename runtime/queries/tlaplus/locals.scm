@@ -15,22 +15,22 @@
 ] @local.scope
 
 ; Definitions
-(choose (identifier) @local.definition)
-(choose (tuple_of_identifiers (identifier) @local.definition))
-(constant_declaration (identifier) @local.definition)
-(constant_declaration (operator_declaration name: (_) @local.definition))
-(function_definition name: (identifier) @local.definition)
-(lambda (identifier) @local.definition)
-(module_definition name: (_) @local.definition)
-(module_definition parameter: (identifier) @local.definition)
-(module_definition parameter: (operator_declaration name: (_) @local.definition))
-(operator_definition name: (_) @local.definition)
-(operator_definition parameter: (identifier) @local.definition)
-(operator_definition parameter: (operator_declaration name: (_) @local.definition))
-(quantifier_bound (identifier) @local.definition)
-(quantifier_bound (tuple_of_identifiers (identifier) @local.definition))
-(unbounded_quantification (identifier) @local.definition)
-(variable_declaration (identifier) @local.definition)
+(choose (identifier) @local.definition.variable.parameter)
+(choose (tuple_of_identifiers (identifier) @local.definition.variable.parameter))
+(constant_declaration (identifier) @local.definition.constant)
+(constant_declaration (operator_declaration name: (_) @local.definition.constant))
+(function_definition name: (identifier) @local.definition.function)
+(lambda (identifier) @local.definition.function)
+(module_definition name: (_) @local.definition.namespace)
+(module_definition parameter: (identifier) @local.definition.variable.parameter)
+(module_definition parameter: (operator_declaration name: (_) @local.definition.variable.parameter))
+(operator_definition name: (_) @local.definition.operator)
+(operator_definition parameter: (identifier) @local.definition.variable.parameter)
+(operator_definition parameter: (operator_declaration name: (_) @local.definition.variable.parameter))
+(quantifier_bound (identifier) @local.definition.variable.parameter)
+(quantifier_bound (tuple_of_identifiers (identifier) @local.definition.variable.parameter))
+(unbounded_quantification (identifier) @local.definition.variable.parameter)
+(variable_declaration (identifier) @local.definition.variable.builtin)
 
 ; Proof scopes and definitions
 [
@@ -39,12 +39,12 @@
   (theorem)
 ] @local.scope
 
-(assume_prove (new (identifier) @local.definition))
-(assume_prove (new (operator_declaration name: (_) @local.definition)))
-(assumption name: (identifier) @local.definition)
-(pick_proof_step (identifier) @local.definition)
-(take_proof_step (identifier) @local.definition)
-(theorem name: (identifier) @local.definition)
+(assume_prove (new (identifier) @local.definition.variable.parameter))
+(assume_prove (new (operator_declaration name: (_) @local.definition.variable.parameter)))
+(assumption name: (identifier) @local.definition.constant)
+(pick_proof_step (identifier) @local.definition.variable.parameter)
+(take_proof_step (identifier) @local.definition.variable.parameter)
+(theorem name: (identifier) @local.definition.constant)
 
 ;PlusCal scopes and definitions
 [
@@ -54,10 +54,10 @@
   (pcal_with)
 ] @local.scope
 
-(pcal_macro_decl parameter: (identifier) @local.definition)
-(pcal_proc_var_decl (identifier) @local.definition)
-(pcal_var_decl (identifier) @local.definition)
-(pcal_with (identifier) @local.definition)
+(pcal_macro_decl parameter: (identifier) @local.definition.variable.parameter)
+(pcal_proc_var_decl (identifier) @local.definition.variable.parameter)
+(pcal_var_decl (identifier) @local.definition.variable.parameter)
+(pcal_with (identifier) @local.definition.variable.parameter)
 
 ; References
 (identifier_ref) @local.reference

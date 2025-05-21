@@ -46,7 +46,10 @@ pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     diagnostic::DiagnosticProvider,
-    syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
+    syntax::{
+        self,
+        config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
+    },
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
@@ -499,6 +502,8 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    pub diagnostics: Vec<Severity>,
+    pub workspace_diagnostics: Vec<Severity>,
 }
 
 impl Default for StatusLineConfig {
@@ -523,6 +528,8 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            diagnostics: vec![Severity::Warning, Severity::Error],
+            workspace_diagnostics: vec![Severity::Warning, Severity::Error],
         }
     }
 }
@@ -1358,7 +1365,7 @@ impl Editor {
 
     fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
-        if theme.find_scope_index_exact("ui.selection").is_none() {
+        if theme.find_highlight_exact("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
             return;
         }
@@ -1474,9 +1481,9 @@ impl Editor {
     }
 
     pub fn refresh_doc_language(&mut self, doc_id: DocumentId) {
-        let loader = self.syn_loader.clone();
+        let loader = self.syn_loader.load();
         let doc = doc_mut!(self, &doc_id);
-        doc.detect_language(loader);
+        doc.detect_language(&loader);
         doc.detect_editor_config();
         doc.detect_indent_and_line_ending();
         self.refresh_language_servers(doc_id);
@@ -1512,12 +1519,12 @@ impl Editor {
                         if let helix_lsp::Error::ExecutableNotFound(err) = err {
                             // Silence by default since some language servers might just not be installed
                             log::debug!(
-                                "Language server not found for `{}` {} {}", language.scope(), lang, err,
+                                "Language server not found for `{}` {} {}", language.scope, lang, err,
                             );
                         } else {
                             log::error!(
                                 "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
-                                language.scope(),
+                                language.scope,
                                 lang,
                                 err
                             );
@@ -1736,7 +1743,10 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        self.new_file_from_document(action, Document::default(self.config.clone()))
+        self.new_file_from_document(
+            action,
+            Document::default(self.config.clone(), self.syn_loader.clone()),
+        )
     }
 
     /// Use when Helix is opened with no arguments passed
@@ -1753,6 +1763,7 @@ impl Editor {
             helix_core::Rope::default(),
             Some((encoding, has_bom)),
             self.config.clone(),
+            self.syn_loader.clone(),
         );
         let doc_id = self.new_file_from_document(action, doc);
         let doc = doc_mut!(self, &doc_id);
@@ -1781,8 +1792,9 @@ impl Editor {
             let mut doc = Document::open(
                 &path,
                 None,
-                Some(self.syn_loader.clone()),
+                true,
                 self.config.clone(),
+                self.syn_loader.clone(),
             )?;
 
             let diagnostics =
@@ -1827,7 +1839,6 @@ impl Editor {
         if !force && doc.is_modified() {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
-        let doc = self.documents.remove(&doc_id).unwrap();
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
@@ -1868,6 +1879,8 @@ impl Editor {
             }
         }
 
+        let doc = self.documents.remove(&doc_id).unwrap();
+
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view
         // containing either an existing document, or a brand new document.
@@ -1877,7 +1890,12 @@ impl Editor {
                 .iter()
                 .map(|(&doc_id, _)| doc_id)
                 .next()
-                .unwrap_or_else(|| self.new_document(Document::default(self.config.clone())));
+                .unwrap_or_else(|| {
+                    self.new_document(Document::default(
+                        self.config.clone(),
+                        self.syn_loader.clone(),
+                    ))
+                });
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
