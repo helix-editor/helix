@@ -1355,6 +1355,19 @@ value : any?
     );
 
     register!(
+        "key-event?",
+        |event: Event| { matches!(event, Event::Key(_)) },
+        r#"Checks if the given event is a key event.
+
+```scheme
+(key-event? event) -> bool?
+```
+
+* event : Event?
+        "#
+    );
+
+    register!(
         "key-event-char",
         |event: Event| {
             if let Event::Key(event) = event {
@@ -1382,7 +1395,7 @@ event : Event?
             }
         },
         r#"
-Get the key event modifier off of the evnet, if there is one.
+Get the key event modifier off of the event, if there is one.
 
 ```scheme
 (key-event-modifier event) -> (or int? #false)
