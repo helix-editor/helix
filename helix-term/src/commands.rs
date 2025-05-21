@@ -4683,7 +4683,7 @@ fn paste_impl(
         };
 
         let value =
-            if (&selection).len() == 1 {
+            if selection.len() == 1 {
                 /*
                 Special case:
                 If there's only one target selection, join all values with
@@ -4810,7 +4810,7 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
                             if !acc.is_empty() {
                                 acc.push_str(line_ending);
                             }
-                            acc.push_str(&value);
+                            acc.push_str(value);
                             acc
                         },
                     ))
