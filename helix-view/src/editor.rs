@@ -373,6 +373,7 @@ pub struct Config {
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
     /// `true`.
     pub editor_config: bool,
+    pub initial_mode: Mode,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1024,6 +1025,7 @@ impl Default for Config {
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
+            initial_mode: Mode::Normal,
         }
     }
 }
@@ -1616,6 +1618,7 @@ impl Editor {
 
         if !matches!(action, Action::Load) {
             self.enter_normal_mode();
+            self.mode = self.config().initial_mode;
         }
 
         let focust_lost = match action {
