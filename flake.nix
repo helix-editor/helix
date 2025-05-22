@@ -78,7 +78,8 @@
         buildPhase = ''
           export HOME=$PWD/build_home  # code-gen will write files relative to $HOME
           mkdir -p $HOME
-          cargo run --package xtask -- code-gen
+          cargoBuildLog=$(mktemp cargoBuildLogXXXX.json)
+          cargo run --package xtask -- code-gen >"$cargoBuildLog"
         '';
 
         installPhase = ''
@@ -124,16 +125,17 @@
               wrapper = old: makeOverridableHelix old config;
             };
         };
-      stdenv =
-        if pkgs.stdenv.isLinux
-        then pkgs.stdenv
-        else pkgs.clangStdenv;
+      stdenvSelector = p:
+        if p.stdenv.isLinux
+        then p.stdenv
+        else p.clangStdenv;
+      stdenv = stdenvSelector pkgs;
       rustFlagsEnv = pkgs.lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment --cfg tokio_unstable";
       rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
       craneLibMSRV = (crane.mkLib pkgs).overrideToolchain rustToolchain;
       craneLibStable = (crane.mkLib pkgs).overrideToolchain pkgs.pkgsBuildHost.rust-bin.stable.latest.default;
       commonArgs = {
-        inherit stdenv;
+        stdenv = stdenvSelector;
         inherit (craneLibMSRV.crateNameFromCargoToml {cargoToml = ./helix-term/Cargo.toml;}) pname;
         inherit (craneLibMSRV.crateNameFromCargoToml {cargoToml = ./Cargo.toml;}) version;
         src = filteredSource;
