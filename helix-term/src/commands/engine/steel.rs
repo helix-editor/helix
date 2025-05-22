@@ -1388,6 +1388,10 @@ Get the `Rect` associated with the currently focused buffer.
 
     // Arity 2
     module.register_fn("editor-switch-action!", cx_switch_action);
+    module.register_fn(
+        "set-register!",
+        |cx: &mut Context, name: char, value: Vec<String>| cx.editor.registers.write(name, value),
+    );
 
     // Arity 1
     module.register_fn("editor->text", document_id_to_text);
@@ -1493,6 +1497,7 @@ Get the `Rect` associated with the currently focused buffer.
         };
 
         template_function_arity_2("editor-switch-action!");
+        template_function_arity_2("set-register!");
 
         if let Some(mut target_directory) = alternative_runtime_search_path() {
             if !target_directory.exists() {
