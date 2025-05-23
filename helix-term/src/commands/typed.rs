@@ -975,29 +975,23 @@ fn yank_joined(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
     }
 
     let doc = doc!(cx.editor);
-    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
-    let separator = args.first().unwrap_or(&default_sep);
-    let register = cx
-        .editor
-        .selected_register
-        .unwrap_or(cx.editor.config().default_yank_register);
+
+    let separator = args
+        .get_flag("separator")
+        .unwrap_or_else(|| doc.line_ending.as_str());
+
+    let register = args
+        .get_flag("register")
+        .map(|reg| {
+            reg.parse::<char>()
+                .map_err(|_| anyhow!("Invalid register: {reg}"))
+        })
+        .transpose()?
+        .or(cx.editor.selected_register)
+        .unwrap_or_else(|| cx.editor.config().default_yank_register);
+
     yank_joined_impl(cx.editor, separator, register);
-    Ok(())
-}
 
-fn yank_joined_to_clipboard(
-    cx: &mut compositor::Context,
-    args: Args,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    let doc = doc!(cx.editor);
-    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
-    let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_impl(cx.editor, separator, '+');
     Ok(())
 }
 
@@ -1011,22 +1005,6 @@ fn yank_main_selection_to_primary_clipboard(
     }
 
     yank_primary_selection_impl(cx.editor, '*');
-    Ok(())
-}
-
-fn yank_joined_to_primary_clipboard(
-    cx: &mut compositor::Context,
-    args: Args,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    let doc = doc!(cx.editor);
-    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
-    let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_impl(cx.editor, separator, '*');
     Ok(())
 }
 
@@ -2939,12 +2917,26 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "yank-join",
-        aliases: &[],
-        doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
+        aliases: &["yj"],
+        doc: "Yank the selections joined with a separator",
         fun: yank_joined,
         completer: CommandCompleter::none(),
         signature: Signature {
-            positionals: (0, Some(1)),
+            positionals: (0, Some(0)),
+            flags: &[
+                Flag {
+                    name: "separator",
+                    alias: Some('s'),
+                    doc: "Separator to between joined selections [default: newline]",
+                    completions: Some(&[])
+                },
+                Flag {
+                    name: "register",
+                    alias: Some('r'),
+                    doc: "Yank into this register",
+                    completions: Some(&[])
+                }
+            ],
             ..Signature::DEFAULT
         },
     },
@@ -2960,17 +2952,6 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
-        name: "clipboard-yank-join",
-        aliases: &[],
-        doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
-        fun: yank_joined_to_clipboard,
-        completer: CommandCompleter::none(),
-        signature: Signature {
-            positionals: (0, Some(1)),
-            ..Signature::DEFAULT
-        },
-    },
-    TypableCommand {
         name: "primary-clipboard-yank",
         aliases: &[],
         doc: "Yank main selection into system primary clipboard.",
@@ -2978,17 +2959,6 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
-            ..Signature::DEFAULT
-        },
-    },
-    TypableCommand {
-        name: "primary-clipboard-yank-join",
-        aliases: &[],
-        doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
-        fun: yank_joined_to_primary_clipboard,
-        completer: CommandCompleter::none(),
-        signature: Signature {
-            positionals: (0, Some(1)),
             ..Signature::DEFAULT
         },
     },
