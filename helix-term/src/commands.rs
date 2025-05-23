@@ -74,6 +74,7 @@ use std::{
     future::Future,
     io::Read,
     num::NonZeroUsize,
+    str::FromStr,
 };
 
 use std::{
@@ -4613,11 +4614,29 @@ fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 enum Paste {
     Before,
+    #[default]
     After,
     Cursor,
+}
+
+impl Paste {
+    const VARIANTS: [&'static str; 3] = ["before", "after", "cursor"];
+}
+
+impl FromStr for Paste {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "before" => Ok(Self::Before),
+            "after" => Ok(Self::After),
+            "cursor" => Ok(Self::Cursor),
+            _ => Err(anyhow!("Invalid paste position: {s}")),
+        }
+    }
 }
 
 static LINE_ENDING_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());

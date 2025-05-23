@@ -4,6 +4,7 @@ use super::*;
 
 mod insert;
 mod movement;
+mod paste_join;
 mod write;
 
 #[tokio::test(flavor = "multi_thread")]

@@ -1,5 +1,6 @@
 use std::fmt::Write;
 use std::io::BufReader;
+use std::num::NonZero;
 use std::ops::{self, Deref};
 
 use crate::job::Job;
@@ -966,6 +967,65 @@ fn yank_main_selection_to_clipboard(
     }
 
     yank_primary_selection_impl(cx.editor, '+');
+    Ok(())
+}
+
+fn paste_joined(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc!(cx.editor);
+
+    let separator = args
+        .get_flag("separator")
+        .unwrap_or_else(|| doc.line_ending.as_str());
+
+    let register = args
+        .get_flag("register")
+        .map(|reg| {
+            reg.parse::<char>()
+                .map_err(|_| anyhow!("Invalid register: {reg}"))
+        })
+        .transpose()?
+        .or(cx.editor.selected_register)
+        .unwrap_or_else(|| cx.editor.config().default_yank_register);
+
+    let count = args
+        .get_flag("count")
+        .map(|count| count.parse::<NonZero<usize>>())
+        .transpose()?
+        .map_or(1, |count| count.get());
+
+    let paste_position = args
+        .get_flag("position")
+        .map(|pos| pos.parse::<Paste>())
+        .transpose()?
+        .unwrap_or_default();
+
+    let register_values = cx
+        .editor
+        .registers
+        .read(register, cx.editor)
+        .ok_or_else(|| anyhow!("Register {register} is empty"))?;
+
+    // Intersperse register values with a separator
+    let paste = register_values.fold(String::new(), |mut pasted, value| {
+        if !pasted.is_empty() {
+            pasted.push_str(separator);
+        }
+        pasted.push_str(&value);
+        pasted
+    });
+
+    let (view, doc) = current!(cx.editor);
+
+    paste_impl(&[paste], doc, view, paste_position, count, cx.editor.mode);
+
     Ok(())
 }
 
@@ -2934,6 +2994,43 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::positional(&[completers::theme]),
         signature: Signature {
             positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "paste-join",
+        aliases: &["pj"],
+        doc: "Join selections with a separator and paste",
+        fun: paste_joined,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            flags: &[
+                Flag {
+                    name: "separator",
+                    alias: Some('s'),
+                    doc: "Separator between joined selections (Default: newline)",
+                    completions: Some(&[])
+                },
+                Flag {
+                    name: "count",
+                    alias: Some('c'),
+                    doc: "How many times to paste",
+                    completions: Some(&[])
+                },
+                Flag {
+                    name: "position",
+                    alias: Some('p'),
+                    doc: "Location of where to paste",
+                    completions: Some(&Paste::VARIANTS)
+                },
+                Flag {
+                    name: "register",
+                    alias: Some('r'),
+                    doc: "Paste from this register",
+                    completions: Some(&[])
+                }
+            ],
             ..Signature::DEFAULT
         },
     },
