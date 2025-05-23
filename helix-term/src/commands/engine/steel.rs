@@ -3277,30 +3277,26 @@ callback : (-> any?)
         );
     }
 
-    let mut template_function_arity_2 = |name: &str, doc: &str| {
-        if generate_sources {
-            let doc = format_docstring(doc);
-            builtin_misc_module.push_str(&format!(
-                r#"
+    macro_rules! register_2_no_context {
+        ($name:expr, $func:expr, $doc:expr) => {{
+            module.register_fn($name, $func);
+            if generate_sources {
+                let doc = format_docstring($doc);
+                builtin_misc_module.push_str(&format!(
+                    r#"
 (provide {})
 ;;@doc
 {}
 (define ({} arg1 arg2)
-    (helix.{} *helix.cx* arg1 arg2))
+    (helix.{} arg1 arg2))
 "#,
-                name, doc, name, name
-            ));
-        }
-    };
-
-    macro_rules! register_2 {
-        ($name:expr, $func:expr, $doc:expr) => {{
-            module.register_fn($name, $func);
-            template_function_arity_2($name, $doc);
+                    $name, doc, $name, $name
+                ));
+            }
         }};
     }
 
-    register_2!(
+    register_2_no_context!(
         "acquire-context-lock",
         |callback_fn: SteelVal, place: Option<SteelVal>| {
             match (&callback_fn, &place) {
@@ -3383,7 +3379,7 @@ The provided function will get enqueued to run on the main thread, and during th
 execution, the provided mutex will be locked.
 
 ```scheme
-(acquire-context-lock? callback-fn mutex)
+(acquire-context-lock callback-fn mutex)
 ```
 
 callback-fn : (-> void?)
@@ -3392,6 +3388,29 @@ callback-fn : (-> void?)
 mutex : mutex?
 "#
     );
+
+    let mut template_function_arity_2 = |name: &str, doc: &str| {
+        if generate_sources {
+            let doc = format_docstring(doc);
+            builtin_misc_module.push_str(&format!(
+                r#"
+(provide {})
+;;@doc
+{}
+(define ({} arg1 arg2)
+    (helix.{} *helix.cx* arg1 arg2))
+"#,
+                name, doc, name, name
+            ));
+        }
+    };
+
+    macro_rules! register_2 {
+        ($name:expr, $func:expr, $doc:expr) => {{
+            module.register_fn($name, $func);
+            template_function_arity_2($name, $doc);
+        }};
+    }
 
     // Arity 2
     register_2!(
