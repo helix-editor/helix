@@ -403,6 +403,12 @@ impl Application {
         Ok(())
     }
 
+    /// Refreshes configuration for the editor.
+    /// Current list of configurations updated:
+    ///     - `config.toml`
+    ///     - `languages.toml`
+    ///     - `.editorconfig`
+    ///     - `{theme}.toml`
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
@@ -414,6 +420,8 @@ impl Application {
                 .reconfigure(default_config.editor.clone().into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
+            // Runs after updating the config so all documents have access to new values
+            self.refresh_editor_config()?;
             Ok(())
         };
 
@@ -425,6 +433,15 @@ impl Application {
                 self.editor.set_error(err.to_string());
             }
         }
+    }
+
+    /// Force all documents to redetect .editorconfig settings
+    fn refresh_editor_config(&mut self) -> Result<(), Error> {
+        for document in self.editor.documents.values_mut() {
+            document.detect_editor_config();
+            document.detect_indent_and_line_ending();
+        }
+        Ok(())
     }
 
     /// Load the theme set in configuration
