@@ -95,6 +95,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-b" => move_parent_node_start,
         "A-a" => select_all_siblings,
 
+        "C-y" => yank_joined,
         "C-p" => paste_after_joined_with_newline,
         "C-P" => paste_before_joined_with_newline,
         "C-R" => replace_joined_with_newline,

@@ -182,7 +182,7 @@
 | `yank` | Yank selection | normal: `` y ``, select: `` y `` |
 | `yank_to_clipboard` | Yank selections to clipboard | normal: `` <space>y ``, select: `` <space>y `` |
 | `yank_to_primary_clipboard` | Yank selections to primary clipboard |  |
-| `yank_joined` | Join and yank selections |  |
+| `yank_joined` | Join and yank selections | normal: `` <C-y> ``, select: `` <C-y> `` |
 | `yank_joined_to_clipboard` | Join and yank selections to clipboard |  |
 | `yank_main_selection_to_clipboard` | Yank main selection to clipboard | normal: `` <space>Y ``, select: `` <space>Y `` |
 | `yank_joined_to_primary_clipboard` | Join and yank selections to primary clipboard |  |
