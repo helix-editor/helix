@@ -970,48 +970,24 @@ fn yank_main_selection_to_clipboard(
     Ok(())
 }
 
-fn paste_joined(
-    cx: &mut compositor::Context,
-    args: Args,
-    event: PromptEvent,
+pub fn paste_joined_impl(
+    editor: &mut Editor,
+    count: usize,
+    paste_position: PasteJoined,
+    register: Option<char>,
+    separator: Option<&str>,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+    let config = editor.config();
+    let register = register.unwrap_or(config.default_yank_register);
+    let scrolloff = config.scrolloff;
 
-    let doc = doc!(cx.editor);
-
-    let separator = args
-        .get_flag("separator")
-        .unwrap_or_else(|| doc.line_ending.as_str());
-
-    let register = args
-        .get_flag("register")
-        .map(|reg| {
-            reg.parse::<char>()
-                .map_err(|_| anyhow!("Invalid register: {reg}"))
-        })
-        .transpose()?
-        .or(cx.editor.selected_register)
-        .unwrap_or_else(|| cx.editor.config().default_yank_register);
-
-    let count = args
-        .get_flag("count")
-        .map(|count| count.parse::<NonZero<usize>>())
-        .transpose()?
-        .map_or(1, |count| count.get());
-
-    let paste_position = args
-        .get_flag("position")
-        .map(|pos| pos.parse::<Paste>())
-        .transpose()?
-        .unwrap_or_default();
-
-    let register_values = cx
-        .editor
+    let register_values = editor
         .registers
-        .read(register, cx.editor)
+        .read(register, editor)
         .ok_or_else(|| anyhow!("Register {register} is empty"))?;
+
+    let doc = doc!(editor);
+    let separator = separator.unwrap_or_else(|| doc.line_ending.as_str());
 
     // Intersperse register values with a separator
     let paste = register_values.fold(String::new(), |mut pasted, value| {
@@ -1022,9 +998,54 @@ fn paste_joined(
         pasted
     });
 
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current!(editor);
 
-    paste_impl(&[paste], doc, view, paste_position, count, cx.editor.mode);
+    match paste_position {
+        PasteJoined::Before => paste_impl(&[paste], doc, view, Paste::Before, count, editor.mode),
+        PasteJoined::After => paste_impl(&[paste], doc, view, Paste::After, count, editor.mode),
+        PasteJoined::Replace => replace_impl(&[paste], doc, view, count, scrolloff),
+    }
+
+    Ok(())
+}
+
+fn paste_joined(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let count = args
+        .get_flag("count")
+        .map(|count| count.parse::<NonZero<usize>>())
+        .transpose()?
+        .map_or(1, |count| count.get());
+
+    let paste_position = args
+        .get_flag("position")
+        .map(|pos| pos.parse::<PasteJoined>())
+        .transpose()?
+        .unwrap_or_default();
+
+    let register = args
+        .get_flag("register")
+        .map(|reg| {
+            reg.parse::<char>()
+                .map_err(|_| anyhow!("Invalid register: {reg}"))
+        })
+        .transpose()?
+        .or(cx.editor.selected_register);
+
+    paste_joined_impl(
+        cx.editor,
+        count,
+        paste_position,
+        register,
+        args.get_flag("separator"),
+    )?;
 
     Ok(())
 }
@@ -3022,7 +3043,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
                     name: "position",
                     alias: Some('p'),
                     doc: "Location of where to paste",
-                    completions: Some(&Paste::VARIANTS)
+                    completions: Some(&PasteJoined::VARIANTS)
                 },
                 Flag {
                     name: "register",

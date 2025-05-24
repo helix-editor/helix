@@ -1,45 +1,55 @@
 use super::*;
 
+const IN: &str = indoc! {"\
+    #[o|]#ne
+    #(t|)#wo
+    three
+"};
+
 #[tokio::test(flavor = "multi_thread")]
-async fn no_flags() -> anyhow::Result<()> {
-    test((
-        indoc! {"\
-            #[o|]#ne
-            #(t|)#wo
-            three
-        "},
-        "y:paste-join<ret>",
-        indoc! {"\
-            o#[o
-            t|]#ne
-            t#(o
-            t|)#wo
-            three
-        "},
-    ))
-    .await?;
+async fn after() -> anyhow::Result<()> {
+    const OUT: &str = indoc! {"\
+        o#[o
+        t|]#ne
+        t#(o
+        t|)#wo
+        three
+    "};
+
+    test((IN, "y:paste-join<ret>", OUT)).await?;
+    test((IN, "y<C-p>", OUT)).await?;
 
     Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn flag_position() -> anyhow::Result<()> {
-    test((
-        indoc! {"\
-            #[o|]#ne
-            #(t|)#wo
-            three
-        "},
-        "y:paste-join --position before<ret>",
-        indoc! {"\
+async fn before() -> anyhow::Result<()> {
+    const OUT: &str = indoc! {"\
+        #[o
+        t|]#one
+        #(o
+        t|)#two
+        three
+    "};
+
+    test((IN, "y:paste-join --position before<ret>", OUT)).await?;
+    test((IN, "y<C-P>", OUT)).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn replace() -> anyhow::Result<()> {
+    const OUT: &str = indoc! {"\
             #[o
-            t|]#one
+            t|]#ne
             #(o
-            t|)#two
+            t|)#wo
             three
-        "},
-    ))
-    .await?;
+        "};
+
+    test((IN, "y:paste-join --position replace<ret>", OUT)).await?;
+    test((IN, "y<C-R>", OUT)).await?;
 
     Ok(())
 }
@@ -47,11 +57,7 @@ async fn flag_position() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn flag_count() -> anyhow::Result<()> {
     test((
-        indoc! {"\
-            #[o|]#ne
-            #(t|)#wo
-            three
-        "},
+        IN,
         "y:paste-join --count 4<ret>",
         indoc! {"\
             o#[o
@@ -75,11 +81,7 @@ async fn flag_count() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn flag_register() -> anyhow::Result<()> {
     test((
-        indoc! {"\
-            #[o|]#ne
-            #(t|)#wo
-            three
-        "},
+        IN,
         concat!(
             // Copy content from another place, so our default
             // register has different content to what we will
@@ -104,11 +106,7 @@ async fn flag_register() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn flag_separator() -> anyhow::Result<()> {
     test((
-        indoc! {"\
-            #[o|]#ne
-            #(t|)#wo
-            three
-        "},
+        IN,
         "y:paste-join --separator x<ret>",
         indoc! {"\
             o#[oxt|]#ne
