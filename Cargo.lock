@@ -1472,6 +1472,7 @@ dependencies = [
  "helix-stdx",
  "log",
  "once_cell",
+ "regex",
  "serde",
  "tempfile",
  "threadpool",

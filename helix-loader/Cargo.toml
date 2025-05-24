@@ -30,5 +30,6 @@ log = "0.4"
 cc = { version = "1" }
 threadpool = { version = "1.0" }
 tempfile.workspace = true
+regex = "1.11.1"
 
 tree-house.workspace = true
