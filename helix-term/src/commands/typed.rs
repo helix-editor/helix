@@ -2107,10 +2107,6 @@ fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
-    sort_impl(cx, args.has_flag("reverse"), args.has_flag("insensitive"))
-}
-
-fn sort_impl(cx: &mut compositor::Context, reverse: bool, insensitive: bool) -> anyhow::Result<()> {
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -2127,17 +2123,12 @@ fn sort_impl(cx: &mut compositor::Context, reverse: bool, insensitive: bool) -> 
         .collect();
 
     fragments.sort_by(
-        if insensitive {
-            match reverse {
-            true => |a: &Tendril, b: &Tendril| b.to_lowercase().cmp(&a.to_lowercase()),
-            false => |a: &Tendril, b: &Tendril| a.to_lowercase().cmp(&b.to_lowercase())
-            }
-        } else {
-            match reverse {
-            true => |a: &Tendril, b: &Tendril| a.cmp(b),
-            false => |a: &Tendril, b: &Tendril| b.cmp(a)
-            }
-        }
+        match (args.has_flag("insensitive"), args.has_flag("reverse")) {
+            (true, true) => |a: &Tendril, b: &Tendril| b.to_lowercase().cmp(&a.to_lowercase()),
+            (true, false) => |a: &Tendril, b: &Tendril| a.to_lowercase().cmp(&b.to_lowercase()),
+            (false, true) => |a: &Tendril, b: &Tendril| b.cmp(a),
+            (false, false) => |a: &Tendril, b: &Tendril| a.cmp(b),
+        },
     );
 
     let transaction = Transaction::change(
@@ -3369,7 +3360,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
                 Flag {
                     name: "insensitive",
                     alias: Some('i'),
-                    doc: "sort the selection(s) case-insensitively",
+                    doc: "sort the ranges case-insensitively",
                     ..Flag::DEFAULT
                 },
                 Flag {
