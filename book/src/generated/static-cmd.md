@@ -182,7 +182,7 @@
 | `yank` | Yank selection | normal: `` y ``, select: `` y `` |
 | `yank_to_clipboard` | Yank selections to clipboard | normal: `` <space>y ``, select: `` <space>y `` |
 | `yank_to_primary_clipboard` | Yank selections to primary clipboard |  |
-| `yank_joined` | Join and yank selections |  |
+| `yank_joined` | Join and yank selections | normal: `` <C-y> ``, select: `` <C-y> `` |
 | `yank_joined_to_clipboard` | Join and yank selections to clipboard |  |
 | `yank_main_selection_to_clipboard` | Yank main selection to clipboard | normal: `` <space>Y ``, select: `` <space>Y `` |
 | `yank_joined_to_primary_clipboard` | Join and yank selections to primary clipboard |  |
@@ -303,3 +303,6 @@
 | `extend_to_word` | Extend to a two-character label | select: `` gw `` |
 | `goto_next_tabstop` | goto next snippet placeholder |  |
 | `goto_prev_tabstop` | goto next snippet placeholder |  |
+| `paste_before_joined_with_newline` | Join all selections with a newline and paste before cursor | normal: `` <C-P> ``, select: `` <C-P> `` |
+| `paste_after_joined_with_newline` | Join all selections with a newline and paste after cursor | normal: `` <C-p> ``, select: `` <C-p> `` |
+| `replace_joined_with_newline` | Replace selection with all selections joined with a newline | normal: `` <C-R> ``, select: `` <C-R> `` |
