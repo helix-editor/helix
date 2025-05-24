@@ -1667,106 +1667,6 @@ fn tree_sitter_scopes(
     Ok(())
 }
 
-fn tree_sitter_injections(
-    _cx: &mut compositor::Context,
-    _args: Args,
-    _event: PromptEvent,
-) -> anyhow::Result<()> {
-    unimplemented!()
-    //     if event != PromptEvent::Validate {
-    //         return Ok(());
-    //     }
-
-    //     let doc = doc!(cx.editor);
-
-    //     let syntax = doc
-    //         .syntax()
-    //         .context("No tree-sitter grammar found for this file.")?;
-
-    //     let mut ranges = vec![];
-
-    //     for (language_id, layer) in syntax.layers() {
-    //         let language_name = &syntax.layer_config(language_id).language_name;
-    //         for range in &layer.ranges {
-    //             ranges.push((range, language_name.clone()));
-    //         }
-    //     }
-
-    //     ranges.sort_unstable_by(|(range_a, _), (range_b, _)| {
-    //         range_a
-    //             .start_byte
-    //             .cmp(&range_b.start_byte)
-    //             .then(range_a.end_byte.cmp(&range_b.end_byte))
-    //     });
-
-    //     let char_count = doc.text().len_chars();
-
-    //     let mut contents = String::new();
-
-    //     let mut stack = Vec::new();
-
-    //     let mut ranges = ranges.iter().peekable();
-
-    //     while let Some((range, language_name)) = ranges.next() {
-    //         while let Some((prev_start, prev_end)) = stack.last() {
-    //             let is_contained = range.end_byte < *prev_end && range.start_byte > *prev_start;
-    //             if is_contained {
-    //                 break;
-    //             }
-    //             stack.pop();
-    //         }
-
-    //         let language_range = if range.end_byte < char_count {
-    //             format!("[{}, {}]", range.start_byte, range.end_byte)
-    //         } else {
-    //             format!("[0, {}]", char_count)
-    //         };
-
-    //         let indent = stack.len() * 4;
-    //         let indent = format!("{:indent$}", "");
-
-    //         let next_is_contained = ranges.peek().as_ref().is_some_and(|(next, _)| {
-    //             range.end_byte > next.end_byte && range.start_byte < next.start_byte
-    //         });
-
-    //         let children = if next_is_contained {
-    //             format!("\n{indent}  injections:")
-    //         } else {
-    //             "".into()
-    //         };
-
-    //         let dash = if !indent.is_empty() {
-    //             format!("{}- ", &indent)
-    //         } else {
-    //             "- ".into()
-    //         };
-
-    //         writeln!(
-    //             contents,
-    //             "{dash}language: {language_name}
-    // {indent}  range: {language_range}{children}",
-    //         )?;
-
-    //         stack.push((range.start_byte, range.end_byte));
-    //     }
-
-    //     let callback = async move {
-    //         let call: job::Callback = Callback::EditorCompositor(Box::new(
-    //             move |editor: &mut Editor, compositor: &mut Compositor| {
-    //                 let contents =
-    //                     ui::Markdown::new(format!("```yaml\n{contents}```"), editor.syn_loader.clone());
-    //                 let popup = Popup::new("hover", contents).auto_close(true);
-    //                 compositor.replace_or_push("hover", popup);
-    //             },
-    //         ));
-    //         Ok(call)
-    //     };
-
-    //     cx.jobs.callback(callback);
-
-    //     Ok(())
-}
-
 fn tree_sitter_highlight_name(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3296,17 +3196,6 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Display name of tree-sitter highlight scope under the cursor.",
         fun: tree_sitter_highlight_name,
-        completer: CommandCompleter::none(),
-        signature: Signature {
-            positionals: (0, Some(0)),
-            ..Signature::DEFAULT
-        },
-    },
-    TypableCommand {
-        name: "tree-sitter-injections",
-        aliases: &[],
-        doc: "Display injected languages for the file.",
-        fun: tree_sitter_injections,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),

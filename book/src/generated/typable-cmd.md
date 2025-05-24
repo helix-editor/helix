@@ -56,7 +56,6 @@
 | `:lsp-stop` | Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
 | `:tree-sitter-highlight-name` | Display name of tree-sitter highlight scope under the cursor. |
-| `:tree-sitter-injections` | Display injected languages for the file. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
 | `:debug-eval` | Evaluate expression in current debug context. |
