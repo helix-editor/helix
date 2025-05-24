@@ -195,9 +195,17 @@ cd helix
 </li>
 <li>
 <p>Compile from source:</p>
-<pre><code class="language-sh">cargo install --path helix-term --locked
+<pre><code class="language-sh"># Reproducible
+cargo install --path helix-term --locked
 </code></pre>
-<p>This command will create the <code>hx</code> executable and construct the tree-sitter
+<pre><code class="language-sh"># Optimized
+cargo install \
+   --profile opt \
+   --config 'build.rustflags="-C target-cpu=native"' \
+   --path helix-term \
+   --locked
+</code></pre>
+<p>Either command will create the <code>hx</code> executable and construct the tree-sitter
 grammars in the local <code>runtime</code> folder.</p>
 </li>
 </ol>
