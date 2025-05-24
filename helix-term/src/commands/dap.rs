@@ -6,7 +6,7 @@ use crate::{
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::config::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
-use helix_dap::{self as dap, Client};
+use helix_dap::{self as dap, requests::TerminateArguments, Client};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
 
@@ -59,7 +59,12 @@ fn thread_picker(
                 move |cx, thread, _action| callback_fn(cx.editor, thread),
             )
             .with_preview(move |editor, thread| {
-                let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
+                let frames = editor
+                    .debugger_service
+                    .get_active_debugger()
+                    .as_ref()?
+                    .stack_frames
+                    .get(&thread.id)?;
                 let frame = frames.first()?;
                 let path = frame.source.as_ref()?.path.as_ref()?.as_path();
                 let pos = Some((
@@ -116,6 +121,7 @@ pub fn dap_start_impl(
     params: Option<Vec<std::borrow::Cow<str>>>,
 ) -> Result<(), anyhow::Error> {
     let doc = doc!(cx.editor);
+    let id = cx.editor.debugger_service.get_new_id();
 
     let config = doc
         .language_config()
@@ -123,13 +129,13 @@ pub fn dap_start_impl(
         .ok_or_else(|| anyhow!("No debug adapter available for language"))?;
 
     let result = match socket {
-        Some(socket) => block_on(Client::tcp(socket, 0)),
+        Some(socket) => block_on(Client::tcp(socket, id)),
         None => block_on(Client::process(
             &config.transport,
             &config.command,
             config.args.iter().map(|arg| arg.as_str()).collect(),
             config.port_arg.as_deref(),
-            0,
+            id,
         )),
     };
 
@@ -137,6 +143,8 @@ pub fn dap_start_impl(
         Ok(r) => r,
         Err(e) => bail!("Failed to start debug session: {}", e),
     };
+
+    debugger.config = Some(config.clone());
 
     let request = debugger.initialize(config.name.clone());
     if let Err(e) = block_on(request) {
@@ -222,14 +230,15 @@ pub fn dap_start_impl(
     };
 
     // TODO: either await "initialized" or buffer commands until event is received
-    cx.editor.debugger = Some(debugger);
+    cx.editor.debugger_service.add_debugger(0, debugger);
     let stream = UnboundedReceiverStream::new(events);
     cx.editor.debugger_events.push(stream);
     Ok(())
 }
 
 pub fn dap_launch(cx: &mut Context) {
-    if cx.editor.debugger.is_some() {
+    // TODO: Now that we support multiple Clients, we could run multiple debuggers at once but for now keep this as is
+    if cx.editor.debugger_service.get_active_debugger().is_some() {
         cx.editor.set_error("Debugger is already running");
         return;
     }
@@ -283,7 +292,7 @@ pub fn dap_launch(cx: &mut Context) {
 }
 
 pub fn dap_restart(cx: &mut Context) {
-    let debugger = match &cx.editor.debugger {
+    let debugger = match cx.editor.debugger_service.get_active_debugger() {
         Some(debugger) => debugger,
         None => {
             cx.editor.set_error("Debugger is not running");
@@ -582,12 +591,17 @@ pub fn dap_variables(cx: &mut Context) {
 }
 
 pub fn dap_terminate(cx: &mut Context) {
+    cx.editor.set_status("Terminating debug session...");
     let debugger = debugger!(cx.editor);
 
-    let request = debugger.disconnect(None);
+    let terminate_arguments = Some(TerminateArguments {
+        restart: Some(false),
+    });
+
+    let request = debugger.terminate(terminate_arguments);
     dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
         // editor.set_error(format!("Failed to disconnect: {}", e));
-        editor.debugger = None;
+        editor.debugger_service.unset_active_debugger();
     });
 }
 
