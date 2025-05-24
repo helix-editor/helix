@@ -12,8 +12,8 @@ use std::borrow::Cow;
 
 pub const DEFAULT_COMMENT_TOKEN: &str = "#";
 
-/// Returns the longest matching comment token of the given line (if it exists).
-pub fn get_comment_token(
+/// Returns the longest matching line comment token of the given line (if it exists).
+pub fn get_line_comment_token(
     loader: &syntax::Loader,
     syntax: Option<&Syntax>,
     text: RopeSlice,
@@ -24,30 +24,32 @@ pub fn get_comment_token(
     let start = line.first_non_whitespace_char()?;
     let start_char = text.line_to_char(line_num) + start;
 
-    let injected_tokens = get_injected_tokens(loader, syntax, start_char as u32, start_char as u32)
-        // we only care about line comment tokens
-        .0
-        .and_then(|tokens| {
-            tokens
-                .into_iter()
-                .filter(|token| line.slice(start..).starts_with(token))
-                .max_by_key(|token| token.len())
-        });
+    let injected_line_comment_tokens =
+        injected_tokens_for_range(loader, syntax, start_char as u32, start_char as u32)
+            .0
+            .and_then(|tokens| {
+                tokens
+                    .into_iter()
+                    .filter(|token| line.slice(start..).starts_with(token))
+                    .max_by_key(|token| token.len())
+            });
 
-    injected_tokens.or(
-        // no comment tokens found for injection, use doc comments if exists
+    injected_line_comment_tokens.or_else(||
+        // no line comment tokens found for injection, use doc comments if exists
         doc_default_tokens.and_then(|tokens| {
             tokens
                 .iter()
                 .filter(|token| line.slice(start..).starts_with(token))
                 .max_by_key(|token| token.len())
                 .cloned()
-        }),
-    )
+        }))
 }
 
-/// Find the injection with the most tightly encompassing range.
-pub fn get_injected_tokens(
+/// Get the injected line and block comment of the smallest
+/// injection around the range which fully includes `start..=end`.
+///  
+/// Injections that do not have any comment tokens are skipped.
+pub fn injected_tokens_for_range(
     loader: &syntax::Loader,
     syntax: Option<&Syntax>,
     start: u32,
@@ -69,8 +71,8 @@ pub fn get_injected_tokens(
                     // if the language does not have any comment tokens, it does not make
                     // any sense to consider it.
                     //
-                    // This includes languages such as comment, jsdoc and regex: These
-                    // languages are injected and never found in files by themselves
+                    // This includes languages such as `comment`, `jsdoc` and `regex`.
+                    // These languages are injected and never found in files by themselves
                     has_any_comment_tokens.then_some((
                         lang_config.comment_tokens.clone(),
                         lang_config.block_comment_tokens.clone(),
@@ -80,19 +82,20 @@ pub fn get_injected_tokens(
         .unwrap_or_default()
 }
 
-/// Given text, a comment token, and a set of line indices, returns the following:
-/// - Whether the given lines should be considered commented
+/// Given `text`, a comment `token`, and a set of line indices `lines_to_modify`,
+/// Returns the following:
+/// 1. Whether the given lines should be considered commented
 ///     - If any of the lines are uncommented, all lines are considered as such.
-/// - The lines to change for toggling comments
+/// 2. The lines to change for toggling comments
 ///     - This is all provided lines excluding blanks lines.
-/// - The column of the comment tokens
+/// 3. The column of the comment tokens
 ///     - Column of existing tokens, if the lines are commented; column to place tokens at otherwise.
-/// - The margin to the right of the comment tokens
+/// 4. The margin to the right of the comment tokens
 ///     - Defaults to `1`. If any existing comment token is not followed by a space, changes to `0`.
 fn find_line_comment(
     token: &str,
     text: RopeSlice,
-    lines: impl IntoIterator<Item = usize>,
+    lines_to_modify: impl IntoIterator<Item = usize>,
 ) -> (bool, Vec<usize>, usize, usize) {
     let mut commented = true;
     let mut to_change = Vec::new();
@@ -100,7 +103,7 @@ fn find_line_comment(
     let mut margin = 1;
     let token_len = token.chars().count();
 
-    for line in lines {
+    for line in lines_to_modify {
         let line_slice = text.line(line);
         if let Some(pos) = line_slice.first_non_whitespace_char() {
             let len = line_slice.len_chars();
@@ -130,39 +133,55 @@ fn find_line_comment(
     (commented, to_change, min, margin)
 }
 
+/// Returns the edits required to toggle the comment `token` for the `range` in the `doc`
 #[must_use]
 pub fn toggle_line_comments(doc: &Rope, range: &Range, token: Option<&str>) -> Vec<Change> {
     let text = doc.slice(..);
 
     let token = token.unwrap_or(DEFAULT_COMMENT_TOKEN);
+
+    // Add a space between the comment token and the line.
     let comment = Tendril::from(format!("{} ", token));
 
-    let start = text.char_to_line(range.from());
-    let end = text.char_to_line(range.to().saturating_sub(1));
     let line_count = text.len_lines();
-    let start = start.clamp(0, line_count);
-    let end = (end + 1).min(line_count);
 
-    let mut lines = vec![];
-    lines.extend(start..end);
+    let start = text.char_to_line(range.from()).clamp(0, line_count);
+    let end = (text.char_to_line(range.to().saturating_sub(1)) + 1).min(line_count);
 
-    let (was_commented, to_change, min, margin) = find_line_comment(token, text, lines);
+    let lines_to_modify = start..end;
 
-    let mut changes: Vec<Change> = Vec::with_capacity(to_change.len());
+    let (
+        was_commented,
+        lines_to_modify,
+        column_to_place_comment_tokens_at,
+        comment_tokens_right_margin,
+    ) = find_line_comment(token, text, lines_to_modify);
 
-    for line in to_change {
-        let pos = text.line_to_char(line) + min;
+    lines_to_modify
+        .into_iter()
+        .map(|line| {
+            let place_comment_tokens_at =
+                text.line_to_char(line) + column_to_place_comment_tokens_at;
 
-        if !was_commented {
-            // comment line
-            changes.push((pos, pos, Some(comment.clone())));
-        } else {
-            // uncomment line
-            changes.push((pos, pos + token.len() + margin, None));
-        }
-    }
-
-    changes
+            if !was_commented {
+                // comment line
+                (
+                    place_comment_tokens_at,
+                    place_comment_tokens_at,
+                    // insert the token
+                    Some(comment.clone()),
+                )
+            } else {
+                // uncomment line
+                (
+                    place_comment_tokens_at,
+                    place_comment_tokens_at + token.len() + comment_tokens_right_margin,
+                    // remove the token - replace range with nothing
+                    None,
+                )
+            }
+        })
+        .collect()
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -582,33 +601,5 @@ mod test {
             transaction.apply(&mut doc);
             assert_eq!(doc, "");
         }
-
-        // Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose
-        // byte size unequal the amount of chars
-        // #[test]
-        // fn test_get_comment_with_char_boundaries() {
-        //     let rope = Rope::from("··");
-        //     let tokens = vec!["//".to_owned(), "///".to_owned()];
-
-        //     assert_eq!(
-        //         super::get_comment_token(None, rope.slice(..), Some(&tokens), 0),
-        //         None
-        //     );
-        // }
-
-        // /// Test for `get_comment_token`.
-        // ///
-        // /// Assuming the comment tokens are stored as `["///", "//"]`, `get_comment_token` should still
-        // /// return `///` instead of `//` if the user is in a doc-comment section.
-        // #[test]
-        // fn test_use_longest_comment() {
-        //     let text = Rope::from("    /// amogus ඞ");
-        //     let tokens = vec!["///".to_owned(), "//".to_owned()];
-
-        //     assert_eq!(
-        //         super::get_comment_token(None, text.slice(..), Some(&tokens), 0),
-        //         Some("///".to_owned())
-        //     );
-        // }
     }
 }

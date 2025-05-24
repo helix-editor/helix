@@ -3671,9 +3671,14 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token =
-            comment::get_comment_token(&loader, syntax, text, doc_default_tokens, curr_line_num)
-                .filter(|_| continue_comments);
+        let continue_comment_token = comment::get_line_comment_token(
+            &loader,
+            syntax,
+            text,
+            doc_default_tokens,
+            curr_line_num,
+        )
+        .filter(|_| continue_comments);
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
@@ -4225,7 +4230,7 @@ pub mod insert {
             let current_line = text.char_to_line(pos);
             let line_start = text.line_to_char(current_line);
 
-            let continue_comment_token = comment::get_comment_token(
+            let continue_comment_token = comment::get_line_comment_token(
                 &doc.syn_loader.load(),
                 syntax,
                 text,
@@ -5164,12 +5169,13 @@ pub fn completion(cx: &mut Context) {
 
 // comments
 
-/// commenting behavior, for each range in selection:
-/// 1. only line comment tokens -> line comment
-/// 2. each line block commented -> uncomment all lines
-/// 3. whole selection block commented -> uncomment selection
-/// 4. all lines not commented and block tokens -> comment uncommented lines
-/// 5. no comment tokens and not block commented -> line comment
+/// Commenting behavior, for each range in selection:
+///
+/// 1. Only line comment tokens -> line comment
+/// 2. Each line block commented -> uncomment all lines
+/// 3. Whole selection block commented -> uncomment selection
+/// 4. All lines not commented and block tokens -> comment uncommented lines
+/// 5. No comment tokens and not block commented -> line comment
 fn toggle_comments_impl<F>(cx: &mut Context, comments_transaction: F)
 where
     F: Fn(
@@ -5219,7 +5225,7 @@ fn toggle_comments(cx: &mut Context) {
                 rope,
                 selection.iter().flat_map(|range| {
                     let (injected_line_tokens, injected_block_tokens) =
-                        comment::get_injected_tokens(
+                        comment::injected_tokens_for_range(
                             loader,
                             syntax,
                             range.from() as u32,
@@ -5301,7 +5307,7 @@ fn toggle_line_comments(cx: &mut Context) {
                 rope,
                 selection.iter().flat_map(|range| {
                     let (injected_line_tokens, injected_block_tokens) =
-                        comment::get_injected_tokens(
+                        comment::injected_tokens_for_range(
                             loader,
                             syntax,
                             range.from() as u32,
@@ -5355,7 +5361,7 @@ fn toggle_block_comments(cx: &mut Context) {
                 rope,
                 selection.iter().flat_map(|range| {
                     let (injected_line_tokens, injected_block_tokens) =
-                        comment::get_injected_tokens(
+                        comment::injected_tokens_for_range(
                             loader,
                             syntax,
                             range.from() as u32,
