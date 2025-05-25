@@ -1719,6 +1719,7 @@ source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "3e9c4
 name = "mail"
 scope = "text.mail"
 file-types = ["eml"]
+language-servers = ["harper-ls"]
 injection-regex = "mail|eml|email"
 
 [[grammar]]
@@ -1731,7 +1732,7 @@ scope = "source.md"
 injection-regex = "md|markdown"
 file-types = ["md", "livemd", "markdown", "mdx", "mkd", "mkdn", "mdwn", "mdown", "markdn", "mdtxt", "mdtext", "workbook", { glob = "PULLREQ_EDITMSG" }]
 roots = [".marksman.toml"]
-language-servers = [ "marksman", "markdown-oxide" ]
+language-servers = [ "harper-ls", "marksman", "markdown-oxide" ]
 indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "<!--", end = "-->" }
 
@@ -3432,7 +3433,7 @@ injection-regex = "typ(st)?"
 file-types = ["typst", "typ"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = ["tinymist"]
+language-servers = [ "harper-ls", "tinymist" ]
 indent = { tab-width = 2, unit = "  " }
 
 [language.auto-pairs]
