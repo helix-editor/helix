@@ -72,8 +72,8 @@ mod imp {
 
         #[cfg(target_os = "macos")]
         {
-            use std::os::macos::fs::FileTimesExt;
             use std::fs::{File, FileTimes};
+            use std::os::macos::fs::FileTimesExt;
 
             let to_file = File::options().write(true).open(to)?;
             let times = FileTimes::new().set_created(from_meta.created()?);
@@ -118,7 +118,11 @@ mod imp {
 
     use std::ffi::c_void;
 
-    use std::os::windows::{ffi::OsStrExt, fs::{OpenOptionsExt, FileTimesExt}, io::AsRawHandle};
+    use std::os::windows::{
+        ffi::OsStrExt,
+        fs::{FileTimesExt, OpenOptionsExt},
+        io::AsRawHandle,
+    };
 
     use std::fs::{File, FileTimes};
 
@@ -425,7 +429,7 @@ mod imp {
         let perms = meta.permissions();
 
         let to_file = File::options().write(true).open(to)?;
-        let times = FileTimes::new().set_created(from_meta.created()?);
+        let times = FileTimes::new().set_created(meta.created()?);
         to_file.set_times(times)?;
 
         std::fs::set_permissions(to, perms)?;
