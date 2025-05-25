@@ -4789,7 +4789,7 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
     let yanked = values.map(|value| value.to_string()).collect::<Vec<_>>();
     let (view, doc) = current!(editor);
 
-    replace_impl(&yanked, doc, view, scrolloff, count)
+    replace_impl(&yanked, doc, view, count, scrolloff)
 }
 
 fn replace_impl(
