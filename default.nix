@@ -6,6 +6,8 @@
   installShellFiles,
   git,
   gitRev ? null,
+  grammarOverlays ? [],
+  includeGrammarIf ? _: true,
 }: let
   fs = lib.fileset;
 
@@ -27,7 +29,7 @@
   # that they reside in. It is built by calling the derivation in the
   # grammars.nix file, then taking the runtime directory in the git repo
   # and hooking symlinks up to it.
-  grammars = callPackage ./grammars.nix {};
+  grammars = callPackage ./grammars.nix {inherit grammarOverlays includeGrammarIf;};
   runtimeDir = runCommand "helix-runtime" {} ''
     mkdir -p $out
     ln -s ${./runtime}/* $out
