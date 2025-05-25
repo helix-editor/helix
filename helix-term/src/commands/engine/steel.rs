@@ -23,6 +23,7 @@ use helix_view::{
     },
     events::{DocumentDidOpen, DocumentFocusLost, SelectionDidChange},
     extension::document_id_to_usize,
+    graphics::CursorKind,
     input::KeyEvent,
     theme::Color,
     DocumentId, Editor, Theme, ViewId,
@@ -31,7 +32,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use steel::{
     compiler::modules::steel_home,
     gc::{unsafe_erased_pointers::CustomReference, ShareableMut},
-    rvals::{as_underlying_type, FromSteelVal, IntoSteelVal, SteelString},
+    rvals::{as_underlying_type, AsRefMutSteelVal, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{
         engine::Engine, mutex_lock, mutex_unlock, register_fn::RegisterFn, ThreadStateController,
     },
@@ -640,6 +641,34 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     );
 
     module
+        .register_fn("raw-cursor-shape", || CursorShapeConfig::default())
+        .register_fn(
+            "raw-cursor-shape-set!",
+            |value: SteelVal, mode: String, shape: String| -> anyhow::Result<SteelVal> {
+                let mut config = CursorShapeConfig::as_mut_ref(&value)?;
+
+                let mode = match mode.as_str() {
+                    "normal" => Mode::Normal,
+                    "select" => Mode::Select,
+                    "insert" => Mode::Insert,
+                    _ => anyhow::bail!("Unable to match mode from string: {}", mode),
+                };
+
+                let kind = match shape.as_str() {
+                    "block" => CursorKind::Block,
+                    "bar" => CursorKind::Bar,
+                    "underline" => CursorKind::Underline,
+                    "hidden" => CursorKind::Hidden,
+                    _ => anyhow::bail!("Unable to match cursor kind from string: {}", shape),
+                };
+
+                config.update(mode, kind);
+                drop(config);
+                Ok(value)
+            },
+        );
+
+    module
         .register_fn("raw-file-picker", || FilePickerConfig::default())
         .register_fn("register-file-picker", HelixConfiguration::file_picker)
         .register_fn("fp-hidden", fp_hidden)
@@ -708,7 +737,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         )
         .register_fn("completion-replace", HelixConfiguration::completion_replace)
         .register_fn("auto-info", HelixConfiguration::auto_info)
-        .register_fn("cursor-shape", HelixConfiguration::cursor_shape)
+        .register_fn("#%raw-cursor-shape", HelixConfiguration::cursor_shape)
         .register_fn("true-color", HelixConfiguration::true_color)
         .register_fn(
             "insert-final-newline",
@@ -743,7 +772,110 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
     if generate_sources {
         let mut builtin_configuration_module =
-            "(require-builtin helix/core/configuration as helix.)".to_string();
+            r#"(require-builtin helix/core/configuration as helix.)
+(provide define-lsp)
+(define-syntax define-lsp
+  (syntax-rules (#%crunch #%name #%conf)
+    ;; Other generic keys
+    [(_ #%crunch #%name name #%conf conf (key (inner-key value) ...))
+     (set-lsp-config! name
+                      (hash-insert conf
+                                   (quote key)
+                                   (transduce (list (list (quote inner-key) value) ...)
+                                              (into-hashmap))))]
+
+    [(_ #%crunch #%name name #%conf conf (key (inner-key value) ...) remaining ...)
+     ;  ;; Crunch the remaining stuff
+     (define-lsp #%crunch
+          #%name
+          name
+          #%conf
+          (hash-insert conf
+                       (quote key)
+                       (transduce (list (list (quote inner-key) value) ...) (into-hashmap)))
+          remaining ...)]
+
+    ;; Other generic keys
+    [(_ #%crunch #%name name #%conf conf (key value))
+     (set-lsp-config! name (hash-insert conf (quote key) value))]
+
+    [(_ #%crunch #%name name #%conf conf (key value) remaining ...)
+     ;  ;; Crunch the remaining stuff
+     (define-lsp #%crunch #%name name #%conf (hash-insert conf (quote key) value) remaining ...)]
+
+    [(_ name (key value ...) ...)
+     (define-lsp #%crunch #%name name #%conf (hash "name" name) (key value ...) ...)]
+
+    [(_ name (key value)) (define-lsp #%crunch #%name name #%conf (hash "name" name) (key value))]
+
+    [(_ name (key value) ...) (define-lsp #%crunch #%name name #%conf (hash "name" name) (key value) ...)]))
+
+(provide language)
+(define-syntax language
+  (syntax-rules (#%crunch #%name #%conf)
+
+    ;; Other generic keys
+    [(_ #%crunch #%name name #%conf conf (key (inner-key value) ...))
+     (update-language-config! name
+                              (hash-insert conf
+                                           (quote key)
+                                           (transduce (list (list (quote inner-key) value) ...)
+                                                      (into-hashmap))))]
+
+    [(_ #%crunch #%name name #%conf conf (key (inner-key value) ...) remaining ...)
+     ;  ;; Crunch the remaining stuff
+     (language #%crunch
+               #%name
+               name
+               #%conf
+               (hash-insert conf
+                            (quote key)
+                            (transduce (list (list (quote inner-key) value) ...) (into-hashmap)))
+               remaining ...)]
+
+    ;; Other generic keys
+    [(_ #%crunch #%name name #%conf conf (key value))
+     (update-language-config! name (hash-insert conf (quote key) value))]
+
+    [(_ #%crunch #%name name #%conf conf (key value) remaining ...)
+     ;  ;; Crunch the remaining stuff
+     (language #%crunch #%name name #%conf (hash-insert conf (quote key) value) remaining ...)]
+
+    [(_ name (key value ...) ...)
+     (language #%crunch #%name name #%conf (hash "name" name) (key value ...) ...)]
+
+    [(_ name (key value)) (language #%crunch #%name name #%conf (hash "name" name) (key value))]
+
+    [(_ name (key value) ...)
+     (language #%crunch #%name name #%conf (hash "name" name) (key value) ...)]))
+"#
+            .to_string();
+
+        builtin_configuration_module.push_str(
+            r#"
+(provide cursor-shape)
+;;@doc
+;; Shape for cursor in each mode
+;;
+;; (cursor-shape #:normal (normal 'block)
+;;               #:select (select 'block)
+;;               #:insert (insert 'block))
+;;
+;; # Examples
+;; 
+;; ```scheme
+;; (cursor-shape #:normal 'block #:select 'underline #:insert 'bar)
+;; ```
+(define (cursor-shape #:normal (normal 'block)
+                      #:select (select 'block)
+                      #:insert (insert 'block))
+    (define cursor-shape-config (helix.raw-cursor-shape))
+    (helix.raw-cursor-shape-set! cursor-shape-config 'normal normal)
+    (helix.raw-cursor-shape-set! cursor-shape-config 'select select)
+    (helix.raw-cursor-shape-set! cursor-shape-config 'insert insert)
+    (helix.#%raw-cursor-shape *helix.config* cursor-shape-config))                
+            "#,
+        );
 
         builtin_configuration_module.push_str(
             r#"
@@ -1137,7 +1269,7 @@ are shown, set to 5 for instant. Defaults to 250ms.
  or to only insert new text
 "#),
             ("auto-info", "Whether to display infoboxes. Defaults to true."),
-            ("cursor-shape", "Shape for cursor in each mode"),
+            // ("cursor-shape", "Shape for cursor in each mode"),
             ("true-color", "Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`."),
             ("insert-final-newline", "Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`"),
             ("color-modes", "Whether to color modes with different colors. Defaults to `false`."),
@@ -3444,10 +3576,6 @@ completion : string?
     }
 
     engine.register_module(module);
-}
-
-pub fn helix_runtime_search_path() -> PathBuf {
-    helix_loader::config_dir().join("helix")
 }
 
 // TODO: Generate sources into the cogs directory, so that the

@@ -617,6 +617,10 @@ pub enum StatusLineElement {
 pub struct CursorShapeConfig([CursorKind; 3]);
 
 impl CursorShapeConfig {
+    pub fn update(&mut self, mode: Mode, kind: CursorKind) {
+        self.0[mode as usize] = kind;
+    }
+
     pub fn from_mode(&self, mode: Mode) -> CursorKind {
         self.get(mode as usize).copied().unwrap_or_default()
     }
