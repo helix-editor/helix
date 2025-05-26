@@ -3985,37 +3985,41 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
             let rooted = callback_fn.as_rooted();
 
             let picker = ui::Picker::new(columns, 0, [], cwd, move |cx, path: &PathBuf, action| {
-                if let Err(e) = cx.editor.open(path, action) {
-                    let err = if let Some(err) = e.source() {
-                        format!("{}", err)
-                    } else {
-                        format!("unable to open \"{}\"", path.display())
-                    };
-                    cx.editor.set_error(err);
+                let result = cx.editor.open(path, action);
+                match result {
+                    Err(e) => {
+                        let err = if let Some(err) = e.source() {
+                            format!("{}", err)
+                        } else {
+                            format!("unable to open \"{}\"", path.display())
+                        };
+                        cx.editor.set_error(err);
+                    }
+                    Ok(_) => {
+                        let mut ctx = Context {
+                            register: None,
+                            count: None,
+                            editor: cx.editor,
+                            callback: Vec::new(),
+                            on_next_key_callback: None,
+                            jobs: cx.jobs,
+                        };
 
-                    let mut ctx = Context {
-                        register: None,
-                        count: None,
-                        editor: cx.editor,
-                        callback: Vec::new(),
-                        on_next_key_callback: None,
-                        jobs: cx.jobs,
-                    };
+                        let cloned_func = rooted.value();
 
-                    let cloned_func = rooted.value();
-
-                    enter_engine(|guard| {
-                        if let Err(e) = guard
-                            .with_mut_reference::<Context, Context>(&mut ctx)
-                            .consume(move |engine, args| {
-                                let context = args[0].clone();
-                                engine.update_value("*helix.cx*", context);
-                                engine.call_function_with_args(cloned_func.clone(), Vec::new())
-                            })
-                        {
-                            present_error_inside_engine_context(&mut ctx, guard, e);
-                        }
-                    })
+                        enter_engine(|guard| {
+                            if let Err(e) = guard
+                                .with_mut_reference::<Context, Context>(&mut ctx)
+                                .consume(move |engine, args| {
+                                    let context = args[0].clone();
+                                    engine.update_value("*helix.cx*", context);
+                                    engine.call_function_with_args(cloned_func.clone(), Vec::new())
+                                })
+                            {
+                                present_error_inside_engine_context(&mut ctx, guard, e);
+                            }
+                        })
+                    }
                 }
             })
             .with_preview(|_editor, path| Some((PathOrId::Path(path), None)));
