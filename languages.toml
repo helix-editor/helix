@@ -1192,7 +1192,7 @@ auto-format = true
 
 [[grammar]]
 name = "lilypond"
-source = { git = "https://github.com/nwhetsell/tree-sitter-lilypond", rev = "6b0f470b2e5acbfc4d1d64ba89b396adecf06ea4" }
+source = { git = "https://github.com/nwhetsell/tree-sitter-lilypond", rev = "6b0f470b2e5acbfc4d1d64ba89b396adecf06ea4", subpath = "lilypond" }
 
 [[language]]
 name = "lean"
