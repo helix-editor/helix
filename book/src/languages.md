@@ -142,7 +142,7 @@ These are the available options for a language server.
 | `config`                   | Language server initialization options                                                                                            |
 | `timeout`                  | The maximum time a request to the language server may take, in seconds. Defaults to `20`                                          |
 | `environment`              | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }`          |
-| `required-root-patterns`   | A list of `glob` patterns to look for in the working directory. The language server is started if at least one of them is found.  |
+| `required-root-patterns`   | A list of `glob` patterns to look for in the working directory. The language server is started if at least one of them is found. Patterns can be negated with `!` prefix (`\\!` for escape). |
 
 A `format` sub-table within `config` can be used to pass extra formatting options to
 [Document Formatting Requests](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting).
