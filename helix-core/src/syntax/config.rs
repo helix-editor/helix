@@ -389,13 +389,13 @@ where
     let mut negative_builder = globset::GlobSetBuilder::new();
     for pattern in patterns {
         // negative pattern
-        if pattern.starts_with("!") {
-            let glob = globset::Glob::new(&pattern[1..]).map_err(serde::de::Error::custom)?;
+        if let Some(stripped) = pattern.strip_prefix("!") {
+            let glob = globset::Glob::new(stripped).map_err(serde::de::Error::custom)?;
             negative_builder.add(glob);
         }
         // escaped pattern
-        else if pattern.starts_with("\\!") {
-            let glob = globset::Glob::new(&pattern[2..]).map_err(serde::de::Error::custom)?;
+        else if let Some(stripped) = pattern.strip_prefix("\\!") {
+            let glob = globset::Glob::new(stripped).map_err(serde::de::Error::custom)?;
             positive_builder.add(glob);
         }
         // rest is positive
