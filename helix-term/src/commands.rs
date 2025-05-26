@@ -601,6 +601,8 @@ impl MappableCommand {
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
         goto_prev_tabstop, "Goto next snippet placeholder",
+        goto_first_selection, "Make the first selection your primary one",
+        goto_last_selection, "Make the last selection your primary one",
     );
 }
 
@@ -5290,6 +5292,21 @@ fn rotate_selections_forward(cx: &mut Context) {
 }
 fn rotate_selections_backward(cx: &mut Context) {
     rotate_selections(cx, Direction::Backward)
+}
+
+pub fn goto_first_selection(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let mut selection = doc.selection(view.id).clone();
+    selection.set_primary_index(0);
+    doc.set_selection(view.id, selection);
+}
+
+pub fn goto_last_selection(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let mut selection = doc.selection(view.id).clone();
+    let len = selection.len();
+    selection.set_primary_index(len - 1);
+    doc.set_selection(view.id, selection);
 }
 
 enum ReorderStrategy {
