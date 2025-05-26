@@ -156,6 +156,7 @@ where
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::CurrentWorkingDirectory => render_cwd,
     }
 }
 
@@ -553,4 +554,18 @@ where
     if let Some(reg) = context.editor.selected_register {
         write(context, format!(" reg={} ", reg).into())
     }
+}
+
+fn render_cwd<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let cwd = helix_stdx::env::current_working_dir()
+        .file_name()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default()
+        .into();
+
+    write(context, cwd, None)
 }
