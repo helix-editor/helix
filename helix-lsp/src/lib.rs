@@ -888,15 +888,28 @@ fn start_client(
     let root_path = root.clone().unwrap_or_else(|| workspace.clone());
     let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
 
-    if let Some(globset) = &ls_config.required_root_patterns {
-        if !root_path
-            .read_dir()?
-            .flatten()
-            .map(|entry| entry.file_name())
-            .any(|entry| globset.is_match(entry))
-        {
-            return Err(StartupError::NoRequiredRootFound);
-        }
+    // match negative and positive root patterns
+    let (positive_globset, negative_globset) = &ls_config.required_root_patterns;
+    let file_names: Vec<_> = root_path
+        .read_dir()?
+        .flatten()
+        .map(|entry| entry.file_name())
+        .collect();
+    // negative
+    if !negative_globset.is_empty()
+        && file_names
+            .iter()
+            .any(|name| negative_globset.is_match(name))
+    {
+        return Err(StartupError::NoRequiredRootFound);
+    }
+    // positive
+    if !positive_globset.is_empty()
+        && !file_names
+            .iter()
+            .any(|name| positive_globset.is_match(name))
+    {
+        return Err(StartupError::NoRequiredRootFound);
     }
 
     let (client, incoming, initialize_notify) = Client::start(

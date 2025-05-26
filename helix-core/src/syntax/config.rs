@@ -374,20 +374,41 @@ where
     serializer.end()
 }
 
-fn deserialize_required_root_patterns<'de, D>(deserializer: D) -> Result<Option<GlobSet>, D::Error>
+/// Deserialize required-root-patterns with globset.
+///
+/// This function returns a tuple of positive globset and negative globset.
+fn deserialize_required_root_patterns<'de, D>(
+    deserializer: D,
+) -> Result<(GlobSet, GlobSet), D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     let patterns = Vec::<String>::deserialize(deserializer)?;
-    if patterns.is_empty() {
-        return Ok(None);
-    }
-    let mut builder = globset::GlobSetBuilder::new();
+
+    let mut positive_builder = globset::GlobSetBuilder::new();
+    let mut negative_builder = globset::GlobSetBuilder::new();
     for pattern in patterns {
-        let glob = globset::Glob::new(&pattern).map_err(serde::de::Error::custom)?;
-        builder.add(glob);
+        // negative pattern
+        if pattern.starts_with("!") {
+            let glob = globset::Glob::new(&pattern[1..]).map_err(serde::de::Error::custom)?;
+            negative_builder.add(glob);
+        }
+        // escaped pattern
+        else if pattern.starts_with("\\!") {
+            let glob = globset::Glob::new(&pattern[2..]).map_err(serde::de::Error::custom)?;
+            positive_builder.add(glob);
+        }
+        // rest is positive
+        else {
+            let glob = globset::Glob::new(&pattern).map_err(serde::de::Error::custom)?;
+            positive_builder.add(glob);
+        }
     }
-    builder.build().map(Some).map_err(serde::de::Error::custom)
+
+    let positive_globset = positive_builder.build().map_err(serde::de::Error::custom)?;
+    let negative_globset = positive_builder.build().map_err(serde::de::Error::custom)?;
+
+    Ok((positive_globset, negative_globset))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -403,12 +424,13 @@ pub struct LanguageServerConfiguration {
     pub config: Option<serde_json::Value>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
+    /// Positive and negative patterns.
     #[serde(
         default,
         skip_serializing,
         deserialize_with = "deserialize_required_root_patterns"
     )]
-    pub required_root_patterns: Option<GlobSet>,
+    pub required_root_patterns: (GlobSet, GlobSet),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
