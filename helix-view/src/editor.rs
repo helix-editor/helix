@@ -2262,16 +2262,20 @@ impl Editor {
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
     use helix_core::{
-        chars::char_is_whitespace, line_ending::line_end_char_index, Operation, Transaction,
+        chars::char_is_whitespace,
+        line_ending::{line_end_char_index, str_is_line_ending},
+        unicode::segmentation::UnicodeSegmentation,
+        Operation, Transaction,
     };
 
     fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
         if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
             changes
         {
+            let mut graphemes = inserted_str.graphemes(true);
             move_pos + inserted_str.len() == pos
-                && inserted_str.starts_with('\n')
-                && inserted_str.chars().skip(1).all(char_is_whitespace)
+                && graphemes.next().is_some_and(str_is_line_ending)
+                && graphemes.all(|g| g.chars().all(char_is_whitespace))
                 && pos == line_end_pos // ensure no characters exists after current position
         } else {
             false

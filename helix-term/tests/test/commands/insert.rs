@@ -512,3 +512,25 @@ async fn test_open_above_with_comments() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn try_restore_indent() -> anyhow::Result<()> {
+    // Assert that `helix_view::editor::try_restore_indent` handles line endings correctly
+    // endings.
+    test((
+        indoc! {"\
+        if true #[|{]#
+        }
+        "},
+        // `try_restore_indent` should remove the indentation when adding a blank line.
+        ":lang rust<ret>o<esc>",
+        indoc! {"\
+        if true {
+        #[
+        |]#}
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
