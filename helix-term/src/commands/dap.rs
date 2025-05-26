@@ -6,12 +6,11 @@ use crate::{
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::config::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
-use helix_dap::{self as dap, requests::TerminateArguments, Client};
+use helix_dap::{self as dap, requests::TerminateArguments};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use tui::text::Spans;
 
 use std::collections::HashMap;
@@ -60,8 +59,8 @@ fn thread_picker(
             )
             .with_preview(move |editor, thread| {
                 let frames = editor
-                    .debugger_service
-                    .get_active_debugger()
+                    .dap_servers
+                    .get_active_client()
                     .as_ref()?
                     .stack_frames
                     .get(&thread.id)?;
@@ -121,37 +120,16 @@ pub fn dap_start_impl(
     params: Option<Vec<std::borrow::Cow<str>>>,
 ) -> Result<(), anyhow::Error> {
     let doc = doc!(cx.editor);
-    let id = cx.editor.debugger_service.get_new_id();
-
     let config = doc
         .language_config()
         .and_then(|config| config.debugger.as_ref())
         .ok_or_else(|| anyhow!("No debug adapter available for language"))?;
 
-    let result = match socket {
-        Some(socket) => block_on(Client::tcp(socket, id)),
-        None => block_on(Client::process(
-            &config.transport,
-            &config.command,
-            config.args.iter().map(|arg| arg.as_str()).collect(),
-            config.port_arg.as_deref(),
-            id,
-        )),
-    };
-
-    let (mut debugger, events) = match result {
-        Ok(r) => r,
-        Err(e) => bail!("Failed to start debug session: {}", e),
-    };
-
-    debugger.config = Some(config.clone());
-
-    let request = debugger.initialize(config.name.clone());
-    if let Err(e) = block_on(request) {
-        bail!("Failed to initialize debug adapter: {}", e);
-    }
-
-    debugger.quirks = config.quirks.clone();
+    let id = cx
+        .editor
+        .dap_servers
+        .start_client(socket, config)
+        .map_err(|e| anyhow!("Failed to start debug client: {}", e))?;
 
     // TODO: avoid refetching all of this... pass a config in
     let template = match name {
@@ -217,6 +195,13 @@ pub fn dap_start_impl(
         // }
     };
 
+    let debugger = match cx.editor.dap_servers.get_client_mut(id) {
+        Some(child) => child,
+        None => {
+            bail!("Failed to get child debugger.");
+        }
+    };
+
     match &template.request[..] {
         "launch" => {
             let call = debugger.launch(args);
@@ -230,15 +215,12 @@ pub fn dap_start_impl(
     };
 
     // TODO: either await "initialized" or buffer commands until event is received
-    cx.editor.debugger_service.add_debugger(0, debugger);
-    let stream = UnboundedReceiverStream::new(events);
-    cx.editor.debugger_events.push(stream);
     Ok(())
 }
 
 pub fn dap_launch(cx: &mut Context) {
     // TODO: Now that we support multiple Clients, we could run multiple debuggers at once but for now keep this as is
-    if cx.editor.debugger_service.get_active_debugger().is_some() {
+    if cx.editor.dap_servers.get_active_client().is_some() {
         cx.editor.set_error("Debugger is already running");
         return;
     }
@@ -292,7 +274,7 @@ pub fn dap_launch(cx: &mut Context) {
 }
 
 pub fn dap_restart(cx: &mut Context) {
-    let debugger = match cx.editor.debugger_service.get_active_debugger() {
+    let debugger = match cx.editor.dap_servers.get_active_client() {
         Some(debugger) => debugger,
         None => {
             cx.editor.set_error("Debugger is not running");
@@ -601,7 +583,7 @@ pub fn dap_terminate(cx: &mut Context) {
     let request = debugger.terminate(terminate_arguments);
     dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
         // editor.set_error(format!("Failed to disconnect: {}", e));
-        editor.debugger_service.unset_active_debugger();
+        editor.dap_servers.unset_active_client();
     });
 }
 

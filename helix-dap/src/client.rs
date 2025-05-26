@@ -1,4 +1,5 @@
 use crate::{
+    registry::DebugAdapterID,
     requests::{DisconnectArguments, TerminateArguments},
     transport::{Payload, Request, Response, Transport},
     types::*,
@@ -27,7 +28,7 @@ use tokio::{
 
 #[derive(Debug)]
 pub struct Client {
-    id: usize,
+    id: DebugAdapterID,
     _process: Option<Child>,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
@@ -45,7 +46,6 @@ pub struct Client {
     pub quirks: DebuggerQuirks,
     /// The config which was used to start this debugger.
     pub config: Option<DebugAdapterConfig>,
-    pub children: HashMap<usize, Client>,
 }
 
 impl Client {
@@ -56,8 +56,8 @@ impl Client {
         command: &str,
         args: Vec<&str>,
         port_arg: Option<&str>,
-        id: usize,
-    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
+        id: DebugAdapterID,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
         if command.is_empty() {
             return Result::Err(Error::Other(anyhow!("Command not provided")));
         }
@@ -72,9 +72,9 @@ impl Client {
         rx: Box<dyn AsyncBufRead + Unpin + Send>,
         tx: Box<dyn AsyncWrite + Unpin + Send>,
         err: Option<Box<dyn AsyncBufRead + Unpin + Send>>,
-        id: usize,
+        id: DebugAdapterID,
         process: Option<Child>,
-    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
         let (server_rx, server_tx) = Transport::start(rx, tx, err, id);
         let (client_tx, client_rx) = unbounded_channel();
 
@@ -92,7 +92,6 @@ impl Client {
             thread_id: None,
             active_frame: None,
             quirks: DebuggerQuirks::default(),
-            children: HashMap::new(),
             config: None,
         };
 
@@ -103,8 +102,8 @@ impl Client {
 
     pub async fn tcp(
         addr: std::net::SocketAddr,
-        id: usize,
-    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
+        id: DebugAdapterID,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
         let stream = TcpStream::connect(addr).await?;
         let (rx, tx) = stream.into_split();
         Self::streams(Box::new(BufReader::new(rx)), Box::new(tx), None, id, None)
@@ -113,8 +112,8 @@ impl Client {
     pub fn stdio(
         cmd: &str,
         args: Vec<&str>,
-        id: usize,
-    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
+        id: DebugAdapterID,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
 
@@ -165,8 +164,8 @@ impl Client {
         cmd: &str,
         args: Vec<&str>,
         port_format: &str,
-        id: usize,
-    ) -> Result<(Self, UnboundedReceiver<(usize, Payload)>)> {
+        id: DebugAdapterID,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
         let port = Self::get_port().await.unwrap();
 
         let process = Command::new(cmd)
@@ -202,9 +201,9 @@ impl Client {
     }
 
     async fn recv(
-        id: usize,
+        id: DebugAdapterID,
         mut server_rx: UnboundedReceiver<Payload>,
-        client_tx: UnboundedSender<(usize, Payload)>,
+        client_tx: UnboundedSender<(DebugAdapterID, Payload)>,
     ) {
         while let Some(msg) = server_rx.recv().await {
             match msg {
@@ -223,7 +222,7 @@ impl Client {
         }
     }
 
-    pub fn id(&self) -> usize {
+    pub fn id(&self) -> DebugAdapterID {
         self.id
     }
 
@@ -333,29 +332,6 @@ impl Client {
 
     pub fn capabilities(&self) -> &DebuggerCapabilities {
         self.caps.as_ref().expect("debugger not yet initialized!")
-    }
-
-    pub async fn create_child_debugger(
-        &mut self,
-        id: usize,
-        socket: SocketAddr,
-    ) -> Result<(&mut Client, UnboundedReceiver<(usize, Payload)>)> {
-        let (mut client, payload) = Self::tcp(socket, id).await?;
-        client.config = self.config.clone();
-        client.quirks = self.quirks.clone();
-        client.connection_type = self.connection_type;
-        client.starting_request_args = self.starting_request_args.clone();
-
-        self.children.insert(id, client);
-        Ok((self.children.get_mut(&id).unwrap(), payload))
-    }
-
-    pub fn get_child(&self, id: usize) -> Option<&Client> {
-        self.children.get(&id)
-    }
-
-    pub fn get_child_mut(&mut self, id: usize) -> Option<&mut Client> {
-        self.children.get_mut(&id)
     }
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
