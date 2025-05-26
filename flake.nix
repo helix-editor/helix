@@ -75,6 +75,7 @@
                 lld
                 cargo-flamegraph
                 rust-bin.nightly.latest.rust-analyzer
+                rust-bin.nightly.latest.clippy
               ]
               ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) cargo-tarpaulin)
               ++ (lib.optional stdenv.isLinux lldb)
