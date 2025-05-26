@@ -422,10 +422,8 @@ impl<'t> DocumentFormatter<'t> {
             // For example, with viewport width = 17 and current col(column) = 16, adding a 2-width grapheme would make col = 18,
             // causing the last character to be clipped from view.
             // Therefore, we skip returning for wide characters (width > 1) and let the `Ordering::Greater` branch handle them in the next iteration.
-            if is_word_boundary {
-                if is_whitespace || grapheme_width <= 1 {
-                    return;
-                }
+            if is_word_boundary && (is_whitespace || grapheme_width <= 1) {
+                return;
             }
         }
     }
