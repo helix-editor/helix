@@ -2,18 +2,19 @@ use crate::editor::{Action, Breakpoint};
 use crate::{align_view, Align, Editor};
 use dap::requests::DisconnectArguments;
 use helix_core::Selection;
-use helix_dap::{self as dap, Client, ConnectionType, Payload, Request, ThreadId};
+use helix_dap::{
+    self as dap, registry::DebugAdapterID, Client, ConnectionType, Payload, Request, ThreadId,
+};
 use helix_lsp::block_on;
 use log::warn;
 use serde_json::{json, Value};
 use std::fmt::Write;
 use std::path::PathBuf;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[macro_export]
 macro_rules! debugger {
     ($editor:expr) => {{
-        let Some(debugger) = $editor.debugger_service.get_active_debugger_mut() else {
+        let Some(debugger) = $editor.dap_servers.get_active_client_mut() else {
             return;
         };
         debugger
@@ -144,7 +145,7 @@ pub fn breakpoints_changed(
 impl Editor {
     pub async fn handle_debugger_message(
         &mut self,
-        id: usize,
+        id: DebugAdapterID,
         payload: helix_dap::Payload,
     ) -> bool {
         use helix_dap::{events, Event};
@@ -171,7 +172,7 @@ impl Editor {
                         all_threads_stopped,
                         ..
                     }) => {
-                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                        let debugger = match self.dap_servers.get_client_mut(id) {
                             Some(debugger) => debugger,
                             None => return false,
                         };
@@ -212,10 +213,10 @@ impl Editor {
                         }
 
                         self.set_status(status);
-                        self.debugger_service.set_active_debugger(id);
+                        self.dap_servers.set_active_client(id);
                     }
                     Event::Continued(events::ContinuedBody { thread_id, .. }) => {
-                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                        let debugger = match self.dap_servers.get_client_mut(id) {
                             Some(debugger) => debugger,
                             None => return false,
                         };
@@ -229,7 +230,7 @@ impl Editor {
                     }
                     Event::Thread(thread) => {
                         self.set_status(format!("Thread {}: {}", thread.thread_id, thread.reason));
-                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                        let debugger = match self.dap_servers.get_client_mut(id) {
                             Some(debugger) => debugger,
                             None => return false,
                         };
@@ -305,7 +306,7 @@ impl Editor {
                     }
                     Event::Initialized(_) => {
                         self.set_status("Debugger initialized...");
-                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                        let debugger = match self.dap_servers.get_client_mut(id) {
                             Some(debugger) => debugger,
                             None => return false,
                         };
@@ -322,7 +323,7 @@ impl Editor {
                         }; // TODO: do we need to handle error?
                     }
                     Event::Terminated(terminated) => {
-                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                        let debugger = match self.dap_servers.get_client_mut(id) {
                             Some(debugger) => debugger,
                             None => return false,
                         };
@@ -353,8 +354,8 @@ impl Editor {
 
                         match restart_arg {
                             Some(Value::Bool(false)) | None => {
-                                self.debugger_service.remove_debugger(id);
-                                self.debugger_service.unset_active_debugger();
+                                self.dap_servers.remove_client(id);
+                                self.dap_servers.unset_active_client();
                                 self.set_status(
                                     "Terminated debugging session and disconnected debugger.",
                                 );
@@ -438,8 +439,7 @@ impl Editor {
                         }))
                     }
                     Ok(Request::StartDebugging(arguments)) => {
-                        let new_id = self.debugger_service.get_new_id();
-                        let debugger = match self.debugger_service.get_debugger_mut(id) {
+                        let debugger = match self.dap_servers.get_client_mut(id) {
                             Some(debugger) => debugger,
                             None => {
                                 self.set_error("No active debugger found.");
@@ -455,9 +455,13 @@ impl Editor {
                             }
                         };
 
-                        let result = debugger.create_child_debugger(new_id, socket).await;
+                        let config = debugger.config.clone();
 
-                        let (child, events) = match result {
+                        let result = self
+                            .dap_servers
+                            .start_client(Some(socket), &config.expect("No config found"));
+
+                        let client_id = match result {
                             Ok(child) => child,
                             Err(err) => {
                                 self.set_error(format!(
@@ -468,35 +472,18 @@ impl Editor {
                             }
                         };
 
-                        let stream = UnboundedReceiverStream::new(events);
-                        self.debugger_events.push(stream);
-
-                        let init_response = child
-                            .initialize(
-                                arguments
-                                    .configuration
-                                    .as_object()
-                                    .unwrap()
-                                    .get("name")
-                                    .unwrap()
-                                    .as_str()
-                                    .unwrap()
-                                    .to_string(),
-                            )
-                            .await;
-
-                        if let Err(err) = init_response {
-                            self.set_error(format!(
-                                "Failed to initialize child debugger: {:?}",
-                                err
-                            ));
-                            return true;
-                        }
+                        let client = match self.dap_servers.get_client_mut(client_id) {
+                            Some(child) => child,
+                            None => {
+                                self.set_error("Failed to get child debugger.");
+                                return true;
+                            }
+                        };
 
                         let relaunch_resp = if let ConnectionType::Launch = arguments.request {
-                            child.launch(arguments.configuration).await
+                            client.launch(arguments.configuration).await
                         } else {
-                            child.attach(arguments.configuration).await
+                            client.attach(arguments.configuration).await
                         };
                         if let Err(err) = relaunch_resp {
                             self.set_error(format!("Failed to start debugging session: {:?}", err));
@@ -510,7 +497,7 @@ impl Editor {
                     Err(err) => Err(err),
                 };
 
-                if let Some(debugger) = self.debugger_service.get_debugger_mut(id) {
+                if let Some(debugger) = self.dap_servers.get_client_mut(id) {
                     debugger
                         .reply(request.seq, &request.command, reply)
                         .await

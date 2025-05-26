@@ -1439,13 +1439,17 @@ version = "25.1.1"
 dependencies = [
  "anyhow",
  "fern",
+ "futures-executor",
+ "futures-util",
  "helix-core",
  "helix-stdx",
  "log",
  "serde",
  "serde_json",
+ "slotmap",
  "thiserror 2.0.12",
  "tokio",
+ "tokio-stream",
 ]
 
 [[package]]

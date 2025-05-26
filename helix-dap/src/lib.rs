@@ -1,10 +1,10 @@
 mod client;
-mod debuger_service;
+pub mod registry;
 mod transport;
 mod types;
 
 pub use client::Client;
-pub use debuger_service::DebuggerService;
+pub use futures_executor::block_on;
 pub use transport::{Payload, Response, Transport};
 pub use types::*;
 

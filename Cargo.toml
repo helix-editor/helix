@@ -47,6 +47,9 @@ unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 foldhash = "0.1"
 parking_lot = "0.12"
+futures-executor = "0.3"
+futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
+tokio-stream = "0.1.17"
 
 [workspace.package]
 version = "25.1.1"
