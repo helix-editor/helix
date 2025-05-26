@@ -599,8 +599,8 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
-        goto_next_tabstop, "goto next snippet placeholder",
-        goto_prev_tabstop, "goto next snippet placeholder",
+        goto_next_tabstop, "Goto next snippet placeholder",
+        goto_prev_tabstop, "Goto next snippet placeholder",
     );
 }
 
