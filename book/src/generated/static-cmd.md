@@ -303,3 +303,5 @@
 | `extend_to_word` | Extend to a two-character label | select: `` gw `` |
 | `goto_next_tabstop` | Goto next snippet placeholder |  |
 | `goto_prev_tabstop` | Goto next snippet placeholder |  |
+| `goto_first_selection` | Make the first selection your primary one |  |
+| `goto_last_selection` | Make the last selection your primary one |  |
