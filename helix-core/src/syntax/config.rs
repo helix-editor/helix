@@ -406,7 +406,7 @@ where
     }
 
     let positive_globset = positive_builder.build().map_err(serde::de::Error::custom)?;
-    let negative_globset = positive_builder.build().map_err(serde::de::Error::custom)?;
+    let negative_globset = negative_builder.build().map_err(serde::de::Error::custom)?;
 
     Ok((positive_globset, negative_globset))
 }

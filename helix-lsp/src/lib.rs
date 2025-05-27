@@ -896,12 +896,18 @@ fn start_client(
         .map(|entry| entry.file_name())
         .collect();
     // negative
-    if !negative_globset.is_empty()
-        && file_names
+    if !negative_globset.is_empty() {
+        if let Some(occurence) = file_names
             .iter()
-            .any(|name| negative_globset.is_match(name))
-    {
-        return Err(StartupError::NoRequiredRootFound);
+            .find(|name| negative_globset.is_match(name))
+        {
+            log::debug!(
+                "negative root pattern {} met for {}",
+                occurence.to_string_lossy(),
+                name
+            );
+            return Err(StartupError::NoRequiredRootFound);
+        }
     }
     // positive
     if !positive_globset.is_empty()
@@ -909,6 +915,7 @@ fn start_client(
             .iter()
             .any(|name| positive_globset.is_match(name))
     {
+        log::debug!("none of positive root patterns found for {}", name);
         return Err(StartupError::NoRequiredRootFound);
     }
 
