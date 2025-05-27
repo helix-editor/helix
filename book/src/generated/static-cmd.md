@@ -182,7 +182,7 @@
 | `yank` | Yank selection | normal: `` y ``, select: `` y `` |
 | `yank_to_clipboard` | Yank selections to clipboard | normal: `` <space>y ``, select: `` <space>y `` |
 | `yank_to_primary_clipboard` | Yank selections to primary clipboard |  |
-| `yank_joined` | Join and yank selections | normal: `` <C-y> ``, select: `` <C-y> `` |
+| `yank_joined` | Join and yank selections |  |
 | `yank_joined_to_clipboard` | Join and yank selections to clipboard |  |
 | `yank_main_selection_to_clipboard` | Yank main selection to clipboard | normal: `` <space>Y ``, select: `` <space>Y `` |
 | `yank_joined_to_primary_clipboard` | Join and yank selections to primary clipboard |  |
@@ -196,6 +196,9 @@
 | `paste_clipboard_before` | Paste clipboard before selections | normal: `` <space>P ``, select: `` <space>P `` |
 | `paste_primary_clipboard_after` | Paste primary clipboard after selections |  |
 | `paste_primary_clipboard_before` | Paste primary clipboard before selections |  |
+| `paste_before_joined_with_newline` | Join all selections with a newline and paste before cursor |  |
+| `paste_after_joined_with_newline` | Join all selections with a newline and paste after cursor |  |
+| `replace_joined_with_newline` | Replace selection with all selections joined with a newline |  |
 | `indent` | Indent selection | normal: `` <gt> ``, select: `` <gt> `` |
 | `unindent` | Unindent selection | normal: `` <lt> ``, select: `` <lt> `` |
 | `format_selections` | Format selection | normal: `` = ``, select: `` = `` |
