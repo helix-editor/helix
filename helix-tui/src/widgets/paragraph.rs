@@ -128,7 +128,7 @@ impl<'a> Paragraph<'a> {
         self
     }
 
-    fn line_count(&self, text_width: u16) -> u16 {
+    pub fn required_size(&self, max_text_width: u16) -> (u16, u16) {
         let style = self.style;
         let mut styled = self.text.lines.iter().flat_map(|spans| {
             spans
@@ -143,24 +143,20 @@ impl<'a> Paragraph<'a> {
                 }))
         });
         let mut line_composer: Box<dyn LineComposer> = if let Some(Wrap { trim }) = self.wrap {
-            Box::new(WordWrapper::new(&mut styled, text_width, trim))
+            Box::new(WordWrapper::new(&mut styled, max_text_width, trim))
         } else {
-            let mut line_composer = Box::new(LineTruncator::new(&mut styled, text_width));
+            let mut line_composer = Box::new(LineTruncator::new(&mut styled, max_text_width));
             if self.alignment == Alignment::Left {
                 line_composer.set_horizontal_offset(self.scroll.1);
             }
             line_composer
         };
-        let mut y = 0;
-        while let Some((_, _)) = line_composer.next_line() {
-            y += 1;
+        let mut text_width = 0;
+        let mut text_height = 0;
+        while let Some((_, line_width)) = line_composer.next_line() {
+            text_width = line_width.max(text_width);
+            text_height += 1;
         }
-        y
-    }
-
-    pub fn required_size(&self, max_text_width: u16) -> (u16, u16) {
-        let text_width = (self.text.width() as u16).min(max_text_width);
-        let text_height = self.line_count(text_width);
         (text_width, text_height)
     }
 }
