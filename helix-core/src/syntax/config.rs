@@ -394,8 +394,8 @@ where
             negative_builder.add(glob);
         }
         // escaped pattern
-        else if let Some(stripped) = pattern.strip_prefix("\\!") {
-            let glob = globset::Glob::new(stripped).map_err(serde::de::Error::custom)?;
+        else if let Some(_stripped) = pattern.strip_prefix("\\!") {
+            let glob = globset::Glob::new(&pattern[1..]).map_err(serde::de::Error::custom)?;
             positive_builder.add(glob);
         }
         // rest is positive
