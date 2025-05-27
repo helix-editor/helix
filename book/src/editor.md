@@ -381,7 +381,18 @@ These colors are controlled by the theme attributes `diff.plus`, `diff.minus` an
 
 Other diff providers will eventually be supported by a future plugin system.
 
-There are currently no options for this section.
+| Key | Description | Default |
+|-----|-------------|---------|
+| `characters` | Literal characters to use when rendering the diff gutter. Sub-keys may be any of `added`, `deleted`, or `modified` | See example below |
+
+Example:
+
+```toml
+[editor.gutters.diff.characters]
+added = '▏' # some characters that work well: '▍', '▏', '▎'
+deleted = '▁'
+modified = '▏'
+```
 
 #### `[editor.gutters.spacer]` Section
 

@@ -88,7 +88,7 @@ pub fn diagnostic<'doc>(
 }
 
 pub fn diff<'doc>(
-    _editor: &'doc Editor,
+    editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
@@ -97,6 +97,12 @@ pub fn diff<'doc>(
     let added = theme.get("diff.plus.gutter");
     let deleted = theme.get("diff.minus.gutter");
     let modified = theme.get("diff.delta.gutter");
+
+    let diff_chars = editor.config().gutters.diff.characters;
+    let added_icon = diff_chars.added;
+    let deleted_icon = diff_chars.deleted;
+    let modified_icon = diff_chars.modified;
+
     if let Some(diff_handle) = doc.diff_handle() {
         let hunks = diff_handle.load();
         let mut hunk_i = 0;
@@ -120,14 +126,14 @@ pub fn diff<'doc>(
                 }
 
                 let (icon, style) = if hunk.is_pure_insertion() {
-                    ("▍", added)
+                    (added_icon, added)
                 } else if hunk.is_pure_removal() {
                     if !first_visual_line {
                         return None;
                     }
-                    ("▔", deleted)
+                    (deleted_icon, deleted)
                 } else {
-                    ("▍", modified)
+                    (modified_icon, modified)
                 };
 
                 write!(out, "{}", icon).unwrap();
@@ -330,7 +336,7 @@ mod tests {
 
     use super::*;
     use crate::document::Document;
-    use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig};
+    use crate::editor::{Config, GutterConfig, GutterDiffConfig, GutterLineNumbersConfig};
     use crate::graphics::Rect;
     use crate::DocumentId;
     use arc_swap::ArcSwap;
@@ -381,6 +387,7 @@ mod tests {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
+            diff: GutterDiffConfig::default(),
         };
 
         let mut view = View::new(DocumentId::default(), gutters);
@@ -404,6 +411,7 @@ mod tests {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
+            diff: GutterDiffConfig::default(),
         };
 
         let mut view = View::new(DocumentId::default(), gutters);
