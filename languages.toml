@@ -831,8 +831,6 @@ request = "launch"
 completion = [ { name = "main", completion = "filename", default = "index.js" } ]
 args = { program = "{0}", skipFiles = [ "<node_internals>/**" ] }
 
-[[language.debugger.templates]]
-
 [[grammar]]
 name = "javascript"
 source = { git = "https://github.com/tree-sitter/tree-sitter-javascript", rev = "f772967f7b7bc7c28f845be2420a38472b16a8ee" }
