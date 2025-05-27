@@ -139,6 +139,7 @@ The following statusline elements can be configured:
 | `diagnostics` | The number of warnings and/or errors |
 | `workspace-diagnostics` | The number of warnings and/or errors on workspace |
 | `selections` | The primary selection index out of the number of active selections |
+| `search-position` | Current search match and total matches in the view `[<current>/<total>]` |
 | `primary-selection-length` | The number of characters currently in primary selection |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
@@ -279,6 +280,7 @@ Search specific options.
 |--|--|---------|
 | `smart-case` | Enable smart case regex searching (case-insensitive unless pattern contains upper case characters) | `true` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
+| `max-matches`| Maximum number of matches that will be counted for the denominator of `search-position`. Possible values are integers or `"none"` for no limit. | `100` |
 
 ### `[editor.whitespace]` Section
 
