@@ -23,7 +23,7 @@
 //                 let size = f.size();
 //                 let text = Text::from(SAMPLE_STRING);
 //                 let paragraph = Paragraph::new(&text)
-//                     .block(Block::default().borders(Borders::ALL))
+//                     .block(Block::bordered())
 //                     .alignment(alignment)
 //                     .wrap(Wrap { trim: true });
 //                 f.render_widget(paragraph, size);
@@ -90,7 +90,7 @@
 //             let size = f.size();
 //             let text = Text::from(s);
 //             let paragraph = Paragraph::new(&text)
-//                 .block(Block::default().borders(Borders::ALL))
+//                 .block(Block::bordered())
 //                 .wrap(Wrap { trim: true });
 //             f.render_widget(paragraph, size);
 //         })
@@ -122,7 +122,7 @@
 //             let size = f.size();
 //             let text = Text::from(s);
 //             let paragraph = Paragraph::new(&text)
-//                 .block(Block::default().borders(Borders::ALL))
+//                 .block(Block::bordered())
 //                 .wrap(Wrap { trim: true });
 //             f.render_widget(paragraph, size);
 //         })
@@ -156,7 +156,7 @@
 //         .draw(|f| {
 //             let size = f.size();
 //             let text = Text::from(line);
-//             let paragraph = Paragraph::new(&text).block(Block::default().borders(Borders::ALL));
+//             let paragraph = Paragraph::new(&text).block(Block::bordered());
 //             f.render_widget(paragraph, size);
 //         })
 //         .unwrap();
@@ -175,7 +175,7 @@
 //                     "段落现在可以水平滚动了！\nParagraph can scroll horizontally!\nShort line",
 //                 );
 //                 let paragraph = Paragraph::new(&text)
-//                     .block(Block::default().borders(Borders::ALL))
+//                     .block(Block::bordered())
 //                     .alignment(alignment)
 //                     .scroll(scroll);
 //                 f.render_widget(paragraph, size);

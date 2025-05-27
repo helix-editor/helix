@@ -4,6 +4,12 @@
 
 (preproc_expression) @keyword.directive
 
+(word) @variable
+((word) @constant
+  (#match? @constant "^[A-Z_][?A-Z_0-9]+$"))
+((word) @constant.builtin
+  (#match? @constant.builtin "^__\\?[A-Z_a-z0-9]+\\?__$"))
+
 [
   (line_here_token)
   (section_here_token)
@@ -55,12 +61,6 @@
 (string_literal) @string
 (float_literal) @constant.numeric.float
 (packed_bcd_literal) @constant.numeric.integer
-
-((word) @constant
-  (#match? @constant "^[A-Z_][?A-Z_0-9]+$"))
-((word) @constant.builtin
-  (#match? @constant.builtin "^__\\?[A-Z_a-z0-9]+\\?__$"))
-(word) @variable
 
 (preproc_arg) @keyword.directive
 

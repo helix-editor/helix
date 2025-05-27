@@ -1,95 +1,12 @@
-; Function calls
-
-(appexpr
-  function: (appexpr
-    (atom
-      (qidentifier
-        [
-          (qvarid) @function
-          (qidop) @function
-          (identifier
-            [(varid) (idop)] @function)
-        ])))
-  ["(" (block) (fnexpr)])
-
-(ntlappexpr
-  function: (ntlappexpr
-    (atom
-      (qidentifier
-        [
-          (qvarid) @function
-          (qidop) @function
-          (identifier
-            [(varid) (idop)] @function)
-        ])))
-  ["(" (block) (fnexpr)])
-
-(appexpr
-  field: (atom
-    (qidentifier
-      [
-        (qvarid) @function
-        (qidop) @function
-        (identifier
-          [(varid) (idop)] @function)
-      ])))
-
-(appexpr
-  (appexpr
-    field: (atom
-      (qidentifier
-        [
-          (qvarid) @variable
-          (qidop) @variable
-          (identifier
-            [(varid) (idop)] @variable)
-        ])))
-  "[")
-
-(ntlappexpr
-  field: (atom
-    (qidentifier
-      [
-        (qvarid) @function
-        (qidop) @function
-        (identifier
-          [(varid) (idop)] @function)
-      ])))
-
-(ntlappexpr
-  (ntlappexpr
-    field: (atom
-      (qidentifier
-        [
-          (qvarid) @variable
-          (qidop) @variable
-          (identifier
-            [(varid) (idop)] @variable)
-        ])))
-  "[")
-
-[
-  "initially"
-  "finally"
-] @function.special
-
-; Function definitions
-
-(puredecl
-  (funid
-    (identifier
-      [(varid) (idop)] @function)))
-
-(fundecl
-  (funid
-    (identifier
-      [(varid) (idop)] @function)))
-
-(operation
-  (identifier
-    [(varid) (idop)] @function))
-
 ; Identifiers
+
+(qconid) @namespace
+
+(qidop) @namespace
+
+(varid) @variable
+
+(conid) @constructor
 
 (puredecl
   (binder
@@ -126,13 +43,62 @@
 
 (modulepath (varid) @namespace)
 
-(qconid) @namespace
+; Function calls
 
-(qidop) @namespace
+(appexpr
+  function: (appexpr
+    (atom
+      (qidentifier
+        [
+          (qvarid) @function
+          (qidop) @function
+          (identifier
+            [(varid) (idop)] @function)
+        ])))
+  ["(" (block) (fnexpr)])
 
-(varid) @variable
+(appexpr
+  field: (atom
+    (qidentifier
+      [
+        (qvarid) @function
+        (qidop) @function
+        (identifier
+          [(varid) (idop)] @function)
+      ])))
 
-(conid) @constructor
+(appexpr
+  (appexpr
+    field: (atom
+      (qidentifier
+        [
+          (qvarid) @variable
+          (qidop) @variable
+          (identifier
+            [(varid) (idop)] @variable)
+        ])))
+  "[")
+
+[
+  "initially"
+  "finally"
+] @function.special
+
+; Function definitions
+
+(puredecl
+  (funid
+    (identifier
+      [(varid) (idop)] @function)))
+
+(fundecl
+  (funid
+    (identifier
+      [(varid) (idop)] @function)))
+
+(operation
+  (identifier
+    [(varid) (idop)] @function))
 
 ; Operators
 

@@ -1,15 +1,57 @@
-; Upstream: https://github.com/alex-pinkus/tree-sitter-swift/blob/1c586339fb00014b23d6933f2cc32b588a226f3b/queries/highlights.scm
+; Upstream: https://github.com/alex-pinkus/tree-sitter-swift/blob/57c1c6d6ffa1c44b330182d41717e6fe37430704/queries/highlights.scm
 
 (line_string_literal
   ["\\(" ")"] @punctuation.special)
 
 ["." ";" ":" "," ] @punctuation.delimiter
-["(" ")" "[" "]" "{" "}"] @punctuation.bracket
+["(" ")" "[" "]" "{" "}" "<" ">"] @punctuation.bracket
+
+; Operators
+[
+  "!"
+  "?"
+  "+"
+  "-"
+  "\\"
+  "*"
+  "/"
+  "%"
+  "="
+  "+="
+  "-="
+  "*="
+  "/="
+  "<"
+  ">"
+  "<="
+  ">="
+  "++"
+  "--"
+  "&"
+  "~"
+  "%="
+  "!="
+  "!=="
+  "=="
+  "==="
+  "??"
+
+  "->"
+
+  "..<"
+  "..."
+  (custom_operator)
+] @operator
+
+"?" @type
+(type_annotation "!" @type)
 
 ; Identifiers
+(simple_identifier) @variable
 (attribute) @variable
 (type_identifier) @type
 (self_expression) @variable.builtin
+(user_type (type_identifier) @variable.builtin (#eq? @variable.builtin "Self"))
 
 ; Declarations
 "func" @keyword.function
@@ -23,7 +65,10 @@
 ] @keyword
 
 (function_declaration (simple_identifier) @function.method)
-(function_declaration "init" @constructor)
+(protocol_function_declaration (simple_identifier) @function.method)
+(init_declaration ["init" @constructor])
+(deinit_declaration ["deinit" @constructor])
+
 (throws) @keyword
 "async" @keyword
 "await" @keyword
@@ -48,9 +93,22 @@
   "override"
   "convenience"
   "required"
-  "some"
+  "mutating"
+  "associatedtype"
+  "package"
   "any"
 ] @keyword
+
+(opaque_type ["some" @keyword])
+(existential_type ["any" @keyword])
+
+(precedence_group_declaration
+ ["precedencegroup" @keyword]
+ (simple_identifier) @type)
+(precedence_group_attribute
+ (simple_identifier) @keyword
+ [(simple_identifier) @type
+  (boolean_literal) @constant.builtin.boolean])
 
 [
   (getter_specifier)
@@ -73,6 +131,13 @@
 ((navigation_expression
    (simple_identifier) @type) ; SomeType.method(): highlight SomeType as a type
    (#match? @type "^[A-Z]"))
+(call_expression (simple_identifier) @keyword (#eq? @keyword "defer")) ; defer { ... }
+
+(navigation_suffix
+  (simple_identifier) @variable.other.member)
+
+(try_operator) @operator
+(try_operator ["try" @keyword])
 
 (directive) @function.macro
 (diagnostic) @function.macro
@@ -127,47 +192,9 @@
 (integer_literal) @constant.numeric.integer
 (real_literal) @constant.numeric.float
 (boolean_literal) @constant.builtin.boolean
-"nil" @variable.builtin
+"nil" @constant.builtin
 
-"?" @type
-(type_annotation "!" @type)
-
-(simple_identifier) @variable
-
-; Operators
-[
-  "try"
-  "try?"
-  "try!"
-  "!"
-  "+"
-  "-"
-  "*"
-  "/"
-  "%"
-  "="
-  "+="
-  "-="
-  "*="
-  "/="
-  "<"
-  ">"
-  "<="
-  ">="
-  "++"
-  "--"
-  "&"
-  "~"
-  "%="
-  "!="
-  "!=="
-  "=="
-  "==="
-  "??"
-
-  "->"
-
-  "..<"
-  "..."
-  (custom_operator)
-] @operator
+(value_parameter_pack ["each" @keyword])
+(value_pack_expansion ["repeat" @keyword])
+(type_parameter_pack ["each" @keyword])
+(type_pack_expansion ["repeat" @keyword])

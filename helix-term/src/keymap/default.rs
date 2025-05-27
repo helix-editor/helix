@@ -38,6 +38,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "G" => goto_line,
         "g" => { "Goto"
             "g" => goto_file_start,
+            "|" => goto_column,
             "e" => goto_last_line,
             "f" => goto_file,
             "h" => goto_line_start,
@@ -87,10 +88,12 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-;" => flip_selections,
         "A-o" | "A-up" => expand_selection,
         "A-i" | "A-down" => shrink_selection,
+        "A-I" | "A-S-down" => select_all_children,
         "A-p" | "A-left" => select_prev_sibling,
         "A-n" | "A-right" => select_next_sibling,
         "A-e" => move_parent_node_end,
         "A-b" => move_parent_node_start,
+        "A-a" => select_all_siblings,
 
         "%" => select_all,
         "x" => extend_line_below,
@@ -138,7 +141,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "?" => rsearch,
         "n" => search_next,
         "N" => search_prev,
-        "*" => search_selection,
+        "*" => search_selection_detect_word_boundaries,
+        "A-*" => search_selection,
 
         "u" => undo,
         "U" => redo,
@@ -219,6 +223,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "space" => { "Space"
             "f" => file_picker,
             "F" => file_picker_in_current_directory,
+            "e" => file_explorer,
+            "E" => file_explorer_in_current_buffer_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
             "s" => symbol_picker,
@@ -362,6 +368,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "v" => normal_mode,
         "g" => { "Goto"
+            "g" => extend_to_file_start,
+            "|" => extend_to_column,
+            "e" => extend_to_last_line,
             "k" => extend_line_up,
             "j" => extend_line_down,
             "w" => extend_to_word,

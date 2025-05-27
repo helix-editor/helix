@@ -1,10 +1,10 @@
 ; Identifiers
 
+[(NAME) (SYMBOLNAME)] @variable
+
 (section
   .
   (NAME) @namespace)
-
-(NAME) @variable
 
 ; Operators
 

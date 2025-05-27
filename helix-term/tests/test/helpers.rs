@@ -305,6 +305,18 @@ pub fn new_readonly_tempfile() -> anyhow::Result<NamedTempFile> {
     Ok(file)
 }
 
+/// Creates a new temporary file in the directory that is set to read only. Useful for
+/// testing write failures.
+pub fn new_readonly_tempfile_in_dir(
+    dir: impl AsRef<std::path::Path>,
+) -> anyhow::Result<NamedTempFile> {
+    let mut file = tempfile::NamedTempFile::new_in(dir)?;
+    let metadata = file.as_file().metadata()?;
+    let mut perms = metadata.permissions();
+    perms.set_readonly(true);
+    file.as_file_mut().set_permissions(perms)?;
+    Ok(file)
+}
 pub struct AppBuilder {
     args: Args,
     config: Config,
@@ -333,7 +345,10 @@ impl AppBuilder {
         path: P,
         pos: Option<helix_core::Position>,
     ) -> Self {
-        self.args.files.push((path.into(), pos.unwrap_or_default()));
+        self.args
+            .files
+            .insert(path.into(), vec![pos.unwrap_or_default()]);
+
         self
     }
 

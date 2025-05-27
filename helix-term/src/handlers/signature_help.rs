@@ -1,11 +1,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use helix_core::syntax::LanguageServerFeature;
-use helix_event::{
-    cancelable_future, cancelation, register_hook, send_blocking, CancelRx, CancelTx,
-};
-use helix_lsp::lsp;
+use helix_core::syntax::config::LanguageServerFeature;
+use helix_event::{cancelable_future, register_hook, send_blocking, TaskController, TaskHandle};
+use helix_lsp::lsp::{self, SignatureInformation};
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::Mode;
 use helix_view::events::{DocumentDidChange, SelectionDidChange};
@@ -18,15 +16,15 @@ use crate::commands::Open;
 use crate::compositor::Compositor;
 use crate::events::{OnModeSwitch, PostInsertChar};
 use crate::handlers::Handlers;
-use crate::ui::lsp::SignatureHelp;
+use crate::ui::lsp::signature_help::{Signature, SignatureHelp};
 use crate::ui::Popup;
 use crate::{job, ui};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum State {
     Open,
     Closed,
-    Pending { request: CancelTx },
+    Pending,
 }
 
 /// debounce timeout in ms, value taken from VSCode
@@ -37,6 +35,7 @@ const TIMEOUT: u64 = 120;
 pub(super) struct SignatureHelpHandler {
     trigger: Option<SignatureHelpInvoked>,
     state: State,
+    task_controller: TaskController,
 }
 
 impl SignatureHelpHandler {
@@ -44,6 +43,7 @@ impl SignatureHelpHandler {
         SignatureHelpHandler {
             trigger: None,
             state: State::Closed,
+            task_controller: TaskController::new(),
         }
     }
 }
@@ -76,12 +76,12 @@ impl helix_event::AsyncHook for SignatureHelpHandler {
             }
             SignatureHelpEvent::RequestComplete { open } => {
                 // don't cancel rerequest that was already triggered
-                if let State::Pending { request } = &self.state {
-                    if !request.is_closed() {
-                        return timeout;
-                    }
+                if self.state == State::Pending && self.task_controller.is_running() {
+                    return timeout;
                 }
                 self.state = if open { State::Open } else { State::Closed };
+                self.task_controller.cancel();
+
                 return timeout;
             }
         }
@@ -93,16 +93,16 @@ impl helix_event::AsyncHook for SignatureHelpHandler {
 
     fn finish_debounce(&mut self) {
         let invocation = self.trigger.take().unwrap();
-        let (tx, rx) = cancelation();
-        self.state = State::Pending { request: tx };
-        job::dispatch_blocking(move |editor, _| request_signature_help(editor, invocation, rx))
+        self.state = State::Pending;
+        let handle = self.task_controller.restart();
+        job::dispatch_blocking(move |editor, _| request_signature_help(editor, invocation, handle))
     }
 }
 
 pub fn request_signature_help(
     editor: &mut Editor,
     invoked: SignatureHelpInvoked,
-    cancel: CancelRx,
+    cancel: TaskHandle,
 ) {
     let (view, doc) = current!(editor);
 
@@ -118,8 +118,7 @@ pub fn request_signature_help(
         // Do not show the message if signature help was invoked
         // automatically on backspace, trigger characters, etc.
         if invoked == SignatureHelpInvoked::Manual {
-            editor
-                .set_error("No configured language server supports signature-help");
+            editor.set_error("No configured language server supports signature-help");
         }
         return;
     };
@@ -136,6 +135,31 @@ pub fn request_signature_help(
             None => (),
         }
     });
+}
+
+fn active_param_range(
+    signature: &SignatureInformation,
+    response_active_parameter: Option<u32>,
+) -> Option<(usize, usize)> {
+    let param_idx = signature
+        .active_parameter
+        .or(response_active_parameter)
+        .unwrap_or(0) as usize;
+    let param = signature.parameters.as_ref()?.get(param_idx)?;
+    match &param.label {
+        lsp::ParameterLabel::Simple(string) => {
+            let start = signature.label.find(string.as_str())?;
+            Some((start, start + string.len()))
+        }
+        lsp::ParameterLabel::LabelOffsets([start, end]) => {
+            // LS sends offsets based on utf-16 based string representation
+            // but highlighting in helix is done using byte offset.
+            use helix_core::str_utils::char_to_byte_idx;
+            let from = char_to_byte_idx(&signature.label, *start as usize);
+            let to = char_to_byte_idx(&signature.label, *end as usize);
+            Some((from, to))
+        }
+    }
 }
 
 pub fn show_signature_help(
@@ -184,54 +208,64 @@ pub fn show_signature_help(
     let doc = doc!(editor);
     let language = doc.language_name().unwrap_or("");
 
-    let signature = match response
+    if response.signatures.is_empty() {
+        return;
+    }
+
+    let signatures: Vec<Signature> = response
         .signatures
-        .get(response.active_signature.unwrap_or(0) as usize)
-    {
-        Some(s) => s,
-        None => return,
-    };
-    let mut contents = SignatureHelp::new(
-        signature.label.clone(),
-        language.to_string(),
-        Arc::clone(&editor.syn_loader),
-    );
+        .into_iter()
+        .map(|s| {
+            let active_param_range = active_param_range(&s, response.active_parameter);
 
-    let signature_doc = if config.lsp.display_signature_help_docs {
-        signature.documentation.as_ref().map(|doc| match doc {
-            lsp::Documentation::String(s) => s.clone(),
-            lsp::Documentation::MarkupContent(markup) => markup.value.clone(),
+            let signature_doc = if config.lsp.display_signature_help_docs {
+                s.documentation.map(|doc| match doc {
+                    lsp::Documentation::String(s) => s,
+                    lsp::Documentation::MarkupContent(markup) => markup.value,
+                })
+            } else {
+                None
+            };
+
+            Signature {
+                signature: s.label,
+                signature_doc,
+                active_param_range,
+            }
         })
-    } else {
-        None
-    };
-
-    contents.set_signature_doc(signature_doc);
-
-    let active_param_range = || -> Option<(usize, usize)> {
-        let param_idx = signature
-            .active_parameter
-            .or(response.active_parameter)
-            .unwrap_or(0) as usize;
-        let param = signature.parameters.as_ref()?.get(param_idx)?;
-        match &param.label {
-            lsp::ParameterLabel::Simple(string) => {
-                let start = signature.label.find(string.as_str())?;
-                Some((start, start + string.len()))
-            }
-            lsp::ParameterLabel::LabelOffsets([start, end]) => {
-                // LS sends offsets based on utf-16 based string representation
-                // but highlighting in helix is done using byte offset.
-                use helix_core::str_utils::char_to_byte_idx;
-                let from = char_to_byte_idx(&signature.label, *start as usize);
-                let to = char_to_byte_idx(&signature.label, *end as usize);
-                Some((from, to))
-            }
-        }
-    };
-    contents.set_active_param_range(active_param_range());
+        .collect();
 
     let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
+    let lsp_signature = response.active_signature.map(|s| s as usize);
+
+    // take the new suggested lsp signature if changed
+    // otherwise take the old signature if possible
+    // otherwise the last one (in case there is less signatures than before)
+    let active_signature = old_popup
+        .as_ref()
+        .map(|popup| {
+            let old_lsp_sig = popup.contents().lsp_signature();
+            let old_sig = popup
+                .contents()
+                .active_signature()
+                .min(signatures.len() - 1);
+
+            if old_lsp_sig != lsp_signature {
+                lsp_signature.unwrap_or(old_sig)
+            } else {
+                old_sig
+            }
+        })
+        .unwrap_or(lsp_signature.unwrap_or_default());
+
+    let contents = SignatureHelp::new(
+        language.to_string(),
+        Arc::clone(&editor.syn_loader),
+        active_signature,
+        lsp_signature,
+        signatures,
+    );
+
     let mut popup = Popup::new(SignatureHelp::ID, contents)
         .position(old_popup.and_then(|p| p.get_position()))
         .position_bias(Open::Above)
@@ -264,11 +298,11 @@ fn signature_help_post_insert_char_hook(
     let (view, doc) = current!(cx.editor);
     // TODO support multiple language servers (not just the first that is found), likely by merging UI somehow
     let Some(language_server) = doc
-            .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
-            .next()
-        else {
-            return Ok(());
-        };
+        .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
+        .next()
+    else {
+        return Ok(());
+    };
 
     let capabilities = language_server.capabilities();
 
@@ -319,7 +353,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 
     let tx = handlers.signature_hints.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
-        if event.doc.config.load().lsp.auto_signature_help {
+        if event.doc.config.load().lsp.auto_signature_help && !event.ghost_transaction {
             send_blocking(&tx, SignatureHelpEvent::ReTrigger);
         }
         Ok(())

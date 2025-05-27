@@ -1,12 +1,11 @@
-use arc_swap::ArcSwap;
 use helix_core::{
     indent::{indent_level_for_line, treesitter_indent_for_pos, IndentStyle},
-    syntax::{Configuration, Loader},
+    syntax::{config::Configuration, Loader},
     Syntax,
 };
 use helix_stdx::rope::RopeSliceExt;
 use ropey::Rope;
-use std::{ops::Range, path::PathBuf, process::Command, sync::Arc};
+use std::{ops::Range, path::PathBuf, process::Command};
 
 #[test]
 fn test_treesitter_indent_rust() {
@@ -36,7 +35,7 @@ fn test_treesitter_indent_rust_helix() {
         .unwrap();
     let files = String::from_utf8(files.stdout).unwrap();
 
-    let ignored_files = vec![
+    let ignored_files = [
         // Contains many macros that tree-sitter does not parse in a meaningful way and is otherwise not very interesting
         "helix-term/src/health.rs",
     ];
@@ -45,6 +44,7 @@ fn test_treesitter_indent_rust_helix() {
         if ignored_files.contains(&file) {
             continue;
         }
+        #[allow(clippy::single_range_in_vec_init)]
         let ignored_lines: Vec<Range<usize>> = match file {
             "helix-term/src/application.rs" => vec![
                 // We can't handle complicated indent rules inside macros (`json!` in this case) since
@@ -195,17 +195,12 @@ fn test_treesitter_indent(
     runtime.push("../runtime");
     std::env::set_var("HELIX_RUNTIME", runtime.to_str().unwrap());
 
-    let language_config = loader.language_config_for_scope(lang_scope).unwrap();
+    let language = loader.language_for_scope(lang_scope).unwrap();
+    let language_config = loader.language(language).config();
     let indent_style = IndentStyle::from_str(&language_config.indent.as_ref().unwrap().unit);
-    let highlight_config = language_config.highlight_config(&[]).unwrap();
     let text = doc.slice(..);
-    let syntax = Syntax::new(
-        text,
-        highlight_config,
-        Arc::new(ArcSwap::from_pointee(loader)),
-    )
-    .unwrap();
-    let indent_query = language_config.indent_query().unwrap();
+    let syntax = Syntax::new(text, language, &loader).unwrap();
+    let indent_query = loader.indent_query(language).unwrap();
 
     for i in 0..doc.len_lines() {
         let line = text.line(i);

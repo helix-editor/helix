@@ -41,8 +41,9 @@ macro_rules! runtime_local {
 
 #[cfg(feature = "integration_test")]
 pub struct RuntimeLocal<T: 'static> {
-    data:
-        parking_lot::RwLock<hashbrown::HashMap<tokio::runtime::Id, &'static T, ahash::RandomState>>,
+    data: parking_lot::RwLock<
+        hashbrown::HashMap<tokio::runtime::Id, &'static T, foldhash::fast::FixedState>,
+    >,
     init: fn() -> T,
 }
 
@@ -53,7 +54,7 @@ impl<T> RuntimeLocal<T> {
     pub const fn __new(init: fn() -> T) -> Self {
         Self {
             data: parking_lot::RwLock::new(hashbrown::HashMap::with_hasher(
-                ahash::RandomState::with_seeds(423, 9978, 38322, 3280080),
+                foldhash::fast::FixedState::with_seed(12345678910),
             )),
             init,
         }

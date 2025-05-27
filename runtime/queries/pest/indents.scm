@@ -1,0 +1,9 @@
+[
+  (expression)
+] @indent
+
+[
+  "]"
+  "}"
+  ")"
+] @outdent

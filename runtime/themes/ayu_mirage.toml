@@ -72,6 +72,7 @@
 "ui.bufferline.active" = { fg = "foreground", bg = "dark_gray" }
 "ui.debug" = { fg = "orange", bg = "background" }
 "ui.highlight.frameline" = { bg = "#0067a3" }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["italic", "bold"] }
 
 "special" = "orange"
 

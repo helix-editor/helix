@@ -51,7 +51,7 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
     // in our picker.
     if matches!(
         entry.file_name().to_str(),
-        Some(".git" | ".pijul" | ".jj" | ".hg")
+        Some(".git" | ".pijul" | ".jj" | ".hg" | ".svn")
     ) {
         return false;
     }
@@ -63,7 +63,7 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
             .path()
             .canonicalize()
             .ok()
-            .map_or(false, |path| !path.starts_with(root));
+            .is_some_and(|path| !path.starts_with(root));
     }
 
     true

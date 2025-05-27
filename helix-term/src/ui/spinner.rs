@@ -1,16 +1,18 @@
 use std::{collections::HashMap, time::Instant};
 
+use helix_lsp::LanguageServerId;
+
 #[derive(Default, Debug)]
 pub struct ProgressSpinners {
-    inner: HashMap<usize, Spinner>,
+    inner: HashMap<LanguageServerId, Spinner>,
 }
 
 impl ProgressSpinners {
-    pub fn get(&self, id: usize) -> Option<&Spinner> {
+    pub fn get(&self, id: LanguageServerId) -> Option<&Spinner> {
         self.inner.get(&id)
     }
 
-    pub fn get_or_create(&mut self, id: usize) -> &mut Spinner {
+    pub fn get_or_create(&mut self, id: LanguageServerId) -> &mut Spinner {
         self.inner.entry(id).or_default()
     }
 }

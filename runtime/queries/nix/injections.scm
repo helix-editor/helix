@@ -1,7 +1,7 @@
 ((comment) @injection.content
  (#set! injection.language "comment"))
 
-; mark arbitary languages with a comment
+; mark arbitrary languages with a comment
 ((((comment) @injection.language) .
   (indented_string_expression (string_fragment) @injection.content))
   (#set! injection.combined))
@@ -48,6 +48,15 @@
    argument: (indented_string_expression (string_fragment) @injection.content))
  (#match? @_func "(^|\\.)fromJSON$")
  (#set! injection.language "json")
+ (#set! injection.combined))
+
+; builtins.fromTOML toml
+; Example: https://github.com/NixOS/nix/blob/3e8cd2ffe6c2c6ed8aae7853ddcfcc6d2a49b0ce/tests/functional/lang/eval-okay-fromTOML.nix
+((apply_expression
+   function: (_) @_func
+   argument: (indented_string_expression (string_fragment) @injection.content))
+ (#match? @_func "(^|\\.)fromTOML$")
+ (#set! injection.language "toml")
  (#set! injection.combined))
 
 ; trivial-builders.nix pkgs.writeShellScript[Bin] name content
@@ -127,6 +136,16 @@
   (#set! injection.language "haskell")
   (#set! injection.combined))
 
+; pkgs.writers.writeNim[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeNim(Bin)?$")
+  (#set! injection.language "nim")
+  (#set! injection.combined))
+
 ; pkgs.writers.writeJS[Bin] name attrs content
 (apply_expression
   (apply_expression
@@ -155,6 +174,67 @@
     argument: (indented_string_expression (string_fragment) @injection.content)
   (#match? @_func "(^|\\.)write(Python|PyPy)[23](Bin)?$")
   (#set! injection.language "python")
+  (#set! injection.combined))
+
+; pkgs.writers.writeNu[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeNu(Bin)?$")
+  (#set! injection.language "nu")
+  (#set! injection.combined))
+
+; pkgs.writers.writeRuby[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeRuby(Bin)?$")
+  (#set! injection.language "ruby")
+  (#set! injection.combined))
+
+; pkgs.writers.writeLua[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeLua(Bin)?$")
+  (#set! injection.language "lua")
+  (#set! injection.combined))
+
+; pkgs.writers.writeNginxConfig name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeNginxConfig$")
+  (#set! injection.language "nginx")
+  (#set! injection.combined))
+
+; pkgs.writers.writeGuile[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeGuile(Bin)?$")
+  (#set! injection.language "scheme") ; Guile is a GNU specific implementation of scheme
+  (#set! injection.combined))
+
+
+; pkgs.writers.writeBabashka[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeBabashka(Bin)?$")
+  (#set! injection.language "clojure")
   (#set! injection.combined))
 
 ; pkgs.writers.writeFSharp[Bin] name content

@@ -25,8 +25,11 @@
 "ui.virtual.indent-guide" = "grey02"
 "ui.virtual.whitespace" = "grey03"
 "ui.virtual.inlay-hint" = { fg = "grey03", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "lightblue", modifiers = ["italic", "bold"] }
 "ui.bufferline" = { fg = "grey04", bg = "grey00" }
 "ui.bufferline.active" = { fg = "grey07", bg = "grey02" }
+"ui.picker.header.column" = { fg = "grey05", modifiers = ["italic", "bold"] }
+"ui.picker.header.column.active" = { fg = "grey05", bg = "grey03", modifiers = ["italic", "bold"] }
 
 "operator" = "grey05"
 "variable" = "white"

@@ -12,7 +12,7 @@ impl DiffHandle {
         // dropping the channel terminates the task
         drop(self.channel);
         handle.await.unwrap();
-        let diff = diff.lock();
+        let diff = diff.read();
         Vec::clone(&diff.hunks)
     }
 }

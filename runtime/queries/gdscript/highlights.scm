@@ -14,6 +14,7 @@
 (attribute_call (identifier) @function)
 (base_call (identifier) @function)
 (call (identifier) @function)
+(lambda (name) @function)
 
 ; Function definitions
 
@@ -88,6 +89,7 @@
   "<<"
   ">>"
   ":="
+  ":"
 ] @operator
 
 (annotation (identifier) @keyword.storage.modifier)
@@ -97,6 +99,7 @@
   "else"
   "elif"
   "match"
+  "when"
 ] @keyword.control.conditional
 
 [

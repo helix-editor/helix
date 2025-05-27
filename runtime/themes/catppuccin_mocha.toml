@@ -1,24 +1,28 @@
+# NOTE: For contributors looking to modify the theme, please submit a pull request at https://github.com/catppuccin/helix instead of updating this file. Changes are frequently synchronized from the catppuccin/helix theme repository.
 # Syntax highlighting
 # -------------------
+"attribute" = "yellow"
+
 "type" = "yellow"
+"type.enum.variant" = "teal"
 
 "constructor" = "sapphire"
 
 "constant" = "peach"
-"constant.builtin" = "peach"
 "constant.character" = "teal"
 "constant.character.escape" = "pink"
 
 "string" = "green"
-"string.regexp" = "peach"
+"string.regexp" = "pink"
 "string.special" = "blue"
+"string.special.symbol" = "red"
 
-"comment" = { fg = "overlay1", modifiers = ["italic"] }
+"comment" = { fg = "overlay2", modifiers = ["italic"] }
 
 "variable" = "text"
 "variable.parameter" = { fg = "maroon", modifiers = ["italic"] }
 "variable.builtin" = "red"
-"variable.other.member" = "teal"
+"variable.other.member" = "blue"
 
 "label" = "sapphire" # used for lifetimes
 
@@ -26,7 +30,6 @@
 "punctuation.special" = "sky"
 
 "keyword" = "mauve"
-"keyword.storage.modifier.ref" = "teal"
 "keyword.control.conditional" = { fg = "mauve", modifiers = ["italic"] }
 
 "operator" = "sky"
@@ -34,27 +37,28 @@
 "function" = "blue"
 "function.macro" = "mauve"
 
-"tag" = "mauve"
-"attribute" = "blue"
+"tag" = "blue"
 
-"namespace" = { fg = "blue", modifiers = ["italic"] }
+"namespace" = { fg = "yellow", modifiers = ["italic"] }
 
 "special" = "blue" # fuzzy highlight
 
-"markup.heading.marker" = { fg = "peach", modifiers = ["bold"] }
-"markup.heading.1" = "lavender"
-"markup.heading.2" = "mauve"
-"markup.heading.3" = "green"
-"markup.heading.4" = "yellow"
-"markup.heading.5" = "pink"
-"markup.heading.6" = "teal"
-"markup.list" = "mauve"
-"markup.bold" = { modifiers = ["bold"] }
-"markup.italic" = { modifiers = ["italic"] }
-"markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = { fg = "rosewater", modifiers = ["underlined"] }
-"markup.link.text" = "blue"
-"markup.raw" = "flamingo"
+"markup.heading.1" = "red"
+"markup.heading.2" = "peach"
+"markup.heading.3" = "yellow"
+"markup.heading.4" = "green"
+"markup.heading.5" = "sapphire"
+"markup.heading.6" = "lavender"
+"markup.list" = "teal"
+"markup.list.unchecked" = "overlay2"
+"markup.list.checked" = "green"
+"markup.bold" = { fg = "red", modifiers = ["bold"] }
+"markup.italic" = { fg = "red", modifiers = ["italic"] }
+"markup.link.url" = { fg = "blue", modifiers = ["italic", "underlined"] }
+"markup.link.text" = "lavender"
+"markup.link.label" = "sapphire"
+"markup.raw" = "green"
+"markup.quote" = "pink"
 
 "diff.plus" = "green"
 "diff.minus" = "red"
@@ -69,9 +73,9 @@
 
 "ui.statusline" = { fg = "subtext1", bg = "mantle" }
 "ui.statusline.inactive" = { fg = "surface2", bg = "mantle" }
-"ui.statusline.normal" = { fg = "base", bg = "lavender", modifiers = ["bold"] }
+"ui.statusline.normal" = { fg = "base", bg = "rosewater", modifiers = ["bold"] }
 "ui.statusline.insert" = { fg = "base", bg = "green", modifiers = ["bold"] }
-"ui.statusline.select" = { fg = "base", bg = "flamingo", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "base", bg = "lavender", modifiers = ["bold"] }
 
 "ui.popup" = { fg = "text", bg = "surface0" }
 "ui.window" = { fg = "crust" }
@@ -84,11 +88,12 @@
 "ui.text" = "text"
 "ui.text.focus" = { fg = "text", bg = "surface0", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "overlay1" }
+"ui.text.directory" = { fg = "blue" }
 
 "ui.virtual" = "overlay0"
 "ui.virtual.ruler" = { bg = "surface0" }
 "ui.virtual.indent-guide" = "surface0"
-"ui.virtual.inlay-hint" = { fg = "overlay0", bg = "base" }
+"ui.virtual.inlay-hint" = { fg = "surface1", bg = "mantle" }
 "ui.virtual.jump-label" = { fg = "rosewater", modifiers = ["bold"] }
 
 "ui.selection" = { bg = "surface1" }
@@ -97,13 +102,13 @@
 "ui.cursor.primary" = { fg = "base", bg = "rosewater" }
 "ui.cursor.match" = { fg = "peach", modifiers = ["bold"] }
 
-"ui.cursor.primary.normal" = { fg = "base", bg = "lavender" }
+"ui.cursor.primary.normal" = { fg = "base", bg = "rosewater" }
 "ui.cursor.primary.insert" = { fg = "base", bg = "green" }
-"ui.cursor.primary.select" = { fg = "base", bg = "flamingo" }
+"ui.cursor.primary.select" = { fg = "base", bg = "lavender" }
 
 "ui.cursor.normal" = { fg = "base", bg = "secondary_cursor_normal" }
 "ui.cursor.insert" = { fg = "base", bg = "secondary_cursor_insert" }
-"ui.cursor.select" = { fg = "base", bg = "secondary_cursor" }
+"ui.cursor.select" = { fg = "base", bg = "secondary_cursor_select" }
 
 "ui.cursorline.primary" = { bg = "cursorline" }
 
@@ -117,7 +122,6 @@
 "diagnostic.info" = { underline = { color = "sky", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "teal", style = "curl" } }
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
-"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "red"
 warning = "yellow"
@@ -125,7 +129,6 @@ info = "sky"
 hint = "teal"
 
 [palette]
-# catppuccin palette colors
 rosewater = "#f5e0dc"
 flamingo = "#f2cdcd"
 pink = "#f5c2e7"
@@ -140,7 +143,6 @@ sky = "#89dceb"
 sapphire = "#74c7ec"
 blue = "#89b4fa"
 lavender = "#b4befe"
-
 text = "#cdd6f4"
 subtext1 = "#bac2de"
 subtext0 = "#a6adc8"
@@ -150,13 +152,12 @@ overlay0 = "#6c7086"
 surface2 = "#585b70"
 surface1 = "#45475a"
 surface0 = "#313244"
-
 base = "#1e1e2e"
 mantle = "#181825"
 crust = "#11111b"
 
-# derived colors by blending existing palette colors
 cursorline = "#2a2b3c"
 secondary_cursor = "#b5a6a8"
-secondary_cursor_normal = "#878ec0"
-secondary_cursor_insert = "#7da87e"
+secondary_cursor_select = "#878ec0"
+secondary_cursor_normal = "#b5a6a8"
+secondary_cursor_insert = "#7ea87f"

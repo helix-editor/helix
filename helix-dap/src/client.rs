@@ -2,9 +2,9 @@ use crate::{
     requests::DisconnectArguments,
     transport::{Payload, Request, Response, Transport},
     types::*,
-    Error, Result, ThreadId,
+    Error, Result,
 };
-use helix_core::syntax::DebuggerQuirks;
+use helix_core::syntax::config::DebuggerQuirks;
 
 use serde_json::Value;
 
@@ -119,6 +119,7 @@ impl Client {
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             // make sure the process is reaped on drop
             .kill_on_drop(true)
             .spawn();
@@ -128,16 +129,12 @@ impl Client {
         // TODO: do we need bufreader/writer here? or do we use async wrappers on unblock?
         let writer = BufWriter::new(process.stdin.take().expect("Failed to open stdin"));
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
-        let errors = process.stderr.take().map(BufReader::new);
+        let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
         Self::streams(
-            Box::new(BufReader::new(reader)),
+            Box::new(reader),
             Box::new(writer),
-            // errors.map(|errors| Box::new(BufReader::new(errors))),
-            match errors {
-                Some(errors) => Some(Box::new(BufReader::new(errors))),
-                None => None,
-            },
+            Some(Box::new(stderr)),
             id,
             Some(process),
         )
@@ -157,8 +154,8 @@ impl Client {
         )
     }
 
-    pub fn starting_request_args(&self) -> &Option<Value> {
-        &self.starting_request_args
+    pub fn starting_request_args(&self) -> Option<&Value> {
+        self.starting_request_args.as_ref()
     }
 
     pub async fn tcp_process(

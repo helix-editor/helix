@@ -6,11 +6,6 @@ use std::{
 };
 
 #[cfg(feature = "git")]
-pub use git::Git;
-#[cfg(not(feature = "git"))]
-pub use Dummy as Git;
-
-#[cfg(feature = "git")]
 mod git;
 
 mod diff;
@@ -20,33 +15,6 @@ pub use diff::{DiffHandle, Hunk};
 mod status;
 
 pub use status::FileChange;
-
-#[doc(hidden)]
-#[derive(Clone, Copy)]
-pub struct Dummy;
-impl Dummy {
-    fn get_diff_base(&self, _file: &Path) -> Result<Vec<u8>> {
-        bail!("helix was compiled without git support")
-    }
-
-    fn get_current_head_name(&self, _file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
-        bail!("helix was compiled without git support")
-    }
-
-    fn for_each_changed_file(
-        &self,
-        _cwd: &Path,
-        _f: impl Fn(Result<FileChange>) -> bool,
-    ) -> Result<()> {
-        bail!("helix was compiled without git support")
-    }
-}
-
-impl From<Dummy> for DiffProvider {
-    fn from(value: Dummy) -> Self {
-        DiffProvider::Dummy(value)
-    }
-}
 
 #[derive(Clone)]
 pub struct DiffProviderRegistry {
@@ -104,34 +72,39 @@ impl Default for DiffProviderRegistry {
     fn default() -> Self {
         // currently only git is supported
         // TODO make this configurable when more providers are added
-        let providers = vec![Git.into()];
+        let providers = vec![
+            #[cfg(feature = "git")]
+            DiffProvider::Git,
+        ];
         DiffProviderRegistry { providers }
     }
 }
 
 /// A union type that includes all types that implement [DiffProvider]. We need this type to allow
 /// cloning [DiffProviderRegistry] as `Clone` cannot be used in trait objects.
-#[derive(Clone)]
+///
+/// `Copy` is simply to ensure the `clone()` call is the simplest it can be.
+#[derive(Copy, Clone)]
 pub enum DiffProvider {
-    Dummy(Dummy),
     #[cfg(feature = "git")]
-    Git(Git),
+    Git,
+    None,
 }
 
 impl DiffProvider {
     fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
         match self {
-            Self::Dummy(inner) => inner.get_diff_base(file),
             #[cfg(feature = "git")]
-            Self::Git(inner) => inner.get_diff_base(file),
+            Self::Git => git::get_diff_base(file),
+            Self::None => bail!("No diff support compiled in"),
         }
     }
 
     fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         match self {
-            Self::Dummy(inner) => inner.get_current_head_name(file),
             #[cfg(feature = "git")]
-            Self::Git(inner) => inner.get_current_head_name(file),
+            Self::Git => git::get_current_head_name(file),
+            Self::None => bail!("No diff support compiled in"),
         }
     }
 
@@ -141,9 +114,9 @@ impl DiffProvider {
         f: impl Fn(Result<FileChange>) -> bool,
     ) -> Result<()> {
         match self {
-            Self::Dummy(inner) => inner.for_each_changed_file(cwd, f),
             #[cfg(feature = "git")]
-            Self::Git(inner) => inner.for_each_changed_file(cwd, f),
+            Self::Git => git::for_each_changed_file(cwd, f),
+            Self::None => bail!("No diff support compiled in"),
         }
     }
 }

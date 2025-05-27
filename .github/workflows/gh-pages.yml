@@ -1,4 +1,4 @@
-name: Github Pages
+name: GitHub Pages
 
 on:
   push:
@@ -14,10 +14,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
+        uses: peaceiris/actions-mdbook@v2
         with:
-          mdbook-version: 'latest'
-          # mdbook-version: '0.4.8'
+          # mdbook-version: 'latest'
+          mdbook-version: '0.4.43'
 
       - run: mdbook build book
       
@@ -27,14 +27,14 @@ jobs:
           echo "OUTDIR=$OUTDIR" >> $GITHUB_ENV
 
       - name: Deploy stable
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         if: startswith(github.ref, 'refs/tags/')
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./book/book
 
       - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./book/book

@@ -25,62 +25,52 @@ impl Default for CursorKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Margin {
-    pub left: u16,
-    pub right: u16,
-    pub top: u16,
-    pub bottom: u16,
+    pub horizontal: u16,
+    pub vertical: u16,
 }
 
 impl Margin {
     pub fn none() -> Self {
         Self {
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
+            horizontal: 0,
+            vertical: 0,
         }
     }
 
     /// Set uniform margin for all sides.
-    pub fn all(value: u16) -> Self {
+    pub const fn all(value: u16) -> Self {
         Self {
-            left: value,
-            right: value,
-            top: value,
-            bottom: value,
+            horizontal: value,
+            vertical: value,
         }
     }
 
     /// Set the margin of left and right sides to specified value.
-    pub fn horizontal(value: u16) -> Self {
+    pub const fn horizontal(value: u16) -> Self {
         Self {
-            left: value,
-            right: value,
-            top: 0,
-            bottom: 0,
+            horizontal: value,
+            vertical: 0,
         }
     }
 
     /// Set the margin of top and bottom sides to specified value.
-    pub fn vertical(value: u16) -> Self {
+    pub const fn vertical(value: u16) -> Self {
         Self {
-            left: 0,
-            right: 0,
-            top: value,
-            bottom: value,
+            horizontal: 0,
+            vertical: value,
         }
     }
 
     /// Get the total width of the margin (left + right)
-    pub fn width(&self) -> u16 {
-        self.left + self.right
+    pub const fn width(&self) -> u16 {
+        self.horizontal * 2
     }
 
     /// Get the total height of the margin (top + bottom)
-    pub fn height(&self) -> u16 {
-        self.top + self.bottom
+    pub const fn height(&self) -> u16 {
+        self.vertical * 2
     }
 }
 
@@ -181,13 +171,13 @@ impl Rect {
         Self::new(self.x, self.y, width, self.height)
     }
 
-    pub fn inner(self, margin: &Margin) -> Rect {
+    pub fn inner(self, margin: Margin) -> Rect {
         if self.width < margin.width() || self.height < margin.height() {
             Rect::default()
         } else {
             Rect {
-                x: self.x + margin.left,
-                y: self.y + margin.top,
+                x: self.x + margin.horizontal,
+                y: self.y + margin.vertical,
                 width: self.width - margin.width(),
                 height: self.height - margin.height(),
             }
@@ -273,6 +263,31 @@ pub enum Color {
     Indexed(u8),
 }
 
+impl Color {
+    /// Creates a `Color` from a hex string
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use helix_view::theme::Color;
+    ///
+    /// let color1 = Color::from_hex("#c0ffee").unwrap();
+    /// let color2 = Color::Rgb(192, 255, 238);
+    ///
+    /// assert_eq!(color1, color2);
+    /// ```
+    pub fn from_hex(hex: &str) -> Option<Self> {
+        if !(hex.starts_with('#') && hex.len() == 7) {
+            return None;
+        }
+        match [1..=2, 3..=4, 5..=6].map(|i| hex.get(i).and_then(|c| u8::from_str_radix(c, 16).ok()))
+        {
+            [Some(r), Some(g), Some(b)] => Some(Self::Rgb(r, g, b)),
+            _ => None,
+        }
+    }
+}
+
 #[cfg(feature = "term")]
 impl From<Color> for crossterm::style::Color {
     fn from(color: Color) -> Self {
@@ -327,6 +342,7 @@ impl FromStr for UnderlineStyle {
     }
 }
 
+#[cfg(feature = "term")]
 impl From<UnderlineStyle> for crossterm::style::Attribute {
     fn from(style: UnderlineStyle) -> Self {
         match style {
@@ -459,7 +475,13 @@ pub struct Style {
 }
 
 impl Default for Style {
-    fn default() -> Style {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Style {
+    pub const fn new() -> Self {
         Style {
             fg: None,
             bg: None,
@@ -469,12 +491,10 @@ impl Default for Style {
             sub_modifier: Modifier::empty(),
         }
     }
-}
 
-impl Style {
     /// Returns a `Style` resetting all properties.
-    pub fn reset() -> Style {
-        Style {
+    pub const fn reset() -> Self {
+        Self {
             fg: Some(Color::Reset),
             bg: Some(Color::Reset),
             underline_color: None,
@@ -494,7 +514,7 @@ impl Style {
     /// let diff = Style::default().fg(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().fg(Color::Red));
     /// ```
-    pub fn fg(mut self, color: Color) -> Style {
+    pub const fn fg(mut self, color: Color) -> Style {
         self.fg = Some(color);
         self
     }
@@ -509,7 +529,7 @@ impl Style {
     /// let diff = Style::default().bg(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().bg(Color::Red));
     /// ```
-    pub fn bg(mut self, color: Color) -> Style {
+    pub const fn bg(mut self, color: Color) -> Style {
         self.bg = Some(color);
         self
     }
@@ -524,7 +544,7 @@ impl Style {
     /// let diff = Style::default().underline_color(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().underline_color(Color::Red));
     /// ```
-    pub fn underline_color(mut self, color: Color) -> Style {
+    pub const fn underline_color(mut self, color: Color) -> Style {
         self.underline_color = Some(color);
         self
     }
@@ -539,7 +559,7 @@ impl Style {
     /// let diff = Style::default().underline_style(UnderlineStyle::Curl);
     /// assert_eq!(style.patch(diff), Style::default().underline_style(UnderlineStyle::Curl));
     /// ```
-    pub fn underline_style(mut self, style: UnderlineStyle) -> Style {
+    pub const fn underline_style(mut self, style: UnderlineStyle) -> Style {
         self.underline_style = Some(style);
         self
     }

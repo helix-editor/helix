@@ -1,6 +1,5 @@
 [
   (appexpr ["[" "("]) ; Applications.
-  (ntlappexpr ["[" "("])
   (atom ["[" "("]) ; Lists and tuples.
   (program (moduledecl "{")) ; Braced module declarations.
   (funbody)

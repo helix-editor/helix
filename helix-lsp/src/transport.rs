@@ -1,4 +1,8 @@
-use crate::{jsonrpc, Error, Result};
+use crate::{
+    jsonrpc,
+    lsp::{self, notification::Notification as _},
+    Error, LanguageServerId, Result,
+};
 use anyhow::Context;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
@@ -37,7 +41,7 @@ enum ServerMessage {
 
 #[derive(Debug)]
 pub struct Transport {
-    id: usize,
+    id: LanguageServerId,
     name: String,
     pending_requests: Mutex<HashMap<jsonrpc::Id, Sender<Result<Value>>>>,
 }
@@ -47,10 +51,10 @@ impl Transport {
         server_stdout: BufReader<ChildStdout>,
         server_stdin: BufWriter<ChildStdin>,
         server_stderr: BufReader<ChildStderr>,
-        id: usize,
+        id: LanguageServerId,
         name: String,
     ) -> (
-        UnboundedReceiver<(usize, jsonrpc::Call)>,
+        UnboundedReceiver<(LanguageServerId, jsonrpc::Call)>,
         UnboundedSender<Payload>,
         Arc<Notify>,
     ) {
@@ -194,7 +198,7 @@ impl Transport {
 
     async fn process_server_message(
         &self,
-        client_tx: &UnboundedSender<(usize, jsonrpc::Call)>,
+        client_tx: &UnboundedSender<(LanguageServerId, jsonrpc::Call)>,
         msg: ServerMessage,
         language_server_name: &str,
     ) -> Result<()> {
@@ -219,10 +223,7 @@ impl Transport {
         language_server_name: &str,
     ) -> Result<()> {
         let (id, result) = match output {
-            jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
-                info!("{language_server_name} <- {}", result);
-                (id, Ok(result))
-            }
+            jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => (id, Ok(result)),
             jsonrpc::Output::Failure(jsonrpc::Failure { id, error, .. }) => {
                 error!("{language_server_name} <- {error}");
                 (id, Err(error.into()))
@@ -251,7 +252,7 @@ impl Transport {
     async fn recv(
         transport: Arc<Self>,
         mut server_stdout: BufReader<ChildStdout>,
-        client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
+        client_tx: UnboundedSender<(LanguageServerId, jsonrpc::Call)>,
     ) {
         let mut recv_buffer = String::new();
         loop {
@@ -289,11 +290,10 @@ impl Transport {
                     }
 
                     // Hack: inject a terminated notification so we trigger code that needs to happen after exit
-                    use lsp_types::notification::Notification as _;
                     let notification =
                         ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
                             jsonrpc: None,
-                            method: lsp_types::notification::Exit::METHOD.to_string(),
+                            method: lsp::notification::Exit::METHOD.to_string(),
                             params: jsonrpc::Params::None,
                         }));
                     match transport
@@ -329,7 +329,7 @@ impl Transport {
     async fn send(
         transport: Arc<Self>,
         mut server_stdin: BufWriter<ChildStdin>,
-        client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
+        client_tx: UnboundedSender<(LanguageServerId, jsonrpc::Call)>,
         mut client_rx: UnboundedReceiver<Payload>,
         initialize_notify: Arc<Notify>,
     ) {
@@ -338,8 +338,8 @@ impl Transport {
 
         // Determine if a message is allowed to be sent early
         fn is_initialize(payload: &Payload) -> bool {
-            use lsp_types::{
-                notification::{Initialized, Notification},
+            use lsp::{
+                notification::Initialized,
                 request::{Initialize, Request},
             };
             match payload {
@@ -357,7 +357,7 @@ impl Transport {
         }
 
         fn is_shutdown(payload: &Payload) -> bool {
-            use lsp_types::request::{Request, Shutdown};
+            use lsp::request::{Request, Shutdown};
             matches!(payload, Payload::Request { value: jsonrpc::MethodCall { method, .. }, .. } if method == Shutdown::METHOD)
         }
 
@@ -370,12 +370,11 @@ impl Transport {
                     // server successfully initialized
                     is_pending = false;
 
-                    use lsp_types::notification::Notification;
                     // Hack: inject an initialized notification so we trigger code that needs to happen after init
                     let notification = ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
                         jsonrpc: None,
 
-                        method: lsp_types::notification::Initialized::METHOD.to_string(),
+                        method: lsp::notification::Initialized::METHOD.to_string(),
                         params: jsonrpc::Params::None,
                     }));
                     let language_server_name = &transport.name;

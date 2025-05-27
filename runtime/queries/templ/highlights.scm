@@ -1,28 +1,9 @@
-(package_identifier) @namespace
+; inherits: go
 
-(parameter_declaration (identifier) @variable.parameter)
-(variadic_parameter_declaration (identifier) @variable.parameter)
-
-(function_declaration
-  name: (identifier) @function)
-
-(type_spec name: (type_identifier) @type)
-(type_identifier) @type
-(field_identifier) @variable.other.member
-(identifier) @variable
-
-; Function calls
-
-(call_expression
-  function: (identifier) @function)
-
-(call_expression
-  function: (selector_expression
-    field: (field_identifier) @function))
-
-;
-; These are Templ specific
-;
+(css_declaration
+  name: (css_identifier) @function)
+(script_declaration
+  name: (script_identifier) @function)
 
 (component_declaration
   name: (component_identifier) @function)
@@ -42,6 +23,8 @@
 
 (css_property
   name: (css_property_name) @attribute)
+(css_property
+  value: (css_property_value) @constant)
 
 (expression) @function.method
 (dynamic_class_attribute_value) @function.method
@@ -56,35 +39,11 @@
 ] @operator
 
 [
-  "func"
-  "var"
-  "const"
   "templ"
   "css"
   "type"
-  "struct"
-  "range"
   "script"
 ] @keyword.storage.type
-
-[
-  "return"
-] @keyword.control.return
-
-[
-  "import"
-  "package"
-] @keyword.control.import
-
-[
-  "else"
-  "case"
-  "switch"
-  "if"
-  "default"
-] @keyword.control.conditional
-
-"for" @keyword.control.repeat
 
 [
   (interpreted_string_literal)

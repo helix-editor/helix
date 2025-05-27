@@ -130,22 +130,21 @@ pub struct Buffer {
 
 impl Buffer {
     /// Returns a Buffer with all cells set to the default one
+    #[must_use]
     pub fn empty(area: Rect) -> Buffer {
-        let cell: Cell = Default::default();
-        Buffer::filled(area, &cell)
+        Buffer::filled(area, &Cell::default())
     }
 
     /// Returns a Buffer with all cells initialized with the attributes of the given Cell
+    #[must_use]
     pub fn filled(area: Rect, cell: &Cell) -> Buffer {
         let size = area.area();
-        let mut content = Vec::with_capacity(size);
-        for _ in 0..size {
-            content.push(cell.clone());
-        }
+        let content = vec![cell.clone(); size];
         Buffer { area, content }
     }
 
     /// Returns a Buffer containing the given lines
+    #[must_use]
     pub fn with_lines<S>(lines: Vec<S>) -> Buffer
     where
         S: AsRef<str>,
@@ -305,6 +304,68 @@ impl Buffer {
         S: AsRef<str>,
     {
         self.set_string_truncated_at_end(x, y, string.as_ref(), width, style)
+    }
+
+    /// Print at most the first `width` characters of a string if enough space is available
+    /// until the end of the line.
+    /// If `ellipsis` is true appends a `…` at the end of truncated lines.
+    /// If `truncate_start` is `true`, adds a `…` at the beginning of truncated lines.
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_string_anchored(
+        &mut self,
+        x: u16,
+        y: u16,
+        truncate_start: bool,
+        truncate_end: bool,
+        string: &str,
+        width: usize,
+        style: impl Fn(usize) -> Style, // Map a grapheme's string offset to a style
+    ) -> (u16, u16) {
+        // prevent panic if out of range
+        if !self.in_bounds(x, y) || width == 0 {
+            return (x, y);
+        }
+
+        let max_offset = min(
+            self.area.right() as usize - 1,
+            width.saturating_add(x as usize),
+        );
+        let mut start_index = self.index_of(x, y);
+        let mut end_index = self.index_of(max_offset as u16, y);
+
+        if truncate_end {
+            self.content[end_index].set_symbol("…");
+            end_index -= 1;
+        }
+
+        if truncate_start {
+            self.content[start_index].set_symbol("…");
+            start_index += 1;
+        }
+
+        let graphemes = string.grapheme_indices(true);
+
+        for (byte_offset, s) in graphemes.skip(truncate_start as usize) {
+            if start_index > end_index {
+                break;
+            }
+            let width = s.width();
+            if width == 0 {
+                continue;
+            }
+
+            self.content[start_index].set_symbol(s);
+            self.content[start_index].set_style(style(byte_offset));
+
+            // Reset following cells if multi-width (they would be hidden by the grapheme):
+            for i in start_index + 1..start_index + width {
+                self.content[i].reset();
+            }
+
+            start_index += width;
+        }
+
+        (x, y)
     }
 
     /// Print at most the first `width` characters of a string if enough space is available
@@ -735,13 +796,16 @@ mod tests {
         let area = Rect::new(0, 0, 1, 1);
         let mut buffer = Buffer::empty(area);
 
+        // U+200B is the zero-width space codepoint
+        assert_eq!("\u{200B}".width(), 0);
+
         // Leading grapheme with zero width
-        let s = "\u{1}a";
+        let s = "\u{200B}a";
         buffer.set_stringn(0, 0, s, 1, Style::default());
         assert_eq!(buffer, Buffer::with_lines(vec!["a"]));
 
-        // Trailing grapheme with zero with
-        let s = "a\u{1}";
+        // Trailing grapheme with zero width
+        let s = "a\u{200B}";
         buffer.set_stringn(0, 0, s, 1, Style::default());
         assert_eq!(buffer, Buffer::with_lines(vec!["a"]));
     }

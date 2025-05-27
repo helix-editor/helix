@@ -3,24 +3,24 @@ use std::{collections::HashMap, path::PathBuf, sync::Weak};
 use globset::{GlobBuilder, GlobSetBuilder};
 use tokio::sync::mpsc;
 
-use crate::{lsp, Client};
+use crate::{lsp, Client, LanguageServerId};
 
 enum Event {
     FileChanged {
         path: PathBuf,
     },
     Register {
-        client_id: usize,
+        client_id: LanguageServerId,
         client: Weak<Client>,
         registration_id: String,
         options: lsp::DidChangeWatchedFilesRegistrationOptions,
     },
     Unregister {
-        client_id: usize,
+        client_id: LanguageServerId,
         registration_id: String,
     },
     RemoveClient {
-        client_id: usize,
+        client_id: LanguageServerId,
     },
 }
 
@@ -59,7 +59,7 @@ impl Handler {
 
     pub fn register(
         &self,
-        client_id: usize,
+        client_id: LanguageServerId,
         client: Weak<Client>,
         registration_id: String,
         options: lsp::DidChangeWatchedFilesRegistrationOptions,
@@ -72,7 +72,7 @@ impl Handler {
         });
     }
 
-    pub fn unregister(&self, client_id: usize, registration_id: String) {
+    pub fn unregister(&self, client_id: LanguageServerId, registration_id: String) {
         let _ = self.tx.send(Event::Unregister {
             client_id,
             registration_id,
@@ -83,12 +83,12 @@ impl Handler {
         let _ = self.tx.send(Event::FileChanged { path });
     }
 
-    pub fn remove_client(&self, client_id: usize) {
+    pub fn remove_client(&self, client_id: LanguageServerId) {
         let _ = self.tx.send(Event::RemoveClient { client_id });
     }
 
     async fn run(mut rx: mpsc::UnboundedReceiver<Event>) {
-        let mut state: HashMap<usize, ClientState> = HashMap::new();
+        let mut state: HashMap<LanguageServerId, ClientState> = HashMap::new();
         while let Some(event) = rx.recv().await {
             match event {
                 Event::FileChanged { path } => {
@@ -113,17 +113,13 @@ impl Handler {
                             "Sending didChangeWatchedFiles notification to client '{}'",
                             client.name()
                         );
-                        if let Err(err) = crate::block_on(client
-                            .did_change_watched_files(vec![lsp::FileEvent {
-                                uri,
-                                // We currently always send the CHANGED state
-                                // since we don't actually have more context at
-                                // the moment.
-                                typ: lsp::FileChangeType::CHANGED,
-                            }]))
-                        {
-                            log::warn!("Failed to send didChangeWatchedFiles notification to client: {err}");
-                        }
+                        client.did_change_watched_files(vec![lsp::FileEvent {
+                            uri,
+                            // We currently always send the CHANGED state
+                            // since we don't actually have more context at
+                            // the moment.
+                            typ: lsp::FileChangeType::CHANGED,
+                        }]);
                         true
                     });
                 }
@@ -139,7 +135,7 @@ impl Handler {
                         registration_id
                     );
 
-                    let entry = state.entry(client_id).or_insert_with(ClientState::default);
+                    let entry = state.entry(client_id).or_default();
                     entry.client = client;
 
                     let mut builder = GlobSetBuilder::new();

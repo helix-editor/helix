@@ -113,8 +113,9 @@
 "ui.cursor" = { fg = "nord4", modifiers = [ "reversed" ] }
 "ui.cursorcolumn.primary" = { bg = "nord1" }
 "ui.cursorline.primary" = { bg = "nord1" }
+"ui.cursor.match" = { bg = "nord3" }
 
-"ui.selection" = { bg = "nord2" }
+"ui.selection" = { bg = "nord3" }
 "ui.highlight" = { fg = "nord8", bg = "nord2" }
 
 # Statusline
