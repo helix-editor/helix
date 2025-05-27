@@ -19,7 +19,6 @@ mod test {
     mod auto_pairs;
     mod command_line;
     mod commands;
-    mod history;
     mod languages;
     mod movement;
     mod splits;
