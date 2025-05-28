@@ -43,7 +43,6 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     error::Error,
-    ops::Deref,
     path::PathBuf,
     sync::{atomic::AtomicBool, Mutex, MutexGuard, RwLock, RwLockReadGuard},
     time::Duration,
@@ -2638,10 +2637,22 @@ impl HelixConfiguration {
         self.store_config(app_config);
     }
 
-    fn bufferline(&self, config: BufferLine) {
+    fn bufferline(&self, buffer_config: SteelVal) -> anyhow::Result<()> {
+        let config = match buffer_config {
+            SteelVal::StringV(s) | SteelVal::SymbolV(s) => match s.as_str() {
+                "never" => BufferLine::Never,
+                "always" => BufferLine::Always,
+                "multiple" => BufferLine::Multiple,
+                other => anyhow::bail!("Unrecognized bufferline option: {}", other),
+            },
+            other => anyhow::bail!("Unrecognized bufferline option: {}", other),
+        };
+
         let mut app_config = self.load_config();
         app_config.editor.bufferline = config;
         self.store_config(app_config);
+
+        Ok(())
     }
 
     fn indent_guides(&self, config: IndentGuidesConfig) {
