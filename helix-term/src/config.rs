@@ -2,11 +2,13 @@ use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
 use helix_loader::merge_toml_values;
 use helix_view::document::Mode;
+use helix_view::icons::{Icons, ICONS};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::Error as IOError;
+use std::sync::Arc;
 use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,6 +24,7 @@ pub struct ConfigRaw {
     pub theme: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
+    pub icons: Option<toml::Value>,
 }
 
 impl Default for Config {
@@ -64,6 +67,7 @@ impl Config {
             global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
+
         let res = match (global_config, local_config) {
             (Ok(global), Ok(local)) => {
                 let mut keys = keymap::default();
@@ -84,6 +88,18 @@ impl Config {
                         .map_err(ConfigLoadError::BadConfig)?,
                 };
 
+                let icons: Icons = match (global.icons, local.icons) {
+                    (None, None) => Icons::default(),
+                    (None, Some(val)) | (Some(val), None) => {
+                        val.try_into().map_err(ConfigLoadError::BadConfig)?
+                    }
+                    (Some(global), Some(local)) => merge_toml_values(global, local, 3)
+                        .try_into()
+                        .map_err(ConfigLoadError::BadConfig)?,
+                };
+
+                ICONS.store(Arc::new(icons));
+
                 Config {
                     theme: local.theme.or(global.theme),
                     keys,
@@ -100,6 +116,14 @@ impl Config {
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
+
+                let icons = config.icons.map_or_else(
+                    || Ok(Icons::default()),
+                    |val| val.try_into().map_err(ConfigLoadError::BadConfig),
+                )?;
+
+                ICONS.store(Arc::new(icons));
+
                 Config {
                     theme: config.theme,
                     keys,
