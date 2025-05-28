@@ -855,7 +855,7 @@ impl EditorView {
 
         self.bufferline_info.clear();
 
-        for doc in editor.documents() {
+        for (idx, doc) in editor.documents().enumerate() {
             let fname = doc
                 .path()
                 .unwrap_or(&scratch)
@@ -870,6 +870,16 @@ impl EditorView {
                 bufferline_inactive
             };
 
+            // Render the separator before the text if the current document is not first.
+            if idx > 0 {
+                let used_width = viewport.x.saturating_sub(x);
+                let rem_width = surface.area.width.saturating_sub(used_width);
+                let sep = &editor.config().bufferline.separator;
+                x = surface
+                    .set_stringn(x, viewport.y, sep, rem_width as usize, bufferline_inactive)
+                    .0;
+            }
+
             let icons = ICONS.load();
 
             let text = if let Some(icon) = icons.mime().get(doc.path(), doc.language_name()) {
@@ -882,7 +892,6 @@ impl EditorView {
             } else {
                 format!(" {} {}", fname, if doc.is_modified() { "[+] " } else { "" })
             };
-
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
@@ -1415,7 +1424,13 @@ impl EditorView {
             MouseEventKind::Down(MouseButton::Left) => {
                 let editor = &mut cxt.editor;
 
-                if is_bufferline_visible(editor) && row == 0 {
+                let config = editor.config();
+                let bufferline_visible = match config.bufferline.render_mode {
+                    helix_view::editor::BufferLineRenderMode::Always => true,
+                    helix_view::editor::BufferLineRenderMode::Multiple => editor.documents.len() > 1,
+                    _ => false,
+                };
+                if bufferline_visible && row == 0 {
                     if let Some(buffer_info) = self.bufferline_info.get_clicked_buffer(column) {
                         editor.switch(buffer_info.document_id, helix_view::editor::Action::Replace);
                     }
@@ -1791,7 +1806,13 @@ impl Component for EditorView {
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
 
-        let use_bufferline = is_bufferline_visible(cx.editor);
+        // check if bufferline should be rendered
+        use helix_view::editor::BufferLineRenderMode;
+        let use_bufferline = match config.bufferline.render_mode {
+            BufferLineRenderMode::Always => true,
+            BufferLineRenderMode::Multiple if cx.editor.documents.len() > 1 => true,
+            _ => false,
+        };
 
         // -1 for commandline and -1 for bufferline
         let mut editor_area = area.clip_bottom(1);
@@ -1929,16 +1950,6 @@ struct BufferInfo {
     columns: std::ops::Range<u16>,
 }
 
-fn is_bufferline_visible(editor: &Editor) -> bool {
-    use helix_view::editor::BufferLine;
-    let config = editor.config();
-
-    match config.bufferline {
-        BufferLine::Always => true,
-        BufferLine::Multiple => editor.documents.len() > 1,
-        BufferLine::Never => false,
-    }
-}
 
 fn canonicalize_key(key: &mut KeyEvent) {
     if let KeyEvent {

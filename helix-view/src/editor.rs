@@ -318,6 +318,8 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    /// Configuration of the bufferline
+    pub bufferline: BufferLineConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
@@ -335,8 +337,6 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
-    /// Persistently display open buffers along the top
-    pub bufferline: BufferLine,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
@@ -492,6 +492,35 @@ pub struct SearchConfig {
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
+}
+
+/// bufferline render modes
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BufferLineRenderMode {
+    /// Don't render bufferline
+    #[default]
+    Never,
+    /// Always render
+    Always,
+    /// Only if multiple buffers are open
+    Multiple,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct BufferLineConfig {
+    pub render_mode: BufferLineRenderMode,
+    pub separator: String,
+}
+
+impl Default for BufferLineConfig {
+    fn default() -> Self {
+        Self {
+            render_mode: BufferLineRenderMode::default(),
+            separator: String::from("│"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -671,19 +700,6 @@ impl Default for CursorShapeConfig {
     fn default() -> Self {
         Self([CursorKind::Block; 3])
     }
-}
-
-/// bufferline render modes
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum BufferLine {
-    /// Don't render bufferline
-    #[default]
-    Never,
-    /// Always render
-    Always,
-    /// Only if multiple buffers are open
-    Multiple,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -995,6 +1011,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            bufferline: BufferLineConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
@@ -1004,7 +1021,6 @@ impl Default for Config {
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
-            bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap {
