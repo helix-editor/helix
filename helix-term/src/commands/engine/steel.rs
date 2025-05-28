@@ -177,11 +177,6 @@ where
     res
 }
 
-// Handle buffer and extension specific keybindings in userspace.
-pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: Lazy<SteelVal> =
-    Lazy::new(|| SteelVal::boxed(SteelVal::empty_hashmap()));
-
-// TODO: Move this on to the configuration struct directly
 pub static BUFFER_EXTENSION_KEYMAP: Lazy<RwLock<BufferExtensionKeyMap>> = Lazy::new(|| {
     RwLock::new(BufferExtensionKeyMap {
         map: HashMap::new(),
@@ -223,9 +218,6 @@ fn add_reverse_mapping(key: usize, label: String) {
         .reverse
         .insert(key, label);
 }
-
-pub static REVERSE_BUFFER_MAP: Lazy<SteelVal> =
-    Lazy::new(|| SteelVal::boxed(SteelVal::empty_hashmap()));
 
 fn load_component_api(engine: &mut Engine, generate_sources: bool) {
     let module = helix_component_module(generate_sources);
