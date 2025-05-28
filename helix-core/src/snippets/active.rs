@@ -10,6 +10,7 @@ use crate::snippets::render::{RenderedSnippet, Tabstop};
 use crate::snippets::TabstopIdx;
 use crate::{Assoc, ChangeSet, Selection, Transaction};
 
+#[derive(Debug)]
 pub struct ActiveSnippet {
     ranges: Vec<Range>,
     active_tabstops: HashSet<TabstopIdx>,
@@ -61,6 +62,7 @@ impl ActiveSnippet {
 
     /// maps the active snippets through a `ChangeSet` updating all tabstop ranges
     pub fn map(&mut self, changes: &ChangeSet) -> bool {
+        // Map the snippet range
         let positions_to_map = self.ranges.iter_mut().flat_map(|range| {
             [
                 (&mut range.start, Assoc::After),
@@ -69,30 +71,21 @@ impl ActiveSnippet {
         });
         changes.update_positions(positions_to_map);
 
+        // Map each tabstop's range
         for (i, tabstop) in self.tabstops.iter_mut().enumerate() {
             if self.active_tabstops.contains(&TabstopIdx(i)) {
                 let positions_to_map = tabstop.ranges.iter_mut().flat_map(|range| {
-                    let end_assoc = if range.start == range.end {
-                        Assoc::Before
-                    } else {
-                        Assoc::After
-                    };
                     [
                         (&mut range.start, Assoc::Before),
-                        (&mut range.end, end_assoc),
+                        (&mut range.end, Assoc::Before),
                     ]
                 });
                 changes.update_positions(positions_to_map);
             } else {
                 let positions_to_map = tabstop.ranges.iter_mut().flat_map(|range| {
-                    let end_assoc = if range.start == range.end {
-                        Assoc::After
-                    } else {
-                        Assoc::Before
-                    };
                     [
-                        (&mut range.start, Assoc::After),
-                        (&mut range.end, end_assoc),
+                        (&mut range.start, Assoc::Before),
+                        (&mut range.end, Assoc::Before),
                     ]
                 });
                 changes.update_positions(positions_to_map);
@@ -115,6 +108,12 @@ impl ActiveSnippet {
                     // guaranteed by assoc
                     debug_assert!(prev.start <= range.start);
                     debug_assert!(range.start <= range.end);
+                    debug_assert!(
+                        range.start >= snippet_range.start && range.start <= snippet_range.end
+                    );
+                    debug_assert!(
+                        range.end >= snippet_range.start && range.end <= snippet_range.end
+                    );
                     if prev.end > range.start {
                         // not really sure what to do in this case. It shouldn't
                         // really occur in practice, the below just ensures
@@ -130,33 +129,46 @@ impl ActiveSnippet {
         self.ranges.iter().all(|range| range.end <= range.start)
     }
 
-    pub fn next_tabstop(&mut self, current_selection: &Selection) -> (Selection, bool) {
+    pub fn next_tabstop(&mut self, current_selection: &Selection) -> Option<(Selection, bool)> {
+        if !self.is_valid(current_selection) {
+            return None;
+        }
+
         let primary_idx = self.primary_idx(current_selection);
         while self.current_tabstop.0 + 1 < self.tabstops.len() {
             self.current_tabstop.0 += 1;
             if self.activate_tabstop() {
-                let selection = self.tabstop_selection(primary_idx, Direction::Forward);
-                return (selection, self.current_tabstop.0 + 1 == self.tabstops.len());
+                return Some((
+                    self.tabstop_selection(primary_idx, Direction::Forward),
+                    self.current_tabstop.0 + 1 == self.tabstops.len(),
+                ));
             }
         }
-
-        (
-            self.tabstop_selection(primary_idx, Direction::Forward),
-            true,
-        )
+        None
     }
 
-    pub fn prev_tabstop(&mut self, current_selection: &Selection) -> Option<Selection> {
-        let primary_idx = self.primary_idx(current_selection);
+    pub fn prev_tabstop(&mut self, current_selection: &Selection) -> Option<(Selection, bool)> {
+        // If the selection is invalid and we're asking to go back
+        // assume that we are at the last tabstop of a snippet ($0),
+        // and go back to the second-to-last tabstop
+        let primary_idx = if self.is_valid(current_selection) {
+            self.primary_idx(current_selection)
+        } else {
+            self.ranges.len().saturating_sub(2)
+        };
         while self.current_tabstop.0 != 0 {
             self.current_tabstop.0 -= 1;
             if self.activate_tabstop() {
-                return Some(self.tabstop_selection(primary_idx, Direction::Forward));
+                return Some((
+                    self.tabstop_selection(primary_idx, Direction::Forward),
+                    self.current_tabstop.0 == 0,
+                ));
             }
         }
         None
     }
     // computes the primary idx adjusted for the number of cursors in the current tabstop
+    // current_selection must be inside the snippet range
     fn primary_idx(&self, current_selection: &Selection) -> usize {
         let primary: Range = current_selection.primary().into();
         let res = self
@@ -268,5 +280,66 @@ mod tests {
         assert!(transaction.apply(&mut doc));
         assert_eq!(doc, "sizeof()\n");
         assert!(ActiveSnippet::new(snippet).is_none());
+    }
+    #[test]
+    fn navigate_next_and_prev_tabstops() {
+        use crate::snippets::{ActiveSnippet, Snippet, SnippetRenderCtx};
+        use crate::Selection;
+        use ropey::Rope;
+
+        // Snippet: two tabstops + non-interactive $0
+        let snippet = Snippet::parse("> [!note] ${1:Title}\n> ${2:Description}$0").unwrap();
+        let mut doc = Rope::from("");
+        let (transaction, _, snippet) = snippet.render(
+            &doc,
+            &Selection::point(0),
+            |_| (0, 0),
+            &mut SnippetRenderCtx::test_ctx(),
+        );
+
+        assert!(transaction.apply(&mut doc));
+
+        let mut active = ActiveSnippet::new(snippet).expect("should not be empty");
+
+        // Start at tabstop 1
+        let selection = Selection::point(11); // after '> [!note] '
+        assert!(active.is_valid(&selection));
+
+        // Move forward to tabstop 2
+        let (selection2, is_final2) = active
+            .next_tabstop(&selection)
+            .expect("should go to tabstop 2");
+        assert!(active.is_valid(&selection2));
+        assert!(!is_final2, "tabstop 2 should not be final");
+
+        // Move forward again. Should be final
+        let (selection3, is_final3) = active
+            .next_tabstop(&selection2)
+            .unwrap_or_else(|| panic!("should treat last tabstop as final, not return None"));
+        assert!(is_final3, "should be final tabstop");
+        assert!(
+            !active.is_valid(&selection3),
+            "selection from $0 should be outside snippet"
+        );
+
+        // Move backward to tabstop 2
+        let (selection4, is_final4) = active
+            .prev_tabstop(&selection3)
+            .expect("should move back to tabstop 2");
+        assert!(!is_final4, "should not be final tabstop");
+        assert!(active.is_valid(&selection4));
+
+        // Move backward to tabstop 1
+        let (selection5, is_final5) = active
+            .prev_tabstop(&selection4)
+            .expect("should move back to tabstop 1");
+        assert!(is_final5, "should be final tabstop");
+        assert!(active.is_valid(&selection5));
+
+        // No more tabstops
+        assert!(
+            active.prev_tabstop(&selection5).is_none(),
+            "should not be able to move before tabstop 1"
+        );
     }
 }
