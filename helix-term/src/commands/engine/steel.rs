@@ -43,8 +43,9 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     error::Error,
+    ops::Deref,
     path::PathBuf,
-    sync::{atomic::AtomicBool, Mutex, MutexGuard},
+    sync::{atomic::AtomicBool, Mutex, MutexGuard, RwLock, RwLockReadGuard},
     time::Duration,
 };
 use std::{str::FromStr as _, sync::Arc};
@@ -180,6 +181,49 @@ where
 pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: Lazy<SteelVal> =
     Lazy::new(|| SteelVal::boxed(SteelVal::empty_hashmap()));
 
+// TODO: Move this on to the configuration struct directly
+pub static BUFFER_EXTENSION_KEYMAP: Lazy<RwLock<BufferExtensionKeyMap>> = Lazy::new(|| {
+    RwLock::new(BufferExtensionKeyMap {
+        map: HashMap::new(),
+        reverse: HashMap::new(),
+    })
+});
+
+pub struct BufferExtensionKeyMap {
+    map: HashMap<String, EmbeddedKeyMap>,
+    reverse: HashMap<usize, String>,
+}
+
+impl BufferExtensionKeyMap {
+    fn get_extension(&self, extension: &str) -> Option<&EmbeddedKeyMap> {
+        self.map.get(extension)
+    }
+
+    fn get_doc_id(&self, id: usize) -> Option<&EmbeddedKeyMap> {
+        self.reverse.get(&id).and_then(|x| self.map.get(x))
+    }
+}
+
+pub fn get_extension_keymap() -> RwLockReadGuard<'static, BufferExtensionKeyMap> {
+    BUFFER_EXTENSION_KEYMAP.read().unwrap()
+}
+
+fn add_extension_or_labeled_keymap(label: String, keymap: EmbeddedKeyMap) {
+    BUFFER_EXTENSION_KEYMAP
+        .write()
+        .unwrap()
+        .map
+        .insert(label, keymap);
+}
+
+fn add_reverse_mapping(key: usize, label: String) {
+    BUFFER_EXTENSION_KEYMAP
+        .write()
+        .unwrap()
+        .reverse
+        .insert(key, label);
+}
+
 pub static REVERSE_BUFFER_MAP: Lazy<SteelVal> =
     Lazy::new(|| SteelVal::boxed(SteelVal::empty_hashmap()));
 
@@ -203,12 +247,14 @@ fn load_keymap_api(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("keymap?", is_keymap);
     module.register_fn("helix-deep-copy-keymap", deep_copy_keymap);
 
-    // This should be associated with a corresponding scheme module to wrap this up
-    module.register_value(
-        "*buffer-or-extension-keybindings*",
-        BUFFER_OR_EXTENSION_KEYBINDING_MAP.clone(),
+    module.register_fn(
+        "#%add-extension-or-labeled-keymap",
+        add_extension_or_labeled_keymap,
     );
-    module.register_value("*reverse-buffer-map*", REVERSE_BUFFER_MAP.clone());
+
+    module.register_fn("#%add-reverse-mapping", add_reverse_mapping);
+
+    // This should be associated with a corresponding scheme module to wrap this up
     module.register_fn("keymap-update-documentation!", update_documentation);
 
     if generate_sources {
@@ -1685,17 +1731,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         cxt: &mut Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        SteelScriptingEngine::get_keymap_for_extension(cxt).and_then(|map| {
-            if let steel::SteelVal::Custom(inner) = map {
-                if let Some(underlying) =
-                    steel::rvals::as_underlying_type::<EmbeddedKeyMap>(inner.read().as_ref())
-                {
-                    return Some(editor.keymaps.get_with_map(&underlying.0, mode, event));
-                }
-            }
-
-            None
-        })
+        SteelScriptingEngine::handle_keymap_event_impl(&self, editor, mode, cxt, event)
     }
 
     fn call_function_by_name(&self, cx: &mut Context, name: &str, args: &[Cow<str>]) -> bool {
@@ -1832,10 +1868,13 @@ impl super::PluginSystem for SteelScriptingEngine {
 }
 
 impl SteelScriptingEngine {
-    // Attempt to fetch the keymap for the extension
-    fn get_keymap_for_extension<'a>(cx: &'a mut Context) -> Option<SteelVal> {
-        // Get the currently activated extension, also need to check the
-        // buffer type.
+    fn handle_keymap_event_impl(
+        &self,
+        editor: &mut ui::EditorView,
+        mode: Mode,
+        cx: &mut Context,
+        event: KeyEvent,
+    ) -> Option<KeymapResult> {
         let extension = {
             let current_focus = cx.editor.tree.focus;
             let view = cx.editor.tree.get(current_focus);
@@ -1857,42 +1896,18 @@ impl SteelScriptingEngine {
         };
 
         if let Some(extension) = extension {
-            if let SteelVal::Boxed(boxed_map) = BUFFER_OR_EXTENSION_KEYBINDING_MAP.clone() {
-                if let SteelVal::HashMapV(map) = boxed_map.read().clone() {
-                    if let Some(value) = map.get(&SteelVal::StringV(extension.into())) {
-                        if let SteelVal::Custom(inner) = value {
-                            if let Some(_) = steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
-                                inner.read().as_ref(),
-                            ) {
-                                return Some(value.clone());
-                            }
-                        }
-                    }
-                }
+            let map = get_extension_keymap();
+            let keymap = map.get_extension(extension);
+
+            if let Some(keymap) = keymap {
+                return Some(editor.keymaps.get_with_map(&keymap.0, mode, event));
             }
         }
 
-        if let SteelVal::Boxed(boxed_map) = REVERSE_BUFFER_MAP.clone() {
-            if let SteelVal::HashMapV(map) = boxed_map.read().clone() {
-                if let Some(label) = map.get(&SteelVal::IntV(document_id_to_usize(doc_id) as isize))
-                {
-                    if let SteelVal::Boxed(boxed_map) = BUFFER_OR_EXTENSION_KEYBINDING_MAP.clone() {
-                        if let SteelVal::HashMapV(map) = boxed_map.read().clone() {
-                            if let Some(value) = map.get(label) {
-                                if let SteelVal::Custom(inner) = value {
-                                    if let Some(_) =
-                                        steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
-                                            inner.read().as_ref(),
-                                        )
-                                    {
-                                        return Some(value.clone());
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        let map = get_extension_keymap();
+
+        if let Some(keymap) = map.get_doc_id(document_id_to_usize(doc_id)) {
+            return Some(editor.keymaps.get_with_map(&keymap.0, mode, event));
         }
 
         None
