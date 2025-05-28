@@ -43,6 +43,7 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     error::Error,
+    ops::Deref,
     path::PathBuf,
     sync::{atomic::AtomicBool, Mutex, MutexGuard, RwLock, RwLockReadGuard},
     time::Duration,
@@ -633,6 +634,35 @@ fn wrap_at_text_width(config: &mut SoftWrap, option: Option<bool>) {
     config.wrap_at_text_width = option;
 }
 
+// Attempt to fuss with the configuration?
+fn dynamic_set_option(
+    configuration: &HelixConfiguration,
+    key: String,
+    value: SteelVal,
+) -> anyhow::Result<()> {
+    let key = key.to_lowercase();
+
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+
+    // let mut config = serde_json::json!(&cx.editor.config().deref());
+    let mut config = serde_json::json!(configuration.load_config().editor);
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let jvalue = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+    let cloned = value.clone();
+    let field_error = move |_| anyhow::anyhow!("Could not parse field `{}`", cloned);
+    *jvalue = serde_json::Value::try_from(value)?;
+
+    let config = serde_json::from_value(config).map_err(field_error)?;
+
+    let mut new_config = configuration.load_config();
+    new_config.editor = config;
+
+    configuration.store_config(new_config);
+
+    Ok(())
+}
+
 fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/configuration");
 
@@ -805,11 +835,17 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     // Keybinding stuff
     module
         .register_fn("keybindings", HelixConfiguration::keybindings)
-        .register_fn("get-keybindings", HelixConfiguration::get_keybindings);
+        .register_fn("get-keybindings", HelixConfiguration::get_keybindings)
+        .register_fn("set-option!", dynamic_set_option);
 
     if generate_sources {
         let mut builtin_configuration_module =
             r#"(require-builtin helix/core/configuration as helix.)
+
+(provide set-option!)
+(define (set-option! key value)
+    (helix.set-option! *helix.config* key value))
+                
 (provide define-lsp)
 (define-syntax define-lsp
   (syntax-rules (#%crunch #%name #%conf)
@@ -847,8 +883,8 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
     [(_ name (key value) ...) (define-lsp #%crunch #%name name #%conf (hash "name" name) (key value) ...)]))
 
-(provide language)
-(define-syntax language
+(provide define-language)
+(define-syntax define-language
   (syntax-rules (#%crunch #%name #%conf)
 
     ;; Other generic keys
@@ -861,7 +897,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
     [(_ #%crunch #%name name #%conf conf (key (inner-key value) ...) remaining ...)
      ;  ;; Crunch the remaining stuff
-     (language #%crunch
+     (define-language #%crunch
                #%name
                name
                #%conf
@@ -876,15 +912,15 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
     [(_ #%crunch #%name name #%conf conf (key value) remaining ...)
      ;  ;; Crunch the remaining stuff
-     (language #%crunch #%name name #%conf (hash-insert conf (quote key) value) remaining ...)]
+     (define-language #%crunch #%name name #%conf (hash-insert conf (quote key) value) remaining ...)]
 
     [(_ name (key value ...) ...)
-     (language #%crunch #%name name #%conf (hash "name" name) (key value ...) ...)]
+     (define-language #%crunch #%name name #%conf (hash "name" name) (key value ...) ...)]
 
     [(_ name (key value)) (language #%crunch #%name name #%conf (hash "name" name) (key value))]
 
     [(_ name (key value) ...)
-     (language #%crunch #%name name #%conf (hash "name" name) (key value) ...)]))
+     (define-language #%crunch #%name name #%conf (hash "name" name) (key value) ...)]))
 "#
             .to_string();
 
@@ -1126,7 +1162,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 ;; * fp-follow-symlinks
 ;; * fp-deduplicate-links
 ;; * fp-parents
-;; * fp-ignore"
+;; * fp-ignore
 ;; * fp-git-ignore
 ;; * fp-git-global
 ;; * fp-git-exclude
