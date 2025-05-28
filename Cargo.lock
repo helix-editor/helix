@@ -3138,7 +3138,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#d470ff03602443499993cda594a725874319c018"
+source = "git+https://github.com/mattwparas/steel.git#f449f2c79bce8c70d92ba552fbfd79a245d48a81"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -3185,12 +3185,13 @@ dependencies = [
  "termimad",
  "weak-table",
  "which",
+ "xdg",
 ]
 
 [[package]]
 name = "steel-derive"
 version = "0.5.0"
-source = "git+https://github.com/mattwparas/steel.git#d470ff03602443499993cda594a725874319c018"
+source = "git+https://github.com/mattwparas/steel.git#f449f2c79bce8c70d92ba552fbfd79a245d48a81"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3200,7 +3201,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#d470ff03602443499993cda594a725874319c018"
+source = "git+https://github.com/mattwparas/steel.git#f449f2c79bce8c70d92ba552fbfd79a245d48a81"
 dependencies = [
  "steel-core",
 ]
@@ -3208,7 +3209,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#d470ff03602443499993cda594a725874319c018"
+source = "git+https://github.com/mattwparas/steel.git#f449f2c79bce8c70d92ba552fbfd79a245d48a81"
 dependencies = [
  "codegen",
  "serde",
@@ -3217,7 +3218,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#d470ff03602443499993cda594a725874319c018"
+source = "git+https://github.com/mattwparas/steel.git#f449f2c79bce8c70d92ba552fbfd79a245d48a81"
 dependencies = [
  "compact_str",
  "fxhash",
@@ -3952,6 +3953,12 @@ name = "writeable"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e9df38ee2d2c3c5948ea468a8406ff0db0b29ae1ffde1bcf20ef305bcc95c51"
+
+[[package]]
+name = "xdg"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fb433233f2df9344722454bc7e96465c9d03bff9d77c248f9e7523fe79585b5"
 
 [[package]]
 name = "xtask"
