@@ -57,6 +57,7 @@ use self::handlers::{DynamicQueryChange, DynamicQueryHandler, PreviewHighlightHa
 pub const ID: &str = "picker";
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
+pub const MIN_AREA_HEIGHT_FOR_PREVIEW: u16 = 24;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
@@ -1004,27 +1005,50 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
 impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I, D> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // default render
         // +--title--+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
         // |picker   | |         |
         // |         | |         |
         // +---------+ +---------+
+        //
+        // stack vertically
+        // +---------+
+        // |prompt   |
+        // +---------+
+        // |picker   |
+        // |         |
+        // +---------+
+        // |preview  |
+        // |         |
+        // |         |
+        // +---------+
 
-        let render_preview =
-            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview = self.show_preview
+            && self.file_fn.is_some()
+            && area.width >= MIN_AREA_WIDTH_FOR_PREVIEW
+            && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW;
+        let stack_vertically = area.width / 2 < MIN_AREA_WIDTH_FOR_PREVIEW;
 
-        let picker_width = if render_preview {
-            area.width / 2
+        let picker_area = if render_preview {
+            if stack_vertically {
+                area.with_height(area.height / 3)
+            } else {
+                area.with_width(area.width / 2)
+            }
         } else {
-            area.width
+            area
         };
 
-        let picker_area = area.with_width(picker_width);
         self.render_picker(picker_area, surface, cx);
 
         if render_preview {
-            let preview_area = area.clip_left(picker_width);
+            let preview_area = if stack_vertically {
+                area.clip_top(picker_area.height)
+            } else {
+                area.clip_left(picker_area.width)
+            };
             self.render_preview(preview_area, surface, cx);
         }
     }
@@ -1151,10 +1175,13 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         let inner = block.inner(area);
 
         // prompt area
-        let render_preview =
-            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview = self.show_preview
+            && self.file_fn.is_some()
+            && area.width >= MIN_AREA_WIDTH_FOR_PREVIEW
+            && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW;
+        let stack_vertically = area.width / 2 < MIN_AREA_WIDTH_FOR_PREVIEW;
 
-        let picker_width = if render_preview {
+        let picker_width = if render_preview && !stack_vertically {
             area.width / 2
         } else {
             area.width
