@@ -22,6 +22,7 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
+use helix_loader::VERSION_AND_GIT_HASH;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -32,9 +33,12 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
+use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc, sync::LazyLock};
 
-use tui::{buffer::Buffer as Surface, text::Span};
+use tui::{
+    buffer::Buffer as Surface,
+    text::{Span, Spans},
+};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -73,6 +77,261 @@ impl EditorView {
 
     pub fn spinners_mut(&mut self) -> &mut ProgressSpinners {
         &mut self.spinners
+    }
+
+    pub fn render_welcome(theme: &Theme, view: &View, surface: &mut Surface, is_colorful: bool) {
+        /// Logo for Helix
+        const LOGO_STR: &str = "\
+**             
+*****        ::
+ ******** :::::
+     **::::::: 
+   ::::::::***=
+:::::::    ====
+::::    =======
+:---========   
+ =======--     
+===== -------- 
+==        -----
+             --";
+
+        /// Size of the maximum line of the logo
+        static LOGO_WIDTH: LazyLock<u16> = LazyLock::new(|| {
+            LOGO_STR
+                .lines()
+                .max_by(|line, other| line.len().cmp(&other.len()))
+                .unwrap_or("")
+                .len() as u16
+        });
+
+        /// Use when true color is not supported
+        static LOGO_NO_COLOR: LazyLock<Vec<Spans>> = LazyLock::new(|| {
+            LOGO_STR
+                .lines()
+                .map(|line| Spans(vec![Span::raw(line)]))
+                .collect()
+        });
+
+        /// The logo is colored using Helix's colors
+        static LOGO_WITH_COLOR: LazyLock<Vec<Spans>> = LazyLock::new(|| {
+            LOGO_STR
+                .lines()
+                .map(|line| {
+                    line.chars()
+                        .map(|ch| match ch {
+                            '*' | ':' | '=' | '-' => Span::styled(
+                                ch.to_string(),
+                                Style::new().fg(match ch {
+                                    // Dark purple
+                                    '*' => Color::Rgb(112, 107, 200),
+                                    // Dark blue
+                                    ':' => Color::Rgb(132, 221, 234),
+                                    // Bright purple
+                                    '=' => Color::Rgb(153, 123, 200),
+                                    // Bright blue
+                                    '-' => Color::Rgb(85, 197, 228),
+                                    _ => unreachable!(),
+                                }),
+                            ),
+                            ' ' => Span::raw(" "),
+                            _ => unreachable!("logo should only contain '*', ':', '=', '-' or ' '"),
+                        })
+                        .collect()
+                })
+                .collect()
+        });
+
+        /// How much space to put between the help text and the logo
+        const LOGO_LEFT_PADDING: u16 = 6;
+
+        // Shift the help text to the right by this amount, to add space
+        // for the logo
+        static HELP_X_LOGO_OFFSET: LazyLock<u16> =
+            LazyLock::new(|| *LOGO_WIDTH / 2 + LOGO_LEFT_PADDING / 2);
+
+        #[derive(PartialEq, PartialOrd, Eq, Ord)]
+        enum AlignLine {
+            Left,
+            Center,
+        }
+        use AlignLine::*;
+
+        let logo = if is_colorful {
+            &LOGO_WITH_COLOR
+        } else {
+            &LOGO_NO_COLOR
+        };
+
+        let empty_line = || (Spans::from(""), Left);
+
+        let raw_help_lines: [(Spans, AlignLine); 12] = [
+            (
+                vec![
+                    Span::raw("helix "),
+                    Span::styled(VERSION_AND_GIT_HASH, theme.get("comment")),
+                ]
+                .into(),
+                Center,
+            ),
+            empty_line(),
+            (
+                Span::styled(
+                    "A post-modern modal text editor",
+                    theme.get("ui.text").add_modifier(Modifier::ITALIC),
+                )
+                .into(),
+                Center,
+            ),
+            empty_line(),
+            (
+                vec![
+                    Span::styled(":tutor", theme.get("markup.raw")),
+                    Span::styled("<enter>", theme.get("comment")),
+                    Span::raw("       learn helix"),
+                ]
+                .into(),
+                Left,
+            ),
+            (
+                vec![
+                    Span::styled(":theme", theme.get("markup.raw")),
+                    Span::styled("<space><tab>", theme.get("comment")),
+                    Span::raw("  choose a theme"),
+                ]
+                .into(),
+                Left,
+            ),
+            (
+                vec![
+                    Span::styled("<space>e", theme.get("markup.raw")),
+                    Span::raw("            file explorer"),
+                ]
+                .into(),
+                Left,
+            ),
+            (
+                vec![
+                    Span::styled("<space>?", theme.get("markup.raw")),
+                    Span::raw("            see all commands"),
+                ]
+                .into(),
+                Left,
+            ),
+            (
+                vec![
+                    Span::styled(":quit", theme.get("markup.raw")),
+                    Span::styled("<enter>", theme.get("comment")),
+                    Span::raw("        quit helix"),
+                ]
+                .into(),
+                Left,
+            ),
+            empty_line(),
+            (
+                vec![
+                    Span::styled("docs: ", theme.get("ui.text")),
+                    Span::styled("docs.helix-editor.com", theme.get("markup.link.url")),
+                ]
+                .into(),
+                Center,
+            ),
+            empty_line(),
+        ];
+
+        debug_assert!(
+            raw_help_lines.len() >= LOGO_STR.lines().count(),
+            "help lines get chained with lines of logo. if there are not \
+             enough help lines, logo will be cut off. add `empty_line()`s if necessary"
+        );
+
+        let mut help_lines = Vec::with_capacity(raw_help_lines.len());
+        let mut len_of_longest_left_align = 0;
+        let mut len_of_longest_center_align = 0;
+
+        for (spans, align) in raw_help_lines {
+            let width = spans.width();
+            match align {
+                Left => len_of_longest_left_align = len_of_longest_left_align.max(width),
+                Center => len_of_longest_center_align = len_of_longest_center_align.max(width),
+            }
+            help_lines.push((spans, align));
+        }
+
+        let len_of_longest_left_align = len_of_longest_left_align as u16;
+
+        // the y-coordinate where we start drawing the welcome screen
+        let start_drawing_at_y =
+            view.area.y + (view.area.height / 2).saturating_sub(help_lines.len() as u16 / 2);
+
+        // x-coordinate of the center of the viewport
+        let x_view_center = view.area.x + view.area.width / 2;
+
+        // the x-coordinate where we start drawing the `AlignLine::Left` lines
+        // +2 to make the text look like more balanced relative to the center of the help
+        let start_drawing_left_align_at_x =
+            view.area.x + (view.area.width / 2).saturating_sub(len_of_longest_left_align / 2) + 2;
+
+        let are_any_left_aligned_lines_overflowing_x =
+            (start_drawing_left_align_at_x + len_of_longest_left_align) > view.area.width;
+
+        let are_any_center_aligned_lines_overflowing_x =
+            len_of_longest_center_align as u16 > view.area.width;
+
+        let is_help_x_overflowing =
+            are_any_left_aligned_lines_overflowing_x || are_any_center_aligned_lines_overflowing_x;
+
+        // we want `>=` so it does not get drawn over the status line
+        // (essentially, it WON'T be marked as "overflowing" if the help
+        // fully fits vertically in the viewport without touching the status line)
+        let is_help_y_overflowing = (help_lines.len() as u16) >= view.area.height;
+
+        // Not enough space to render the help text even without the logo. Render nothing.
+        if is_help_x_overflowing || is_help_y_overflowing {
+            return;
+        }
+
+        // At this point we know that there is enough vertical
+        // and horizontal space to render the help text
+
+        let width_of_help_with_logo = *LOGO_WIDTH + LOGO_LEFT_PADDING + len_of_longest_left_align;
+
+        // If there is not enough space to show LOGO + HELP, then don't show the logo at all
+        //
+        // If we get here we know that there IS enough space to show just the help
+        let show_logo = width_of_help_with_logo <= view.area.width;
+
+        // Each "help" line is effectively "chained" with a line of the logo (if present).
+        for (lines_drawn, (line, align)) in help_lines.iter().enumerate() {
+            // Where to start drawing `AlignLine::Left` rows
+            let x_start_left_help =
+                start_drawing_left_align_at_x + if show_logo { *HELP_X_LOGO_OFFSET } else { 0 };
+
+            // Where to start drawing `AlignLine::Center` rows
+            let x_start_center_help = x_view_center - line.width() as u16 / 2
+                + if show_logo { *HELP_X_LOGO_OFFSET } else { 0 };
+
+            // Where to start drawing rows for the "help" section
+            // Includes tips about commands. Excludes the logo.
+            let x_start_help = match align {
+                Left => x_start_left_help,
+                Center => x_start_center_help,
+            };
+
+            let y = start_drawing_at_y + lines_drawn as u16;
+
+            // Draw a single line of the help text
+            surface.set_spans(x_start_help, y, line, line.width() as u16);
+
+            if show_logo {
+                // Draw a single line of the logo
+                surface.set_spans(
+                    x_start_left_help - LOGO_LEFT_PADDING - *LOGO_WIDTH,
+                    y,
+                    &logo[lines_drawn],
+                    *LOGO_WIDTH,
+                );
+            }
+        }
     }
 
     pub fn render_view(
@@ -161,6 +420,15 @@ impl EditorView {
         }
 
         Self::render_rulers(editor, doc, view, inner, surface, theme);
+
+        if config.welcome_screen && doc.version() == 0 && doc.is_welcome {
+            Self::render_welcome(
+                theme,
+                view,
+                surface,
+                config.true_color || crate::true_color(),
+            );
+        }
 
         let primary_cursor = doc
             .selection(view.id)
