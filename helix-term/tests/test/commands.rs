@@ -820,3 +820,171 @@ async fn macro_play_within_macro_record() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_append_marker() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+                #[foo|]#
+                bar
+                baz"
+        },
+        // * Save selection to maker: ^s
+        // * Move to #[bar|]#: jmiw
+        // * Append #[bar|]# to saved selection: ^Ca
+        // * Move to #[baz|]#: jmiw
+        // * Append ranges from register: ^ca
+        "^sjmiw^Cajmiw^ca",
+        indoc! {"\
+                #(foo|)#
+                #(bar|)#
+                #[baz|]#"
+        },
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_union_marker() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+                #[foo|]#
+                bar
+                baz"
+        },
+        // * Save selection to maker: ^s
+        // * Move to #[baz|]#: jjmiw
+        // * Union ranges from register: ^cu
+        "^sjjmiw^cu",
+        indoc! {"\
+                #[foo
+                bar
+                baz|]#"
+        },
+    ))
+    .await?;
+
+    // The reverse of the above.
+    test((
+        indoc! {"\
+                #[|foo]#
+                bar
+                baz"
+        },
+        // * Save selection to maker: ^s
+        // * Move to #[|baz]#: jjmiw<A-;>
+        // * Union ranges from register: ^cu
+        "^sjjmiw<A-;>^cu",
+        indoc! {"\
+                #[|foo
+                bar
+                baz]#"
+        },
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_intersect_marker() -> anyhow::Result<()> {
+    // Both forward overlapping selections
+    test((
+        indoc! {"\
+                #[foo
+                bar|]#
+                baz
+        "},
+        "^smiwvj^ci",
+        indoc! {"\
+                foo
+                #[bar|]#
+                baz
+        "},
+    ))
+    .await?;
+
+    // Mixed direction overlapping selections
+    test((
+        indoc! {"\
+                #[foo
+                bar|]#
+                baz
+        "},
+        "^smiwvj<A-;>^ci",
+        indoc! {"\
+                foo
+                #[bar|]#
+                baz
+        "},
+    ))
+    .await?;
+
+    // Both backwards overlapping selections
+    test((
+        indoc! {"\
+                #[|foo
+                bar]#
+                baz
+        "},
+        "^sjmiwvj<A-;>^ci",
+        indoc! {"\
+                foo
+                #[|bar]#
+                baz
+        "},
+    ))
+    .await?;
+
+    // Both forward disjoint selections
+    test((
+        indoc! {"\
+                #[foo|]#
+                bar
+                baz
+        "},
+        "^sjjmiw^ci",
+        indoc! {"\
+                foo#[
+                bar\n|]#
+                baz
+        "},
+    ))
+    .await?;
+
+    // Mixed direction disjoint selections
+    test((
+        indoc! {"\
+                #[foo|]#
+                bar
+                baz
+        "},
+        "^sjjmiw<A-;>^ci",
+        indoc! {"\
+                foo#[
+                bar\n|]#
+                baz
+        "},
+    ))
+    .await?;
+
+    // Both backwards disjoint selections
+    test((
+        indoc! {"\
+                #[|foo]#
+                bar
+                baz
+        "},
+        "^sjjmiw<A-;>^ci",
+        indoc! {"\
+                foo#[|
+                bar\n]#
+                baz
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}

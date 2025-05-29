@@ -138,6 +138,12 @@ pub enum DocumentOpenError {
     IoError(#[from] io::Error),
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum MarkerName {
+    Register(char),
+    // Snippet(?),
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -214,6 +220,9 @@ pub struct Document {
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
+
+    /// Named selections within the document.
+    pub markers: HashMap<MarkerName, Selection>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -700,6 +709,7 @@ impl Document {
             has_bom,
             text,
             selections: HashMap::default(),
+            markers: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
             view_data: Default::default(),
@@ -1403,6 +1413,15 @@ impl Document {
         self.version += 1;
 
         for selection in self.selections.values_mut() {
+            *selection = selection
+                .clone()
+                // Map through changes
+                .map(transaction.changes())
+                // Ensure all selections across all views still adhere to invariants.
+                .ensure_invariants(self.text.slice(..));
+        }
+
+        for selection in self.markers.values_mut() {
             *selection = selection
                 .clone()
                 // Map through changes

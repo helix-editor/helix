@@ -144,6 +144,29 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "*" => search_selection_detect_word_boundaries,
         "A-*" => search_selection,
 
+        "^" => { "Selections"
+            "s" => save_selection_to_register,
+            "S" => restore_selection,
+            "c" => { "Combine selection from register"
+                "a" => append_selection_from_register,
+                "u" => union_selection_from_register,
+                "i" => intersect_selection_from_register,
+                "lt" => select_leftmost_cursor_selection_from_register,
+                "gt" => select_rightmost_cursor_selection_from_register,
+                "minus" => select_shortest_selection_from_register,
+                "+" => select_longest_selection_from_register,
+            },
+            "C" => { "Combine selection to register"
+                "a" => append_selection_to_register,
+                "u" => union_selection_to_register,
+                "i" => intersect_selection_to_register,
+                "lt" => select_leftmost_cursor_selection_to_register,
+                "gt" => select_rightmost_cursor_selection_to_register,
+                "minus" => select_shortest_selection_to_register,
+                "+" => select_longest_selection_to_register,
+            },
+        },
+
         "u" => undo,
         "U" => redo,
         "A-u" => earlier,

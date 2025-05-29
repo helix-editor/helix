@@ -4,8 +4,8 @@
 //! All positioning is done via `char` offsets into the buffer.
 use crate::{
     graphemes::{
-        ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
-        prev_grapheme_boundary,
+        ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, grapheme_width,
+        next_grapheme_boundary, prev_grapheme_boundary,
     },
     line_ending::get_line_ending,
     movement::Direction,
@@ -243,6 +243,37 @@ impl Range {
         }
     }
 
+    /// Returns a range that encompasses the intersection of the input ranges.
+    ///
+    /// If the input ranges overlap, the intersection is the area covered by
+    /// both input ranges. Otherwise, the intersection is the area between the
+    /// input ranges.
+    ///
+    /// The range is [Direction::Backward] if both input ranges are
+    /// [Direction::Backward], [Direction::Forward] otherwise.
+    #[must_use]
+    pub fn intersect(&self, other: Self) -> Self {
+        let sel = if self.anchor > self.head && other.anchor > other.head {
+            Range {
+                anchor: self.anchor.min(other.anchor),
+                head: self.head.max(other.head),
+                old_visual_position: None,
+            }
+        } else {
+            Range {
+                anchor: self.from().max(other.from()),
+                head: self.to().min(other.to()),
+                old_visual_position: None,
+            }
+        };
+
+        if !self.overlaps(&other) {
+            return sel.flip();
+        }
+
+        sel
+    }
+
     // groupAt
 
     /// Returns the text inside this range given the text of the whole buffer.
@@ -389,6 +420,15 @@ impl Range {
     /// direction.
     pub fn into_byte_range(&self, text: RopeSlice) -> (usize, usize) {
         (text.char_to_byte(self.from()), text.char_to_byte(self.to()))
+    }
+
+    /// Gets the display-width of the range in columns.
+    #[must_use]
+    pub fn width(&self, text: RopeSlice) -> usize {
+        let graphemes = text.slice(self.from()..self.to()).graphemes();
+        graphemes
+            .map(|slice| grapheme_width(&Cow::from(slice)))
+            .sum()
     }
 }
 
@@ -584,6 +624,18 @@ impl Selection {
             .unwrap();
 
         self
+    }
+
+    /// Creates a new selection including ranges from `self` and `other`. The
+    /// primary selection index is inherited from `self`.
+    ///
+    /// `self` and `other` are assumed to be normalized. The produced selection
+    /// is normalized.
+    pub fn append(self, other: Selection) -> Self {
+        let mut ranges = self.ranges.clone();
+        ranges.extend(other.ranges.clone());
+
+        Selection::new(ranges, self.primary_index)
     }
 
     /// Replaces ranges with one spanning from first to last range.
