@@ -27,15 +27,16 @@ mod windows_rc {
         match target_env.as_str() {
             "gnu" => {
                 compile_with_toolkit_gnu(&output_dir, rc_path);
+                println!("cargo:rustc-link-search=native={}", output_dir.display());
+                println!("cargo:rustc-link-lib=static:+whole-archive=resource");
             }
             "msvc" => {
                 compile_with_toolkit_msvc(&output_dir, rc_path);
+                println!("cargo:rustc-link-search=native={}", output_dir.display());
+                println!("cargo:rustc-link-lib=dylib=resource");
             }
             _ => panic!("Can only compile resource file when target_env is \"gnu\" or \"msvc\""),
         }
-
-        println!("cargo:rustc-link-search=native={}", output_dir.display());
-        println!("cargo:rustc-link-lib=dylib=resource");
     }
 
     fn compile_with_toolkit_msvc(output: &Path, input: PathBuf) {
