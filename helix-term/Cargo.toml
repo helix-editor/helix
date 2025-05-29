@@ -100,7 +100,6 @@ crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc
 
 [build-dependencies]
 helix-loader = { path = "../helix-loader" }
-winresource = "0.1"
 
 [dev-dependencies]
 smallvec = "1.15"
