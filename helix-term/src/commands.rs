@@ -2906,8 +2906,8 @@ fn local_search_grep(cx: &mut Context) {
         Some((path.as_path().into(), Some((*line_num, *line_num))))
     })
     .with_history_register(Some(reg))
-    .with_dynamic_query(get_files, Some(275));
-
+    .with_dynamic_query(get_files, Some(275))
+    .with_title("Local Search".into());
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -3043,6 +3043,7 @@ fn local_search_fuzzy(cx: &mut Context) {
     .with_preview(|_editor, FileResult { path, line_num, .. }| {
         Some((path.as_path().into(), Some((*line_num, *line_num))))
     })
+    .with_title("Local Fuzzy Search".into())
     .with_history_register(Some(reg));
 
     let injector = picker.injector();
