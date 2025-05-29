@@ -20,7 +20,10 @@ use ropey::RopeSlice;
 use tree_house::{
     highlighter,
     query_iter::QueryIter,
-    tree_sitter::{Grammar, InactiveQueryCursor, InputEdit, Node, Query, RopeInput, Tree},
+    tree_sitter::{
+        query::{InvalidPredicateError, UserPredicate},
+        Grammar, InactiveQueryCursor, InputEdit, Node, Query, RopeInput, Tree,
+    },
     Error, InjectionLanguageMarker, LanguageConfig as SyntaxConfig, Layer,
 };
 
@@ -28,6 +31,7 @@ use crate::{indent::IndentQuery, tree_sitter, ChangeSet, Language};
 
 pub use tree_house::{
     highlighter::{Highlight, HighlightEvent},
+    query_iter::QueryIterEvent,
     Error as HighlighterError, LanguageLoader, TreeCursor, TREE_SITTER_MATCH_LIMIT,
 };
 
@@ -37,6 +41,7 @@ pub struct LanguageData {
     syntax: OnceCell<Option<SyntaxConfig>>,
     indent_query: OnceCell<Option<IndentQuery>>,
     textobject_query: OnceCell<Option<TextObjectQuery>>,
+    tag_query: OnceCell<Option<TagQuery>>,
 }
 
 impl LanguageData {
@@ -46,6 +51,7 @@ impl LanguageData {
             syntax: OnceCell::new(),
             indent_query: OnceCell::new(),
             textobject_query: OnceCell::new(),
+            tag_query: OnceCell::new(),
         }
     }
 
@@ -145,6 +151,44 @@ impl LanguageData {
             .get_or_init(|| {
                 let grammar = self.syntax_config(loader)?.grammar;
                 Self::compile_textobject_query(grammar, &self.config)
+                    .map_err(|err| {
+                        log::error!("{err}");
+                    })
+                    .ok()
+                    .flatten()
+            })
+            .as_ref()
+    }
+
+    /// Compiles the tags.scm query for a language.
+    /// This function should only be used by this module or the xtask crate.
+    pub fn compile_tag_query(
+        grammar: Grammar,
+        config: &LanguageConfiguration,
+    ) -> Result<Option<TagQuery>> {
+        let name = &config.language_id;
+        let text = read_query(name, "tags.scm");
+        if text.is_empty() {
+            return Ok(None);
+        }
+        let query = Query::new(grammar, &text, |_pattern, predicate| match predicate {
+            // TODO: these predicates are allowed in tags.scm queries but not yet used.
+            UserPredicate::IsPropertySet { key: "local", .. } => Ok(()),
+            UserPredicate::Other(pred) => match pred.name() {
+                "strip!" | "select-adjacent!" => Ok(()),
+                _ => Err(InvalidPredicateError::unknown(predicate)),
+            },
+            _ => Err(InvalidPredicateError::unknown(predicate)),
+        })
+        .with_context(|| format!("Failed to compile tags.scm query for '{name}'"))?;
+        Ok(Some(TagQuery { query }))
+    }
+
+    fn tag_query(&self, loader: &Loader) -> Option<&TagQuery> {
+        self.tag_query
+            .get_or_init(|| {
+                let grammar = self.syntax_config(loader)?.grammar;
+                Self::compile_tag_query(grammar, &self.config)
                     .map_err(|err| {
                         log::error!("{err}");
                     })
@@ -339,6 +383,10 @@ impl Loader {
         self.language(lang).textobject_query(self)
     }
 
+    pub fn tag_query(&self, lang: Language) -> Option<&TagQuery> {
+        self.language(lang).tag_query(self)
+    }
+
     pub fn language_server_configs(&self) -> &HashMap<String, LanguageServerConfiguration> {
         &self.language_server_configs
     }
@@ -510,6 +558,19 @@ impl Syntax {
         Range: RangeBounds<u32>,
     {
         QueryIter::new(&self.inner, source, loader, range)
+    }
+
+    pub fn tags<'a>(
+        &'a self,
+        source: RopeSlice<'a>,
+        loader: &'a Loader,
+        range: impl RangeBounds<u32>,
+    ) -> QueryIter<'a, 'a, impl FnMut(Language) -> Option<&'a Query> + 'a, ()> {
+        self.query_iter(
+            source,
+            |lang| loader.tag_query(lang).map(|q| &q.query),
+            range,
+        )
     }
 }
 
@@ -879,6 +940,11 @@ impl TextObjectQuery {
         });
         Some(capture_node)
     }
+}
+
+#[derive(Debug)]
+pub struct TagQuery {
+    pub query: Query,
 }
 
 pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
