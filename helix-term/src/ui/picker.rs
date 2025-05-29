@@ -47,6 +47,7 @@ use helix_core::{
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
+    input::{KeyCode, KeyEvent, KeyModifiers},
     theme::Style,
     view::ViewPosition,
     Document, DocumentId, Editor,
@@ -1162,6 +1163,10 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 self.toggle_preview();
             }
             _ => {
+                // Check if this is an Esc key that should close the picker
+                if let Event::Key(KeyEvent { code: KeyCode::Esc, modifiers: KeyModifiers::NONE }) = event {
+                    return close_fn(self);
+                }
                 self.prompt_handle_event(event, ctx);
             }
         }
