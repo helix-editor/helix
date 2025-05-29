@@ -48,9 +48,9 @@ mod windows_rc {
                 .expect("CARGO_MANIFEST_DIR should have been set by Cargo")
         ));
 
-        let libname = PathBuf::from(&output).join("resource.lib");
+        let lib_path = PathBuf::from(&output).join("resource.lib");
         let status = command
-            .arg(format!("/fo{}", libname.display()))
+            .arg(format!("/fo{}", lib_path.display()))
             .arg(format!("{}", input.display()))
             .output()
             .unwrap();
