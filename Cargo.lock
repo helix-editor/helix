@@ -1578,6 +1578,7 @@ dependencies = [
  "tokio-stream",
  "toml",
  "url",
+ "winresource",
 ]
 
 [[package]]
@@ -3151,6 +3152,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6cb8234a863ea0e8cd7284fcdd4f145233eb00fee02bbdd9861aec44e6477bc5"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "winresource"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba4a67c78ee5782c0c1cb41bebc7e12c6e79644daa1650ebbc1de5d5b08593f7"
+dependencies = [
+ "toml",
+ "version_check",
 ]
 
 [[package]]
