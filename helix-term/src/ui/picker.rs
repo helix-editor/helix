@@ -1062,10 +1062,10 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             key!(PageUp) | ctrl!('u') => {
                 self.page_up();
             }
-            key!(Home) => {
+            ctrl!(Home) => {
                 self.to_start();
             }
-            key!(End) => {
+            ctrl!(End) => {
                 self.to_end();
             }
             key!(Esc) | ctrl!('c') => return close_fn(self),
