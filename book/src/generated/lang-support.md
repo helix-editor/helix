@@ -184,7 +184,7 @@
 | prql | ✓ |  |  |  |
 | pug | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
-| python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
+| python | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
 | quarto | ✓ |  | ✓ |  |
 | quint | ✓ |  |  | `quint-language-server` |
