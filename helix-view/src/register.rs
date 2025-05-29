@@ -6,6 +6,7 @@ use helix_core::NATIVE_LINE_ENDING;
 
 use crate::{
     clipboard::{ClipboardError, ClipboardProvider, ClipboardType},
+    document::MarkerName,
     Editor,
 };
 
@@ -57,6 +58,13 @@ impl Registers {
                 let text = doc.text().slice(..);
                 Some(RegisterValues::new(doc.selection(view.id).fragments(text)))
             }
+            '^' => {
+                let doc = doc!(editor);
+                let text = doc.text().slice(..);
+                doc.markers
+                    .get(&MarkerName::Register(name))
+                    .map(|selection| RegisterValues::new(selection.fragments(text)))
+            }
             '%' => {
                 let path = doc!(editor).display_name();
                 Some(RegisterValues::new(iter::once(path)))
@@ -80,7 +88,9 @@ impl Registers {
     pub fn write(&mut self, name: char, mut values: Vec<String>) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
+            '#' | '.' | '^' | '%' => {
+                Err(anyhow::anyhow!("Register {name} does not support writing"))
+            }
             '*' | '+' => {
                 self.clipboard_provider.load().set_contents(
                     &values.join(NATIVE_LINE_ENDING.as_str()),
@@ -105,7 +115,9 @@ impl Registers {
     pub fn push(&mut self, name: char, mut value: String) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
+            '#' | '.' | '^' | '%' => {
+                Err(anyhow::anyhow!("Register {name} does not support pushing"))
+            }
             '*' | '+' => {
                 let clipboard_type = match name {
                     '+' => ClipboardType::Clipboard,
@@ -166,6 +178,7 @@ impl Registers {
                     ('_', "<empty>"),
                     ('#', "<selection indices>"),
                     ('.', "<selection contents>"),
+                    ('^', "<document marks>"),
                     ('%', "<document path>"),
                     ('+', "<system clipboard>"),
                     ('*', "<primary clipboard>"),
@@ -193,7 +206,7 @@ impl Registers {
 
                 true
             }
-            '_' | '#' | '.' | '%' => false,
+            '_' | '#' | '.' | '^' | '%' => false,
             _ => self.inner.remove(&name).is_some(),
         }
     }
