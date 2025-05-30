@@ -21,7 +21,7 @@ use helix_view::{
         GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig,
         SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
     },
-    events::{DocumentDidOpen, DocumentFocusLost, SelectionDidChange},
+    events::{DocumentDidOpen, DocumentFocusLost, DocumentSaved, SelectionDidChange},
     extension::document_id_to_usize,
     graphics::CursorKind,
     input::KeyEvent,
@@ -3082,6 +3082,50 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
             // TODO: Share this code with the above since most of it is
             // exactly the same
             register_hook!(move |event: &mut DocumentDidOpen<'_>| {
+                let cloned_func = rooted.value().clone();
+                let doc_id = event.doc;
+
+                let callback = move |editor: &mut Editor,
+                                     _compositor: &mut Compositor,
+                                     jobs: &mut job::Jobs| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs,
+                    };
+                    enter_engine(|guard| {
+                        if let Err(e) = guard
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            .consume(move |engine, args| {
+                                let context = args[0].clone();
+                                engine.update_value("*helix.cx*", context);
+                                // TODO: Reuse this allocation if possible
+                                let mut args = [doc_id.into_steelval().unwrap()];
+                                engine.call_function_with_args_from_mut_slice(
+                                    cloned_func.clone(),
+                                    &mut args,
+                                )
+                            })
+                        {
+                            present_error_inside_engine_context(&mut ctx, guard, e);
+                        }
+                    })
+                };
+                job::dispatch_blocking_jobs(callback);
+
+                Ok(())
+            });
+
+            Ok(SteelVal::Void).into()
+        }
+
+        "document-saved" => {
+            // TODO: Share this code with the above since most of it is
+            // exactly the same
+            register_hook!(move |event: &mut DocumentSaved<'_>| {
                 let cloned_func = rooted.value().clone();
                 let doc_id = event.doc;
 
