@@ -980,6 +980,7 @@ impl Document {
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
         let doc_id = self.id();
+        let atomic_write = self.atomic_save();
 
         let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
@@ -1029,7 +1030,7 @@ impl Document {
 
             // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
             let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
-            let backup = if path.exists() {
+            let backup = if path.exists() && atomic_write {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
                 // non clobbered temporary path for us we don't want
@@ -1912,6 +1913,13 @@ impl Document {
         self.editor_config
             .insert_final_newline
             .unwrap_or_else(|| self.config.load().insert_final_newline)
+    }
+
+    /// Whether the document should write it's contents to a backup file, then rename the backup to the target file when saving. This prevents data loss when saving, but may confuse some file watching/hot reloading programs.
+    pub fn atomic_save(&self) -> bool {
+        self.editor_config
+            .atomic_save
+            .unwrap_or_else(|| self.config.load().atomic_save)
     }
 
     /// Whether the document should trim whitespace preceding line endings on save.
