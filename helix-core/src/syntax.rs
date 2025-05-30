@@ -964,7 +964,7 @@ mod test {
     use super::*;
     use crate::{Rope, Transaction};
 
-    static LOADER: Lazy<Loader> = Lazy::new(|| crate::config::user_lang_loader().unwrap());
+    static LOADER: Lazy<Loader> = Lazy::new(crate::config::default_lang_loader);
 
     #[test]
     fn test_textobject_queries() {

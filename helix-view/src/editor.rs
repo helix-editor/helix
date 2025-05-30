@@ -616,6 +616,9 @@ pub enum StatusLineElement {
     /// The file line endings (CRLF or LF)
     FileLineEnding,
 
+    /// The file indentation style
+    FileIndentStyle,
+
     /// The file type (language ID or "text")
     FileType,
 
