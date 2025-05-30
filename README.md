@@ -5,7 +5,7 @@ This fork of Helix implements the following pull requests. Future pull requests 
 1. https://github.com/helix-editor/helix/pull/13354 (index command)
 2. https://github.com/helix-editor/helix/pull/13053 (local search in buffer)
 3. https://github.com/helix-editor/helix/pull/12369 (basic support for icons)
-4. https://github.com/helix-editor/helix/pull/13306 (customizable color swatches)
+4. https://github.com/helix-editor/helix/pull/12369 (customizable color swatches)
 5. https://github.com/helix-editor/helix/pull/13430 (showing vertical preview)
 6. https://github.com/helix-editor/helix/pull/11497 (support for rounded corners)
 7. https://github.com/helix-editor/helix/pull/13197 (welcome screen)
