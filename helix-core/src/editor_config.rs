@@ -314,7 +314,7 @@ mod test {
 
         [docs/**.txt]
         insert_final_newline = true
-        atomic_write = true
+        atomic_save = true
         "#;
 
         assert_eq!(
