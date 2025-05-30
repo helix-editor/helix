@@ -214,8 +214,10 @@ Jumps to various locations.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
-| `<n>g`| Go to line number `<n>` else start of file       | `goto_file_start`          |
-| <code>&#124;</code>  | Go to column number `<n>` else start of line     | `goto_column`              |
+| `<n>g`| Go to line number `<n>`                          | `goto_file_start`          |
+| `g`   | Go to the start of the file                      | `goto_file_start`          |
+| <code>&lt;n&gt;&#124;</code>  | Go to column number `<n>`      | `goto_column`              |
+| <code>&#124;</code>     | Go to the start of line        | `goto_column`              |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
 | `f`   | Go to files in the selections                    | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |
