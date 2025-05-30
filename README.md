@@ -10,3 +10,24 @@ For more information please see Helix's readme file. But this fork of Helix impl
 9. https://github.com/helix-editor/helix/pull/12173 (buffer click)
 10. https://github.com/helix-editor/helix/pull/7988 (inactive panes background color)
 11. https://github.com/helix-editor/helix/pull/8546 (flex resize, focus mode)
+
+## Window Resizing and Focus Mode Commands
+
+**Window Resizing:**
+- `Alt+w h` or `Alt+w left` - Shrink window width
+- `Alt+w l` or `Alt+w right` - Grow window width  
+- `Alt+w j` or `Alt+w down` - Shrink window height
+- `Alt+w k` or `Alt+w up` - Grow window height
+
+**Focus Mode:**
+- `Alt+w f` - Toggle focus mode (expands current window)
+
+**Sticky Mode:**
+Activate sticky mode with `Alt+W` (Alt + Shift + w), then use single keys for repeated resizing:
+- `h` or `left` - Shrink width
+- `l` or `right` - Grow width  
+- `j` or `down` - Shrink height
+- `k` or `up` - Grow height
+- `f` - Toggle focus mode
+
+Sticky mode stays active until you press a key that's not part of the window resize commands.
