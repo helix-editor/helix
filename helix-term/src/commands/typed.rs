@@ -321,6 +321,24 @@ fn buffer_previous(
     Ok(())
 }
 
+fn buffer_nth(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let n: usize = args[0]
+        .parse()
+        .map_err(|_| anyhow!("provided argument is not an integer"))?;
+    ensure!(n != 0);
+    let (id, _) = if args.has_flag("reverse") {
+        cx.editor.documents.iter().nth_back(n - 1)
+    } else {
+        cx.editor.documents.iter().nth(n - 1)
+    }
+    .ok_or(anyhow!("buffer {n} is out of range"))?;
+    cx.editor.switch(*id, helix_view::editor::Action::Replace);
+    Ok(())
+}
+
 fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> anyhow::Result<()> {
     let config = cx.editor.config();
     let jobs = &mut cx.jobs;
@@ -3564,6 +3582,25 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-nth",
+        aliases: &["bi"],
+        doc: "Switch to the nth buffer, out of those you have open.",
+        fun: buffer_nth,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (1, None),
+            flags: &[
+                Flag {
+                    name: "reverse",
+                    alias: Some('r'),
+                    doc: "count buffers from the end",
+                    ..Flag::DEFAULT
+                },
+            ],
             ..Signature::DEFAULT
         },
     },
