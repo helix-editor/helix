@@ -9,3 +9,4 @@ For more information please see Helix's readme file. But this fork of Helix impl
 8. https://github.com/helix-editor/helix/pull/12520 (picker titles)
 9. https://github.com/helix-editor/helix/pull/12173 (buffer click)
 10. https://github.com/helix-editor/helix/pull/7988 (inactive panes background color)
+11. https://github.com/helix-editor/helix/pull/8546 (flex resize, focus mode)

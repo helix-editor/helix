@@ -12,7 +12,7 @@ use crate::{
     input::KeyEvent,
     register::Registers,
     theme::{self, Theme},
-    tree::{self, Tree},
+    tree::{self, Dimension, Resize, Tree},
 };
 use dap::StackFrame;
 use helix_event::dispatch;
@@ -2024,6 +2024,14 @@ impl Editor {
 
     pub fn transpose_view(&mut self) {
         self.tree.transpose();
+    }
+
+    pub fn resize_buffer(&mut self, resize_type: Resize, dimension: Dimension) {
+        self.tree.resize_buffer(resize_type, dimension);
+    }
+
+    pub fn toggle_focus_window(&mut self) {
+        self.tree.toggle_focus_window();
     }
 
     pub fn should_close(&self) -> bool {
