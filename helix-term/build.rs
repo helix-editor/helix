@@ -25,15 +25,17 @@ mod windows_rc {
 
         let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
         match target_env.as_str() {
-            "gnu" => {
-                compile_with_toolkit_gnu(&output_dir, rc_path);
-                println!("cargo:rustc-link-search=native={}", output_dir.display());
-                println!("cargo:rustc-link-lib=static:+whole-archive=resource");
-            }
             "msvc" => {
                 compile_with_toolkit_msvc(&output_dir, rc_path);
+
                 println!("cargo:rustc-link-search=native={}", output_dir.display());
                 println!("cargo:rustc-link-lib=dylib=resource");
+            }
+            "gnu" => {
+                compile_with_toolkit_gnu(&output_dir, rc_path);
+
+                println!("cargo:rustc-link-search=native={}", output_dir.display());
+                println!("cargo:rustc-link-lib=static:+whole-archive=resource");
             }
             _ => panic!("Can only compile resource file when target_env is \"gnu\" or \"msvc\""),
         }
@@ -69,22 +71,18 @@ mod windows_rc {
     fn compile_with_toolkit_gnu(output: &PathBuf, input: PathBuf) {
         let windres_exe = find_windres_exe();
         let ar_exe = find_ar_exe();
-        if windres_exe.to_str() == Some("") || ar_exe.to_str() == Some("") {
-            panic!("MinGW is to be installed along with GNU")
-        }
 
-        let dir = if cfg!(windows) {
-            PathBuf::from("\\")
-        } else {
-            PathBuf::from("/")
-        };
+        let mut command = process::Command::new(windres_exe);
+        let command = command.arg(format!(
+            "-I{}",
+            env::var("CARGO_MANIFEST_DIR")
+                .expect("CARGO_MANIFEST_DIR should have been set by Cargo")
+        ));
 
         let obj_path = PathBuf::from(&output).join("resource.o");
-        let status = process::Command::new(windres_exe)
-            .current_dir(&dir)
-            .arg(format!("-I{}", env::var("CARGO_MANIFEST_DIR").unwrap()))
+        let status = command
             .arg(format!("{}", input.display()))
-            .arg(format!("{}", &obj_path.display()))
+            .arg(format!("{}", obj_path.display()))
             .output()
             .unwrap();
 
@@ -97,12 +95,13 @@ mod windows_rc {
             String::from_utf8_lossy(&status.stderr)
         );
 
+        let mut command = process::Command::new(ar_exe);
+
         let lib_path = PathBuf::from(&output).join("libresource.a");
-        let status = process::Command::new(ar_exe)
-            .current_dir(&dir)
+        let status = command
             .arg("rsc")
             .arg(format!("{}", lib_path.display()))
-            .arg(format!("{}", &obj_path.display()))
+            .arg(format!("{}", obj_path.display()))
             .output()
             .unwrap();
 
