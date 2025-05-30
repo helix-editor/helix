@@ -302,6 +302,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "l" => local_search_grep,
             "L" => local_search_fuzzy,
             "k" => hover,
+            "K" => goto_hover,
             "r" => rename_symbol,
             "h" => select_references_to_symbol_under_cursor,
             "c" => toggle_comments,

@@ -10,6 +10,7 @@ For more information please see Helix's readme file. But this fork of Helix impl
 9. https://github.com/helix-editor/helix/pull/12173 (buffer click)
 10. https://github.com/helix-editor/helix/pull/7988 (inactive panes background color)
 11. https://github.com/helix-editor/helix/pull/8546 (flex resize, focus mode)
+12. https://github.com/helix-editor/helix/pull/12208 (goto hover command)
 
 ## Window Resizing and Focus Mode Commands
 
@@ -31,3 +32,11 @@ Activate sticky mode with `Alt+W` (Alt + Shift + w), then use single keys for re
 - `f` - Toggle focus mode
 
 Sticky mode stays active until you press a key that's not part of the window resize commands.
+
+## Hover Documentation Commands
+
+**Hover Documentation:**
+- `Space + k` - Show hover documentation in popup
+- `Space + K` - Open hover documentation in navigable buffer (goto_hover)
+
+The `goto_hover` command opens documentation in a new scratch buffer where you can navigate, search, and copy text from long documentation.
