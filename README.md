@@ -33,7 +33,7 @@ Activate sticky mode with `Alt+W` (Alt + Shift + w), then use single keys for re
 
 Sticky mode stays active until you press a key that's not part of the window resize commands.
 
-### Window Resizing Configuration
+**Window Resizing Configuration:**
 
 Configure panel resizing limits in your `config.toml`:
 
