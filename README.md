@@ -1,3 +1,4 @@
+This is a just a fork of Helix. All claims rest with Helix maintainers and its copyright holders. I am just maintaining a fork. 
 For more information please see Helix's readme file. But this fork of Helix implements the following pull requests.
 1. https://github.com/helix-editor/helix/pull/13354 (index command)
 2. https://github.com/helix-editor/helix/pull/13053 (local search in buffer)
