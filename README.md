@@ -1,7 +1,7 @@
 This is a just a fork of Helix. All claims rest with Helix maintainers and its copyright holders. I am just maintaining a fork. 
 For more information please see Helix's readme file. 
 
-This fork of Helix implements the following pull requests. Future pull requests will be merged and listed here.
+This fork of Helix implements the following pull requests. Future pull requests that are merged will be merged and listed here.
 1. https://github.com/helix-editor/helix/pull/13354 (index command)
 2. https://github.com/helix-editor/helix/pull/13053 (local search in buffer)
 3. https://github.com/helix-editor/helix/pull/12369 (basic support for icons)
@@ -12,7 +12,7 @@ This fork of Helix implements the following pull requests. Future pull requests 
 8. https://github.com/helix-editor/helix/pull/12520 (picker titles)
 9. https://github.com/helix-editor/helix/pull/12173 (buffer click)
 10. https://github.com/helix-editor/helix/pull/7988 (inactive panes background color)
-11. https://github.com/helix-editor/helix/pull/8546 (flex resize, focus mode)
+11. https://github.com/helix-editor/helix/pull/8546 (flex resize, focus mode) - updated with some of my code.
 12. https://github.com/helix-editor/helix/pull/12208 (goto hover command)
 
 ## Window Resizing and Focus Mode Commands
