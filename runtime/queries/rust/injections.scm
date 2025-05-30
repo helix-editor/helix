@@ -5,15 +5,6 @@
  (#set! injection.language "markdown-rustdoc")
  (#set! injection.combined))
 
-(
-  ([(block_comment) (line_comment)] @injection.language) .
-  [
-    (string_literal (string_content) @injection.content)
-    (raw_string_literal (string_content) @injection.content)
-  ]
-  (#set! injection.combined)
-)
-
 ((macro_invocation
   (token_tree) @injection.content)
  (#set! injection.language "rust")
