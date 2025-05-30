@@ -33,6 +33,49 @@ Activate sticky mode with `Alt+W` (Alt + Shift + w), then use single keys for re
 
 Sticky mode stays active until you press a key that's not part of the window resize commands.
 
+## Panel Resizing Configuration
+
+Configure panel resizing limits in your `config.toml`:
+
+```toml
+[editor]
+# Absolute maximum limits (in terminal character units)
+max-panel-width = 50      # Set to 0 for dynamic limit based on terminal size
+max-panel-height = 50     # Set to 0 for dynamic limit based on terminal size
+
+# Percentage-based limits (used when absolute limits are set to 0)
+max-panel-width-percent = 0.8   # 80% of terminal width (0.0-1.0)
+max-panel-height-percent = 0.8  # 80% of terminal height (0.0-1.0)
+```
+
+**Configuration Examples:**
+
+```toml
+# Conservative: limit panels to 60% of terminal size
+[editor]
+max-panel-width = 0
+max-panel-height = 0
+max-panel-width-percent = 0.6
+max-panel-height-percent = 0.6
+
+# Aggressive: allow panels up to 95% of terminal size
+[editor]
+max-panel-width-percent = 0.95
+max-panel-height-percent = 0.95
+
+# Hybrid: absolute width limit, percentage height limit
+[editor]
+max-panel-width = 100
+max-panel-height = 0
+max-panel-height-percent = 0.8
+```
+
+**Benefits:**
+- Prevents performance issues with very large panels
+- Automatically adapts to your terminal size
+- Smooth resizing throughout the entire range
+- Configurable limits for different workflows
+
 ## Hover Documentation Commands
 
 **Hover Documentation:**

@@ -714,9 +714,10 @@ impl Tree {
         None
     }
 
-    pub fn resize_buffer(&mut self, resize_type: Resize, dimension: Dimension) {
+    pub fn resize_buffer(&mut self, resize_type: Resize, dimension: Dimension, config: &crate::editor::Config) {
         match dimension {
             Dimension::Width => {
+                let terminal_width = self.area.width;
                 if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
                     match resize_type {
                         Resize::Shrink => {
@@ -725,7 +726,14 @@ impl Tree {
                             }
                         }
                         Resize::Grow => {
-                            if bounds.width < 20 {
+                            let max_width = if config.max_panel_width == 0 {
+                                // Dynamic limit based on configurable percentage of terminal width
+                                (terminal_width as f32 * config.max_panel_width_percent) as usize
+                            } else {
+                                config.max_panel_width
+                            };
+                            
+                            if bounds.width < max_width {
                                 bounds.width += 1;
                             }
                         }
@@ -734,6 +742,7 @@ impl Tree {
                 }
             }
             Dimension::Height => {
+                let terminal_height = self.area.height;
                 if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
                     match resize_type {
                         Resize::Shrink => {
@@ -742,7 +751,14 @@ impl Tree {
                             }
                         }
                         Resize::Grow => {
-                            if bounds.height < 20 {
+                            let max_height = if config.max_panel_height == 0 {
+                                // Dynamic limit based on configurable percentage of terminal height
+                                (terminal_height as f32 * config.max_panel_height_percent) as usize
+                            } else {
+                                config.max_panel_height
+                            };
+                            
+                            if bounds.height < max_height {
                                 bounds.height += 1;
                             }
                         }

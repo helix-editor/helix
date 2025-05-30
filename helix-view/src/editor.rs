@@ -247,7 +247,7 @@ where
     Ok(chars)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Whether to enable the welcome screen
@@ -377,6 +377,14 @@ pub struct Config {
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
     /// `true`.
     pub editor_config: bool,
+    /// Maximum width for panel resizing. Set to 0 for dynamic limit based on terminal width. Defaults to 50.
+    pub max_panel_width: usize,
+    /// Maximum height for panel resizing. Set to 0 for dynamic limit based on terminal height. Defaults to 50.
+    pub max_panel_height: usize,
+    /// Maximum panel width as percentage of terminal width (0.0-1.0). Used when max_panel_width is 0. Defaults to 0.8.
+    pub max_panel_width_percent: f32,
+    /// Maximum panel height as percentage of terminal height (0.0-1.0). Used when max_panel_height is 0. Defaults to 0.8.
+    pub max_panel_height_percent: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1052,6 +1060,10 @@ impl Default for Config {
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
+            max_panel_width: 50,
+            max_panel_height: 50,
+            max_panel_width_percent: 0.8,
+            max_panel_height_percent: 0.8,
         }
     }
 }
@@ -2027,7 +2039,7 @@ impl Editor {
     }
 
     pub fn resize_buffer(&mut self, resize_type: Resize, dimension: Dimension) {
-        self.tree.resize_buffer(resize_type, dimension);
+        self.tree.resize_buffer(resize_type, dimension, &self.config());
     }
 
     pub fn toggle_focus_window(&mut self) {
