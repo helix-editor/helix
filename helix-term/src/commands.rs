@@ -18,7 +18,7 @@ use tui::{
 pub use typed::*;
 
 use helix_core::{
-    char_idx_at_visual_offset,
+    case_conversion, char_idx_at_visual_offset,
     chars::char_is_word,
     command_line, comment,
     doc_formatter::TextFormat,
@@ -66,7 +66,6 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use std::{
-    char::{ToLowercase, ToUppercase},
     cmp::Ordering,
     collections::{HashMap, HashSet},
     error::Error,
@@ -351,9 +350,15 @@ impl MappableCommand {
         extend_prev_char, "Extend to previous occurrence of char",
         repeat_last_motion, "Repeat last motion",
         replace, "Replace with new char",
-        switch_case, "Switch (toggle) case",
-        switch_to_uppercase, "Switch to uppercase",
+        switch_to_alternate_case, "Switch to aLTERNATE cASE",
+        switch_to_uppercase, "Switch to UPPERCASE",
         switch_to_lowercase, "Switch to lowercase",
+        switch_to_pascal_case, "Switch to PascalCase",
+        switch_to_camel_case, "Switch to camelCase",
+        switch_to_title_case, "Switch to Title Case",
+        switch_to_sentence_case, "Switch to Sentence case",
+        switch_to_snake_case, "Switch to snake_case",
+        switch_to_kebab_case, "Switch to kebab-case",
         page_up, "Move page up",
         page_down, "Move page down",
         half_page_up, "Move half page up",
@@ -1729,80 +1734,62 @@ fn replace(cx: &mut Context) {
     })
 }
 
+#[inline]
 fn switch_case_impl<F>(cx: &mut Context, change_fn: F)
 where
-    F: Fn(RopeSlice) -> Tendril,
+    F: for<'a> Fn(&mut (dyn Iterator<Item = char> + 'a)) -> Tendril,
 {
     let (view, doc) = current!(cx.editor);
-    let selection = doc.selection(view.id);
-    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = change_fn(range.slice(doc.text().slice(..)));
+    let view_id = view.id;
 
-        (range.from(), range.to(), Some(text))
-    });
+    let selection = doc.selection(view_id);
 
-    doc.apply(&transaction, view.id);
+    let transaction = {
+        Transaction::change_by_selection(doc.text(), selection, |range| {
+            let mut chars = range.slice(doc.text().slice(..)).chars();
+            let text: Tendril = change_fn(&mut chars);
+            (range.from(), range.to(), Some(text))
+        })
+    };
+
+    doc.apply(&transaction, view_id);
     exit_select_mode(cx);
 }
 
-enum CaseSwitcher {
-    Upper(ToUppercase),
-    Lower(ToLowercase),
-    Keep(Option<char>),
+fn switch_to_pascal_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| case_conversion::to_pascal_case(chars))
 }
 
-impl Iterator for CaseSwitcher {
-    type Item = char;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            CaseSwitcher::Upper(upper) => upper.next(),
-            CaseSwitcher::Lower(lower) => lower.next(),
-            CaseSwitcher::Keep(ch) => ch.take(),
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            CaseSwitcher::Upper(upper) => upper.size_hint(),
-            CaseSwitcher::Lower(lower) => lower.size_hint(),
-            CaseSwitcher::Keep(ch) => {
-                let n = if ch.is_some() { 1 } else { 0 };
-                (n, Some(n))
-            }
-        }
-    }
-}
-
-impl ExactSizeIterator for CaseSwitcher {}
-
-fn switch_case(cx: &mut Context) {
-    switch_case_impl(cx, |string| {
-        string
-            .chars()
-            .flat_map(|ch| {
-                if ch.is_lowercase() {
-                    CaseSwitcher::Upper(ch.to_uppercase())
-                } else if ch.is_uppercase() {
-                    CaseSwitcher::Lower(ch.to_lowercase())
-                } else {
-                    CaseSwitcher::Keep(Some(ch))
-                }
-            })
-            .collect()
-    });
-}
-
-fn switch_to_uppercase(cx: &mut Context) {
-    switch_case_impl(cx, |string| {
-        string.chunks().map(|chunk| chunk.to_uppercase()).collect()
-    });
+fn switch_to_camel_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| case_conversion::to_camel_case(chars))
 }
 
 fn switch_to_lowercase(cx: &mut Context) {
-    switch_case_impl(cx, |string| {
-        string.chunks().map(|chunk| chunk.to_lowercase()).collect()
-    });
+    switch_case_impl(cx, |chars| case_conversion::to_lowercase(chars))
+}
+
+fn switch_to_uppercase(cx: &mut Context) {
+    switch_case_impl(cx, |chars| case_conversion::to_uppercase(chars))
+}
+
+fn switch_to_alternate_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| case_conversion::to_alternate_case(chars))
+}
+
+fn switch_to_title_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| case_conversion::to_title_case(chars))
+}
+
+fn switch_to_sentence_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| case_conversion::to_sentence_case(chars))
+}
+
+fn switch_to_snake_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| case_conversion::to_snake_case(chars))
+}
+
+fn switch_to_kebab_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| case_conversion::to_kebab_case(chars))
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {

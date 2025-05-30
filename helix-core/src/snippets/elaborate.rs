@@ -10,9 +10,9 @@ use regex_cursor::engines::meta::Regex;
 use regex_cursor::regex_automata::util::syntax::Config as RegexConfig;
 use ropey::RopeSlice;
 
-use crate::case_conversion::to_lower_case_with;
-use crate::case_conversion::to_upper_case_with;
-use crate::case_conversion::{to_camel_case_with, to_pascal_case_with};
+use crate::case_conversion::into_lowercase;
+use crate::case_conversion::into_uppercase;
+use crate::case_conversion::{into_camel_case, into_pascal_case};
 use crate::snippets::parser::{self, CaseChange, FormatItem};
 use crate::snippets::{TabstopIdx, LAST_TABSTOP_IDX};
 use crate::Tendril;
@@ -348,15 +348,15 @@ impl Transform {
                         if let Some(cap) = cap.get_group(i).filter(|i| !i.is_empty()) {
                             let mut chars = doc.byte_slice(cap.range()).chars();
                             match change {
-                                CaseChange::Upcase => to_upper_case_with(chars, &mut buf),
-                                CaseChange::Downcase => to_lower_case_with(chars, &mut buf),
+                                CaseChange::Upcase => into_uppercase(chars, &mut buf),
+                                CaseChange::Downcase => into_lowercase(chars, &mut buf),
                                 CaseChange::Capitalize => {
                                     let first_char = chars.next().unwrap();
                                     buf.extend(first_char.to_uppercase());
                                     buf.extend(chars);
                                 }
-                                CaseChange::PascalCase => to_pascal_case_with(chars, &mut buf),
-                                CaseChange::CamelCase => to_camel_case_with(chars, &mut buf),
+                                CaseChange::PascalCase => into_pascal_case(chars, &mut buf),
+                                CaseChange::CamelCase => into_camel_case(chars, &mut buf),
                             }
                         }
                     }
