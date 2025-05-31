@@ -440,6 +440,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
+    pub fn with_language(mut self, language: &'static str, loader: Arc<ArcSwap<Loader>>) -> Self {
+        self.prompt.language = Some((language, loader));
+        self
+    }
+
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
     pub fn move_by(&mut self, amount: u32, direction: Direction) {
         let len = self.matcher.snapshot().matched_item_count();
