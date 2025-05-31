@@ -1155,6 +1155,10 @@ impl Document {
         }
     }
 
+    pub fn last_saved_time(&self) -> SystemTime {
+        self.last_saved_time
+    }
+
     pub fn pickup_last_saved_time(&mut self) {
         self.last_saved_time = match self.path() {
             Some(path) => match path.metadata() {

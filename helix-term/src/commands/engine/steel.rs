@@ -43,10 +43,9 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     error::Error,
-    ops::Deref,
     path::PathBuf,
     sync::{atomic::AtomicBool, Mutex, MutexGuard, RwLock, RwLockReadGuard},
-    time::Duration,
+    time::{Duration, SystemTime},
 };
 use std::{str::FromStr as _, sync::Arc};
 
@@ -1587,6 +1586,14 @@ Get the `Rect` associated with the currently focused buffer.
     module.register_fn("editor-doc-in-view?", cx_is_document_in_view);
     module.register_fn("set-scratch-buffer-name!", set_scratch_buffer_name);
 
+    // Get the last saved time of the document
+    module.register_fn(
+        "editor-document-last-saved",
+        |cx: &mut Context, doc: DocumentId| -> Option<SystemTime> {
+            cx.editor.documents.get(&doc).map(|x| x.last_saved_time())
+        },
+    );
+
     module.register_fn("set-buffer-uri!", set_buffer_uri);
 
     module.register_fn("editor-doc-exists?", cx_document_exists);
@@ -1667,6 +1674,12 @@ Get the `Rect` associated with the currently focused buffer.
         // TODO: Lift this up
         template_function_arity_1("set-buffer-uri!", "Set the URI of the buffer");
         template_function_arity_1("editor-doc-exists?", "Check if a document exists.");
+
+        template_function_arity_1(
+            "editor-document-last-saved",
+            "Check when a document was last saved (returns a `SystemTime`)",
+        );
+
         template_function_arity_1("editor->text", "Get the document as a rope.");
         template_function_arity_1("editor-document->path", "Get the path to a document.");
         template_function_arity_1(
