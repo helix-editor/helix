@@ -261,6 +261,10 @@ enable = true
 [language-server.vscode-eslint-language-server.config.workingDirectory]
 mode = "location"
 
+[language-server.clarinet]
+command = "clarinet"
+args = ["lsp"]
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -4372,10 +4376,6 @@ injection-regex = "rust-format-args"
 name = "rust-format-args"
 source = { git = "https://github.com/nik-rev/tree-sitter-rustfmt", rev = "2ca0bdd763d0c9dbb1d0bd14aea7544cbe81309c" }
 
-[language-server.clarinet]
-command = "clarinet"
-args = ["lsp"]
-
 [[language]]
 name = "clarity"
 scope = "source.clar"
@@ -4384,7 +4384,6 @@ file-types = ["clar"]
 roots = ["Clarinet.toml"]
 comment-tokens = ";;"
 indent = { tab-width = 2, unit = "  " }
-grammar = "clarity"
 language-servers = [ "clarinet" ]
 
 [[grammar]]
