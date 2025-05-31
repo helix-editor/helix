@@ -74,6 +74,7 @@ use std::{
     future::Future,
     io::Read,
     num::NonZeroUsize,
+    str::FromStr,
 };
 
 use std::{
@@ -214,6 +215,10 @@ pub enum MappableCommand {
     },
     Static {
         name: &'static str,
+        // TODO: Change the signature to
+        // fn(cx: &mut Context) -> anyhow::Result<()>
+        //
+        // Then handle the error by using `Editor::set_error` in a single place
         fun: fn(cx: &mut Context),
         doc: &'static str,
     },
@@ -494,6 +499,9 @@ impl MappableCommand {
         paste_clipboard_before, "Paste clipboard before selections",
         paste_primary_clipboard_after, "Paste primary clipboard after selections",
         paste_primary_clipboard_before, "Paste primary clipboard before selections",
+        paste_before_joined_with_newline, "Join all selections with a newline and paste before cursor",
+        paste_after_joined_with_newline, "Join all selections with a newline and paste after cursor",
+        replace_joined_with_newline, "Replace selection with all selections joined with a newline", 
         indent, "Indent selection",
         unindent, "Unindent selection",
         format_selections, "Format selection",
@@ -4620,6 +4628,35 @@ enum Paste {
     Cursor,
 }
 
+/// Where to paste joined selections
+#[derive(Copy, Clone, Default)]
+pub enum PasteJoined {
+    /// Paste before the cursor
+    Before,
+    /// Paste after the cursor
+    #[default]
+    After,
+    /// Replace the selection with cursor
+    Replace,
+}
+
+impl PasteJoined {
+    const VARIANTS: [&'static str; 3] = ["before", "after", "replace"];
+}
+
+impl FromStr for PasteJoined {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "before" => Ok(Self::Before),
+            "after" => Ok(Self::After),
+            "replace" => Ok(Self::Replace),
+            _ => Err(anyhow!("Invalid paste position: {s}")),
+        }
+    }
+}
+
 static LINE_ENDING_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
 
 fn paste_impl(
@@ -4747,17 +4784,25 @@ fn replace_with_yanked(cx: &mut Context) {
 }
 
 fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
-    let Some(values) = editor
-        .registers
-        .read(register, editor)
-        .filter(|values| values.len() > 0)
-    else {
+    let scrolloff = editor.config().scrolloff;
+
+    let Some(values) = editor.registers.read(register, editor) else {
         return;
     };
-    let scrolloff = editor.config().scrolloff;
-    let (view, doc) = current_ref!(editor);
+    let yanked = values.map(|value| value.to_string()).collect::<Vec<_>>();
+    let (view, doc) = current!(editor);
 
-    let map_value = |value: &Cow<str>| {
+    replace_impl(&yanked, doc, view, count, scrolloff)
+}
+
+fn replace_impl(
+    values: &[String],
+    doc: &mut Document,
+    view: &mut View,
+    count: usize,
+    scrolloff: usize,
+) {
+    let map_value = |value: &String| {
         let value = LINE_ENDING_REGEX.replace_all(value, doc.line_ending.as_str());
         let mut out = Tendril::from(value.as_ref());
         for _ in 1..count {
@@ -4765,14 +4810,12 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
         }
         out
     };
-    let mut values_rev = values.rev().peekable();
-    // `values` is asserted to have at least one entry above.
-    let last = values_rev.peek().unwrap();
+    let mut values_rev = values.iter().rev().peekable();
+    let Some(last) = values_rev.peek() else {
+        return;
+    };
     let repeat = std::iter::repeat(map_value(last));
-    let mut values = values_rev
-        .rev()
-        .map(|value| map_value(&value))
-        .chain(repeat);
+    let mut values = values_rev.rev().map(map_value).chain(repeat);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
         if !range.is_empty() {
@@ -4781,9 +4824,7 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
             (range.from(), range.to(), None)
         }
     });
-    drop(values);
 
-    let (view, doc) = current!(editor);
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
@@ -6606,6 +6647,38 @@ fn replay_macro(cx: &mut Context) {
         // replaying recursively.
         cx.editor.macro_replaying.pop();
     }));
+}
+
+fn paste_before_joined_with_newline(cx: &mut Context) {
+    if let Err(err) = paste_joined_impl(
+        cx.editor,
+        cx.count(),
+        PasteJoined::Before,
+        cx.register,
+        None,
+    ) {
+        cx.editor.set_error(err.to_string());
+    };
+}
+
+fn paste_after_joined_with_newline(cx: &mut Context) {
+    if let Err(err) =
+        paste_joined_impl(cx.editor, cx.count(), PasteJoined::After, cx.register, None)
+    {
+        cx.editor.set_error(err.to_string());
+    };
+}
+
+fn replace_joined_with_newline(cx: &mut Context) {
+    if let Err(err) = paste_joined_impl(
+        cx.editor,
+        cx.count(),
+        PasteJoined::Replace,
+        cx.register,
+        None,
+    ) {
+        cx.editor.set_error(err.to_string());
+    };
 }
 
 fn goto_word(cx: &mut Context) {
