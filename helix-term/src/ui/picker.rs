@@ -490,6 +490,17 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .map(|item| item.data)
     }
 
+    fn move_history(&mut self, ctx: &mut Context, direction: ui::prompt::CompletionDirection) {
+        if let Some(register) = self.prompt.history_register() {
+            self.prompt.change_history(ctx, register, direction);
+            let line = Cow::from(self.prompt.line());
+            let line = escape_query_content(line);
+            self.prompt.set_line(line, ctx.editor);
+            // Inserting from the history register is a paste.
+            self.handle_prompt_change(true);
+        }
+    }
+
     fn primary_query(&self) -> Arc<str> {
         self.query
             .get(&self.columns[self.primary_column].name)
@@ -1070,32 +1081,10 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 self.to_end();
             }
             alt!('p') => {
-                if let Some(register) = self.prompt.history_register() {
-                    self.prompt.change_history(
-                        ctx,
-                        register,
-                        ui::prompt::CompletionDirection::Backward,
-                    );
-                    let line = Cow::from(self.prompt.line());
-                    let line = escape_query_content(line);
-                    self.prompt.set_line(line, ctx.editor);
-                    // Inserting from the history register is a paste.
-                    self.handle_prompt_change(true);
-                }
+                self.move_history(ctx, ui::prompt::CompletionDirection::Backward);
             }
             alt!('n') => {
-                if let Some(register) = self.prompt.history_register() {
-                    self.prompt.change_history(
-                        ctx,
-                        register,
-                        ui::prompt::CompletionDirection::Forward,
-                    );
-                    let line = Cow::from(self.prompt.line());
-                    let line = escape_query_content(line);
-                    self.prompt.set_line(line, ctx.editor);
-                    // Inserting from the history register is a paste.
-                    self.handle_prompt_change(true);
-                }
+                self.move_history(ctx, ui::prompt::CompletionDirection::Forward);
             }
             key!(Esc) | ctrl!('c') => return close_fn(self),
             alt!(Enter) => {
