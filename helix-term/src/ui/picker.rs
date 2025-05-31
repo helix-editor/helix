@@ -1076,6 +1076,8 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                         register,
                         ui::prompt::CompletionDirection::Backward,
                     );
+                    // Inserting from the history register is a paste.
+                    self.handle_prompt_change(true);
                 }
             }
             alt!('n') => {
@@ -1085,6 +1087,8 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                         register,
                         ui::prompt::CompletionDirection::Forward,
                     );
+                    // Inserting from the history register is a paste.
+                    self.handle_prompt_change(true);
                 }
             }
             key!(Esc) | ctrl!('c') => return close_fn(self),
