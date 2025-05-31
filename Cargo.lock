@@ -3138,7 +3138,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#d3110be47bf710af38e6c08fdd73c02a97bf20a9"
+source = "git+https://github.com/mattwparas/steel.git#88f491924dff7d7697554fca9e65b953a8d4a3a3"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -3191,7 +3191,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.5.0"
-source = "git+https://github.com/mattwparas/steel.git#d3110be47bf710af38e6c08fdd73c02a97bf20a9"
+source = "git+https://github.com/mattwparas/steel.git#88f491924dff7d7697554fca9e65b953a8d4a3a3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3201,7 +3201,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#d3110be47bf710af38e6c08fdd73c02a97bf20a9"
+source = "git+https://github.com/mattwparas/steel.git#88f491924dff7d7697554fca9e65b953a8d4a3a3"
 dependencies = [
  "steel-core",
 ]
@@ -3209,7 +3209,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#d3110be47bf710af38e6c08fdd73c02a97bf20a9"
+source = "git+https://github.com/mattwparas/steel.git#88f491924dff7d7697554fca9e65b953a8d4a3a3"
 dependencies = [
  "codegen",
  "serde",
@@ -3218,7 +3218,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#d3110be47bf710af38e6c08fdd73c02a97bf20a9"
+source = "git+https://github.com/mattwparas/steel.git#88f491924dff7d7697554fca9e65b953a8d4a3a3"
 dependencies = [
  "compact_str",
  "fxhash",
