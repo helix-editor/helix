@@ -95,9 +95,9 @@ pub fn raw_regex_prompt(
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
-    let doc_id = view.doc;
-    let snapshot = doc.selection(view.id).clone();
-    let offset_snapshot = doc.view_offset(view.id);
+    let mut doc_id = view.doc;
+    let mut snapshot = doc.selection(view.id).clone();
+    let mut offset_snapshot = doc.view_offset(view.id);
     let config = cx.editor.config();
 
     let mut prompt = Prompt::new(
@@ -108,6 +108,11 @@ pub fn raw_regex_prompt(
             match event {
                 PromptEvent::Abort => {
                     let (view, doc) = current!(cx.editor);
+                    if doc_id != doc.id() {
+                        doc_id = doc.id();
+                        snapshot = doc.selection(view.id).clone();
+                        offset_snapshot = doc.view_offset(view.id);
+                    }
                     doc.set_selection(view.id, snapshot.clone());
                     doc.set_view_offset(view.id, offset_snapshot);
                 }
@@ -133,6 +138,11 @@ pub fn raw_regex_prompt(
                     {
                         Ok(regex) => {
                             let (view, doc) = current!(cx.editor);
+                            if doc_id != doc.id() {
+                                doc_id = doc.id();
+                                snapshot = doc.selection(view.id).clone();
+                                offset_snapshot = doc.view_offset(view.id);
+                            }
 
                             // revert state to what it was before the last update
                             doc.set_selection(view.id, snapshot.clone());
