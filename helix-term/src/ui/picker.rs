@@ -494,7 +494,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         if let Some(register) = self.prompt.history_register() {
             self.prompt.change_history(ctx, register, direction);
             let line = Cow::from(self.prompt.line());
-            let line = escape_query_content(line);
+            let line = escape_query_content(line).into_owned();
             self.prompt.set_line(line, ctx.editor);
             // Inserting from the history register is a paste.
             self.handle_prompt_change(true);
@@ -1100,7 +1100,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     .first_history_completion(ctx.editor)
                     .filter(|_| self.prompt.line().is_empty())
                 {
-                    let completion = escape_query_content(completion);
+                    let completion = escape_query_content(completion).into_owned();
                     self.prompt.set_line(completion, ctx.editor);
 
                     // Inserting from the history register is a paste.
@@ -1179,13 +1179,13 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
     }
 }
 
-fn escape_query_content(completion: Cow<'_, str>) -> String {
+fn escape_query_content(completion: Cow<'_, str>) -> Cow<'_, str> {
     // The percent character is used by the query language and needs to be
     // escaped with a backslash.
     if completion.contains('%') {
-        completion.replace('%', "\\%")
+        completion.replace('%', "\\%").into()
     } else {
-        completion.into_owned()
+        completion
     }
 }
 
