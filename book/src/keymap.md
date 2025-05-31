@@ -463,6 +463,8 @@ See the documentation page on [pickers](./pickers.md) for more info.
 | `Ctrl-v`                     | Open vertically                                            |
 | `Ctrl-t`                     | Toggle preview                                             |
 | `Escape`, `Ctrl-c`           | Close picker                                               |
+| `Alt-p`                      | Previous search entry                                      |
+| `Alt-n`,                     | Next search entry                                          |
 
 ## Prompt
 

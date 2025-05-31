@@ -1069,6 +1069,24 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             key!(End) => {
                 self.to_end();
             }
+            alt!('p') => {
+                if let Some(register) = self.prompt.history_register() {
+                    self.prompt.change_history(
+                        ctx,
+                        register,
+                        ui::prompt::CompletionDirection::Backward,
+                    );
+                }
+            }
+            alt!('n') => {
+                if let Some(register) = self.prompt.history_register() {
+                    self.prompt.change_history(
+                        ctx,
+                        register,
+                        ui::prompt::CompletionDirection::Forward,
+                    );
+                }
+            }
             key!(Esc) | ctrl!('c') => return close_fn(self),
             alt!(Enter) => {
                 if let Some(option) = self.selection() {
