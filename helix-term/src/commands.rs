@@ -6506,16 +6506,14 @@ fn goto_next_tabstop_impl(cx: &mut Context, direction: Direction) {
         return;
     };
     let tabstop = match direction {
-        Direction::Forward => Some(snippet.next_tabstop(doc.selection(view_id))),
-        Direction::Backward => snippet
-            .prev_tabstop(doc.selection(view_id))
-            .map(|selection| (selection, false)),
+        Direction::Forward => snippet.next_tabstop(doc.selection(view_id)),
+        Direction::Backward => snippet.prev_tabstop(doc.selection(view_id)),
     };
-    let Some((selection, last_tabstop)) = tabstop else {
+    let Some((selection, is_final)) = tabstop else {
         return;
     };
     doc.set_selection(view_id, selection);
-    if !last_tabstop {
+    if !is_final {
         doc.active_snippet = Some(snippet)
     }
     if cx.editor.mode() == Mode::Insert {
