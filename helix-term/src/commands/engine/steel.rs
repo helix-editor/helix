@@ -1594,6 +1594,13 @@ Get the `Rect` associated with the currently focused buffer.
         },
     );
 
+    module.register_fn(
+        "editor-document-dirty?",
+        |cx: &mut Context, doc: DocumentId| -> Option<bool> {
+            cx.editor.documents.get(&doc).map(|x| x.is_modified())
+        },
+    );
+
     module.register_fn("set-buffer-uri!", set_buffer_uri);
 
     module.register_fn("editor-doc-exists?", cx_document_exists);
@@ -1678,6 +1685,11 @@ Get the `Rect` associated with the currently focused buffer.
         template_function_arity_1(
             "editor-document-last-saved",
             "Check when a document was last saved (returns a `SystemTime`)",
+        );
+
+        template_function_arity_1(
+            "editor-document-dirty?",
+            "Check if a document has unsaved changes",
         );
 
         template_function_arity_1("editor->text", "Get the document as a rope.");
