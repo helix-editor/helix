@@ -1076,6 +1076,9 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                         register,
                         ui::prompt::CompletionDirection::Backward,
                     );
+                    let line = Cow::from(self.prompt.line());
+                    let line = escape_query_content(line);
+                    self.prompt.set_line(line, ctx.editor);
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 }
@@ -1087,6 +1090,9 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                         register,
                         ui::prompt::CompletionDirection::Forward,
                     );
+                    let line = Cow::from(self.prompt.line());
+                    let line = escape_query_content(line);
+                    self.prompt.set_line(line, ctx.editor);
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 }
@@ -1105,13 +1111,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     .first_history_completion(ctx.editor)
                     .filter(|_| self.prompt.line().is_empty())
                 {
-                    // The percent character is used by the query language and needs to be
-                    // escaped with a backslash.
-                    let completion = if completion.contains('%') {
-                        completion.replace('%', "\\%")
-                    } else {
-                        completion.into_owned()
-                    };
+                    let completion = escape_query_content(completion);
                     self.prompt.set_line(completion, ctx.editor);
 
                     // Inserting from the history register is a paste.
@@ -1187,6 +1187,16 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
     fn drop(&mut self) {
         // ensure we cancel any ongoing background threads streaming into the picker
         self.version.fetch_add(1, atomic::Ordering::Relaxed);
+    }
+}
+
+fn escape_query_content(completion: Cow<'_, str>) -> String {
+    // The percent character is used by the query language and needs to be
+    // escaped with a backslash.
+    if completion.contains('%') {
+        completion.replace('%', "\\%")
+    } else {
+        completion.into_owned()
     }
 }
 
