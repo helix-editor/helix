@@ -22,6 +22,8 @@ pub struct Handlers {
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
     pub document_colors: Sender<lsp::DocumentColorsEvent>,
+    pub pull_diagnostics: Sender<lsp::PullDiagnosticsEvent>,
+    pub pull_all_documents_diagnostics: Sender<lsp::PullAllDocumentsDiagnosticsEvent>,
 }
 
 impl Handlers {
