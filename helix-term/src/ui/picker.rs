@@ -1142,6 +1142,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 self.toggle_preview();
             }
             _ => {
+                self.is_history_search = false;
                 self.prompt_handle_event(event, ctx);
             }
         }
