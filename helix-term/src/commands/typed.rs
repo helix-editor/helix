@@ -3867,10 +3867,12 @@ fn quote_completion<'a>(
             span.content = Cow::Owned(format!(
                 "'{}{}'",
                 // Escape any inner single quotes by doubling them.
-                replace(token.content.as_ref().into(), '\'', "''"),
+                replace(token.content[..range.start].into(), '\'', "''"),
                 replace(span.content, '\'', "''")
             ));
-            // Ignore `range.start` here since we're replacing the entire token.
+            // Ignore `range.start` here since we're replacing the entire token. We used
+            // `range.start` above to emulate the replacement that using `range.start` would have
+            // done.
             ((offset + token.content_start).., span)
         }
         TokenKind::Quoted(quote) => {

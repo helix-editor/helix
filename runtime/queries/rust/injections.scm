@@ -113,10 +113,10 @@
           name: (_) @_macro_name)
         (identifier) @_macro_name
       ]
-    (token_tree
-      . (string_literal
-        (string_content) @injection.content
-      )
+    (token_tree . [
+        (string_literal (string_content) @injection.content)
+        (raw_string_literal (string_content) @injection.content)
+      ]
     )
   )
   (#any-of? @_macro_name
@@ -156,9 +156,10 @@
       ]
     (token_tree
       . (_)
-      . (string_literal
-          (string_content) @injection.content
-      )
+      . [
+        (string_literal (string_content) @injection.content)
+        (raw_string_literal (string_content) @injection.content)
+      ]
     )
   )
   (#any-of? @_macro_name
@@ -185,9 +186,10 @@
     (token_tree
       . (_)
       . (_)
-      . (string_literal
-          (string_content) @injection.content
-      )
+      . [
+        (string_literal (string_content) @injection.content)
+        (raw_string_literal (string_content) @injection.content)
+      ]
     )
   )
   (#any-of? @_macro_name
