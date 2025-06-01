@@ -165,11 +165,15 @@ where
 }
 
 fn statusline_style(context: &RenderContext, scope: &str) -> Style {
-    let scope = format!("ui.statusline.{scope}");
-    let visible = context.focused;
+    let scope = if context.focused {
+        format!("ui.statusline.{scope}")
+    } else {
+        format!("ui.statusline.inactive.{scope}")
+    };
+
     let config = context.editor.config();
 
-    if visible && config.color_modes {
+    if config.color_modes {
         context.editor.theme.get(&scope)
     } else {
         Style::default()
@@ -411,7 +415,7 @@ where
     let maxrows = context.doc.text().len_lines();
     write(
         context,
-        format!("{}%", (position.row + 1) * 100 / maxrows).into(),
+        format!(" {}% ", (position.row + 1) * 100 / maxrows).into(),
     );
 }
 
@@ -496,11 +500,7 @@ fn render_file_modification_indicator<'a, F>(context: &mut RenderContext<'a>, wr
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let title = if context.doc.is_modified() {
-        "[+]"
-    } else {
-        "   "
-    };
+    let title = if context.doc.is_modified() { "[+]" } else { "" };
 
     write(context, title.into());
 }
