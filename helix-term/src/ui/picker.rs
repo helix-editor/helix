@@ -530,6 +530,31 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         EventResult::Consumed(None)
     }
 
+    fn save_search(&mut self, ctx: &mut Context) {
+        if self.is_history_search {
+            return;
+        }
+        if let Some(history_register) = self.prompt.history_register() {
+            let query = self.primary_query();
+
+            let should_push = ctx
+                .editor
+                .registers
+                .first(history_register, &ctx.editor)
+                .map_or(true, |first| *first != *query);
+
+            if should_push {
+                if let Err(err) = ctx
+                    .editor
+                    .registers
+                    .push(history_register, query.to_string())
+                {
+                    ctx.editor.set_error(err.to_string());
+                }
+            }
+        }
+    }
+
     fn handle_prompt_change(&mut self, is_paste: bool) {
         // TODO: better track how the pattern has changed
         let line = self.prompt.line();
@@ -1094,6 +1119,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::Replace);
                 }
+                self.save_search(ctx);
             }
             key!(Enter) => {
                 // If the prompt has a history completion and is empty, use enter to accept
@@ -1112,17 +1138,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     if let Some(option) = self.selection() {
                         (self.callback_fn)(ctx, option, Action::Replace);
                     }
-                    if !self.is_history_search {
-                        if let Some(history_register) = self.prompt.history_register() {
-                            if let Err(err) = ctx
-                                .editor
-                                .registers
-                                .push(history_register, self.primary_query().to_string())
-                            {
-                                ctx.editor.set_error(err.to_string());
-                            }
-                        }
-                    }
+                    self.save_search(ctx);
                     return close_fn(self);
                 }
             }
@@ -1130,12 +1146,14 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::HorizontalSplit);
                 }
+                self.save_search(ctx);
                 return close_fn(self);
             }
             ctrl!('v') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::VerticalSplit);
                 }
+                self.save_search(ctx);
                 return close_fn(self);
             }
             ctrl!('t') => {
