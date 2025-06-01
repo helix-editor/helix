@@ -534,3 +534,40 @@ async fn try_restore_indent() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// Tests being able to jump in insert mode, then undo the write performed by the jump
+// https://github.com/helix-editor/helix/issues/13480
+#[tokio::test(flavor = "multi_thread")]
+async fn test_jump_undo_redo() -> anyhow::Result<()> {
+    use helix_core::hashmap;
+    use helix_term::keymap;
+    use helix_view::document::Mode;
+
+    let mut config = Config::default();
+    config.keys.insert(
+        Mode::Insert,
+        keymap!({"Insert Mode"
+            "C-i" => goto_file_start,
+            "C-o" => goto_file_end,
+        }),
+    );
+
+    // Undo
+    test_with_config(
+        AppBuilder::new().with_config(config.clone()),
+        ("#[|]#", "iworld<C-i>Hello, <esc>u", "#[w|]#orld"),
+    )
+    .await?;
+
+    // Redo
+    test_with_config(
+        AppBuilder::new().with_config(config),
+        (
+            "#[|]#",
+            "iworld<C-i>Hello, <esc>ui<C-o><esc>U",
+            "Hello, #[w|]#orld",
+        ),
+    )
+    .await?;
+    Ok(())
+}

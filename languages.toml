@@ -119,6 +119,7 @@ taplo = { command = "taplo", args = ["lsp", "stdio"] }
 templ = { command = "templ", args = ["lsp"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
+ty = { command = "ty", args = ["server"] }
 typespec = { command = "tsp-server", args = ["--stdio"] }
 vala-language-server = { command = "vala-language-server" }
 vale-ls = { command = "vale-ls" }
@@ -259,6 +260,10 @@ enable = true
 
 [language-server.vscode-eslint-language-server.config.workingDirectory]
 mode = "location"
+
+[language-server.clarinet]
+command = "clarinet"
+args = ["lsp"]
 
 [[language]]
 name = "rust"
@@ -936,7 +941,7 @@ file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { gl
 shebangs = ["python", "uv"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
-language-servers = ["ruff", "jedi", "pylsp"]
+language-servers = ["ty", "ruff", "jedi", "pylsp"]
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
@@ -4370,3 +4375,18 @@ injection-regex = "rust-format-args"
 [[grammar]]
 name = "rust-format-args"
 source = { git = "https://github.com/nik-rev/tree-sitter-rustfmt", rev = "2ca0bdd763d0c9dbb1d0bd14aea7544cbe81309c" }
+
+[[language]]
+name = "clarity"
+scope = "source.clar"
+injection-regex = "clarity"
+file-types = ["clar"]
+roots = ["Clarinet.toml"]
+comment-tokens = ";;"
+indent = { tab-width = 2, unit = "  " }
+language-servers = [ "clarinet" ]
+
+[[grammar]]
+name = "clarity"
+source = { git = "https://github.com/xlittlerag/tree-sitter-clarity", rev = "7fa54825fdd971a1a676f885384f024fe2b7384a" }
+

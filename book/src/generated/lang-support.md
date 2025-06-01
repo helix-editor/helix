@@ -21,6 +21,7 @@
 | capnp | ✓ |  | ✓ |  |
 | cel | ✓ |  |  |  |
 | circom | ✓ |  |  | `circom-lsp` |
+| clarity | ✓ |  |  | `clarinet` |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | codeql | ✓ | ✓ |  | `codeql` |
@@ -184,7 +185,7 @@
 | prql | ✓ |  |  |  |
 | pug | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
-| python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
+| python | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
 | quarto | ✓ |  | ✓ |  |
 | quint | ✓ |  |  | `quint-language-server` |
