@@ -166,6 +166,17 @@
          diagnostic.unnecessary
          diagnostic.deprecated)
 
+(provide hashmap->theme
+         register-theme
+         theme-style
+         theme-set-style!
+         string->color)
+
+;;@doc
+;; Register this theme with helix for use
+(define (register-theme theme)
+  (add-theme! *helix.cx* theme))
+
 (define-syntax theme-func
   (syntax-rules ()
     [(_ scope doc-string)
