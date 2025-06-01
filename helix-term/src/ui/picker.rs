@@ -258,6 +258,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     widths: Vec<Constraint>,
 
     callback_fn: PickerCallback<T>,
+    is_history_search: bool,
 
     pub truncate_start: bool,
     /// Caches paths to documents
@@ -389,6 +390,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             file_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
+            is_history_search: false,
         }
     }
 
@@ -496,6 +498,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             let line = Cow::from(self.prompt.line());
             let line = escape_query_content(line).into_owned();
             self.prompt.set_line(line, ctx.editor);
+            self.is_history_search = true;
             // Inserting from the history register is a paste.
             self.handle_prompt_change(true);
         }
@@ -1109,13 +1112,15 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     if let Some(option) = self.selection() {
                         (self.callback_fn)(ctx, option, Action::Replace);
                     }
-                    if let Some(history_register) = self.prompt.history_register() {
-                        if let Err(err) = ctx
-                            .editor
-                            .registers
-                            .push(history_register, self.primary_query().to_string())
-                        {
-                            ctx.editor.set_error(err.to_string());
+                    if !self.is_history_search {
+                        if let Some(history_register) = self.prompt.history_register() {
+                            if let Err(err) = ctx
+                                .editor
+                                .registers
+                                .push(history_register, self.primary_query().to_string())
+                            {
+                                ctx.editor.set_error(err.to_string());
+                            }
                         }
                     }
                     return close_fn(self);
