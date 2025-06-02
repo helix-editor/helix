@@ -2152,10 +2152,6 @@ fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
-    sort_impl(cx, args.has_flag("reverse"))
-}
-
-fn sort_impl(cx: &mut compositor::Context, reverse: bool) -> anyhow::Result<()> {
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -2171,10 +2167,14 @@ fn sort_impl(cx: &mut compositor::Context, reverse: bool) -> anyhow::Result<()> 
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
-    fragments.sort_by(match reverse {
-        true => |a: &Tendril, b: &Tendril| b.cmp(a),
-        false => |a: &Tendril, b: &Tendril| a.cmp(b),
-    });
+    fragments.sort_by(
+        match (args.has_flag("insensitive"), args.has_flag("reverse")) {
+            (true, true) => |a: &Tendril, b: &Tendril| b.to_lowercase().cmp(&a.to_lowercase()),
+            (true, false) => |a: &Tendril, b: &Tendril| a.to_lowercase().cmp(&b.to_lowercase()),
+            (false, true) => |a: &Tendril, b: &Tendril| b.cmp(a),
+            (false, false) => |a: &Tendril, b: &Tendril| a.cmp(b),
+        },
+    );
 
     let transaction = Transaction::change(
         doc.text(),
@@ -3436,6 +3436,12 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             positionals: (0, Some(0)),
             flags: &[
                 Flag {
+                    name: "insensitive",
+                    alias: Some('i'),
+                    doc: "sort the ranges case-insensitively",
+                    ..Flag::DEFAULT
+                },
+                Flag {
                     name: "reverse",
                     alias: Some('r'),
                     doc: "sort ranges in reverse order",
@@ -3939,10 +3945,12 @@ fn quote_completion<'a>(
             span.content = Cow::Owned(format!(
                 "'{}{}'",
                 // Escape any inner single quotes by doubling them.
-                replace(token.content.as_ref().into(), '\'', "''"),
+                replace(token.content[..range.start].into(), '\'', "''"),
                 replace(span.content, '\'', "''")
             ));
-            // Ignore `range.start` here since we're replacing the entire token.
+            // Ignore `range.start` here since we're replacing the entire token. We used
+            // `range.start` above to emulate the replacement that using `range.start` would have
+            // done.
             ((offset + token.content_start).., span)
         }
         TokenKind::Quoted(quote) => {

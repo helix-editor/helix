@@ -599,8 +599,8 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
-        goto_next_tabstop, "goto next snippet placeholder",
-        goto_prev_tabstop, "goto next snippet placeholder",
+        goto_next_tabstop, "Goto next snippet placeholder",
+        goto_prev_tabstop, "Goto next snippet placeholder",
     );
 }
 
@@ -3772,7 +3772,8 @@ fn normal_mode(cx: &mut Context) {
 }
 
 // Store a jump on the jumplist.
-fn push_jump(view: &mut View, doc: &Document) {
+fn push_jump(view: &mut View, doc: &mut Document) {
+    doc.append_changes_to_history(view);
     let jump = (doc.id(), doc.selection(view.id).clone());
     view.jumps.push(jump);
 }
