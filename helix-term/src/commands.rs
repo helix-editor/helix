@@ -2283,7 +2283,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
         let case_insensitive = if search_config.smart_case {
             !query.chars().any(char::is_uppercase)
         } else {
-            false
+            search_config.ignore_case_unless_smart
         };
         let wrap_around = search_config.wrap_around;
         if let Ok(regex) = rope::RegexBuilder::new()
@@ -2455,6 +2455,7 @@ fn global_search(cx: &mut Context) {
 
     struct GlobalSearchConfig {
         smart_case: bool,
+        ignore_case_unless_smart: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
         directory_style: Style,
         number_style: Style,
@@ -2464,6 +2465,7 @@ fn global_search(cx: &mut Context) {
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
+        ignore_case_unless_smart: config.search.ignore_case_unless_smart,
         file_picker_config: config.file_picker.clone(),
         directory_style: cx.editor.theme.get("ui.text.directory"),
         number_style: cx.editor.theme.get("constant.numeric.integer"),
@@ -2515,8 +2517,10 @@ fn global_search(cx: &mut Context) {
             .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
             .collect();
 
+        let use_case_insensitive = !config.smart_case && config.ignore_case_unless_smart;
         let matcher = match RegexMatcherBuilder::new()
             .case_smart(config.smart_case)
+            .case_insensitive(use_case_insensitive)
             .build(query)
         {
             Ok(matcher) => {
