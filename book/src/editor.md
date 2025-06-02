@@ -279,6 +279,7 @@ Search specific options.
 | Key | Description | Default |
 |--|--|---------|
 | `smart-case` | Enable smart case regex searching (case-insensitive unless pattern contains upper case characters) | `true` |
+| `ignore-case-unless-smart` | Enable case-insensitive search, unless overridden by `smart-case` behavior | `false` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
 
 ### `[editor.whitespace]` Section
