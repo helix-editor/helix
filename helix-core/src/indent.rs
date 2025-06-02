@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, iter};
+use std::{borrow::Cow, collections::HashMap, iter, time::Instant};
 
 use helix_stdx::rope::RopeSliceExt;
 
@@ -631,11 +631,13 @@ fn query_indents<'a>(
 
     let mut cursor = InactiveQueryCursor::new();
     cursor.set_byte_range(range);
+    let query_time = Instant::now();
     let mut cursor = cursor.execute_query(
         &query.query,
         &syntax.tree().root_node(),
         RopeInput::new(text),
     );
+    log::info!("tree-sitter indent query took: {} us", query_time.elapsed().as_micros());
 
     // Iterate over all captures from the query
     while let Some(m) = cursor.next_match() {
