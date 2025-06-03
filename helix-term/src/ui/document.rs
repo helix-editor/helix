@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::time::{Duration, Instant};
 
 use helix_core::doc_formatter::{DocumentFormatter, GraphemeSource, TextFormat};
 use helix_core::graphemes::Grapheme;
@@ -90,6 +91,7 @@ pub fn render_text(
     let mut is_in_indent_area = true;
     let mut last_line_indent_level = 0;
     let mut reached_view_top = false;
+    let mut total_highlight_time = Duration::new(0, 0);
 
     loop {
         let Some(mut grapheme) = formatter.next() else {
@@ -132,9 +134,11 @@ pub fn render_text(
         }
 
         // acquire the correct grapheme style
+        let highlight_time = Instant::now();
         while grapheme.char_idx >= syntax_highlighter.pos {
             syntax_highlighter.advance();
         }
+        total_highlight_time += highlight_time.elapsed();
         while grapheme.char_idx >= overlay_highlighter.pos {
             overlay_highlighter.advance();
         }
@@ -167,6 +171,8 @@ pub fn render_text(
         );
         last_line_end = grapheme.visual_pos.col + grapheme_width;
     }
+
+    log::info!("tree-sitter highlight time: {} us", total_highlight_time.as_micros());
 
     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
     decorations.render_virtual_lines(renderer, last_line_pos, last_line_end)

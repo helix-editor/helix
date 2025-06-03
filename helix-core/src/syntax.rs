@@ -500,10 +500,7 @@ impl Syntax {
         loader: &'a Loader,
         range: impl RangeBounds<u32>,
     ) -> Highlighter<'a> {
-        let highlight_time = Instant::now();
-        let ret = Highlighter::new(&self.inner, source, loader, range);
-        log::info!("tree-sitter: creating highlighter took: {} us", highlight_time.elapsed().as_micros());
-        ret
+        Highlighter::new(&self.inner, source, loader, range)
     }
 
     pub fn query_iter<'a, QueryLoader, LayerState, Range>(
