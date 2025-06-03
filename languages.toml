@@ -87,7 +87,7 @@ pbkit = { command = "pb", args = [ "lsp" ] }
 perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
 pest-language-server = { command = "pest-language-server" }
 pkl-lsp = { command = "pkl-lsp" }
-prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
+prisma-language-server = { command = "prisma-language-server", args = ["--stdio"], config.prisma.enableDiagnostics = true }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
 pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
@@ -260,6 +260,10 @@ enable = true
 
 [language-server.vscode-eslint-language-server.config.workingDirectory]
 mode = "location"
+
+[language-server.clarinet]
+command = "clarinet"
+args = ["lsp"]
 
 [[language]]
 name = "rust"
@@ -4371,3 +4375,18 @@ injection-regex = "rust-format-args"
 [[grammar]]
 name = "rust-format-args"
 source = { git = "https://github.com/nik-rev/tree-sitter-rustfmt", rev = "2ca0bdd763d0c9dbb1d0bd14aea7544cbe81309c" }
+
+[[language]]
+name = "clarity"
+scope = "source.clar"
+injection-regex = "clarity"
+file-types = ["clar"]
+roots = ["Clarinet.toml"]
+comment-tokens = ";;"
+indent = { tab-width = 2, unit = "  " }
+language-servers = [ "clarinet" ]
+
+[[grammar]]
+name = "clarity"
+source = { git = "https://github.com/xlittlerag/tree-sitter-clarity", rev = "7fa54825fdd971a1a676f885384f024fe2b7384a" }
+
