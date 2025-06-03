@@ -3216,85 +3216,83 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
 
 fn configure_lsp_globals() {
     use std::fmt::Write;
-    if let Ok(steel_lsp_home) = std::env::var("STEEL_LSP_HOME") {
-        let mut path = PathBuf::from(steel_lsp_home);
-        path.push("_helix-global-builtins.scm");
+    let steel_lsp_home = steel_lsp_home_dir();
+    let mut path = PathBuf::from(steel_lsp_home);
+    path.push("_helix-global-builtins.scm");
 
-        let mut output = String::new();
+    let mut output = String::new();
 
-        let names = &[
-            "*helix.cx*",
-            "*helix.config*",
-            "*helix.id*",
-            "register-hook!",
-            "log::info!",
-            "fuzzy-match",
-            "helix-find-workspace",
-            "find-workspace",
-            "doc-id->usize",
-            "new-component!",
-            "acquire-context-lock",
-            "SteelDynamicComponent?",
-            "prompt",
-            "picker",
-            "#%exp-picker",
-            "Component::Text",
-            "hx.create-directory",
-        ];
+    let names = &[
+        "*helix.cx*",
+        "*helix.config*",
+        "*helix.id*",
+        "register-hook!",
+        "log::info!",
+        "fuzzy-match",
+        "helix-find-workspace",
+        "find-workspace",
+        "doc-id->usize",
+        "new-component!",
+        "acquire-context-lock",
+        "SteelDynamicComponent?",
+        "prompt",
+        "picker",
+        "#%exp-picker",
+        "Component::Text",
+        "hx.create-directory",
+    ];
 
-        for value in names {
-            writeln!(&mut output, "(#%register-global '{})", value).unwrap();
-        }
+    for value in names {
+        writeln!(&mut output, "(#%register-global '{})", value).unwrap();
+    }
 
-        writeln!(&mut output, "").unwrap();
+    writeln!(&mut output, "").unwrap();
+    writeln!(
+        &mut output,
+        "(#%register-additional-search-path \"{}\")",
+        helix_loader::config_dir().to_str().unwrap()
+    )
+    .unwrap();
+
+    for dir in helix_loader::runtime_dirs() {
         writeln!(
             &mut output,
             "(#%register-additional-search-path \"{}\")",
-            helix_loader::config_dir().to_str().unwrap()
+            dir.to_str().unwrap()
         )
         .unwrap();
-
-        for dir in helix_loader::runtime_dirs() {
-            writeln!(
-                &mut output,
-                "(#%register-additional-search-path \"{}\")",
-                dir.to_str().unwrap()
-            )
-            .unwrap();
-        }
-
-        std::fs::write(path, output).unwrap();
     }
+
+    std::fs::write(path, output).unwrap();
 }
 
 fn configure_lsp_builtins(name: &str, module: &BuiltInModule) {
     use std::fmt::Write;
-    if let Ok(steel_lsp_home) = std::env::var("STEEL_LSP_HOME") {
-        let mut path = PathBuf::from(steel_lsp_home);
-        path.push(&format!("_helix-{}-builtins.scm", name));
+    let steel_lsp_home = steel_lsp_home_dir();
+    let mut path = PathBuf::from(steel_lsp_home);
+    path.push(&format!("_helix-{}-builtins.scm", name));
 
-        let mut output = String::new();
+    let mut output = String::new();
 
-        output.push_str(&format!(
-            r#"(define #%helix-{}-module (#%module "{}"))
+    output.push_str(&format!(
+        r#"(define #%helix-{}-module (#%module "{}"))
 
 (define (register-values module values)
   (map (lambda (ident) (#%module-add module (symbol->string ident) void)) values))
 "#,
-            name,
-            module.name()
-        ));
+        name,
+        module.name()
+    ));
 
-        output.push_str(&format!(r#"(register-values #%helix-{}-module '("#, name));
+    output.push_str(&format!(r#"(register-values #%helix-{}-module '("#, name));
 
-        for value in module.names() {
-            writeln!(&mut output, "{}", value).unwrap();
-        }
-
-        output.push_str("))");
-
-        std::fs::write(path, output).unwrap();
+    for value in module.names() {
+        writeln!(&mut output, "{}", value).unwrap();
     }
+
+    output.push_str("))");
+
+    std::fs::write(path, output).unwrap();
 }
 
 fn load_rope_api(engine: &mut Engine, generate_sources: bool) {
@@ -3840,6 +3838,24 @@ pub fn load_ext_api(engine: &mut Engine, generate_sources: bool) {
     engine.register_steel_module("helix/ext.scm".to_string(), ext_api.to_string());
 }
 
+// Note: This implementation is aligned with what the steel language server
+// expects. This shouldn't stay here, but for alpha purposes its fine.
+pub fn steel_lsp_home_dir() -> PathBuf {
+    if let Ok(home) = std::env::var("STEEL_LSP_HOME") {
+        return PathBuf::from(home);
+    }
+
+    let mut home_directory =
+        PathBuf::from(steel_home().expect("Unable to find steel home location"));
+    home_directory.push("lsp");
+
+    if !home_directory.exists() {
+        std::fs::create_dir_all(&home_directory).expect("Unable to create the lsp home directory");
+    }
+
+    home_directory
+}
+
 // Embed them in the binary... first
 pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     load_editor_api(engine, generate_sources);
@@ -3860,9 +3876,6 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
 
     // TODO: Remove this once all of the globals have been moved into their own modules
     if generate_sources {
-        if std::env::var("STEEL_LSP_HOME").is_err() {
-            eprintln!("Warning: STEEL_LSP_HOME is not set, so the steel lsp will not be configured with helix primitives");
-        }
         configure_lsp_globals();
 
         // Generate cog file for the stubs
