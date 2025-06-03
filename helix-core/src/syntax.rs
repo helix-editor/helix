@@ -876,7 +876,6 @@ impl TextObjectQuery {
         cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
         let query_time = Instant::now();
         let mut cursor = cursor.execute_query(&self.query, node, RopeInput::new(slice));
-        log::info!("tree-sitter textobject query took: {} us", query_time.elapsed().as_micros());
         let capture_node = iter::from_fn(move || {
             let (mat, _) = cursor.next_matched_node()?;
             Some(mat.nodes_for_capture(capture).cloned().collect())
@@ -888,6 +887,7 @@ impl TextObjectQuery {
                 nodes.into_iter().map(CapturedNode::Single).next()
             }
         });
+        log::info!("tree-sitter textobject query took: {} us", query_time.elapsed().as_micros());
         Some(capture_node)
     }
 }
