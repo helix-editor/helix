@@ -490,6 +490,8 @@ impl MappableCommand {
         replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
         paste_after, "Paste after selection",
         paste_before, "Paste before selection",
+        paste_all_selections_after, "Paste all selections in the register after selection; select pasted content, preserving separate selections",
+        paste_all_selections_before, "Paste all selections in the register before selection; select pasted content, preserving separate selections",
         paste_clipboard_after, "Paste clipboard after selections",
         paste_clipboard_before, "Paste clipboard before selections",
         paste_primary_clipboard_after, "Paste primary clipboard after selections",
@@ -4829,6 +4831,112 @@ fn paste_before(cx: &mut Context) {
             .unwrap_or(cx.editor.config().default_yank_register),
         Paste::Before,
         cx.count(),
+    );
+    exit_select_mode(cx);
+}
+
+/// Paste each yanked selection, preserving separate selections.
+fn paste_all_selections_impl(
+    values: &[String],
+    doc: &mut Document,
+    view: &mut View,
+    action: Paste,
+    mode: Mode,
+) {
+    if values.is_empty() {
+        return;
+    }
+
+    if mode == Mode::Insert {
+        doc.append_changes_to_history(view);
+    }
+
+    let map_value = |value| {
+        let value = LINE_ENDING_REGEX.replace_all(value, doc.line_ending.as_str());
+        Tendril::from(value.as_ref())
+    };
+
+    let values: Vec<_> = values.iter().map(|value| map_value(value)).collect();
+    let values_text: Tendril = values.iter().map(|value| value.as_str()).collect();
+
+    // ranges relative to start of values_text.
+    let mut prev_range = 0;
+    let values_ranges: Vec<Range> = values
+        .iter()
+        .map(|value| {
+            let r = Range::new(prev_range, prev_range + value.len());
+            prev_range += value.len();
+            r
+        })
+        .collect();
+
+    let text = doc.text();
+    let selection = doc.selection(view.id);
+
+    let mut offset = 0;
+    let mut ranges = SmallVec::with_capacity(selection.len() * values_ranges.len());
+
+    let mut transaction = Transaction::change_by_selection(text, selection, |range| {
+        let pos = match action {
+            // paste insert
+            Paste::Before => range.from(),
+            // paste append
+            Paste::After => range.to(),
+            // paste at cursor
+            Paste::Cursor => range.cursor(text.slice(..)),
+        };
+
+        // Preserve independent selections (which will now be contiguous).
+        let anchor = pos + offset;
+        for r in values_ranges.iter() {
+            let new_range =
+                Range::new(anchor + r.anchor, anchor + r.head).with_direction(Direction::Forward);
+            ranges.push(new_range);
+        }
+        // Offset later ranges due to text inserted in this change.
+        offset += values_text.len();
+
+        (pos, pos, Some(values_text.clone()))
+    });
+
+    if mode == Mode::Normal {
+        transaction = transaction.with_selection(Selection::new(
+            ranges,
+            // Last selection pasted for the previous primary selection
+            (selection.primary_index() * values_ranges.len()) + (values_ranges.len() - 1),
+        ));
+    }
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
+}
+
+fn paste_all_selections(editor: &mut Editor, register: char, pos: Paste) {
+    let Some(values) = editor.registers.read(register, editor) else {
+        return;
+    };
+    let values: Vec<_> = values.map(|value| value.to_string()).collect();
+
+    let (view, doc) = current!(editor);
+    paste_all_selections_impl(&values, doc, view, pos, editor.mode);
+}
+
+fn paste_all_selections_after(cx: &mut Context) {
+    paste_all_selections(
+        cx.editor,
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
+        Paste::After,
+    );
+    exit_select_mode(cx);
+}
+
+fn paste_all_selections_before(cx: &mut Context) {
+    paste_all_selections(
+        cx.editor,
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
+        Paste::Before,
     );
     exit_select_mode(cx);
 }
