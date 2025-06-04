@@ -2,6 +2,7 @@ use helix_term::application::Application;
 
 use super::*;
 
+mod extend_search_all;
 mod insert;
 mod movement;
 mod write;

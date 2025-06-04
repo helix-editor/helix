@@ -374,6 +374,7 @@ impl MappableCommand {
         search_prev, "Select previous search match",
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
+        extend_search_all, "Add every search match to selection",
         search_selection, "Use current selection as search pattern",
         search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
@@ -2132,6 +2133,7 @@ fn search_impl(
     editor: &mut Editor,
     regex: &rope::Regex,
     movement: Movement,
+    start_location: Direction,
     direction: Direction,
     scrolloff: usize,
     wrap_around: bool,
@@ -2143,7 +2145,7 @@ fn search_impl(
 
     // Get the right side of the primary block cursor for forward search, or the
     // grapheme before the start of the selection for reverse search.
-    let start = match direction {
+    let start = match start_location {
         Direction::Forward => text.char_to_byte(graphemes::ensure_grapheme_boundary_next(
             text,
             selection.primary().to(),
@@ -2263,6 +2265,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 &regex,
                 movement,
                 direction,
+                direction,
                 scrolloff,
                 wrap_around,
                 false,
@@ -2300,6 +2303,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
                     &regex,
                     movement,
                     direction,
+                    direction,
                     scrolloff,
                     wrap_around,
                     true,
@@ -2325,6 +2329,68 @@ fn extend_search_next(cx: &mut Context) {
 
 fn extend_search_prev(cx: &mut Context) {
     search_next_or_prev_impl(cx, Movement::Extend, Direction::Backward);
+}
+
+fn extend_search_all(cx: &mut Context) {
+    let register = cx
+        .register
+        .unwrap_or(cx.editor.registers.last_search_register);
+    let config = cx.editor.config();
+    let scrolloff = config.scrolloff;
+    if let Some(query) = cx.editor.registers.first(register, cx.editor) {
+        let search_config = &config.search;
+        let case_insensitive = if search_config.smart_case {
+            !query.chars().any(char::is_uppercase)
+        } else {
+            false
+        };
+        if let Ok(regex) = rope::RegexBuilder::new()
+            .syntax(
+                rope::Config::new()
+                    .case_insensitive(case_insensitive)
+                    .multi_line(true),
+            )
+            .build(&query)
+        {
+            search_impl(
+                cx.editor,
+                &regex,
+                Movement::Extend,
+                // Start the first search before the current location.
+                // This is so after ["search_selection", "extend_search_all"]
+                // the primary selection remains where it started.
+                Direction::Backward,
+                Direction::Forward,
+                scrolloff,
+                true,
+                true,
+            );
+
+            // extend_search_next until we reach the first match
+            let (view, doc) = current_ref!(cx.editor);
+            let first_match = doc.selection(view.id).primary();
+            loop {
+                search_impl(
+                    cx.editor,
+                    &regex,
+                    Movement::Extend,
+                    Direction::Forward,
+                    Direction::Forward,
+                    scrolloff,
+                    true,
+                    true,
+                );
+                let (view, doc) = current_ref!(cx.editor);
+                let current_match = doc.selection(view.id).primary();
+                if current_match == first_match {
+                    break;
+                }
+            }
+        } else {
+            let error = format!("Invalid regex: {}", query);
+            cx.editor.set_error(error);
+        }
+    }
 }
 
 fn search_selection(cx: &mut Context) {
