@@ -551,6 +551,9 @@ impl Prompt {
             if self.truncate_end && self.cursor - self.anchor >= self.line_area.width as usize {
                 self.anchor += 1;
             }
+            while !self.line.is_char_boundary(self.anchor) {
+                self.anchor += 1;
+            }
 
             surface.set_string_anchored(
                 self.line_area.x,
@@ -734,7 +737,10 @@ impl Component for Prompt {
             .clip_left(self.prompt.len() as u16)
             .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
 
-        let anchor = self.anchor.min(self.line.len().saturating_sub(1));
+        let mut anchor = self.anchor.min(self.line.len().saturating_sub(1));
+        while !self.line.is_char_boundary(anchor) {
+            anchor += 1;
+        }
         let mut col = area.left() as usize
             + UnicodeWidthStr::width(&self.line[anchor..self.cursor.max(anchor)]);
 
