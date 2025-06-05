@@ -126,11 +126,11 @@ impl Transport {
         info!("[{}] <- DAP {}", id, msg);
 
         // try parsing as output (server response) or call (server request)
-        let output: serde_json::Result<Payload> = serde_json::from_str(msg);
+        let output: Payload = sonic_rs::from_slice(content)?;
 
         content.clear();
 
-        Ok(output?)
+        Ok(output)
     }
 
     async fn recv_server_error(
