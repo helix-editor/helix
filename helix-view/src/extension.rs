@@ -53,7 +53,15 @@ mod steel_implementations {
     }
     impl Custom for crate::graphics::CursorKind {}
     impl Custom for DocumentId {}
-    impl Custom for ViewId {}
+    impl Custom for ViewId {
+        fn equality_hint(&self, other: &dyn steel::rvals::CustomType) -> bool {
+            if let Some(other) = as_underlying_type::<ViewId>(other) {
+                self == other
+            } else {
+                false
+            }
+        }
+    }
     impl CustomReference for Document {}
 
     impl Custom for Action {}
