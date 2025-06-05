@@ -1917,9 +1917,7 @@ impl Document {
 
     /// Whether the document should write it's contents to a backup file, then rename that backup to the target file when saving. This prevents data loss if the editor is interupted while writing the file, but may confuse some file watching/hot reloading programs.
     pub fn atomic_save(&self) -> bool {
-        self.editor_config
-            .atomic_save
-            .unwrap_or_else(|| self.config.load().atomic_save)
+        self.config.load().atomic_save
     }
 
     /// Whether the document should trim whitespace preceding line endings on save.

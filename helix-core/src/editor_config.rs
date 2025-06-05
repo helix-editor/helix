@@ -34,7 +34,6 @@ pub struct EditorConfig {
     // pub spelling_language: Option<SpellingLanguage>,
     pub trim_trailing_whitespace: Option<bool>,
     pub insert_final_newline: Option<bool>,
-    pub atomic_save: Option<bool>,
     pub max_line_length: Option<NonZeroU16>,
 }
 
@@ -160,13 +159,6 @@ impl EditorConfig {
                 "false" => Some(false),
                 _ => None,
             });
-        let atomic_save = pairs
-            .get("atomic_save")
-            .and_then(|value| match value.as_ref() {
-                "true" => Some(true),
-                "false" => Some(false),
-                _ => None,
-            });
         // This option is not in the spec but is supported by some editors.
         // <https://github.com/editorconfig/editorconfig/wiki/EditorConfig-Properties#max_line_length>
         let max_line_length = pairs
@@ -180,7 +172,6 @@ impl EditorConfig {
             encoding,
             trim_trailing_whitespace,
             insert_final_newline,
-            atomic_save,
             max_line_length,
         }
     }
@@ -314,7 +305,6 @@ mod test {
 
         [docs/**.txt]
         insert_final_newline = true
-        atomic_save = true
         "#;
 
         assert_eq!(
@@ -336,7 +326,6 @@ mod test {
             EditorConfig {
                 indent_style: Some(IndentStyle::Spaces(4)),
                 insert_final_newline: Some(true),
-                atomic_save: Some(true),
                 ..Default::default()
             }
         );
