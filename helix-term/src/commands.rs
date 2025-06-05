@@ -2290,7 +2290,8 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             .syntax(
                 rope::Config::new()
                     .case_insensitive(case_insensitive)
-                    .multi_line(true),
+                    .multi_line(true)
+                    .crlf(true),
             )
             .build(&query)
         {
