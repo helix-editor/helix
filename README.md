@@ -5,7 +5,7 @@ This fork of Helix implements the following pull requests. Future pull requests 
 1. https://github.com/helix-editor/helix/pull/13354 (index command)
 2. https://github.com/helix-editor/helix/pull/13053 (local search in buffer)
 3. https://github.com/helix-editor/helix/pull/12369 (basic support for icons)
-4. https://github.com/helix-editor/helix/pull/12369 (customizable color swatches)
+4. https://github.com/helix-editor/helix/pull/13306 (customizable color swatches)
 5. https://github.com/helix-editor/helix/pull/13430 (showing vertical preview)
 6. https://github.com/helix-editor/helix/pull/11497 (support for rounded corners)
 7. https://github.com/helix-editor/helix/pull/13197 (welcome screen)
@@ -86,3 +86,44 @@ max-panel-height-percent = 0.8
 - `Space + K` - Open hover documentation in navigable buffer (goto_hover)
 
 The `goto_hover` command opens documentation in a new scratch buffer where you can navigate, search, and copy text from long documentation.
+
+## Customizable Color Swatches
+
+**Color Swatches Configuration:**
+
+Configure color swatches appearance in your `config.toml`:
+
+```toml
+[editor.lsp]
+# Enable/disable color swatches display (default: true)
+display-color-swatches = true
+
+# Customize the color swatch symbol (default: "■")
+color-swatches-string = "●"
+```
+
+**Configuration Examples:**
+
+```toml
+# Circle symbols
+[editor.lsp]
+color-swatches-string = "●"
+
+# Diamond symbols
+[editor.lsp]
+color-swatches-string = "◆"
+
+# Hexagon symbols
+[editor.lsp]
+color-swatches-string = "⬢"
+
+# Alternative hexagon
+[editor.lsp]
+color-swatches-string = "⬣"
+
+# Default square (explicit)
+[editor.lsp]
+color-swatches-string = "■"
+```
+
+Color swatches appear next to color values in your code (CSS, configuration files, etc.) when LSP support is available, making it easier to visualize colors at a glance.
