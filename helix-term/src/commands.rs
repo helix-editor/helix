@@ -6169,7 +6169,7 @@ fn shell_append_output(cx: &mut Context) {
 }
 
 fn shell_pipe_into_buffer(cx: &mut Context) {
-    shell_prompt(cx, "open-buffer:".into(), ShellBehavior::OpenBuffer);
+    shell_prompt(cx, "pipe-into-buffer:".into(), ShellBehavior::OpenBuffer);
 }
 
 fn shell_keep_pipe(cx: &mut Context) {
@@ -6290,8 +6290,8 @@ async fn shell_impl_async(
 
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let pipe = match behavior {
-        ShellBehavior::Replace | ShellBehavior::Ignore => true,
-        ShellBehavior::Insert | ShellBehavior::Append | ShellBehavior::OpenBuffer => false,
+        ShellBehavior::Replace | ShellBehavior::Ignore | ShellBehavior::OpenBuffer => true,
+        ShellBehavior::Insert | ShellBehavior::Append => false,
     };
 
     let config = cx.editor.config();
