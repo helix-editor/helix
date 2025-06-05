@@ -14,7 +14,7 @@ use steel::{
         IntoSteelVal, SteelString,
     },
     steel_vm::{builtin::BuiltInModule, engine::Engine, register_fn::RegisterFn},
-    SteelVal,
+    RootToken, RootedSteelVal, SteelVal,
 };
 use tokio::sync::Mutex;
 use tui::{
@@ -1691,7 +1691,7 @@ fn buffer_set_string(
 }
 
 /// A dynamic component, used for rendering
-#[derive(Clone)]
+// #[derive(Clone)]
 pub struct SteelDynamicComponent {
     // TODO: currently the component id requires using a &'static str,
     // however in a world with dynamic components that might not be
@@ -1710,6 +1710,10 @@ pub struct SteelDynamicComponent {
     // events to the event handler, we can reuse the heap allocation
     // instead of re-allocating for every event (which might be a lot)
     key_event: Option<SteelVal>,
+
+    // Just root all of the inputs so that we don't have any issues with
+    // things dropping
+    _roots: Vec<RootedSteelVal>,
 }
 
 impl SteelDynamicComponent {
@@ -1719,6 +1723,14 @@ impl SteelDynamicComponent {
         render: SteelVal,
         h: HashMap<String, SteelVal>,
     ) -> Self {
+        let mut roots = vec![state.clone().as_rooted(), render.clone().as_rooted()];
+
+        for value in h.values() {
+            roots.push(value.clone().as_rooted());
+        }
+
+        // Keep root tokens around? Otherwise we're not going to be
+        // able to reach these values from the runtime.
         Self {
             name,
             state,
@@ -1728,6 +1740,7 @@ impl SteelDynamicComponent {
             cursor: h.get("cursor").cloned(),
             required_size: h.get("required_size").cloned(),
             key_event: None,
+            _roots: roots,
         }
     }
 
@@ -1772,6 +1785,11 @@ impl Component for SteelDynamicComponent {
         frame: &mut tui::buffer::Buffer,
         ctx: &mut compositor::Context,
     ) {
+        // Skip rendering if the function is actually false
+        if let SteelVal::BoolV(false) = self.render {
+            return;
+        }
+
         let mut ctx = Context {
             register: None,
             count: None,
