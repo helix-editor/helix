@@ -252,19 +252,31 @@ fn align_text_impl(
     Ok(())
 }
 
-fn left(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+fn align_text_left(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
     align_text_impl(cx, args, event, |text_width, text| {
         format!("{:<text_width$}", text)
     })
 }
 
-fn center(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+fn align_text_center(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
     align_text_impl(cx, args, event, |text_width, text| {
         format!("{:^text_width$}", text)
     })
 }
 
-fn right(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+fn align_text_right(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
     align_text_impl(cx, args, event, |text_width, text| {
         format!("{:>text_width$}", text)
     })
@@ -3560,10 +3572,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
-        name: "left",
-        aliases: &[],
+        name: "align-text-left",
+        aliases: &["atl"],
         doc: "Align text to the left",
-        fun: left,
+        fun: align_text_left,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
@@ -3571,10 +3583,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
-        name: "center",
-        aliases: &[],
+        name: "align-text-center",
+        aliases: &["atc"],
         doc: "Center-align text, optionally pass a number overriding the current document's text width",
-        fun: center,
+        fun: align_text_center,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(1)),
@@ -3582,10 +3594,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
-        name: "right",
-        aliases: &[],
+        name: "align-text-right",
+        aliases: &["atr"],
         doc: "Align text to the right, optionally pass a number overriding the current document's text width",
-        fun: right,
+        fun: align_text_right,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(1)),
