@@ -1915,7 +1915,7 @@ impl Document {
             .unwrap_or_else(|| self.config.load().insert_final_newline)
     }
 
-    /// Whether the document should write it's contents to a backup file, then rename that backup to the target file when saving. This prevents data loss if the editor is interupted while writing the file, but may confuse some file watching/hot reloading programs.
+    /// Whether the document should write its contents to a backup file, then rename that backup to the target file when saving. This prevents data loss if the editor is interrupted while writing the file, but may confuse some file watching/hot reloading programs.
     pub fn atomic_save(&self) -> bool {
         self.config.load().atomic_save
     }
