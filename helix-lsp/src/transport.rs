@@ -136,6 +136,8 @@ impl Transport {
         // try parsing as output (server response) or call (server request)
         let output: serde_json::Result<ServerMessage> = serde_json::from_str(msg);
 
+        content.clear();
+
         Ok(output?)
     }
 
