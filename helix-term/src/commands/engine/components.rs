@@ -14,7 +14,7 @@ use steel::{
         IntoSteelVal, SteelString,
     },
     steel_vm::{builtin::BuiltInModule, engine::Engine, register_fn::RegisterFn},
-    RootToken, RootedSteelVal, SteelVal,
+    RootedSteelVal, SteelVal,
 };
 use tokio::sync::Mutex;
 use tui::{

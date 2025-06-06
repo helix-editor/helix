@@ -149,6 +149,16 @@ where
     (f)(&mut acquire_engine_lock())
 }
 
+pub fn try_enter_engine<F, R>(f: F) -> Option<R>
+where
+    F: FnOnce(&mut Engine) -> R,
+{
+    match GLOBAL_ENGINE.try_lock() {
+        Ok(mut v) => Some((f)(&mut v)),
+        Err(_) => None,
+    }
+}
+
 pub struct InterruptHandler {
     controller: ThreadStateController,
     running: Arc<AtomicBool>,
@@ -1908,18 +1918,19 @@ impl super::PluginSystem for SteelScriptingEngine {
     }
 
     fn get_doc_for_identifier(&self, ident: &str) -> Option<String> {
-        enter_engine(|engine| get_doc_for_global(engine, ident))
+        try_enter_engine(|engine| get_doc_for_global(engine, ident)).unwrap_or_default()
     }
 
     // Just dump docs for all top level values?
     fn available_commands<'a>(&self) -> Vec<Cow<'a, str>> {
-        enter_engine(|engine| {
+        try_enter_engine(|engine| {
             engine
                 .readable_globals(*GLOBAL_OFFSET.get().unwrap())
                 .iter()
                 .map(|x| x.resolve().to_string().into())
                 .collect()
         })
+        .unwrap_or_default()
     }
 
     fn generate_sources(&self) {
