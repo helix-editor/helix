@@ -2,6 +2,7 @@
 
 [
   (function_declaration)
+  (method_declaration)
   (type_declaration)
   (block)
 ] @local.scope
