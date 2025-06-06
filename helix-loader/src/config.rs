@@ -1,4 +1,5 @@
 use std::str::from_utf8;
+use crate::env_expander::get_env_expanded_toml;
 
 /// Default built-in languages.toml.
 pub fn default_lang_config() -> toml::Value {
@@ -17,7 +18,7 @@ pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
     .map(|path| path.join("languages.toml"))
     .filter_map(|file| {
         std::fs::read_to_string(file)
-            .map(|config| toml::from_str(&config))
+            .map(|config| get_env_expanded_toml(&config))
             .ok()
     })
     .collect::<Result<Vec<_>, _>>()?
