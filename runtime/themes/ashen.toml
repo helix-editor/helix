@@ -35,6 +35,7 @@
 
 "comment" = { fg = "g_6", modifiers = ["italic"] }
 "comment.block.documentation" = { fg = "g_5", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "g_5", modifiers = ["italic"] }
 
 "variable" = "g_3"
 "variable.parameter" = { fg = "g_2", modifiers = ["italic"] }

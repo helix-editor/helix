@@ -5,6 +5,7 @@
 string = "green171"
 comment = "blue133"
 "comment.block.documentation" = "green130"
+"comment.line.documentation" = "green130"
 "variable.builtin" = "red207"
 "variable.other.member" = "red199"
 label = "red199"
