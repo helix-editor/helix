@@ -269,7 +269,7 @@ pub fn get_path_suffix(src: RopeSlice<'_>, match_single_file: bool) -> Option<Ro
 
     regex
         .find(Input::new(src))
-        .map(|mat| src.byte_slice(mat.range()))
+        .map(|mat| src.slice(mat.range()))
 }
 
 /// Returns an iterator of the **byte** ranges in src that contain a path.
