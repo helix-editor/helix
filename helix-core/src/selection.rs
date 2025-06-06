@@ -3,17 +3,11 @@
 //!
 //! All positioning is done via `char` offsets into the buffer.
 use crate::{
-    graphemes::{
-        ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
-        prev_grapheme_boundary,
-    },
-    line_ending::get_line_ending,
-    movement::Direction,
-    tree_sitter::Node,
-    Assoc, ChangeSet, RopeSlice,
+    line_ending::get_line_ending, movement::Direction, tree_sitter::Node, Assoc, ChangeSet,
+    RopeSlice,
 };
-use helix_stdx::range::is_subset;
 use helix_stdx::rope::{self, RopeSliceExt};
+use helix_stdx::{range::is_subset, rope::LINE_TYPE};
 use smallvec::{smallvec, SmallVec};
 use std::{borrow::Cow, iter, slice};
 
@@ -25,9 +19,9 @@ use std::{borrow::Cow, iter, slice};
 /// can be in any order, or even share the same position.
 ///
 /// The anchor and head positions use gap indexing, meaning
-/// that their indices represent the gaps *between* `char`s
-/// rather than the `char`s themselves. For example, 1
-/// represents the position between the first and second `char`.
+/// that their indices represent the gaps *between* bytes
+/// rather than the bytes themselves. For example, 1
+/// represents the position between the first and second byte.
 ///
 /// Below are some examples of `Range` configurations.
 /// The anchor and head indices are shown as "(anchor, head)"
@@ -75,10 +69,9 @@ impl Range {
         Self::new(head, head)
     }
 
-    pub fn from_node(node: Node, text: RopeSlice, direction: Direction) -> Self {
-        let from = text.byte_to_char(node.start_byte() as usize);
-        let to = text.byte_to_char(node.end_byte() as usize);
-        Range::new(from, to).with_direction(direction)
+    pub fn from_node(node: Node, direction: Direction) -> Self {
+        let range = node.byte_range();
+        Range::new(range.start as usize, range.end as usize).with_direction(direction)
     }
 
     /// Start of the range.
@@ -110,10 +103,13 @@ impl Range {
         let to = if self.is_empty() {
             self.to()
         } else {
-            prev_grapheme_boundary(text, self.to()).max(from)
+            text.prev_grapheme_boundary(self.to()).max(from)
         };
 
-        (text.char_to_line(from), text.char_to_line(to))
+        (
+            text.byte_to_line_idx(from, LINE_TYPE),
+            text.byte_to_line_idx(to, LINE_TYPE),
+        )
     }
 
     /// `true` when head and anchor are at the same position.
@@ -277,16 +273,16 @@ impl Range {
         use std::cmp::Ordering;
         let (new_anchor, new_head) = match self.anchor.cmp(&self.head) {
             Ordering::Equal => {
-                let pos = ensure_grapheme_boundary_prev(slice, self.anchor);
+                let pos = slice.floor_grapheme_boundary(self.anchor);
                 (pos, pos)
             }
             Ordering::Less => (
-                ensure_grapheme_boundary_prev(slice, self.anchor),
-                ensure_grapheme_boundary_next(slice, self.head),
+                slice.floor_char_boundary(self.anchor),
+                slice.ceil_char_boundary(self.head),
             ),
             Ordering::Greater => (
-                ensure_grapheme_boundary_next(slice, self.anchor),
-                ensure_grapheme_boundary_prev(slice, self.head),
+                slice.ceil_char_boundary(self.anchor),
+                slice.floor_char_boundary(self.head),
             ),
         };
         Range {
@@ -318,7 +314,7 @@ impl Range {
         if self.anchor == self.head {
             Range {
                 anchor: self.anchor,
-                head: next_grapheme_boundary(slice, self.head),
+                head: slice.next_grapheme_boundary(self.head),
                 old_visual_position: self.old_visual_position,
             }
         } else {
@@ -334,39 +330,39 @@ impl Range {
     #[inline]
     pub fn cursor(self, text: RopeSlice) -> usize {
         if self.head > self.anchor {
-            prev_grapheme_boundary(text, self.head)
+            text.prev_grapheme_boundary(self.head)
         } else {
             self.head
         }
     }
 
-    /// Puts the left side of the block cursor at `char_idx`, optionally extending.
+    /// Puts the left side of the block cursor at `byte_idx`, optionally extending.
     ///
     /// This follows "1-width" semantics, and therefore does a combination of anchor
     /// and head moves to behave as if both the front and back of the range are 1-width
     /// blocks
     ///
-    /// This method assumes that the range and `char_idx` are already properly
+    /// This method assumes that the range and `byte_idx` are already properly
     /// grapheme-aligned.
     #[must_use]
     #[inline]
-    pub fn put_cursor(self, text: RopeSlice, char_idx: usize, extend: bool) -> Range {
+    pub fn put_cursor(self, text: RopeSlice, byte_idx: usize, extend: bool) -> Range {
         if extend {
-            let anchor = if self.head >= self.anchor && char_idx < self.anchor {
-                next_grapheme_boundary(text, self.anchor)
-            } else if self.head < self.anchor && char_idx >= self.anchor {
-                prev_grapheme_boundary(text, self.anchor)
+            let anchor = if self.head >= self.anchor && byte_idx < self.anchor {
+                text.next_grapheme_boundary(self.anchor)
+            } else if self.head < self.anchor && byte_idx >= self.anchor {
+                text.prev_grapheme_boundary(self.anchor)
             } else {
                 self.anchor
             };
 
-            if anchor <= char_idx {
-                Range::new(anchor, next_grapheme_boundary(text, char_idx))
+            if anchor <= byte_idx {
+                Range::new(anchor, text.next_grapheme_boundary(byte_idx))
             } else {
-                Range::new(anchor, char_idx)
+                Range::new(anchor, byte_idx)
             }
         } else {
-            Range::point(char_idx)
+            Range::point(byte_idx)
         }
     }
 
@@ -374,7 +370,7 @@ impl Range {
     #[inline]
     #[must_use]
     pub fn cursor_line(&self, text: RopeSlice) -> usize {
-        text.char_to_line(self.cursor(text))
+        text.byte_to_line_idx(self.cursor(text), LINE_TYPE)
     }
 
     /// Returns true if this Range covers a single grapheme in the given text
@@ -383,12 +379,6 @@ impl Range {
         let first = graphemes.next();
         let second = graphemes.next();
         first.is_some() && second.is_none()
-    }
-
-    /// Converts this char range into an in order byte range, discarding
-    /// direction.
-    pub fn into_byte_range(&self, text: RopeSlice) -> (usize, usize) {
-        (text.char_to_byte(self.from()), text.char_to_byte(self.to()))
     }
 }
 
@@ -772,7 +762,9 @@ pub fn keep_or_remove_matches(
 ) -> Option<Selection> {
     let result: SmallVec<_> = selection
         .iter()
-        .filter(|range| regex.is_match(text.regex_input_at(range.from()..range.to())) ^ remove)
+        .filter(|range| {
+            regex.is_match(text.regex_input_at_bytes(range.from()..range.to())) ^ remove
+        })
         .copied()
         .collect();
 
@@ -792,13 +784,10 @@ pub fn select_on_matches(
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
-        for mat in regex.find_iter(text.regex_input_at(sel.from()..sel.to())) {
+        for mat in regex.find_iter(text.regex_input_at_bytes(sel.from()..sel.to())) {
             // TODO: retain range direction
 
-            let start = text.byte_to_char(mat.start());
-            let end = text.byte_to_char(mat.end());
-
-            let range = Range::new(start, end);
+            let range = Range::new(mat.start(), mat.end());
             // Make sure the match is not right outside of the selection.
             // These invalid matches can come from using RegEx anchors like `^`, `$`
             if range != Range::point(sel.to()) {
@@ -830,7 +819,7 @@ pub fn split_on_newline(text: RopeSlice, selection: &Selection) -> Selection {
 
         let mut start = sel_start;
 
-        for line in sel.slice(text).lines() {
+        for line in sel.slice(text).lines(LINE_TYPE) {
             let Some(line_ending) = get_line_ending(&line) else {
                 break;
             };
@@ -863,11 +852,11 @@ pub fn split_on_matches(text: RopeSlice, selection: &Selection, regex: &rope::Re
         let sel_end = sel.to();
         let mut start = sel_start;
 
-        for mat in regex.find_iter(text.regex_input_at(sel_start..sel_end)) {
+        for mat in regex.find_iter(text.regex_input_at_bytes(sel_start..sel_end)) {
             // TODO: retain range direction
-            let end = text.byte_to_char(mat.start());
+            let end = mat.start();
             result.push(Range::new(start, end));
-            start = text.byte_to_char(mat.end());
+            start = mat.end();
         }
 
         if start < sel_end {

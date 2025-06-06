@@ -1,12 +1,11 @@
-use crate::{movement::Direction, syntax::TreeCursor, Range, RopeSlice, Selection, Syntax};
+use crate::{movement::Direction, syntax::TreeCursor, Range, Selection, Syntax};
 
-pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+pub fn expand_selection(syntax: &Syntax, selection: Selection) -> Selection {
     let cursor = &mut syntax.walk();
 
     selection.transform(|range| {
-        let from = text.char_to_byte(range.from()) as u32;
-        let to = text.char_to_byte(range.to()) as u32;
-
+        let from = range.from() as u32;
+        let to = range.to() as u32;
         let byte_range = from..to;
         cursor.reset_to_byte_range(from, to);
 
@@ -17,17 +16,14 @@ pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) 
         }
 
         let node = cursor.node();
-        let from = text.byte_to_char(node.start_byte() as usize);
-        let to = text.byte_to_char(node.end_byte() as usize);
-
-        Range::new(to, from).with_direction(range.direction())
+        Range::new(node.start_byte() as usize, node.end_byte() as usize)
+            .with_direction(range.direction())
     })
 }
 
-pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+pub fn shrink_selection(syntax: &Syntax, selection: Selection) -> Selection {
     select_node_impl(
         syntax,
-        text,
         selection,
         |cursor| {
             cursor.goto_first_child();
@@ -36,10 +32,9 @@ pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) 
     )
 }
 
-pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+pub fn select_next_sibling(syntax: &Syntax, selection: Selection) -> Selection {
     select_node_impl(
         syntax,
-        text,
         selection,
         |cursor| {
             while !cursor.goto_next_sibling() {
@@ -52,34 +47,36 @@ pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
     )
 }
 
-pub fn select_all_siblings(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+pub fn select_all_siblings(syntax: &Syntax, selection: Selection) -> Selection {
     let mut cursor = syntax.walk();
     selection.transform_iter(move |range| {
-        let (from, to) = range.into_byte_range(text);
+        let from = range.from();
+        let to = range.to();
         cursor.reset_to_byte_range(from as u32, to as u32);
 
         if !cursor.goto_parent_with(|parent| parent.child_count() > 1) {
             return vec![range].into_iter();
         }
 
-        select_children(&mut cursor, text, range).into_iter()
+        select_children(&mut cursor, range).into_iter()
     })
 }
 
-pub fn select_all_children(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+pub fn select_all_children(syntax: &Syntax, selection: Selection) -> Selection {
     let mut cursor = syntax.walk();
     selection.transform_iter(move |range| {
-        let (from, to) = range.into_byte_range(text);
+        let from = range.from();
+        let to = range.to();
         cursor.reset_to_byte_range(from as u32, to as u32);
-        select_children(&mut cursor, text, range).into_iter()
+        select_children(&mut cursor, range).into_iter()
     })
 }
 
-fn select_children(cursor: &mut TreeCursor, text: RopeSlice, range: Range) -> Vec<Range> {
+fn select_children(cursor: &mut TreeCursor, range: Range) -> Vec<Range> {
     let children = cursor
         .children()
         .filter(|child| child.is_named())
-        .map(|child| Range::from_node(child, text, range.direction()))
+        .map(|child| Range::from_node(child, range.direction()))
         .collect::<Vec<_>>();
 
     if !children.is_empty() {
@@ -89,10 +86,9 @@ fn select_children(cursor: &mut TreeCursor, text: RopeSlice, range: Range) -> Ve
     }
 }
 
-pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+pub fn select_prev_sibling(syntax: &Syntax, selection: Selection) -> Selection {
     select_node_impl(
         syntax,
-        text,
         selection,
         |cursor| {
             while !cursor.goto_previous_sibling() {
@@ -107,7 +103,6 @@ pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
 
 fn select_node_impl<F>(
     syntax: &Syntax,
-    text: RopeSlice,
     selection: Selection,
     motion: F,
     direction: Option<Direction>,
@@ -118,17 +113,12 @@ where
     let cursor = &mut syntax.walk();
 
     selection.transform(|range| {
-        let from = text.char_to_byte(range.from()) as u32;
-        let to = text.char_to_byte(range.to()) as u32;
-
-        cursor.reset_to_byte_range(from, to);
+        cursor.reset_to_byte_range(range.from() as u32, range.to() as u32);
 
         motion(cursor);
 
         let node = cursor.node();
-        let from = text.byte_to_char(node.start_byte() as usize);
-        let to = text.byte_to_char(node.end_byte() as usize);
-
-        Range::new(from, to).with_direction(direction.unwrap_or_else(|| range.direction()))
+        Range::new(node.start_byte() as usize, node.end_byte() as usize)
+            .with_direction(direction.unwrap_or_else(|| range.direction()))
     })
 }

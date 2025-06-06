@@ -325,14 +325,14 @@ impl Transform {
         let mut buf = Tendril::new();
         let it = self
             .regex
-            .captures_iter(doc.regex_input_at(range))
+            .captures_iter(doc.regex_input_at_bytes(range))
             .enumerate();
         doc = doc.slice(range);
         let mut last_match = 0;
         for (_, cap) in it {
             // unwrap on 0 is OK because captures only reports matches
             let m = cap.get_group(0).unwrap();
-            buf.extend(doc.byte_slice(last_match..m.start).chunks());
+            buf.extend(doc.slice(last_match..m.start).chunks());
             last_match = m.end;
             for fmt in &*self.replacement {
                 match *fmt {
@@ -341,12 +341,12 @@ impl Transform {
                     }
                     FormatItem::Capture(i) => {
                         if let Some(cap) = cap.get_group(i) {
-                            buf.extend(doc.byte_slice(cap.range()).chunks());
+                            buf.extend(doc.slice(cap.range()).chunks());
                         }
                     }
                     FormatItem::CaseChange(i, change) => {
                         if let Some(cap) = cap.get_group(i).filter(|i| !i.is_empty()) {
-                            let mut chars = doc.byte_slice(cap.range()).chars();
+                            let mut chars = doc.slice(cap.range()).chars();
                             match change {
                                 CaseChange::Upcase => to_upper_case_with(chars, &mut buf),
                                 CaseChange::Downcase => to_lower_case_with(chars, &mut buf),
@@ -373,7 +373,7 @@ impl Transform {
                 break;
             }
         }
-        buf.extend(doc.byte_slice(last_match..).chunks());
+        buf.extend(doc.slice(last_match..).chunks());
         buf
     }
 }

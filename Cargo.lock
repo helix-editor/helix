@@ -1417,7 +1417,7 @@ dependencies = [
  "parking_lot",
  "quickcheck",
  "regex",
- "regex-cursor 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex-cursor",
  "ropey 2.0.0-alpha.3",
  "serde",
  "serde_json",
@@ -1526,7 +1526,7 @@ dependencies = [
  "etcetera",
  "once_cell",
  "regex-automata",
- "regex-cursor 0.1.5 (git+https://github.com/cessen/regex-cursor.git?branch=ropey2)",
+ "regex-cursor",
  "ropey 2.0.0-alpha.3",
  "rustix 1.0.7",
  "tempfile",
@@ -2325,19 +2325,6 @@ dependencies = [
 [[package]]
 name = "regex-cursor"
 version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0497c781d2f982ae8284d2932aee6a877e58a4541daa5e8fadc18cc75c23a61d"
-dependencies = [
- "log",
- "memchr",
- "regex-automata",
- "regex-syntax",
- "ropey 1.6.1",
-]
-
-[[package]]
-name = "regex-cursor"
-version = "0.1.5"
 source = "git+https://github.com/cessen/regex-cursor.git?branch=ropey2#7b8facc3b184da133f86f7c46de3d18d16708bcc"
 dependencies = [
  "log",
@@ -2831,7 +2818,7 @@ dependencies = [
  "kstring",
  "once_cell",
  "regex",
- "regex-cursor 0.1.5 (git+https://github.com/cessen/regex-cursor.git?branch=ropey2)",
+ "regex-cursor",
  "ropey 2.0.0-alpha.3",
  "slab",
  "tree-house-bindings",
@@ -2844,7 +2831,7 @@ source = "git+https://github.com/helix-editor/tree-house?branch=ropey2#d24f15c08
 dependencies = [
  "cc",
  "libloading",
- "regex-cursor 0.1.5 (git+https://github.com/cessen/regex-cursor.git?branch=ropey2)",
+ "regex-cursor",
  "ropey 2.0.0-alpha.3",
  "thiserror 2.0.12",
 ]
