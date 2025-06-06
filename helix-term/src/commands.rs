@@ -488,8 +488,8 @@ impl MappableCommand {
         replace_with_yanked, "Replace with yanked text",
         replace_selections_with_clipboard, "Replace selections by clipboard content",
         replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
-        paste_after_all, "Paste all after selection",
-        paste_before_all, "Paste all before selection",
+        paste_all_selections_after, "Paste all after selection",
+        paste_all_selections_before, "Paste all before selection",
         paste_after, "Paste after selection",
         paste_before, "Paste before selection",
         paste_clipboard_after, "Paste clipboard after selections",
@@ -4870,23 +4870,25 @@ fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize, paste_ty
     paste_impl(&values, doc, view, pos, count, editor.mode, paste_type);
 }
 
-fn paste_after_all(cx: &mut Context) {
+fn paste_all_selections_after(cx: &mut Context) {
     paste(
-        cx,
+        cx.editor,
         cx.register
             .unwrap_or(cx.editor.config().default_yank_register),
         Paste::After,
+        cx.count(),
         PasteType::All,
     );
     exit_select_mode(cx);
 }
 
-fn paste_before_all(cx: &mut Context) {
+fn paste_all_selections_before(cx: &mut Context) {
     paste(
-        cx,
+        cx.editor,
         cx.register
             .unwrap_or(cx.editor.config().default_yank_register),
         Paste::Before,
+        cx.count(),
         PasteType::All,
     );
     exit_select_mode(cx);
