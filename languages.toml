@@ -457,7 +457,7 @@ language-servers = [ "mojo-lsp-server" ]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
-formatter = { command = "pixi", args = ["run", "mojo" , "format", "-q"]}
+formatter = { command = "pixi", args = ["run", "mojo" , "format", "-q", "-"]}
 
 [[grammar]]
 name = "mojo"
