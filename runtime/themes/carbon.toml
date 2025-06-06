@@ -22,6 +22,7 @@
 
 "comment" = { fg = "gray40", modifiers = ["italic"] }
 "comment.block.documentation" = { fg = "gray40", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "gray40", modifiers = ["italic"] }
 
 "variable" = "gray70"
 "variable.builtin" = { fg = "cyan30", modifiers = ["bold"] }
