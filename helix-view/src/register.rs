@@ -19,7 +19,7 @@ use crate::{
 /// * Selection indices (`#`): index number of each selection starting at 1
 /// * Selection contents (`.`)
 /// * Relative document path (`%`): filename of the current buffer, relative to Helix's current working directory
-/// * Absolute document path (`%`): absolute path of the current buffer
+/// * Absolute document path (`=`): absolute path of the current buffer
 /// * System clipboard (`*`)
 /// * Primary clipboard (`+`)
 pub struct Registers {
