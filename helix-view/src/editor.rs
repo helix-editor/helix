@@ -486,6 +486,8 @@ impl Default for LspConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SearchConfig {
+    /// Enables case-insensitive search, unless overridden by `smart_case` behavior. Defaults to false.
+    pub ignore_case_unless_smart: bool,
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
@@ -1036,6 +1038,7 @@ impl Default for SearchConfig {
         Self {
             wrap_around: true,
             smart_case: true,
+            ignore_case_unless_smart: false,
         }
     }
 }
