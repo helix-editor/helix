@@ -86,8 +86,6 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `y`         | Yank selection                                                       | `yank`                    |
 | `p`         | Paste after selection                                                | `paste_after`             |
 | `P`         | Paste before selection                                               | `paste_before`            |
-| `Alt-p`     | Paste all after selection                                            | `paste_after_all`
-| `Alt-P`     | Paste all before selection                                           | `paste_before_all`
 | `"` `<reg>` | Select a register to yank to or paste from                           | `select_register`         |
 | `>`         | Indent selection                                                     | `indent`                  |
 | `<`         | Unindent selection                                                   | `unindent`                |

@@ -152,10 +152,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "y" => yank,
         // yank_all
         "p" => paste_after,
-        // TODO: This is a terrible mapping, but "A-p" coincides with "select_prev_sibling"
-        "C-p" => paste_all_selections_after,
         "P" => paste_before,
-        "A-P" => paste_all_selections_before,
 
         "Q" => record_macro,
         "q" => replay_macro,
