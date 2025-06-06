@@ -83,6 +83,25 @@ impl Default for Container {
     }
 }
 
+// These structures are a compact representation of a tree. A representation of
+// the current tree can be obtained with the method `get_tree_info`.  They are
+// used by the editor to save splits and potentially load it later.
+#[derive(PartialEq, Debug)]
+pub struct TreeInfoNode {
+    pub layout: Layout,
+    pub children: Vec<TreeInfoTree>,
+}
+#[derive(PartialEq, Debug)]
+pub enum TreeInfoTree {
+    Leaf(ViewId),
+    Node(TreeInfoNode),
+}
+#[derive(PartialEq, Debug)]
+pub struct TreeInfo {
+    pub focus: ViewId,
+    pub tree: TreeInfoTree,
+}
+
 impl Tree {
     pub fn new(area: Rect) -> Self {
         let root = Node::container(Layout::Vertical);
@@ -669,6 +688,35 @@ impl Tree {
     pub fn area(&self) -> Rect {
         self.area
     }
+
+    fn get_tree_info_impl(&self, node: &Node) -> TreeInfoTree {
+        match &node.content {
+            Content::View(view) => TreeInfoTree::Leaf(view.id),
+            Content::Container(container) => {
+                let mut children = Vec::with_capacity(container.children.len());
+
+                for child in &container.children {
+                    let node = &self.nodes[*child];
+                    children.push(self.get_tree_info_impl(node));
+                }
+
+                TreeInfoTree::Node(TreeInfoNode {
+                    layout: container.layout,
+                    children,
+                })
+            }
+        }
+    }
+
+    pub fn get_tree_info(&self) -> TreeInfo {
+        let root = self.root;
+        let root = &self.nodes[root];
+
+        TreeInfo {
+            focus: self.focus,
+            tree: self.get_tree_info_impl(root),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -965,5 +1013,90 @@ mod test {
                 .map(|(view, _)| view.area.width)
                 .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn get_empty_tree_info() {
+        let tree_area_width = 180;
+        let tree = Tree::new(Rect {
+            x: 0,
+            y: 0,
+            width: tree_area_width,
+            height: 80,
+        });
+
+        let tree_info = tree.get_tree_info();
+
+        assert_eq!(tree_info.focus, tree.root);
+        assert_eq!(
+            tree_info.tree,
+            TreeInfoTree::Node(TreeInfoNode {
+                layout: Layout::Vertical,
+                children: vec![],
+            }),
+        )
+    }
+
+    #[test]
+    fn get_two_node_tree_info() {
+        let tree_area_width = 180;
+        let mut tree = Tree::new(Rect {
+            x: 0,
+            y: 0,
+            width: tree_area_width,
+            height: 80,
+        });
+        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view_id1 = tree.insert(view);
+
+        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view_id2 = tree.insert(view);
+
+        let tree_info = tree.get_tree_info();
+
+        assert_eq!(tree_info.focus, view_id2);
+        assert_eq!(
+            tree_info.tree,
+            TreeInfoTree::Node(TreeInfoNode {
+                layout: Layout::Vertical,
+                children: vec![TreeInfoTree::Leaf(view_id1), TreeInfoTree::Leaf(view_id2)],
+            }),
+        )
+    }
+
+    #[test]
+    fn get_two_level_tree_info() {
+        let tree_area_width = 180;
+        let mut tree = Tree::new(Rect {
+            x: 0,
+            y: 0,
+            width: tree_area_width,
+            height: 80,
+        });
+        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view_id1 = tree.insert(view);
+
+        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view_id2 = tree.insert(view);
+
+        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view_id3 = tree.split(view, Layout::Horizontal);
+
+        let tree_info = tree.get_tree_info();
+
+        assert_eq!(tree_info.focus, view_id3);
+        assert_eq!(
+            tree_info.tree,
+            TreeInfoTree::Node(TreeInfoNode {
+                layout: Layout::Vertical,
+                children: vec![
+                    TreeInfoTree::Leaf(view_id1),
+                    TreeInfoTree::Node(TreeInfoNode {
+                        layout: Layout::Horizontal,
+                        children: vec![TreeInfoTree::Leaf(view_id2), TreeInfoTree::Leaf(view_id3)],
+                    })
+                ]
+            }),
+        )
     }
 }
