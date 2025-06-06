@@ -12,7 +12,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-unicode-lines = ["ropey/unicode_lines"]
+unicode-lines = ["ropey/metric_lines_unicode"]
 integration = []
 
 [dependencies]
@@ -21,6 +21,7 @@ helix-loader = { path = "../helix-loader" }
 helix-parsec = { path = "../helix-parsec" }
 
 ropey.workspace = true
+str_indices.workspace = true
 smallvec = "1.15"
 smartstring = "1.0.1"
 unicode-segmentation.workspace = true

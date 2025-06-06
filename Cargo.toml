@@ -37,16 +37,18 @@ package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
 
 [workspace.dependencies]
-tree-house = { version = "0.2.0", default-features = false }
+tree-house = { git = "https://github.com/helix-editor/tree-house", branch = "ropey2", default-features = false }
 nucleo = "0.5.0"
 slotmap = "1.0.7"
 thiserror = "2.0"
 tempfile = "3.20.0"
 bitflags = "2.9"
 unicode-segmentation = "1.2"
-ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
+ropey = { version = "2.0.0-alpha.3", default-features = false, features = ["metric_chars", "metric_utf16", "metric_lines_lf_cr"] }
+str_indices = "0.4"
 foldhash = "0.1"
 parking_lot = "0.12"
+regex-cursor = { git = "https://github.com/cessen/regex-cursor.git", branch = "ropey2", features = ["ropey2"] }
 
 [workspace.package]
 version = "25.1.1"
