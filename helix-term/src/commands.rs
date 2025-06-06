@@ -4739,7 +4739,16 @@ fn paste_impl(
     });
 
     if mode == Mode::Normal {
-        transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+        transaction = transaction.with_selection(Selection::new(
+            ranges,
+            match paste_type {
+                PasteType::All => {
+                    // Last selection pasted for the previous primary selection
+                    (selection.primary_index() * values.len()) + (values.len() - 1)
+                }
+                PasteType::Default => selection.primary_index(),
+            },
+        ));
     }
 
     doc.apply(&transaction, view.id);
