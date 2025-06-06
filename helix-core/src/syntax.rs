@@ -7,7 +7,7 @@ use std::{
     ops::{self, RangeBounds},
     path::Path,
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result};
@@ -434,7 +434,9 @@ const PARSE_TIMEOUT: Duration = Duration::from_millis(500); // half a second is 
 
 impl Syntax {
     pub fn new(source: RopeSlice, language: Language, loader: &Loader) -> Result<Self, Error> {
+        let creation_time = Instant::now();
         let inner = tree_house::Syntax::new(source, language, PARSE_TIMEOUT, loader)?;
+        log::info!("tree-sitter initial parse took: {} us", creation_time.elapsed().as_micros());
         Ok(Self { inner })
     }
 
@@ -449,7 +451,10 @@ impl Syntax {
         if edits.is_empty() {
             Ok(())
         } else {
-            self.inner.update(source, PARSE_TIMEOUT, &edits, loader)
+            let update_time = Instant::now();
+            self.inner.update(source, PARSE_TIMEOUT, &edits, loader)?;
+            log::info!("tree-sitter update took: {} us", update_time.elapsed().as_micros());
+            Ok(())
         }
     }
 
@@ -869,6 +874,7 @@ impl TextObjectQuery {
         // back to defaults when reusing them from the cursor cache.
         cursor.set_byte_range(0..u32::MAX);
         cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
+        let query_time = Instant::now();
         let mut cursor = cursor.execute_query(&self.query, node, RopeInput::new(slice));
         let capture_node = iter::from_fn(move || {
             let (mat, _) = cursor.next_matched_node()?;
@@ -881,6 +887,7 @@ impl TextObjectQuery {
                 nodes.into_iter().map(CapturedNode::Single).next()
             }
         });
+        log::info!("tree-sitter textobject query took: {} us", query_time.elapsed().as_micros());
         Some(capture_node)
     }
 }
