@@ -1,6 +1,7 @@
 use std::{borrow::Cow, collections::HashMap, iter};
 
 use helix_stdx::rope::RopeSliceExt;
+use tree_house::TREE_SITTER_MATCH_LIMIT;
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
@@ -629,9 +630,7 @@ fn query_indents<'a>(
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
     let mut extend_captures: HashMap<usize, Vec<ExtendCapture>> = HashMap::new();
 
-    let mut cursor = InactiveQueryCursor::new();
-    cursor.set_byte_range(range);
-    let mut cursor = cursor.execute_query(
+    let mut cursor = InactiveQueryCursor::new(range, TREE_SITTER_MATCH_LIMIT).execute_query(
         &query.query,
         &syntax.tree().root_node(),
         RopeInput::new(text),
