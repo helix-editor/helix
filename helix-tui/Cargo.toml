@@ -13,6 +13,7 @@ homepage.workspace = true
 
 [features]
 default = ["crossterm"]
+steel = ["dep:steel-core", "helix-view/steel", "helix-core/steel"]
 
 [dependencies]
 helix-view = { path = "../helix-view", features = ["term"] }
@@ -25,3 +26,5 @@ crossterm = { version = "0.28", optional = true }
 termini = "1.0"
 once_cell = "1.21"
 log = "~0.4"
+
+steel-core = { workspace = true, optional = true }

@@ -4,6 +4,7 @@ use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
+use indexmap::map::MutableKeys;
 
 fn setup_logging(verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
@@ -40,7 +41,7 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let args = Args::parse_args().context("could not parse arguments")?;
+    let mut args = Args::parse_args().context("could not parse arguments")?;
 
     helix_loader::initialize_config_file(args.config_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
@@ -113,6 +114,14 @@ FLAGS:
     }
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;
+
+    // Initialize the engine before we boot up!
+    helix_term::commands::ScriptingEngine::initialize();
+
+    // Before setting the working directory, resolve all the paths in args.files
+    for (path, _) in args.files.iter_mut2() {
+        *path = helix_stdx::path::canonicalize(&*path);
+    }
 
     // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
     // Application::new() depends on this logic so it must be updated if this changes.

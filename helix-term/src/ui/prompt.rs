@@ -47,6 +47,12 @@ pub struct Prompt {
     language: Option<(&'static str, Arc<ArcSwap<syntax::Loader>>)>,
 }
 
+// TODO: For this to be sound, all of the various functions
+// have to now be marked as send + sync + 'static. Annoying,
+// and something I'll look into with steel.
+unsafe impl Send for Prompt {}
+unsafe impl Sync for Prompt {}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PromptEvent {
     /// The prompt input has been updated.
