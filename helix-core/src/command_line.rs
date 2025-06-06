@@ -357,13 +357,22 @@ pub struct Token<'a> {
     pub is_terminated: bool,
 }
 
-impl Token<'_> {
+impl<'a> Token<'a> {
     pub fn empty_at(content_start: usize) -> Self {
         Self {
             kind: TokenKind::Unquoted,
             content_start,
             content: Cow::Borrowed(""),
             is_terminated: false,
+        }
+    }
+
+    pub fn expand(content: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            kind: TokenKind::Expand,
+            content_start: 0,
+            content: content.into(),
+            is_terminated: true,
         }
     }
 }

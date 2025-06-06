@@ -37,14 +37,14 @@ package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
 
 [workspace.dependencies]
-tree-sitter = { version = "0.22" }
+tree-house = { version = "0.1.0", default-features = false }
 nucleo = "0.5.0"
 slotmap = "1.0.7"
 # If working locally, use the local path dependency
 # steel-core = { path = "/home/matt/code/scratch/steel/crates/steel-core", version = "0.6.0", features = ["anyhow", "dylibs", "sync"] }
 steel-core = { git = "https://github.com/mattwparas/steel.git", version = "0.6.0", features = ["anyhow", "dylibs", "sync"] }
 thiserror = "2.0"
-tempfile = "3.19.1"
+tempfile = "3.20.0"
 bitflags = "2.9"
 unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }

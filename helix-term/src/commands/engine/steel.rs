@@ -5,10 +5,11 @@ use helix_core::{
     diagnostic::Severity,
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     find_workspace, graphemes,
-    syntax::{
-        self, default_timeout, AutoPairConfig, IndentationConfiguration, LanguageConfiguration,
+    syntax::config::{
+        default_timeout, AutoPairConfig, IndentationConfiguration, LanguageConfiguration,
         LanguageServerConfiguration, SoftWrap,
     },
+    syntax::{self},
     text_annotations::InlineAnnotation,
     Range, Selection, Tendril,
 };
@@ -692,10 +693,10 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "get-language-config",
             HelixConfiguration::get_language_config,
         )
-        .register_fn(
-            "get-language-config-by-filename",
-            HelixConfiguration::get_individual_language_config_for_filename,
-        )
+        // .register_fn(
+        //     "get-language-config-by-filename",
+        //     HelixConfiguration::get_individual_language_config_for_filename,
+        // )
         .register_fn(
             "set-language-config!",
             HelixConfiguration::update_individual_language_config,
@@ -1373,7 +1374,7 @@ are shown, set to 5 for instant. Defaults to 250ms.
             ("inline-diagnostics-end-of-line-enable", "Inline diagnostics end of line"),
             // language configuration functions
             ("get-language-config", "Get the configuration for a specific language"),
-            ("get-language-config-by-filename", "Get the language configuration for a specific file"),
+            // ("get-language-config-by-filename", "Get the language configuration for a specific file"),
             ("set-language-config!", "Set the language configuration"),
         ];
 
@@ -2144,32 +2145,7 @@ struct IndividualLanguageConfiguration {
 // TODO: @Matt 5/19/2025 - Finish up writing these bindings.
 impl Custom for IndividualLanguageConfiguration {}
 
-impl IndividualLanguageConfiguration {
-    pub fn _set_indentation_config(&mut self, tab_width: usize, unit: String) {
-        self.config.indent = Some(IndentationConfiguration { tab_width, unit });
-    }
-
-    // Apply end of line configuration on doc open?
-    // pub fn set_end_of_line(&mut self) {
-    // self.config.end
-    // }
-}
-
 impl Custom for HelixConfiguration {}
-
-// Set the configuration for an individual file.
-fn _update_configuration_for_file(ctx: &mut Context, doc: DocumentId) {
-    if let Some(document) = ctx.editor.documents.get_mut(&doc) {
-        let path = document.path().unwrap();
-        let config_for_file = ctx
-            .editor
-            .syn_loader
-            .load()
-            .language_config_for_file_name(path);
-
-        document.language = config_for_file;
-    }
-}
 
 fn update_configuration_for_all_open_documents(ctx: &mut Context) {
     for document in ctx.editor.documents.values_mut() {
@@ -2178,7 +2154,10 @@ fn update_configuration_for_all_open_documents(ctx: &mut Context) {
                 .editor
                 .syn_loader
                 .load()
-                .language_config_for_language_id(name);
+                .language_configs()
+                .find(|x| x.language_id == name)
+                .cloned()
+                .map(Arc::new);
             document.language = config_for_file;
         }
     }
@@ -2205,7 +2184,8 @@ impl HelixConfiguration {
     ) -> Option<IndividualLanguageConfiguration> {
         self.language_configuration
             .load()
-            .language_config_for_language_id(language.as_str())
+            .language_configs()
+            .find(|x| x.language_id == language.as_str())
             .map(|config| IndividualLanguageConfiguration {
                 config: (*config).clone(),
             })
@@ -2229,12 +2209,13 @@ impl HelixConfiguration {
             toml_value.get("persistent-diagnostic-sources").is_some();
 
         // Existing language config:
-        let mut existing_config = (*self
+        let mut existing_config = self
             .language_configuration
             .load()
-            .language_config_for_language_id(language.as_str())
-            .unwrap())
-        .clone();
+            .language_configs()
+            .find(|x| x.language_id == language.as_str())
+            .unwrap()
+            .clone();
 
         if toml_value.get("scope").is_none() {
             toml_value
@@ -2347,17 +2328,17 @@ impl HelixConfiguration {
         Ok(())
     }
 
-    fn get_individual_language_config_for_filename(
-        &self,
-        file_name: SteelString,
-    ) -> Option<IndividualLanguageConfiguration> {
-        self.language_configuration
-            .load()
-            .language_config_for_file_name(std::path::Path::new(file_name.as_str()))
-            .map(|config| IndividualLanguageConfiguration {
-                config: (*config).clone(),
-            })
-    }
+    // fn get_individual_language_config_for_filename(
+    //     &self,
+    //     file_name: SteelString,
+    // ) -> Option<IndividualLanguageConfiguration> {
+    //     self.language_configuration
+    //         .load()
+    //         .language_config_for_file_name(std::path::Path::new(file_name.as_str()))
+    //         .map(|config| IndividualLanguageConfiguration {
+    //             config: (*config).clone(),
+    //         })
+    // }
 
     fn update_language_server_config(
         &mut self,

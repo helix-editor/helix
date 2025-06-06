@@ -12,7 +12,7 @@ pub mod steel_implementations {
 
     use helix_stdx::rope::RopeSliceExt;
 
-    use crate::syntax::{AutoPairConfig, SoftWrap};
+    use crate::syntax::config::{AutoPairConfig, SoftWrap};
 
     impl steel::rvals::Custom for crate::Position {}
     impl steel::rvals::Custom for crate::Selection {}
