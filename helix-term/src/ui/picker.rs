@@ -258,6 +258,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     widths: Vec<Constraint>,
 
     callback_fn: PickerCallback<T>,
+    is_history_search: bool,
 
     pub truncate_start: bool,
     /// Caches paths to documents
@@ -389,6 +390,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             file_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
+            is_history_search: false,
         }
     }
 
@@ -490,6 +492,18 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .map(|item| item.data)
     }
 
+    fn move_history(&mut self, ctx: &mut Context, direction: ui::prompt::CompletionDirection) {
+        if let Some(register) = self.prompt.history_register() {
+            self.prompt.change_history(ctx, register, direction);
+            let line = Cow::from(self.prompt.line());
+            let line = escape_query_content(line).into_owned();
+            self.prompt.set_line(line, ctx.editor);
+            self.is_history_search = true;
+            // Inserting from the history register is a paste.
+            self.handle_prompt_change(true);
+        }
+    }
+
     fn primary_query(&self) -> Arc<str> {
         self.query
             .get(&self.columns[self.primary_column].name)
@@ -514,6 +528,31 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             self.handle_prompt_change(matches!(event, Event::Paste(_)));
         }
         EventResult::Consumed(None)
+    }
+
+    fn save_search(&mut self, ctx: &mut Context) {
+        if self.is_history_search {
+            return;
+        }
+        if let Some(history_register) = self.prompt.history_register() {
+            let query = self.primary_query();
+
+            let should_push = ctx
+                .editor
+                .registers
+                .first(history_register, &ctx.editor)
+                .map_or(true, |first| *first != *query);
+
+            if should_push {
+                if let Err(err) = ctx
+                    .editor
+                    .registers
+                    .push(history_register, query.to_string())
+                {
+                    ctx.editor.set_error(err.to_string());
+                }
+            }
+        }
     }
 
     fn handle_prompt_change(&mut self, is_paste: bool) {
@@ -1069,11 +1108,18 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             key!(End) => {
                 self.to_end();
             }
+            alt!('p') => {
+                self.move_history(ctx, ui::prompt::CompletionDirection::Backward);
+            }
+            alt!('n') => {
+                self.move_history(ctx, ui::prompt::CompletionDirection::Forward);
+            }
             key!(Esc) | ctrl!('c') => return close_fn(self),
             alt!(Enter) => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::Replace);
                 }
+                self.save_search(ctx);
             }
             key!(Enter) => {
                 // If the prompt has a history completion and is empty, use enter to accept
@@ -1083,13 +1129,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     .first_history_completion(ctx.editor)
                     .filter(|_| self.prompt.line().is_empty())
                 {
-                    // The percent character is used by the query language and needs to be
-                    // escaped with a backslash.
-                    let completion = if completion.contains('%') {
-                        completion.replace('%', "\\%")
-                    } else {
-                        completion.into_owned()
-                    };
+                    let completion = escape_query_content(completion).into_owned();
                     self.prompt.set_line(completion, ctx.editor);
 
                     // Inserting from the history register is a paste.
@@ -1098,15 +1138,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     if let Some(option) = self.selection() {
                         (self.callback_fn)(ctx, option, Action::Replace);
                     }
-                    if let Some(history_register) = self.prompt.history_register() {
-                        if let Err(err) = ctx
-                            .editor
-                            .registers
-                            .push(history_register, self.primary_query().to_string())
-                        {
-                            ctx.editor.set_error(err.to_string());
-                        }
-                    }
+                    self.save_search(ctx);
                     return close_fn(self);
                 }
             }
@@ -1114,18 +1146,21 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::HorizontalSplit);
                 }
+                self.save_search(ctx);
                 return close_fn(self);
             }
             ctrl!('v') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::VerticalSplit);
                 }
+                self.save_search(ctx);
                 return close_fn(self);
             }
             ctrl!('t') => {
                 self.toggle_preview();
             }
             _ => {
+                self.is_history_search = false;
                 self.prompt_handle_event(event, ctx);
             }
         }
@@ -1165,6 +1200,16 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
     fn drop(&mut self) {
         // ensure we cancel any ongoing background threads streaming into the picker
         self.version.fetch_add(1, atomic::Ordering::Relaxed);
+    }
+}
+
+fn escape_query_content(completion: Cow<'_, str>) -> Cow<'_, str> {
+    // The percent character is used by the query language and needs to be
+    // escaped with a backslash.
+    if completion.contains('%') {
+        completion.replace('%', "\\%").into()
+    } else {
+        completion
     }
 }
 
