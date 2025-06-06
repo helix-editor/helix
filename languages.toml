@@ -4374,7 +4374,7 @@ injection-regex = "rust-format-args"
 
 [[grammar]]
 name = "rust-format-args"
-source = { git = "https://github.com/nik-rev/tree-sitter-rustfmt", rev = "2ca0bdd763d0c9dbb1d0bd14aea7544cbe81309c" }
+source = { git = "https://github.com/nik-rev/tree-sitter-rust-format-args", rev = "84ffe550e261cf5ea40a0ec31849ba2443bae99f" }
 
 [[language]]
 name = "clarity"
