@@ -2861,9 +2861,9 @@ enum YankAction {
 
 fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
     let (view, doc) = current!(cx.editor);
-    if !doc.modifiable {
+    if doc.frozen {
         cx.editor
-            .set_error("File is unmodifiable. Refusing to delete.");
+            .set_error("File cannot be modified. Refusing to delete.");
         return;
     }
     let selection = doc.selection(view.id);
@@ -2998,9 +2998,9 @@ fn ensure_selections_forward(cx: &mut Context) {
 fn enter_insert_mode(cx: &mut Context) {
     let doc = doc!(cx.editor);
 
-    if !doc.modifiable {
+    if doc.frozen {
         cx.editor
-            .set_error("File is unmodifiable. Refusing to enter Insert mode.")
+            .set_error("File cannot be modified. Refusing to enter Insert mode.")
     } else {
         cx.editor.mode = Mode::Insert;
     }
@@ -4731,9 +4731,9 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
         Mode::Normal => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
-    if !doc.modifiable {
+    if doc.frozen {
         cx.editor
-            .set_error("File is unmodifiable. Refusing to paste.");
+            .set_error("File cannot be modified. Refusing to paste.");
         return;
     }
     paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
@@ -4780,9 +4780,9 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
     };
     let scrolloff = editor.config().scrolloff;
     let (view, doc) = current_ref!(editor);
-    if !doc.modifiable {
+    if doc.frozen {
         drop(values);
-        editor.set_error("File is unmodifiable. Refusing to replace.");
+        editor.set_error("File cannot be modified. Refusing to replace.");
         return;
     }
 
@@ -4835,8 +4835,8 @@ fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
-    if !doc.modifiable {
-        editor.set_error("File is unmodifiable. Refusing to paste.");
+    if doc.frozen {
+        editor.set_error("File cannot be modified. Refusing to paste.");
         return;
     }
     paste_impl(&values, doc, view, pos, count, editor.mode);

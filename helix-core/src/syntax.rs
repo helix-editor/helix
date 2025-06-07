@@ -921,14 +921,13 @@ fn node_is_visible(node: &Node) -> bool {
     node.is_missing() || (node.is_named() && node.grammar().node_kind_is_visible(node.kind_id()))
 }
 
-// <<<<<<< HEAD
 pub fn pretty_print_tree(
     fmt: &mut String,
-    node: Node,
+    node: &Node,
     node_search: &mut Option<&mut NodeSearch>,
 ) -> Result<Option<(usize, usize, String)>, fmt::Error> {
     if node.child_count() == 0 {
-        if node_is_visible(&node) {
+        if node_is_visible(node) {
             write!(fmt, "({})", node.kind())?;
         } else {
             write!(fmt, "\"{}\"", format_anonymous_node_kind(node.kind()))?;
@@ -1162,7 +1161,7 @@ mod test {
             .unwrap();
 
         let mut output = String::new();
-        pretty_print_tree(&mut output, root, &mut None).unwrap();
+        pretty_print_tree(&mut output, &root, &mut None).unwrap();
 
         assert_eq!(expected, output);
     }

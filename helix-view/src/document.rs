@@ -205,8 +205,13 @@ pub struct Document {
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
 
+    /// The document can be modified, but not saved
     pub readonly: bool,
-    pub modifiable: bool,
+
+    /// The document cannot be modified by any means by the user
+    ///
+    /// All attempts to do so will be blocked
+    pub frozen: bool,
 
     pub is_tree_sitter_tree: bool,
 
@@ -730,7 +735,7 @@ impl Document {
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
-            modifiable: true,
+            frozen: false,
             jump_labels: HashMap::new(),
             highlights: HashMap::new(),
             is_tree_sitter_tree: false,
@@ -1386,9 +1391,9 @@ impl Document {
         transaction: &Transaction,
         view_id: ViewId,
         emit_lsp_notification: bool,
-        bypass_unmodifiable: bool,
+        bypass_frozen: bool,
     ) -> bool {
-        if !self.modifiable && !bypass_unmodifiable {
+        if self.frozen && !bypass_frozen {
             return false;
         }
 
@@ -1414,10 +1419,12 @@ impl Document {
             return true;
         }
 
-        // unmodifiable files are never modified. If we modify them,
-        // we act as if the entire buffer was replaced by a different
+        // Frozen files are never modified.
+        //
+        // If we modify them, (which we can only do internally, never
+        // by the user), we act as if the entire buffer was replaced by a different
         // one with different content.
-        if self.modifiable {
+        if !self.frozen {
             self.modified_since_accessed = true;
         }
         self.version += 1;
@@ -1562,8 +1569,9 @@ impl Document {
         true
     }
 
-    pub fn unmodifiable(&mut self) {
-        self.modifiable = false;
+    /// Disallow the document from being able to be modified
+    pub fn freeze(&mut self) {
+        self.frozen = true;
     }
 
     fn apply_inner(
@@ -1571,9 +1579,9 @@ impl Document {
         transaction: &Transaction,
         view_id: ViewId,
         emit_lsp_notification: bool,
-        bypass_unmodifiable: bool,
+        bypass_frozen: bool,
     ) -> bool {
-        if !self.modifiable && !bypass_unmodifiable {
+        if self.frozen && !bypass_frozen {
             return false;
         }
         // store the state just before any changes are made. This allows us to undo to the
@@ -1585,12 +1593,7 @@ impl Document {
             });
         }
 
-        let success = self.apply_impl(
-            transaction,
-            view_id,
-            emit_lsp_notification,
-            bypass_unmodifiable,
-        );
+        let success = self.apply_impl(transaction, view_id, emit_lsp_notification, bypass_frozen);
 
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
@@ -1773,10 +1776,10 @@ impl Document {
 
     /// If there are unsaved modifications.
     pub fn is_modified(&self) -> bool {
-        // Unmodifiable files are never modified.
+        // Frozen files are never modified.
         // We act as if they are simply replaced by
         // a different file, if we do modify them internally
-        if !self.modifiable {
+        if self.frozen {
             return false;
         }
         let history = self.history.take();

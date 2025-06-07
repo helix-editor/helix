@@ -2200,7 +2200,7 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
 /// returning the position of the first match if the cursor position is within a node's range.
 fn find_position_of_node<'tree>(
     node_kind: &str,
-    node: helix_core::tree_sitter::Node<'tree>,
+    node: &helix_core::tree_sitter::Node<'tree>,
     cursor_pos: u32,
     seen: &mut Vec<helix_core::tree_sitter::Node<'tree>>,
 ) -> Option<usize> {
@@ -2215,7 +2215,7 @@ fn find_position_of_node<'tree>(
     }
 
     for child in node.children() {
-        if let Some(result) = find_position_of_node(node_kind, child, cursor_pos, seen) {
+        if let Some(result) = find_position_of_node(node_kind, &child, cursor_pos, seen) {
             return Some(result);
         }
     }
@@ -2281,24 +2281,24 @@ fn tree_sitter_tree(
             .syntax()
             .context("No tree-sitter grammar found for this file")?;
 
-        let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..));
+        let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..)) as u32;
 
         let from = 0;
-        let to = text.len_chars();
+        let to = text.len_chars() as u32;
 
         if let (Some(full_file_node), Some(node_at_cursor)) = (
-            syntax.descendant_for_byte_range(from, to as u32),
-            syntax.descendant_for_byte_range(cursor_idx as u32, cursor_idx as u32),
+            syntax.descendant_for_byte_range(from, to),
+            syntax.descendant_for_byte_range(cursor_idx, cursor_idx),
         ) {
             let kind = node_at_cursor.kind();
             let appearance_count =
-                find_position_of_node(kind, full_file_node.clone(), cursor_idx as u32, &mut vec![]);
+                find_position_of_node(kind, &full_file_node, cursor_idx, &mut vec![]);
 
             let mut syntax_tree = String::new();
 
             let position = helix_core::syntax::pretty_print_tree(
                 &mut syntax_tree,
-                full_file_node,
+                &full_file_node,
                 &mut appearance_count
                     .map(|count| helix_core::syntax::NodeSearch::new(count, kind.to_owned()))
                     .as_mut(),
@@ -2326,7 +2326,7 @@ fn tree_sitter_tree(
                 >>::load(&editor.syn_loader.clone());
 
                 doc.set_language_by_language_id("tsq", &loader)?;
-                doc.unmodifiable();
+                doc.freeze();
                 doc.tree_sitter_tree();
 
                 editor.tree_sitter_tree = Some((tree_id, view.id));
@@ -2414,7 +2414,7 @@ fn tree_sitter_subtree(
         let to = text.char_to_byte(primary_selection.to()) as u32;
         if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
             let mut contents = String::from("```tsq\n");
-            helix_core::syntax::pretty_print_tree(&mut contents, selected_node, &mut None)?;
+            helix_core::syntax::pretty_print_tree(&mut contents, &selected_node, &mut None)?;
             contents.push_str("\n```");
 
             let callback = async move {
