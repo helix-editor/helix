@@ -11,6 +11,7 @@ use helix_view::{
     align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
     editor::{ConfigEvent, EditorEvent},
+    events::EditorConfigDidChange,
     graphics::Rect,
     theme,
     tree::Layout,
@@ -364,6 +365,10 @@ impl Application {
             // the Application can apply it.
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
+                helix_event::dispatch(EditorConfigDidChange {
+                    old_config: &app_config.editor,
+                    editor: &mut self.editor,
+                });
                 app_config.editor = *editor_config;
                 if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
                     self.editor.set_error(err.to_string());

@@ -14,6 +14,7 @@ use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
+use helix_view::handlers::BlameEvent;
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -1328,16 +1329,33 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     }
 
     let scrolloff = cx.editor.config().scrolloff;
+    let auto_fetch = cx.editor.config().inline_blame.auto_fetch;
     let (view, doc) = current!(cx.editor);
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })?;
+    let doc_id = doc.id();
     if let Some(path) = doc.path() {
         cx.editor
             .language_servers
             .file_event_handler
             .file_changed(path.clone());
     }
+
+    if doc.should_request_full_file_blame(auto_fetch) {
+        if let Some(path) = doc.path() {
+            helix_event::send_blocking(
+                &cx.editor.handlers.blame,
+                BlameEvent {
+                    path: path.to_path_buf(),
+                    doc_id,
+                    line: None,
+                },
+            );
+        }
+    }
+    doc.is_blame_potentially_out_of_date = true;
+
     Ok(())
 }
 
@@ -1363,6 +1381,8 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
             (doc.id(), view_ids)
         })
         .collect();
+
+    let blame_compute = cx.editor.config().inline_blame.auto_fetch;
 
     for (doc_id, view_ids) in docs_view_ids {
         let doc = doc_mut!(cx.editor, &doc_id);
@@ -1391,6 +1411,20 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
                 view.ensure_cursor_in_view(doc, scrolloff);
             }
         }
+
+        if doc.should_request_full_file_blame(blame_compute) {
+            if let Some(path) = doc.path() {
+                helix_event::send_blocking(
+                    &cx.editor.handlers.blame,
+                    BlameEvent {
+                        path: path.to_path_buf(),
+                        doc_id,
+                        line: None,
+                    },
+                );
+            }
+        }
+        doc.is_blame_potentially_out_of_date = true;
     }
 
     Ok(())
