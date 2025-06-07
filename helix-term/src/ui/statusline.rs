@@ -407,7 +407,7 @@ where
     let enc = context.doc.encoding();
     let config = context.editor.config();
 
-    if config.encoding_always_show || enc != encoding::UTF_8 {
+    if config.statusline.toggle_encoding || enc != encoding::UTF_8 {
         write(context, format!(" {} ", enc.name()).into());
     }
 }
