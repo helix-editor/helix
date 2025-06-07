@@ -37,6 +37,13 @@
 
 [(constructor_name) (tag)] @constructor
 
+; Variables
+;----------
+
+[(value_name) (type_variable)] @variable
+
+(value_pattern) @variable.parameter
+
 ; Functions
 ;----------
 
@@ -74,13 +81,6 @@
 
 (application_expression
   function: (value_path (value_name) @function))
-
-; Variables
-;----------
-
-[(value_name) (type_variable)] @variable
-
-(value_pattern) @variable.parameter
 
 ; Properties
 ;-----------

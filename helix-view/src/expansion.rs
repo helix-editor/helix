@@ -37,6 +37,10 @@ pub enum Variable {
     CurrentWorkingDirectory,
     /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
     WorkspaceDirectory,
+    // The name of current buffers language as set in `languages.toml`
+    Language,
+    // Primary selection
+    Selection,
 }
 
 impl Variable {
@@ -47,6 +51,8 @@ impl Variable {
         Self::LineEnding,
         Self::CurrentWorkingDirectory,
         Self::WorkspaceDirectory,
+        Self::Language,
+        Self::Selection,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -57,6 +63,8 @@ impl Variable {
             Self::LineEnding => "line_ending",
             Self::CurrentWorkingDirectory => "current_working_directory",
             Self::WorkspaceDirectory => "workspace_directory",
+            Self::Language => "language",
+            Self::Selection => "selection",
         }
     }
 
@@ -68,6 +76,8 @@ impl Variable {
             "line_ending" => Some(Self::LineEnding),
             "workspace_directory" => Some(Self::WorkspaceDirectory),
             "current_working_directory" => Some(Self::CurrentWorkingDirectory),
+            "language" => Some(Self::Language),
+            "selection" => Some(Self::Selection),
             _ => None,
         }
     }
@@ -235,6 +245,13 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
                 .0
                 .to_string_lossy()
                 .to_string(),
+        )),
+        Variable::Language => Ok(match doc.language_name() {
+            Some(lang) => Cow::Owned(lang.to_owned()),
+            None => Cow::Borrowed("text"),
+        }),
+        Variable::Selection => Ok(Cow::Owned(
+            doc.selection(view.id).primary().fragment(text).to_string(),
         )),
     }
 }

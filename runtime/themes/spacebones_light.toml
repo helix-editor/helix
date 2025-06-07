@@ -64,6 +64,7 @@
 "ui.help" = { bg = "bg1", fg = "fg1" }
 "ui.text" = { fg = "fg1" }
 "ui.text.focus" = { fg = "fg1", modifiers = ["bold"] }
+"ui.text.directory" = { fg = "theme_blue" }
 "ui.selection" = { bg = "hl2" }
 "ui.selection.primary" = { bg = "hl1" }
 "ui.cursor.primary" = { modifiers = ["reversed"] }

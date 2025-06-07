@@ -3,8 +3,7 @@ use std::cmp::min;
 use helix_core::doc_formatter::{DocumentFormatter, GraphemeSource, TextFormat};
 use helix_core::graphemes::Grapheme;
 use helix_core::str_utils::char_to_byte_idx;
-use helix_core::syntax::Highlight;
-use helix_core::syntax::HighlightEvent;
+use helix_core::syntax::{self, HighlightEvent, Highlighter, OverlayHighlights};
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{visual_offset_from_block, Position, RopeSlice};
 use helix_stdx::rope::RopeSliceExt;
@@ -16,61 +15,6 @@ use helix_view::{Document, Theme};
 use tui::buffer::Buffer as Surface;
 
 use crate::ui::text_decorations::DecorationManager;
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum StyleIterKind {
-    /// base highlights (usually emitted by TS), byte indices (potentially not codepoint aligned)
-    BaseHighlights,
-    /// overlay highlights (emitted by custom code from selections), char indices
-    Overlay,
-}
-
-/// A wrapper around a HighlightIterator
-/// that merges the layered highlights to create the final text style
-/// and yields the active text style and the char_idx where the active
-/// style will have to be recomputed.
-///
-/// TODO(ropey2): hopefully one day helix and ropey will operate entirely
-/// on byte ranges and we can remove this
-struct StyleIter<'a, H: Iterator<Item = HighlightEvent>> {
-    text_style: Style,
-    active_highlights: Vec<Highlight>,
-    highlight_iter: H,
-    kind: StyleIterKind,
-    text: RopeSlice<'a>,
-    theme: &'a Theme,
-}
-
-impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
-    type Item = (Style, usize);
-    fn next(&mut self) -> Option<(Style, usize)> {
-        while let Some(event) = self.highlight_iter.next() {
-            match event {
-                HighlightEvent::HighlightStart(highlights) => {
-                    self.active_highlights.push(highlights)
-                }
-                HighlightEvent::HighlightEnd => {
-                    self.active_highlights.pop();
-                }
-                HighlightEvent::Source { mut end, .. } => {
-                    let style = self
-                        .active_highlights
-                        .iter()
-                        .fold(self.text_style, |acc, span| {
-                            acc.patch(self.theme.highlight(span.0))
-                        });
-                    if self.kind == StyleIterKind::BaseHighlights {
-                        // Move the end byte index to the nearest character boundary (rounding up)
-                        // and convert it to a character index.
-                        end = self.text.byte_to_char(self.text.ceil_char_boundary(end));
-                    }
-                    return Some((style, end));
-                }
-            }
-        }
-        None
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct LinePos {
@@ -90,8 +34,8 @@ pub fn render_document(
     doc: &Document,
     offset: ViewPosition,
     doc_annotations: &TextAnnotations,
-    syntax_highlight_iter: impl Iterator<Item = HighlightEvent>,
-    overlay_highlight_iter: impl Iterator<Item = HighlightEvent>,
+    syntax_highlighter: Option<Highlighter<'_>>,
+    overlay_highlights: Vec<syntax::OverlayHighlights>,
     theme: &Theme,
     decorations: DecorationManager,
 ) {
@@ -108,8 +52,8 @@ pub fn render_document(
         offset.anchor,
         &doc.text_format(viewport.width, Some(theme)),
         doc_annotations,
-        syntax_highlight_iter,
-        overlay_highlight_iter,
+        syntax_highlighter,
+        overlay_highlights,
         theme,
         decorations,
     )
@@ -122,8 +66,8 @@ pub fn render_text(
     anchor: usize,
     text_fmt: &TextFormat,
     text_annotations: &TextAnnotations,
-    syntax_highlight_iter: impl Iterator<Item = HighlightEvent>,
-    overlay_highlight_iter: impl Iterator<Item = HighlightEvent>,
+    syntax_highlighter: Option<Highlighter<'_>>,
+    overlay_highlights: Vec<syntax::OverlayHighlights>,
     theme: &Theme,
     mut decorations: DecorationManager,
 ) {
@@ -133,22 +77,9 @@ pub fn render_text(
 
     let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, anchor);
-    let mut syntax_styles = StyleIter {
-        text_style: renderer.text_style,
-        active_highlights: Vec::with_capacity(64),
-        highlight_iter: syntax_highlight_iter,
-        kind: StyleIterKind::BaseHighlights,
-        theme,
-        text,
-    };
-    let mut overlay_styles = StyleIter {
-        text_style: Style::default(),
-        active_highlights: Vec::with_capacity(64),
-        highlight_iter: overlay_highlight_iter,
-        kind: StyleIterKind::Overlay,
-        theme,
-        text,
-    };
+    let mut syntax_highlighter =
+        SyntaxHighlighter::new(syntax_highlighter, text, theme, renderer.text_style);
+    let mut overlay_highlighter = OverlayHighlighter::new(overlay_highlights, theme);
 
     let mut last_line_pos = LinePos {
         first_visual_line: false,
@@ -158,12 +89,6 @@ pub fn render_text(
     let mut last_line_end = 0;
     let mut is_in_indent_area = true;
     let mut last_line_indent_level = 0;
-    let mut syntax_style_span = syntax_styles
-        .next()
-        .unwrap_or_else(|| (Style::default(), usize::MAX));
-    let mut overlay_style_span = overlay_styles
-        .next()
-        .unwrap_or_else(|| (Style::default(), usize::MAX));
     let mut reached_view_top = false;
 
     loop {
@@ -207,21 +132,17 @@ pub fn render_text(
         }
 
         // acquire the correct grapheme style
-        while grapheme.char_idx >= syntax_style_span.1 {
-            syntax_style_span = syntax_styles
-                .next()
-                .unwrap_or((Style::default(), usize::MAX));
+        while grapheme.char_idx >= syntax_highlighter.pos {
+            syntax_highlighter.advance();
         }
-        while grapheme.char_idx >= overlay_style_span.1 {
-            overlay_style_span = overlay_styles
-                .next()
-                .unwrap_or((Style::default(), usize::MAX));
+        while grapheme.char_idx >= overlay_highlighter.pos {
+            overlay_highlighter.advance();
         }
 
         let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
             let mut style = renderer.text_style;
             if let Some(highlight) = highlight {
-                style = style.patch(theme.highlight(highlight.0));
+                style = style.patch(theme.highlight(highlight));
             }
             GraphemeStyle {
                 syntax_style: style,
@@ -229,8 +150,8 @@ pub fn render_text(
             }
         } else {
             GraphemeStyle {
-                syntax_style: syntax_style_span.0,
-                overlay_style: overlay_style_span.0,
+                syntax_style: syntax_highlighter.style,
+                overlay_style: overlay_highlighter.style,
             }
         };
         decorations.decorate_grapheme(renderer, &grapheme);
@@ -547,5 +468,107 @@ impl<'a> TextRenderer<'a> {
             ellipsis,
             truncate_start,
         )
+    }
+}
+
+struct SyntaxHighlighter<'h, 'r, 't> {
+    inner: Option<Highlighter<'h>>,
+    text: RopeSlice<'r>,
+    /// The character index of the next highlight event, or `usize::MAX` if the highlighter is
+    /// finished.
+    pos: usize,
+    theme: &'t Theme,
+    text_style: Style,
+    style: Style,
+}
+
+impl<'h, 'r, 't> SyntaxHighlighter<'h, 'r, 't> {
+    fn new(
+        inner: Option<Highlighter<'h>>,
+        text: RopeSlice<'r>,
+        theme: &'t Theme,
+        text_style: Style,
+    ) -> Self {
+        let mut highlighter = Self {
+            inner,
+            text,
+            pos: 0,
+            theme,
+            style: text_style,
+            text_style,
+        };
+        highlighter.update_pos();
+        highlighter
+    }
+
+    fn update_pos(&mut self) {
+        self.pos = self
+            .inner
+            .as_ref()
+            .and_then(|highlighter| {
+                let next_byte_idx = highlighter.next_event_offset();
+                (next_byte_idx != u32::MAX).then(|| {
+                    // Move the byte index to the nearest character boundary (rounding up) and
+                    // convert it to a character index.
+                    self.text
+                        .byte_to_char(self.text.ceil_char_boundary(next_byte_idx as usize))
+                })
+            })
+            .unwrap_or(usize::MAX);
+    }
+
+    fn advance(&mut self) {
+        let Some(highlighter) = self.inner.as_mut() else {
+            return;
+        };
+
+        let (event, highlights) = highlighter.advance();
+        let base = match event {
+            HighlightEvent::Refresh => self.text_style,
+            HighlightEvent::Push => self.style,
+        };
+
+        self.style = highlights.fold(base, |acc, highlight| {
+            acc.patch(self.theme.highlight(highlight))
+        });
+        self.update_pos();
+    }
+}
+
+struct OverlayHighlighter<'t> {
+    inner: syntax::OverlayHighlighter,
+    pos: usize,
+    theme: &'t Theme,
+    style: Style,
+}
+
+impl<'t> OverlayHighlighter<'t> {
+    fn new(overlays: Vec<OverlayHighlights>, theme: &'t Theme) -> Self {
+        let inner = syntax::OverlayHighlighter::new(overlays);
+        let mut highlighter = Self {
+            inner,
+            pos: 0,
+            theme,
+            style: Style::default(),
+        };
+        highlighter.update_pos();
+        highlighter
+    }
+
+    fn update_pos(&mut self) {
+        self.pos = self.inner.next_event_offset();
+    }
+
+    fn advance(&mut self) {
+        let (event, highlights) = self.inner.advance();
+        let base = match event {
+            HighlightEvent::Refresh => Style::default(),
+            HighlightEvent::Push => self.style,
+        };
+
+        self.style = highlights.fold(base, |acc, highlight| {
+            acc.patch(self.theme.highlight(highlight))
+        });
+        self.update_pos();
     }
 }

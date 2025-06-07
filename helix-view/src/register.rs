@@ -145,7 +145,8 @@ impl Registers {
     }
 
     pub fn last<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
-        self.read(name, editor).and_then(|values| values.last())
+        self.read(name, editor)
+            .and_then(|mut values| values.next_back())
     }
 
     pub fn iter_preview(&self) -> impl Iterator<Item = (char, &str)> {
