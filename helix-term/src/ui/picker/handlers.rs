@@ -70,23 +70,21 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                 return;
             }
 
-            let Some(language_config) = doc.detect_language_config(&editor.syn_loader.load())
-            else {
+            let loader = editor.syn_loader.load();
+            let Some(language_config) = doc.detect_language_config(&loader) else {
                 return;
             };
-            doc.language = Some(language_config.clone());
+            let language = language_config.language();
+            doc.language = Some(language_config);
             let text = doc.text().clone();
-            let loader = editor.syn_loader.clone();
 
             tokio::task::spawn_blocking(move || {
-                let Some(syntax) = language_config
-                    .highlight_config(&loader.load().scopes())
-                    .and_then(|highlight_config| {
-                        helix_core::Syntax::new(text.slice(..), highlight_config, loader)
-                    })
-                else {
-                    log::info!("highlighting picker item failed");
-                    return;
+                let syntax = match helix_core::Syntax::new(text.slice(..), language, &loader) {
+                    Ok(syntax) => syntax,
+                    Err(err) => {
+                        log::info!("highlighting picker preview failed: {err}");
+                        return;
+                    }
                 };
 
                 job::dispatch_blocking(move |editor, compositor| {

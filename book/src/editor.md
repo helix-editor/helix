@@ -104,6 +104,8 @@ separator = "│"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+diagnostics = ["warning", "error"]
+workspace-diagnostics = ["warning", "error"]
 ```
 The `[editor.statusline]` key takes the following sub-keys:
 
@@ -117,6 +119,8 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
 | `merge-with-commandline` | If set, the command line and statusline will merge into a single line. Status text will replace the statusline briefly | `false` |
+| `diagnostics` | A list of severities which are displayed for the current buffer | `["warning", "error"]` |
+| `workspace-diagnostics` | A list of severities which are displayed for the workspace | `["warning", "error"]` |
 
 The following statusline elements can be configured:
 
@@ -130,12 +134,13 @@ The following statusline elements can be configured:
 | `file-modification-indicator` | The indicator to show whether the file is modified (a `[+]` appears when there are unsaved changes) |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
 | `file-line-ending` | The file line endings (CRLF or LF) |
+| `file-indent-style` | The file indentation style |
 | `read-only-indicator` | An indicator that shows `[readonly]` when a file cannot be written |
 | `total-line-numbers` | The total line numbers of the opened file |
 | `file-type` | The type of the opened file |
 | `diagnostics` | The number of warnings and/or errors |
 | `workspace-diagnostics` | The number of warnings and/or errors on workspace |
-| `selections` | The number of active selections |
+| `selections` | The primary selection index out of the number of active selections |
 | `primary-selection-length` | The number of characters currently in primary selection |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |

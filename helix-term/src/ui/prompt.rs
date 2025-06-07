@@ -533,7 +533,7 @@ impl Prompt {
                 &self.line,
                 language,
                 Some(&cx.editor.theme),
-                loader.clone(),
+                &loader.load(),
                 None,
             )
             .into();
