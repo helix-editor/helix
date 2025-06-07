@@ -335,17 +335,22 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
 /// handle cases where open and close is the same, or in triples ("""docstring""")
 fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
-
     let mut offs = 0;
 
     let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
         let cursor = start_range.cursor(doc.slice(..));
         let mut len_inserted = 0;
+        let is_triple = cursor >= 2
+            && doc.get_char(cursor - 1) == Some(pair.open)
+            && doc.get_char(cursor - 2) == Some(pair.open);
         let next_char = doc.get_char(cursor);
 
         let change = if next_char == Some(pair.open) {
             //  return transaction that moves past close
-            (cursor, cursor, None) // no-op
+            (cursor, cursor, None) // no-op - don't insert char
+        } else if is_triple {
+            //  ignore triple-quotes
+            (cursor, cursor, Some(Tendril::from_iter([pair.open]))) // only insert one char (normal operation)
         } else {
             let mut pair_str = Tendril::new();
             pair_str.push(pair.open);
