@@ -684,6 +684,9 @@ impl Client {
                     ]),
                     ..Default::default()
                 }),
+                /*experimental: Some(
+                    serde_json::from_str("{\"colorDiagnosticOutput\": true}").unwrap(),
+                ),*/
                 ..Default::default()
             },
             trace: None,
