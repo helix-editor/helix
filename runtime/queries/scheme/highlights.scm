@@ -46,7 +46,7 @@
  .
  (list
    (symbol) @variable)
- (#eq? @_f "lambda"))
+ (#any-of? @_f "lambda" "λ"))
 
 (list
  .

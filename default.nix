@@ -6,7 +6,8 @@
   installShellFiles,
   git,
   gitRev ? null,
-  ...
+  grammarOverlays ? [],
+  includeGrammarIf ? _: true,
 }: let
   fs = lib.fileset;
 
@@ -16,6 +17,7 @@
     ./screenshot.png
     ./book
     ./docs
+    ./runtime
     ./flake.lock
     (fs.fileFilter (file: lib.strings.hasInfix ".git" file.name) ./.)
     (fs.fileFilter (file: file.hasExt "svg") ./.)
@@ -27,7 +29,7 @@
   # that they reside in. It is built by calling the derivation in the
   # grammars.nix file, then taking the runtime directory in the git repo
   # and hooking symlinks up to it.
-  grammars = callPackage ./grammars.nix {};
+  grammars = callPackage ./grammars.nix {inherit grammarOverlays includeGrammarIf;};
   runtimeDir = runCommand "helix-runtime" {} ''
     mkdir -p $out
     ln -s ${./runtime}/* $out
@@ -66,7 +68,7 @@ in
     doCheck = false;
     strictDeps = true;
 
-    # Sets the Helix runtimedir to the grammars
+    # Sets the Helix runtime dir to the grammars
     env.HELIX_DEFAULT_RUNTIME = "${runtimeDir}";
 
     # Get all the application stuff in the output directory.
@@ -74,9 +76,9 @@ in
       mkdir -p $out/lib
       installShellCompletion ${./contrib/completion}/hx.{bash,fish,zsh}
       mkdir -p $out/share/{applications,icons/hicolor/{256x256,scalable}/apps}
-      cp ${./contrib/Helix.desktop} $out/share/applications
+      cp ${./contrib/Helix.desktop} $out/share/applications/Helix.desktop
       cp ${./logo.svg} $out/share/icons/hicolor/scalable/apps/helix.svg
-      cp ${./contrib/helix.png} $out/share/icons/hicolor/256x256/apps
+      cp ${./contrib/helix.png} $out/share/icons/hicolor/256x256/apps/helix.png
     '';
 
     meta.mainProgram = "hx";
