@@ -100,7 +100,8 @@ impl FileBlame {
             head,
             None,
             &mut resource_cache,
-            // bstr always uses unix separators
+            // NOTE: bstr always uses unix separators `/`, even on
+            // Windows which uses the `\` separator
             &gix::path::to_unix_separators_on_windows(gix::path::try_into_bstr(
                 file.strip_prefix(
                     repo.path()
