@@ -648,7 +648,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             if content_type.is_binary() {
                                 return Ok(CachedPreview::Binary);
                             }
-                            Document::open(&path, None, None, editor.config.clone()).map_or(
+                            Document::open(
+                                &path,
+                                None,
+                                false,
+                                editor.config.clone(),
+                                editor.syn_loader.clone(),
+                            )
+                            .map_or(
                                 Err(std::io::Error::new(
                                     std::io::ErrorKind::NotFound,
                                     "Cannot open document",
@@ -957,21 +964,18 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
             }
 
-            let syntax_highlights = EditorView::doc_syntax_highlights(
+            let loader = cx.editor.syn_loader.load();
+
+            let syntax_highlighter =
+                EditorView::doc_syntax_highlighter(doc, offset.anchor, area.height, &loader);
+            let mut overlay_highlights = Vec::new();
+
+            EditorView::doc_diagnostics_highlights_into(
                 doc,
-                offset.anchor,
-                area.height,
                 &cx.editor.theme,
+                &mut overlay_highlights,
             );
 
-            let mut overlay_highlights =
-                EditorView::empty_highlight_iter(doc, offset.anchor, area.height);
-            for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
-                if spans.is_empty() {
-                    continue;
-                }
-                overlay_highlights = Box::new(helix_core::syntax::merge(overlay_highlights, spans));
-            }
             let mut decorations = DecorationManager::default();
 
             if let Some((start, end)) = range {
@@ -1001,7 +1005,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 offset,
                 // TODO: compute text annotations asynchronously here (like inlay hints)
                 &TextAnnotations::default(),
-                syntax_highlights,
+                syntax_highlighter,
                 overlay_highlights,
                 &cx.editor.theme,
                 decorations,
@@ -1108,7 +1112,15 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     .first_history_completion(ctx.editor)
                     .filter(|_| self.prompt.line().is_empty())
                 {
-                    self.prompt.set_line(completion.to_string(), ctx.editor);
+                    // The percent character is used by the query language and needs to be
+                    // escaped with a backslash.
+                    let completion = if completion.contains('%') {
+                        completion.replace('%', "\\%")
+                    } else {
+                        completion.into_owned()
+                    };
+                    self.prompt.set_line(completion, ctx.editor);
+
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 } else {

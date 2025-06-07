@@ -51,7 +51,7 @@ helix-vcs = { path = "../helix-vcs" }
 helix-loader = { path = "../helix-loader" }
 
 anyhow = "1"
-once_cell = "1.20"
+once_cell = "1.21"
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
@@ -61,7 +61,7 @@ tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 arc-swap = { version = "1.7.1" }
 termini = "1"
-indexmap = "2.7"
+indexmap = "2.9"
 
 # Logging
 fern = "0.7"
@@ -72,7 +72,7 @@ log = "0.4"
 nucleo.workspace = true
 ignore = "0.4"
 # markdown doc rendering
-pulldown-cmark = { version = "0.12", default-features = false }
+pulldown-cmark = { version = "0.13", default-features = false }
 # file type detection
 content_inspector = "0.2.4"
 thiserror.workspace = true
@@ -93,7 +93,7 @@ grep-searcher = "0.1.14"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.169"
+libc = "0.2.172"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc"] }
@@ -102,7 +102,7 @@ crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc
 helix-loader = { path = "../helix-loader" }
 
 [dev-dependencies]
-smallvec = "1.13"
-indoc = "2.0.5"
+smallvec = "1.15"
+indoc = "2.0.6"
 tempfile.workspace = true
 same-file = "1.0.1"

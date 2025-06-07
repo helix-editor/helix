@@ -65,11 +65,6 @@ pub struct Application {
 
     config: Arc<ArcSwap<Config>>,
 
-    #[allow(dead_code)]
-    theme_loader: Arc<theme::Loader>,
-    #[allow(dead_code)]
-    syn_loader: Arc<ArcSwap<syntax::Loader>>,
-
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
@@ -106,25 +101,7 @@ impl Application {
 
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
-
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| theme_loader.default_theme(true_color));
-
-        let syn_loader = Arc::new(ArcSwap::from_pointee(lang_loader));
+        let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
@@ -139,13 +116,14 @@ impl Application {
         let handlers = handlers::setup(config.clone());
         let mut editor = Editor::new(
             area,
-            theme_loader.clone(),
-            syn_loader.clone(),
+            Arc::new(theme_loader),
+            Arc::new(ArcSwap::from_pointee(lang_loader)),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
             handlers,
         );
+        Self::load_configured_theme(&mut editor, &config.load());
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -163,7 +141,7 @@ impl Application {
 
             // If the first file is a directory, skip it and open a picker
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                let picker = ui::file_picker(first, &config.load().editor);
+                let picker = ui::file_picker(&editor, first);
                 compositor.push(Box::new(overlaid(picker)));
             }
 
@@ -244,8 +222,6 @@ impl Application {
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
-        editor.set_theme(theme);
-
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
@@ -262,12 +238,7 @@ impl Application {
             compositor,
             terminal,
             editor,
-
             config,
-
-            theme_loader,
-            syn_loader,
-
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
@@ -417,10 +388,10 @@ impl Application {
     fn refresh_language_config(&mut self) -> Result<(), Error> {
         let lang_loader = helix_core::config::user_lang_loader()?;
 
-        self.syn_loader.store(Arc::new(lang_loader));
-        self.editor.syn_loader = self.syn_loader.clone();
+        self.editor.syn_loader.store(Arc::new(lang_loader));
+        let loader = self.editor.syn_loader.load();
         for document in self.editor.documents.values_mut() {
-            document.detect_language(self.syn_loader.clone());
+            document.detect_language(&loader);
             let diagnostics = Editor::doc_diagnostics(
                 &self.editor.language_servers,
                 &self.editor.diagnostics,
@@ -432,34 +403,13 @@ impl Application {
         Ok(())
     }
 
-    /// Refresh theme after config change
-    fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                self.theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
-
-        self.editor.set_theme(theme);
-        Ok(())
-    }
-
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
-            self.refresh_theme(&default_config)?;
+            // Refresh theme after config change
+            Self::load_configured_theme(&mut self.editor, &default_config);
             self.terminal
                 .reconfigure(default_config.editor.clone().into())?;
             // Store new config
@@ -475,6 +425,37 @@ impl Application {
                 self.editor.set_error(err.to_string());
             }
         }
+    }
+
+    /// Load the theme set in configuration
+    fn load_configured_theme(editor: &mut Editor, config: &Config) {
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                editor
+                    .theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| {
+                        let colors_ok = true_color || theme.is_16_color();
+                        if !colors_ok {
+                            log::warn!(
+                                "loaded theme `{}` but cannot use it because true color \
+                                support is not enabled",
+                                theme.name()
+                            );
+                        }
+                        colors_ok
+                    })
+            })
+            .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
+        editor.set_theme(theme);
     }
 
     #[cfg(windows)]
@@ -724,28 +705,10 @@ impl Application {
                             language_server.did_change_configuration(config.clone());
                         }
 
-                        let docs = self
-                            .editor
-                            .documents()
-                            .filter(|doc| doc.supports_language_server(server_id));
-
-                        // trigger textDocument/didOpen for docs that are already open
-                        for doc in docs {
-                            let url = match doc.url() {
-                                Some(url) => url,
-                                None => continue, // skip documents with no path
-                            };
-
-                            let language_id =
-                                doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
-
-                            language_server.text_document_did_open(
-                                url,
-                                doc.version(),
-                                doc.text(),
-                                language_id,
-                            );
-                        }
+                        helix_event::dispatch(helix_view::events::LanguageServerInitialized {
+                            editor: &mut self.editor,
+                            server_id,
+                        });
                     }
                     Notification::PublishDiagnostics(params) => {
                         let uri = match helix_core::Uri::try_from(params.uri) {
@@ -760,8 +723,12 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
+                        let provider = helix_core::diagnostic::DiagnosticProvider::Lsp {
+                            server_id,
+                            identifier: None,
+                        };
                         self.editor.handle_lsp_diagnostics(
-                            language_server.id(),
+                            &provider,
                             uri,
                             params.version,
                             params.diagnostics,
@@ -790,10 +757,11 @@ impl Application {
                             .compositor
                             .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let lsp::ProgressParams { token, value } = params;
-
-                        let lsp::ProgressParamsValue::WorkDone(work) = value;
-                        let parts = match &work {
+                        let lsp::ProgressParams {
+                            token,
+                            value: lsp::ProgressParamsValue::WorkDone(work),
+                        } = params;
+                        let (title, message, percentage) = match &work {
                             lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
                                 title,
                                 message,
@@ -821,47 +789,43 @@ impl Application {
                             }
                         };
 
-                        let token_d: &dyn std::fmt::Display = match &token {
-                            lsp::NumberOrString::Number(n) => n,
-                            lsp::NumberOrString::String(s) => s,
-                        };
-
-                        let status = match parts {
-                            (Some(title), Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
+                        if self.editor.config().lsp.display_progress_messages {
+                            let title =
+                                title.or_else(|| self.lsp_progress.title(server_id, &token));
+                            if title.is_some() || percentage.is_some() || message.is_some() {
+                                use std::fmt::Write as _;
+                                let mut status = format!("{}: ", language_server!().name());
+                                if let Some(percentage) = percentage {
+                                    write!(status, "{percentage:>2}% ").unwrap();
+                                }
+                                if let Some(title) = title {
+                                    status.push_str(title);
+                                }
+                                if title.is_some() && message.is_some() {
+                                    status.push_str(" ⋅ ");
+                                }
+                                if let Some(message) = message {
+                                    status.push_str(message);
+                                }
+                                self.editor.set_status(status);
                             }
-                            (Some(title), None, Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, title)
-                            }
-                            (Some(title), Some(message), None) => {
-                                format!("[{}] {} - {}", token_d, title, message)
-                            }
-                            (None, Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, message)
-                            }
-                            (Some(title), None, None) => {
-                                format!("[{}] {}", token_d, title)
-                            }
-                            (None, Some(message), None) => {
-                                format!("[{}] {}", token_d, message)
-                            }
-                            (None, None, Some(percentage)) => {
-                                format!("[{}] {}%", token_d, percentage)
-                            }
-                            (None, None, None) => format!("[{}]", token_d),
-                        };
-
-                        if let lsp::WorkDoneProgress::End(_) = work {
-                            self.lsp_progress.end_progress(server_id, &token);
-                            if !self.lsp_progress.is_progressing(server_id) {
-                                editor_view.spinners_mut().get_or_create(server_id).stop();
-                            }
-                        } else {
-                            self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.load().editor.lsp.display_progress_messages {
-                            self.editor.set_status(status);
+                        match work {
+                            lsp::WorkDoneProgress::Begin(begin_status) => {
+                                self.lsp_progress
+                                    .begin(server_id, token.clone(), begin_status);
+                            }
+                            lsp::WorkDoneProgress::Report(report_status) => {
+                                self.lsp_progress
+                                    .update(server_id, token.clone(), report_status);
+                            }
+                            lsp::WorkDoneProgress::End(_) => {
+                                self.lsp_progress.end_progress(server_id, &token);
+                                if !self.lsp_progress.is_progressing(server_id) {
+                                    editor_view.spinners_mut().get_or_create(server_id).stop();
+                                };
+                            }
                         }
                     }
                     Notification::ProgressMessage(_params) => {
@@ -874,15 +838,22 @@ impl Application {
                         // we need to clear those and remove the entries from the list if this leads to
                         // an empty diagnostic list for said files
                         for diags in self.editor.diagnostics.values_mut() {
-                            diags.retain(|(_, lsp_id)| *lsp_id != server_id);
+                            diags.retain(|(_, provider)| {
+                                provider.language_server_id() != Some(server_id)
+                            });
                         }
 
                         self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
 
                         // Clear any diagnostics for documents with this server open.
                         for doc in self.editor.documents_mut() {
-                            doc.clear_diagnostics(Some(server_id));
+                            doc.clear_diagnostics_for_language_server(server_id);
                         }
+
+                        helix_event::dispatch(helix_view::events::LanguageServerExited {
+                            editor: &mut self.editor,
+                            server_id,
+                        });
 
                         // Remove the language server from the registry.
                         self.editor.language_servers.remove_by_id(server_id);

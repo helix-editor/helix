@@ -1,12 +1,12 @@
 use crate::register::Registers;
 use helix_core::unicode::width::UnicodeWidthStr;
-use std::fmt::Write;
+use std::{borrow::Cow, fmt::Write};
 
 #[derive(Debug)]
 /// Info box used in editor. Rendering logic will be in other crate.
 pub struct Info {
     /// Title shown at top.
-    pub title: String,
+    pub title: Cow<'static, str>,
     /// Text body, should contain newlines.
     pub text: String,
     /// Body width.
@@ -16,17 +16,19 @@ pub struct Info {
 }
 
 impl Info {
-    pub fn new<T, U>(title: &str, body: &[(T, U)]) -> Self
+    pub fn new<T, K, V>(title: T, body: &[(K, V)]) -> Self
     where
-        T: AsRef<str>,
-        U: AsRef<str>,
+        T: Into<Cow<'static, str>>,
+        K: AsRef<str>,
+        V: AsRef<str>,
     {
+        let title = title.into();
         if body.is_empty() {
             return Self {
-                title: title.to_string(),
                 height: 1,
                 width: title.len() as u16,
                 text: "".to_string(),
+                title,
             };
         }
 
@@ -48,20 +50,20 @@ impl Info {
         }
 
         Self {
-            title: title.to_string(),
+            title,
             width: text.lines().map(|l| l.width()).max().unwrap() as u16,
             height: body.len() as u16,
             text,
         }
     }
 
-    pub fn from_registers(registers: &Registers) -> Self {
+    pub fn from_registers(title: impl Into<Cow<'static, str>>, registers: &Registers) -> Self {
         let body: Vec<_> = registers
             .iter_preview()
             .map(|(ch, preview)| (ch.to_string(), preview))
             .collect();
 
-        let mut infobox = Self::new("Registers", &body);
+        let mut infobox = Self::new(title, &body);
         infobox.width = 30; // copied content could be very long
         infobox
     }

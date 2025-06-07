@@ -2,7 +2,7 @@
 mod test {
     mod helpers;
 
-    use helix_core::{syntax::AutoPairConfig, Selection};
+    use helix_core::{syntax::config::AutoPairConfig, Selection};
     use helix_term::config::Config;
 
     use indoc::indoc;
@@ -17,9 +17,9 @@ mod test {
 
     mod auto_indent;
     mod auto_pairs;
+    mod command_line;
     mod commands;
     mod languages;
     mod movement;
-    mod prompt;
     mod splits;
 }

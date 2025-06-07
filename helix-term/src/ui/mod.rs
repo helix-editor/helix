@@ -31,6 +31,7 @@ pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_view::Editor;
+use tui::text::{Span, Spans};
 
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
@@ -185,11 +186,22 @@ pub fn raw_regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-type FilePicker = Picker<PathBuf, PathBuf>;
+#[derive(Debug)]
+pub struct FilePickerData {
+    root: PathBuf,
+    directory_style: Style,
+}
+type FilePicker = Picker<PathBuf, FilePickerData>;
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker {
+pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
+
+    let config = editor.config();
+    let data = FilePickerData {
+        root: root.clone(),
+        directory_style: editor.theme.get("ui.text.directory"),
+    };
 
     let now = Instant::now();
 
@@ -236,14 +248,24 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     let columns = [PickerColumn::new(
         "path",
-        |item: &PathBuf, root: &PathBuf| {
-            item.strip_prefix(root)
-                .unwrap_or(item)
-                .to_string_lossy()
-                .into()
+        |item: &PathBuf, data: &FilePickerData| {
+            let path = item.strip_prefix(&data.root).unwrap_or(item);
+            let mut spans = Vec::with_capacity(3);
+            if let Some(dirs) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+                spans.extend([
+                    Span::styled(dirs.to_string_lossy(), data.directory_style),
+                    Span::styled(std::path::MAIN_SEPARATOR_STR, data.directory_style),
+                ]);
+            }
+            let filename = path
+                .file_name()
+                .expect("normalized paths can't end in `..`")
+                .to_string_lossy();
+            spans.push(Span::raw(filename));
+            Spans::from(spans).into()
         },
     )];
-    let picker = Picker::new(columns, 0, [], root, move |cx, path: &PathBuf, action| {
+    let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
         if let Err(e) = cx.editor.open(path, action) {
             let err = if let Some(err) = e.source() {
                 format!("{}", err)
@@ -300,13 +322,15 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
 pub mod completers {
     use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
+    use helix_core::command_line::{self, Tokenizer};
     use helix_core::fuzzy::fuzzy_match;
-    use helix_core::syntax::LanguageServerFeature;
+    use helix_core::syntax::config::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
+    use std::collections::BTreeSet;
     use tui::text::Span;
 
     pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
@@ -360,8 +384,24 @@ pub mod completers {
         }
     }
 
-    pub fn language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+    /// Completes names of language servers which are running for the current document.
+    pub fn active_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
         let language_servers = doc!(editor).language_servers().map(|ls| ls.name());
+
+        fuzzy_match(input, language_servers, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), Span::raw(name.to_string())))
+            .collect()
+    }
+
+    /// Completes names of language servers which are configured for the language of the current
+    /// document.
+    pub fn configured_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+        let language_servers = doc!(editor)
+            .language_config()
+            .into_iter()
+            .flat_map(|config| &config.language_servers)
+            .map(|ls| ls.name.as_str());
 
         fuzzy_match(input, language_servers, false)
             .into_iter()
@@ -589,5 +629,64 @@ pub mod completers {
             .into_iter()
             .map(|(name, _)| ((0..), name.into()))
             .collect()
+    }
+
+    pub fn program(_editor: &Editor, input: &str) -> Vec<Completion> {
+        static PROGRAMS_IN_PATH: Lazy<BTreeSet<String>> = Lazy::new(|| {
+            // Go through the entire PATH and read all files into a set.
+            let Some(path) = std::env::var_os("PATH") else {
+                return Default::default();
+            };
+
+            std::env::split_paths(&path)
+                .filter_map(|path| std::fs::read_dir(path).ok())
+                .flatten()
+                .filter_map(|res| {
+                    let entry = res.ok()?;
+                    if entry.metadata().ok()?.is_file() {
+                        entry.file_name().into_string().ok()
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        });
+
+        fuzzy_match(input, PROGRAMS_IN_PATH.iter(), false)
+            .into_iter()
+            .map(|(name, _)| ((0..), name.clone().into()))
+            .collect()
+    }
+
+    /// This expects input to be a raw string of arguments, because this is what Signature's raw_after does.
+    pub fn repeating_filenames(editor: &Editor, input: &str) -> Vec<Completion> {
+        let token = match Tokenizer::new(input, false).last() {
+            Some(token) => token.unwrap(),
+            None => return filename(editor, input),
+        };
+
+        let offset = token.content_start;
+
+        let mut completions = filename(editor, &input[offset..]);
+        for completion in completions.iter_mut() {
+            completion.0.start += offset;
+        }
+        completions
+    }
+
+    pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
+        let (command, args, complete_command) = command_line::split(input);
+
+        if complete_command {
+            return program(editor, command);
+        }
+
+        let mut completions = repeating_filenames(editor, args);
+        for completion in completions.iter_mut() {
+            // + 1 for separator between `command` and `args`
+            completion.0.start += command.len() + 1;
+        }
+
+        completions
     }
 }
