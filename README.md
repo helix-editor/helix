@@ -15,6 +15,7 @@ This fork of Helix implements the following pull requests. Future pull requests 
 11. https://github.com/helix-editor/helix/pull/8546 (flex resize, focus mode) - updated with some of my code.
 12. https://github.com/helix-editor/helix/pull/12208 (goto hover command)
 13. https://github.com/helix-editor/helix/pull/13113 (add file path to the file names for similar file names)
+17. https://github.com/helix-editor/helix/pull/12574 (remove code column from diagnotics buffer)
 
 ## Window Resizing and Focus Mode Commands
 
