@@ -306,7 +306,7 @@ impl Theme {
     }
 
     /// Create a Highlight that represents an RGB color
-    pub const fn rgb_highlight(r: u8, g: u8, b: u8) -> Highlight {
+    pub fn rgb_highlight(r: u8, g: u8, b: u8) -> Highlight {
         // -1 because highlight is "non-max": u32::MAX is reserved for the null pointer
         // optimization.
         Highlight::new(u32::from_be_bytes([u8::MAX, r, g, b]) - 1)
