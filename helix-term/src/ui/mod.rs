@@ -22,6 +22,7 @@ pub use completion::Completion;
 pub use editor::EditorView;
 pub use file_explorer::file_explorer;
 use helix_stdx::rope;
+use helix_view::theme::Style;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{Column as PickerColumn, FileLocation, Picker};
