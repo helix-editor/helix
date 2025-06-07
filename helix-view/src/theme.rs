@@ -298,19 +298,18 @@ impl Theme {
     const RGB_START: u32 = (u32::MAX << (8 + 8 + 8)) - 1 - (u32::MAX - Highlight::MAX);
 
     /// Interpret a Highlight with the RGB foreground
-    const fn decode_rgb_highlight(rgb: Highlight) -> Option<(u8, u8, u8)> {
-        let rgb = rgb.get();
-        if rgb > Self::RGB_START {
-            let [.., r, g, b] = rgb.to_be_bytes();
-            Some((r, g, b))
-        } else {
-            None
-        }
+    fn decode_rgb_highlight(highlight: Highlight) -> Option<(u8, u8, u8)> {
+        (highlight.get() > Self::RGB_START).then(|| {
+            let [r, g, b, ..] = (highlight.get() + 1).to_be_bytes();
+            (r, g, b)
+        })
     }
 
     /// Create a Highlight that represents an RGB color
     pub const fn rgb_highlight(r: u8, g: u8, b: u8) -> Highlight {
-        Highlight::new(Self::RGB_START + 1 + ((r as u32) << 16) + ((g as u32) << 8) + b as u32)
+        // -1 because highlight is "non-max": u32::MAX is reserved for the null pointer
+        // optimization.
+        Highlight::new(u32::from_be_bytes([r, g, b, u8::MAX]) - 1)
     }
 
     #[inline]
