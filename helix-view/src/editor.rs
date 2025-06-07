@@ -318,6 +318,8 @@ pub struct Config {
     pub file_picker: FilePickerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
+    /// Toggle encoding to always show
+    pub encoding_always_show: bool,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
@@ -996,6 +998,7 @@ impl Default for Config {
             auto_info: true,
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),
+            encoding_always_show: false,
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             undercurl: false,
