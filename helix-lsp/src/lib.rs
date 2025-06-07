@@ -12,7 +12,7 @@ pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::{
+use helix_core::syntax::config::{
     LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
 };
 use helix_stdx::path;
@@ -733,14 +733,17 @@ impl Registry {
 #[derive(Debug)]
 pub enum ProgressStatus {
     Created,
-    Started(lsp::WorkDoneProgress),
+    Started {
+        title: String,
+        progress: lsp::WorkDoneProgress,
+    },
 }
 
 impl ProgressStatus {
     pub fn progress(&self) -> Option<&lsp::WorkDoneProgress> {
         match &self {
             ProgressStatus::Created => None,
-            ProgressStatus::Started(progress) => Some(progress),
+            ProgressStatus::Started { title: _, progress } => Some(progress),
         }
     }
 }
@@ -777,6 +780,13 @@ impl LspProgressMap {
         self.0.get(&id).and_then(|values| values.get(token))
     }
 
+    pub fn title(&self, id: LanguageServerId, token: &lsp::ProgressToken) -> Option<&String> {
+        self.progress(id, token).and_then(|p| match p {
+            ProgressStatus::Created => None,
+            ProgressStatus::Started { title, .. } => Some(title),
+        })
+    }
+
     /// Checks if progress `token` for server with `id` is created.
     pub fn is_created(&mut self, id: LanguageServerId, token: &lsp::ProgressToken) -> bool {
         self.0
@@ -801,17 +811,39 @@ impl LspProgressMap {
         self.0.get_mut(&id).and_then(|vals| vals.remove(token))
     }
 
-    /// Updates the progress of `token` for server with `id` to `status`, returns the value replaced or `None`.
+    /// Updates the progress of `token` for server with `id` to begin state `status`
+    pub fn begin(
+        &mut self,
+        id: LanguageServerId,
+        token: lsp::ProgressToken,
+        status: lsp::WorkDoneProgressBegin,
+    ) {
+        self.0.entry(id).or_default().insert(
+            token,
+            ProgressStatus::Started {
+                title: status.title.clone(),
+                progress: lsp::WorkDoneProgress::Begin(status),
+            },
+        );
+    }
+
+    /// Updates the progress of `token` for server with `id` to report state `status`.
     pub fn update(
         &mut self,
         id: LanguageServerId,
         token: lsp::ProgressToken,
-        status: lsp::WorkDoneProgress,
-    ) -> Option<ProgressStatus> {
+        status: lsp::WorkDoneProgressReport,
+    ) {
         self.0
             .entry(id)
             .or_default()
-            .insert(token, ProgressStatus::Started(status))
+            .entry(token)
+            .and_modify(|e| match e {
+                ProgressStatus::Created => (),
+                ProgressStatus::Started { progress, .. } => {
+                    *progress = lsp::WorkDoneProgress::Report(status)
+                }
+            });
     }
 }
 

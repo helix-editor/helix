@@ -45,7 +45,7 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     let data = file_object.detach().data;
     // Get the actual data that git would make out of the git object.
     // This will apply the user's git config or attributes like crlf conversions.
-    if let Some(work_dir) = repo.work_dir() {
+    if let Some(work_dir) = repo.workdir() {
         let rela_path = file.strip_prefix(work_dir)?;
         let rela_path = gix::path::try_into_bstr(rela_path)?;
         let (mut pipeline, _) = repo.filter_pipeline(None)?;
@@ -128,7 +128,7 @@ fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
 /// Emulates the result of running `git status` from the command line.
 fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
     let work_dir = repo
-        .work_dir()
+        .workdir()
         .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
         .to_path_buf();
 
@@ -195,7 +195,7 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
 
 /// Finds the object that contains the contents of a file at a specific commit.
 fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Result<ObjectId> {
-    let repo_dir = repo.work_dir().context("repo has no worktree")?;
+    let repo_dir = repo.workdir().context("repo has no worktree")?;
     let rel_path = file.strip_prefix(repo_dir)?;
     let tree = commit.tree()?;
     let tree_entry = tree

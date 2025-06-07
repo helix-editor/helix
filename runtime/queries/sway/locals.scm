@@ -9,9 +9,9 @@
 ; Definitions
 
 (parameter
-  (identifier) @local.definition)
+  (identifier) @local.definition.variable.parameter)
 
-(closure_parameters (identifier) @local.definition)
+(closure_parameters (identifier) @local.definition.variable.parameter)
 
 ; References
 (identifier) @local.reference

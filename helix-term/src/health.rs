@@ -185,13 +185,15 @@ pub fn languages_all() -> std::io::Result<()> {
         .language
         .sort_unstable_by_key(|l| l.language_id.clone());
 
-    let check_binary = |cmd: Option<&str>| match cmd {
-        Some(cmd) => match helix_stdx::env::which(cmd) {
-            Ok(_) => color(fit(&format!("✓ {}", cmd)), Color::Green),
-            Err(_) => color(fit(&format!("✘ {}", cmd)), Color::Red),
+    let check_binary_with_name = |cmd: Option<(&str, &str)>| match cmd {
+        Some((name, cmd)) => match helix_stdx::env::which(cmd) {
+            Ok(_) => color(fit(&format!("✓ {}", name)), Color::Green),
+            Err(_) => color(fit(&format!("✘ {}", name)), Color::Red),
         },
         None => color(fit("None"), Color::Yellow),
     };
+
+    let check_binary = |cmd: Option<&str>| check_binary_with_name(cmd.map(|cmd| (cmd, cmd)));
 
     for lang in &syn_loader_conf.language {
         write!(stdout, "{}", fit(&lang.language_id))?;
@@ -200,9 +202,9 @@ pub fn languages_all() -> std::io::Result<()> {
             syn_loader_conf
                 .language_server
                 .get(&ls.name)
-                .map(|config| config.command.as_str())
+                .map(|config| (ls.name.as_str(), config.command.as_str()))
         });
-        write!(stdout, "{}", check_binary(cmds.next()))?;
+        write!(stdout, "{}", check_binary_with_name(cmds.next()))?;
 
         let dap = lang.debugger.as_ref().map(|dap| dap.command.as_str());
         write!(stdout, "{}", check_binary(dap))?;
@@ -224,7 +226,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
         for cmd in cmds {
             write!(stdout, "{}", fit(""))?;
-            writeln!(stdout, "{}", check_binary(Some(cmd)))?;
+            writeln!(stdout, "{}", check_binary_with_name(Some(cmd)))?;
         }
     }
 
@@ -283,10 +285,12 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
 
     probe_protocols(
         "language server",
-        lang.language_servers
-            .iter()
-            .filter_map(|ls| syn_loader_conf.language_server.get(&ls.name))
-            .map(|config| config.command.as_str()),
+        lang.language_servers.iter().filter_map(|ls| {
+            syn_loader_conf
+                .language_server
+                .get(&ls.name)
+                .map(|config| (ls.name.as_str(), config.command.as_str()))
+        }),
     )?;
 
     probe_protocol(
@@ -323,7 +327,7 @@ fn probe_parser(grammar_name: &str) -> std::io::Result<()> {
 }
 
 /// Display diagnostics about multiple LSPs and DAPs.
-fn probe_protocols<'a, I: Iterator<Item = &'a str> + 'a>(
+fn probe_protocols<'a, I: Iterator<Item = (&'a str, &'a str)> + 'a>(
     protocol_name: &str,
     server_cmds: I,
 ) -> std::io::Result<()> {
@@ -338,12 +342,12 @@ fn probe_protocols<'a, I: Iterator<Item = &'a str> + 'a>(
     }
     writeln!(stdout)?;
 
-    for cmd in server_cmds {
-        let (path, icon) = match helix_stdx::env::which(cmd) {
+    for (name, cmd) in server_cmds {
+        let (diag, icon) = match helix_stdx::env::which(cmd) {
             Ok(path) => (path.display().to_string().green(), "✓".green()),
             Err(_) => (format!("'{}' not found in $PATH", cmd).red(), "✘".red()),
         };
-        writeln!(stdout, "  {} {}: {}", icon, cmd, path)?;
+        writeln!(stdout, "  {} {}: {}", icon, name, diag)?;
     }
 
     Ok(())
@@ -354,19 +358,18 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::R
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let cmd_name = match server_cmd {
-        Some(ref cmd) => cmd.as_str().green(),
-        None => "None".yellow(),
+    write!(stdout, "Configured {}:", protocol_name)?;
+    let Some(cmd) = server_cmd else {
+        writeln!(stdout, "{}", " None".yellow())?;
+        return Ok(());
     };
-    writeln!(stdout, "Configured {}: {}", protocol_name, cmd_name)?;
+    writeln!(stdout)?;
 
-    if let Some(cmd) = server_cmd {
-        let path = match helix_stdx::env::which(&cmd) {
-            Ok(path) => path.display().to_string().green(),
-            Err(_) => format!("'{}' not found in $PATH", cmd).red(),
-        };
-        writeln!(stdout, "Binary for {}: {}", protocol_name, path)?;
-    }
+    let (diag, icon) = match helix_stdx::env::which(&cmd) {
+        Ok(path) => (path.display().to_string().green(), "✓".green()),
+        Err(_) => (format!("'{}' not found in $PATH", cmd).red(), "✘".red()),
+    };
+    writeln!(stdout, "  {} {}", icon, diag)?;
 
     Ok(())
 }

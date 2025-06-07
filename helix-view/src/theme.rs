@@ -294,11 +294,12 @@ fn build_theme_values(
 
 impl Theme {
     /// To allow `Highlight` to represent arbitrary RGB colors without turning it into an enum,
-    /// we interpret the last 3 bytes of a `Highlight` as RGB colors.
-    const RGB_START: usize = (usize::MAX << (8 + 8 + 8)) - 1;
+    /// we interpret the last 256^3 numbers as RGB.
+    const RGB_START: u32 = (u32::MAX << (8 + 8 + 8)) - 1 - (u32::MAX - Highlight::MAX);
 
     /// Interpret a Highlight with the RGB foreground
-    const fn decode_rgb_highlight(rgb: usize) -> Option<(u8, u8, u8)> {
+    const fn decode_rgb_highlight(rgb: Highlight) -> Option<(u8, u8, u8)> {
+        let rgb = rgb.get();
         if rgb > Self::RGB_START {
             let [.., r, g, b] = rgb.to_be_bytes();
             Some((r, g, b))
@@ -309,21 +310,21 @@ impl Theme {
 
     /// Create a Highlight that represents an RGB color
     pub const fn rgb_highlight(r: u8, g: u8, b: u8) -> Highlight {
-        Highlight(Self::RGB_START + 1 + ((r as usize) << 16) + ((g as usize) << 8) + b as usize)
+        Highlight::new(Self::RGB_START + 1 + ((r as u32) << 16) + ((g as u32) << 8) + b as u32)
     }
 
     #[inline]
-    pub fn highlight(&self, index: usize) -> Style {
-        if let Some((red, green, blue)) = Self::decode_rgb_highlight(index) {
+    pub fn highlight(&self, highlight: Highlight) -> Style {
+        if let Some((red, green, blue)) = Self::decode_rgb_highlight(highlight) {
             Style::new().fg(Color::Rgb(red, green, blue))
         } else {
-            self.highlights[index]
+            self.highlights[highlight.idx()]
         }
     }
 
     #[inline]
-    pub fn scope(&self, index: usize) -> &str {
-        &self.scopes[index]
+    pub fn scope(&self, highlight: Highlight) -> &str {
+        &self.scopes[highlight.idx()]
     }
 
     pub fn name(&self) -> &str {
@@ -354,13 +355,16 @@ impl Theme {
         &self.scopes
     }
 
-    pub fn find_scope_index_exact(&self, scope: &str) -> Option<usize> {
-        self.scopes().iter().position(|s| s == scope)
+    pub fn find_highlight_exact(&self, scope: &str) -> Option<Highlight> {
+        self.scopes()
+            .iter()
+            .position(|s| s == scope)
+            .map(|idx| Highlight::new(idx as u32))
     }
 
-    pub fn find_scope_index(&self, mut scope: &str) -> Option<usize> {
+    pub fn find_highlight(&self, mut scope: &str) -> Option<Highlight> {
         loop {
-            if let Some(highlight) = self.find_scope_index_exact(scope) {
+            if let Some(highlight) = self.find_highlight_exact(scope) {
                 return Some(highlight);
             }
             if let Some(new_end) = scope.rfind('.') {
@@ -619,23 +623,13 @@ mod tests {
     fn convert_to_and_from() {
         let (r, g, b) = (0xFF, 0xFE, 0xFA);
         let highlight = Theme::rgb_highlight(r, g, b);
-        assert_eq!(Theme::decode_rgb_highlight(highlight.0), Some((r, g, b)));
+        assert_eq!(Theme::decode_rgb_highlight(highlight), Some((r, g, b)));
     }
 
     /// make sure we can store all the colors at the end
-    /// ```
-    /// FF FF FF FF FF FF FF FF
-    ///          xor
-    /// FF FF FF FF FF 00 00 00
-    ///           =
-    /// 00 00 00 00 00 FF FF FF
-    /// ```
-    ///
-    /// where the ending `(FF, FF, FF)` represents `(r, g, b)`
     #[test]
     fn full_numeric_range() {
-        assert_eq!(usize::MAX ^ Theme::RGB_START, 256_usize.pow(3));
-        assert_eq!(Theme::RGB_START + 256_usize.pow(3), usize::MAX);
+        assert_eq!(Highlight::MAX - Theme::RGB_START, 256_u32.pow(3));
     }
 
     #[test]
@@ -643,30 +637,27 @@ mod tests {
         // color in the middle
         let (r, g, b) = (0x14, 0xAA, 0xF7);
         assert_eq!(
-            Theme::default().highlight(Theme::rgb_highlight(r, g, b).0),
+            Theme::default().highlight(Theme::rgb_highlight(r, g, b)),
             Style::new().fg(Color::Rgb(r, g, b))
         );
         // pure black
         let (r, g, b) = (0x00, 0x00, 0x00);
         assert_eq!(
-            Theme::default().highlight(Theme::rgb_highlight(r, g, b).0),
+            Theme::default().highlight(Theme::rgb_highlight(r, g, b)),
             Style::new().fg(Color::Rgb(r, g, b))
         );
         // pure white
         let (r, g, b) = (0xff, 0xff, 0xff);
         assert_eq!(
-            Theme::default().highlight(Theme::rgb_highlight(r, g, b).0),
+            Theme::default().highlight(Theme::rgb_highlight(r, g, b)),
             Style::new().fg(Color::Rgb(r, g, b))
         );
     }
 
     #[test]
-    #[should_panic(
-        expected = "index out of bounds: the len is 0 but the index is 18446744073692774399"
-    )]
+    #[should_panic(expected = "index out of bounds: the len is 0 but the index is 4278190078")]
     fn out_of_bounds() {
-        let (r, g, b) = (0x00, 0x00, 0x00);
-
-        Theme::default().highlight(Theme::rgb_highlight(r, g, b).0 - 1);
+        let highlight = Highlight::new(Theme::rgb_highlight(0, 0, 0).get() - 1);
+        Theme::default().highlight(highlight);
     }
 }
