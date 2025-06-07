@@ -14,7 +14,7 @@ use tui::{text::Span, widgets::Row};
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    diagnostic::DiagnosticProvider, syntax::LanguageServerFeature,
+    diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
     text_annotations::InlineAnnotation, Rope, Selection, Uri,
 };
 use helix_stdx::path;
@@ -1083,12 +1083,13 @@ fn hover_impl(cx: &mut Context, hover_action: HoverDisplay) {
                             Rope::from(hover.content_string()),
                             None,
                             Arc::clone(&editor.config),
+                            Arc::clone(&editor.syn_loader),
                         ),
                     );
                     let hover_doc = doc_mut!(editor);
 
                     let _ = hover_doc
-                        .set_language_by_language_id("markdown", editor.syn_loader.clone());
+                        .set_language_by_language_id("markdown", &editor.syn_loader.load());
                 }
             }
         };

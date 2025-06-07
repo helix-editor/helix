@@ -40,5 +40,21 @@
    (raw_text) @injection.content)
  (#eq? @_attr_name "lang"))
 
+; <template>
+((template_element
+    (start_tag) @_no_lang
+    (text) @injection.content)
+  (#not-match? @_no_lang "lang=")
+  (#set! injection.language "html"))
+
+; <template lang="...">
+((template_element
+    (start_tag
+      (attribute
+      (attribute_name) @_attr_name
+      (quoted_attribute_value (attribute_value) @injection.language)))
+  (text) @injection.content)
+  (#eq? @_attr_name "lang"))
+
 ((comment) @injection.content
  (#set! injection.language "comment"))
