@@ -405,6 +405,7 @@ impl MappableCommand {
         file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
         file_explorer_in_current_directory, "Open file explorer at current working directory",
         code_action, "Perform code action",
+        code_action_picker, "Perform code action in a picker",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
