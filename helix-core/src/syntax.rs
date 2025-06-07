@@ -864,9 +864,8 @@ impl TextObjectQuery {
             .iter()
             .find_map(|cap| self.query.get_capture(cap))?;
 
-        let mut cursor = InactiveQueryCursor::new();
-        cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
-        let mut cursor = cursor.execute_query(&self.query, node, RopeInput::new(slice));
+        let mut cursor = InactiveQueryCursor::new(0..u32::MAX, TREE_SITTER_MATCH_LIMIT)
+            .execute_query(&self.query, node, RopeInput::new(slice));
         let capture_node = iter::from_fn(move || {
             let (mat, _) = cursor.next_matched_node()?;
             Some(mat.nodes_for_capture(capture).cloned().collect())
@@ -961,7 +960,7 @@ mod test {
     use super::*;
     use crate::{Rope, Transaction};
 
-    static LOADER: Lazy<Loader> = Lazy::new(|| crate::config::user_lang_loader().unwrap());
+    static LOADER: Lazy<Loader> = Lazy::new(crate::config::default_lang_loader);
 
     #[test]
     fn test_textobject_queries() {

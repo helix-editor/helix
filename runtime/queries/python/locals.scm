@@ -26,6 +26,9 @@
 (parameters
   (dictionary_splat_pattern ; **kwargs
     (identifier) @local.definition.variable.parameter))
+(parameters
+  (identifier) @local.definition.variable.builtin
+  (#any-of? @local.definition.variable.builtin "self" "cls")) ; label self/cls as builtin
     
 (lambda_parameters
   (identifier) @local.definition.variable.parameter)

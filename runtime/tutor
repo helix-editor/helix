@@ -316,7 +316,7 @@
  Insert mode, so it is a very common shorthand for di.
 
  1. Move the cursor to the line marked '-->' below.
- 2. Move to the start of an incorrect word and type w to
+ 2. Move to the start of an incorrect word and type e to
     select it.
  3. Type c to delete the word and enter Insert mode.
  4. Type the correct word.
@@ -1169,11 +1169,11 @@ letters! that is not good grammar. you can fix this.
 =================================================================
 
  Using the selections and multi-cursor functionality, you can
- comment multiple lines as long as it is under the selection or
+ comment multiple lines as long as they are under the selection or
  cursors.
 
  1. Move your cursor to the line marked with '-->' below.
- 2. Now try to select or add more cursors the other lines marked
+ 2. Now try to select or add more cursors to the other lines marked
     with '-->'.
  3. Comment those lines.
 
@@ -1315,7 +1315,7 @@ letters! that is not good grammar. you can fix this.
  --> delete "layers "of" quote marks" too: this will delete the
  nearest previous and following quote marks
 
- Trying to delete unexisting surrounding delimiters print an error
+ Trying to delete nonexistent surrounding delimiters prints an error
  at the bottom bar and does nothing.
 
 =================================================================
@@ -1336,7 +1336,7 @@ letters! that is not good grammar. you can fix this.
  --> some (nested surroundings [can be replaced])
  --> this "works with 'other surroundings' too"
 
- You can try to replace a non existing pair: this will show
+ You can try to replace a nonexistent pair: this will show
  an error warning at the bottom bar and do nothing.
 
 

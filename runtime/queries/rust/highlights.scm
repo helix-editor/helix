@@ -421,6 +421,7 @@
   (#eq? @special "derive")
 )
 
+(token_repetition_pattern) @punctuation.delimiter
 (token_repetition_pattern [")" "(" "$"] @punctuation.special)
 (token_repetition_pattern "?" @operator)
 
