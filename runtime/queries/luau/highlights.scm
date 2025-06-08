@@ -95,8 +95,6 @@
   field_name: (name) @variable.other.member
 )
 
-(ERROR) @error
-
 (table
 [
   "{"

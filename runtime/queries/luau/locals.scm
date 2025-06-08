@@ -8,11 +8,11 @@
 ] @local.scope
 
 (_
-  parameter_name: (name) @local.definition
+  parameter_name: (name) @local.definition.variable.parameter
 )
 
 (binding
-  variable_name: (name) @local.definition
+  variable_name: (name) @local.definition.variable
 )
 
 (var 
