@@ -90,6 +90,7 @@ pkl-lsp = { command = "pkl-lsp" }
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"], config.prisma.enableDiagnostics = true }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
+pyrefly = { command = "pyrefly", args = ["lsp"] }
 pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
 protols = { command = "protols", args = [] }
 basedpyright = { command = "basedpyright-langserver", args = ["--stdio"], config = {} }
