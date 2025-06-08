@@ -1210,6 +1210,23 @@ impl Client {
             _ => return None,
         };
 
+        // Inject formatting config like above
+        let config_format = self
+            .config
+            .as_ref()
+            .and_then(|cfg| cfg.get("format"))
+            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
+
+        let options = if let Some(mut properties) = config_format {
+            properties.extend(options.properties);
+            lsp::FormattingOptions {
+                properties,
+                ..options
+            }
+        } else {
+            options
+        };
+
         let params = lsp::DocumentRangeFormattingParams {
             text_document,
             range,
