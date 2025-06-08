@@ -143,6 +143,7 @@ ember-language-server = { command = "ember-language-server", args = ["--stdio"] 
 teal-language-server = { command = "teal-language-server" }
 wasm-language-tools = { command = "wat_server" }
 sourcepawn-studio = { command = "sourcepawn-studio" }
+luau = { command = "luau-lsp", args = ["lsp"] }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -4403,3 +4404,22 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "alloy"
 source = { git = "https://github.com/mattsre/tree-sitter-alloy", rev = "3e18eb4e97f06c57a3925f3d20bef6329a6eaef3" }
+
+[[language]]
+name = "luau"
+scope = "source.luau"
+injection-regex = "^luau$"
+file-types = ["luau"]
+comment-tokens = ["--", "---"]
+block-comment-tokens = [
+  {start = "--[[", end = "]]"},
+  {start = "--[=[", end = "]=]"},
+  {start = "--[==[", end = "]==]"}
+]
+indent = { tab-width = 2, unit = "  "}
+roots = [ "aftman.toml", "default.project.json", "wally.toml", "rokit.toml", "selene.toml", ".darklua.json", "foreman.toml", ".luaurc" ]
+language-servers = [ "luau" ]
+
+[[grammar]]
+name = "luau"
+source = { git = "https://github.com/polychromatist/tree-sitter-luau", rev = "ec187cafba510cddac265329ca7831ec6f3b9955" }
