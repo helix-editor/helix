@@ -571,7 +571,7 @@ impl Application {
         let lines = doc_save_event.text.len_lines();
         let mut sz = doc_save_event.text.len_bytes() as f32;
 
-        const SUFFIX: [&str; 4] = ["B", "KB", "MB", "GB"];
+        const SUFFIX: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
         let mut i = 0;
         while i < SUFFIX.len() - 1 && sz >= 1024.0 {
             sz /= 1024.0;
