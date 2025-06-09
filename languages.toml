@@ -4193,6 +4193,18 @@ name = "koka"
 source = { git = "https://github.com/koka-community/tree-sitter-koka", rev = "fd3b482274d6988349ba810ea5740e29153b1baf" }
 
 [[language]]
+name = "tolk"
+scope = "source.tolk"
+injection-regex = "tolk"
+file-types = ["tolk"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "tolk"
+source = { git = "https://github.com/ton-blockchain/ton-language-server", rev = "e90dbb89f8ec8fbf8a16b61a31d6cc19a840de4f", subpath = "server/src/languages/tolk/tree-sitter-tolk" }
+
+[[language]]
 name = "tact"
 scope = "source.tact"
 injection-regex = "tact"
