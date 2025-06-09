@@ -27,7 +27,15 @@ mod steel_implementations {
     impl steel::gc::unsafe_erased_pointers::CustomReference for Editor {}
     steel::custom_reference!(Editor);
 
-    impl steel::rvals::Custom for Mode {}
+    impl steel::rvals::Custom for Mode {
+        fn equality_hint(&self, other: &dyn steel::rvals::CustomType) -> bool {
+            if let Some(other) = as_underlying_type::<Self>(other) {
+                self == other
+            } else {
+                false
+            }
+        }
+    }
     impl steel::rvals::Custom for Event {}
     impl Custom for Style {
         fn fmt(&self) -> Option<std::result::Result<String, std::fmt::Error>> {
@@ -51,8 +59,24 @@ mod steel_implementations {
             }
         }
     }
-    impl Custom for crate::graphics::CursorKind {}
-    impl Custom for DocumentId {}
+    impl Custom for crate::graphics::CursorKind {
+        fn equality_hint(&self, other: &dyn steel::rvals::CustomType) -> bool {
+            if let Some(other) = as_underlying_type::<Self>(other) {
+                self == other
+            } else {
+                false
+            }
+        }
+    }
+    impl Custom for DocumentId {
+        fn equality_hint(&self, other: &dyn steel::rvals::CustomType) -> bool {
+            if let Some(other) = as_underlying_type::<DocumentId>(other) {
+                self == other
+            } else {
+                false
+            }
+        }
+    }
     impl Custom for ViewId {
         fn equality_hint(&self, other: &dyn steel::rvals::CustomType) -> bool {
             if let Some(other) = as_underlying_type::<ViewId>(other) {
