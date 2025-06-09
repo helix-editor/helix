@@ -1468,6 +1468,9 @@ impl Document {
                 .ensure_invariants(self.text.slice(..));
         }
 
+        // Reset the selection history after any change
+        self.selections_history.clear();
+
         for view_data in self.view_data.values_mut() {
             view_data.view_position.anchor = transaction
                 .changes()
