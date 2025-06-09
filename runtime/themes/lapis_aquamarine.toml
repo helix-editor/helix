@@ -13,7 +13,7 @@
 
 # Syntax Highlighting for Markdown 
 "markup.raw" = { fg = "purple", bg = "bg" } 
-"markup.raw.inline" = {fg = "pink" }
+"markup.raw.inline" = {fg = "fg" }
 "markup.heading.1" = { fg = "#46D9FF", bg = "#11313B" }   # cyan
 "markup.heading.2" = { fg = "#C678DD", bg = "#2D2233" }   # magenta
 "markup.heading.3" = { fg = "#98BE65", bg = "#253027" }   # green
@@ -21,8 +21,8 @@
 "markup.heading.5" = { fg = "#ECBE7B", bg = "#3A3223" }   # yellow
 "markup.heading.6" = { fg = "#46D9FF", bg = "#1E2A30" }   # cyan again
 "markup.list" = { fg = "purple" }
-"markup.bold" = { fg = "pink", modifiers = ["bold"] }
-"markup.italic" = { fg = "pink" }
+"markup.bold" = { fg = "fg", modifiers = ["bold"] }
+"markup.italic" = { fg = "fg" }
 "markup.strikethrough" = { fg = "red", modifiers = ["crossed_out"] }
 "markup.link" = { fg = "cyan" }
 "markup.quote" = { fg = "fg" }
@@ -113,7 +113,7 @@
 
 # Additional overrides
 "ui.virtual.whitespace" = "grey"
-"ui.virtual.indent-guide" = { fg = "indent_color", style = "dotted" }
+"ui.virtual.indent-guide" = { fg = "indent_color", underline.style = "dotted" }
 
 [palette]
 bg = "#1B1F27"
@@ -123,7 +123,9 @@ blue = "#83ABFC"
 green = "#ABFC83"
 cyan = "#84FCD4"
 red = "#FC83AB" 
-yellow = "#FCD583" 
+yellow = "#FCD583"
+pink = "#FC83D6"
+orange = "#FCAB83"
 purple = "#D483FC"
 bg_alt = "#14181D"
 bg_highlight = "#43537A"
