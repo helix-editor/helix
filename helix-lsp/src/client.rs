@@ -176,6 +176,31 @@ impl Client {
         self.did_change_workspace(vec![workspace_for_uri(root_uri)], Vec::new())
     }
 
+    /// Merge FormattingOptions with 'config.format' and return it
+    fn get_merged_formatting_options(
+        &self,
+        options: lsp::FormattingOptions,
+    ) -> lsp::FormattingOptions {
+        let config_format = self
+            .config
+            .as_ref()
+            .and_then(|cfg| cfg.get("format"))
+            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
+
+        let options = if let Some(mut properties) = config_format {
+            // passed in options take precedence over 'config.format'
+            properties.extend(options.properties);
+            lsp::FormattingOptions {
+                properties,
+                ..options
+            }
+        } else {
+            options
+        };
+
+        options
+    }
+
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     pub fn start(
         cmd: &str,
@@ -1168,23 +1193,7 @@ impl Client {
             _ => return None,
         };
 
-        // merge FormattingOptions with 'config.format'
-        let config_format = self
-            .config
-            .as_ref()
-            .and_then(|cfg| cfg.get("format"))
-            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
-
-        let options = if let Some(mut properties) = config_format {
-            // passed in options take precedence over 'config.format'
-            properties.extend(options.properties);
-            lsp::FormattingOptions {
-                properties,
-                ..options
-            }
-        } else {
-            options
-        };
+        let options = self.get_merged_formatting_options(options);
 
         let params = lsp::DocumentFormattingParams {
             text_document,
@@ -1210,22 +1219,7 @@ impl Client {
             _ => return None,
         };
 
-        // Inject formatting config like above
-        let config_format = self
-            .config
-            .as_ref()
-            .and_then(|cfg| cfg.get("format"))
-            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
-
-        let options = if let Some(mut properties) = config_format {
-            properties.extend(options.properties);
-            lsp::FormattingOptions {
-                properties,
-                ..options
-            }
-        } else {
-            options
-        };
+        let options = self.get_merged_formatting_options(options);
 
         let params = lsp::DocumentRangeFormattingParams {
             text_document,
