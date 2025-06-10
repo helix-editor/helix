@@ -1,7 +1,7 @@
 # Author: spentbliss <zyhkekrz.hatbox475@passinbox.com>
 # License: MIT (originally by Alex Barnett)
 
-"ui.background" = "fg" # file picker border color
+"ui.background" = { fg = "fg", bg = "bg" } # file picker border color
 "ui.text" = "fg"
 "ui.text.focus" = { fg = "bg", bg = "fg" } # file picker selection
 "ui.cursor" = { bg = "blue", fg = "bg" }
