@@ -187,7 +187,7 @@ impl Client {
             .and_then(|cfg| cfg.get("format"))
             .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
 
-        let options = if let Some(mut properties) = config_format {
+        if let Some(mut properties) = config_format {
             // passed in options take precedence over 'config.format'
             properties.extend(options.properties);
             lsp::FormattingOptions {
@@ -196,9 +196,7 @@ impl Client {
             }
         } else {
             options
-        };
-
-        options
+        }
     }
 
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
