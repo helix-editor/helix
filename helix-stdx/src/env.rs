@@ -146,7 +146,7 @@ fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>)
     }
 }
 
-/// performs substitution of enviorment variables. Supports the following (POSIX) syntax:
+/// performs substitution of environment variables. Supports the following (POSIX) syntax:
 ///
 /// * `$<var>`, `${<var>}`
 /// * `${<var>:-<default>}`, `${<var>-<default>}`
