@@ -1009,12 +1009,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         // |         |
         // +---------+
 
-        let render_preview = self.show_preview
-            && self.file_fn.is_some()
-            && area.width >= MIN_AREA_WIDTH_FOR_PREVIEW
-            && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW;
-        let stack_vertically = area.width / 2 < MIN_AREA_WIDTH_FOR_PREVIEW;
-
+        let (render_preview, stack_vertically) = self.get_picker_layout(area);
         let picker_area = if render_preview {
             if stack_vertically {
                 area.with_height(area.height / 3)
@@ -1158,21 +1153,15 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         // calculate the inner area inside the box
         let inner = block.inner(area);
 
-        // prompt area
-        let render_preview = self.show_preview
-            && self.file_fn.is_some()
-            && area.width >= MIN_AREA_WIDTH_FOR_PREVIEW
-            && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW;
-        let stack_vertically = area.width / 2 < MIN_AREA_WIDTH_FOR_PREVIEW;
-
+        let (render_preview, stack_vertically) = self.get_picker_layout(area);
         let picker_width = if render_preview && !stack_vertically {
             area.width / 2
         } else {
             area.width
         };
-        let area = inner.clip_left(1).with_height(1).with_width(picker_width);
+        let prompt_area = inner.clip_left(1).with_height(1).with_width(picker_width);
 
-        self.prompt.cursor(area, editor)
+        self.prompt.cursor(prompt_area, editor)
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
@@ -1188,6 +1177,16 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
     fn drop(&mut self) {
         // ensure we cancel any ongoing background threads streaming into the picker
         self.version.fetch_add(1, atomic::Ordering::Relaxed);
+    }
+}
+impl<T: 'static + Send + Sync, D> Picker<T, D> {
+    fn get_picker_layout(&self, area: Rect) -> (bool, bool) {
+        let render_preview = self.show_preview
+            && self.file_fn.is_some()
+            && area.width >= MIN_AREA_WIDTH_FOR_PREVIEW
+            && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW;
+        let stack_vertically = area.width / 2 < MIN_AREA_WIDTH_FOR_PREVIEW;
+        return (render_preview, stack_vertically);
     }
 }
 
