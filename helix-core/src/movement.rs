@@ -79,7 +79,7 @@ pub fn move_vertically_visual(
         Direction::Backward => -(count as isize),
     };
 
-    // Compute visual offset relative to block start to avoid trasversing the block twice
+    // Compute visual offset relative to block start to avoid traversing the block twice
     row_off += visual_pos.row as isize;
     let (mut new_pos, virtual_rows) = char_idx_at_visual_offset(
         slice,
