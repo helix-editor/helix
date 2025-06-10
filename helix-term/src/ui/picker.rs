@@ -1186,7 +1186,7 @@ impl<T: 'static + Send + Sync, D> Picker<T, D> {
             && area.width >= MIN_AREA_WIDTH_FOR_PREVIEW
             && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW;
         let stack_vertically = area.width / 2 < MIN_AREA_WIDTH_FOR_PREVIEW;
-        return (render_preview, stack_vertically);
+        (render_preview, stack_vertically)
     }
 }
 
