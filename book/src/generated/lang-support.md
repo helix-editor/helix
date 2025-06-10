@@ -238,7 +238,7 @@
 | thrift | ✓ |  |  |  |
 | tlaplus | ✓ |  |  |  |
 | todotxt | ✓ |  |  |  |
-| toml | ✓ | ✓ |  | `taplo` |
+| toml | ✓ | ✓ |  | `taplo`, `tombi` |
 | tsq | ✓ |  |  | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |
