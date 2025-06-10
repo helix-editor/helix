@@ -151,6 +151,88 @@ pub trait RopeSliceExt<'a>: Sized {
     /// assert_eq!(graphemes.as_slice(), &["🖼️", "🏴‍☠️", "😶‍🌫️"]);
     /// ```
     fn graphemes_rev(self) -> RevRopeGraphemes<'a>;
+    /// Finds the byte index of the next grapheme boundary after `byte_idx`.
+    ///
+    /// If the byte index lies on the last grapheme cluster in the slice then this function
+    /// returns `RopeSlice::len_bytes`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::Rope;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = Rope::from_str("😶‍🌫️🏴‍☠️🖼️");
+    /// let slice = text.slice(..);
+    /// let mut byte_idx = 0;
+    /// assert_eq!(slice.graphemes_at(byte_idx).next(), Some("😶‍🌫️".into()));
+    /// byte_idx = slice.next_grapheme_boundary(byte_idx);
+    /// assert_eq!(slice.graphemes_at(byte_idx).next(), Some("🏴‍☠️".into()));
+    ///
+    /// // If `byte_idx` does not lie on a character or grapheme boundary then this function is
+    /// // functionally the same as `ceil_grapheme_boundary`.
+    /// assert_eq!(slice.next_grapheme_boundary(byte_idx - 1), byte_idx);
+    /// assert_eq!(slice.next_grapheme_boundary(byte_idx - 2), byte_idx);
+    /// assert_eq!(slice.next_grapheme_boundary(byte_idx + 1), slice.next_grapheme_boundary(byte_idx));
+    /// assert_eq!(slice.next_grapheme_boundary(byte_idx + 2), slice.next_grapheme_boundary(byte_idx));
+    ///
+    /// byte_idx = slice.next_grapheme_boundary(byte_idx);
+    /// assert_eq!(slice.graphemes_at(byte_idx).next(), Some("🖼️".into()));
+    /// byte_idx = slice.next_grapheme_boundary(byte_idx);
+    /// assert_eq!(slice.graphemes_at(byte_idx).next(), None);
+    /// assert_eq!(byte_idx, slice.len_bytes());
+    /// ```
+    fn next_grapheme_boundary(self, byte_idx: usize) -> usize {
+        self.nth_next_grapheme_boundary(byte_idx, 1)
+    }
+    /// Finds the byte index of the `n`th grapheme cluster after the given `byte_idx`.
+    ///
+    /// If there are fewer than `n` grapheme clusters after `byte_idx` in the rope then this
+    /// function returns `RopeSlice::len_bytes`.
+    ///
+    /// This is functionally equivalent to calling `next_grapheme_boundary` `n` times but is more
+    /// efficient.
+    fn nth_next_grapheme_boundary(self, byte_idx: usize, n: usize) -> usize;
+    /// Finds the byte index of the previous grapheme boundary before `byte_idx`.
+    ///
+    /// If the byte index lies on the first grapheme cluster in the slice then this function
+    /// returns zero.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::Rope;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = Rope::from_str("😶‍🌫️🏴‍☠️🖼️");
+    /// let slice = text.slice(..);
+    /// let mut byte_idx = text.len_bytes();
+    /// assert_eq!(slice.graphemes_at(byte_idx).prev(), Some("🖼️".into()));
+    /// byte_idx = slice.prev_grapheme_boundary(byte_idx);
+    /// assert_eq!(slice.graphemes_at(byte_idx).prev(), Some("🏴‍☠️".into()));
+    ///
+    /// // If `byte_idx` does not lie on a character or grapheme boundary then this function is
+    /// // functionally the same as `floor_grapheme_boundary`.
+    /// assert_eq!(slice.prev_grapheme_boundary(byte_idx + 1), byte_idx);
+    /// assert_eq!(slice.prev_grapheme_boundary(byte_idx + 2), byte_idx);
+    /// assert_eq!(slice.prev_grapheme_boundary(byte_idx - 1), slice.prev_grapheme_boundary(byte_idx));
+    /// assert_eq!(slice.prev_grapheme_boundary(byte_idx - 2), slice.prev_grapheme_boundary(byte_idx));
+    ///
+    /// byte_idx = slice.prev_grapheme_boundary(byte_idx);
+    /// assert_eq!(slice.graphemes_at(byte_idx).prev(), Some("😶‍🌫️".into()));
+    /// byte_idx = slice.prev_grapheme_boundary(byte_idx);
+    /// assert_eq!(slice.graphemes_at(byte_idx).prev(), None);
+    /// assert_eq!(byte_idx, 0);
+    /// ```
+    fn prev_grapheme_boundary(self, byte_idx: usize) -> usize {
+        self.nth_prev_grapheme_boundary(byte_idx, 1)
+    }
+    /// Finds the byte index of the `n`th grapheme cluster before the given `byte_idx`.
+    ///
+    /// If there are fewer than `n` grapheme clusters before `byte_idx` in the rope then this
+    /// function returns zero.
+    ///
+    /// This is functionally equivalent to calling `prev_grapheme_boundary` `n` times but is more
+    /// efficient.
+    fn nth_prev_grapheme_boundary(self, byte_idx: usize, n: usize) -> usize;
 }
 
 impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
@@ -359,6 +441,81 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             cur_chunk_start,
             cursor: GraphemeCursor::new(self.len_bytes(), self.len_bytes(), true),
         }
+    }
+
+    fn nth_next_grapheme_boundary(self, mut byte_idx: usize, n: usize) -> usize {
+        // Bounds check
+        assert!(byte_idx <= self.len_bytes());
+
+        byte_idx = self.floor_char_boundary(byte_idx);
+
+        // Get the chunk with our byte index in it.
+        let (mut chunk, mut chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+
+        // Set up the grapheme cursor.
+        let mut gc = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+
+        // Find the nth next grapheme cluster boundary.
+        for _ in 0..n {
+            loop {
+                match gc.next_boundary(chunk, chunk_byte_idx) {
+                    Ok(None) => return self.len_bytes(),
+                    Ok(Some(boundary)) => {
+                        byte_idx = boundary;
+                        break;
+                    }
+                    Err(GraphemeIncomplete::NextChunk) => {
+                        chunk_byte_idx += chunk.len();
+                        let (a, _, _, _) = self.chunk_at_byte(chunk_byte_idx);
+                        chunk = a;
+                    }
+                    Err(GraphemeIncomplete::PreContext(n)) => {
+                        let ctx_chunk = self.chunk_at_byte(n - 1).0;
+                        gc.provide_context(ctx_chunk, n - ctx_chunk.len());
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+
+        byte_idx
+    }
+
+    fn nth_prev_grapheme_boundary(self, mut byte_idx: usize, n: usize) -> usize {
+        // Bounds check
+        assert!(byte_idx <= self.len_bytes());
+
+        byte_idx = self.ceil_char_boundary(byte_idx);
+
+        // Get the chunk with our byte index in it.
+        let (mut chunk, mut chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+
+        // Set up the grapheme cursor.
+        let mut gc = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+
+        for _ in 0..n {
+            loop {
+                match gc.prev_boundary(chunk, chunk_byte_idx) {
+                    Ok(None) => return 0,
+                    Ok(Some(boundary)) => {
+                        byte_idx = boundary;
+                        break;
+                    }
+                    Err(GraphemeIncomplete::PrevChunk) => {
+                        let (a, b, _, _) = self.chunk_at_byte(chunk_byte_idx - 1);
+                        chunk = a;
+                        chunk_byte_idx = b;
+                    }
+                    Err(GraphemeIncomplete::PreContext(n)) => {
+                        let ctx_chunk = self.chunk_at_byte(n - 1).0;
+                        gc.provide_context(ctx_chunk, n - ctx_chunk.len());
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+
+        byte_idx
     }
 }
 
