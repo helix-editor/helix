@@ -3,6 +3,7 @@
 | ada | ✓ | ✓ |  | `ada_language_server` |
 | adl | ✓ | ✓ | ✓ |  |
 | agda | ✓ |  |  |  |
+| alloy | ✓ |  |  |  |
 | amber | ✓ |  |  |  |
 | astro | ✓ |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  | `awk-language-server` |
@@ -21,6 +22,7 @@
 | capnp | ✓ |  | ✓ |  |
 | cel | ✓ |  |  |  |
 | circom | ✓ |  |  | `circom-lsp` |
+| clarity | ✓ |  |  | `clarinet` |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | codeql | ✓ | ✓ |  | `codeql` |
@@ -137,6 +139,7 @@
 | log | ✓ |  |  |  |
 | lpf | ✓ |  |  |  |
 | lua | ✓ | ✓ | ✓ | `lua-language-server` |
+| luau | ✓ | ✓ | ✓ | `luau-lsp` |
 | mail | ✓ | ✓ |  |  |
 | make | ✓ |  | ✓ |  |
 | markdoc | ✓ |  |  | `markdoc-ls` |
@@ -184,7 +187,7 @@
 | prql | ✓ |  |  |  |
 | pug | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
-| python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
+| python | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
 | quarto | ✓ |  | ✓ |  |
 | quint | ✓ |  |  | `quint-language-server` |

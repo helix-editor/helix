@@ -201,6 +201,7 @@ impl Client {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .current_dir(&root_path)
             // make sure the process is reaped on drop
             .kill_on_drop(true)
             .spawn();

@@ -87,9 +87,10 @@ pbkit = { command = "pb", args = [ "lsp" ] }
 perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
 pest-language-server = { command = "pest-language-server" }
 pkl-lsp = { command = "pkl-lsp" }
-prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
+prisma-language-server = { command = "prisma-language-server", args = ["--stdio"], config.prisma.enableDiagnostics = true }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
+pyrefly = { command = "pyrefly", args = ["lsp"] }
 pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
 protols = { command = "protols", args = [] }
 basedpyright = { command = "basedpyright-langserver", args = ["--stdio"], config = {} }
@@ -119,6 +120,7 @@ taplo = { command = "taplo", args = ["lsp", "stdio"] }
 templ = { command = "templ", args = ["lsp"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
+ty = { command = "ty", args = ["server"] }
 typespec = { command = "tsp-server", args = ["--stdio"] }
 vala-language-server = { command = "vala-language-server" }
 vale-ls = { command = "vale-ls" }
@@ -141,6 +143,7 @@ ember-language-server = { command = "ember-language-server", args = ["--stdio"] 
 teal-language-server = { command = "teal-language-server" }
 wasm-language-tools = { command = "wat_server" }
 sourcepawn-studio = { command = "sourcepawn-studio" }
+luau = { command = "luau-lsp", args = ["lsp"] }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -259,6 +262,10 @@ enable = true
 
 [language-server.vscode-eslint-language-server.config.workingDirectory]
 mode = "location"
+
+[language-server.clarinet]
+command = "clarinet"
+args = ["lsp"]
 
 [[language]]
 name = "rust"
@@ -936,7 +943,7 @@ file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { gl
 shebangs = ["python", "uv"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
-language-servers = ["ruff", "jedi", "pylsp"]
+language-servers = ["ty", "ruff", "jedi", "pylsp"]
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
@@ -4369,4 +4376,50 @@ injection-regex = "rust-format-args"
 
 [[grammar]]
 name = "rust-format-args"
-source = { git = "https://github.com/nik-rev/tree-sitter-rustfmt", rev = "2ca0bdd763d0c9dbb1d0bd14aea7544cbe81309c" }
+source = { git = "https://github.com/nik-rev/tree-sitter-rust-format-args", rev = "84ffe550e261cf5ea40a0ec31849ba2443bae99f" }
+
+[[language]]
+name = "clarity"
+scope = "source.clar"
+injection-regex = "clarity"
+file-types = ["clar"]
+roots = ["Clarinet.toml"]
+comment-tokens = ";;"
+indent = { tab-width = 2, unit = "  " }
+language-servers = [ "clarinet" ]
+
+[[grammar]]
+name = "clarity"
+source = { git = "https://github.com/xlittlerag/tree-sitter-clarity", rev = "7fa54825fdd971a1a676f885384f024fe2b7384a" }
+
+[[language]]
+name = "alloy"
+scope = "source.alloy"
+injection-regex = "alloy"
+file-types = ["alloy"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "alloy"
+source = { git = "https://github.com/mattsre/tree-sitter-alloy", rev = "3e18eb4e97f06c57a3925f3d20bef6329a6eaef3" }
+
+[[language]]
+name = "luau"
+scope = "source.luau"
+injection-regex = "^luau$"
+file-types = ["luau"]
+comment-tokens = ["--", "---"]
+block-comment-tokens = [
+  {start = "--[[", end = "]]"},
+  {start = "--[=[", end = "]=]"},
+  {start = "--[==[", end = "]==]"}
+]
+indent = { tab-width = 2, unit = "  "}
+roots = [ "aftman.toml", "default.project.json", "wally.toml", "rokit.toml", "selene.toml", ".darklua.json", "foreman.toml", ".luaurc" ]
+language-servers = [ "luau" ]
+
+[[grammar]]
+name = "luau"
+source = { git = "https://github.com/polychromatist/tree-sitter-luau", rev = "ec187cafba510cddac265329ca7831ec6f3b9955" }
