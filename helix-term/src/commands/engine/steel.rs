@@ -2819,7 +2819,8 @@ fn run_initialization_script(
                 return;
             }
         } else {
-            println!("Unable to find the `helix.scm` file.");
+            println!("Unable to find the `helix.scm` file, creating....");
+            std::fs::write(helix_module_path, "").ok();
         }
 
         let helix_module_path = steel_init_file();
@@ -2840,7 +2841,8 @@ fn run_initialization_script(
 
             log::info!("Finished loading init.scm!")
         } else {
-            log::info!("No init.scm found, skipping loading.")
+            log::info!("No init.scm found, skipping loading.");
+            std::fs::write(helix_module_path, "").ok();
         }
     });
 }
