@@ -72,6 +72,7 @@ metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inl
 mesonlsp = { command = "mesonlsp", args = ["--lsp"] }
 mint = { command = "mint", args = ["tool", "ls"] }
 mojo-lsp-server = { command = "pixi", args = ["run", "mojo-lsp-server"] }
+neocmakelsp = { command = "neocmakelsp", args = ["stdio"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
@@ -1557,7 +1558,7 @@ file-types = ["cmake", { glob = "CMakeLists.txt" }]
 comment-token = "#"
 block-comment-tokens = { start = "#[[", end = "]]" }
 indent = { tab-width = 2, unit = "  " }
-language-servers = [ "cmake-language-server" ]
+language-servers = ["neocmakelsp", "cmake-language-server"]
 injection-regex = "cmake"
 
 [[grammar]]
