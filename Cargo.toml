@@ -50,10 +50,10 @@ parking_lot = "0.12"
 
 [workspace.package]
 version = "25.1.1"
-edition = "2021"
+edition = "2024"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
-rust-version = "1.82"
+rust-version = "1.85"
