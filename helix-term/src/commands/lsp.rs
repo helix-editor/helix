@@ -1380,7 +1380,7 @@ fn compute_inlay_hints_for_view(
                     // Truncate the hint if too long
                     if let Some(limit) = inlay_hints_length_limit {
                         let limit = limit.into();
-                        if label.len() >= limit {
+                        if label.len() > limit {
                             label.truncate(limit);
                             label.push_str("..");
                         }
