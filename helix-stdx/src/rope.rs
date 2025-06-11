@@ -169,6 +169,28 @@ pub trait RopeSliceExt<'a>: Sized {
     /// assert_eq!(graphemes.as_slice(), &["🏴‍☠️", "😶‍🌫️"]);
     /// ```
     fn graphemes_at(self, byte_idx: usize) -> RopeGraphemes<'a>;
+    /// Returns an iterator over the grapheme clusters in a rope and the byte index where each
+    /// grapheme cluster starts.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::Rope;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = Rope::from_str("😶‍🌫️🏴‍☠️🖼️");
+    /// let slice = text.slice(..);
+    /// let graphemes: Vec<_> = slice.grapheme_indices_at(0).collect();
+    /// assert_eq!(
+    ///   graphemes.as_slice(),
+    ///   &[(0, "😶‍🌫️".into()), (14, "🏴‍☠️".into()), (27, "🖼️".into())]
+    /// );
+    /// let graphemes: Vec<_> = slice.grapheme_indices_at(slice.len_bytes()).reversed().collect();
+    /// assert_eq!(
+    ///   graphemes.as_slice(),
+    ///   &[(27, "🖼️".into()), (14, "🏴‍☠️".into()), (0, "😶‍🌫️".into())]
+    /// );
+    /// ```
+    fn grapheme_indices_at(self, byte_idx: usize) -> RopeGraphemeIndices<'a>;
     /// Finds the byte index of the next grapheme boundary after `byte_idx`.
     ///
     /// If the byte index lies on the last grapheme cluster in the slice then this function
@@ -456,6 +478,16 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
         }
     }
 
+    fn grapheme_indices_at(self, byte_idx: usize) -> RopeGraphemeIndices<'a> {
+        // Bounds check
+        assert!(byte_idx <= self.len_bytes());
+        RopeGraphemeIndices {
+            front_offset: byte_idx,
+            iter: self.graphemes_at(byte_idx),
+            is_reversed: false,
+        }
+    }
+
     fn nth_next_grapheme_boundary(self, mut byte_idx: usize, n: usize) -> usize {
         // Bounds check
         assert!(byte_idx <= self.len_bytes());
@@ -670,6 +702,68 @@ impl<'a> Iterator for RopeGraphemes<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         RopeGraphemes::next(self)
+    }
+}
+
+/// An iterator over the grapheme clusters in a rope and the byte indices where each grapheme
+/// cluster starts.
+///
+/// This iterator wraps `RopeGraphemes` and is also cursor-like. Use `reverse` or `reversed` to
+/// toggle the direction of the iterator. See [RopeGraphemes].
+#[derive(Debug, Clone)]
+pub struct RopeGraphemeIndices<'a> {
+    front_offset: usize,
+    iter: RopeGraphemes<'a>,
+    is_reversed: bool,
+}
+
+impl<'a> RopeGraphemeIndices<'a> {
+    #[allow(clippy::should_implement_trait)]
+    pub fn next(&mut self) -> Option<(usize, RopeSlice<'a>)> {
+        if self.is_reversed {
+            self.prev_impl()
+        } else {
+            self.next_impl()
+        }
+    }
+
+    pub fn prev(&mut self) -> Option<(usize, RopeSlice<'a>)> {
+        if self.is_reversed {
+            self.next_impl()
+        } else {
+            self.prev_impl()
+        }
+    }
+
+    pub fn reverse(&mut self) {
+        self.is_reversed = !self.is_reversed;
+    }
+
+    #[must_use]
+    pub fn reversed(mut self) -> Self {
+        self.reverse();
+        self
+    }
+
+    fn next_impl(&mut self) -> Option<(usize, RopeSlice<'a>)> {
+        let slice = self.iter.next()?;
+        let idx = self.front_offset;
+        self.front_offset += slice.len_bytes();
+        Some((idx, slice))
+    }
+
+    fn prev_impl(&mut self) -> Option<(usize, RopeSlice<'a>)> {
+        let slice = self.iter.prev()?;
+        self.front_offset -= slice.len_bytes();
+        Some((self.front_offset, slice))
+    }
+}
+
+impl<'a> Iterator for RopeGraphemeIndices<'a> {
+    type Item = (usize, RopeSlice<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        RopeGraphemeIndices::next(self)
     }
 }
 
