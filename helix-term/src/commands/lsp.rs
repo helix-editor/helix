@@ -1357,6 +1357,7 @@ fn compute_inlay_hints_for_view(
             let mut padding_after_inlay_hints = Vec::new();
 
             let doc_text = doc.text();
+            let inlay_hints_length_limit = doc.config.load().lsp.inlay_hints_length_limit;
 
             for hint in hints {
                 let char_idx =
@@ -1367,13 +1368,25 @@ fn compute_inlay_hints_for_view(
                         None => continue,
                     };
 
-                let label = match hint.label {
-                    lsp::InlayHintLabel::String(s) => s,
-                    lsp::InlayHintLabel::LabelParts(parts) => parts
-                        .into_iter()
-                        .map(|p| p.value)
-                        .collect::<Vec<_>>()
-                        .join(""),
+                let label = {
+                    let mut label = match hint.label {
+                        lsp::InlayHintLabel::String(s) => s,
+                        lsp::InlayHintLabel::LabelParts(parts) => parts
+                            .into_iter()
+                            .map(|p| p.value)
+                            .collect::<Vec<_>>()
+                            .join(""),
+                    };
+                    // Truncate the hint if too long
+                    if let Some(limit) = inlay_hints_length_limit {
+                        let limit = limit.into();
+                        if label.len() >= limit {
+                            label.truncate(limit);
+                            label.push_str("..");
+                        }
+                    }
+
+                    label
                 };
 
                 let inlay_hints_vec = match hint.kind {
