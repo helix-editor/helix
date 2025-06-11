@@ -244,7 +244,10 @@ pub async fn test_with_config<T: Into<TestCase>>(
         test_case.clone(),
         &|app| {
             let doc = doc!(app.editor);
-            assert_eq!(&test_case.out_text, doc.text());
+            pretty_assertions::assert_str_eq!(
+                test_case.out_text.to_string(),
+                doc.text().to_string()
+            );
 
             let mut selections: Vec<_> = doc.selections().values().cloned().collect();
             assert_eq!(1, selections.len());
