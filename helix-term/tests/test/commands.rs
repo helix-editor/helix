@@ -2,6 +2,7 @@ use helix_term::application::Application;
 
 use super::*;
 
+mod align_text;
 mod insert;
 mod movement;
 mod write;
