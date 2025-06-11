@@ -70,7 +70,9 @@ pub fn register_event<E: Event + 'static>() {
 pub unsafe fn register_hook_raw<E: Event>(
     hook: impl Fn(&mut E) -> Result<()> + 'static + Send + Sync,
 ) {
-    registry::with_mut(|registry| registry.register_hook(hook))
+    unsafe {
+        registry::with_mut(|registry| registry.register_hook(hook))
+    }
 }
 
 /// Register a hook solely by event name

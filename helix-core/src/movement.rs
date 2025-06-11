@@ -576,12 +576,18 @@ pub fn goto_treesitter_object(
         let byte_pos = slice.char_to_byte(range.cursor(slice));
 
         let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
+
+        let movement_name = cap_name(TextObject::Movement);
+        let around_name = cap_name(TextObject::Around);
+        let inside_name = cap_name(TextObject::Inside);
+
+        let capture_names = [
+            movement_name.as_str(),
+            around_name.as_str(),
+            inside_name.as_str(),
+        ];
         let nodes = textobject_query?.capture_nodes_any(
-            &[
-                &cap_name(TextObject::Movement),
-                &cap_name(TextObject::Around),
-                &cap_name(TextObject::Inside),
-            ],
+            &capture_names,
             slice_tree,
             slice,
         )?;

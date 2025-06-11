@@ -849,7 +849,8 @@ impl TextObjectQuery {
         node: &Node<'a>,
         slice: RopeSlice<'a>,
     ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
-        self.capture_nodes_any(&[capture_name], node, slice)
+        let capture_names = [capture_name];
+        self.capture_nodes_any(&capture_names, node, slice)
     }
 
     /// Find the first capture that exists out of all given `capture_names`
