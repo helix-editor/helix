@@ -1379,7 +1379,9 @@ fn compute_inlay_hints_for_view(
                 // Truncate the hint if too long
                 if let Some(limit) = inlay_hints_length_limit {
                     // Limit on displayed width
-                    use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
+                    use helix_core::unicode::{
+                        segmentation::UnicodeSegmentation, width::UnicodeWidthStr,
+                    };
 
                     let width = label.width();
                     let limit = limit.get().into();
@@ -1387,9 +1389,8 @@ fn compute_inlay_hints_for_view(
                         // It's impossible for LSP to send a string of control chars, so 0 is fine
                         let mut floor_boundary = 0;
                         let mut acc = 0;
-                        for (i, c) in label.char_indices() {
-                            // Control chars are 0-width
-                            acc += c.width().unwrap_or(0);
+                        for (i, grapheme_cluster) in label.grapheme_indices(true) {
+                            acc += grapheme_cluster.width();
 
                             if acc > limit {
                                 floor_boundary = i;
