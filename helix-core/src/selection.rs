@@ -12,10 +12,11 @@ use crate::{
     tree_sitter::Node,
     Assoc, ChangeSet, RopeSlice,
 };
+use helix_parsec::{seq, take_until, Parser};
 use helix_stdx::range::is_subset;
 use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
-use std::{borrow::Cow, iter, slice};
+use std::{borrow::Cow, fmt::Display, iter, slice};
 
 /// A single selection range.
 ///
@@ -389,6 +390,34 @@ impl Range {
     /// direction.
     pub fn into_byte_range(&self, text: RopeSlice) -> (usize, usize) {
         (text.char_to_byte(self.from()), text.char_to_byte(self.to()))
+    }
+}
+
+impl Display for Range {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({},{})", self.anchor, self.head)
+    }
+}
+
+impl TryFrom<&str> for Range {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let parser = seq!(
+            "(",
+            take_until(|c| c == ','),
+            ",",
+            take_until(|c| c == ')'),
+            ")"
+        );
+        match parser.parse(value) {
+            Ok((_tail, (_, anchor, _, head, _))) => Ok(Self {
+                anchor: anchor.parse::<usize>().map_err(|e| e.to_string())?,
+                head: head.parse::<usize>().map_err(|e| e.to_string())?,
+                old_visual_position: None,
+            }),
+            Err(e) => Err(e.to_string()),
+        }
     }
 }
 
@@ -884,6 +913,54 @@ mod test {
     use super::*;
     use crate::Rope;
 
+    #[test]
+    fn parse_range() -> Result<(), String> {
+        // sometimes we want Ok, sometimes we want Err, but we never want a panic
+        assert_eq!(
+            Range::try_from("(0,28)"),
+            Ok(Range {
+                anchor: 0,
+                head: 28,
+                old_visual_position: None
+            })
+        );
+        assert_eq!(
+            Range::try_from("(3456789,123456789)"),
+            Ok(Range {
+                anchor: 3456789,
+                head: 123456789,
+                old_visual_position: None
+            })
+        );
+        assert_eq!(Range::try_from("(,)"), Err("(,)".to_string()));
+        assert_eq!(
+            Range::try_from("(asdf,asdf)"),
+            Err("invalid digit found in string".to_string())
+        );
+        assert_eq!(Range::try_from("()"), Err("()".to_string()));
+        assert_eq!(
+            Range::try_from("(-4,ALSK)"),
+            Err("invalid digit found in string".to_string())
+        );
+        assert_eq!(
+            Range::try_from("(⦡⓼␀⍆ⴉ├⺶⍄⾨,⦡⓼␀⍆ⴉ├⺶⍄⾨)"),
+            Err("invalid digit found in string".to_string())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn display_range() {
+        assert_eq!(
+            Range {
+                anchor: 72,
+                head: 28,
+                old_visual_position: None,
+            }
+            .to_string(),
+            "(72,28)".to_string(),
+        );
+    }
     #[test]
     #[should_panic]
     fn test_new_empty() {

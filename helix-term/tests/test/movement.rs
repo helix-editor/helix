@@ -66,6 +66,43 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn bookmark() -> anyhow::Result<()> {
+    // add a mark and then immediately paste it out
+    test((
+        indoc! {"\
+            #[|Lorem]# 
+            ipsum 
+            #(|Lorem)# 
+            ipsum 
+            #(|Lorem)# 
+            ipsum 
+            #(|Lorem)# 
+            ipsum 
+            #(|Lorem)# 
+            ipsum"
+        },
+        // make a mark, make changes to the doc, colapse selection by going to end of doc
+        // then resore mark and see the selection is still good
+        ":register-mark<space>1<ret>casdf<esc>ge:goto-mark<space>1<ret>",
+        indoc! {"\
+            #[|asdf]# 
+            ipsum 
+            #(|asdf)# 
+            ipsum 
+            #(|asdf)# 
+            ipsum 
+            #(|asdf)# 
+            ipsum 
+            #(|asdf)# 
+            ipsum"
+        },
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn surround_by_character() -> anyhow::Result<()> {
     // Only pairs matching the passed character count
     test((
