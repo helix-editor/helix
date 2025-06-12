@@ -1368,26 +1368,39 @@ fn compute_inlay_hints_for_view(
                         None => continue,
                     };
 
-                let label = {
-                    let mut label = match hint.label {
-                        lsp::InlayHintLabel::String(s) => s,
-                        lsp::InlayHintLabel::LabelParts(parts) => parts
-                            .into_iter()
-                            .map(|p| p.value)
-                            .collect::<Vec<_>>()
-                            .join(""),
-                    };
-                    // Truncate the hint if too long
-                    if let Some(limit) = inlay_hints_length_limit {
-                        let limit = limit.into();
-                        if label.len() > limit {
-                            label.truncate(limit);
-                            label.push_str("..");
-                        }
-                    }
-
-                    label
+                let mut label = match hint.label {
+                    lsp::InlayHintLabel::String(s) => s,
+                    lsp::InlayHintLabel::LabelParts(parts) => parts
+                        .into_iter()
+                        .map(|p| p.value)
+                        .collect::<Vec<_>>()
+                        .join(""),
                 };
+                // Truncate the hint if too long
+                if let Some(limit) = inlay_hints_length_limit {
+                    // Limit on displayed width
+                    use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
+
+                    let width = label.width();
+                    let limit = limit.get().into();
+                    if width > limit {
+                        // It's impossible for LSP to send a string of control chars, so 0 is fine
+                        let mut floor_boundary = 0;
+                        let mut acc = 0;
+                        for (i, c) in label.char_indices() {
+                            // Control chars are 0-width
+                            acc += c.width().unwrap_or(0);
+
+                            if acc > limit {
+                                floor_boundary = i;
+                                break;
+                            }
+                        }
+
+                        label.truncate(floor_boundary);
+                        label.push('…');
+                    }
+                }
 
                 let inlay_hints_vec = match hint.kind {
                     Some(lsp::InlayHintKind::TYPE) => &mut type_inlay_hints,
