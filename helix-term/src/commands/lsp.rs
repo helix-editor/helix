@@ -1386,7 +1386,6 @@ fn compute_inlay_hints_for_view(
                     let width = label.width();
                     let limit = limit.get().into();
                     if width > limit {
-                        // It's impossible for LSP to send a string of control chars, so 0 is fine
                         let mut floor_boundary = 0;
                         let mut acc = 0;
                         for (i, grapheme_cluster) in label.grapheme_indices(true) {
