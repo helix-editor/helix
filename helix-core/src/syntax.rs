@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 pub mod config;
 
 use std::{
@@ -881,20 +882,31 @@ impl TextObjectQuery {
     }
 }
 
-pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
-    if node.child_count() == 0 {
-        if node_is_visible(&node) {
-            write!(fmt, "({})", node.kind())
-        } else {
-            write!(fmt, "\"{}\"", format_anonymous_node_kind(node.kind()))
-        }
-    } else {
-        pretty_print_tree_impl(fmt, &mut node.walk(), 0)
-    }
+/// If supplied, can help map document coordinates to generated tree coordinates
+pub struct NodeSearch {
+    /// The index position of the node
+    pub position: usize,
+    /// The kind of the node that we're searching for
+    pub node_kind: String,
+    /// While we're building the tree, each character that we add
+    /// we will track in this field.
+    pub count_so_far: usize,
+    /// How many times we've encountered the node
+    pub appearances_count: usize,
+    /// Have we found the node? In which case we don't need to continue adding chars.
+    pub is_found: bool,
 }
 
-fn node_is_visible(node: &Node) -> bool {
-    node.is_missing() || (node.is_named() && node.grammar().node_kind_is_visible(node.kind_id()))
+impl NodeSearch {
+    pub fn new(position: usize, node_kind: String) -> Self {
+        Self {
+            position,
+            node_kind,
+            count_so_far: 0,
+            appearances_count: 0,
+            is_found: false,
+        }
+    }
 }
 
 fn format_anonymous_node_kind(kind: &str) -> Cow<str> {
@@ -905,35 +917,95 @@ fn format_anonymous_node_kind(kind: &str) -> Cow<str> {
     }
 }
 
-fn pretty_print_tree_impl<W: fmt::Write>(
-    fmt: &mut W,
+fn node_is_visible(node: &Node) -> bool {
+    node.is_missing() || (node.is_named() && node.grammar().node_kind_is_visible(node.kind_id()))
+}
+
+pub fn pretty_print_tree(
+    fmt: &mut String,
+    node: &Node,
+    node_search: &mut Option<&mut NodeSearch>,
+) -> Result<Option<(usize, usize, String)>, fmt::Error> {
+    if node.child_count() == 0 {
+        if node_is_visible(node) {
+            write!(fmt, "({})", node.kind())?;
+        } else {
+            write!(fmt, "\"{}\"", format_anonymous_node_kind(node.kind()))?;
+        };
+        Ok(None)
+    } else {
+        pretty_print_tree_impl(fmt, &mut node.walk(), 0, node_search)
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn pretty_print_tree_impl(
+    fmt: &mut String,
     cursor: &mut tree_sitter::TreeCursor,
     depth: usize,
-) -> fmt::Result {
+    node_search: &mut Option<&mut NodeSearch>,
+) -> Result<Option<(usize, usize, String)>, fmt::Error> {
     let node = cursor.node();
     let visible = node_is_visible(&node);
 
+    macro_rules! add_str {
+        ($($args:tt)*) => {
+            {
+                let formatted_str = format!($($args)*);
+                fmt.push_str(&formatted_str);
+                if let Some(node_search) = node_search {
+                    if !node_search.is_found {
+                        node_search.count_so_far += formatted_str.len();
+                    }
+                }
+            }
+        };
+    }
+
+    let kind = node.kind();
     if visible {
         let indentation_columns = depth * 2;
-        write!(fmt, "{:indentation_columns$}", "")?;
+
+        add_str!("{:indentation_columns$}", "");
 
         if let Some(field_name) = cursor.field_name() {
-            write!(fmt, "{}: ", field_name)?;
+            add_str!("{}: ", field_name);
         }
 
-        write!(fmt, "({}", node.kind())?;
+        add_str!("({}", kind);
     } else {
-        write!(fmt, " \"{}\"", format_anonymous_node_kind(node.kind()))?;
+        let node = format_anonymous_node_kind(kind);
+        add_str!(" \"{}\"", node);
+    }
+
+    if let Some(node_search) = node_search {
+        if kind == node_search.node_kind {
+            // we're at the node_kind which we are looking for, but
+            // it may not be the exact same one
+            if node_search.position == node_search.appearances_count {
+                // we've found the node which we're looking for
+                node_search.is_found = true;
+                // we need this check because with anonymous nodes
+                // we're also adding 2 double quotes around them
+                // so we need to account for that when creating the selection.
+                if !visible {
+                    node_search.node_kind = format!("\"{kind}\"");
+                };
+            }
+            if !node_search.is_found {
+                node_search.appearances_count += 1;
+            }
+        }
     }
 
     // Handle children.
     if cursor.goto_first_child() {
         loop {
             if node_is_visible(&cursor.node()) {
-                fmt.write_char('\n')?;
+                add_str!("\n");
             }
 
-            pretty_print_tree_impl(fmt, cursor, depth + 1)?;
+            pretty_print_tree_impl(fmt, cursor, depth + 1, node_search)?;
 
             if !cursor.goto_next_sibling() {
                 break;
@@ -947,10 +1019,21 @@ fn pretty_print_tree_impl<W: fmt::Write>(
     }
 
     if visible {
-        fmt.write_char(')')?;
+        add_str!(")");
     }
 
-    Ok(())
+    Ok(node_search
+        .as_ref()
+        .filter(|node_search| node_search.is_found)
+        .map(|node_search| {
+            (
+                node_search
+                    .count_so_far
+                    .saturating_sub(node_search.node_kind.len()),
+                node_search.count_so_far,
+                node_search.node_kind.clone(),
+            )
+        }))
 }
 
 #[cfg(test)]
@@ -1078,7 +1161,7 @@ mod test {
             .unwrap();
 
         let mut output = String::new();
-        pretty_print_tree(&mut output, root).unwrap();
+        pretty_print_tree(&mut output, &root, &mut None).unwrap();
 
         assert_eq!(expected, output);
     }
