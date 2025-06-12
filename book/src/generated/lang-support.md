@@ -3,6 +3,7 @@
 | ada | ✓ | ✓ |  | `ada_language_server` |
 | adl | ✓ | ✓ | ✓ |  |
 | agda | ✓ |  |  |  |
+| alloy | ✓ |  |  |  |
 | amber | ✓ |  |  |  |
 | astro | ✓ |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  | `awk-language-server` |
@@ -21,8 +22,9 @@
 | capnp | ✓ |  | ✓ |  |
 | cel | ✓ |  |  |  |
 | circom | ✓ |  |  | `circom-lsp` |
+| clarity | ✓ |  |  | `clarinet` |
 | clojure | ✓ |  |  | `clojure-lsp` |
-| cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
+| cmake | ✓ | ✓ | ✓ | `neocmakelsp`, `cmake-language-server` |
 | codeql | ✓ | ✓ |  | `codeql` |
 | comment | ✓ |  |  |  |
 | common-lisp | ✓ |  | ✓ | `cl-lsp` |
@@ -137,6 +139,7 @@
 | log | ✓ |  |  |  |
 | lpf | ✓ |  |  |  |
 | lua | ✓ | ✓ | ✓ | `lua-language-server` |
+| luau | ✓ | ✓ | ✓ | `luau-lsp` |
 | mail | ✓ | ✓ |  |  |
 | make | ✓ |  | ✓ |  |
 | markdoc | ✓ |  |  | `markdoc-ls` |
@@ -147,7 +150,7 @@
 | mermaid | ✓ |  |  |  |
 | meson | ✓ |  | ✓ | `mesonlsp` |
 | mint |  |  |  | `mint` |
-| mojo | ✓ | ✓ | ✓ | `magic` |
+| mojo | ✓ | ✓ | ✓ | `pixi` |
 | move | ✓ |  |  |  |
 | msbuild | ✓ |  | ✓ |  |
 | nasm | ✓ | ✓ |  | `asm-lsp` |
@@ -184,7 +187,7 @@
 | prql | ✓ |  |  |  |
 | pug | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
-| python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
+| python | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
 | quarto | ✓ |  | ✓ |  |
 | quint | ✓ |  |  | `quint-language-server` |
@@ -235,7 +238,7 @@
 | thrift | ✓ |  |  |  |
 | tlaplus | ✓ |  |  |  |
 | todotxt | ✓ |  |  |  |
-| toml | ✓ | ✓ |  | `taplo` |
+| toml | ✓ | ✓ |  | `taplo`, `tombi` |
 | tsq | ✓ |  |  | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |
