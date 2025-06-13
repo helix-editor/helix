@@ -66,16 +66,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                 return;
             };
 
-            if doc.language_config().is_some() {
+            if doc.syntax().is_some() {
                 return;
             }
 
-            let loader = editor.syn_loader.load();
-            let Some(language_config) = doc.detect_language_config(&loader) else {
+            let Some(language) = doc.language_config().map(|config| config.language()) else {
                 return;
             };
-            let language = language_config.language();
-            doc.language = Some(language_config);
+
+            let loader = editor.syn_loader.load();
             let text = doc.text().clone();
 
             tokio::task::spawn_blocking(move || {
