@@ -2764,13 +2764,7 @@ fn get_doc_for_global(engine: &mut Engine, ident: &str) -> Option<String> {
 
         for global in readable_globals {
             if global.resolve() == ident {
-                let expr = format!("(#%function-ptr-table-get #%function-ptr-table {})", ident);
-
-                let doc = engine.run(expr).ok().and_then(|x| x.first().cloned());
-
-                if let Some(doc) = doc {
-                    return doc.as_string().map(|x| x.as_str().to_string());
-                }
+                return engine.get_doc_for_identifier(ident);
             }
         }
 
