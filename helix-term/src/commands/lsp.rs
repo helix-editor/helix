@@ -252,6 +252,9 @@ fn diag_picker(
                 .into()
             },
         ),
+        ui::PickerColumn::new("source", |item: &PickerDiagnostic, _| {
+            item.diag.source.clone().unwrap_or("".to_string()).into()
+        }),
         ui::PickerColumn::new("code", |item: &PickerDiagnostic, _| {
             match item.diag.code.as_ref() {
                 Some(NumberOrString::Number(n)) => n.to_string().into(),
