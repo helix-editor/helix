@@ -62,6 +62,7 @@ pub struct Client {
     initialize_notify: Arc<Notify>,
     /// workspace folders added while the server is still initializing
     req_timeout: u64,
+    ongoing_work: Mutex<Vec<(lsp::TextDocumentIdentifier, lsp::ProgressToken)>>,
 }
 
 impl Client {
@@ -258,6 +259,7 @@ impl Client {
             root_uri,
             workspace_folders: Mutex::new(workspace_folders),
             initialize_notify: initialize_notify.clone(),
+            ongoing_work: Mutex::new(Default::default()),
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -372,6 +374,7 @@ impl Client {
                 Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::Diagnostics => true, // there's no extra server capability
+            LanguageServerFeature::PullDiagnostics => capabilities.diagnostic_provider.is_some(),
             LanguageServerFeature::RenameSymbol => matches!(
                 capabilities.rename_provider,
                 Some(OneOf::Left(true)) | Some(OneOf::Right(_))
@@ -602,6 +605,9 @@ impl Client {
                         did_rename: Some(true),
                         ..Default::default()
                     }),
+                    diagnostic: Some(lsp::DiagnosticWorkspaceClientCapabilities {
+                        refresh_support: Some(true),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -678,6 +684,10 @@ impl Client {
                             properties: vec!["edit".to_owned(), "command".to_owned()],
                         }),
                         ..Default::default()
+                    }),
+                    diagnostic: Some(lsp::DiagnosticClientCapabilities {
+                        dynamic_registration: Some(false),
+                        related_document_support: Some(true),
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
@@ -1227,6 +1237,75 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::RangeFormatting>(params))
+    }
+
+    pub fn mark_work_as_done(&self, id: lsp::ProgressToken) {
+        self.ongoing_work.lock().retain(|x| x.1 != id);
+    }
+
+    fn cancel_ongoing_work(&self, id: lsp::ProgressToken) {
+        self.notify::<lsp::notification::Cancel>(lsp::CancelParams { id: id.clone() });
+        self.mark_work_as_done(id);
+    }
+
+    pub fn text_document_diagnostic(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        previous_result_id: Option<String>,
+    ) -> Option<(
+        impl Future<Output = Result<lsp::DocumentDiagnosticReportResult>>,
+        lsp::ProgressToken,
+    )> {
+        let capabilities = self.capabilities();
+
+        let ongoing_work = {
+            let ongoing_work_lock = self.ongoing_work.lock();
+
+            ongoing_work_lock
+                .iter()
+                .filter(|x| x.0 == text_document)
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+
+        if !ongoing_work.is_empty() {
+            for id in ongoing_work.into_iter().map(|x| x.1) {
+                self.cancel_ongoing_work(id.clone());
+            }
+        }
+
+        // Return early if the server does not support pull diagnostic.
+        let identifier = match capabilities.diagnostic_provider.as_ref()? {
+            lsp::DiagnosticServerCapabilities::Options(cap) => cap.identifier.clone(),
+            lsp::DiagnosticServerCapabilities::RegistrationOptions(cap) => {
+                cap.diagnostic_options.identifier.clone()
+            }
+        };
+
+        let request_id = match self.next_request_id() {
+            jsonrpc::Id::Null => lsp::ProgressToken::Number(1),
+            jsonrpc::Id::Num(num) => lsp::ProgressToken::Number(num as i32),
+            jsonrpc::Id::Str(str) => lsp::ProgressToken::String(str),
+        };
+
+        let params = lsp::DocumentDiagnosticParams {
+            text_document: text_document.clone(),
+            identifier,
+            previous_result_id,
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: Some(request_id.clone()),
+            },
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.ongoing_work
+            .lock()
+            .push((text_document, request_id.clone()));
+
+        Some((
+            self.call::<lsp::request::DocumentDiagnosticRequest>(params),
+            request_id,
+        ))
     }
 
     pub fn text_document_document_highlight(
