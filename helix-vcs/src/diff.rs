@@ -34,6 +34,7 @@ struct DiffInner {
     hunks: Vec<Hunk>,
 }
 
+/// Representation of a diff that can be updated.
 #[derive(Clone, Debug)]
 pub struct DiffHandle {
     channel: UnboundedSender<Event>,
@@ -64,10 +65,12 @@ impl DiffHandle {
         (differ, handle)
     }
 
+    /// Switch base and modified texts' roles
     pub fn invert(&mut self) {
         self.inverted = !self.inverted;
     }
 
+    /// Load the actual diff
     pub fn load(&self) -> Diff {
         Diff {
             diff: self.diff.read(),
@@ -88,6 +91,7 @@ impl DiffHandle {
         self.update_document_impl(doc, self.inverted, Some(RenderLock { lock, timeout }))
     }
 
+    /// Updates the base text of the diff. Returns if the update was successful.
     pub fn update_diff_base(&self, diff_base: Rope) -> bool {
         self.update_document_impl(diff_base, !self.inverted, None)
     }
@@ -143,7 +147,7 @@ impl Hunk {
         after: u32::MAX..u32::MAX,
     };
 
-    /// Inverts a change so that `before`
+    /// Inverts a change so that `before` and `after` are swapped.
     pub fn invert(&self) -> Hunk {
         Hunk {
             before: self.after.clone(),
@@ -151,10 +155,12 @@ impl Hunk {
         }
     }
 
+    /// Is this hunk only adding to the document
     pub fn is_pure_insertion(&self) -> bool {
         self.before.is_empty()
     }
 
+    /// Is this hunk only removing from the document
     pub fn is_pure_removal(&self) -> bool {
         self.after.is_empty()
     }

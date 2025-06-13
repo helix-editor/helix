@@ -1,3 +1,4 @@
+//! Functions for managine file metadata.
 //! From <https://github.com/Freaky/faccess>
 
 use std::io;

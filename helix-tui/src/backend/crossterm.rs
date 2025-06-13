@@ -95,6 +95,7 @@ impl Capabilities {
     }
 }
 
+/// Terminal backend supporting a wide variety of terminals
 pub struct CrosstermBackend<W: Write> {
     buffer: W,
     capabilities: Capabilities,

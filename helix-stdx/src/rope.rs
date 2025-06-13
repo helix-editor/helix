@@ -1,3 +1,4 @@
+//! Functions and types for working with [RopeSlice]
 use std::fmt;
 use std::ops::{Bound, RangeBounds};
 
@@ -8,6 +9,7 @@ use ropey::iter::Chunks;
 use ropey::RopeSlice;
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 
+/// Additional utility functions for [RopeSlice]
 pub trait RopeSliceExt<'a>: Sized {
     fn ends_with(self, text: &str) -> bool;
     fn starts_with(self, text: &str) -> bool;
