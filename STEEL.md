@@ -88,13 +88,11 @@ For example, if we wanted to select a random theme at startup:
 (require (prefix-in helix. "helix/commands.scm"))
 (require (prefix-in helix.static. "helix/static.scm"))
 
-(define rng (rand::thread-rng!))
-
 ;; Picking one from the possible themes
 (define possible-themes '("ayu_mirage" "tokyonight_storm" "catppuccin_macchiato"))
 
 (define (select-random lst)
-  (let ([index (rand::rng->gen-range rng 0 (length lst))]) (list-ref lst index)))
+  (let ([index (rand::rng->gen-range 0 (length lst))]) (list-ref lst index)))
 
 (define (randomly-pick-theme options)
   ;; Randomly select the theme from the possible themes list
