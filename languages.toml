@@ -5,9 +5,10 @@ use-grammars = { except = [ "wren", "gemini" ] }
 
 [language-server]
 
-als = { command = "als" }
-ada-language-server = { command = "ada_language_server" }
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
+ada-language-server = { command = "ada_language_server" }
+als = { command = "als" }
+amber-lsp = { command = "amber-lsp" }
 angular = {command = "ngserver", args = ["--stdio", "--tsProbeLocations", ".", "--ngProbeLocations", ".",]}
 asm-lsp = { command = "asm-lsp" }
 awk-language-server = { command = "awk-language-server" }
@@ -4131,6 +4132,7 @@ scope = "source.ab"
 file-types = ["ab"]
 comment-token = ["//", "///"]
 indent = { tab-width = 4, unit = "    " }
+language-servers = ["amber-lsp"]
 
 [[grammar]]
 name = "amber"
