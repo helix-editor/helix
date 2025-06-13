@@ -331,6 +331,7 @@ impl<'a> Table<'a> {
     }
 }
 
+/// Track [Table] scroll offset and selection
 #[derive(Debug, Default, Clone)]
 pub struct TableState {
     pub offset: usize,
