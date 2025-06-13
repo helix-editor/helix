@@ -44,6 +44,7 @@ use helix_core::{
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
+    icons::ICONS,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -3182,11 +3183,32 @@ fn buffer_picker(cx: &mut Context) {
                 .path
                 .as_deref()
                 .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
+
+            let name = path
+                .as_deref()
                 .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+                .unwrap_or(SCRATCH_BUFFER_NAME);
+            let icons = ICONS.load();
+
+            let mut spans = Vec::with_capacity(2);
+
+            if let Some(icon) = icons
+                .mime()
+                .get(path.as_ref().map(|path| path.to_path_buf()).as_ref(), None)
+            {
+                if let Some(color) = icon.color() {
+                    spans.push(Span::styled(
+                        format!("{}  ", icon.glyph()),
+                        Style::default().fg(color),
+                    ));
+                } else {
+                    spans.push(Span::raw(format!("{}  ", icon.glyph())));
+                }
+            }
+
+            spans.push(Span::raw(name.to_string()));
+
+            Spans::from(spans).into()
         }),
     ];
     let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
@@ -3245,11 +3267,32 @@ fn jumplist_picker(cx: &mut Context) {
                 .path
                 .as_deref()
                 .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
+
+            let name = path
+                .as_deref()
                 .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+                .unwrap_or(SCRATCH_BUFFER_NAME);
+            let icons = ICONS.load();
+
+            let mut spans = Vec::with_capacity(2);
+
+            if let Some(icon) = icons
+                .mime()
+                .get(path.as_ref().map(|path| path.to_path_buf()).as_ref(), None)
+            {
+                if let Some(color) = icon.color() {
+                    spans.push(Span::styled(
+                        format!("{}  ", icon.glyph()),
+                        Style::default().fg(color),
+                    ));
+                } else {
+                    spans.push(Span::raw(format!("{}  ", icon.glyph())));
+                }
+            }
+
+            spans.push(Span::raw(name.to_string()));
+
+            Spans::from(spans).into()
         }),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
@@ -3319,12 +3362,28 @@ fn changed_file_picker(cx: &mut Context) {
 
     let columns = [
         PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
+            let icons = ICONS.load();
             match change {
-                FileChange::Untracked { .. } => Span::styled("+ untracked", data.style_untracked),
-                FileChange::Modified { .. } => Span::styled("~ modified", data.style_modified),
-                FileChange::Conflict { .. } => Span::styled("x conflict", data.style_conflict),
-                FileChange::Deleted { .. } => Span::styled("- deleted", data.style_deleted),
-                FileChange::Renamed { .. } => Span::styled("> renamed", data.style_renamed),
+                FileChange::Untracked { .. } => Span::styled(
+                    format!("{}  untracked", icons.vcs().added()),
+                    data.style_untracked,
+                ),
+                FileChange::Modified { .. } => Span::styled(
+                    format!("{}  modified", icons.vcs().modified()),
+                    data.style_modified,
+                ),
+                FileChange::Conflict { .. } => Span::styled(
+                    format!("{}  conflict", icons.vcs().conflict()),
+                    data.style_conflict,
+                ),
+                FileChange::Deleted { .. } => Span::styled(
+                    format!("{}  deleted", icons.vcs().removed()),
+                    data.style_deleted,
+                ),
+                FileChange::Renamed { .. } => Span::styled(
+                    format!("{}  renamed", icons.vcs().renamed()),
+                    data.style_renamed,
+                ),
             }
             .into()
         }),
