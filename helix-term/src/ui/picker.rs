@@ -585,8 +585,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     // retrieve the `Arc<Path>` key. The `path` in scope here is a `&Path` and
                     // we can cheaply clone the key for the preview highlight handler.
                     let (path, preview) = self.preview_cache.get_key_value(path).unwrap();
-                    if matches!(preview, CachedPreview::Document(doc) if doc.language_config().is_none())
-                    {
+                    if matches!(preview, CachedPreview::Document(doc) if doc.syntax().is_none()) {
                         helix_event::send_blocking(&self.preview_highlight_handler, path.clone());
                     }
                     return Some((Preview::Cached(preview), range));
@@ -636,12 +635,18 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                                     std::io::ErrorKind::NotFound,
                                     "Cannot open document",
                                 )),
-                                |doc| {
-                                    // Asynchronously highlight the new document
-                                    helix_event::send_blocking(
-                                        &self.preview_highlight_handler,
-                                        path.clone(),
-                                    );
+                                |mut doc| {
+                                    let loader = editor.syn_loader.load();
+                                    if let Some(language_config) =
+                                        doc.detect_language_config(&loader)
+                                    {
+                                        doc.language = Some(language_config);
+                                        // Asynchronously highlight the new document
+                                        helix_event::send_blocking(
+                                            &self.preview_highlight_handler,
+                                            path.clone(),
+                                        );
+                                    }
                                     Ok(CachedPreview::Document(Box::new(doc)))
                                 },
                             )
