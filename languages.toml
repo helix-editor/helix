@@ -648,7 +648,7 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 grammar = "ruby"
 language-servers = [ "crystalline" ]
-formatter = { command = "crystal", args = ["crystal", "tool", "format", "-"] }
+formatter = { command = "crystal", args = ["tool", "format", "-"] }
 
 [[language]]
 name = "c-sharp"
