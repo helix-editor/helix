@@ -1239,10 +1239,7 @@ impl Document {
         self.pickup_last_saved_time();
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base),
-            None => self.diff_handle = None,
-        }
+        self.set_diff_base(provider_registry.get_diff_base(&path));
 
         self.version_control_head = provider_registry.get_current_head_name(&path);
 
@@ -1861,7 +1858,12 @@ impl Document {
     }
 
     /// Intialize/updates the differ for this document with a new base.
-    pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
+    /// If no base is given, the differ will be removed from the document.
+    pub fn set_diff_base(&mut self, diff_base: Option<Vec<u8>>) {
+        let Some(diff_base) = diff_base else {
+            self.diff_handle = None;
+            return;
+        };
         if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
             if let Some(differ) = &self.diff_handle {
                 differ.update_diff_base(diff_base);
