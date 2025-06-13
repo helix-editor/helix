@@ -253,7 +253,7 @@ fn diag_picker(
             },
         ),
         ui::PickerColumn::new("source", |item: &PickerDiagnostic, _| {
-            item.diag.source.clone().unwrap_or("".to_string()).into()
+            item.diag.source.as_deref().unwrap_or("").into()
         }),
         ui::PickerColumn::new("code", |item: &PickerDiagnostic, _| {
             match item.diag.code.as_ref() {
@@ -266,12 +266,12 @@ fn diag_picker(
             item.diag.message.as_str().into()
         }),
     ];
-    let mut primary_column = 2; // message
+    let mut primary_column = 3; // message
 
     if format == DiagnosticsFormat::ShowSourcePath {
         columns.insert(
             // between message code and message
-            2,
+            3,
             ui::PickerColumn::new("path", |item: &PickerDiagnostic, _| {
                 if let Some(path) = item.location.uri.as_path() {
                     path::get_truncated_path(path)
