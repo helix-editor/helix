@@ -80,7 +80,7 @@ impl std::error::Error for UrlConversionError {}
 fn convert_url_to_uri(url: &url::Url) -> Result<Uri, UrlConversionErrorKind> {
     if url.scheme() == "file" {
         url.to_file_path()
-            .map(|path| Uri::File(helix_stdx::path::normalize(path).into()))
+            .map(|path| Uri::File(helix_stdx::path::canonicalize(path).into()))
             .map_err(|_| UrlConversionErrorKind::UnableToConvert)
     } else {
         Err(UrlConversionErrorKind::UnsupportedScheme)
