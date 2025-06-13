@@ -338,14 +338,21 @@ impl Buffer {
             end_index -= 1;
         }
 
+        let mut graphemes = string.grapheme_indices(true);
+
         if truncate_start {
             self.content[start_index].set_symbol("…");
-            start_index += 1;
+            if let Some((_, c)) = graphemes.next() {
+                let width = c.width();
+                // Reset following cells if multi-width
+                for i in start_index + 1..start_index + width {
+                    self.content[i].reset();
+                }
+                start_index += width;
+            }
         }
 
-        let graphemes = string.grapheme_indices(true);
-
-        for (byte_offset, s) in graphemes.skip(truncate_start as usize) {
+        for (byte_offset, s) in graphemes {
             if start_index > end_index {
                 break;
             }

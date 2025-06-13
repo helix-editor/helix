@@ -12,7 +12,9 @@ use tui::text::Span;
 use tui::widgets::{Block, Widget};
 
 use helix_core::{
-    unicode::segmentation::GraphemeCursor, unicode::width::UnicodeWidthStr, Position,
+    unicode::segmentation::{GraphemeCursor, UnicodeSegmentation},
+    unicode::width::UnicodeWidthStr,
+    Position,
 };
 use helix_view::{
     graphics::{CursorKind, Margin, Rect},
@@ -535,21 +537,31 @@ impl Prompt {
             .into();
             text.render(self.line_area, surface, cx);
         } else {
-            if self.line.len() < self.line_area.width as usize {
+            if self.line.width() < self.line_area.width as usize {
                 self.anchor = 0;
             } else if self.cursor < self.anchor {
                 self.anchor = self.cursor;
-            } else if self.cursor - self.anchor > self.line_area.width as usize {
-                self.anchor = self.cursor - self.line_area.width as usize;
+            } else if self.line[self.anchor..self.cursor].width() > self.line_area.width as usize {
+                self.anchor = self
+                    .line
+                    .grapheme_indices(true)
+                    .find(|i| self.line[i.0..self.cursor].width() <= self.line_area.width as usize)
+                    .map_or(self.cursor, |(p, _)| p);
             }
 
             self.truncate_start = self.anchor > 0;
-            self.truncate_end = self.line.len() - self.anchor > self.line_area.width as usize;
+            self.truncate_end = self.line[self.anchor..].width() > self.line_area.width as usize;
 
             // if we keep inserting characters just before the end elipsis, we move the anchor
             // so that those new characters are displayed
-            if self.truncate_end && self.cursor - self.anchor >= self.line_area.width as usize {
-                self.anchor += 1;
+            if self.truncate_end
+                && self.line[self.anchor..self.cursor].width() >= self.line_area.width as usize
+            {
+                self.anchor = self
+                    .line
+                    .grapheme_indices(true)
+                    .find(|i| self.anchor < i.0)
+                    .map_or(self.anchor, |(p, _)| p);
             }
 
             surface.set_string_anchored(
@@ -734,7 +746,11 @@ impl Component for Prompt {
             .clip_left(self.prompt.len() as u16)
             .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
 
-        let anchor = self.anchor.min(self.line.len().saturating_sub(1));
+        let anchor = self
+            .line
+            .grapheme_indices(true)
+            .rfind(|i| i.0 < self.line.len())
+            .map_or(self.anchor, |p| self.anchor.min(p.0));
         let mut col = area.left() as usize
             + UnicodeWidthStr::width(&self.line[anchor..self.cursor.max(anchor)]);
 
