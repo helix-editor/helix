@@ -170,16 +170,17 @@ pub fn compare_ropes(before: &Rope, after: &Rope) -> Transaction {
 
 /// Compares `old` and `new` to generate a text diff
 pub fn diff_ropes(before: RopeSlice, after: RopeSlice) -> String {
-    let file = InternedInput::new(RopeLines(before), RopeLines(after));
-    imara_diff::diff(
-        Algorithm::Histogram,
-        &file,
-        imara_diff::UnifiedDiffBuilder::new(&file),
+    let before = before.to_string();
+    let after = after.to_string();
+    let input = InternedInput::new(before.as_str(), after.as_str());
+    let mut diff = Diff::compute(Algorithm::Histogram, &input);
+    diff.postprocess_lines(&input);
+    diff.unified_diff(
+        &imara_diff::BasicLineDiffPrinter(&input.interner),
+        imara_diff::UnifiedDiffConfig::default(),
+        &input,
     )
-    // Unsure why we get empty lines...
-    .split_inclusive('\n')
-    .filter(|line| !line.trim().is_empty())
-    .collect()
+    .to_string()
 }
 
 #[cfg(test)]
