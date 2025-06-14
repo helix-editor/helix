@@ -3280,6 +3280,15 @@ fn configure_lsp_builtins(name: &str, module: &BuiltInModule) {
 
     output.push_str("))");
 
+    for value in module.names() {
+        if let Some(doc) = module.get_documentation(&value) {
+            output.push_str(&format!(
+                "(#%module-add-doc #%helix-{}-module {:?} {:?})\n",
+                name, value, doc
+            ));
+        }
+    }
+
     std::fs::write(path, output).unwrap();
 }
 
@@ -3293,80 +3302,6 @@ fn load_rope_api(engine: &mut Engine, generate_sources: bool) {
 
     engine.register_module(rope_slice_module);
 }
-
-// struct SteelEngine(Engine);
-
-// impl SteelEngine {
-//     pub fn call_function_by_name(
-//         &mut self,
-//         function_name: SteelString,
-//         args: Vec<SteelVal>,
-//     ) -> steel::rvals::Result<SteelVal> {
-//         self.0
-//             .call_function_by_name_with_args(function_name.as_str(), args.into_iter().collect())
-//     }
-
-//     /// Calling a function that was not defined in the runtime it was created in could
-//     /// result in panics. You have been warned.
-//     pub fn call_function(
-//         &mut self,
-//         function: SteelVal,
-//         args: Vec<SteelVal>,
-//     ) -> steel::rvals::Result<SteelVal> {
-//         self.0
-//             .call_function_with_args(function, args.into_iter().collect())
-//     }
-
-//     pub fn require_module(&mut self, module: SteelString) -> steel::rvals::Result<()> {
-//         self.0.run(format!("(require \"{}\")", module)).map(|_| ())
-//     }
-// }
-
-// impl Custom for SteelEngine {}
-
-// static ENGINE_ID: AtomicUsize = AtomicUsize::new(0);
-
-// thread_local! {
-//     pub static ENGINE_MAP: SteelVal =
-//         SteelVal::boxed(SteelVal::empty_hashmap());
-// }
-
-// Low level API work, these need to be loaded into the global environment in a predictable
-// location, otherwise callbacks from plugin engines will not be handled properly!
-// fn load_engine_api(engine: &mut Engine) {
-//     fn id_to_engine(value: SteelVal) -> Option<SteelVal> {
-//         if let SteelVal::Boxed(b) = ENGINE_MAP.with(|x| x.clone()) {
-//             if let SteelVal::HashMapV(h) = b.read().clone() {
-//                 return h.get(&value).cloned();
-//             }
-//         }
-
-//         None
-//     }
-
-//     // module
-//     engine
-//         .register_fn("helix.controller.create-engine", || {
-//             SteelEngine(configure_engine_impl(Engine::new()))
-//         })
-//         .register_fn("helix.controller.fresh-engine-id", || {
-//             ENGINE_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
-//         })
-//         .register_fn(
-//             "helix.controller.call-function-by-name",
-//             SteelEngine::call_function_by_name,
-//         )
-//         .register_fn("helix.controller.call-function", SteelEngine::call_function)
-//         .register_fn(
-//             "helix.controller.require-module",
-//             SteelEngine::require_module,
-//         )
-//         .register_value(
-//             "helix.controller.engine-map",
-//             ENGINE_MAP.with(|x| x.clone()),
-//         )
-//         .register_fn("helix.controller.id->engine", id_to_engine);
-// }
 
 fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/misc");

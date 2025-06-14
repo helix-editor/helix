@@ -5,8 +5,11 @@ pub mod steel_implementations {
 
     use steel::{
         gc::ShareableMut,
-        rvals::{as_underlying_type, Custom, SteelString},
-        steel_vm::{builtin::BuiltInModule, register_fn::RegisterFn},
+        rvals::{as_underlying_type, AsRefSteelVal, Custom, SteelString},
+        steel_vm::{
+            builtin::{BuiltInModule, MarkdownDoc},
+            register_fn::RegisterFn,
+        },
         SteelVal,
     };
 
@@ -19,6 +22,7 @@ pub mod steel_implementations {
     impl steel::rvals::Custom for AutoPairConfig {}
     impl steel::rvals::Custom for SoftWrap {}
 
+    #[allow(unused)]
     pub struct RopeyError(ropey::Error);
 
     impl steel::rvals::Custom for RopeyError {}
@@ -61,6 +65,10 @@ pub mod steel_implementations {
                 _ => false,
             }
         }
+
+        fn fmt(&self) -> Option<std::result::Result<String, std::fmt::Error>> {
+            Some(Ok(format!("#<Rope:\"{}\">", self.to_slice())))
+        }
     }
 
     impl SteelRopeSlice {
@@ -88,6 +96,20 @@ pub mod steel_implementations {
                 RangeKind::Char => self.text.slice(self.start..self.end),
                 RangeKind::Byte => self.text.byte_slice(self.start..self.end),
             }
+        }
+
+        pub fn insert_str(&self, char_idx: usize, text: SteelString) -> Result<Self, RopeyError> {
+            let slice = self.to_slice();
+            let mut rope = ropey::Rope::from(slice);
+            rope.try_insert(char_idx, &text)?;
+            Ok(Self::new(rope))
+        }
+
+        pub fn insert_char(&self, char_idx: usize, c: char) -> Result<Self, RopeyError> {
+            let slice = self.to_slice();
+            let mut rope = ropey::Rope::from(slice);
+            rope.try_insert_char(char_idx, c)?;
+            Ok(Self::new(rope))
         }
 
         pub fn line(mut self, cursor: usize) -> Result<Self, RopeyError> {
@@ -197,6 +219,10 @@ pub mod steel_implementations {
             self.to_slice().len_chars()
         }
 
+        pub fn len_bytes(&self) -> usize {
+            self.to_slice().len_bytes()
+        }
+
         pub fn get_char(&self, index: usize) -> Option<char> {
             self.to_slice().get_char(index)
         }
@@ -226,12 +252,6 @@ pub mod steel_implementations {
             self
         }
 
-        pub fn trimmed_starts_with(&self, pat: SteelString) -> bool {
-            let maybe_owned = Cow::from(self.to_slice());
-
-            maybe_owned.trim_start().starts_with(pat.as_str())
-        }
-
         pub fn starts_with(&self, pat: SteelString) -> bool {
             self.to_slice().starts_with(pat.as_str())
         }
@@ -244,19 +264,142 @@ pub mod steel_implementations {
     pub fn rope_module() -> BuiltInModule {
         let mut module = BuiltInModule::new("helix/core/text");
 
-        module
-            .register_fn("string->rope", SteelRopeSlice::from_string)
-            .register_fn("rope->slice", SteelRopeSlice::slice)
-            .register_fn("rope-char->byte", SteelRopeSlice::char_to_byte)
-            .register_fn("rope->byte-slice", SteelRopeSlice::byte_slice)
-            .register_fn("rope->line", SteelRopeSlice::line)
-            .register_fn("rope->string", SteelRopeSlice::to_string)
-            .register_fn("rope-len-chars", SteelRopeSlice::len_chars)
-            .register_fn("rope-char-ref", SteelRopeSlice::get_char)
-            .register_fn("rope-len-lines", SteelRopeSlice::len_lines)
-            .register_fn("rope-starts-with?", SteelRopeSlice::starts_with)
-            .register_fn("rope-ends-with?", SteelRopeSlice::ends_with)
-            .register_fn("rope-trim-start", SteelRopeSlice::trim_start);
+        macro_rules! register_value {
+            ($name:expr, $func:expr, $doc:expr) => {
+                module.register_fn($name, $func);
+                module.register_doc($name, MarkdownDoc(Cow::Borrowed($doc)));
+            };
+        }
+
+        register_value!(
+            "Rope?",
+            |value: SteelVal| SteelRopeSlice::as_ref(&value).is_ok(),
+            "Check if the given value is a rope"
+        );
+
+        register_value!(
+            "string->rope",
+            SteelRopeSlice::from_string,
+            r#"Converts a string into a rope.
+
+```scheme
+(string->rope value) -> Rope?
+```
+
+* value : string?
+            "#
+        );
+
+        register_value!(
+            "rope->slice",
+            SteelRopeSlice::slice,
+            r#"Take a slice from using character indices from the rope.
+Returns a new rope value.
+
+```scheme
+(rope->slice rope start end) -> Rope?
+```
+
+* rope : Rope?
+* start: (and positive? int?)
+* end: (and positive? int?)
+"#
+        );
+
+        register_value!(
+            "rope-char->byte",
+            SteelRopeSlice::char_to_byte,
+            r#"Convert the character offset into a byte offset for a given rope"#
+        );
+
+        register_value!(
+            "rope->byte-slice",
+            SteelRopeSlice::byte_slice,
+            r#"Take a slice of this rope using byte offsets
+
+```scheme
+(rope->byte-slice rope start end) -> Rope?
+```
+
+* rope: Rope?
+* start: (and positive? int?)
+* end: (and positive? int?)
+"#
+        );
+
+        register_value!(
+            "rope->line",
+            SteelRopeSlice::line,
+            r#"Get the line at the given line index. Returns a rope.
+
+```scheme
+(rope->line rope index) -> Rope?
+
+```
+
+* rope : Rope?
+* index : (and positive? int?)
+"#
+        );
+
+        register_value!(
+            "rope->string",
+            SteelRopeSlice::to_string,
+            "Convert the given rope to a string"
+        );
+
+        register_value!(
+            "rope-len-chars",
+            SteelRopeSlice::len_chars,
+            "Get the length of the rope in characters"
+        );
+        register_value!(
+            "rope-len-bytes",
+            SteelRopeSlice::len_chars,
+            "Get the length of the rope in bytes"
+        );
+
+        register_value!(
+            "rope-char-ref",
+            SteelRopeSlice::get_char,
+            "Get the character at the given index"
+        );
+
+        register_value!(
+            "rope-len-lines",
+            SteelRopeSlice::len_lines,
+            "Get the number of lines in the rope"
+        );
+
+        register_value!(
+            "rope-starts-with?",
+            SteelRopeSlice::starts_with,
+            "Check if the rope starts with a given pattern"
+        );
+
+        register_value!(
+            "rope-ends-with?",
+            SteelRopeSlice::ends_with,
+            "Check if the rope ends with a given pattern"
+        );
+
+        register_value!(
+            "rope-trim-start",
+            SteelRopeSlice::trim_start,
+            "Remove the leading whitespace from the given rope"
+        );
+
+        register_value!(
+            "rope-insert-string",
+            SteelRopeSlice::insert_str,
+            "Insert a string at the given index into the rope"
+        );
+
+        register_value!(
+            "rope-insert-char",
+            SteelRopeSlice::insert_char,
+            "Insert a character at the given index"
+        );
 
         module
     }
