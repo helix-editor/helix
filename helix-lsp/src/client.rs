@@ -1551,4 +1551,63 @@ impl Client {
             changes,
         })
     }
+
+    // Everything below is explicitly extensions used for handling non standard lsp commands
+    pub fn non_standard_extension(
+        &self,
+        method_name: String,
+        params: Option<Value>,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        Some(self.call_non_standard(DynamicLspRequest {
+            method_name,
+            params,
+        }))
+    }
+
+    fn call_non_standard(&self, request: DynamicLspRequest) -> impl Future<Output = Result<Value>> {
+        self.call_non_standard_with_timeout(request, self.req_timeout)
+    }
+
+    fn call_non_standard_with_timeout(
+        &self,
+        request: DynamicLspRequest,
+        timeout_secs: u64,
+    ) -> impl Future<Output = Result<Value>> {
+        let server_tx = self.server_tx.clone();
+        let id = self.next_request_id();
+
+        let params = serde_json::to_value(&request.params);
+        async move {
+            use std::time::Duration;
+            use tokio::time::timeout;
+
+            let request = jsonrpc::MethodCall {
+                jsonrpc: Some(jsonrpc::Version::V2),
+                id: id.clone(),
+                method: (&request.method_name).to_string(),
+                params: Self::value_into_params(params?),
+            };
+
+            let (tx, mut rx) = channel::<Result<Value>>(1);
+
+            server_tx
+                .send(Payload::Request {
+                    chan: tx,
+                    value: request,
+                })
+                .map_err(|e| Error::Other(e.into()))?;
+
+            // TODO: delay other calls until initialize success
+            timeout(Duration::from_secs(timeout_secs), rx.recv())
+                .await
+                .map_err(|_| Error::Timeout(id))? // return Timeout
+                .ok_or(Error::StreamClosed)?
+        }
+    }
+}
+
+#[derive(serde::Serialize, Deserialize)]
+pub struct DynamicLspRequest {
+    method_name: String,
+    params: Option<Value>,
 }
