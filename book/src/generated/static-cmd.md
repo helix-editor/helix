@@ -147,6 +147,12 @@
 | `goto_last_diag` | Goto last diagnostic | normal: `` ]D ``, select: `` ]D `` |
 | `goto_next_diag` | Goto next diagnostic | normal: `` ]d ``, select: `` ]d `` |
 | `goto_prev_diag` | Goto previous diagnostic | normal: `` [d ``, select: `` [d `` |
+| `goto_first_diag_workspace` | Goto first diagnostic in workspace |  |
+| `goto_first_error_workspace` | Goto first Error diagnostic in workspace |  |
+| `goto_first_warning_workspace` | Goto first Warning diagnostic in workspace |  |
+| `goto_next_diag_workspace` | Goto next diagnostic in workspace |  |
+| `goto_next_error_workspace` | Goto next Error diagnostic in workspace |  |
+| `goto_next_warning_workspace` | Goto next Warning diagnostic in workspace |  |
 | `goto_next_change` | Goto next change | normal: `` ]g ``, select: `` ]g `` |
 | `goto_prev_change` | Goto previous change | normal: `` [g ``, select: `` [g `` |
 | `goto_first_change` | Goto first change | normal: `` [G ``, select: `` [G `` |
