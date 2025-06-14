@@ -569,16 +569,24 @@ impl Application {
         doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
 
         let lines = doc_save_event.text.len_lines();
-        let bytes = doc_save_event.text.len_bytes();
+        let mut sz = doc_save_event.text.len_bytes() as f32;
+
+        const SUFFIX: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
+        let mut i = 0;
+        while i < SUFFIX.len() - 1 && sz >= 1024.0 {
+            sz /= 1024.0;
+            i += 1;
+        }
 
         self.editor
             .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
         self.editor.set_status(format!(
-            "'{}' written, {}L {}B",
+            "'{}' written, {}L {:.1}{}",
             get_relative_path(&doc_save_event.path).to_string_lossy(),
             lines,
-            bytes
+            sz,
+            SUFFIX[i],
         ));
     }
 
