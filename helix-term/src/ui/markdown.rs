@@ -132,7 +132,7 @@ pub fn highlighted_code_block<'a>(
 }
 
 pub struct Markdown {
-    contents: String,
+    pub contents: String,
 
     config_loader: Arc<ArcSwap<syntax::Loader>>,
 }
