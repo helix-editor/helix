@@ -21,6 +21,7 @@ use tui::backend::Backend;
 
 use crate::{
     args::Args,
+    commands::ScriptingEngine,
     compositor::{Compositor, Event},
     config::Config,
     handlers,
@@ -880,6 +881,19 @@ impl Application {
 
                         // Remove the language server from the registry.
                         self.editor.language_servers.remove_by_id(server_id);
+                    }
+                    Notification::Other(event_name, params) => {
+                        let server_id = server_id;
+
+                        let mut cx = crate::compositor::Context {
+                            editor: &mut self.editor,
+                            scroll: None,
+                            jobs: &mut self.jobs,
+                        };
+
+                        ScriptingEngine::handle_lsp_notification(
+                            &mut cx, server_id, event_name, params,
+                        );
                     }
                 }
             }

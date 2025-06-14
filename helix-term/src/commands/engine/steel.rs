@@ -6,8 +6,8 @@ use helix_core::{
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     find_workspace, graphemes,
     syntax::config::{
-        default_timeout, AutoPairConfig, IndentationConfiguration, LanguageConfiguration,
-        LanguageServerConfiguration, SoftWrap,
+        default_timeout, AutoPairConfig, LanguageConfiguration, LanguageServerConfiguration,
+        SoftWrap,
     },
     syntax::{self},
     text_annotations::InlineAnnotation,
@@ -33,11 +33,12 @@ use once_cell::sync::{Lazy, OnceCell};
 use steel::{
     compiler::modules::steel_home,
     gc::{unsafe_erased_pointers::CustomReference, ShareableMut},
+    rerrs::ErrorKind,
     rvals::{as_underlying_type, AsRefMutSteelVal, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{
         engine::Engine, mutex_lock, mutex_unlock, register_fn::RegisterFn, ThreadStateController,
     },
-    steelerr, SteelErr, SteelVal,
+    steelerr, RootedSteelVal, SteelErr, SteelVal,
 };
 
 use std::{
@@ -193,6 +194,18 @@ pub static BUFFER_EXTENSION_KEYMAP: Lazy<RwLock<BufferExtensionKeyMap>> = Lazy::
         reverse: HashMap::new(),
     })
 });
+
+pub static LSP_NOTIFICATION_REGISTRY: Lazy<RwLock<HashMap<(String, String), RootedSteelVal>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+
+fn register_lsp_notification_callback(lsp: String, kind: String, function: SteelVal) {
+    let rooted = function.as_rooted();
+
+    LSP_NOTIFICATION_REGISTRY
+        .write()
+        .unwrap()
+        .insert((lsp, kind), rooted);
+}
 
 pub struct BufferExtensionKeyMap {
     map: HashMap<String, EmbeddedKeyMap>,
@@ -676,6 +689,11 @@ fn dynamic_set_option(
 fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/configuration");
 
+    module.register_fn(
+        "register-lsp-notification-handler",
+        register_lsp_notification_callback,
+    );
+
     module.register_fn("update-configuration!", |ctx: &mut Context| {
         ctx.editor
             .config_events
@@ -851,6 +869,28 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     if generate_sources {
         let mut builtin_configuration_module =
             r#"(require-builtin helix/core/configuration as helix.)
+
+(provide register-lsp-notification-handler)
+
+;;@doc
+;; Register a callback to be called on LSP notifications sent from the server -> client
+;; that aren't currently handled by Helix as a built in.
+;;
+;; ```scheme
+;; (register-lsp-notification-handler lsp-name event-name handler)
+;; ```
+;;
+;; * lsp-name : string?
+;; * event-name : string?
+;; * function : (-> hash? any?) ;; Function where the first argument is the parameters
+;;
+;; # Examples
+;; ```
+;; (register-lsp-notification-handler "dart"
+;;                                    "dart/textDocument/publishClosingLabels"
+;;                                    (lambda (args) (displayln args)))
+;; ```
+(define register-lsp-notification-handler helix.register-lsp-notification-handler)
 
 (provide set-option!)
 (define (set-option! key value)
@@ -1817,7 +1857,7 @@ impl super::PluginSystem for SteelScriptingEngine {
 
     fn call_function_by_name(&self, cx: &mut Context, name: &str, args: &[Cow<str>]) -> bool {
         if enter_engine(|x| x.global_exists(name)) {
-            let args = args
+            let mut args = args
                 .iter()
                 .map(|x| x.clone().into_steelval().unwrap())
                 .collect::<Vec<_>>();
@@ -1831,9 +1871,8 @@ impl super::PluginSystem for SteelScriptingEngine {
                             move |engine, arguments| {
                                 let context = arguments[0].clone();
                                 engine.update_value("*helix.cx*", context);
-
-                                // TODO: Get rid of this clone
-                                engine.call_function_by_name_with_args(name, args.clone())
+                                engine
+                                    .call_function_by_name_with_args_from_mut_slice(name, &mut args)
                             },
                         )
                     })
@@ -1946,6 +1985,74 @@ impl super::PluginSystem for SteelScriptingEngine {
             // Generate markdown docs
             steel_doc::walk_dir(&mut writer, target, &mut engine).unwrap();
         }
+    }
+
+    // TODO: Should this just be a hook / event instead of a function like this?
+    // Handle an LSP notification, assuming its been sent through
+    fn handle_lsp_notification(
+        &self,
+        cx: &mut compositor::Context,
+        server_id: helix_lsp::LanguageServerId,
+        event_name: String,
+        params: helix_lsp::jsonrpc::Params,
+    ) -> bool {
+        if let Err(e) = enter_engine(|guard| {
+            {
+                let mut ctx = Context {
+                    register: None,
+                    count: None,
+                    editor: &mut cx.editor,
+                    callback: Vec::new(),
+                    on_next_key_callback: None,
+                    jobs: &mut cx.jobs,
+                };
+
+                let language_server_name = ctx
+                    .editor
+                    .language_servers
+                    .get_by_id(server_id)
+                    .map(|x| x.name().to_owned());
+
+                if language_server_name.is_none() {
+                    ctx.editor.set_error("Unable to find language server");
+                }
+
+                let language_server_name = language_server_name.unwrap();
+
+                let function = LSP_NOTIFICATION_REGISTRY
+                    .read()
+                    .unwrap()
+                    .get(&(language_server_name, event_name))
+                    .map(|x| x.value())
+                    .cloned();
+
+                if let Some(function) = function {
+                    // Install the interrupt handler, in the event this thing
+                    // is blocking for too long.
+                    with_interrupt_handler(|| {
+                        guard
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            .consume(move |engine, arguments| {
+                                let context = arguments[0].clone();
+                                engine.update_value("*helix.cx*", context);
+
+                                let params = serde_json::to_value(&params)
+                                    .map_err(|e| SteelErr::new(ErrorKind::Generic, e.to_string()))
+                                    .and_then(|x| x.into_steelval())?;
+
+                                let args = vec![params];
+
+                                engine.call_function_with_args(function.clone(), args)
+                            })
+                    })
+                } else {
+                    Ok(SteelVal::Void)
+                }
+            }
+        }) {
+            cx.editor.set_error(format!("{}", e));
+        }
+        true
     }
 }
 
@@ -2959,7 +3066,6 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         let context = args[0].clone();
                         engine.update_value("*helix.cx*", context);
                         let mut args = [minimized_event.into_steelval().unwrap()];
-                        // engine.call_function_by_name_with_args(&function_name, args)
                         engine.call_function_with_args_from_mut_slice(
                             rooted.value().clone(),
                             &mut args,

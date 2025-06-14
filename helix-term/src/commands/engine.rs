@@ -1,5 +1,6 @@
 use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::syntax;
+use helix_lsp::{jsonrpc, LanguageServerId};
 use helix_view::{document::Mode, input::KeyEvent};
 
 use std::{borrow::Cow, sync::Arc};
@@ -140,6 +141,23 @@ impl ScriptingEngine {
             .collect()
     }
 
+    pub fn handle_lsp_notification(
+        cx: &mut compositor::Context,
+        server_id: LanguageServerId,
+        event_name: String,
+        params: jsonrpc::Params,
+    ) {
+        for kind in PLUGIN_PRECEDENCE {
+            if manual_dispatch!(
+                kind,
+                // TODO: Get rid of these clones!
+                handle_lsp_notification(cx, server_id, event_name.clone(), params.clone())
+            ) {
+                return;
+            }
+        }
+    }
+
     pub fn generate_sources() {
         for kind in PLUGIN_PRECEDENCE {
             manual_dispatch!(kind, generate_sources())
@@ -160,6 +178,7 @@ pub trait PluginSystem {
     /// this is done here. This is run before the context is available.
     fn initialize(&self) {}
 
+    #[allow(unused)]
     fn engine_name(&self) -> PluginSystemKind;
 
     /// Post initialization, once the context is available. This means you should be able to
@@ -203,6 +222,19 @@ pub trait PluginSystem {
         _input: &'a str,
         _parts: &'a [&'a str],
         _event: PromptEvent,
+    ) -> bool {
+        false
+    }
+
+    /// Call into the scripting engine to handle an unhandled LSP notification, sent from the server
+    /// to the client.
+    #[inline(always)]
+    fn handle_lsp_notification(
+        &self,
+        _cx: &mut compositor::Context,
+        _server_id: LanguageServerId,
+        _event_name: String,
+        _params: jsonrpc::Params,
     ) -> bool {
         false
     }
