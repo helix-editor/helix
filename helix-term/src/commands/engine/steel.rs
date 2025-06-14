@@ -188,7 +188,7 @@ where
     res
 }
 
-pub static BUFFER_EXTENSION_KEYMAP: Lazy<RwLock<BufferExtensionKeyMap>> = Lazy::new(|| {
+static BUFFER_EXTENSION_KEYMAP: Lazy<RwLock<BufferExtensionKeyMap>> = Lazy::new(|| {
     RwLock::new(BufferExtensionKeyMap {
         map: HashMap::new(),
         reverse: HashMap::new(),

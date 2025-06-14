@@ -39,8 +39,6 @@ impl Info {
             .unwrap();
         let mut text = String::new();
 
-        let mut height = 0;
-
         for (item, desc) in body {
             let mut line_iter = desc.as_ref().lines();
 
@@ -52,12 +50,10 @@ impl Info {
                     first_line,
                     width = item_width
                 );
-                height += 1;
             }
 
             for line in line_iter {
                 let _ = writeln!(text, "{:width$}  {}", "", line, width = item_width);
-                height += 1;
             }
         }
 

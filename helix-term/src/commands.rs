@@ -3160,6 +3160,7 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
+    #[allow(unused)]
     struct BufferMeta {
         id: DocumentId,
         path: Option<PathBuf>,
