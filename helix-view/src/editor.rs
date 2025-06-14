@@ -1437,7 +1437,11 @@ impl Editor {
                 log::error!("failed to apply workspace edit: {err:?}")
             }
         }
-        fs::rename(old_path, &new_path)?;
+
+        if old_path.exists() {
+            fs::rename(old_path, &new_path)?;
+        }
+
         if let Some(doc) = self.document_by_path(old_path) {
             self.set_doc_path(doc.id(), &new_path);
         }
