@@ -112,6 +112,22 @@ pub mod steel_implementations {
             Ok(Self::new(rope))
         }
 
+        pub fn try_line_to_char(&self, line: usize) -> Result<usize, RopeyError> {
+            self.to_slice().try_line_to_char(line).map_err(RopeyError)
+        }
+
+        pub fn try_line_to_byte(&self, line: usize) -> Result<usize, RopeyError> {
+            self.to_slice().try_line_to_byte(line).map_err(RopeyError)
+        }
+
+        pub fn try_char_to_line(&self, line: usize) -> Result<usize, RopeyError> {
+            self.to_slice().try_char_to_line(line).map_err(RopeyError)
+        }
+
+        pub fn try_byte_to_line(&self, line: usize) -> Result<usize, RopeyError> {
+            self.to_slice().try_byte_to_line(line).map_err(RopeyError)
+        }
+
         pub fn line(mut self, cursor: usize) -> Result<Self, RopeyError> {
             match self.kind {
                 RangeKind::Char => {
@@ -209,6 +225,10 @@ pub mod steel_implementations {
 
         pub fn char_to_byte(&self, pos: usize) -> Result<usize, RopeyError> {
             Ok(self.to_slice().try_char_to_byte(pos)?)
+        }
+
+        pub fn byte_to_char(&self, pos: usize) -> Result<usize, RopeyError> {
+            Ok(self.to_slice().try_byte_to_char(pos)?)
         }
 
         pub fn to_string(&self) -> String {
@@ -310,6 +330,70 @@ Returns a new rope value.
             "rope-char->byte",
             SteelRopeSlice::char_to_byte,
             r#"Convert the character offset into a byte offset for a given rope"#
+        );
+
+        register_value!(
+            "rope-char->byte",
+            SteelRopeSlice::byte_to_char,
+            r#"Convert the byte offset into a character offset for a given rope"#
+        );
+
+        register_value!(
+            "rope-line->char",
+            SteelRopeSlice::try_line_to_char,
+            r#"Convert the given line index to a character offset for a given rope
+
+```scheme
+(rope-line->char rope line-offset) -> int?
+```
+
+* rope : Rope?
+* line-offset: int?
+            "#
+        );
+
+        register_value!(
+            "rope-line->byte",
+            SteelRopeSlice::try_line_to_byte,
+            r#"Convert the given line index to a byte offset for a given rope
+
+```scheme
+(rope-line->byte rope line-offset) -> int?
+```
+
+* rope : Rope?
+* line-offset: int?
+            "#
+        );
+
+        register_value!(
+            "rope-char->line",
+            SteelRopeSlice::try_char_to_line,
+            r#"Convert the given character offset to a line offset for a given rope
+
+```scheme
+(rope-char->line rope char-index) -> int?
+```
+
+* rope : Rope?
+* char-index : int?
+
+            "#
+        );
+
+        register_value!(
+            "rope-byte->line",
+            SteelRopeSlice::try_byte_to_line,
+            r#"Convert the given byte offset to a line offset for a given rope
+
+```scheme
+(rope-byte->line rope byte-index) -> int?
+```
+
+* rope : Rope?
+* byte-index : int?
+
+            "#
         );
 
         register_value!(

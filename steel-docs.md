@@ -1,4 +1,22 @@
 # /home/matt/.steel/cogs/helix/configuration.scm
+### **register-lsp-notification-handler**
+Register a callback to be called on LSP notifications sent from the server -> client
+that aren't currently handled by Helix as a built in.
+
+```scheme
+(register-lsp-notification-handler lsp-name event-name handler)
+```
+
+* lsp-name : string?
+* event-name : string?
+* function : (-> hash? any?) ;; Function where the first argument is the parameters
+
+# Examples
+```
+(register-lsp-notification-handler "dart"
+                                   "dart/textDocument/publishClosingLabels"
+                                   (lambda (args) (displayln args)))
+```
 ### **cursor-shape**
 Shape for cursor in each mode
 
@@ -265,8 +283,6 @@ Inline diagnostics cursor line
 Inline diagnostics end of line
 ### **get-language-config**
 Get the configuration for a specific language
-### **get-language-config-by-filename**
-Get the language configuration for a specific file
 ### **set-language-config!**
 Set the language configuration
 # /home/matt/.steel/cogs/helix/commands.scm
@@ -691,6 +707,8 @@ Set the editor clipping at the left.
 ### **set-editor-clip-bottom!**
 Set the editor clipping at the bottom.
 # /home/matt/.steel/cogs/helix/themes.scm
+### **register-theme**
+Register this theme with helix for use
 ### **attribute**
 Class attributes, HTML tag attributes
 ### **type**
@@ -1256,6 +1274,10 @@ Goto implementation
 Goto line number <n> else file start
 ### **goto_file_end**
 Goto file end
+### **extend_to_file_start**
+Extend to line number<n> else file start
+### **extend_to_file_end**
+Extend to file end
 ### **goto_file**
 Goto files/URLs in selections
 ### **goto_file_hsplit**
@@ -1280,6 +1302,8 @@ Goto last modification
 Goto line
 ### **goto_last_line**
 Goto last line
+### **extend_to_last_line**
+Extend to last line
 ### **goto_first_diag**
 Goto first diagnostic
 ### **goto_last_diag**
@@ -1300,6 +1324,10 @@ Goto last change
 Goto line start
 ### **goto_line_end**
 Goto line end
+### **goto_column**
+Goto column
+### **extend_to_column**
+Extend to column
 ### **goto_next_buffer**
 Goto next buffer
 ### **goto_previous_buffer**
@@ -1593,9 +1621,13 @@ Jump to a two-character label
 ### **extend_to_word**
 Extend to a two-character label
 ### **goto_next_tabstop**
-goto next snippet placeholder
+Goto next snippet placeholder
 ### **goto_prev_tabstop**
-goto next snippet placeholder
+Goto next snippet placeholder
+### **rotate_selections_first**
+Make the first selection your primary one
+### **rotate_selections_last**
+Make the last selection your primary one
 ### **insert_char**
 Insert a given character at the cursor cursor position
 ### **insert_string**
