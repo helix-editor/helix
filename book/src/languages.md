@@ -132,7 +132,7 @@ These are the available options for a language server.
 | `config`                   | Language server initialization options                                                                                            |
 | `timeout`                  | The maximum time a request to the language server may take, in seconds. Defaults to `20`                                          |
 | `environment`              | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }`          |
-| `roots`                    | A set of marker files to look for when trying to find the workspace root. These apply befory `language.roots`                     ga|
+| `roots`                    | A set of marker files to look for when trying to find the workspace root. These apply befory `language.roots`                     |
 | `required-root-patterns`   | A list of `glob` patterns to look for in the working directory. The language server is started if at least one of them is found.  |
 
 A `format` sub-table within `config` can be used to pass extra formatting options to
