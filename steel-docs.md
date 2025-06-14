@@ -2732,3 +2732,110 @@ Check whether the given event is the key: keypad-begin
 (key-event-keypad-begin? event)
 ```
 event: Event?
+# helix/core/text
+### **Rope?**
+Check if the given value is a rope
+### **rope->byte-slice**
+Take a slice of this rope using byte offsets
+
+```scheme
+(rope->byte-slice rope start end) -> Rope?
+```
+
+* rope: Rope?
+* start: (and positive? int?)
+* end: (and positive? int?)
+### **rope->line**
+Get the line at the given line index. Returns a rope.
+
+```scheme
+(rope->line rope index) -> Rope?
+
+```
+
+* rope : Rope?
+* index : (and positive? int?)
+### **rope->slice**
+Take a slice from using character indices from the rope.
+Returns a new rope value.
+
+```scheme
+(rope->slice rope start end) -> Rope?
+```
+
+* rope : Rope?
+* start: (and positive? int?)
+* end: (and positive? int?)
+### **rope->string**
+Convert the given rope to a string
+### **rope-byte->line**
+Convert the given byte offset to a line offset for a given rope
+
+```scheme
+(rope-byte->line rope byte-index) -> int?
+```
+
+* rope : Rope?
+* byte-index : int?
+
+            
+### **rope-char->byte**
+Convert the byte offset into a character offset for a given rope
+### **rope-char->line**
+Convert the given character offset to a line offset for a given rope
+
+```scheme
+(rope-char->line rope char-index) -> int?
+```
+
+* rope : Rope?
+* char-index : int?
+
+            
+### **rope-char-ref**
+Get the character at the given index
+### **rope-ends-with?**
+Check if the rope ends with a given pattern
+### **rope-insert-char**
+Insert a character at the given index
+### **rope-insert-string**
+Insert a string at the given index into the rope
+### **rope-len-bytes**
+Get the length of the rope in bytes
+### **rope-len-chars**
+Get the length of the rope in characters
+### **rope-len-lines**
+Get the number of lines in the rope
+### **rope-line->byte**
+Convert the given line index to a byte offset for a given rope
+
+```scheme
+(rope-line->byte rope line-offset) -> int?
+```
+
+* rope : Rope?
+* line-offset: int?
+            
+### **rope-line->char**
+Convert the given line index to a character offset for a given rope
+
+```scheme
+(rope-line->char rope line-offset) -> int?
+```
+
+* rope : Rope?
+* line-offset: int?
+            
+### **rope-starts-with?**
+Check if the rope starts with a given pattern
+### **rope-trim-start**
+Remove the leading whitespace from the given rope
+### **string->rope**
+Converts a string into a rope.
+
+```scheme
+(string->rope value) -> Rope?
+```
+
+* value : string?
+            

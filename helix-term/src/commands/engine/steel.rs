@@ -45,6 +45,7 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     error::Error,
+    io::Write,
     path::PathBuf,
     sync::{atomic::AtomicBool, Mutex, MutexGuard, RwLock, RwLockReadGuard},
     time::{Duration, SystemTime},
@@ -1974,6 +1975,15 @@ impl super::PluginSystem for SteelScriptingEngine {
     }
 
     fn generate_sources(&self) {
+        fn format_markdown_doc<W: Write>(writer: &mut W, doc: &str) {
+            for line in doc.lines() {
+                if line.starts_with("# ") {
+                    write!(writer, "###").unwrap();
+                }
+                writeln!(writer, "{}", line).unwrap();
+            }
+        }
+
         // Generate sources directly with a fresh engine
         let mut engine = Engine::new();
         configure_builtin_sources(&mut engine, true);
@@ -1984,6 +1994,48 @@ impl super::PluginSystem for SteelScriptingEngine {
 
             // Generate markdown docs
             steel_doc::walk_dir(&mut writer, target, &mut engine).unwrap();
+
+            // Also generate docs for the built in modules
+            let module = engine.builtin_modules().get("helix/core/text").unwrap();
+
+            writeln!(&mut writer, "# helix/core/text").unwrap();
+            writeln!(
+                &mut writer,
+                "To use, you can include with `(require-builtin helix/core/text)`"
+            )
+            .unwrap();
+
+            let mut found_definitions = std::collections::HashSet::new();
+
+            let mut exported_functions: Vec<_> = module
+                .names()
+                .into_iter()
+                .filter(|name| !name.starts_with("#%"))
+                .collect();
+
+            exported_functions.sort();
+
+            for name in &exported_functions {
+                if let Some(value) = module.documentation().get(name) {
+                    found_definitions.insert(name.to_string());
+
+                    match value {
+                        steel::steel_vm::builtin::Documentation::Markdown(m) => {
+                            let escaped = name.replace("*", "\\*");
+                            writeln!(&mut writer, "### **{}**", escaped).unwrap();
+
+                            format_markdown_doc(&mut writer, &m.0);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            for name in exported_functions {
+                if !found_definitions.contains(&name) {
+                    writeln!(&mut writer, "### **{}**", name).unwrap();
+                }
+            }
         }
     }
 
