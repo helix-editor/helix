@@ -94,6 +94,7 @@
   "namespace"
   "override"
   "satisfies"
+  "using"
 ] @keyword
 
 [
