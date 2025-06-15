@@ -14,7 +14,7 @@ use tui::{text::Span, widgets::Row};
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    diagnostic::DiagnosticProvider, syntax::LanguageServerFeature,
+    diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
     text_annotations::InlineAnnotation, Selection, Uri,
 };
 use helix_stdx::path;
@@ -1357,6 +1357,7 @@ fn compute_inlay_hints_for_view(
             let mut padding_after_inlay_hints = Vec::new();
 
             let doc_text = doc.text();
+            let inlay_hints_length_limit = doc.config.load().lsp.inlay_hints_length_limit;
 
             for hint in hints {
                 let char_idx =
@@ -1367,7 +1368,7 @@ fn compute_inlay_hints_for_view(
                         None => continue,
                     };
 
-                let label = match hint.label {
+                let mut label = match hint.label {
                     lsp::InlayHintLabel::String(s) => s,
                     lsp::InlayHintLabel::LabelParts(parts) => parts
                         .into_iter()
@@ -1375,6 +1376,31 @@ fn compute_inlay_hints_for_view(
                         .collect::<Vec<_>>()
                         .join(""),
                 };
+                // Truncate the hint if too long
+                if let Some(limit) = inlay_hints_length_limit {
+                    // Limit on displayed width
+                    use helix_core::unicode::{
+                        segmentation::UnicodeSegmentation, width::UnicodeWidthStr,
+                    };
+
+                    let width = label.width();
+                    let limit = limit.get().into();
+                    if width > limit {
+                        let mut floor_boundary = 0;
+                        let mut acc = 0;
+                        for (i, grapheme_cluster) in label.grapheme_indices(true) {
+                            acc += grapheme_cluster.width();
+
+                            if acc > limit {
+                                floor_boundary = i;
+                                break;
+                            }
+                        }
+
+                        label.truncate(floor_boundary);
+                        label.push('…');
+                    }
+                }
 
                 let inlay_hints_vec = match hint.kind {
                     Some(lsp::InlayHintKind::TYPE) => &mut type_inlay_hints,

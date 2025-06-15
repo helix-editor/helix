@@ -3,7 +3,7 @@
 ; Constants
 
 (this) @variable.builtin
-(nullptr) @constant.builtin
+(null) @constant.builtin
 
 ; Types
 
@@ -23,11 +23,6 @@
 
 ; Functions
 
-; These casts are parsed as function calls, but are not.
-((identifier) @keyword (#eq? @keyword "static_cast"))
-((identifier) @keyword (#eq? @keyword "dynamic_cast"))
-((identifier) @keyword (#eq? @keyword "reinterpret_cast"))
-((identifier) @keyword (#eq? @keyword "const_cast"))
 
 (call_expression
   function: (qualified_identifier
@@ -39,6 +34,8 @@
 (template_method
   name: (field_identifier) @function)
 
+; Support up to 3 levels of nesting of qualifiers
+; i.e. a::b::c::func();
 (function_declarator
   declarator: (qualified_identifier
     name: (identifier) @function))
@@ -47,6 +44,12 @@
   declarator: (qualified_identifier
     name: (qualified_identifier
       name: (identifier) @function)))
+
+(function_declarator
+  declarator: (qualified_identifier
+    name: (qualified_identifier
+      name: (qualified_identifier
+        name: (identifier) @function))))
 
 (function_declarator
   declarator: (field_identifier) @function)
@@ -71,6 +74,13 @@
   "[]"
   "()"
 ] @operator
+
+
+; These casts are parsed as function calls, but are not.
+((identifier) @keyword (#eq? @keyword "static_cast"))
+((identifier) @keyword (#eq? @keyword "dynamic_cast"))
+((identifier) @keyword (#eq? @keyword "reinterpret_cast"))
+((identifier) @keyword (#eq? @keyword "const_cast"))
 
 [
   "co_await"

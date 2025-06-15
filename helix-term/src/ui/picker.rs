@@ -585,8 +585,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     // retrieve the `Arc<Path>` key. The `path` in scope here is a `&Path` and
                     // we can cheaply clone the key for the preview highlight handler.
                     let (path, preview) = self.preview_cache.get_key_value(path).unwrap();
-                    if matches!(preview, CachedPreview::Document(doc) if doc.language_config().is_none())
-                    {
+                    if matches!(preview, CachedPreview::Document(doc) if doc.syntax().is_none()) {
                         helix_event::send_blocking(&self.preview_highlight_handler, path.clone());
                     }
                     return Some((Preview::Cached(preview), range));
@@ -624,20 +623,27 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             if content_type.is_binary() {
                                 return Ok(CachedPreview::Binary);
                             }
-                            Document::open(&path, None, None, editor.config.clone()).map_or(
-                                Err(std::io::Error::new(
-                                    std::io::ErrorKind::NotFound,
-                                    "Cannot open document",
-                                )),
-                                |doc| {
-                                    // Asynchronously highlight the new document
-                                    helix_event::send_blocking(
-                                        &self.preview_highlight_handler,
-                                        path.clone(),
-                                    );
-                                    Ok(CachedPreview::Document(Box::new(doc)))
-                                },
+                            let mut doc = Document::open(
+                                &path,
+                                None,
+                                false,
+                                editor.config.clone(),
+                                editor.syn_loader.clone(),
                             )
+                            .or(Err(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "Cannot open document",
+                            )))?;
+                            let loader = editor.syn_loader.load();
+                            if let Some(language_config) = doc.detect_language_config(&loader) {
+                                doc.language = Some(language_config);
+                                // Asynchronously highlight the new document
+                                helix_event::send_blocking(
+                                    &self.preview_highlight_handler,
+                                    path.clone(),
+                                );
+                            }
+                            Ok(CachedPreview::Document(Box::new(doc)))
                         } else {
                             Err(std::io::Error::new(
                                 std::io::ErrorKind::NotFound,
@@ -933,21 +939,18 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
             }
 
-            let syntax_highlights = EditorView::doc_syntax_highlights(
+            let loader = cx.editor.syn_loader.load();
+
+            let syntax_highlighter =
+                EditorView::doc_syntax_highlighter(doc, offset.anchor, area.height, &loader);
+            let mut overlay_highlights = Vec::new();
+
+            EditorView::doc_diagnostics_highlights_into(
                 doc,
-                offset.anchor,
-                area.height,
                 &cx.editor.theme,
+                &mut overlay_highlights,
             );
 
-            let mut overlay_highlights =
-                EditorView::empty_highlight_iter(doc, offset.anchor, area.height);
-            for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
-                if spans.is_empty() {
-                    continue;
-                }
-                overlay_highlights = Box::new(helix_core::syntax::merge(overlay_highlights, spans));
-            }
             let mut decorations = DecorationManager::default();
 
             if let Some((start, end)) = range {
@@ -977,7 +980,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 offset,
                 // TODO: compute text annotations asynchronously here (like inlay hints)
                 &TextAnnotations::default(),
-                syntax_highlights,
+                syntax_highlighter,
                 overlay_highlights,
                 &cx.editor.theme,
                 decorations,

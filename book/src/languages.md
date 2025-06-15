@@ -66,7 +66,7 @@ These configuration keys are available:
 | `indent`              | The indent to use. Has sub keys `unit` (the text inserted into the document when indenting; usually set to N spaces or `"\t"` for tabs) and `tab-width` (the number of spaces rendered for a tab) |
 | `language-servers`    | The Language Servers used for this language. See below for more information in the section [Configuring Language Servers for a language](#configuring-language-servers-for-a-language)   |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
-| `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout |
+| `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout. The filename of the current buffer can be passed as argument by using the `%{buffer_name}` expansion variable. See below for more information in the [Configuring the formatter command](#configuring-the-formatter-command) |
 | `soft-wrap`           | [editor.softwrap](./editor.md#editorsoft-wrap-section)
 | `text-width`          |  Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap-at-text-width` is set, defaults to `editor.text-width`   |
 | `rulers`              | Overrides the `editor.rulers` config key for the language. |
@@ -101,6 +101,16 @@ with the following priorities:
 2. Extension: if there are no glob matches, any `file-types` string that matches
    the file extension of a given file wins. In the example above, the `"toml"`
    config matches files like `Cargo.toml` or `languages.toml`.
+
+### Configuring the formatter command
+
+[Command line expansions](./command-line.md#expansions) are supported in the arguments
+of the formatter command. In particular, the `%{buffer_name}` variable can be passed as
+argument to the formatter:
+
+```toml
+formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename %{buffer_name}"] }
+```
 
 ## Language Server configuration
 
