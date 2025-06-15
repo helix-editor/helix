@@ -23,6 +23,7 @@ string = "grass"
 
 comment = { fg = "cmnt", modifiers = ["italic"] }
 "comment.block.documentation" = "grass"
+"comment.line.documentation" = "grass"
 
 variable = "text"
 "variable.builtin"   = { fg = "sky", modifiers = ["italic"] }
