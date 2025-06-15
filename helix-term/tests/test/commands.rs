@@ -820,3 +820,25 @@ async fn macro_play_within_macro_record() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
+    // Assert that `helix_term::commands::global_search` handles multibyte characters correctly.
+    test((
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
+        // start global search
+        " /«十分に長い マルチバイトキャラクター列» で検索<ret><esc>",
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
