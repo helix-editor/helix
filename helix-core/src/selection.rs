@@ -16,6 +16,7 @@ use helix_stdx::range::is_subset;
 use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
 use std::{borrow::Cow, iter, slice};
+use steel::rvals::Custom;
 
 /// A single selection range.
 ///
@@ -61,6 +62,8 @@ pub struct Range {
     /// the start of the line
     pub old_visual_position: Option<(u32, u32)>,
 }
+
+impl Custom for Range {}
 
 impl Range {
     pub fn new(anchor: usize, head: usize) -> Self {

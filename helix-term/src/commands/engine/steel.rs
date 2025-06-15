@@ -487,6 +487,54 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         }
     };
 
+    macro_rules! no_context {
+        ($name:expr, $function:expr, $doc:expr) => {{
+            module.register_fn($name, $function);
+            template_function_no_context($name, $doc);
+        }};
+    }
+
+    no_context!(
+        "selection->primary-index",
+        |sel: Selection| sel.primary_index(),
+        "Returns index of the primary selection"
+    );
+    no_context!(
+        "selection->primary-range",
+        |sel: Selection| sel.primary(),
+        "Returns the range for primary selection"
+    );
+    no_context!(
+        "selection->ranges",
+        |sel: Selection| sel.ranges().to_vec(),
+        "Returns all ranges of the selection"
+    );
+    no_context!(
+        "range-anchor",
+        |range: Range| range.anchor,
+        "Get the anchor of the range: the side that doesn't move when extending."
+    );
+    no_context!(
+        "range->from",
+        |range: Range| range.from(),
+        "Get the start of the range"
+    );
+    no_context!(
+        "range-head",
+        |range: Range| range.head,
+        "Get the head of the range, moved when extending."
+    );
+    no_context!(
+        "range->to",
+        |range: Range| range.to(),
+        "Get the end of the range"
+    );
+    no_context!(
+        "range->span",
+        |range: Range| (range.from(), range.to()),
+        "Get the span of the range (from, to)"
+    );
+
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
     module.register_fn("get-init-scm-path", get_init_scm_path);
 
