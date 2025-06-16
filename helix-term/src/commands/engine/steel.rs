@@ -3795,10 +3795,12 @@ Await the given value, and call the callback function on once the future is comp
         r#"
 Warning: this is experimental
 
-Adds an inlay hint at the given character index.
+Adds an inlay hint at the given character index. Returns the (first-line, last-line) list
+associated with this snapshot of the inlay hints. Use this pair of line numbers to invalidate
+the inlay hints.
 
 ```scheme
-(add-inlay-hint char-index completion)
+(add-inlay-hint char-index completion) -> (list int? int?)
 ```
 
 char-index : int?
@@ -3810,7 +3812,8 @@ completion : string?
         "remove-inlay-hint",
         remove_inlay_hint,
         r#"
-Warning: this is experimental
+Warning: this is experimental and should not be used.
+This will most likely be removed soon.
 
 Removes an inlay hint at the given character index. Note - to remove
 properly, the completion must match what was already there.
@@ -3821,6 +3824,24 @@ properly, the completion must match what was already there.
 
 char-index : int?
 completion : string?
+
+"#
+    );
+
+    register_2!(
+        "remove-inlay-hint-by-id",
+        remove_inlay_hint_by_id,
+        r#"
+Warning: this is experimental
+
+Removes an inlay hint by the id that was associated with the added inlay hints.
+
+```scheme
+(remove-inlay-hint first-line last-line)
+```
+
+first-line : int?
+last-line : int?
 
 "#
     );
@@ -5061,17 +5082,18 @@ fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
 }
 
 // "add-inlay-hint",
-pub fn add_inlay_hint(cx: &mut Context, char_index: usize, completion: SteelString) -> bool {
+pub fn add_inlay_hint(
+    cx: &mut Context,
+    char_index: usize,
+    completion: SteelString,
+) -> Option<(usize, usize)> {
     let view_id = cx.editor.tree.focus;
     if !cx.editor.tree.contains(view_id) {
-        return false;
+        return None;
     }
     let view = cx.editor.tree.get(view_id);
     let doc_id = cx.editor.tree.get(view_id).doc;
-    let doc = match cx.editor.documents.get_mut(&doc_id) {
-        Some(x) => x,
-        None => return false,
-    };
+    let doc = cx.editor.documents.get_mut(&doc_id)?;
     let mut new_inlay_hints = doc
         .inlay_hints(view_id)
         .map(|x| x.clone())
@@ -5094,12 +5116,63 @@ pub fn add_inlay_hint(cx: &mut Context, char_index: usize, completion: SteelStri
 
             DocumentInlayHints::empty_with_id(new_doc_inlay_hints_id)
         });
+
+    // TODO: The inlay hints should actually instead return the id?
     new_inlay_hints
         .other_inlay_hints
         .push(InlineAnnotation::new(char_index, completion.to_string()));
 
+    let id = new_inlay_hints.id;
+
     doc.set_inlay_hints(view_id, new_inlay_hints);
-    true
+
+    Some((id.first_line, id.last_line))
+}
+
+pub fn remove_inlay_hint_by_id(
+    cx: &mut Context,
+    first_line: usize,
+    last_line: usize,
+) -> Option<()> {
+    // let text = completion.to_string();
+    let view_id = cx.editor.tree.focus;
+    if !cx.editor.tree.contains(view_id) {
+        return None;
+    }
+    let view = cx.editor.tree.get(view_id);
+    let doc_id = cx.editor.tree.get(view_id).doc;
+    let doc = cx.editor.documents.get_mut(&doc_id)?;
+
+    let inlay_hints = doc.inlay_hints(view_id)?;
+    let id = DocumentInlayHintsId {
+        first_line,
+        last_line,
+    };
+
+    if inlay_hints.id == id {
+        let doc_text = doc.text();
+        let len_lines = doc_text.len_lines();
+
+        let view_height = view.inner_height();
+        let first_visible_line =
+            doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
+        let first_line = first_visible_line.saturating_sub(view_height);
+        let last_line = first_visible_line
+            .saturating_add(view_height.saturating_mul(2))
+            .min(len_lines);
+
+        let new_doc_inlay_hints_id = DocumentInlayHintsId {
+            first_line,
+            last_line,
+        };
+
+        doc.set_inlay_hints(
+            view_id,
+            DocumentInlayHints::empty_with_id(new_doc_inlay_hints_id),
+        )
+    }
+
+    return None;
 }
 
 // "remove-inlay-hint",
