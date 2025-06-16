@@ -5103,8 +5103,8 @@ pub fn add_inlay_hint(cx: &mut Context, char_index: usize, completion: SteelStri
 }
 
 // "remove-inlay-hint",
-pub fn remove_inlay_hint(cx: &mut Context, char_index: usize, completion: SteelString) -> bool {
-    let text = completion.to_string();
+pub fn remove_inlay_hint(cx: &mut Context, char_index: usize, _completion: SteelString) -> bool {
+    // let text = completion.to_string();
     let view_id = cx.editor.tree.focus;
     if !cx.editor.tree.contains(view_id) {
         return false;
@@ -5122,7 +5122,7 @@ pub fn remove_inlay_hint(cx: &mut Context, char_index: usize, completion: SteelS
     let mut new_inlay_hints = inlay_hints.clone();
     new_inlay_hints
         .other_inlay_hints
-        .retain(|x| x.char_idx != char_index && x.text != text);
+        .retain(|x| x.char_idx != char_index);
     doc.set_inlay_hints(view_id, new_inlay_hints);
     true
 }
