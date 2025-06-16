@@ -5169,7 +5169,9 @@ pub fn remove_inlay_hint_by_id(
         doc.set_inlay_hints(
             view_id,
             DocumentInlayHints::empty_with_id(new_doc_inlay_hints_id),
-        )
+        );
+
+        return Some(());
     }
 
     return None;
