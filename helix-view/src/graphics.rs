@@ -317,6 +317,32 @@ impl From<Color> for crossterm::style::Color {
     }
 }
 
+impl Color {
+    pub fn red(&self) -> Option<u8> {
+        if let Self::Rgb(r, _, _) = self {
+            Some(*r)
+        } else {
+            None
+        }
+    }
+
+    pub fn green(&self) -> Option<u8> {
+        if let Self::Rgb(_, g, _) = self {
+            Some(*g)
+        } else {
+            None
+        }
+    }
+
+    pub fn blue(&self) -> Option<u8> {
+        if let Self::Rgb(_, _, b) = self {
+            Some(*b)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnderlineStyle {
     Reset,

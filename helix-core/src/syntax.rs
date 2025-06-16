@@ -39,6 +39,17 @@ pub struct LanguageData {
     textobject_query: OnceCell<Option<TextObjectQuery>>,
 }
 
+impl Clone for LanguageData {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            syntax: OnceCell::new(),
+            indent_query: OnceCell::new(),
+            textobject_query: OnceCell::new(),
+        }
+    }
+}
+
 impl LanguageData {
     fn new(config: LanguageConfiguration) -> Self {
         Self {
@@ -194,14 +205,14 @@ pub fn read_query(lang: &str, query_filename: &str) -> String {
     })
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Loader {
     languages: Vec<LanguageData>,
     languages_by_extension: HashMap<String, Language>,
     languages_by_shebang: HashMap<String, Language>,
     languages_glob_matcher: FileTypeGlobMatcher,
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
-    scopes: ArcSwap<Vec<String>>,
+    scopes: Arc<ArcSwap<Vec<String>>>,
 }
 
 pub type LoaderError = globset::Error;
@@ -240,7 +251,7 @@ impl Loader {
             languages_by_shebang,
             languages_glob_matcher: FileTypeGlobMatcher::new(file_type_globs)?,
             language_server_configs: config.language_server,
-            scopes: ArcSwap::from_pointee(Vec::new()),
+            scopes: Arc::new(ArcSwap::from_pointee(Vec::new())),
         })
     }
 
@@ -326,6 +337,20 @@ impl Loader {
         self.language_for_shebang_marker(marker)
     }
 
+    pub fn language_configs_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut Arc<LanguageConfiguration>> {
+        self.languages
+            .iter_mut()
+            .map(|language| &mut language.config)
+    }
+
+    pub fn language_server_configs_mut(
+        &mut self,
+    ) -> &mut HashMap<String, LanguageServerConfiguration> {
+        &mut self.language_server_configs
+    }
+
     fn language_for_shebang_marker(&self, marker: RopeSlice) -> Option<Language> {
         let shebang: Cow<str> = marker.into();
         self.languages_by_shebang.get(shebang.as_ref()).copied()
@@ -375,7 +400,7 @@ impl LanguageLoader for Loader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct FileTypeGlob {
     glob: globset::Glob,
     language: Language,
@@ -387,7 +412,7 @@ impl FileTypeGlob {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct FileTypeGlobMatcher {
     matcher: globset::GlobSet,
     file_types: Vec<FileTypeGlob>,

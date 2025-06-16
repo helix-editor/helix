@@ -235,6 +235,23 @@ impl KeyTrie {
         res
     }
 
+    pub fn apply(&mut self, func: &mut dyn FnMut(&mut MappableCommand)) {
+        match self {
+            KeyTrie::MappableCommand(MappableCommand::Macro { .. }) => {}
+            KeyTrie::MappableCommand(cmd) => (func)(cmd),
+            KeyTrie::Node(next) => {
+                for (_, trie) in &mut next.map {
+                    trie.apply(func);
+                }
+            }
+            KeyTrie::Sequence(seq) => {
+                for s in seq {
+                    (func)(s)
+                }
+            }
+        };
+    }
+
     pub fn node(&self) -> Option<&KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref node) => Some(node),
@@ -326,12 +343,14 @@ impl Keymaps {
             .is_some_and(|node| node.contains_key(&key))
     }
 
-    /// Lookup `key` in the keymap to try and find a command to execute. Escape
-    /// key cancels pending keystrokes. If there are no pending keystrokes but a
-    /// sticky node is in use, it will be cleared.
-    pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
+    pub(crate) fn get_with_map(
+        &mut self,
+        keymaps: &HashMap<Mode, KeyTrie>,
+        mode: Mode,
+        key: KeyEvent,
+    ) -> KeymapResult {
         // TODO: remove the sticky part and look up manually
-        let keymaps = &*self.map();
+        // let keymaps = &*self.map();
         let keymap = &keymaps[&mode];
 
         if key!(Esc) == key {
@@ -378,6 +397,13 @@ impl Keymaps {
             }
             None => KeymapResult::Cancelled(self.state.drain(..).collect()),
         }
+    }
+
+    /// Lookup `key` in the keymap to try and find a command to execute. Escape
+    /// key cancels pending keystrokes. If there are no pending keystrokes but a
+    /// sticky node is in use, it will be cleared.
+    pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
+        self.get_with_map(&*self.map(), mode, key)
     }
 }
 

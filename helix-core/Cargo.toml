@@ -14,6 +14,7 @@ homepage.workspace = true
 [features]
 unicode-lines = ["ropey/unicode_lines"]
 integration = []
+steel = ["dep:steel-core"]
 
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
@@ -53,6 +54,7 @@ chrono = { version = "0.4", default-features = false, features = ["alloc", "std"
 
 textwrap = "0.16.2"
 
+steel-core = { workspace = true, optional = true }
 nucleo.workspace = true
 parking_lot.workspace = true
 globset = "0.4.16"
