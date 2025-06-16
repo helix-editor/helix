@@ -340,17 +340,32 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
         let cursor = start_range.cursor(doc.slice(..));
         let mut len_inserted = 0;
-        let is_triple = cursor >= 2
+        let has_at_least_two_before = cursor >= 2
             && doc.get_char(cursor - 1) == Some(pair.open)
             && doc.get_char(cursor - 2) == Some(pair.open);
+        let has_at_least_three_before =
+            has_at_least_two_before && cursor >= 3 && doc.get_char(cursor - 3) == Some(pair.open);
+
         let next_char = doc.get_char(cursor);
 
-        let change = if next_char == Some(pair.open) {
-            //  return transaction that moves past close
+        // (from, to, replacement)
+        let change = if next_char == Some(pair.close) {
+            // moves past close
             (cursor, cursor, None) // no-op - don't insert char
-        } else if is_triple {
-            //  ignore triple-quotes
-            (cursor, cursor, Some(Tendril::from_iter([pair.open]))) // only insert one char (normal operation)
+        } else if has_at_least_three_before {
+            // don't auto pair more than triple quotes
+            (cursor, cursor, Some(Tendril::from_iter([pair.close]))) // only insert one char (normal operation)
+        } else if has_at_least_two_before {
+            // exactly two before: auto-pair 3 quotes
+            // `''|` -> `'''|'''`
+            (
+                cursor,
+                cursor,
+                Some(Tendril::from_iter([
+                    // first is the default keystroke, the rest 3 are auto-pair
+                    pair.close, pair.close, pair.close, pair.close,
+                ])),
+            )
         } else {
             let mut pair_str = Tendril::new();
             pair_str.push(pair.open);
