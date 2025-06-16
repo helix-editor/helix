@@ -182,6 +182,9 @@ pub struct FilePickerConfig {
     /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
     pub hidden: bool,
+    /// Enables ignoring binary files.
+    /// Whether to hide binary files in file picker. Defaults to false.
+    pub binary_files: bool,
     /// Enables following symlinks.
     /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
     pub follow_symlinks: bool,
@@ -218,6 +221,7 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            binary_files: false,
         }
     }
 }
