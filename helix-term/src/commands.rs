@@ -1978,7 +1978,8 @@ fn copy_selection_on_visual_line(cx: &mut Context, direction: Direction) {
     let mut primary_idx = selection.primary_index();
     let mut new_ranges  = SmallVec::with_capacity(selection.len() * (count + 1));
     new_ranges.extend_from_slice(selection.ranges());
-    //TODO: copy the selection to the relative line number if `count` > 1
+    //copy the selection to the relative line number
+    let to_relative_line_number = count > 1;
 
     for range in selection.iter() {
         let is_primary = *range == selection.primary();
@@ -2027,8 +2028,10 @@ fn copy_selection_on_visual_line(cx: &mut Context, direction: Direction) {
                     Range::point(new_anchor)
                         .put_cursor(text, new_head, true) );
                 if is_primary { primary_idx = new_ranges.len() - 1 }
-                step += 1;
+                if ! to_relative_line_number { step += 1 }
             }
+            // always increment if `count` > 1
+            if to_relative_line_number { step += 1 }
 
             // check the top doc boundary
             if new_head   == 0
@@ -2044,8 +2047,6 @@ fn copy_selection_on_visual_line(cx: &mut Context, direction: Direction) {
 // currently uses the deprecated `visual_coords_at_pos`/`pos_at_visual_coords` functions
 // as this function ignores softwrapping (and virtual text) and instead only cares
 // about "text visual position"
-//
-// TODO: implement a variant of that uses visual lines and respects virtual text
 fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     use helix_core::{pos_at_visual_coords, visual_coords_at_pos};
 
