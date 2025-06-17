@@ -3654,7 +3654,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
     let doc_default_tokens = doc
         .language_config()
-        .and_then(|config| config.comment_tokens.as_ref());
+        .and_then(|config| config.comment_tokens.as_deref());
 
     let syntax = doc.syntax();
 
@@ -4214,7 +4214,7 @@ pub mod insert {
 
         let doc_default_comment_token = doc
             .language_config()
-            .and_then(|config| config.comment_tokens.as_ref());
+            .and_then(|config| config.comment_tokens.as_deref());
 
         let syntax = doc.syntax();
 
@@ -5272,7 +5272,7 @@ fn toggle_comments(cx: &mut Context) {
                     let (block_commented, comment_changes) = comment::find_block_comments(
                         block_comment_tokens,
                         rope.slice(..),
-                        &vec![*range],
+                        &[*range],
                     );
 
                     if block_commented {

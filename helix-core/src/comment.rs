@@ -17,7 +17,7 @@ pub fn get_line_comment_token(
     loader: &syntax::Loader,
     syntax: Option<&Syntax>,
     text: RopeSlice,
-    doc_default_tokens: Option<&Vec<String>>,
+    doc_default_tokens: Option<&[String]>,
     line_num: usize,
 ) -> Option<String> {
     let line = text.line(line_num);
@@ -210,7 +210,7 @@ pub enum CommentChange {
 pub fn find_block_comments(
     tokens: &[BlockCommentToken],
     text: RopeSlice,
-    ranges: &Vec<Range>,
+    ranges: &[Range],
 ) -> (bool, Vec<CommentChange>) {
     let mut was_commented = true;
     let mut only_whitespace = true;
@@ -361,7 +361,7 @@ pub fn create_block_comment_transaction(
 #[must_use]
 pub fn toggle_block_comments(
     doc: &Rope,
-    ranges: &Vec<Range>,
+    ranges: &[Range],
     tokens: &[BlockCommentToken],
     selections: &mut SmallVec<[Range; 1]>,
     added_chars: &mut usize,
@@ -542,7 +542,7 @@ mod test {
 
             let text = doc.slice(..);
 
-            let res = find_block_comments(&[BlockCommentToken::default()], text, &vec![range]);
+            let res = find_block_comments(&[BlockCommentToken::default()], text, &[range]);
 
             assert_eq!(
                 res,
@@ -561,7 +561,7 @@ mod test {
             // comment
             let changes = toggle_block_comments(
                 &doc,
-                &vec![range],
+                &[range],
                 &[BlockCommentToken::default()],
                 &mut SmallVec::new(),
                 &mut 0,
@@ -576,7 +576,7 @@ mod test {
             let range = Range::new(0, doc.len_chars());
             let changes = toggle_block_comments(
                 &doc,
-                &vec![range],
+                &[range],
                 &[BlockCommentToken::default()],
                 &mut SmallVec::new(),
                 &mut 0,
@@ -591,7 +591,7 @@ mod test {
             let range = Range::new(0, doc.len_chars());
             let changes = toggle_block_comments(
                 &doc,
-                &vec![range],
+                &[range],
                 &[BlockCommentToken::default()],
                 &mut SmallVec::new(),
                 &mut 0,
