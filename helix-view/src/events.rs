@@ -33,4 +33,9 @@ events! {
         editor: &'a mut Editor,
         server_id: LanguageServerId
     }
+
+    FifoReceived<'a> {
+        doc: DocumentId,
+        text: &'a str
+    }
 }

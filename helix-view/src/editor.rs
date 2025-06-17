@@ -4,7 +4,7 @@ use crate::{
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
-    events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost},
+    events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost, FifoReceived},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -36,7 +36,9 @@ use std::{
 };
 
 use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    fs::File,
+    io::AsyncReadExt,
+    sync::mpsc::{self, unbounded_channel, UnboundedReceiver, UnboundedSender},
     time::{sleep, Duration, Instant, Sleep},
 };
 
@@ -1800,6 +1802,63 @@ impl Editor {
 
             let id = self.new_document(doc);
             self.launch_language_servers(id);
+
+            helix_event::dispatch(DocumentDidOpen {
+                editor: self,
+                doc: id,
+            });
+
+            id
+        };
+
+        self.switch(id, action);
+
+        Ok(id)
+    }
+
+    pub fn open_fifo(
+        &mut self,
+        path: &Path,
+        action: Action,
+    ) -> Result<DocumentId, DocumentOpenError> {
+        let path = helix_stdx::path::canonicalize(path);
+        let id = self.document_id_by_path(&path);
+
+        let id = if let Some(id) = id {
+            id
+        } else {
+            let doc = Document::default(self.config.clone(), self.syn_loader.clone());
+
+            let id = self.new_document(doc);
+
+            let doc = self.document_mut(id).unwrap();
+            doc.editable = false;
+            let (tx, mut rx) = mpsc::channel(4);
+            doc.sync_close_tx = Some(tx);
+            doc.sync_handle = Some(tokio::spawn(async move {
+                let mut file = File::open(path).await.unwrap();
+                let mut buf = [0; 4096];
+
+                tokio::select! {
+                    _ = rx.recv() => { }
+
+                    _ = async {
+                        loop {
+                            let bytes = file.read(&mut buf[..]).await.unwrap();
+                            let bytes = bytes;
+                            if bytes == 0 {
+                                // TODO: the pipe is closed
+                                break;
+                            }
+                            let text = String::from_utf8_lossy(&buf[0..bytes]);
+                            helix_event::dispatch(FifoReceived {
+                                doc: id,
+                                text: &text,
+                            });
+                        }
+                    } => {}
+                }
+            }));
 
             helix_event::dispatch(DocumentDidOpen {
                 editor: self,

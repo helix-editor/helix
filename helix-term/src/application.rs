@@ -1,6 +1,7 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
+use helix_event::send_blocking;
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -299,6 +300,14 @@ impl Application {
     {
         loop {
             if self.editor.should_close() {
+                // close documents' fifo sync task
+                for doc in self.editor.documents.values_mut() {
+                    if let Some(tx) = doc.sync_close_tx.take() {
+                        send_blocking(&tx, 1);
+                        let handle = doc.sync_handle.take().unwrap();
+                        handle.await.unwrap();
+                    }
+                }
                 return false;
             }
 

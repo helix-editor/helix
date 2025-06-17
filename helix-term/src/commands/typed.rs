@@ -2564,6 +2564,25 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+fn fifo_open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    for arg in args {
+        let (path, pos) = crate::args::parse_file(&arg);
+        let path = helix_stdx::path::expand_tilde(path);
+        cx.editor.open_fifo(&path, Action::Replace)?;
+        let (view, doc) = current!(cx.editor);
+        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+        doc.set_selection(view.id, pos);
+        // does not affect opening a buffer without pos
+        align_view(doc, view, Align::Center);
+    }
+
+    Ok(())
+}
+
 // TODO: SHELL_SIGNATURE should specify var args for arguments, so that just completers::filename can be used,
 // but Signature does not yet allow for var args.
 
@@ -3566,6 +3585,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             positionals: (0, None),
             ..Signature::DEFAULT
         },
+    },
+    TypableCommand {
+        name: "fifo-open",
+        aliases: &[],
+        doc: "Open a fifo",
+        fun: fifo_open,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (1, None),
+            ..Signature::DEFAULT
+        }
     },
 ];
 

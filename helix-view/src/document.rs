@@ -28,10 +28,13 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::io;
+use std::os::unix::fs::FileTypeExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
 use std::time::SystemTime;
+use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 
 use helix_core::{
     editor_config::EditorConfig,
@@ -134,6 +137,8 @@ pub struct SavePoint {
 pub enum DocumentOpenError {
     #[error("path must be a regular file, symlink, or directory")]
     IrregularFile,
+    #[error("path must be a fifo")]
+    NotFifo,
     #[error(transparent)]
     IoError(#[from] io::Error),
 }
@@ -203,6 +208,11 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+    // TODO: is this necessary?
+    pub editable: bool,
+
+    pub sync_close_tx: Option<mpsc::Sender<u32>>,
+    pub sync_handle: Option<JoinHandle<()>>,
 
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
@@ -724,6 +734,9 @@ impl Document {
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
+            editable: true,
+            sync_close_tx: None,
+            sync_handle: None,
             jump_labels: HashMap::new(),
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
@@ -751,7 +764,10 @@ impl Document {
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> Result<Self, DocumentOpenError> {
         // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
-        if path.metadata().is_ok_and(|metadata| !metadata.is_file()) {
+        if path
+            .metadata()
+            .is_ok_and(|metadata| !metadata.is_file() && !metadata.file_type().is_fifo())
+        {
             return Err(DocumentOpenError::IrregularFile);
         }
 
@@ -1370,6 +1386,12 @@ impl Document {
         self.jump_labels.remove(&view_id);
     }
 
+    /// Apply a [`Transaction`] to the [`Document`] to change its text,
+    /// without updating selection/lsp, etc.
+    pub fn apply_directly(&mut self, text: &str) {
+        self.text.insert(self.text.len_chars(), text);
+    }
+
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     fn apply_impl(
         &mut self,
@@ -1569,7 +1591,11 @@ impl Document {
     }
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
-        self.apply_inner(transaction, view_id, true)
+        if self.editable {
+            self.apply_inner(transaction, view_id, true)
+        } else {
+            false
+        }
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text
