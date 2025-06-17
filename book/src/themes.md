@@ -171,8 +171,9 @@ We use a similar set of scopes as
 
 - `comment` - Code comments
   - `line` - Single line comments (`//`)
+    - `documentation` - Line documentation comments (e.g. `///` in Rust)
   - `block` - Block comments (e.g. (`/* */`)
-    - `documentation` - Documentation comments (e.g. `///` in Rust)
+    - `documentation` - Block documentation comments (e.g. `/** */` in Rust)
 
 - `variable` - Variables
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)

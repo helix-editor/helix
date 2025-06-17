@@ -29,7 +29,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs,
     io::{self, stdin},
-    num::NonZeroUsize,
+    num::{NonZeroU8, NonZeroUsize},
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -495,6 +495,9 @@ pub struct LspConfig {
     pub display_signature_help_docs: bool,
     /// Display inlay hints
     pub display_inlay_hints: bool,
+    /// Maximum displayed length of inlay hints (excluding the added trailing `…`).
+    /// If it's `None`, there's no limit
+    pub inlay_hints_length_limit: Option<NonZeroU8>,
     /// Display document color swatches
     pub display_color_swatches: bool,
     /// Whether to enable snippet support
@@ -512,6 +515,7 @@ impl Default for LspConfig {
             auto_signature_help: true,
             display_signature_help_docs: true,
             display_inlay_hints: false,
+            inlay_hints_length_limit: None,
             snippets: true,
             goto_reference_include_declaration: true,
             display_color_swatches: true,
@@ -1470,7 +1474,11 @@ impl Editor {
                 log::error!("failed to apply workspace edit: {err:?}")
             }
         }
-        fs::rename(old_path, &new_path)?;
+
+        if old_path.exists() {
+            fs::rename(old_path, &new_path)?;
+        }
+
         if let Some(doc) = self.document_by_path(old_path) {
             self.set_doc_path(doc.id(), &new_path);
         }

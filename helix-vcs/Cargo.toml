@@ -21,7 +21,7 @@ parking_lot.workspace = true
 arc-swap = { version = "1.7.1" }
 
 gix = { version = "0.72.1", features = ["attributes", "status", "blame", "parallel"], default-features = false, optional = true }
-imara-diff = "0.1.8"
+imara-diff =  "0.2.0"
 anyhow = "1"
 
 log = "0.4"
