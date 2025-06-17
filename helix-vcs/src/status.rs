@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum FileChange {
     Untracked {
         path: PathBuf,
