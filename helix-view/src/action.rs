@@ -1,7 +1,7 @@
 use std::{borrow::Cow, collections::HashSet, fmt, future::Future};
 
 use futures_util::{stream::FuturesOrdered, FutureExt as _};
-use helix_core::syntax::LanguageServerFeature;
+use helix_core::syntax::config::LanguageServerFeature;
 use helix_lsp::{lsp, util::range_to_lsp_range, LanguageServerId};
 use tokio_stream::StreamExt as _;
 

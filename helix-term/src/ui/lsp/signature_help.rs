@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use helix_core::syntax;
+use helix_core::syntax::{self, OverlayHighlights};
 use helix_view::graphics::{Margin, Rect, Style};
 use helix_view::input::Event;
 use tui::buffer::Buffer;
@@ -94,7 +94,8 @@ impl Component for SignatureHelp {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Buffer, cx: &mut Context) {
-        let margin = Margin::horizontal(1);
+        let margin = Margin::all(1);
+        let area = area.inner(margin);
 
         let signature = self
             .signatures
@@ -102,13 +103,12 @@ impl Component for SignatureHelp {
             .unwrap_or_else(|| &self.signatures[0]);
 
         let active_param_span = signature.active_param_range.map(|(start, end)| {
-            vec![(
-                cx.editor
-                    .theme
-                    .find_scope_index_exact("ui.selection")
-                    .unwrap(),
-                start..end,
-            )]
+            let highlight = cx
+                .editor
+                .theme
+                .find_highlight_exact("ui.selection")
+                .unwrap();
+            OverlayHighlights::single(highlight, start..end)
         });
 
         let signature = self
@@ -120,7 +120,7 @@ impl Component for SignatureHelp {
             signature.signature.as_str(),
             &self.language,
             Some(&cx.editor.theme),
-            Arc::clone(&self.config_loader),
+            &self.config_loader.load(),
             active_param_span,
         );
 
@@ -128,13 +128,15 @@ impl Component for SignatureHelp {
             let signature_index = self.signature_index();
             let text = Text::from(signature_index);
             let paragraph = Paragraph::new(&text).alignment(Alignment::Right);
-            paragraph.render(area.clip_top(1).with_height(1).clip_right(1), surface);
+            paragraph.render(area.with_height(1).clip_right(1), surface);
         }
 
-        let (_, sig_text_height) = crate::ui::text::required_size(&sig_text, area.width);
-        let sig_text_area = area.clip_top(1).with_height(sig_text_height);
-        let sig_text_area = sig_text_area.inner(margin).intersection(surface.area);
-        let sig_text_para = Paragraph::new(&sig_text).wrap(Wrap { trim: false });
+        let sig_text_para = Paragraph::new(&sig_text)
+            .wrap(Wrap { trim: false })
+            .scroll((cx.scroll.unwrap_or_default() as u16, 0));
+        let (_, sig_text_height) = sig_text_para.required_size(area.width);
+        let sig_text_area = area.with_height(sig_text_height.min(area.height));
+        let sig_text_area = sig_text_area.intersection(surface.area);
         sig_text_para.render(sig_text_area, surface);
 
         if signature.signature_doc.is_none() {
@@ -160,7 +162,7 @@ impl Component for SignatureHelp {
         let sig_doc_para = Paragraph::new(&sig_doc)
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
-        sig_doc_para.render(sig_doc_area.inner(margin), surface);
+        sig_doc_para.render(sig_doc_area, surface);
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
@@ -178,11 +180,11 @@ impl Component for SignatureHelp {
             signature.signature.as_str(),
             &self.language,
             None,
-            Arc::clone(&self.config_loader),
+            &self.config_loader.load(),
             None,
         );
-        let (sig_width, sig_height) =
-            crate::ui::text::required_size(&signature_text, max_text_width);
+        let sig_text_para = Paragraph::new(&signature_text).wrap(Wrap { trim: false });
+        let (sig_width, sig_height) = sig_text_para.required_size(max_text_width);
 
         let (width, height) = match signature.signature_doc {
             Some(ref doc) => {

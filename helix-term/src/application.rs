@@ -384,31 +384,30 @@ impl Application {
         }
     }
 
-    /// refresh language config after config change
-    fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let lang_loader = helix_core::config::user_lang_loader()?;
-
-        self.editor.syn_loader.store(Arc::new(lang_loader));
-        for document in self.editor.documents.values_mut() {
-            document.detect_language(self.editor.syn_loader.clone());
-            let diagnostics = Editor::doc_diagnostics(
-                &self.editor.language_servers,
-                &self.editor.diagnostics,
-                document,
-            );
-            document.replace_diagnostics(diagnostics, &[], None);
-        }
-
-        Ok(())
-    }
-
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
-            self.refresh_language_config()?;
-            // Refresh theme after config change
+
+            // Update the syntax language loader before setting the theme. Setting the theme will
+            // call `Loader::set_scopes` which must be done before the documents are re-parsed for
+            // the sake of locals highlighting.
+            let lang_loader = helix_core::config::user_lang_loader()?;
+            self.editor.syn_loader.store(Arc::new(lang_loader));
             Self::load_configured_theme(&mut self.editor, &default_config);
+
+            // Re-parse any open documents with the new language config.
+            let lang_loader = self.editor.syn_loader.load();
+            for document in self.editor.documents.values_mut() {
+                document.detect_language(&lang_loader);
+                let diagnostics = Editor::doc_diagnostics(
+                    &self.editor.language_servers,
+                    &self.editor.diagnostics,
+                    document,
+                );
+                document.replace_diagnostics(diagnostics, &[], None);
+            }
+
             self.terminal
                 .reconfigure(default_config.editor.clone().into())?;
             // Store new config
@@ -570,16 +569,24 @@ impl Application {
         doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
 
         let lines = doc_save_event.text.len_lines();
-        let bytes = doc_save_event.text.len_bytes();
+        let mut sz = doc_save_event.text.len_bytes() as f32;
+
+        const SUFFIX: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
+        let mut i = 0;
+        while i < SUFFIX.len() - 1 && sz >= 1024.0 {
+            sz /= 1024.0;
+            i += 1;
+        }
 
         self.editor
             .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
         self.editor.set_status(format!(
-            "'{}' written, {}L {}B",
+            "'{}' written, {}L {:.1}{}",
             get_relative_path(&doc_save_event.path).to_string_lossy(),
             lines,
-            bytes
+            sz,
+            SUFFIX[i],
         ));
     }
 
@@ -763,10 +770,11 @@ impl Application {
                             .compositor
                             .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let lsp::ProgressParams { token, value } = params;
-
-                        let lsp::ProgressParamsValue::WorkDone(work) = value;
-                        let parts = match &work {
+                        let lsp::ProgressParams {
+                            token,
+                            value: lsp::ProgressParamsValue::WorkDone(work),
+                        } = params;
+                        let (title, message, percentage) = match &work {
                             lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
                                 title,
                                 message,
@@ -794,47 +802,43 @@ impl Application {
                             }
                         };
 
-                        let token_d: &dyn std::fmt::Display = match &token {
-                            lsp::NumberOrString::Number(n) => n,
-                            lsp::NumberOrString::String(s) => s,
-                        };
-
-                        let status = match parts {
-                            (Some(title), Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
+                        if self.editor.config().lsp.display_progress_messages {
+                            let title =
+                                title.or_else(|| self.lsp_progress.title(server_id, &token));
+                            if title.is_some() || percentage.is_some() || message.is_some() {
+                                use std::fmt::Write as _;
+                                let mut status = format!("{}: ", language_server!().name());
+                                if let Some(percentage) = percentage {
+                                    write!(status, "{percentage:>2}% ").unwrap();
+                                }
+                                if let Some(title) = title {
+                                    status.push_str(title);
+                                }
+                                if title.is_some() && message.is_some() {
+                                    status.push_str(" ⋅ ");
+                                }
+                                if let Some(message) = message {
+                                    status.push_str(message);
+                                }
+                                self.editor.set_status(status);
                             }
-                            (Some(title), None, Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, title)
-                            }
-                            (Some(title), Some(message), None) => {
-                                format!("[{}] {} - {}", token_d, title, message)
-                            }
-                            (None, Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, message)
-                            }
-                            (Some(title), None, None) => {
-                                format!("[{}] {}", token_d, title)
-                            }
-                            (None, Some(message), None) => {
-                                format!("[{}] {}", token_d, message)
-                            }
-                            (None, None, Some(percentage)) => {
-                                format!("[{}] {}%", token_d, percentage)
-                            }
-                            (None, None, None) => format!("[{}]", token_d),
-                        };
-
-                        if let lsp::WorkDoneProgress::End(_) = work {
-                            self.lsp_progress.end_progress(server_id, &token);
-                            if !self.lsp_progress.is_progressing(server_id) {
-                                editor_view.spinners_mut().get_or_create(server_id).stop();
-                            }
-                        } else {
-                            self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.load().editor.lsp.display_progress_messages {
-                            self.editor.set_status(status);
+                        match work {
+                            lsp::WorkDoneProgress::Begin(begin_status) => {
+                                self.lsp_progress
+                                    .begin(server_id, token.clone(), begin_status);
+                            }
+                            lsp::WorkDoneProgress::Report(report_status) => {
+                                self.lsp_progress
+                                    .update(server_id, token.clone(), report_status);
+                            }
+                            lsp::WorkDoneProgress::End(_) => {
+                                self.lsp_progress.end_progress(server_id, &token);
+                                if !self.lsp_progress.is_progressing(server_id) {
+                                    editor_view.spinners_mut().get_or_create(server_id).stop();
+                                };
+                            }
                         }
                     }
                     Notification::ProgressMessage(_params) => {

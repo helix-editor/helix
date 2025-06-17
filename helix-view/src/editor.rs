@@ -32,6 +32,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs,
     io::{self, stdin},
+    num::NonZeroU8,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -47,7 +48,10 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
+    syntax::{
+        self,
+        config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
+    },
     Change, LineEnding, Position, Range, Selection, SpellingLanguage, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
@@ -456,6 +460,9 @@ pub struct LspConfig {
     pub display_signature_help_docs: bool,
     /// Display inlay hints
     pub display_inlay_hints: bool,
+    /// Maximum displayed length of inlay hints (excluding the added trailing `…`).
+    /// If it's `None`, there's no limit
+    pub inlay_hints_length_limit: Option<NonZeroU8>,
     /// Display document color swatches
     pub display_color_swatches: bool,
     /// Whether to enable snippet support
@@ -473,6 +480,7 @@ impl Default for LspConfig {
             auto_signature_help: true,
             display_signature_help_docs: true,
             display_inlay_hints: false,
+            inlay_hints_length_limit: None,
             snippets: true,
             goto_reference_include_declaration: true,
             display_color_swatches: true,
@@ -497,6 +505,8 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    pub diagnostics: Vec<Severity>,
+    pub workspace_diagnostics: Vec<Severity>,
 }
 
 impl Default for StatusLineConfig {
@@ -521,6 +531,8 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            diagnostics: vec![Severity::Warning, Severity::Error],
+            workspace_diagnostics: vec![Severity::Warning, Severity::Error],
         }
     }
 }
@@ -572,6 +584,9 @@ pub enum StatusLineElement {
 
     /// The file line endings (CRLF or LF)
     FileLineEnding,
+
+    /// The file indentation style
+    FileIndentStyle,
 
     /// The file type (language ID or "text")
     FileType,
@@ -1360,7 +1375,7 @@ impl Editor {
 
     fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
-        if theme.find_scope_index_exact("ui.selection").is_none() {
+        if theme.find_highlight_exact("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
             return;
         }
@@ -1428,7 +1443,11 @@ impl Editor {
                 log::error!("failed to apply workspace edit: {err:?}")
             }
         }
-        fs::rename(old_path, &new_path)?;
+
+        if old_path.exists() {
+            fs::rename(old_path, &new_path)?;
+        }
+
         if let Some(doc) = self.document_by_path(old_path) {
             self.set_doc_path(doc.id(), &new_path);
         }
@@ -1476,9 +1495,9 @@ impl Editor {
     }
 
     pub fn refresh_doc_language(&mut self, doc_id: DocumentId) {
-        let loader = self.syn_loader.clone();
+        let loader = self.syn_loader.load();
         let doc = doc_mut!(self, &doc_id);
-        doc.detect_language(loader);
+        doc.detect_language(&loader);
         doc.detect_editor_config();
         doc.detect_indent_and_line_ending();
         self.refresh_language_servers(doc_id);
@@ -1514,12 +1533,12 @@ impl Editor {
                         if let helix_lsp::Error::ExecutableNotFound(err) = err {
                             // Silence by default since some language servers might just not be installed
                             log::debug!(
-                                "Language server not found for `{}` {} {}", language.scope(), lang, err,
+                                "Language server not found for `{}` {} {}", language.scope, lang, err,
                             );
                         } else {
                             log::error!(
                                 "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
-                                language.scope(),
+                                language.scope,
                                 lang,
                                 err
                             );
@@ -1736,7 +1755,10 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        self.new_file_from_document(action, Document::default(self.config.clone()))
+        self.new_file_from_document(
+            action,
+            Document::default(self.config.clone(), self.syn_loader.clone()),
+        )
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
@@ -1745,6 +1767,7 @@ impl Editor {
             helix_core::Rope::default(),
             Some((encoding, has_bom)),
             self.config.clone(),
+            self.syn_loader.clone(),
         );
         let doc_id = self.new_file_from_document(action, doc);
         let doc = doc_mut!(self, &doc_id);
@@ -1773,8 +1796,9 @@ impl Editor {
             let mut doc = Document::open(
                 &path,
                 None,
-                Some(self.syn_loader.clone()),
+                true,
                 self.config.clone(),
+                self.syn_loader.clone(),
             )?;
 
             let diagnostics =
@@ -1812,7 +1836,7 @@ impl Editor {
     }
 
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
-        let doc = match self.documents.remove(&doc_id) {
+        let doc = match self.documents.get(&doc_id) {
             Some(doc) => doc,
             None => return Err(CloseError::DoesNotExist),
         };
@@ -1859,6 +1883,8 @@ impl Editor {
             }
         }
 
+        let doc = self.documents.remove(&doc_id).unwrap();
+
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view
         // containing either an existing document, or a brand new document.
@@ -1868,7 +1894,12 @@ impl Editor {
                 .iter()
                 .map(|(&doc_id, _)| doc_id)
                 .next()
-                .unwrap_or_else(|| self.new_document(Document::default(self.config.clone())));
+                .unwrap_or_else(|| {
+                    self.new_document(Document::default(
+                        self.config.clone(),
+                        self.syn_loader.clone(),
+                    ))
+                });
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
@@ -2324,16 +2355,20 @@ impl Editor {
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
     use helix_core::{
-        chars::char_is_whitespace, line_ending::line_end_char_index, Operation, Transaction,
+        chars::char_is_whitespace,
+        line_ending::{line_end_char_index, str_is_line_ending},
+        unicode::segmentation::UnicodeSegmentation,
+        Operation, Transaction,
     };
 
     fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
         if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
             changes
         {
+            let mut graphemes = inserted_str.graphemes(true);
             move_pos + inserted_str.len() == pos
-                && inserted_str.starts_with('\n')
-                && inserted_str.chars().skip(1).all(char_is_whitespace)
+                && graphemes.next().is_some_and(str_is_line_ending)
+                && graphemes.all(|g| g.chars().all(char_is_whitespace))
                 && pos == line_end_pos // ensure no characters exists after current position
         } else {
             false

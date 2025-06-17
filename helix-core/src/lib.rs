@@ -55,7 +55,7 @@ pub use smartstring::SmartString;
 pub type Tendril = SmartString<smartstring::LazyCompact>;
 
 #[doc(inline)]
-pub use {regex, tree_sitter};
+pub use {regex, tree_house::tree_sitter};
 
 pub use position::{
     char_idx_at_visual_offset, coords_at_pos, pos_at_coords, softwrapped_dimensions,
@@ -73,6 +73,7 @@ pub use completion::CompletionItem;
 pub use line_ending::{LineEnding, NATIVE_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Deletion, Operation, Transaction};
 
+pub use tree_house::Language;
 pub use uri::Uri;
 
 /// A language to use for spell checking.

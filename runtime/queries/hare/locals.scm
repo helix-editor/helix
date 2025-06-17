@@ -3,17 +3,10 @@
 (function_declaration) @local.scope
 (compound_expression) @local.scope
 
-(global_binding
-  (identifier) @local.definition)
-(constant_binding
-  (identifier) @local.definition)
-(type_binding
-  (identifier) @local.definition)
-
 (function_declaration
-  (identifier) @local.definition)
+  (identifier) @local.definition.function)
 (function_declaration
-  (parameter (name) @local.definition))
+  (parameter (name) @local.definition.variable.parameter))
 
 (identifier) @local.reference
 

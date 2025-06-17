@@ -9,7 +9,7 @@ on:
     - cron: "00 01 * * *"
 
 env:
-  MSRV: "1.76"
+  MSRV: "1.82"
   # This key can be changed to bust the cache of tree-sitter grammars.
   GRAMMAR_CACHE_VERSION: ""
 
@@ -35,8 +35,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: runtime/grammars
-          key: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
-          restore-keys: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
+          key: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo check
         run: cargo check
@@ -45,6 +45,7 @@ jobs:
     name: Test Suite
     runs-on: ${{ matrix.os }}
     if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
+    timeout-minutes: 30
     env:
       RUST_BACKTRACE: 1
       HELIX_LOG_LEVEL: info
@@ -65,8 +66,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: runtime/grammars
-          key: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
-          restore-keys: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
+          key: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo test
         run: cargo test --workspace
@@ -76,7 +77,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest, ubuntu-24.04-arm]
 
   lints:
     name: Lints
@@ -100,8 +101,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: runtime/grammars
-          key: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
-          restore-keys: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
+          key: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo fmt
         run: cargo fmt --all --check
@@ -135,8 +136,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: runtime/grammars
-          key: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
-          restore-keys: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
+          key: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Validate queries
         run: cargo xtask query-check
