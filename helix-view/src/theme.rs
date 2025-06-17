@@ -330,8 +330,25 @@ impl Theme {
         &self.name
     }
 
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
     pub fn get(&self, scope: &str) -> Style {
         self.try_get(scope).unwrap_or_default()
+    }
+
+    pub fn set(&mut self, scope: String, style: Style) {
+        if self.styles.insert(scope.to_string(), style).is_some() {
+            for (name, highlights) in self.scopes.iter().zip(self.highlights.iter_mut()) {
+                if *name == scope {
+                    *highlights = style;
+                }
+            }
+        } else {
+            self.scopes.push(scope);
+            self.highlights.push(style);
+        }
     }
 
     /// Get the style of a scope, falling back to dot separated broader
@@ -382,7 +399,7 @@ impl Theme {
         })
     }
 
-    fn from_toml(value: Value) -> (Self, Vec<String>) {
+    pub fn from_toml(value: Value) -> (Self, Vec<String>) {
         if let Value::Table(table) = value {
             Theme::from_keys(table)
         } else {
@@ -404,7 +421,7 @@ impl Theme {
     }
 }
 
-struct ThemePalette {
+pub struct ThemePalette {
     palette: HashMap<String, Color>,
 }
 
