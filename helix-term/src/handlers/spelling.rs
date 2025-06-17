@@ -106,14 +106,22 @@ fn check_document(editor: &mut Editor, doc_id: DocumentId) {
 
 fn load_dictionary(language: SpellingLanguage) {
     tokio::task::spawn_blocking(move || {
-        let aff = std::fs::read_to_string(helix_loader::runtime_file(format!(
+        let aff = match std::fs::read_to_string(helix_loader::runtime_file(format!(
             "dictionaries/{language}/{language}.aff"
-        )))
-        .unwrap();
-        let dic = std::fs::read_to_string(helix_loader::runtime_file(format!(
+        ))) {
+            Ok(aff) => aff,
+            Err(_) => {
+                panic!("Unable to find file: $HELIX_RUNTIME/dictionaries/{language}/{language}.aff")
+            }
+        };
+        let dic = match std::fs::read_to_string(helix_loader::runtime_file(format!(
             "dictionaries/{language}/{language}.dic"
-        )))
-        .unwrap();
+        ))) {
+            Ok(dic) => dic,
+            Err(_) => {
+                panic!("Unable to find file: $HELIX_RUNTIME/dictionaries/{language}/{language}.dic")
+            }
+        };
 
         let mut dictionary = Dictionary::new(&aff, &dic).unwrap();
         // TODO: personal dictionaries should be namespaced under runtime directories under the
