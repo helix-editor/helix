@@ -65,7 +65,7 @@
 ] @punctuation
 
 (string_value) @string
-((color_value) "#") @string.special
+(color_value "#" @string.special)
 (color_value) @string.special
 
 (integer_value) @constant.numeric.integer

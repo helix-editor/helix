@@ -94,6 +94,7 @@
 
 "comment" = { fg = "muted", modifiers = ["italic"] }
 # "comment.line" = ""
+# "comment.line.documentation" = ""
 # "comment.block" = ""
 # "comment.block.documentation" = ""
 

@@ -4,6 +4,7 @@ inherits = "monokai"
 
 "comment" = "comment"
 "comment.block.documentation" = { fg = "comment", modifiers = ["bold"] }
+"comment.line.documentation" = { fg = "comment", modifiers = ["bold"] }
 "constant.character.escape" = { fg = "light-blue", modifiers = ["italic"] }
 "function.macro" = { fg = "#c4be89", modifiers = ["italic"] }
 "keyword" = { fg = "keyword", modifiers = ["bold"] }

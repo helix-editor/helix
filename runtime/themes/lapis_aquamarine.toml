@@ -1,0 +1,132 @@
+# Author: spentbliss <zyhkekrz.hatbox475@passinbox.com>
+# License: MIT (originally by Alex Barnett)
+
+"ui.background" = { fg = "fg", bg = "bg" } # file picker border color
+"ui.text" = "fg"
+"ui.text.focus" = { fg = "bg", bg = "fg" } # file picker selection
+"ui.cursor" = { bg = "blue", fg = "bg" }
+"ui.linenr" = "grey"
+"ui.statusline" = { fg = "fg" }
+"ui.selection" = "green"
+"ui.selection.primary" = { bg = "bg_highlight" } 
+"ui.virtual.ruler" = { bg = "bg_highlight" }
+
+# Syntax Highlighting for Markdown 
+"markup.raw" = { fg = "purple", bg = "bg" } 
+"markup.raw.inline" = {fg = "fg" }
+"markup.heading.1" = { fg = "#46D9FF", bg = "#11313B" }   # cyan
+"markup.heading.2" = { fg = "#C678DD", bg = "#2D2233" }   # magenta
+"markup.heading.3" = { fg = "#98BE65", bg = "#253027" }   # green
+"markup.heading.4" = { fg = "#A8A1E1", bg = "#2A2738" }   # purple
+"markup.heading.5" = { fg = "#ECBE7B", bg = "#3A3223" }   # yellow
+"markup.heading.6" = { fg = "#46D9FF", bg = "#1E2A30" }   # cyan again
+"markup.list" = { fg = "purple" }
+"markup.bold" = { fg = "fg", modifiers = ["bold"] }
+"markup.italic" = { fg = "fg" }
+"markup.strikethrough" = { fg = "red", modifiers = ["crossed_out"] }
+"markup.link" = { fg = "cyan" }
+"markup.quote" = { fg = "fg" }
+
+# Syntax Highlighting for Code
+"comment" = { fg = "grey", modifiers = ["italic"] }
+"comment.line" = { fg = "grey", modifiers = ["italic"] }
+"comment.block" = { fg = "grey", modifiers = ["italic"] }
+"comment.documentation" = { fg = "blue", modifiers = ["italic"] }
+
+"keyword" = "blue"
+"keyword.storage" = "blue" # let keyword in rust 
+"keyword.storage.type" = "blue" # keywords describing how things are stored, class, var, let, etc
+"keyword.storage.modifier" = "fg" # mut keyword
+"keyword.control.import" = "blue" # use keyword in rust
+"keyword.control.export" = "blue" 
+"keyword.control.conditional" = "blue" # if, else
+"keyword.directive" = "blue"
+"keyword.control.repeat" = "blue" # for, while, loop
+"keyword.operator" = "blue" # or, in keywords
+"keyword.function" = "blue" # function keyword color
+
+"type" = "green" 
+"type.builtin" = "green" # primitive types int, usize
+"type.parameter" = "green"
+"type.enum" = "cyan"
+
+"function" = "purple" # color for function NAME not the keyword fn or func
+"function.builtin" = "purple"
+"function.method" = "blue"
+
+"variable" = "fg"
+"variable.builtin" = "fg"
+"variable.parameter" = "cyan"
+
+"string" = "green"
+"string.special" = "green"
+
+"constant" = "cyan"
+"constant.builtin" = "blue" # true, false, nil
+"constant.numeric" = "cyan" # int & float
+"constant.character" = "yellow" # escape character
+
+"operator" = "fg"
+
+# html tags
+"tag" = { fg = "purple", modifiers = ["bold"] }
+"attribute" = "blue"
+
+"namespace" = "fg"
+"macro" = "orange"
+"label" = "red"
+
+# Interface specific
+"ui.cursorline.primary" = { bg = "bg_highlight" }
+"ui.cursorline.secondary" = { bg = "bg_alt" }
+"ui.cursorcolumn.primary" = { bg = "bg_highlight" }
+"ui.cursorcolumn.secondary" = { bg = "bg_alt" }
+"ui.statusline.normal" = { fg = "bg", bg = "cyan" }
+"ui.statusline.insert" = { fg = "bg", bg = "green" }
+"ui.statusline.select" = { fg = "bg", bg = "purple" }
+
+# Diagnostic styles
+"warning" = { fg = "yellow", modifiers = ["bold"] }
+"error" = { fg = "red", modifiers = ["bold"] }
+"info" = { fg = "cyan", modifiers = ["bold"] }
+"hint" = { fg = "blue", modifiers = ["bold"] }
+"diagnostic.error" = { fg = "grey" }
+"diagnostic.warning" = { fg = "grey" }
+"diagnostic.info" = { fg = "grey" }
+"diagnostic.hint" = { fg = "grey" }
+
+# Git changes indicator
+"diff.plus" = "green"
+"diff.plus.gutter" = "green"
+"diff.minus" = "red"
+"diff.minus.gutter" = "red"
+"diff.delta" = "fg"
+"diff.delta.gutter" = "fg"
+"diff.delta.moved" = "orange"
+"diff.delta.conflict" = "purple"
+
+# Popups and Menus
+"ui.popup" = { fg = "fg", bg = "bg" }
+"ui.popup.info" = { fg = "fg", bg = "bg" }
+"ui.menu" = { fg = "fg", bg = "bg" }
+"ui.menu.selected" = { fg = "bg", bg = "fg" }
+
+# Additional overrides
+"ui.virtual.whitespace" = "grey"
+"ui.virtual.indent-guide" = { fg = "indent_color", underline.style = "dotted" }
+
+[palette]
+bg = "#1B1F27"
+fg = "#D6E2FF" 
+grey = "#7183A9"
+blue = "#83ABFC" 
+green = "#ABFC83"
+cyan = "#84FCD4"
+red = "#FC83AB" 
+yellow = "#FCD583"
+pink = "#FC83D6"
+orange = "#FCAB83"
+purple = "#D483FC"
+bg_alt = "#14181D"
+bg_highlight = "#43537A"
+indent_color = "#2E3953"

@@ -1,6 +1,7 @@
 use std::{borrow::Cow, collections::HashMap, iter};
 
 use helix_stdx::rope::RopeSliceExt;
+use tree_house::TREE_SITTER_MATCH_LIMIT;
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
@@ -297,7 +298,7 @@ fn is_first_in_line(node: &Node, text: RopeSlice, new_line_byte_pos: Option<u32>
 
 #[derive(Debug, Default)]
 pub struct IndentQueryPredicates {
-    not_kind_eq: Option<(Capture, Box<str>)>,
+    not_kind_eq: Vec<(Capture, Box<str>)>,
     same_line: Option<(Capture, Capture, bool)>,
     one_line: Option<(Capture, bool)>,
 }
@@ -309,12 +310,9 @@ impl IndentQueryPredicates {
         text: RopeSlice,
         new_line_byte_pos: Option<u32>,
     ) -> bool {
-        if let Some((capture, not_expected_kind)) = self.not_kind_eq.as_ref() {
-            if !match_
-                .nodes_for_capture(*capture)
-                .next()
-                .is_some_and(|node| node.kind() != not_expected_kind.as_ref())
-            {
+        for (capture, not_expected_kind) in self.not_kind_eq.iter() {
+            let node = match_.nodes_for_capture(*capture).next();
+            if node.is_some_and(|n| n.kind() == not_expected_kind.as_ref()) {
                 return false;
             }
         }
@@ -394,8 +392,11 @@ impl IndentQuery {
                         let capture = predicate.capture_arg(0)?;
                         let not_expected_kind = predicate.str_arg(1)?;
 
-                        predicates.entry(pattern).or_default().not_kind_eq =
-                            Some((capture, not_expected_kind.to_string().into_boxed_str()));
+                        predicates
+                            .entry(pattern)
+                            .or_default()
+                            .not_kind_eq
+                            .push((capture, not_expected_kind.into()));
                         Ok(())
                     }
                     "same-line?" | "not-same-line?" => {
@@ -629,9 +630,7 @@ fn query_indents<'a>(
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
     let mut extend_captures: HashMap<usize, Vec<ExtendCapture>> = HashMap::new();
 
-    let mut cursor = InactiveQueryCursor::new();
-    cursor.set_byte_range(range);
-    let mut cursor = cursor.execute_query(
+    let mut cursor = InactiveQueryCursor::new(range, TREE_SITTER_MATCH_LIMIT).execute_query(
         &query.query,
         &syntax.tree().root_node(),
         RopeInput::new(text),

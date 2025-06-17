@@ -4,6 +4,7 @@
 "attribute" = { fg = "blue_text", bg = "blue_bg" }
 "comment" = { fg = "base3", modifiers = ["italic"] }
 "comment.line" = {}
+"comment.line.documentation" = { fg = "base2" }
 "comment.block" = {}
 "comment.block.documentation" = { fg = "base2" }
 "constant" = { fg = "blue_text", bg = "blue_bg" }
