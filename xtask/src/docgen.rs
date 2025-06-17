@@ -129,7 +129,7 @@ pub fn lang_features() -> Result<String, DynError> {
     cols.push("Default language servers".to_owned());
 
     md.push_str(&md_table_heading(&cols));
-    let config = helpers::lang_config();
+    let config = helix_core::config::default_lang_config();
 
     let mut langs = config
         .language

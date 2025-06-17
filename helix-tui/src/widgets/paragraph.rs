@@ -127,6 +127,38 @@ impl<'a> Paragraph<'a> {
         self.alignment = alignment;
         self
     }
+
+    pub fn required_size(&self, max_text_width: u16) -> (u16, u16) {
+        let style = self.style;
+        let mut styled = self.text.lines.iter().flat_map(|spans| {
+            spans
+                .0
+                .iter()
+                .flat_map(|span| span.styled_graphemes(style))
+                // Required given the way composers work but might be refactored out if we change
+                // composers to operate on lines instead of a stream of graphemes.
+                .chain(iter::once(StyledGrapheme {
+                    symbol: "\n",
+                    style: self.style,
+                }))
+        });
+        let mut line_composer: Box<dyn LineComposer> = if let Some(Wrap { trim }) = self.wrap {
+            Box::new(WordWrapper::new(&mut styled, max_text_width, trim))
+        } else {
+            let mut line_composer = Box::new(LineTruncator::new(&mut styled, max_text_width));
+            if self.alignment == Alignment::Left {
+                line_composer.set_horizontal_offset(self.scroll.1);
+            }
+            line_composer
+        };
+        let mut text_width = 0;
+        let mut text_height = 0;
+        while let Some((_, line_width)) = line_composer.next_line() {
+            text_width = line_width.max(text_width);
+            text_height += 1;
+        }
+        (text_width, text_height)
+    }
 }
 
 impl Widget for Paragraph<'_> {
