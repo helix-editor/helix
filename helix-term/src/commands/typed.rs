@@ -388,7 +388,7 @@ fn buffer_nth(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     } else {
         cx.editor.documents.iter().nth(n - 1)
     }
-    .ok_or(anyhow!("buffer {n} is out of range"))?;
+    .ok_or_else(|| anyhow!("buffer {n} is out of range"))?;
     cx.editor.switch(*id, helix_view::editor::Action::Replace);
     Ok(())
 }
