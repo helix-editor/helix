@@ -11,6 +11,7 @@
 "ui.text.focus" = { fg = "black", bg = "white" }
 "comment" = "light-green"
 "comment.line" = "light-green"
+"comment.line.documentation" = "light-green"
 "comment.block" = "red"
 "comment.block.documentation" = "red"
 "ui.statusline" = { fg = "black", bg = "light-cyan" }

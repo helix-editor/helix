@@ -77,7 +77,8 @@ pub fn render_text(
 
     let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, anchor);
-    let mut syntax_highlighter = SyntaxHighlighter::new(syntax_highlighter, text, theme);
+    let mut syntax_highlighter =
+        SyntaxHighlighter::new(syntax_highlighter, text, theme, renderer.text_style);
     let mut overlay_highlighter = OverlayHighlighter::new(overlay_highlights, theme);
 
     let mut last_line_pos = LinePos {
@@ -477,17 +478,24 @@ struct SyntaxHighlighter<'h, 'r, 't> {
     /// finished.
     pos: usize,
     theme: &'t Theme,
+    text_style: Style,
     style: Style,
 }
 
 impl<'h, 'r, 't> SyntaxHighlighter<'h, 'r, 't> {
-    fn new(inner: Option<Highlighter<'h>>, text: RopeSlice<'r>, theme: &'t Theme) -> Self {
+    fn new(
+        inner: Option<Highlighter<'h>>,
+        text: RopeSlice<'r>,
+        theme: &'t Theme,
+        text_style: Style,
+    ) -> Self {
         let mut highlighter = Self {
             inner,
             text,
             pos: 0,
             theme,
-            style: Style::default(),
+            style: text_style,
+            text_style,
         };
         highlighter.update_pos();
         highlighter
@@ -516,7 +524,7 @@ impl<'h, 'r, 't> SyntaxHighlighter<'h, 'r, 't> {
 
         let (event, highlights) = highlighter.advance();
         let base = match event {
-            HighlightEvent::Refresh => Style::default(),
+            HighlightEvent::Refresh => self.text_style,
             HighlightEvent::Push => self.style,
         };
 
