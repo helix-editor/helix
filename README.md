@@ -18,6 +18,11 @@ This fork of Helix implements the following pull requests. Future pull requests 
 17. https://github.com/helix-editor/helix/pull/12574 (remove code column from diagnotics buffer)
 18. https://github.com/helix-editor/helix/pull/9875 (add code file picker)
 
+## Building
+```bash
+  cargo install --path helix-term --locked
+```
+
 ## Window Resizing and Focus Mode Commands
 
 **Window Resizing:**
@@ -132,7 +137,3 @@ color-swatches-string = "■"
 Color swatches appear next to color values in your code (CSS, configuration files, etc.) when LSP support is available, making it easier to visualize colors at a glance.
 
 
-**Building**
-```bash
-  cargo install --path helix-term --locked
-```
