@@ -81,6 +81,10 @@
   "."
 ] @punctuation.delimiter
 
+; HLL variables
+(identifier) @variable
+(hll_field_identifier) @variable.other.member
+
 
 ; Strings and others literal types
 (access_class) @constant.builtin
@@ -218,10 +222,6 @@
 (repeat_block
   command: (identifier) @keyword.control.loop)
 
-
-; HLL variables
-(identifier) @variable
-(hll_field_identifier) @variable.other.member
 
 
 (comment) @comment

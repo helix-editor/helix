@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use hashbrown::HashSet;
+use foldhash::HashSet;
 use helix_stdx::range::{is_exact_subset, is_subset};
 use helix_stdx::Range;
 use ropey::Rope;
@@ -35,7 +35,7 @@ impl ActiveSnippet {
         let snippet = Self {
             ranges: snippet.ranges,
             tabstops: snippet.tabstops,
-            active_tabstops: HashSet::new(),
+            active_tabstops: HashSet::default(),
             current_tabstop: TabstopIdx(0),
         };
         (snippet.tabstops.len() != 1).then_some(snippet)
@@ -251,5 +251,22 @@ mod tests {
         assert!(edit.apply(&mut doc));
         snippet.map(edit.changes());
         assert!(!snippet.is_valid(&Selection::point(4)))
+    }
+
+    #[test]
+    fn tabstop_zero_with_placeholder() {
+        // The `$0` tabstop should not have placeholder text. When we receive a snippet like this
+        // (from older versions of clangd for example) we should discard the placeholder text.
+        let snippet = Snippet::parse("sizeof(${0:expression-or-type})").unwrap();
+        let mut doc = Rope::from("\n");
+        let (transaction, _, snippet) = snippet.render(
+            &doc,
+            &Selection::point(0),
+            |_| (0, 0),
+            &mut SnippetRenderCtx::test_ctx(),
+        );
+        assert!(transaction.apply(&mut doc));
+        assert_eq!(doc, "sizeof()\n");
+        assert!(ActiveSnippet::new(snippet).is_none());
     }
 }

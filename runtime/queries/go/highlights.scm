@@ -1,8 +1,31 @@
-; Function calls
 
-(call_expression
-  function: (identifier) @function.builtin
-  (#match? @function.builtin "^(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)$"))
+; Identifiers
+
+(field_identifier) @variable.other.member
+
+(identifier) @variable
+
+(package_identifier) @namespace
+
+(const_spec
+  name: (identifier) @constant)
+
+(type_spec 
+  name: (type_identifier) @constructor)
+
+(keyed_element . (literal_element (identifier) @variable.other.member))
+(field_declaration
+  name: (field_identifier) @variable.other.member)
+
+(parameter_declaration (identifier) @variable.parameter)
+(variadic_parameter_declaration (identifier) @variable.parameter)
+
+(label_name) @label
+
+(const_spec
+  name: (identifier) @constant)
+
+; Function calls
 
 (call_expression
   function: (identifier) @function)
@@ -11,8 +34,13 @@
   function: (selector_expression
     field: (field_identifier) @function.method))
 
+(call_expression
+  function: (identifier) @function.builtin
+  (#match? @function.builtin "^(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)$"))
 
 ; Types
+
+(type_identifier) @type
 
 (type_parameter_list
   (parameter_declaration
@@ -20,8 +48,6 @@
 
 ((type_identifier) @type.builtin
   (#match? @type.builtin "^(any|bool|byte|comparable|complex128|complex64|error|float32|float64|int|int16|int32|int64|int8|rune|string|uint|uint16|uint32|uint64|uint8|uintptr)$"))
-
-(type_identifier) @type
 
 ; Function definitions
 
@@ -34,28 +60,6 @@
 (method_spec 
   name: (field_identifier) @function.method) 
 
-; Identifiers
-
-(const_spec
-  name: (identifier) @constant)
-
-(parameter_declaration (identifier) @variable.parameter)
-(variadic_parameter_declaration (identifier) @variable.parameter)
-
-(type_spec 
-  name: (type_identifier) @constructor)
-(field_identifier) @variable.other.member
-(keyed_element (literal_element (identifier) @variable.other.member))
-(identifier) @variable
-(package_identifier) @namespace
-
-(parameter_declaration (identifier) @variable.parameter)
-(variadic_parameter_declaration (identifier) @variable.parameter)
-
-(label_name) @label
-
-(const_spec
-  name: (identifier) @constant)
 
 ; Operators
 
@@ -107,6 +111,12 @@
 ] @keyword
 
 [
+  "defer"
+  "go"
+  "goto"
+] @keyword.control
+
+[
   "if"  
   "else"
   "switch"
@@ -146,12 +156,6 @@
 [
   "const"
 ] @keyword.storage.modifier
-
-[
-  "defer"
-  "goto"
-  "go"
-] @function.macro
 
 ; Delimiters
 

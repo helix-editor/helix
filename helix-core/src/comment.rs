@@ -4,7 +4,8 @@
 use smallvec::SmallVec;
 
 use crate::{
-    syntax::BlockCommentToken, Change, Range, Rope, RopeSlice, Selection, Tendril, Transaction,
+    syntax::config::BlockCommentToken, Change, Range, Rope, RopeSlice, Selection, Tendril,
+    Transaction,
 };
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
@@ -204,13 +205,9 @@ pub fn find_block_comments(
                     range: *range,
                     start_pos,
                     end_pos,
-                    start_margin: selection_slice
-                        .get_char(after_start)
-                        .map_or(false, |c| c == ' '),
+                    start_margin: selection_slice.get_char(after_start) == Some(' '),
                     end_margin: after_start != before_end
-                        && selection_slice
-                            .get_char(before_end)
-                            .map_or(false, |c| c == ' '),
+                        && (selection_slice.get_char(before_end) == Some(' ')),
                     start_token: start_token.to_string(),
                     end_token: end_token.to_string(),
                 });

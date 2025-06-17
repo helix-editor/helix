@@ -100,6 +100,9 @@
 | `file_picker` | Open file picker | normal: `` <space>f ``, select: `` <space>f `` |
 | `file_picker_in_current_buffer_directory` | Open file picker at current buffer's directory |  |
 | `file_picker_in_current_directory` | Open file picker at current working directory | normal: `` <space>F ``, select: `` <space>F `` |
+| `file_explorer` | Open file explorer in workspace root | normal: `` <space>e ``, select: `` <space>e `` |
+| `file_explorer_in_current_buffer_directory` | Open file explorer at current buffer's directory | normal: `` <space>E ``, select: `` <space>E `` |
+| `file_explorer_in_current_directory` | Open file explorer at current working directory |  |
 | `code_action` | Perform code action | normal: `` <space>a ``, select: `` <space>a `` |
 | `buffer_picker` | Open buffer picker | normal: `` <space>b ``, select: `` <space>b `` |
 | `jumplist_picker` | Open jumplist picker | normal: `` <space>j ``, select: `` <space>j `` |
@@ -123,8 +126,10 @@
 | `add_newline_below` | Add newline below | normal: `` ]<space> ``, select: `` ]<space> `` |
 | `goto_type_definition` | Goto type definition | normal: `` gy ``, select: `` gy `` |
 | `goto_implementation` | Goto implementation | normal: `` gi ``, select: `` gi `` |
-| `goto_file_start` | Goto line number <n> else file start | normal: `` gg ``, select: `` gg `` |
+| `goto_file_start` | Goto line number <n> else file start | normal: `` gg `` |
 | `goto_file_end` | Goto file end |  |
+| `extend_to_file_start` | Extend to line number<n> else file start | select: `` gg `` |
+| `extend_to_file_end` | Extend to file end |  |
 | `goto_file` | Goto files/URLs in selections | normal: `` gf ``, select: `` gf `` |
 | `goto_file_hsplit` | Goto files in selections (hsplit) | normal: `` <C-w>f ``, `` <space>wf ``, select: `` <C-w>f ``, `` <space>wf `` |
 | `goto_file_vsplit` | Goto files in selections (vsplit) | normal: `` <C-w>F ``, `` <space>wF ``, select: `` <C-w>F ``, `` <space>wF `` |
@@ -136,7 +141,8 @@
 | `goto_last_modified_file` | Goto last modified file | normal: `` gm ``, select: `` gm `` |
 | `goto_last_modification` | Goto last modification | normal: `` g. ``, select: `` g. `` |
 | `goto_line` | Goto line | normal: `` G ``, select: `` G `` |
-| `goto_last_line` | Goto last line | normal: `` ge ``, select: `` ge `` |
+| `goto_last_line` | Goto last line | normal: `` ge `` |
+| `extend_to_last_line` | Extend to last line | select: `` ge `` |
 | `goto_first_diag` | Goto first diagnostic | normal: `` [D ``, select: `` [D `` |
 | `goto_last_diag` | Goto last diagnostic | normal: `` ]D ``, select: `` ]D `` |
 | `goto_next_diag` | Goto next diagnostic | normal: `` ]d ``, select: `` ]d `` |
@@ -147,6 +153,8 @@
 | `goto_last_change` | Goto last change | normal: `` ]G ``, select: `` ]G `` |
 | `goto_line_start` | Goto line start | normal: `` gh ``, `` <home> ``, select: `` gh ``, insert: `` <home> `` |
 | `goto_line_end` | Goto line end | normal: `` gl ``, `` <end> ``, select: `` gl `` |
+| `goto_column` | Goto column | normal: `` g\| `` |
+| `extend_to_column` | Extend to column | select: `` g\| `` |
 | `goto_next_buffer` | Goto next buffer | normal: `` gn ``, select: `` gn `` |
 | `goto_previous_buffer` | Goto previous buffer | normal: `` gp ``, select: `` gp `` |
 | `goto_line_end_newline` | Goto newline at line end | insert: `` <end> `` |
@@ -236,6 +244,7 @@
 | `wonly` | Close windows except current | normal: `` <C-w>o ``, `` <space>wo ``, `` <C-w><C-o> ``, `` <space>w<C-o> ``, select: `` <C-w>o ``, `` <space>wo ``, `` <C-w><C-o> ``, `` <space>w<C-o> `` |
 | `select_register` | Select register | normal: `` " ``, select: `` " `` |
 | `insert_register` | Insert register | insert: `` <C-r> `` |
+| `copy_between_registers` | Copy between two registers |  |
 | `align_view_middle` | Align view middle | normal: `` Zm ``, `` zm ``, select: `` Zm ``, `` zm `` |
 | `align_view_top` | Align view top | normal: `` Zt ``, `` zt ``, select: `` Zt ``, `` zt `` |
 | `align_view_center` | Align view center | normal: `` Zc ``, `` Zz ``, `` zc ``, `` zz ``, select: `` Zc ``, `` Zz ``, `` zc ``, `` zz `` |
@@ -292,5 +301,7 @@
 | `command_palette` | Open command palette | normal: `` <space>? ``, select: `` <space>? `` |
 | `goto_word` | Jump to a two-character label | normal: `` gw `` |
 | `extend_to_word` | Extend to a two-character label | select: `` gw `` |
-| `goto_next_tabstop` | goto next snippet placeholder |  |
-| `goto_prev_tabstop` | goto next snippet placeholder |  |
+| `goto_next_tabstop` | Goto next snippet placeholder |  |
+| `goto_prev_tabstop` | Goto next snippet placeholder |  |
+| `rotate_selections_first` | Make the first selection your primary one |  |
+| `rotate_selections_last` | Make the last selection your primary one |  |

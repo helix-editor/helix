@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use helix_core::syntax::LanguageServerFeature;
+use helix_core::syntax::config::LanguageServerFeature;
 
 use crate::{
     editor::GutterType,
@@ -69,9 +69,10 @@ pub fn diagnostic<'doc>(
                 .iter()
                 .take_while(|d| {
                     d.line == line
-                        && doc
-                            .language_servers_with_feature(LanguageServerFeature::Diagnostics)
-                            .any(|ls| ls.id() == d.provider)
+                        && d.provider.language_server_id().map_or(true, |id| {
+                            doc.language_servers_with_feature(LanguageServerFeature::Diagnostics)
+                                .any(|ls| ls.id() == id)
+                        })
                 });
             diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
                 write!(out, "●").ok();
@@ -178,7 +179,7 @@ pub fn line_numbers<'doc>(
                     && current_line != line;
 
                 let display_num = if relative {
-                    abs_diff(current_line, line)
+                    current_line.abs_diff(line)
                 } else {
                     line + 1
                 };
@@ -224,15 +225,6 @@ pub fn padding<'doc>(
     _is_focused: bool,
 ) -> GutterFn<'doc> {
     Box::new(|_line: usize, _selected: bool, _first_visual_line: bool, _out: &mut String| None)
-}
-
-#[inline(always)]
-const fn abs_diff(a: usize, b: usize) -> usize {
-    if a > b {
-        a - b
-    } else {
-        b - a
-    }
 }
 
 pub fn breakpoints<'doc>(
@@ -342,7 +334,7 @@ mod tests {
     use crate::graphics::Rect;
     use crate::DocumentId;
     use arc_swap::ArcSwap;
-    use helix_core::Rope;
+    use helix_core::{syntax, Rope};
 
     #[test]
     fn test_default_gutter_widths() {
@@ -354,6 +346,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
 
         assert_eq!(view.gutters.layout.len(), 5);
@@ -379,6 +372,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
 
         assert_eq!(view.gutters.layout.len(), 1);
@@ -397,6 +391,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
 
         assert_eq!(view.gutters.layout.len(), 2);
@@ -419,6 +414,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
 
         let rope = Rope::from_str("a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np");
@@ -426,6 +422,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
 
         assert_eq!(view.gutters.layout.len(), 2);

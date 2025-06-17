@@ -12,7 +12,7 @@ pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::{
+use helix_core::syntax::config::{
     LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
 };
 use helix_stdx::path;
@@ -618,51 +618,45 @@ impl Registry {
         Ok(self.inner[id].clone())
     }
 
-    /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
-    /// as it could be that language servers of these documents were stopped by this method.
+    /// If this method is called, all documents that have a reference to the language server have to refresh their language servers,
     /// See helix_view::editor::Editor::refresh_language_servers
-    pub fn restart(
+    pub fn restart_server(
         &mut self,
+        name: &str,
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
-    ) -> Result<Vec<Arc<Client>>> {
-        language_config
-            .language_servers
-            .iter()
-            .filter_map(|LanguageServerFeatures { name, .. }| {
-                if let Some(old_clients) = self.inner_by_name.remove(name) {
-                    if old_clients.is_empty() {
-                        log::info!("restarting client for '{name}' which was manually stopped");
-                    } else {
-                        log::info!("stopping existing clients for '{name}'");
-                    }
-                    for old_client in old_clients {
-                        self.file_event_handler.remove_client(old_client.id());
-                        self.inner.remove(old_client.id());
-                        tokio::spawn(async move {
-                            let _ = old_client.force_shutdown().await;
-                        });
-                    }
-                }
-                let client = match self.start_client(
-                    name.clone(),
-                    language_config,
-                    doc_path,
-                    root_dirs,
-                    enable_snippets,
-                ) {
-                    Ok(client) => client,
-                    Err(StartupError::NoRequiredRootFound) => return None,
-                    Err(StartupError::Error(err)) => return Some(Err(err)),
-                };
-                self.inner_by_name
-                    .insert(name.to_owned(), vec![client.clone()]);
+    ) -> Option<Result<Arc<Client>>> {
+        if let Some(old_clients) = self.inner_by_name.remove(name) {
+            if old_clients.is_empty() {
+                log::info!("restarting client for '{name}' which was manually stopped");
+            } else {
+                log::info!("stopping existing clients for '{name}'");
+            }
+            for old_client in old_clients {
+                self.file_event_handler.remove_client(old_client.id());
+                self.inner.remove(old_client.id());
+                tokio::spawn(async move {
+                    let _ = old_client.force_shutdown().await;
+                });
+            }
+        }
+        let client = match self.start_client(
+            name.to_string(),
+            language_config,
+            doc_path,
+            root_dirs,
+            enable_snippets,
+        ) {
+            Ok(client) => client,
+            Err(StartupError::NoRequiredRootFound) => return None,
+            Err(StartupError::Error(err)) => return Some(Err(err)),
+        };
+        self.inner_by_name
+            .insert(name.to_owned(), vec![client.clone()]);
 
-                Some(Ok(client))
-            })
-            .collect()
+        Some(Ok(client))
     }
 
     pub fn stop(&mut self, name: &str) {
@@ -739,14 +733,17 @@ impl Registry {
 #[derive(Debug)]
 pub enum ProgressStatus {
     Created,
-    Started(lsp::WorkDoneProgress),
+    Started {
+        title: String,
+        progress: lsp::WorkDoneProgress,
+    },
 }
 
 impl ProgressStatus {
     pub fn progress(&self) -> Option<&lsp::WorkDoneProgress> {
         match &self {
             ProgressStatus::Created => None,
-            ProgressStatus::Started(progress) => Some(progress),
+            ProgressStatus::Started { title: _, progress } => Some(progress),
         }
     }
 }
@@ -783,6 +780,13 @@ impl LspProgressMap {
         self.0.get(&id).and_then(|values| values.get(token))
     }
 
+    pub fn title(&self, id: LanguageServerId, token: &lsp::ProgressToken) -> Option<&String> {
+        self.progress(id, token).and_then(|p| match p {
+            ProgressStatus::Created => None,
+            ProgressStatus::Started { title, .. } => Some(title),
+        })
+    }
+
     /// Checks if progress `token` for server with `id` is created.
     pub fn is_created(&mut self, id: LanguageServerId, token: &lsp::ProgressToken) -> bool {
         self.0
@@ -807,17 +811,39 @@ impl LspProgressMap {
         self.0.get_mut(&id).and_then(|vals| vals.remove(token))
     }
 
-    /// Updates the progress of `token` for server with `id` to `status`, returns the value replaced or `None`.
+    /// Updates the progress of `token` for server with `id` to begin state `status`
+    pub fn begin(
+        &mut self,
+        id: LanguageServerId,
+        token: lsp::ProgressToken,
+        status: lsp::WorkDoneProgressBegin,
+    ) {
+        self.0.entry(id).or_default().insert(
+            token,
+            ProgressStatus::Started {
+                title: status.title.clone(),
+                progress: lsp::WorkDoneProgress::Begin(status),
+            },
+        );
+    }
+
+    /// Updates the progress of `token` for server with `id` to report state `status`.
     pub fn update(
         &mut self,
         id: LanguageServerId,
         token: lsp::ProgressToken,
-        status: lsp::WorkDoneProgress,
-    ) -> Option<ProgressStatus> {
+        status: lsp::WorkDoneProgressReport,
+    ) {
         self.0
             .entry(id)
             .or_default()
-            .insert(token, ProgressStatus::Started(status))
+            .entry(token)
+            .and_modify(|e| match e {
+                ProgressStatus::Created => (),
+                ProgressStatus::Started { progress, .. } => {
+                    *progress = lsp::WorkDoneProgress::Report(status)
+                }
+            });
     }
 }
 
@@ -877,7 +903,7 @@ fn start_client(
         &ls_config.command,
         &ls_config.args,
         ls_config.config.clone(),
-        ls_config.environment.clone(),
+        &ls_config.environment,
         root_path,
         root_uri,
         id,
@@ -906,17 +932,7 @@ fn start_client(
         }
 
         // next up, notify<initialized>
-        let notification_result = _client
-            .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-            .await;
-
-        if let Err(e) = notification_result {
-            log::error!(
-                "failed to notify language server of its initialization: {}",
-                e
-            );
-            return;
-        }
+        _client.notify::<lsp::notification::Initialized>(lsp::InitializedParams {});
 
         initialize_notify.notify_one();
     });
@@ -1048,7 +1064,8 @@ mod tests {
 
         let mut source = Rope::from_str("[\n\"🇺🇸\",\n\"🎄\",\n]");
 
-        let transaction = generate_transaction_from_edits(&source, edits, OffsetEncoding::Utf8);
+        let transaction = generate_transaction_from_edits(&source, edits, OffsetEncoding::Utf16);
         assert!(transaction.apply(&mut source));
+        assert_eq!(source, "[\n  \"🇺🇸\",\n  \"🎄\",\n]");
     }
 }

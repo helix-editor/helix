@@ -1,4 +1,4 @@
-use crate::{Error, Event, Result};
+use crate::{Error, Result};
 use anyhow::Context;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -32,11 +32,17 @@ pub struct Response {
     pub body: Option<Value>,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+pub struct Event {
+    pub event: String,
+    pub body: Option<Value>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Payload {
     // type = "event"
-    Event(Box<Event>),
+    Event(Event),
     // type = "response"
     Response(Response),
     // type = "request"
@@ -79,10 +85,11 @@ impl Transport {
     async fn recv_server_message(
         reader: &mut Box<dyn AsyncBufRead + Unpin + Send>,
         buffer: &mut String,
+        content: &mut Vec<u8>,
     ) -> Result<Payload> {
         let mut content_length = None;
         loop {
-            buffer.truncate(0);
+            buffer.clear();
             if reader.read_line(buffer).await? == 0 {
                 return Err(Error::StreamClosed);
             };
@@ -111,16 +118,16 @@ impl Transport {
         }
 
         let content_length = content_length.context("missing content length")?;
-
-        //TODO: reuse vector
-        let mut content = vec![0; content_length];
-        reader.read_exact(&mut content).await?;
-        let msg = std::str::from_utf8(&content).context("invalid utf8 from server")?;
+        content.resize(content_length, 0);
+        reader.read_exact(content).await?;
+        let msg = std::str::from_utf8(content).context("invalid utf8 from server")?;
 
         info!("<- DAP {}", msg);
 
         // try parsing as output (server response) or call (server request)
         let output: serde_json::Result<Payload> = serde_json::from_str(msg);
+
+        content.clear();
 
         Ok(output?)
     }
@@ -230,25 +237,44 @@ impl Transport {
         }
     }
 
-    async fn recv_inner(
+    async fn recv(
         transport: Arc<Self>,
         mut server_stdout: Box<dyn AsyncBufRead + Unpin + Send>,
         client_tx: UnboundedSender<Payload>,
-    ) -> Result<()> {
-        let mut recv_buffer = String::new();
-        loop {
-            let msg = Self::recv_server_message(&mut server_stdout, &mut recv_buffer).await?;
-            transport.process_server_message(&client_tx, msg).await?;
-        }
-    }
-
-    async fn recv(
-        transport: Arc<Self>,
-        server_stdout: Box<dyn AsyncBufRead + Unpin + Send>,
-        client_tx: UnboundedSender<Payload>,
     ) {
-        if let Err(err) = Self::recv_inner(transport, server_stdout, client_tx).await {
-            error!("err: <- {:?}", err);
+        let mut recv_buffer = String::new();
+        let mut content_buffer = Vec::new();
+        loop {
+            match Self::recv_server_message(
+                &mut server_stdout,
+                &mut recv_buffer,
+                &mut content_buffer,
+            )
+            .await
+            {
+                Ok(msg) => match transport.process_server_message(&client_tx, msg).await {
+                    Ok(_) => (),
+                    Err(err) => {
+                        error!("err: <- {err:?}");
+                        break;
+                    }
+                },
+                Err(err) => {
+                    if !matches!(err, Error::StreamClosed) {
+                        error!("Exiting after unexpected error: {err:?}");
+                    }
+
+                    // Close any outstanding requests.
+                    for (id, tx) in transport.pending_requests.lock().await.drain() {
+                        match tx.send(Err(Error::StreamClosed)).await {
+                            Ok(_) => (),
+                            Err(_) => {
+                                error!("Could not close request on a closed channel (id={id})");
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

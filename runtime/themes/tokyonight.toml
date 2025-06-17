@@ -3,6 +3,7 @@
 attribute = { fg = "cyan" }
 comment = { fg = "comment", modifiers = ["italic"] }
 "comment.block.documentation" = { fg = "yellow" }
+"comment.line.documentation" = { fg = "yellow" }
 constant = { fg = "orange" }
 "constant.builtin" = { fg = "aqua" }
 "constant.character" = { fg = "light-green" }
@@ -85,7 +86,7 @@ hint = { fg = "hint" }
 "ui.statusline.normal" = { bg = "blue", fg = "bg", modifiers = ["bold"] }
 "ui.statusline.insert" = { bg = "light-green", fg = "bg", modifiers = ["bold"] }
 "ui.statusline.select" = { bg = "magenta", fg = "bg", modifiers = ["bold"] }
-"ui.text" = { bg = "bg", fg = "fg" }
+"ui.text" = { fg = "fg" }
 "ui.text.focus" = { bg = "bg-focus" }
 "ui.text.inactive" = { fg = "comment", modifiers = ["italic"] }
 "ui.text.info" = { bg = "bg-menu", fg = "fg" }

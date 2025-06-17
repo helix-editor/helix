@@ -171,8 +171,9 @@ We use a similar set of scopes as
 
 - `comment` - Code comments
   - `line` - Single line comments (`//`)
+    - `documentation` - Line documentation comments (e.g. `///` in Rust)
   - `block` - Block comments (e.g. (`/* */`)
-    - `documentation` - Documentation comments (e.g. `///` in Rust)
+    - `documentation` - Block documentation comments (e.g. `/** */` in Rust)
 
 - `variable` - Variables
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
@@ -181,7 +182,7 @@ We use a similar set of scopes as
     - `member` - Fields of composite data types (e.g. structs, unions)
       - `private` - Private fields that use a unique syntax (currently just ECMAScript-based languages)
 
-- `label`
+- `label` - `.class`, `#id` in CSS, etc.
 
 - `punctuation`
   - `delimiter` - Commas, colons
@@ -216,7 +217,7 @@ We use a similar set of scopes as
 
 - `namespace`
 
-- `special`
+- `special` - `derive` in Rust, etc.
 
 - `markup`
   - `heading`

@@ -85,6 +85,7 @@ pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
 
 pub enum CachedPreview {
     Document(Box<Document>),
+    Directory(Vec<(String, bool)>),
     Binary,
     LargeFile,
     NotFound,
@@ -106,12 +107,20 @@ impl Preview<'_, '_> {
         }
     }
 
+    fn dir_content(&self) -> Option<&Vec<(String, bool)>> {
+        match self {
+            Preview::Cached(CachedPreview::Directory(dir_content)) => Some(dir_content),
+            _ => None,
+        }
+    }
+
     /// Alternate text to show for the preview.
     fn placeholder(&self) -> &str {
         match *self {
             Self::EditorDocument(_) => "<Invalid file location>",
             Self::Cached(preview) => match preview {
                 CachedPreview::Document(_) => "<Invalid file location>",
+                CachedPreview::Directory(_) => "<Invalid directory location>",
                 CachedPreview::Binary => "<Binary file>",
                 CachedPreview::LargeFile => "<File too large to preview>",
                 CachedPreview::NotFound => "<File not found>",
@@ -576,41 +585,72 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     // retrieve the `Arc<Path>` key. The `path` in scope here is a `&Path` and
                     // we can cheaply clone the key for the preview highlight handler.
                     let (path, preview) = self.preview_cache.get_key_value(path).unwrap();
-                    if matches!(preview, CachedPreview::Document(doc) if doc.language_config().is_none())
-                    {
+                    if matches!(preview, CachedPreview::Document(doc) if doc.syntax().is_none()) {
                         helix_event::send_blocking(&self.preview_highlight_handler, path.clone());
                     }
                     return Some((Preview::Cached(preview), range));
                 }
 
                 let path: Arc<Path> = path.into();
-                let data = std::fs::File::open(&path).and_then(|file| {
-                    let metadata = file.metadata()?;
-                    // Read up to 1kb to detect the content type
-                    let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
-                    let content_type = content_inspector::inspect(&self.read_buffer[..n]);
-                    self.read_buffer.clear();
-                    Ok((metadata, content_type))
-                });
-                let preview = data
-                    .map(
-                        |(metadata, content_type)| match (metadata.len(), content_type) {
-                            (_, content_inspector::ContentType::BINARY) => CachedPreview::Binary,
-                            (size, _) if size > MAX_FILE_SIZE_FOR_PREVIEW => {
-                                CachedPreview::LargeFile
-                            }
-                            _ => Document::open(&path, None, None, editor.config.clone())
-                                .map(|doc| {
-                                    // Asynchronously highlight the new document
-                                    helix_event::send_blocking(
-                                        &self.preview_highlight_handler,
-                                        path.clone(),
-                                    );
-                                    CachedPreview::Document(Box::new(doc))
+                let preview = std::fs::metadata(&path)
+                    .and_then(|metadata| {
+                        if metadata.is_dir() {
+                            let files = super::directory_content(&path)?;
+                            let file_names: Vec<_> = files
+                                .iter()
+                                .filter_map(|(path, is_dir)| {
+                                    let name = path.file_name()?.to_string_lossy();
+                                    if *is_dir {
+                                        Some((format!("{}/", name), true))
+                                    } else {
+                                        Some((name.into_owned(), false))
+                                    }
                                 })
-                                .unwrap_or(CachedPreview::NotFound),
-                        },
-                    )
+                                .collect();
+                            Ok(CachedPreview::Directory(file_names))
+                        } else if metadata.is_file() {
+                            if metadata.len() > MAX_FILE_SIZE_FOR_PREVIEW {
+                                return Ok(CachedPreview::LargeFile);
+                            }
+                            let content_type = std::fs::File::open(&path).and_then(|file| {
+                                // Read up to 1kb to detect the content type
+                                let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
+                                let content_type =
+                                    content_inspector::inspect(&self.read_buffer[..n]);
+                                self.read_buffer.clear();
+                                Ok(content_type)
+                            })?;
+                            if content_type.is_binary() {
+                                return Ok(CachedPreview::Binary);
+                            }
+                            let mut doc = Document::open(
+                                &path,
+                                None,
+                                false,
+                                editor.config.clone(),
+                                editor.syn_loader.clone(),
+                            )
+                            .or(Err(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "Cannot open document",
+                            )))?;
+                            let loader = editor.syn_loader.load();
+                            if let Some(language_config) = doc.detect_language_config(&loader) {
+                                doc.language = Some(language_config);
+                                // Asynchronously highlight the new document
+                                helix_event::send_blocking(
+                                    &self.preview_highlight_handler,
+                                    path.clone(),
+                                );
+                            }
+                            Ok(CachedPreview::Document(Box::new(doc)))
+                        } else {
+                            Err(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "Neither a dir, nor a file",
+                            ))
+                        }
+                    })
                     .unwrap_or(CachedPreview::NotFound);
                 self.preview_cache.insert(path.clone(), preview);
                 Some((Preview::Cached(&self.preview_cache[&path]), range))
@@ -649,10 +689,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
         // -- Render the input bar:
 
-        let area = inner.clip_left(1).with_height(1);
-        // render the prompt first since it will clear its background
-        self.prompt.render(area, surface, cx);
-
         let count = format!(
             "{}{}/{}",
             if status.running || self.matcher.active_injectors() > 0 {
@@ -663,6 +699,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             snapshot.matched_item_count(),
             snapshot.item_count(),
         );
+
+        let area = inner.clip_left(1).with_height(1);
+        let line_area = area.clip_right(count.len() as u16 + 1);
+
+        // render the prompt first since it will clear its background
+        self.prompt.render(line_area, surface, cx);
+
         surface.set_stringn(
             (area.x + area.width).saturating_sub(count.len() as u16 + 1),
             area.y,
@@ -823,6 +866,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // clear area
         let background = cx.editor.theme.get("ui.background");
         let text = cx.editor.theme.get("ui.text");
+        let directory = cx.editor.theme.get("ui.text.directory");
         surface.clear_with(area, background);
 
         const BLOCK: Block<'_> = Block::bordered();
@@ -844,6 +888,22 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     doc
                 }
                 _ => {
+                    if let Some(dir_content) = preview.dir_content() {
+                        for (i, (path, is_dir)) in
+                            dir_content.iter().take(inner.height as usize).enumerate()
+                        {
+                            let style = if *is_dir { directory } else { text };
+                            surface.set_stringn(
+                                inner.x,
+                                inner.y + i as u16,
+                                path,
+                                inner.width as usize,
+                                style,
+                            );
+                        }
+                        return;
+                    }
+
                     let alt_text = preview.placeholder();
                     let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
                     let y = inner.y + inner.height / 2;
@@ -879,21 +939,18 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
             }
 
-            let syntax_highlights = EditorView::doc_syntax_highlights(
+            let loader = cx.editor.syn_loader.load();
+
+            let syntax_highlighter =
+                EditorView::doc_syntax_highlighter(doc, offset.anchor, area.height, &loader);
+            let mut overlay_highlights = Vec::new();
+
+            EditorView::doc_diagnostics_highlights_into(
                 doc,
-                offset.anchor,
-                area.height,
                 &cx.editor.theme,
+                &mut overlay_highlights,
             );
 
-            let mut overlay_highlights =
-                EditorView::empty_highlight_iter(doc, offset.anchor, area.height);
-            for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
-                if spans.is_empty() {
-                    continue;
-                }
-                overlay_highlights = Box::new(helix_core::syntax::merge(overlay_highlights, spans));
-            }
             let mut decorations = DecorationManager::default();
 
             if let Some((start, end)) = range {
@@ -923,7 +980,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 offset,
                 // TODO: compute text annotations asynchronously here (like inlay hints)
                 &TextAnnotations::default(),
-                syntax_highlights,
+                syntax_highlighter,
                 overlay_highlights,
                 &cx.editor.theme,
                 decorations,
@@ -1014,7 +1071,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             key!(Esc) | ctrl!('c') => return close_fn(self),
             alt!(Enter) => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::Load);
+                    (self.callback_fn)(ctx, option, Action::Replace);
                 }
             }
             key!(Enter) => {
@@ -1025,7 +1082,15 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     .first_history_completion(ctx.editor)
                     .filter(|_| self.prompt.line().is_empty())
                 {
-                    self.prompt.set_line(completion.to_string(), ctx.editor);
+                    // The percent character is used by the query language and needs to be
+                    // escaped with a backslash.
+                    let completion = if completion.contains('%') {
+                        completion.replace('%', "\\%")
+                    } else {
+                        completion.into_owned()
+                    };
+                    self.prompt.set_line(completion, ctx.editor);
+
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 } else {
@@ -1073,7 +1138,15 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         let inner = block.inner(area);
 
         // prompt area
-        let area = inner.clip_left(1).with_height(1);
+        let render_preview =
+            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+
+        let picker_width = if render_preview {
+            area.width / 2
+        } else {
+            area.width
+        };
+        let area = inner.clip_left(1).with_height(1).with_width(picker_width);
 
         self.prompt.cursor(area, editor)
     }
