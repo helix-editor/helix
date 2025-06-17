@@ -4235,7 +4235,7 @@ pub mod insert {
             let line_start = text.line_to_char(current_line);
 
             let continue_comment_token = comment::get_line_comment_token(
-                &doc.syn_loader.load(),
+                &cx.editor.syn_loader.load(),
                 syntax,
                 text,
                 doc_default_comment_token,
@@ -5215,7 +5215,7 @@ fn toggle_comments_impl(cx: &mut Context, comments_transaction: CommentTransacti
         doc_line_token,
         doc_block_tokens,
         syntax,
-        &doc.syn_loader.load(),
+        &cx.editor.syn_loader.load(),
     );
 
     doc.apply(&transaction, view.id);

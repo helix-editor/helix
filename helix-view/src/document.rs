@@ -213,7 +213,7 @@ pub struct Document {
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
-    pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
+    syn_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
 #[derive(Debug, Clone, Default)]

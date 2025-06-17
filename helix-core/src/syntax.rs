@@ -427,7 +427,7 @@ impl FileTypeGlobMatcher {
 
 #[derive(Debug)]
 pub struct Syntax {
-    pub inner: tree_house::Syntax,
+    inner: tree_house::Syntax,
 }
 
 const PARSE_TIMEOUT: Duration = Duration::from_millis(500); // half a second is pretty generous
