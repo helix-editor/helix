@@ -381,7 +381,7 @@ fn buffer_nth(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     }
     let n: usize = args[0]
         .parse()
-        .map_err(|_| anyhow!("provided argument is not an integer"))?;
+        .context("provided argument is not an integer")?;
     ensure!(n != 0);
     let (id, _) = if args.has_flag("reverse") {
         cx.editor.documents.iter().nth_back(n - 1)
