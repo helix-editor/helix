@@ -5174,6 +5174,16 @@ pub fn completion(cx: &mut Context) {
 
 // comments
 
+/// Perform a `Transaction` to toggle comments
+type CommentTransaction = fn(
+    text: &Rope,
+    selection: &Selection,
+    doc_line_token: Option<&str>,
+    doc_block_tokens: Option<&[BlockCommentToken]>,
+    syntax: Option<&Syntax>,
+    loader: &syntax::Loader,
+) -> Transaction;
+
 /// Commenting behavior, for each range in selection:
 ///
 /// 1. Only line comment tokens -> line comment
@@ -5181,17 +5191,7 @@ pub fn completion(cx: &mut Context) {
 /// 3. Whole selection block commented -> uncomment selection
 /// 4. All lines not commented and block tokens -> comment uncommented lines
 /// 5. No comment tokens and not block commented -> line comment
-fn toggle_comments_impl<F>(cx: &mut Context, comments_transaction: F)
-where
-    F: Fn(
-        &Rope,
-        &Selection,
-        Option<&str>,
-        Option<&[BlockCommentToken]>,
-        Option<&Syntax>,
-        &syntax::Loader,
-    ) -> Transaction,
-{
+fn toggle_comments_impl(cx: &mut Context, comments_transaction: CommentTransaction) {
     let (view, doc) = current!(cx.editor);
     let syntax = doc.syntax();
     let rope = doc.text();
