@@ -130,3 +130,9 @@ color-swatches-string = "■"
 ```
 
 Color swatches appear next to color values in your code (CSS, configuration files, etc.) when LSP support is available, making it easier to visualize colors at a glance.
+
+
+**Building**
+```bash
+  cargo install --path helix-term --locked
+```

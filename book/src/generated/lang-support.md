@@ -4,7 +4,7 @@
 | adl | ✓ | ✓ | ✓ |  |
 | agda | ✓ |  |  |  |
 | alloy | ✓ |  |  |  |
-| amber | ✓ |  |  |  |
+| amber | ✓ |  |  | `amber-lsp` |
 | astro | ✓ |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | `bash-language-server` |
@@ -24,7 +24,7 @@
 | circom | ✓ |  |  | `circom-lsp` |
 | clarity | ✓ |  |  | `clarinet` |
 | clojure | ✓ |  |  | `clojure-lsp` |
-| cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
+| cmake | ✓ | ✓ | ✓ | `neocmakelsp`, `cmake-language-server` |
 | codeql | ✓ | ✓ |  | `codeql` |
 | comment | ✓ |  |  |  |
 | common-lisp | ✓ |  | ✓ | `cl-lsp` |

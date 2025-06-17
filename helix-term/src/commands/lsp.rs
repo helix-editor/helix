@@ -50,7 +50,7 @@ macro_rules! language_server_with_feature {
         match language_server {
             Some(language_server) => language_server,
             None => {
-                $editor.set_status(format!(
+                $editor.set_error(format!(
                     "No configured language server supports {}",
                     $feature
                 ));
@@ -267,6 +267,9 @@ fn diag_picker(
                 .into()
             },
         ),
+        ui::PickerColumn::new("source", |item: &PickerDiagnostic, _| {
+            item.diag.source.as_deref().unwrap_or("").into()
+        }),
         ui::PickerColumn::new("message", |item: &PickerDiagnostic, _| {
             item.diag.message.as_str().into()
         }),
@@ -278,12 +281,12 @@ fn diag_picker(
             }
         }),
     ];
-    let mut primary_column = 2; // code
+    let mut primary_column = 2; // message
 
     if format == DiagnosticsFormat::ShowSourcePath {
         columns.insert(
-            // between message message and code
-            2,
+            // between message and code
+            3,
             ui::PickerColumn::new("path", |item: &PickerDiagnostic, _| {
                 if let Some(path) = item.location.uri.as_path() {
                     path::get_truncated_path(path)
@@ -1503,6 +1506,7 @@ fn compute_inlay_hints_for_view(
             let mut padding_after_inlay_hints = Vec::new();
 
             let doc_text = doc.text();
+            let inlay_hints_length_limit = doc.config.load().lsp.inlay_hints_length_limit;
 
             for hint in hints {
                 let char_idx =
@@ -1513,7 +1517,7 @@ fn compute_inlay_hints_for_view(
                         None => continue,
                     };
 
-                let label = match hint.label {
+                let mut label = match hint.label {
                     lsp::InlayHintLabel::String(s) => s,
                     lsp::InlayHintLabel::LabelParts(parts) => parts
                         .into_iter()
@@ -1521,6 +1525,31 @@ fn compute_inlay_hints_for_view(
                         .collect::<Vec<_>>()
                         .join(""),
                 };
+                // Truncate the hint if too long
+                if let Some(limit) = inlay_hints_length_limit {
+                    // Limit on displayed width
+                    use helix_core::unicode::{
+                        segmentation::UnicodeSegmentation, width::UnicodeWidthStr,
+                    };
+
+                    let width = label.width();
+                    let limit = limit.get().into();
+                    if width > limit {
+                        let mut floor_boundary = 0;
+                        let mut acc = 0;
+                        for (i, grapheme_cluster) in label.grapheme_indices(true) {
+                            acc += grapheme_cluster.width();
+
+                            if acc > limit {
+                                floor_boundary = i;
+                                break;
+                            }
+                        }
+
+                        label.truncate(floor_boundary);
+                        label.push('…');
+                    }
+                }
 
                 let inlay_hints_vec = match hint.kind {
                     Some(lsp::InlayHintKind::TYPE) => &mut type_inlay_hints,

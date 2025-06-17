@@ -5,9 +5,10 @@ use-grammars = { except = [ "wren", "gemini" ] }
 
 [language-server]
 
-als = { command = "als" }
-ada-language-server = { command = "ada_language_server" }
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
+ada-language-server = { command = "ada_language_server" }
+als = { command = "als" }
+amber-lsp = { command = "amber-lsp" }
 angular = {command = "ngserver", args = ["--stdio", "--tsProbeLocations", ".", "--ngProbeLocations", ".",]}
 asm-lsp = { command = "asm-lsp" }
 awk-language-server = { command = "awk-language-server" }
@@ -72,6 +73,7 @@ metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inl
 mesonlsp = { command = "mesonlsp", args = ["--lsp"] }
 mint = { command = "mint", args = ["tool", "ls"] }
 mojo-lsp-server = { command = "pixi", args = ["run", "mojo-lsp-server"] }
+neocmakelsp = { command = "neocmakelsp", args = ["stdio"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
@@ -647,6 +649,7 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 grammar = "ruby"
 language-servers = [ "crystalline" ]
+formatter = { command = "crystal", args = ["tool", "format", "-"] }
 
 [[language]]
 name = "c-sharp"
@@ -934,7 +937,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "html"
-source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "29f53d8f4f2335e61bf6418ab8958dac3282077a" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "cbb91a0ff3621245e890d1c50cc811bffb77a26b" }
 
 [[language]]
 name = "python"
@@ -1557,7 +1560,7 @@ file-types = ["cmake", { glob = "CMakeLists.txt" }]
 comment-token = "#"
 block-comment-tokens = { start = "#[[", end = "]]" }
 indent = { tab-width = 2, unit = "  " }
-language-servers = [ "cmake-language-server" ]
+language-servers = ["neocmakelsp", "cmake-language-server"]
 injection-regex = "cmake"
 
 [[grammar]]
@@ -4130,6 +4133,7 @@ scope = "source.ab"
 file-types = ["ab"]
 comment-token = ["//", "///"]
 indent = { tab-width = 4, unit = "    " }
+language-servers = ["amber-lsp"]
 
 [[grammar]]
 name = "amber"

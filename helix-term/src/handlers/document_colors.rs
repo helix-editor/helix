@@ -82,6 +82,10 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
         })
         .collect();
 
+    if futures.is_empty() {
+        return;
+    }
+
     tokio::spawn(async move {
         let mut all_colors = Vec::new();
         loop {
