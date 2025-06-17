@@ -132,6 +132,7 @@ pub struct Diff<'a> {
 }
 
 impl Diff<'_> {
+    /// Returns the base [Rope] of the [Diff]
     pub fn diff_base(&self) -> &Rope {
         if self.inverted {
             &self.diff.doc
@@ -140,6 +141,7 @@ impl Diff<'_> {
         }
     }
 
+    /// Returns the [Rope] being compared against
     pub fn doc(&self) -> &Rope {
         if self.inverted {
             &self.diff.diff_base
@@ -170,6 +172,7 @@ impl Diff<'_> {
         self.len() == 0
     }
 
+    /// Gives the index of the first hunk after the given line, if one exists.
     pub fn next_hunk(&self, line: u32) -> Option<u32> {
         let hunk_range = if self.inverted {
             |hunk: &Hunk| hunk.before.clone()
@@ -196,6 +199,7 @@ impl Diff<'_> {
         }
     }
 
+    /// Gives the index of the first hunk before the given line, if one exists.
     pub fn prev_hunk(&self, line: u32) -> Option<u32> {
         let hunk_range = if self.inverted {
             |hunk: &Hunk| hunk.before.clone()
@@ -239,6 +243,7 @@ impl Diff<'_> {
         }
     }
 
+    /// Returns the index of the hunk containing the given line if it exists.
     pub fn hunk_at(&self, line: u32, include_removal: bool) -> Option<u32> {
         let hunk_range = if self.inverted {
             |hunk: &Hunk| hunk.before.clone()
