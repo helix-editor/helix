@@ -3673,14 +3673,17 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token = comment::get_line_comment_token(
-            &loader,
-            syntax,
-            text,
-            doc_default_tokens,
-            curr_line_num,
-        )
-        .filter(|_| continue_comments);
+        let continue_comment_token = continue_comments
+            .then(|| {
+                comment::get_line_comment_token(
+                    &loader,
+                    syntax,
+                    text,
+                    doc_default_tokens,
+                    curr_line_num,
+                )
+            })
+            .flatten();
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
