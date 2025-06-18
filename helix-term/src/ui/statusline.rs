@@ -337,14 +337,32 @@ where
     let selection = context.doc.selection(context.view.id);
     let count = selection.len();
 
-    write(
-        context,
-        match (count, selection.edit_only_primary()) {
-            (1, _) => " 1 sel ".into(),
-            (_, true) => format!(" primary {}/{count} ", selection.primary_index() + 1).into(),
-            (_, false) => format!(" {}/{count} sels ", selection.primary_index() + 1).into(),
-        },
-    );
+    match (count, selection.edit_only_primary()) {
+        (1, _) => write(context, " 1 sel ".into()),
+        (_, true) => {
+            write(context, " ".into());
+
+            write(
+                context,
+                Span::styled(
+                    "primary",
+                    context
+                        .editor
+                        .theme
+                        .get("ui.statusline.selections.primary-only"),
+                ),
+            );
+
+            write(
+                context,
+                format!(" {}/{count} ", selection.primary_index() + 1).into(),
+            )
+        }
+        (_, false) => write(
+            context,
+            format!(" {}/{count} sels ", selection.primary_index() + 1).into(),
+        ),
+    }
 }
 
 fn render_primary_selection_length<'a, F>(context: &mut RenderContext<'a>, write: F)
