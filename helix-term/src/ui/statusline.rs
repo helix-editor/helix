@@ -336,12 +336,13 @@ where
 {
     let selection = context.doc.selection(context.view.id);
     let count = selection.len();
+
     write(
         context,
-        if count == 1 {
-            " 1 sel ".into()
-        } else {
-            format!(" {}/{count} sels ", selection.primary_index() + 1).into()
+        match (count, selection.edit_only_primary()) {
+            (1, _) => " 1 sel ".into(),
+            (_, true) => format!(" primary {}/{count} ", selection.primary_index() + 1).into(),
+            (_, false) => format!(" {}/{count} sels ", selection.primary_index() + 1).into(),
         },
     );
 }

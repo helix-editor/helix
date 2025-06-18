@@ -1,4 +1,7 @@
 use super::*;
+use helix_core::hashmap;
+use helix_term::keymap::macros::keymap;
+use helix_view::document::Mode;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_mode_cursor_position() -> anyhow::Result<()> {
@@ -665,6 +668,42 @@ async fn test_surround_delete() -> anyhow::Result<()> {
         "mdm",
         "\n\n#(\n|)##[\n|]#",
     ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_movement_of_primary_only() -> anyhow::Result<()> {
+    let mut with_mapping = Config::default();
+
+    let norm = keymap!({ "Normal mode"
+        "#" => toggle_move_primary_selection_only,
+    });
+    let sel = keymap!({ "Select mode"
+        "#" => toggle_move_primary_selection_only,
+    });
+    with_mapping.keys = hashmap!(
+        Mode::Normal => norm,
+        Mode::Select => sel,
+    );
+
+    test_with_config(
+        AppBuilder::new().with_config(with_mapping),
+        (
+            indoc! {"\
+                #[|]#Test1 Test2 Test3
+                Test1 Test2 Test3
+                Test1 Test2 Test3
+            "},
+            "wlCCt (#wwcTest4<esc>#b;",
+            indoc! {"\
+                Test1 #(T|)#est4 Test3
+                Test1 Test2 #[T|]#est4
+                Test1 #(T|)#est4 Test3
+            "},
+        ),
+    )
     .await?;
 
     Ok(())
