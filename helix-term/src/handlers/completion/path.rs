@@ -14,6 +14,14 @@ use url::Url;
 
 use crate::handlers::completion::{item::CompletionResponse, CompletionItem, CompletionItems};
 
+fn unescape_spaces(string: &str) -> String {
+    string.replace("\\ ", " ").to_owned()
+}
+
+fn escape_spaces(string: &str) -> String {
+    string.replace(' ', "\\ ").to_owned()
+}
+
 pub(crate) fn path_completion(
     selection: Selection,
     doc: &Document,
@@ -32,14 +40,14 @@ pub(crate) fn path_completion(
 
     let (dir_path, typed_file_name) =
         get_path_suffix(line_until_cursor, false).and_then(|matched_path| {
-            let matched_path = Cow::from(matched_path);
+            let matched_path = unescape_spaces(&Cow::from(matched_path));
             let path: Cow<_> = if matched_path.starts_with("file://") {
-                Url::from_str(&matched_path)
+                Url::from_str(matched_path.as_str())
                     .ok()
                     .and_then(|url| url.to_file_path().ok())?
                     .into()
             } else {
-                Path::new(&*matched_path).into()
+                Path::new(matched_path.as_str()).into()
             };
             let path = path::expand(&path);
             let parent_dir = doc.path().and_then(|dp| dp.parent());
@@ -91,10 +99,12 @@ pub(crate) fn path_completion(
         let res: Vec<_> = read_dir
             .filter_map(Result::ok)
             .filter_map(|dir_entry| {
-                dir_entry
-                    .metadata()
-                    .ok()
-                    .and_then(|md| Some((dir_entry.file_name().into_string().ok()?, md)))
+                dir_entry.metadata().ok().and_then(|md| {
+                    Some((
+                        escape_spaces(dir_entry.file_name().into_string().ok()?.as_str()),
+                        md,
+                    ))
+                })
             })
             .map_while(|(file_name, md)| {
                 if handle.is_canceled() {
