@@ -1067,6 +1067,10 @@ pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
+    /// The document ID of the tree sitter tree document, and
+    /// the document ID of the document that the :tree-sitter-tree
+    /// command was invoked from
+    pub tree_sitter_tree: Option<(DocumentId, ViewId)>,
 
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
     // https://stackoverflow.com/a/66875668
@@ -1188,6 +1192,7 @@ impl Action {
     }
 }
 
+#[derive(Debug)]
 /// Error thrown on failed document closed
 pub enum CloseError {
     /// Document doesn't exist
@@ -1218,6 +1223,7 @@ impl Editor {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
+            tree_sitter_tree: None,
             saves: HashMap::new(),
             save_queue: SelectAll::new(),
             write_count: 0,
@@ -1727,7 +1733,7 @@ impl Editor {
     }
 
     /// Generate an id for a new document and register it.
-    fn new_document(&mut self, mut doc: Document) -> DocumentId {
+    pub fn new_document(&mut self, mut doc: Document) -> DocumentId {
         let id = self.next_document_id;
         // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
         self.next_document_id =
@@ -1744,7 +1750,7 @@ impl Editor {
         id
     }
 
-    fn new_file_from_document(&mut self, action: Action, doc: Document) -> DocumentId {
+    pub fn new_file_from_document(&mut self, action: Action, doc: Document) -> DocumentId {
         let id = self.new_document(doc);
         self.switch(id, action);
         id

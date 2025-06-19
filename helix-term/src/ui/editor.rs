@@ -24,7 +24,7 @@ use helix_core::{
 };
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::Mode,
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
@@ -560,7 +560,6 @@ impl EditorView {
 
     /// Render bufferline at the top
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
             viewport,
             editor
@@ -583,9 +582,10 @@ impl EditorView {
         let current_doc = view!(editor).doc;
 
         for doc in editor.documents() {
+            let default_name = PathBuf::from(doc.default_name());
             let fname = doc
                 .path()
-                .unwrap_or(&scratch)
+                .unwrap_or(&default_name)
                 .file_name()
                 .unwrap_or_default()
                 .to_str()
