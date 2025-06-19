@@ -2556,7 +2556,7 @@ language-servers = [ "fortls" ]
 
 [[grammar]]
 name = "fortran"
-source = { git = "https://github.com/stadelmanma/tree-sitter-fortran", rev = "f0f2f100952a353e64e26b0fa710b4c296d7af13" }
+source = { git = "https://github.com/stadelmanma/tree-sitter-fortran", rev = "1b08f4c65fb47c76d3532cd3f7432d03abb9ef69" }
 
 [[language]]
 name = "ungrammar"
