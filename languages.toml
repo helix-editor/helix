@@ -9,6 +9,7 @@ ada-gpr-language-server = {command = "ada_language_server", args = ["--language-
 ada-language-server = { command = "ada_language_server" }
 als = { command = "als" }
 amber-lsp = { command = "amber-lsp" }
+ameba-ls = { command = "ameba-ls" }
 angular = {command = "ngserver", args = ["--stdio", "--tsProbeLocations", ".", "--ngProbeLocations", ".",]}
 asm-lsp = { command = "asm-lsp" }
 awk-language-server = { command = "awk-language-server" }
@@ -647,9 +648,13 @@ file-types = ["cr"]
 roots = ["shard.yml", "shard.lock"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-grammar = "ruby"
-language-servers = [ "crystalline" ]
+grammar = "crystal"
+language-servers = [ "crystalline", "ameba-ls" ]
 formatter = { command = "crystal", args = ["tool", "format", "-"] }
+
+[[grammar]]
+name = "crystal"
+source = { git = "https://github.com/crystal-lang-tools/tree-sitter-crystal", rev = "76afc1f53518a2b68b51a5abcde01d268a9cb47c" }
 
 [[language]]
 name = "c-sharp"
