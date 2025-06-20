@@ -1366,6 +1366,41 @@ value : any?
         "#
     );
 
+    // TODO: Register this differently so it doesn't clone the pasted text unnecessarily
+    register!(
+        "paste-event?",
+        |event: Event| { matches!(event, Event::Paste(_)) },
+        r#"Checks if the given event is a paste event.
+
+```scheme
+(paste-event? event) -> bool?
+```
+
+* event : Event?
+            
+        "#
+    );
+
+    register!(
+        "paste-event-string",
+        |event: Event| {
+            if let Event::Paste(p) = event {
+                Some(p)
+            } else {
+                None
+            }
+        },
+        r#"Get the string from the paste event, if it is a paste event.
+
+```scheme
+(paste-event-string event) -> (or string? #false)
+```
+
+* event : Event?
+
+        "#
+    );
+
     register!(
         "key-event?",
         |event: Event| { matches!(event, Event::Key(_)) },
