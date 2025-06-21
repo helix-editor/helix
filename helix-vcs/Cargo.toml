@@ -9,8 +9,6 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 helix-core = { path = "../helix-core" }
 helix-event = { path = "../helix-event" }
