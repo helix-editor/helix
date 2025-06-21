@@ -4162,7 +4162,13 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
     // Hooks
     engine.register_fn("register-hook!", register_hook);
-    engine.register_fn("log::info!", |message: String| log::info!("{}", message));
+    engine.register_fn("log::info!", |message: SteelVal| {
+        if let SteelVal::StringV(s) = &message {
+            log::info!("{}", s)
+        } else {
+            log::info!("{}", message)
+        }
+    });
 
     engine.register_fn("fuzzy-match", |pattern: SteelString, items: SteelVal| {
         if let SteelVal::ListV(l) = items {
