@@ -76,7 +76,7 @@ pub trait Component: Any + AnyComponent {
     }
 
     fn name(&self) -> Option<&str> {
-        None
+        self.id()
     }
 }
 
