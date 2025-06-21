@@ -31,7 +31,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
+use std::{fmt::Debug, mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -237,6 +237,7 @@ impl EditorView {
         let ruler_theme = theme
             .try_get("ui.virtual.ruler")
             .unwrap_or_else(|| Style::default().bg(Color::Red));
+        let ruler_string = &editor.config().rulers_string;
 
         let rulers = doc
             .language_config()
@@ -252,7 +253,11 @@ impl EditorView {
             .filter_map(|ruler| ruler.checked_sub(1 + view_offset.horizontal_offset as u16))
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
-            .for_each(|area| surface.set_style(area, ruler_theme))
+            .for_each(|area| {
+                for y in area.y..area.height {
+                    surface.set_string(area.x, y, ruler_string, ruler_theme);
+                }
+            })
     }
 
     fn viewport_byte_range(
