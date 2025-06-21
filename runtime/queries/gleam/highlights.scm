@@ -68,6 +68,8 @@
 ; Types
 ; =========
 
+(type_hole) @comment.unused
+
 ; Type names
 (remote_type_identifier) @type
 (type_identifier) @type
