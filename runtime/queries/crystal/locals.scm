@@ -6,9 +6,9 @@
 (block) @local.scope
 
 (param
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.parameter)
 
 (assign
-  lhs: (identifier) @local.definition)
+  lhs: (identifier) @local.definition.variable)
 
 (identifier) @local.reference

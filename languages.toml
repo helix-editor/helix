@@ -648,7 +648,6 @@ file-types = ["cr"]
 roots = ["shard.yml", "shard.lock"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-grammar = "crystal"
 language-servers = [ "crystalline", "ameba-ls" ]
 formatter = { command = "crystal", args = ["tool", "format", "-"] }
 

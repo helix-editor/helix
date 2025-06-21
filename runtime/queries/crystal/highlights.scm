@@ -228,6 +228,9 @@
 (annotation
   (constant) @attribute)
 
+(identifier) @variable
+(param name: (identifier) @variable.parameter)
+
 (method_def
   name: (identifier) @function.method)
 
@@ -289,8 +292,6 @@
 
 ((identifier) @variable.builtin
   (#match? @variable.builtin "^(previous_def|super)$"))
-
-(identifier) @variable
 
 [
   (constant)
