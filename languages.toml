@@ -2080,14 +2080,14 @@ scope = "source.gleam"
 injection-regex = "gleam"
 file-types = ["gleam"]
 roots = ["gleam.toml"]
-comment-token = "//"
+comment-tokens = ["//", "///", "////"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "gleam" ]
 auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "6ece453acf8b14568c10f629f8cd25d3dde3794f" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "ee93c639dc82148d716919df336ad612fd33538e" }
 
 [[language]]
 name = "quarto"
