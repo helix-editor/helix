@@ -1992,8 +1992,14 @@ impl super::PluginSystem for SteelScriptingEngine {
                                 })
                         }) {
                             Ok(res) => {
-                                if !matches!(&res, SteelVal::Void) {
-                                    cx.editor.set_status(res.to_string());
+                                match &res {
+                                    SteelVal::Void => {}
+                                    SteelVal::StringV(s) => {
+                                        cx.editor.set_status(s.as_str().to_owned());
+                                    }
+                                    _ => {
+                                        cx.editor.set_status(res.to_string());
+                                    }
                                 }
 
                                 Ok(res)
@@ -4688,7 +4694,10 @@ fn pop_last_component_by_name(cx: &mut Context, name: SteelString) {
 }
 
 fn set_status(cx: &mut Context, value: SteelVal) {
-    cx.editor.set_status(value.to_string())
+    match value {
+        SteelVal::StringV(s) => cx.editor.set_status(s.as_ref().to_owned()),
+        _ => cx.editor.set_status(value.to_string()),
+    }
 }
 
 fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
