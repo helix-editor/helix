@@ -40,6 +40,7 @@
 ((function_call
    function: (identifier) @function)
  (#is-not? local))
+; highlights `a` in `|> a` as function
 ((binary_expression
    operator: "|>"
    right: (identifier) @function)
@@ -186,3 +187,10 @@
 ; affects e.g. `replace` in `string.replace("+", "-")`
 ; without this, it would be highlighted as a field instead of function
 (function_call (field_access (label) @function))
+
+; highlights `floor` in `|> float.floor` as function
+(binary_expression
+  left: (_) "|>"
+  right: (field_access
+    record: (identifier) "."
+    field: (label) @function))
