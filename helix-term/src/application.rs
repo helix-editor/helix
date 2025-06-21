@@ -1,6 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
+use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, RopeSlice, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -16,7 +16,12 @@ use helix_view::{
     tree::Layout,
     Align, Editor,
 };
+use once_cell::sync::Lazy;
 use serde_json::json;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    sync::mpsc::{Receiver, Sender},
+};
 use tui::backend::Backend;
 
 use crate::{
@@ -25,18 +30,23 @@ use crate::{
     config::Config,
     handlers,
     job::Jobs,
-    keymap::Keymaps,
+    keymap::{Keymaps, MappableCommand},
     ui::{self, overlay::overlaid},
 };
 
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use std::{io::stdin, path::Path, sync::Arc};
+use std::{
+    borrow::Cow,
+    io::stdin,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 #[cfg(not(windows))]
 use anyhow::Context;
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 
 use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
@@ -68,6 +78,8 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+    #[cfg(not(windows))]
+    command_listener: CommandListener,
 }
 
 #[cfg(feature = "integration")]
@@ -90,6 +102,284 @@ fn setup_integration_logging() {
         .level(level)
         .chain(std::io::stdout())
         .apply();
+}
+
+#[derive(Clone)]
+pub enum SocketResponse {
+    Empty,
+    Bytes(Vec<u8>),
+    Json(serde_json::Value),
+}
+
+impl<T: serde::Serialize> From<anyhow::Result<T>> for SocketResponse {
+    fn from(value: anyhow::Result<T>) -> Self {
+        SocketResponse::Bytes(serde_json::to_vec(&value.map_err(|s| s.to_string())).unwrap())
+    }
+}
+
+impl From<anyhow::Error> for SocketResponse {
+    fn from(value: anyhow::Error) -> Self {
+        Self::from(anyhow::Result::<()>::Err(value))
+    }
+}
+
+type SocketChannelMessageType = (usize, SocketResponse);
+
+impl SocketResponse {
+    async fn respond(self, index: usize, responder: &Sender<SocketChannelMessageType>) -> () {
+        let _ = responder.send((index, self)).await;
+    }
+
+    pub fn tag(&self) -> &[u8; 1] {
+        match self {
+            SocketResponse::Empty => b"0",
+            SocketResponse::Bytes { .. } => b"b",
+            SocketResponse::Json { .. } => b"j",
+        }
+    }
+
+    pub fn into_bytes(self) -> Vec<u8> {
+        match self {
+            SocketResponse::Empty => Vec::new(),
+            SocketResponse::Bytes(bytes) => bytes,
+            SocketResponse::Json(json) => json.to_string().into_bytes(),
+        }
+    }
+}
+
+fn socket_read_buffer(editor: &mut Editor) -> SocketResponse {
+    let (_view, doc) = current!(editor);
+    SocketResponse::Bytes(doc.text().slice(..).bytes().collect())
+}
+
+fn slice_as_cow_str<'a>(text: RopeSlice<'a>) -> Cow<'a, str> {
+    match text.as_str() {
+        Some(x) => Cow::Borrowed(x),
+        None => Cow::Owned(text.to_string()),
+    }
+}
+
+fn socket_read_selections(editor: &mut Editor) -> SocketResponse {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id);
+
+    fn sort_range(a: usize, b: usize) -> (usize, usize) {
+        if a < b {
+            (a, b)
+        } else {
+            (b, a)
+        }
+    }
+
+    #[derive(serde::Serialize)]
+    struct Lr {
+        left: usize,
+        right: usize,
+    }
+
+    impl Lr {
+        fn new(a: usize, b: usize) -> Self {
+            let (left, right) = sort_range(a, b);
+            Self { left, right }
+        }
+    }
+
+    #[derive(serde::Serialize)]
+    struct X<'a> {
+        text: Cow<'a, str>,
+        line: usize,
+        bytes: Lr,
+        // TODO char left/right?
+    }
+
+    let lines: Vec<X> = selection
+        .line_ranges(text)
+        .flat_map(|(left, right)| {
+            let mut res = Vec::new();
+            res.push({
+                let line = left;
+                let byte_left = text.line_to_byte(line);
+                let byte_right = text.line_to_byte(line + 1);
+                X {
+                    text: slice_as_cow_str(text.byte_slice(byte_left..byte_right)),
+                    line,
+                    bytes: Lr::new(byte_left, byte_right),
+                }
+            });
+            for line in (left + 1)..=right {
+                let byte_left = res.last().unwrap().bytes.right;
+                let byte_right = text.line_to_byte(line + 1);
+                res.push(X {
+                    text: slice_as_cow_str(text.byte_slice(byte_left..byte_right)),
+                    line,
+                    bytes: Lr::new(byte_left, byte_right),
+                });
+            }
+            res
+        })
+        .collect();
+
+    #[derive(serde::Serialize)]
+    struct AnchorHead {
+        anchor: usize,
+        head: usize,
+        #[serde(flatten)]
+        lr: Lr,
+    }
+
+    impl AnchorHead {
+        fn new(anchor: usize, head: usize) -> Self {
+            Self {
+                anchor,
+                head,
+                lr: Lr::new(anchor, head),
+            }
+        }
+    }
+
+    #[derive(serde::Serialize)]
+    struct Fragment<'a> {
+        text: Cow<'a, str>,
+        chars: AnchorHead,
+        bytes: AnchorHead,
+        lines: Lr,
+    }
+
+    let ranges: Vec<_> = selection
+        .iter()
+        .map(|r| {
+            let &Range { anchor, head, .. } = r;
+            let chars = AnchorHead::new(anchor, head);
+            let bytes = AnchorHead::new(text.char_to_byte(anchor), text.char_to_byte(head));
+            let lines = Lr::new(
+                text.char_to_line(chars.lr.left),
+                text.char_to_line(chars.lr.left.max(chars.lr.right.saturating_sub(1))),
+            );
+            let text = r.fragment(text);
+            Fragment {
+                text,
+                chars,
+                bytes,
+                lines,
+            }
+        })
+        .collect();
+    SocketResponse::Json(serde_json::json!({
+        "primary": selection.primary_index(),
+        "ranges": ranges,
+        "lines": lines,
+    }))
+}
+
+pub async fn execute_socket_commands(
+    ctx: &mut super::commands::Context<'_>,
+    commands: Vec<MappableCommand>,
+    responder: &Sender<SocketChannelMessageType>,
+) {
+    let mut selection_stash = vec![];
+    let mut register_stash = vec![];
+    for (index, command) in commands.into_iter().enumerate() {
+        match command.name() {
+            "socket-read-buffer" => {
+                socket_read_buffer(ctx.editor)
+                    .respond(index, &responder)
+                    .await;
+            }
+            "socket-read-selections" => {
+                socket_read_selections(ctx.editor)
+                    .respond(index, &responder)
+                    .await;
+            }
+            "socket-push-selection" => {
+                let (view, doc) = current!(ctx.editor);
+                let selection = doc.selection(view.id);
+                selection_stash.push(selection.clone())
+            }
+            "socket-pop-selection" => {
+                let res: SocketResponse = match selection_stash.pop() {
+                    Some(selection) => {
+                        let (view, doc) = current!(ctx.editor);
+                        doc.set_selection(view.id, selection);
+                        Ok(())
+                    }
+                    None => Err(anyhow!("No selection in stash")),
+                }
+                .into();
+                res.respond(index, responder).await;
+            }
+            "socket-register" => {
+                if let MappableCommand::Typable { mut args, .. } = command {
+                    let res: SocketResponse = match args.as_mut_slice() {
+                        [action, name, value] if action == "push" && name.len() == 1 => {
+                            let name = name.chars().next().unwrap();
+                            ctx.editor
+                                .registers
+                                .push(name, std::mem::take(value))
+                                .into()
+                        }
+                        [action, name, ..] if action == "write" && name.len() == 1 => {
+                            let name = name.chars().next().unwrap();
+                            ctx.editor
+                                .registers
+                                .write(name, args.drain(2..).collect())
+                                .into()
+                        }
+                        [action, name] if action == "read" && name.len() == 1 => {
+                            let name = name.chars().next().unwrap();
+                            Ok(match ctx.editor.registers.read(name, &ctx.editor) {
+                                None => vec![],
+                                Some(vals) => vals.collect::<Vec<_>>(),
+                            })
+                            .into()
+                        }
+                        [action] if action == "read" => {
+                            let name = ctx
+                                .register
+                                .unwrap_or_else(|| ctx.editor.config.load().default_yank_register);
+                            Ok(match ctx.editor.registers.read(name, &ctx.editor) {
+                                None => vec![],
+                                Some(vals) => vals.collect::<Vec<_>>(),
+                            })
+                            .into()
+                        }
+                        [action, name] if action == "!remove" && name.len() == 1 => {
+                            let name = name.chars().next().unwrap();
+                            Ok(ctx.editor.registers.remove(name)).into()
+                        }
+                        [action] if action == "!clear" => Ok(ctx.register.take()).into(),
+                        [action, name] if action == "!set" && name.len() == 1 => {
+                            let name = name.chars().next().unwrap();
+                            Ok(ctx.register.replace(name)).into()
+                        }
+                        [action, name] if action == "!push" && name.len() == 1 => {
+                            let name = name.chars().next().unwrap();
+                            let old = ctx.register.replace(name);
+                            register_stash.push(old);
+                            Ok(old).into()
+                        }
+                        [action] if action == "!pop" => match register_stash.pop() {
+                            Some(reg) => Ok(std::mem::replace(&mut ctx.register, reg)),
+                            None => Err(anyhow!("No register in stash")),
+                        }
+                        .into(),
+                        args => anyhow!("Invalid register command: {args:?}").into(),
+                    };
+                    res.respond(index, responder).await;
+                } else {
+                    panic!("?")
+                }
+            }
+            // "socket-set-selection" => {
+            //     ctx.editor.registers.push(name, value)
+            //     socket_read_selections(ctx.editor).respond(&responder).await;
+            // }
+            _ => {
+                command.execute(ctx);
+            }
+        }
+    }
 }
 
 impl Application {
@@ -151,7 +441,7 @@ impl Application {
                 for (file, pos) in files_it {
                     nr_of_files += 1;
                     if file.is_dir() {
-                        return Err(anyhow::anyhow!(
+                        return Err(anyhow!(
                             "expected a path to file, but found a directory: {file:?}. (to open a directory pass it as first argument)"
                         ));
                     } else {
@@ -173,7 +463,7 @@ impl Application {
                                 nr_of_files -= 1;
                                 continue;
                             }
-                            Err(err) => return Err(anyhow::anyhow!(err)),
+                            Err(err) => return Err(anyhow!(err)),
                             // We can't open more than 1 buffer for 1 file, in this case we already have opened this file previously
                             Ok(doc_id) if old_id == Some(doc_id) => {
                                 nr_of_files -= 1;
@@ -234,6 +524,13 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        #[cfg(not(windows))]
+        let command_listener = {
+            let pid = std::process::id();
+            let file_path = std::env::temp_dir().join(format!("helix.{pid}.sock"));
+            CommandListener::new(file_path)
+        };
+
         let app = Self {
             compositor,
             terminal,
@@ -242,6 +539,7 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
+            command_listener,
         };
 
         Ok(app)
@@ -306,6 +604,19 @@ impl Application {
 
             tokio::select! {
                 biased;
+
+                Some((commands, responder)) = self.command_listener.rx.recv() => {
+                    let mut ctx = super::commands::Context {
+                        register: None,
+                        count: None,
+                        editor: &mut self.editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs: &mut self.jobs,
+                    };
+                    execute_socket_commands(&mut ctx, commands, &responder).await;
+                    self.render().await;
+                }
 
                 Some(signal) = self.signals.next() => {
                     if !self.handle_signals(signal).await {
@@ -1168,5 +1479,179 @@ impl Application {
         }
 
         errs
+    }
+}
+
+struct CommandListener {
+    socket_path: PathBuf,
+    rx: Receiver<(Vec<MappableCommand>, Sender<SocketChannelMessageType>)>,
+}
+
+impl Drop for CommandListener {
+    fn drop(&mut self) {
+        if let Err(err) = std::fs::remove_file(&self.socket_path) {
+            log::error!(
+                "Error removing command socket {}: {err}",
+                self.socket_path.display()
+            );
+        }
+    }
+}
+
+impl CommandListener {
+    pub fn new(socket_path: PathBuf) -> Self {
+        let rx = spawn_command_listener(socket_path.clone());
+        Self { rx, socket_path }
+    }
+}
+
+async fn read_string(len: usize, buf: &mut std::io::Cursor<Vec<u8>>) -> anyhow::Result<String> {
+    let mut res = Vec::with_capacity(len);
+    AsyncReadExt::read_buf(buf, &mut res).await?;
+    Ok(String::from_utf8(res)?)
+}
+
+async fn read_u16_le_string(buf: &mut std::io::Cursor<Vec<u8>>) -> anyhow::Result<String> {
+    read_string(buf.read_u16_le().await? as usize, buf).await
+}
+
+async fn parse_mappable_command(
+    buf: &mut std::io::Cursor<Vec<u8>>,
+) -> anyhow::Result<MappableCommand> {
+    match buf.read_u8().await? {
+        b':' => {
+            let name = read_u16_le_string(buf).await?;
+            let arg_count = buf.read_u16_le().await? as usize;
+            let mut args = vec![];
+            for _ in 0..arg_count {
+                args.push(read_u16_le_string(buf).await?);
+            }
+            Ok(MappableCommand::Typable {
+                name,
+                args,
+                doc: String::new(),
+            })
+        }
+        b'@' => {
+            let command = read_u16_le_string(buf).await?;
+            helix_view::input::parse_macro(&command).map(|keys| MappableCommand::Macro {
+                name: command,
+                keys,
+            })
+        }
+        b'!' => {
+            static SORTED_STATIC_COMMANDS: Lazy<Vec<MappableCommand>> = Lazy::new(|| {
+                let mut res = MappableCommand::STATIC_COMMAND_LIST.to_vec();
+                res.sort_by(|a, b| a.name().cmp(&b.name()));
+                res
+            });
+
+            let name = read_u16_le_string(buf).await?;
+            SORTED_STATIC_COMMANDS
+                .binary_search_by_key(&name.as_str(), |a| a.name())
+                .ok()
+                .map(|x| SORTED_STATIC_COMMANDS[x].clone())
+                .ok_or_else(|| anyhow!("No command named {name:?}"))
+        }
+        code => {
+            anyhow::bail!("Invalid command kind: {}", code as char)
+        }
+    }
+}
+
+fn spawn_command_listener(
+    socket_path: PathBuf,
+) -> Receiver<(Vec<MappableCommand>, Sender<SocketChannelMessageType>)> {
+    let (tx, rx) = tokio::sync::mpsc::channel(100);
+    tokio::spawn(async move {
+        if let Ok(listener) = tokio::net::UnixListener::bind(&socket_path) {
+            // 'accept_clients:
+            loop {
+                match listener.accept().await {
+                    Ok((stream, addr)) => {
+                        info!("Got a connection at {addr:?}");
+                        let tx = tx.clone();
+                        let _handle: tokio::task::JoinHandle<anyhow::Result<()>> =
+                            tokio::spawn(async move {
+                                let (mut read, mut write) = stream.into_split();
+                                // 'read_commands:
+                                loop {
+                                    let (response_tx, mut response_rx) =
+                                        tokio::sync::mpsc::channel::<SocketChannelMessageType>(100);
+                                    let result = (async {
+                                        let total_message_length =
+                                            read.read_u16_le().await? as usize;
+                                        let commands = {
+                                            let mut buf = vec![0u8; total_message_length];
+                                            read.read_exact(&mut buf).await?;
+                                            let mut cursor = std::io::Cursor::new(buf);
+                                            let count = cursor.read_u16_le().await? as usize;
+                                            let mut commands = vec![];
+                                            for _ in 0..count {
+                                                commands.push(
+                                                    parse_mappable_command(&mut cursor).await?,
+                                                );
+                                            }
+                                            commands
+                                        };
+                                        info!("Got a command from {addr:?}: {commands:?}");
+                                        let count = commands.len();
+                                        tx.send((commands, response_tx)).await?;
+                                        anyhow::Ok(count as u16)
+                                    })
+                                    .await;
+                                    match result {
+                                        Ok(count) => {
+                                            write.write(b"o").await?;
+                                            write.write_u16_le(count).await?;
+                                            let mut responses =
+                                                vec![SocketResponse::Empty; count as usize];
+                                            while let Some((i, response)) = response_rx.recv().await
+                                            {
+                                                responses[i] = response;
+                                            }
+                                            for response in responses.into_iter() {
+                                                write.write(response.tag()).await?;
+                                                let bytes = response.into_bytes();
+                                                debug!("Sending response of {} bytes", bytes.len());
+                                                write.write_u32_le(bytes.len() as u32).await?;
+                                                write.write(&bytes).await?;
+                                            }
+                                        }
+                                        Err(err) => {
+                                            write.write(b"e").await?;
+                                            let errs = err.to_string();
+                                            let sliced = truncate_str_to_u16(errs.as_str());
+                                            write.write_u16_le(sliced.len() as u16).await?;
+                                            write.write(sliced.as_bytes()).await?;
+                                        }
+                                    }
+                                }
+                            });
+                    }
+                    Err(err) => {
+                        error!("Failed to accept listener {err:?}");
+                    }
+                }
+            }
+        }
+    });
+    rx
+}
+
+fn truncate_str_to_u16(sliced: &str) -> &str {
+    if sliced.len() > u16::MAX as usize {
+        for i in 0..sliced.len() {
+            if let Some((head, _tail)) = sliced.split_at_checked(sliced.len() - i) {
+                return head;
+            };
+        }
+        // This should be unreachable, but it would be odd to panic here.
+        error!(
+            "Somehow we sliced a string down to nothing...? Is none of it valid utf8?: {sliced:?}"
+        );
+        sliced
+    } else {
+        sliced
     }
 }
