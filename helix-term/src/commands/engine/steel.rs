@@ -535,6 +535,22 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         "Get the span of the range (from, to)"
     );
 
+    no_context!(
+        "range",
+        Range::new,
+        r#"Construct a new range object
+
+```scheme
+(range anchor head) -> Range?
+```
+        "#
+    );
+    no_context!(
+        "range->selection",
+        |range: Range| Selection::from(range),
+        "Convert a range into a selection"
+    );
+
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
     module.register_fn("get-init-scm-path", get_init_scm_path);
 
