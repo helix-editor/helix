@@ -9,9 +9,9 @@
 
 [
   "alias"
-  ;; "alignof"
+  "alignof"
   "annotation"
-  ;; "asm"
+  "asm"
   "begin"
   "case"
   "def"
@@ -22,19 +22,19 @@
   "fun"
   "in"
   "include"
-  ;; "instance_alignof"
+  "instance_alignof"
   "instance_sizeof"
   "macro"
   "of"
   "offsetof"
-  ;; "out"
-  ;; "pointerof"
+  "out"
+  "pointerof"
   "select"
   "sizeof"
   "then"
   "type"
   "typeof"
-  ;; "uninitialized"
+  "uninitialized"
   "verbatim"
   "when"
   "with"
@@ -91,48 +91,48 @@
 (pseudo_constant) @constant.builtin
 
 ; literals
-(char) @string
-    ;; ["'" (literal_content)] @string)
+(char
+  ["'" (literal_content)] @string)
 
-;; (char
-;;   (escape_sequence) @constant.character.escape)
+(char
+  (escape_sequence) @constant.character.escape)
 
-(string) @string
-    ;; ["\"" (literal_content)] @string)
+(string
+  ["\"" (literal_content)] @string)
 
-;; (string
-;;   (escape_sequence) @constant.character.escape)
+(string
+  (escape_sequence) @constant.character.escape)
 
-(symbol) @string.special.symbol
-  ;; [
-  ;;   ":"
-  ;;   ":\""
-  ;;   "\""
-  ;;   ;; (literal_content)
-  ;; ] @string.special.symbol)
+(symbol
+  [
+    ":"
+    ":\""
+    "\""
+    (literal_content)
+  ] @string.special.symbol)
 
-;; (symbol
-;;   (escape_sequence) @constant.character.escape)
+(symbol
+  (escape_sequence) @constant.character.escape)
 
-(command) @string.special
-    ;; ["`" (literal_content)] @string.special)
+(command
+  ["`" (literal_content)] @string.special)
 
-;; (command
-;;   (escape_sequence) @constant.character.escape)
+(command
+  (escape_sequence) @constant.character.escape)
 
 (regex
   "/" @punctuation.bracket)
 
-(regex) @string.regexp
-  ;; (literal_content) @string.regexp)
+(regex
+  (literal_content) @string.regexp)
 
 (regex_modifier) @string.special.symbol
 
-(heredoc_body) @string
-    ;; (literal_content) @string)
+(heredoc_body
+  (literal_content) @string)
 
-;; (heredoc_body
-;;     (escape_sequence) @constant.character.escape)
+(heredoc_body
+  (escape_sequence) @constant.character.escape)
 
 [
   (heredoc_start)
@@ -201,12 +201,12 @@
 (block
     "|" @punctuation.bracket)
 
-;; [
-;;   "{%"
-;;   "%}"
-;;   "{{"
-;;   "}}"
-;; ] @keyword.directive
+[
+  "{%"
+  "%}"
+  "{{"
+  "}}"
+] @keyword.directive
 
 (interpolation
   "#{" @punctuation.special
@@ -216,8 +216,8 @@
 
 ; Types
 
-;; (nilable_constant
-;;   "?" @type)
+(nilable_constant
+  "?" @type)
 
 (nilable_type
   "?" @type)
