@@ -52,6 +52,8 @@ log = "~0.4"
 parking_lot.workspace = true
 thiserror.workspace = true
 
+kstring = "2.0"
+
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
 
