@@ -3669,10 +3669,23 @@ callback : (-> any?)
 ```
         "#
     );
+
     register_1!(
         "set-status!",
         set_status,
-        "Sets the content of the status line"
+        "Sets the content of the status line, with the info severity"
+    );
+
+    register_1!(
+        "set-warning!",
+        set_warning,
+        "Sets the content of the status line, with the warning severity"
+    );
+
+    register_1!(
+        "set-error!",
+        set_error,
+        "Sets the content of the status line, with the error severity"
     );
 
     module.register_fn("send-lsp-command", send_arbitrary_lsp_command);
@@ -4703,6 +4716,20 @@ fn set_status(cx: &mut Context, value: SteelVal) {
     match value {
         SteelVal::StringV(s) => cx.editor.set_status(s.as_ref().to_owned()),
         _ => cx.editor.set_status(value.to_string()),
+    }
+}
+
+fn set_warning(cx: &mut Context, value: SteelVal) {
+    match value {
+        SteelVal::StringV(s) => cx.editor.set_warning(s.as_ref().to_owned()),
+        _ => cx.editor.set_warning(value.to_string()),
+    }
+}
+
+fn set_error(cx: &mut Context, value: SteelVal) {
+    match value {
+        SteelVal::StringV(s) => cx.editor.set_error(s.as_ref().to_owned()),
+        _ => cx.editor.set_error(value.to_string()),
     }
 }
 
