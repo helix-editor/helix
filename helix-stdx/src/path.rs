@@ -212,7 +212,8 @@ fn path_component_regex(windows: bool) -> String {
     let space_escape = if windows { r"[\^`]\s" } else { r"[\\]\s" };
     // partially baesd on what's allowed in an url but with some care to avoid
     // false positives (like any kind of brackets or quotes)
-    r"[\w@.\-+#$%?!,;~&]|".to_owned() + space_escape
+    // r"[\w@.\-+#$%?!,;~&]|".to_owned() + space_escape
+    r"[\w@.\-_+#$%~&]|".to_owned() + space_escape
 }
 
 /// Regex for delimited environment captures like `${HOME}`.
