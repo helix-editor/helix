@@ -57,8 +57,19 @@ pub mod tasks {
                 "https://github.com/mattwparas/steel.git",
                 "steel-interpreter",
                 "steel-language-server",
-                "forge",
                 "cargo-steel-lib",
+            ])
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+
+        std::process::Command::new("cargo")
+            .args([
+                "install",
+                "--git",
+                "https://github.com/mattwparas/steel.git",
+                "steel-forge",
             ])
             .spawn()
             .unwrap()
