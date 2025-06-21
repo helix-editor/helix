@@ -174,6 +174,7 @@ We use a similar set of scopes as
     - `documentation` - Line documentation comments (e.g. `///` in Rust)
   - `block` - Block comments (e.g. (`/* */`)
     - `documentation` - Block documentation comments (e.g. `/** */` in Rust)
+  - `unused` - Unused variables and patterns, e.g. `_` and `_foo`
 
 - `variable` - Variables
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
