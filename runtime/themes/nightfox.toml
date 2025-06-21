@@ -106,7 +106,8 @@
 "string.special.url" = { fg = "cyan", modifiers = ["bold"] } # String containing a web URL.
 
 "comment" = { fg = "comment" } # This is a comment.
-"comment.block.documentation" = { fg = "comment", modifiers = ["bold"] } # Doc comments, e.g '///' in rust.
+"comment.block.documentation" = { fg = "comment", modifiers = ["bold"] } # Block doc comments, e.g '/** */' in rust.
+"comment.line.documentation" = { fg = "comment", modifiers = ["bold"] } # Line doc comments, e.g '///' in rust.
 
 "variable" = { fg = "white" }  # Variable names.
 "variable.builtin" = { fg = "red" } # Language reserved variables: `this`, `self`, `super`, etc.

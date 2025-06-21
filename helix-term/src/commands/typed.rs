@@ -1672,54 +1672,52 @@ fn tree_sitter_highlight_name(
     _args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    use helix_core::syntax::Highlight;
-
-    fn find_highlight_at_cursor(editor: &Editor) -> Option<Highlight> {
-        let (view, doc) = current_ref!(editor);
-        let syntax = doc.syntax()?;
-        let text = doc.text().slice(..);
-        let cursor = doc.selection(view.id).primary().cursor(text);
-        let byte = text.char_to_byte(cursor) as u32;
-        let node = syntax.descendant_for_byte_range(byte, byte)?;
-        // Query the same range as the one used in syntax highlighting.
-        let range = {
-            // Calculate viewport byte ranges:
-            let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
-            // Saturating subs to make it inclusive zero indexing.
-            let last_line = text.len_lines().saturating_sub(1);
-            let height = view.inner_area(doc).height;
-            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-            let start = text.line_to_byte(row.min(last_line)) as u32;
-            let end = text.line_to_byte(last_visible_line + 1) as u32;
-
-            start..end
-        };
-
-        let loader = editor.syn_loader.load();
-        let mut highlighter = syntax.highlighter(text, &loader, range);
-
-        while highlighter.next_event_offset() != u32::MAX {
-            let start = highlighter.next_event_offset();
-            highlighter.advance();
-            let end = highlighter.next_event_offset();
-
-            if start <= node.start_byte() && end >= node.end_byte() {
-                return highlighter.active_highlights().next_back();
-            }
-        }
-
-        None
-    }
-
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let Some(highlight) = find_highlight_at_cursor(cx.editor) else {
+    let (view, doc) = current_ref!(cx.editor);
+    let Some(syntax) = doc.syntax() else {
         return Ok(());
     };
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let byte = text.char_to_byte(cursor) as u32;
+    // Query the same range as the one used in syntax highlighting.
+    let range = {
+        // Calculate viewport byte ranges:
+        let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
+        // Saturating subs to make it inclusive zero indexing.
+        let last_line = text.len_lines().saturating_sub(1);
+        let height = view.inner_area(doc).height;
+        let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+        let start = text.line_to_byte(row.min(last_line)) as u32;
+        let end = text.line_to_byte(last_visible_line + 1) as u32;
 
-    let content = cx.editor.theme.scope(highlight).to_string();
+        start..end
+    };
+
+    let loader = cx.editor.syn_loader.load();
+    let mut highlighter = syntax.highlighter(text, &loader, range);
+    let mut highlights = Vec::new();
+
+    while highlighter.next_event_offset() <= byte {
+        let (event, new_highlights) = highlighter.advance();
+        if event == helix_core::syntax::HighlightEvent::Refresh {
+            highlights.clear();
+        }
+        highlights.extend(new_highlights);
+    }
+
+    let content = highlights
+        .into_iter()
+        .fold(String::new(), |mut acc, highlight| {
+            if !acc.is_empty() {
+                acc.push_str(", ");
+            }
+            acc.push_str(cx.editor.theme.scope(highlight));
+            acc
+        });
 
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(

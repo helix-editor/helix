@@ -5,9 +5,11 @@ use-grammars = { except = [ "wren", "gemini" ] }
 
 [language-server]
 
-als = { command = "als" }
-ada-language-server = { command = "ada_language_server" }
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
+ada-language-server = { command = "ada_language_server" }
+als = { command = "als" }
+amber-lsp = { command = "amber-lsp" }
+ameba-ls = { command = "ameba-ls" }
 angular = {command = "ngserver", args = ["--stdio", "--tsProbeLocations", ".", "--ngProbeLocations", ".",]}
 asm-lsp = { command = "asm-lsp" }
 awk-language-server = { command = "awk-language-server" }
@@ -71,7 +73,8 @@ marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inlayHints = { typeParameters = {enable = true} , hintsInPatternMatch = {enable = true} }  } } }
 mesonlsp = { command = "mesonlsp", args = ["--lsp"] }
 mint = { command = "mint", args = ["tool", "ls"] }
-mojo-lsp = { command = "magic", args = ["run", "mojo-lsp-server"] }
+mojo-lsp-server = { command = "pixi", args = ["run", "mojo-lsp-server"] }
+neocmakelsp = { command = "neocmakelsp", args = ["stdio"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
@@ -120,6 +123,7 @@ taplo = { command = "taplo", args = ["lsp", "stdio"] }
 templ = { command = "templ", args = ["lsp"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
+tombi = { command = "tombi", args = ["lsp"] }
 ty = { command = "ty", args = ["server"] }
 typespec = { command = "tsp-server", args = ["--stdio"] }
 vala-language-server = { command = "vala-language-server" }
@@ -345,7 +349,7 @@ scope = "source.toml"
 injection-regex = "toml"
 file-types = ["toml", { glob = "pdm.lock" }, { glob = "poetry.lock" }, { glob = "Cargo.lock" }, { glob = "uv.lock" }]
 comment-token = "#"
-language-servers = [ "taplo" ]
+language-servers = [ "taplo", "tombi" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -452,14 +456,14 @@ indent = { tab-width = 2, unit = "  " }
 [[language]]
 name = "mojo"
 scope = "source.mojo"
-roots = ["__init__.mojo"]
+roots = ["pixi.toml", "pixi.lock"]
 injection-regex = "mojo"
 file-types = ["mojo", "🔥"]
-language-servers = [ "mojo-lsp" ]
+language-servers = [ "mojo-lsp-server" ]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
-formatter = { command = "magic", args = ["run", "mojo" , "format", "-q", "-"]}
+formatter = { command = "pixi", args = ["run", "mojo" , "format", "-q", "-"]}
 
 [[grammar]]
 name = "mojo"
@@ -644,8 +648,12 @@ file-types = ["cr"]
 roots = ["shard.yml", "shard.lock"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-grammar = "ruby"
-language-servers = [ "crystalline" ]
+language-servers = [ "crystalline", "ameba-ls" ]
+formatter = { command = "crystal", args = ["tool", "format", "-"] }
+
+[[grammar]]
+name = "crystal"
+source = { git = "https://github.com/crystal-lang-tools/tree-sitter-crystal", rev = "76afc1f53518a2b68b51a5abcde01d268a9cb47c" }
 
 [[language]]
 name = "c-sharp"
@@ -933,7 +941,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "html"
-source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "29f53d8f4f2335e61bf6418ab8958dac3282077a" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "cbb91a0ff3621245e890d1c50cc811bffb77a26b" }
 
 [[language]]
 name = "python"
@@ -1476,7 +1484,7 @@ formatter = { command = "purs-tidy", args = ["format"] }
 
 [[grammar]]
 name = "purescript"
-source = { git = "https://github.com/postsolar/tree-sitter-purescript", rev = "5ef5592674ea42de75fc2792972e4ea0b6e3da6c" }
+source = { git = "https://github.com/postsolar/tree-sitter-purescript", rev = "f541f95ffd6852fbbe88636317c613285bc105af" }
 
 [[language]]
 name = "zig"
@@ -1556,7 +1564,7 @@ file-types = ["cmake", { glob = "CMakeLists.txt" }]
 comment-token = "#"
 block-comment-tokens = { start = "#[[", end = "]]" }
 indent = { tab-width = 2, unit = "  " }
-language-servers = [ "cmake-language-server" ]
+language-servers = ["neocmakelsp", "cmake-language-server"]
 injection-regex = "cmake"
 
 [[grammar]]
@@ -2079,7 +2087,7 @@ auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "426e67087fd62be5f4533581b5916b2cf010fb5b" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "6ece453acf8b14568c10f629f8cd25d3dde3794f" }
 
 [[language]]
 name = "quarto"
@@ -2508,8 +2516,8 @@ source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569
 [[language]]
 name = "starlark"
 scope = "source.starlark"
-injection-regex = "(starlark|bzl|bazel)"
-file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUILD.*" }, { glob = "Tiltfile" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }]
+injection-regex = "(starlark|bzl|bazel|buck)"
+file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUCK" }, { glob = "BUILD.*" }, { glob = "Tiltfile" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = [ "starpls" ]
@@ -4129,6 +4137,7 @@ scope = "source.ab"
 file-types = ["ab"]
 comment-token = ["//", "///"]
 indent = { tab-width = 4, unit = "    " }
+language-servers = ["amber-lsp"]
 
 [[grammar]]
 name = "amber"
