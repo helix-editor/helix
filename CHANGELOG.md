@@ -22,7 +22,7 @@ Packaging:
 
 # 25.06 (2025-06-30)
 
-checkpoint <https://github.com/helix-editor/helix/compare/f4b488e380e28aa36a06ad400d6656fa864ba5b7...master>
+checkpoint <https://github.com/helix-editor/helix/compare/40a3fb9b9228eb3c8c39df3cac8be4d2e187cced...master>
 
 Breaking changes:
 
@@ -33,9 +33,9 @@ Features:
 * Add support for incomplete LSP completions (5c1f3f8)
 * The parsing of the command line has been rewritten and now supports flags and expansions (#12527, #13018, 9574e55, 2d4c2a1, #13192, 67f1fe2)
 * Add support for EditorConfig (#13056)
-* Add support for LSP document colors (#12308, d43de14, 47cdd23)
+* Add support for LSP document colors (#12308, d43de14, 47cdd23, ba54b6a)
 * Support expansions in external formatter arguments (#13429)
-* Switch out the highlighter for the `tree-house` crate (#12972, 09bc67a, a7c3a43, 3ceae88, 05ae617, 5a1dcc2, ebf96bd, #13644, b1f4717, 7410fe3)
+* Switch out the highlighter for the `tree-house` crate (#12972, 09bc67a, a7c3a43, 3ceae88, 05ae617, 5a1dcc2, ebf96bd, #13644, b1f4717, 7410fe3, 633c5fb, 362e97e)
     * This fixes a number of highlighter bugs.
     * Locals like parameter highlights are now highlighted even when the definition is not in view.
     * Markdown is now injected into rust doc comments (`///` and `//!`).
@@ -75,6 +75,13 @@ Usability improvements:
 * Use configured language server names when possible in `--health` output (#13573)
 * Add a statusline element for indentation style (#13632)
 * Set the working directory of language server commands to the workspace root (#13691)
+* Avoid jumpiness in the picker preview for languages with non-default tab widths (#13761)
+* Add a config option for limiting LSP inlay hint length (#13742)
+* Improve heuristics used in the diff gutter (#13722)
+* Allow moving a file with `:move` when its old path does not exist (#13748)
+* Show human-readable file sizes in the statusline message for file writes (#13627)
+* Add diagnostic source to the diagnosics pickers (#13758)
+* Show all active scopes under the cursor in `:tree-sitter-highlight-name` (4a85171)
 
 Fixes:
 
@@ -100,6 +107,10 @@ Fixes:
 * Append changes to document history before pushing jumplist jumps (#13619)
 * Fix overflow in the display of large chunks of text in the signature-help component (#13566)
 * Fix panic from clearing whitespace when changing multiple selections on one line (#13673)
+* Include formatting options in LSP range formatting request (#13734)
+* Consistently set statusline errors when LSP features are not available (#12577)
+* Fix `goto_file` on Windows (#13770)
+* Fix Unicode handling for long lines in prompts (d3fb8fc)
 
 Themes:
 
@@ -135,6 +146,7 @@ Themes:
 * Update `sonokai` (#13410)
 * Add `nyxvamp` themes (#12185)
 * Update nord themes (#13574)
+* Add `lapis_aquamarine` (#13726)
 
 New languages:
 
@@ -156,6 +168,7 @@ New languages:
 * Pug (#13435)
 * Slang (#13449)
 * Dunst config (#13458)
+* Luau (#13702)
 
 Updated languages and queries:
 
@@ -182,7 +195,7 @@ Updated languages and queries:
 * Fix module/namespace highlight in Unison (93fa990)
 * Add missing `#not-eq?` and `#not-match?` highlights in TSQ (3824010)
 * Reverse the precedence order of highlight queries (#9458, #12777, #12795, 144a4f4, e1c26eb, e1060a2, 7f41670, #13293)
-* Update Rust highlights (b8bfc44, #12871)
+* Update Rust highlights (b8bfc44, #12871, #13664)
 * Add block comment configuration for PHP (0ab403d)
 * Update Gren highlights (#12769)
 * Remove `ERROR` node highlighting from all highlight queries (16ff063)
@@ -205,7 +218,7 @@ Updated languages and queries:
 * Add `starpls` as Starlark language server (#12958)
 * Add `pkl-lsp` for PKL (#12962)
 * Add `kdlfmt` formatter for KDL (#12967)
-* Update CSS highlights (#12497)
+* Update CSS highlights (#12497, fed3edc)
 * Add `harper-ls` (#13029)
 * Change `wgsl_analyzer` to `wgsl-analyzer` (#13063)
 * Update tree-sitter-vhdl (#13091)
@@ -248,6 +261,20 @@ Updated languages and queries:
 * Add `ty` language server for Python (#13643)
 * Add `clarinet` language server for Clarity (#13647)
 * Update prisma config to avoid a crash in the language server (f6878f6)
+* Add `pyrefly` for Python (#13713)
+* Update Python highlights (#13715)
+* Update Mojo language server and formatter to `pixi` (#13648)
+* Add `tombi` for TOML (#13723)
+* Add `neocmakelsp` for CMake (#13740)
+* Update C and C++ highlights (#13747, #13772)
+* Highlight escape sequences in ECMA languages (#13762)
+* Add an external formatter config for Crystal (#13759)
+* Add `amber-lsp` for Amber (#13763)
+* Update HTML highlights (#13753)
+* Update tree-sitter-purescript and highlights (#13782)
+* Update tree-sitter-gleam and highlights (#13793, #13807)
+* Recognize Buck files as Starlark (#13810)
+* Use tree-sitter-crystal instead of tree-sitter-ruby for Crystal and add custom queries (#13805)
 
 Packaging:
 
