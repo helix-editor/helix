@@ -1992,7 +1992,10 @@ impl super::PluginSystem for SteelScriptingEngine {
                                 })
                         }) {
                             Ok(res) => {
-                                cx.editor.set_status(res.to_string());
+                                if !matches!(&res, SteelVal::Void) {
+                                    cx.editor.set_status(res.to_string());
+                                }
+
                                 Ok(res)
                             }
                             Err(e) => Err(e),
