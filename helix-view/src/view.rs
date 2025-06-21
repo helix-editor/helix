@@ -700,7 +700,9 @@ mod tests {
     const DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS: u16 = 3;
 
     use crate::document::Document;
-    use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig, GutterType};
+    use crate::editor::{
+        Config, GutterConfig, GutterDiagnosticsConfig, GutterLineNumbersConfig, GutterType,
+    };
 
     #[test]
     fn test_text_pos_at_screen_coords() {
@@ -879,6 +881,9 @@ mod tests {
             GutterConfig {
                 layout: vec![GutterType::Diagnostics],
                 line_numbers: GutterLineNumbersConfig::default(),
+                hide_diag_when_inserting: GutterDiagnosticsConfig {
+                    hide_diagnostics_in_insert_mode: false,
+                },
             },
         );
         view.area = Rect::new(40, 40, 40, 40);
@@ -910,6 +915,9 @@ mod tests {
             GutterConfig {
                 layout: vec![],
                 line_numbers: GutterLineNumbersConfig::default(),
+                hide_diag_when_inserting: GutterDiagnosticsConfig {
+                    hide_diagnostics_in_insert_mode: false,
+                },
             },
         );
         view.area = Rect::new(40, 40, 40, 40);
