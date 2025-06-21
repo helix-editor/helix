@@ -106,3 +106,4 @@ smallvec = "1.15"
 indoc = "2.0.6"
 tempfile.workspace = true
 same-file = "1.0.1"
+pretty_assertions = "1.4.1"
