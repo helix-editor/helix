@@ -19,6 +19,7 @@
 - [`[editor.soft-wrap]` Section](#editorsoft-wrap-section)
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
+- [`[editor.word-completion]` Section](#editorword-completion-section)
 
 ### `[editor]` Section
 
@@ -475,4 +476,22 @@ The new diagnostic rendering is not yet enabled by default. As soon as end of li
 end-of-line-diagnostics = "hint"
 [editor.inline-diagnostics]
 cursor-line = "warning" # show warnings and errors on the cursorline inline
+```
+
+### `[editor.word-completion]` Section
+
+Options for controlling completion of words from open buffers.
+
+| Key                  | Description                                                    | Default  |
+| ---                  | ---                                                            | ---      |
+| `enable`             | Whether word completion is enabled                             | `true`   |
+| `trigger-length`     | Number of word characters to type before triggering completion | `7`      |
+
+Example:
+
+```toml
+[editor.word-completion]
+enable = true
+# Set the trigger length lower so that words are completed more often
+trigger-length = 4
 ```
