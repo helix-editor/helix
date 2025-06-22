@@ -4174,14 +4174,22 @@ pub mod insert {
 
     pub fn insert_tab(cx: &mut Context) {
         let (view, doc) = current!(cx.editor);
-        // TODO: round out to nearest indentation level (for example a line with 3 spaces should
-        // indent by one to reach 4 spaces).
 
-        let indent = Tendril::from(doc.indent_style.as_str());
-        let transaction = Transaction::insert(
+        let transaction = Transaction::change(
             doc.text(),
-            &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
-            indent,
+            doc.selection(view.id).ranges().iter().map(|range| {
+                let indent = if let IndentStyle::Spaces(indent_width) = doc.indent_style {
+                    let line = range.cursor_line(doc.text().slice(..));
+                    let line_start = doc.text().line_to_char(line);
+                    let offset = (range.head - line_start) % indent_width as usize;
+
+                    Tendril::from(doc.indent_style.as_str()).split_off(offset)
+                } else {
+                    Tendril::from(doc.indent_style.as_str())
+                };
+
+                (range.head, range.head, Some(indent))
+            }),
         );
         doc.apply(&transaction, view.id);
     }

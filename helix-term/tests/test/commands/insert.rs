@@ -583,3 +583,43 @@ async fn test_jump_undo_redo() -> anyhow::Result<()> {
     .await?;
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_spaces_alignment_on_insert_tab() -> anyhow::Result<()> {
+    let tests = vec![
+        // at start of line
+        (
+            indoc! {"\
+                SELECT *
+                  #[|FROM table]#
+                 #(|WHERE condition)#
+            "},
+            "i<tab>",
+            indoc! {"\
+                SELECT *
+                    #[|FROM table]#
+                    #(|WHERE condition)#
+            "},
+        ),
+        // in the middle of line
+        (
+            indoc! {"\
+                SELECT #[*|]#
+                FROM #(table|)#
+                WHERE #(condition|)#
+            "},
+            "i<S-tab>",
+            indoc! {"\
+                SELECT  #[|*]#
+                FROM    #(|table)#
+                WHERE   #(|condition)#
+            "},
+        ),
+    ];
+
+    for test in tests {
+        test_with_config(AppBuilder::new().with_file("foo.rs", None), test).await?;
+    }
+
+    Ok(())
+}
