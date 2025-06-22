@@ -9,6 +9,7 @@ ada-gpr-language-server = {command = "ada_language_server", args = ["--language-
 ada-language-server = { command = "ada_language_server" }
 als = { command = "als" }
 amber-lsp = { command = "amber-lsp" }
+ameba-ls = { command = "ameba-ls" }
 angular = {command = "ngserver", args = ["--stdio", "--tsProbeLocations", ".", "--ngProbeLocations", ".",]}
 asm-lsp = { command = "asm-lsp" }
 awk-language-server = { command = "awk-language-server" }
@@ -647,9 +648,12 @@ file-types = ["cr"]
 roots = ["shard.yml", "shard.lock"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-grammar = "ruby"
-language-servers = [ "crystalline" ]
+language-servers = [ "crystalline", "ameba-ls" ]
 formatter = { command = "crystal", args = ["tool", "format", "-"] }
+
+[[grammar]]
+name = "crystal"
+source = { git = "https://github.com/crystal-lang-tools/tree-sitter-crystal", rev = "76afc1f53518a2b68b51a5abcde01d268a9cb47c" }
 
 [[language]]
 name = "c-sharp"
@@ -1148,7 +1152,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "twig"
-source = { git = "https://github.com/gbprod/tree-sitter-twig", rev = "807b293fec3fead64f54c64fdf6fb05516c032b9" }
+source = { git = "https://github.com/gbprod/tree-sitter-twig", rev = "085648e01d1422163a1702a44e72303b4e2a0bd1" }
 
 [[language]]
 name = "latex"
@@ -2076,14 +2080,14 @@ scope = "source.gleam"
 injection-regex = "gleam"
 file-types = ["gleam"]
 roots = ["gleam.toml"]
-comment-token = "//"
+comment-tokens = ["//", "///", "////"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "gleam" ]
 auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "6ece453acf8b14568c10f629f8cd25d3dde3794f" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "ee93c639dc82148d716919df336ad612fd33538e" }
 
 [[language]]
 name = "quarto"
@@ -2512,8 +2516,8 @@ source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569
 [[language]]
 name = "starlark"
 scope = "source.starlark"
-injection-regex = "(starlark|bzl|bazel)"
-file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUILD.*" }, { glob = "Tiltfile" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }]
+injection-regex = "(starlark|bzl|bazel|buck)"
+file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUCK" }, { glob = "BUILD.*" }, { glob = "Tiltfile" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = [ "starpls" ]
