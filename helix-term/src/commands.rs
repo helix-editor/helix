@@ -4875,7 +4875,16 @@ fn indent(cx: &mut Context) {
                 return None;
             }
             let pos = doc.text().line_to_char(line);
-            Some((pos, pos, Some(indent.clone())))
+
+            let indent = if let IndentStyle::Spaces(indent_width) = doc.indent_style {
+                let line = doc.text().line(line);
+                let offset = line.first_non_whitespace_char().unwrap_or(0) % indent_width as usize;
+                indent.clone().split_off(offset)
+            } else {
+                indent.clone()
+            };
+
+            Some((pos, pos, Some(indent)))
         }),
     );
     doc.apply(&transaction, view.id);

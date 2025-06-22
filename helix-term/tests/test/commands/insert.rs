@@ -585,7 +585,7 @@ async fn test_jump_undo_redo() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn test_spaces_alignment_on_insert_tab() -> anyhow::Result<()> {
+async fn test_indent_with_spaces() -> anyhow::Result<()> {
     let tests = vec![
         // at start of line
         (
@@ -613,6 +613,22 @@ async fn test_spaces_alignment_on_insert_tab() -> anyhow::Result<()> {
                 SELECT  #[|*]#
                 FROM    #(|table)#
                 WHERE   #(|condition)#
+            "},
+        ),
+        // indentation in normal mode
+        (
+            indoc! {"\
+                -- comment
+                #[|SELECT *
+                  FROM table
+                 WHERE condition]#
+            "},
+            "<gt>",
+            indoc! {"\
+                -- comment
+                    #[|SELECT *
+                    FROM table
+                    WHERE condition]#
             "},
         ),
     ];
