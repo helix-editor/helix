@@ -1796,7 +1796,7 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         return Ok(());
     }
 
-    if let Some(debugger) = cx.editor.dap_servers.get_active_client() {
+    if let Some(debugger) = cx.editor.debug_adapters.get_active_client() {
         let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
             (Some(frame), Some(thread_id)) => (frame, thread_id),
             _ => {

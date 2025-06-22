@@ -1,5 +1,5 @@
 use crate::{
-    registry::DebugAdapterID,
+    registry::DebugAdapterId,
     requests::{DisconnectArguments, TerminateArguments},
     transport::{Payload, Request, Response, Transport},
     types::*,
@@ -28,7 +28,7 @@ use tokio::{
 
 #[derive(Debug)]
 pub struct Client {
-    id: DebugAdapterID,
+    id: DebugAdapterId,
     _process: Option<Child>,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
@@ -56,8 +56,8 @@ impl Client {
         command: &str,
         args: Vec<&str>,
         port_arg: Option<&str>,
-        id: DebugAdapterID,
-    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
+        id: DebugAdapterId,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         if command.is_empty() {
             return Result::Err(Error::Other(anyhow!("Command not provided")));
         }
@@ -72,9 +72,9 @@ impl Client {
         rx: Box<dyn AsyncBufRead + Unpin + Send>,
         tx: Box<dyn AsyncWrite + Unpin + Send>,
         err: Option<Box<dyn AsyncBufRead + Unpin + Send>>,
-        id: DebugAdapterID,
+        id: DebugAdapterId,
         process: Option<Child>,
-    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         let (server_rx, server_tx) = Transport::start(rx, tx, err, id);
         let (client_tx, client_rx) = unbounded_channel();
 
@@ -102,8 +102,8 @@ impl Client {
 
     pub async fn tcp(
         addr: std::net::SocketAddr,
-        id: DebugAdapterID,
-    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
+        id: DebugAdapterId,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         let stream = TcpStream::connect(addr).await?;
         let (rx, tx) = stream.into_split();
         Self::streams(Box::new(BufReader::new(rx)), Box::new(tx), None, id, None)
@@ -112,8 +112,8 @@ impl Client {
     pub fn stdio(
         cmd: &str,
         args: Vec<&str>,
-        id: DebugAdapterID,
-    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
+        id: DebugAdapterId,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
 
@@ -164,8 +164,8 @@ impl Client {
         cmd: &str,
         args: Vec<&str>,
         port_format: &str,
-        id: DebugAdapterID,
-    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterID, Payload)>)> {
+        id: DebugAdapterId,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         let port = Self::get_port().await.unwrap();
 
         let process = Command::new(cmd)
@@ -201,9 +201,9 @@ impl Client {
     }
 
     async fn recv(
-        id: DebugAdapterID,
+        id: DebugAdapterId,
         mut server_rx: UnboundedReceiver<Payload>,
-        client_tx: UnboundedSender<(DebugAdapterID, Payload)>,
+        client_tx: UnboundedSender<(DebugAdapterId, Payload)>,
     ) {
         while let Some(msg) = server_rx.recv().await {
             match msg {
@@ -222,7 +222,7 @@ impl Client {
         }
     }
 
-    pub fn id(&self) -> DebugAdapterID {
+    pub fn id(&self) -> DebugAdapterId {
         self.id
     }
 

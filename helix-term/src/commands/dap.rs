@@ -59,7 +59,7 @@ fn thread_picker(
             )
             .with_preview(move |editor, thread| {
                 let frames = editor
-                    .dap_servers
+                    .debug_adapters
                     .get_active_client()
                     .as_ref()?
                     .stack_frames
@@ -127,7 +127,7 @@ pub fn dap_start_impl(
 
     let id = cx
         .editor
-        .dap_servers
+        .debug_adapters
         .start_client(socket, config)
         .map_err(|e| anyhow!("Failed to start debug client: {}", e))?;
 
@@ -195,7 +195,7 @@ pub fn dap_start_impl(
         // }
     };
 
-    let debugger = match cx.editor.dap_servers.get_client_mut(id) {
+    let debugger = match cx.editor.debug_adapters.get_client_mut(id) {
         Some(child) => child,
         None => {
             bail!("Failed to get child debugger.");
@@ -220,7 +220,7 @@ pub fn dap_start_impl(
 
 pub fn dap_launch(cx: &mut Context) {
     // TODO: Now that we support multiple Clients, we could run multiple debuggers at once but for now keep this as is
-    if cx.editor.dap_servers.get_active_client().is_some() {
+    if cx.editor.debug_adapters.get_active_client().is_some() {
         cx.editor.set_error("Debugger is already running");
         return;
     }
@@ -274,7 +274,7 @@ pub fn dap_launch(cx: &mut Context) {
 }
 
 pub fn dap_restart(cx: &mut Context) {
-    let debugger = match cx.editor.dap_servers.get_active_client() {
+    let debugger = match cx.editor.debug_adapters.get_active_client() {
         Some(debugger) => debugger,
         None => {
             cx.editor.set_error("Debugger is not running");
@@ -583,7 +583,7 @@ pub fn dap_terminate(cx: &mut Context) {
     let request = debugger.terminate(terminate_arguments);
     dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
         // editor.set_error(format!("Failed to disconnect: {}", e));
-        editor.dap_servers.unset_active_client();
+        editor.debug_adapters.unset_active_client();
     });
 }
 

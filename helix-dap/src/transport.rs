@@ -1,4 +1,4 @@
-use crate::{registry::DebugAdapterID, Error, Result};
+use crate::{registry::DebugAdapterId, Error, Result};
 use anyhow::Context;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -52,7 +52,7 @@ pub enum Payload {
 #[derive(Debug)]
 pub struct Transport {
     #[allow(unused)]
-    id: DebugAdapterID,
+    id: DebugAdapterId,
     pending_requests: Mutex<HashMap<u64, Sender<Result<Response>>>>,
 }
 
@@ -61,7 +61,7 @@ impl Transport {
         server_stdout: Box<dyn AsyncBufRead + Unpin + Send>,
         server_stdin: Box<dyn AsyncWrite + Unpin + Send>,
         server_stderr: Option<Box<dyn AsyncBufRead + Unpin + Send>>,
-        id: DebugAdapterID,
+        id: DebugAdapterId,
     ) -> (UnboundedReceiver<Payload>, UnboundedSender<Payload>) {
         let (client_tx, rx) = unbounded_channel();
         let (tx, client_rx) = unbounded_channel();
@@ -83,7 +83,7 @@ impl Transport {
     }
 
     async fn recv_server_message(
-        id: DebugAdapterID,
+        id: DebugAdapterId,
         reader: &mut Box<dyn AsyncBufRead + Unpin + Send>,
         buffer: &mut String,
         content: &mut Vec<u8>,
@@ -242,7 +242,7 @@ impl Transport {
     }
 
     async fn recv(
-        id: DebugAdapterID,
+        id: DebugAdapterId,
         transport: Arc<Self>,
         mut server_stdout: Box<dyn AsyncBufRead + Unpin + Send>,
         client_tx: UnboundedSender<Payload>,

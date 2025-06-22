@@ -4,7 +4,6 @@ mod transport;
 mod types;
 
 pub use client::Client;
-pub use futures_executor::block_on;
 pub use transport::{Payload, Response, Transport};
 pub use types::*;
 

@@ -10,14 +10,14 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 /// This holds the responsibility of managing the lifecycle of each client
 /// plus showing the heirarcihical nature betweeen them
 pub struct Registry {
-    inner: SlotMap<DebugAdapterID, Client>,
+    inner: SlotMap<DebugAdapterId, Client>,
     /// The active debugger client
     ///
     /// TODO: You can have multiple active debuggers, so the concept of a single active debugger
     /// may need to be changed
-    current_client_id: Option<DebugAdapterID>,
+    current_client_id: Option<DebugAdapterId>,
     /// A stream of incoming messages from all debuggers
-    pub incoming: SelectAll<UnboundedReceiverStream<(DebugAdapterID, Payload)>>,
+    pub incoming: SelectAll<UnboundedReceiverStream<(DebugAdapterId, Payload)>>,
 }
 
 impl Registry {
@@ -34,7 +34,7 @@ impl Registry {
         &mut self,
         socket: Option<std::net::SocketAddr>,
         config: &DebugAdapterConfig,
-    ) -> Result<DebugAdapterID> {
+    ) -> Result<DebugAdapterId> {
         self.inner.try_insert_with_key(|id| {
             let result = match socket {
                 Some(socket) => block_on(Client::tcp(socket, id)),
@@ -58,15 +58,15 @@ impl Registry {
         })
     }
 
-    pub fn remove_client(&mut self, id: DebugAdapterID) {
+    pub fn remove_client(&mut self, id: DebugAdapterId) {
         self.inner.remove(id);
     }
 
-    pub fn get_client(&self, id: DebugAdapterID) -> Option<&Client> {
+    pub fn get_client(&self, id: DebugAdapterId) -> Option<&Client> {
         self.inner.get(id)
     }
 
-    pub fn get_client_mut(&mut self, id: DebugAdapterID) -> Option<&mut Client> {
+    pub fn get_client_mut(&mut self, id: DebugAdapterId) -> Option<&mut Client> {
         self.inner.get_mut(id)
     }
 
@@ -79,7 +79,7 @@ impl Registry {
             .and_then(|id| self.get_client_mut(id))
     }
 
-    pub fn set_active_client(&mut self, id: DebugAdapterID) {
+    pub fn set_active_client(&mut self, id: DebugAdapterId) {
         if self.get_client(id).is_some() {
             self.current_client_id = Some(id);
         } else {
@@ -104,10 +104,10 @@ impl Default for Registry {
 }
 
 slotmap::new_key_type! {
-    pub struct DebugAdapterID;
+    pub struct DebugAdapterId;
 }
 
-impl fmt::Display for DebugAdapterID {
+impl fmt::Display for DebugAdapterId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
     }

@@ -25,7 +25,7 @@ thiserror.workspace = true
 slotmap.workspace = true
 futures-executor.workspace = true
 futures-util.workspace = true
-tokio-stream.workspace = true  
+tokio-stream.workspace = true
 
 
 [dev-dependencies]
