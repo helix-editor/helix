@@ -6,7 +6,7 @@ use helix_dap::{
     self as dap, registry::DebugAdapterId, Client, ConnectionType, Payload, Request, ThreadId,
 };
 use helix_lsp::block_on;
-use log::warn;
+use log::{error, warn};
 use serde_json::{json, Value};
 use std::fmt::Write;
 use std::path::PathBuf;
@@ -458,7 +458,7 @@ impl Editor {
                         let config = match debugger.config.clone() {
                             Some(config) => config,
                             None => {
-                                log::info!("No configuration found for the debugger.");
+                                error!("No configuration found for the debugger.");
                                 return true;
                             }
                         };
