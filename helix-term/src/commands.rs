@@ -4205,14 +4205,23 @@ pub mod insert {
 
     fn insert_tab_impl(cx: &mut Context, count: usize) {
         let (view, doc) = current!(cx.editor);
-        // TODO: round out to nearest indentation level (for example a line with 3 spaces should
-        // indent by one to reach 4 spaces).
 
-        let indent = Tendril::from(doc.indent_style.as_str().repeat(count));
-        let transaction = Transaction::insert(
+        let transaction = Transaction::change(
             doc.text(),
-            &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
-            indent,
+            doc.selection(view.id).ranges().iter().map(|range| {
+                let cursor = range.cursor(doc.text().slice(..));
+                let indent = if let IndentStyle::Spaces(indent_width) = doc.indent_style {
+                    let line = range.cursor_line(doc.text().slice(..));
+                    let line_start = doc.text().line_to_char(line);
+                    let offset = (cursor - line_start) % indent_width as usize;
+
+                    Tendril::from(doc.indent_style.as_str().repeat(count)).split_off(offset)
+                } else {
+                    Tendril::from(doc.indent_style.as_str().repeat(count))
+                };
+
+                (cursor, cursor, Some(indent))
+            }),
         );
         doc.apply(&transaction, view.id);
     }
@@ -4944,7 +4953,16 @@ fn indent(cx: &mut Context) {
                 return None;
             }
             let pos = doc.text().line_to_char(line);
-            Some((pos, pos, Some(indent.clone())))
+
+            let indent = if let IndentStyle::Spaces(indent_width) = doc.indent_style {
+                let line = doc.text().line(line);
+                let offset = line.first_non_whitespace_char().unwrap_or(0) % indent_width as usize;
+                indent.clone().split_off(offset)
+            } else {
+                indent.clone()
+            };
+
+            Some((pos, pos, Some(indent)))
         }),
     );
     doc.apply(&transaction, view.id);
