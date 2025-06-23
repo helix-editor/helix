@@ -481,12 +481,9 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
-                    // Bar and underline cursors are drawn by the terminal
-                    // BUG: If the editor area loses focus while having a bar or
-                    // underline cursor (eg. when a regex prompt has focus) then
-                    // the primary cursor will be invisible. This doesn't happen
-                    // with block cursors since we manually draw *all* cursors.
+                if !selection_is_primary || !is_terminal_focused {
+                    // Primary cursor is drawn by the terminal when focused
+                    // Secondary cursors and unfocused primary cursor are drawn manually
                     spans.push((cursor_scope, range.head..range.head + 1));
                 }
                 continue;
@@ -504,17 +501,17 @@ impl EditorView {
                         cursor_start
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
+                // add cursors
+                // skip primary cursor if terminal is focused - terminal cursor is used in that case
+                if !selection_is_primary || !is_terminal_focused {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
+                // add cursors
+                // skip primary cursor if terminal is focused - terminal cursor is used in that case
+                if !selection_is_primary || !is_terminal_focused {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 // non block cursors look like they exclude the cursor
@@ -1592,16 +1589,14 @@ impl Component for EditorView {
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         match editor.cursor() {
-            // all block cursors are drawn manually
-            (pos, CursorKind::Block) => {
+            (pos, kind) => {
                 if self.terminal_focused {
-                    (pos, CursorKind::Hidden)
+                    (pos, kind)
                 } else {
-                    // use crossterm cursor when terminal loses focus
+                    // use underline cursor when terminal loses focus for visibility
                     (pos, CursorKind::Underline)
                 }
             }
-            cursor => cursor,
         }
     }
 }
