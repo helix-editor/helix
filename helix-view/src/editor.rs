@@ -14,7 +14,6 @@ use crate::{
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
 };
-use dap::StackFrame;
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
 
@@ -52,7 +51,7 @@ use helix_core::{
     },
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
-use helix_dap as dap;
+use helix_dap::{self as dap, registry::DebugAdapterId};
 use helix_lsp::lsp;
 use helix_stdx::path::canonicalize;
 
@@ -1083,8 +1082,7 @@ pub struct Editor {
     pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
 
-    pub debugger: Option<dap::Client>,
-    pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
+    pub debug_adapters: dap::registry::Registry,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
     pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
@@ -1142,7 +1140,7 @@ pub enum EditorEvent {
     DocumentSaved(DocumentSavedEventResult),
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((LanguageServerId, Call)),
-    DebuggerEvent(dap::Payload),
+    DebuggerEvent((DebugAdapterId, dap::Payload)),
     IdleTimer,
     Redraw,
 }
@@ -1229,8 +1227,7 @@ impl Editor {
             language_servers,
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
-            debugger: None,
-            debugger_events: SelectAll::new(),
+            debug_adapters: dap::registry::Registry::new(),
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
@@ -2154,7 +2151,7 @@ impl Editor {
                 Some(message) = self.language_servers.incoming.next() => {
                     return EditorEvent::LanguageServerMessage(message)
                 }
-                Some(event) = self.debugger_events.next() => {
+                Some(event) = self.debug_adapters.incoming.next() => {
                     return EditorEvent::DebuggerEvent(event)
                 }
 
@@ -2230,10 +2227,8 @@ impl Editor {
         }
     }
 
-    pub fn current_stack_frame(&self) -> Option<&StackFrame> {
-        self.debugger
-            .as_ref()
-            .and_then(|debugger| debugger.current_stack_frame())
+    pub fn current_stack_frame(&self) -> Option<&dap::StackFrame> {
+        self.debug_adapters.current_stack_frame()
     }
 
     /// Returns the id of a view that this doc contains a selection for,

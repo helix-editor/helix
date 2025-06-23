@@ -823,8 +823,9 @@ language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
-name = "node-debug2"
-transport = "stdio"
+name = "js-debug-dap"
+transport = "tcp"
+port-arg = "{} 127.0.0.1"
 # args consisting of cmd (node) and path to adapter should be added to user's configuration
 quirks = { absolute-paths = true }
 
@@ -832,7 +833,7 @@ quirks = { absolute-paths = true }
 name = "source"
 request = "launch"
 completion = [ { name = "main", completion = "filename", default = "index.js" } ]
-args = { program = "{0}" }
+args = { program = "{0}", skipFiles = [ "<node_internals>/**" ] }
 
 [[grammar]]
 name = "javascript"
