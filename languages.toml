@@ -545,7 +545,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "73076
 name = "jsonc"
 scope = "source.json"
 injection-regex = "jsonc"
-file-types = ["jsonc", { glob = "tsconfig.json" }, { glob = "bun.lock" }]
+file-types = ["jsonc", { glob = "{t,j}sconfig.json" }, { glob = "bun.lock" }]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 grammar = "json"
@@ -816,7 +816,7 @@ injection-regex = "(js|javascript)"
 language-id = "javascript"
 file-types = ["js", "mjs", "cjs", "rules", "es6", "pac", { glob = ".node_repl_history" }, { glob = "jakefile" }]
 shebangs = ["node"]
-roots = [ "package.json" ]
+roots = [ "package.json", "jsconfig.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "typescript-language-server" ]
@@ -844,7 +844,7 @@ scope = "source.jsx"
 injection-regex = "jsx"
 language-id = "javascriptreact"
 file-types = ["jsx"]
-roots = [ "package.json" ]
+roots = [ "package.json", "jsconfig.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "typescript-language-server" ]
