@@ -356,6 +356,8 @@ impl Application {
     }
 
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
+        let old_editor_config = self.editor.config();
+
         match config_event {
             ConfigEvent::Refresh => self.refresh_config(),
 
@@ -374,7 +376,7 @@ impl Application {
 
         // Update all the relevant members in the editor after updating
         // the configuration.
-        self.editor.refresh_config();
+        self.editor.refresh_config(&old_editor_config);
 
         // reset view position in case softwrap was enabled/disabled
         let scrolloff = self.editor.config().scrolloff;
