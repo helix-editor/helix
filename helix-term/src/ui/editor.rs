@@ -1588,15 +1588,12 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        match editor.cursor() {
-            (pos, kind) => {
-                if self.terminal_focused {
-                    (pos, kind)
-                } else {
-                    // use underline cursor when terminal loses focus for visibility
-                    (pos, CursorKind::Underline)
-                }
-            }
+        let (pos, kind) = editor.cursor();
+        if self.terminal_focused {
+            (pos, kind)
+        } else {
+            // use underline cursor when terminal loses focus for visibility
+            (pos, CursorKind::Underline)
         }
     }
 }
