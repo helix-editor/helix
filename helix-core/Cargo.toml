@@ -20,10 +20,10 @@ helix-stdx = { path = "../helix-stdx" }
 helix-loader = { path = "../helix-loader" }
 helix-parsec = { path = "../helix-parsec" }
 
-ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
-smallvec = "1.13"
+ropey.workspace = true
+smallvec = "1.15"
 smartstring = "1.0.1"
-unicode-segmentation = "1.12"
+unicode-segmentation.workspace = true
 # unicode-width is changing width definitions
 # that both break our logic and disagree with common
 # width definitions in terminals, we need to replace it.
@@ -32,14 +32,12 @@ unicode-segmentation = "1.12"
 unicode-width = "=0.1.12"
 unicode-general-category = "1.0"
 slotmap.workspace = true
-tree-sitter.workspace = true
-once_cell = "1.20"
+tree-house.workspace = true
+once_cell = "1.21"
 arc-swap = "1"
 regex = "1"
 bitflags.workspace = true
-ahash = "0.8.11"
-hashbrown = { version = "0.14.5", features = ["raw"] }
-dunce = "1.0"
+foldhash.workspace = true
 url = "2.5.4"
 
 log = "0.4"
@@ -48,20 +46,19 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
 
-imara-diff = "0.1.7"
+imara-diff = "0.1.8"
 
 encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
-etcetera = "0.8"
-textwrap = "0.16.1"
+textwrap = "0.16.2"
 
 nucleo.workspace = true
-parking_lot = "0.12"
-globset = "0.4.15"
-regex-cursor = "0.1.4"
+parking_lot.workspace = true
+globset = "0.4.16"
+regex-cursor = "0.1.5"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
-indoc = "2.0.5"
+indoc = "2.0.6"

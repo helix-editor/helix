@@ -65,7 +65,7 @@ pub fn print(s: &str) -> (String, Selection) {
         let head_at_beg = iter.next_if_eq(&"|").is_some();
         let last_grapheme = |s: &str| {
             UnicodeSegmentation::graphemes(s, true)
-                .last()
+                .next_back()
                 .map(String::from)
         };
 

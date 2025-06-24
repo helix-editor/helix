@@ -106,6 +106,7 @@
   "+"
   "/"
   "*"
+  "**"
   "^"
   "&"
   "|"
@@ -118,8 +119,6 @@
   "'{"
   "<="
   "@"
-  "or"
-  "and"
   "=="
   "!="
   "==="
@@ -131,8 +130,15 @@
   "%"
   ">>"
   "<<"
+  ">>>"
+  "<<<"
   "|="
   (inc_or_dec_operator)
+  "?"
+] @operator
+[
+  "or"
+  "and"
 ] @keyword.operator
 
 (cast
@@ -144,6 +150,9 @@
 (port_identifier
  (simple_identifier) @variable)
 
+(variable_port_header ("var") @type.builtin)
+(data_declaration ("var") @type.builtin)
+(tf_port_item1 ("var") @type.builtin)
 [
   (net_type)
   (integer_vector_type)
@@ -307,5 +316,3 @@
   "("
   ")"
 ] @punctuation.bracket
-
-(ERROR) @error

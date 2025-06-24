@@ -1,3 +1,5 @@
+(identifier) @variable
+
 ; Methods
 
 (method_declaration
@@ -53,8 +55,6 @@
 
 ((identifier) @constant
  (#match? @constant "^_*[A-Z][A-Z\\d_]+$"))
-
-(identifier) @variable
 
 (this) @variable.builtin
 
