@@ -35,6 +35,7 @@ struct DiffInner {
     hunks: Vec<Hunk>,
 }
 
+/// Representation of a diff that can be updated.
 #[derive(Clone, Debug)]
 pub struct DiffHandle {
     channel: UnboundedSender<Event>,
@@ -65,10 +66,12 @@ impl DiffHandle {
         (differ, handle)
     }
 
+    /// Switch base and modified texts' roles
     pub fn invert(&mut self) {
         self.inverted = !self.inverted;
     }
 
+    /// Load the actual diff
     pub fn load(&self) -> Diff {
         Diff {
             diff: self.diff.read(),
@@ -89,6 +92,7 @@ impl DiffHandle {
         self.update_document_impl(doc, self.inverted, Some(RenderLock { lock, timeout }))
     }
 
+    /// Updates the base text of the diff. Returns if the update was successful.
     pub fn update_diff_base(&self, diff_base: Rope) -> bool {
         self.update_document_impl(diff_base, !self.inverted, None)
     }
