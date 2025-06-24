@@ -79,15 +79,15 @@
 
 
 # HINT INFO ERROR & WARNING
-"diagnostic.hint"             = {  underline   = {   color = "bright-yellow",    style = "curl" }       }
-"diagnostic.info"             = {  underline   = {   color = "bright-yellow",    style = "curl" }       }
-"diagnostic.error"            = {  underline   = {   color = "bright-pink",      style = "curl" }       }
-"diagnostic.warning"          = {  underline   = {   color = "bright-yellow",    style = "curl" }       }
+"diagnostic.hint"             = {  underline   = {   color = "cl_hint",                  style = "curl" }       }
+"diagnostic.info"             = {  underline   = {   color = "cl_info",                  style = "curl" }       }
+"diagnostic.error"            = {  underline   = {   color = "cl_error",                 style = "curl" }       }
+"diagnostic.warning"          = {  underline   = {   color = "cl_warning",               style = "curl" }       }
 
-hint                          =    "bright-yellow"
-info                          =    "bright-yellow"
-error                         =    "bright-pink"
-warning                       =    "bright-yellow"
+hint                          =    "cl_hint"
+info                          =    "cl_info"
+error                         =    "cl_error"
+warning                       =    "cl_warning"
 
 
 # ===========================
@@ -105,7 +105,7 @@ namespace                    = "#7095bf"  # Steel blue
 punctuation                  = "#FFFFFF"  # White
 "punctuation.delimiter"      = "#FFFFFF"  # White (delimiter punctuation)
 operator                     = "#987654"  # Dusty brown (used to be "muddy")
-special                      = "pink"     # Pink Color
+special                      = "#c90076"  # Pink Color
 
 # === VARIABLES ===
 variable                     = "#7ec67f"  # Soft green
@@ -210,3 +210,10 @@ fg_statusline           = "#D3D3D3"        # Light gray (statusline text)
 bg_statusline           = "#303030"        # Dark gray (statusline background)
 fg_inactive             = "#4b5059"        # Dim gray (inactive statusline text)
 bg_inactive             = "#303030"        # Dark gray (inactive statusline bg)
+
+# ===== HINT INFO ERROR & WARNING COLORS =====
+
+cl_hint                 = "#f1fa8c"        # Bright yellow
+cl_info                 = "#f1fa8c"        # Same as hint
+cl_error                = "#ff69b4"        # Bright pink
+cl_warning              = "#f1fa8c"        # Same as hint
