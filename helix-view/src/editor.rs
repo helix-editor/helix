@@ -1850,7 +1850,7 @@ impl Editor {
             ReplaceDoc(ViewId, DocumentId),
         }
 
-        let actions: Vec<Action> = self
+        let actions: Box<[Action]> = self
             .tree
             .views_mut()
             .filter_map(|(view, _focus)| {
