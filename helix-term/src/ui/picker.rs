@@ -6,11 +6,8 @@ use crate::{
     compositor::{self, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
     ui::{
-        self,
-        document::{render_document, LinePos, TextRenderer},
-        picker::query::PickerQuery,
-        text_decorations::DecorationManager,
-        EditorView,
+        self, document::render_document, picker::query::PickerQuery,
+        text_decorations::DecorationManager, EditorView,
     },
 };
 use futures_util::future::BoxFuture;
@@ -41,7 +38,7 @@ use std::{
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
-    char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
+    char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction, syntax::OverlayHighlights,
     text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
 };
 use helix_view::{
@@ -951,26 +948,32 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 &mut overlay_highlights,
             );
 
-            let mut decorations = DecorationManager::default();
-
             if let Some((start, end)) = range {
-                let style = cx
+                let highlight = cx
                     .editor
                     .theme
-                    .try_get("ui.highlight")
-                    .unwrap_or_else(|| cx.editor.theme.get("ui.selection"));
-                let draw_highlight = move |renderer: &mut TextRenderer, pos: LinePos| {
-                    if (start..=end).contains(&pos.doc_line) {
-                        let area = Rect::new(
-                            renderer.viewport.x,
-                            pos.visual_line,
-                            renderer.viewport.width,
-                            1,
-                        );
-                        renderer.set_style(area, style)
-                    }
-                };
-                decorations.add_decoration(draw_highlight);
+                    .find_highlight_exact("ui.highlight")
+                    .unwrap_or_else(|| {
+                        cx.editor
+                            .theme
+                            .find_highlight_exact("ui.selection")
+                            .unwrap() // SAFETY: `ui.selection` *MUST* be defined
+                                      // for a theme to be active
+                    });
+                let text = doc.text().slice(..);
+                let start_char = text.line_to_char(start);
+                // Get the entire last line in the range
+                // SAFETY:
+                // `line_to_char` allows its parameter to be one past the end.
+                // This means we depend on the assumption that the given `range`
+                // is valid for the document.
+                // We subtract one to move us back to the end of the previous line, rather than
+                // the start of `line + 1`. This also
+                let end_char = text.line_to_char(end + 1) - 1;
+                log::warn!("range: {:?}", start_char..end_char);
+                #[allow(clippy::single_range_in_vec_init)]
+                let ranges = vec![start_char..end_char];
+                overlay_highlights.push(OverlayHighlights::Homogeneous { highlight, ranges })
             }
 
             render_document(
@@ -983,7 +986,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 syntax_highlighter,
                 overlay_highlights,
                 &cx.editor.theme,
-                decorations,
+                DecorationManager::default(),
             );
         }
     }
