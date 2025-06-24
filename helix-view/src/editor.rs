@@ -1845,6 +1845,7 @@ impl Editor {
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
 
+        // ad-hoc
         enum Action {
             Close(ViewId),
             ReplaceDoc(ViewId, DocumentId),
@@ -1853,9 +1854,15 @@ impl Editor {
         let actions: Box<[Action]> = self
             .tree
             .views_mut()
+            // Because of RPITIT, `FilterMap` iterator borrows from `self`,
+            // even though the result is owned.
+            // See: https://users.rust-lang.org/t/fully-owned-iterator-causing-lifetime-problems/107677/4
             .filter_map(|(view, _focus)| {
                 view.remove_document(&doc_id);
 
+                // to avoid potential bugs when mutating what's being iterated,
+                // and to satisfy borrowck,
+                // we generate a sequence of `Action`s to be executed in the next pass.
                 if view.doc == doc_id {
                     // something was previously open in the view, switch to previous doc
                     if let Some(prev_doc) = view.docs_access_history.pop() {
@@ -1868,6 +1875,8 @@ impl Editor {
                     None
                 }
             })
+            // this erases ref info from the type-system,
+            // at the cost of potential alloc
             .collect();
 
         for action in actions {
