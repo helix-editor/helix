@@ -1672,54 +1672,52 @@ fn tree_sitter_highlight_name(
     _args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    use helix_core::syntax::Highlight;
-
-    fn find_highlight_at_cursor(editor: &Editor) -> Option<Highlight> {
-        let (view, doc) = current_ref!(editor);
-        let syntax = doc.syntax()?;
-        let text = doc.text().slice(..);
-        let cursor = doc.selection(view.id).primary().cursor(text);
-        let byte = text.char_to_byte(cursor) as u32;
-        let node = syntax.descendant_for_byte_range(byte, byte)?;
-        // Query the same range as the one used in syntax highlighting.
-        let range = {
-            // Calculate viewport byte ranges:
-            let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
-            // Saturating subs to make it inclusive zero indexing.
-            let last_line = text.len_lines().saturating_sub(1);
-            let height = view.inner_area(doc).height;
-            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-            let start = text.line_to_byte(row.min(last_line)) as u32;
-            let end = text.line_to_byte(last_visible_line + 1) as u32;
-
-            start..end
-        };
-
-        let loader = editor.syn_loader.load();
-        let mut highlighter = syntax.highlighter(text, &loader, range);
-
-        while highlighter.next_event_offset() != u32::MAX {
-            let start = highlighter.next_event_offset();
-            highlighter.advance();
-            let end = highlighter.next_event_offset();
-
-            if start <= node.start_byte() && end >= node.end_byte() {
-                return highlighter.active_highlights().next_back();
-            }
-        }
-
-        None
-    }
-
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let Some(highlight) = find_highlight_at_cursor(cx.editor) else {
+    let (view, doc) = current_ref!(cx.editor);
+    let Some(syntax) = doc.syntax() else {
         return Ok(());
     };
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let byte = text.char_to_byte(cursor) as u32;
+    // Query the same range as the one used in syntax highlighting.
+    let range = {
+        // Calculate viewport byte ranges:
+        let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
+        // Saturating subs to make it inclusive zero indexing.
+        let last_line = text.len_lines().saturating_sub(1);
+        let height = view.inner_area(doc).height;
+        let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+        let start = text.line_to_byte(row.min(last_line)) as u32;
+        let end = text.line_to_byte(last_visible_line + 1) as u32;
 
-    let content = cx.editor.theme.scope(highlight).to_string();
+        start..end
+    };
+
+    let loader = cx.editor.syn_loader.load();
+    let mut highlighter = syntax.highlighter(text, &loader, range);
+    let mut highlights = Vec::new();
+
+    while highlighter.next_event_offset() <= byte {
+        let (event, new_highlights) = highlighter.advance();
+        if event == helix_core::syntax::HighlightEvent::Refresh {
+            highlights.clear();
+        }
+        highlights.extend(new_highlights);
+    }
+
+    let content = highlights
+        .into_iter()
+        .fold(String::new(), |mut acc, highlight| {
+            if !acc.is_empty() {
+                acc.push_str(", ");
+            }
+            acc.push_str(cx.editor.theme.scope(highlight));
+            acc
+        });
 
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
@@ -1796,7 +1794,7 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         return Ok(());
     }
 
-    if let Some(debugger) = cx.editor.debugger.as_mut() {
+    if let Some(debugger) = cx.editor.debug_adapters.get_active_client() {
         let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
             (Some(frame), Some(thread_id)) => (frame, thread_id),
             _ => {
@@ -2107,10 +2105,6 @@ fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
-    sort_impl(cx, args.has_flag("reverse"))
-}
-
-fn sort_impl(cx: &mut compositor::Context, reverse: bool) -> anyhow::Result<()> {
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -2126,10 +2120,14 @@ fn sort_impl(cx: &mut compositor::Context, reverse: bool) -> anyhow::Result<()> 
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
-    fragments.sort_by(match reverse {
-        true => |a: &Tendril, b: &Tendril| b.cmp(a),
-        false => |a: &Tendril, b: &Tendril| a.cmp(b),
-    });
+    fragments.sort_by(
+        match (args.has_flag("insensitive"), args.has_flag("reverse")) {
+            (true, true) => |a: &Tendril, b: &Tendril| b.to_lowercase().cmp(&a.to_lowercase()),
+            (true, false) => |a: &Tendril, b: &Tendril| a.to_lowercase().cmp(&b.to_lowercase()),
+            (false, true) => |a: &Tendril, b: &Tendril| b.cmp(a),
+            (false, false) => |a: &Tendril, b: &Tendril| a.cmp(b),
+        },
+    );
 
     let transaction = Transaction::change(
         doc.text(),
@@ -3358,6 +3356,12 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             positionals: (0, Some(0)),
             flags: &[
                 Flag {
+                    name: "insensitive",
+                    alias: Some('i'),
+                    doc: "sort the ranges case-insensitively",
+                    ..Flag::DEFAULT
+                },
+                Flag {
                     name: "reverse",
                     alias: Some('r'),
                     doc: "sort ranges in reverse order",
@@ -3861,10 +3865,12 @@ fn quote_completion<'a>(
             span.content = Cow::Owned(format!(
                 "'{}{}'",
                 // Escape any inner single quotes by doubling them.
-                replace(token.content.as_ref().into(), '\'', "''"),
+                replace(token.content[..range.start].into(), '\'', "''"),
                 replace(span.content, '\'', "''")
             ));
-            // Ignore `range.start` here since we're replacing the entire token.
+            // Ignore `range.start` here since we're replacing the entire token. We used
+            // `range.start` above to emulate the replacement that using `range.start` would have
+            // done.
             ((offset + token.content_start).., span)
         }
         TokenKind::Quoted(quote) => {
