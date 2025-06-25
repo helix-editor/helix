@@ -3188,20 +3188,23 @@ fn append_mode_same_line(cx: &mut Context) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let pos = range.cursor(text);
-        let line = text.char_to_line(pos);
-        let end_char_index = line_end_char_index(&text, line);
-        let pos_is_at_end_of_line = pos == end_char_index;
+        let forward_range = range.with_direction(Direction::Forward);
+        let range_end = forward_range.cursor(text);
+        let line = text.char_to_line(range_end);
+        let line_end_char_index = line_end_char_index(&text, line);
+        let is_at_end_of_line = range_end == line_end_char_index;
 
-        if pos_is_at_end_of_line {
-            range
+        let new_range_end = if is_at_end_of_line {
+            range_end
         } else {
-            Range::new(
-                range.from(),
-                graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
-            )
-        }
+            range.to()
+        };
+        Range::new(
+            range.from(),
+            graphemes::next_grapheme_boundary(doc.text().slice(..), new_range_end),
+        )
     });
+
     doc.set_selection(view.id, selection);
 }
 
