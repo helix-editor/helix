@@ -33,7 +33,6 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
 use std::time::SystemTime;
-use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use helix_core::{
@@ -211,8 +210,7 @@ pub struct Document {
     // TODO: is this necessary?
     pub editable: bool,
 
-    pub sync_close_tx: Option<mpsc::Sender<u32>>,
-    pub sync_handle: Option<JoinHandle<()>>,
+    pub sync_handle: Option<JoinHandle<anyhow::Result<()>>>,
 
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
@@ -735,7 +733,6 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             editable: true,
-            sync_close_tx: None,
             sync_handle: None,
             jump_labels: HashMap::new(),
             color_swatches: None,
@@ -1386,9 +1383,8 @@ impl Document {
         self.jump_labels.remove(&view_id);
     }
 
-    /// Apply a [`Transaction`] to the [`Document`] to change its text,
-    /// without updating selection/lsp, etc.
-    pub fn apply_directly(&mut self, text: &str) {
+    /// Append text to the rope without updating selection/lsp, etc.
+    pub fn append(&mut self, text: &str) {
         self.text.insert(self.text.len_chars(), text);
     }
 

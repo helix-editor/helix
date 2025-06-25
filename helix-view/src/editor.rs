@@ -36,9 +36,9 @@ use std::{
 };
 
 use tokio::{
-    fs::File,
     io::AsyncReadExt,
-    sync::mpsc::{self, unbounded_channel, UnboundedReceiver, UnboundedSender},
+    net::unix::pipe,
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
     time::{sleep, Duration, Instant, Sleep},
 };
 
@@ -52,7 +52,7 @@ use helix_core::{
         self,
         config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     },
-    Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
+    Change, LineEnding, Position, Range, Rope, Selection, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
@@ -1827,36 +1827,34 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let doc = Document::default(self.config.clone(), self.syn_loader.clone());
+            // [`default`] inserts a line-ending in the created document,
+            // which isn't what we want, so we use [`from`] here.
+            let doc = Document::from(
+                Rope::from(""),
+                None,
+                self.config.clone(),
+                self.syn_loader.clone(),
+            );
 
             let id = self.new_document(doc);
 
-            let doc = self.document_mut(id).unwrap();
+            let doc = doc_mut!(self, &id);
+            doc.set_path(Some(&path));
             doc.editable = false;
-            let (tx, mut rx) = mpsc::channel(4);
-            doc.sync_close_tx = Some(tx);
             doc.sync_handle = Some(tokio::spawn(async move {
-                let mut file = File::open(path).await.unwrap();
-                let mut buf = [0; 4096];
+                let mut file = pipe::OpenOptions::new()
+                    .read_write(true)
+                    .unchecked(true)
+                    .open_receiver(path)?;
+                let mut text = vec![0; 128];
 
-                tokio::select! {
-                    _ = rx.recv() => { }
-
-                    _ = async {
-                        loop {
-                            let bytes = file.read(&mut buf[..]).await.unwrap();
-                            let bytes = bytes;
-                            if bytes == 0 {
-                                // TODO: the pipe is closed
-                                break;
-                            }
-                            let text = String::from_utf8_lossy(&buf[0..bytes]);
-                            helix_event::dispatch(FifoReceived {
-                                doc: id,
-                                text: &text,
-                            });
-                        }
-                    } => {}
+                loop {
+                    let bytes = file.read(&mut text).await?;
+                    let text = String::from_utf8_lossy(&text[..bytes]);
+                    helix_event::dispatch(FifoReceived {
+                        doc: id,
+                        text: &text,
+                    });
                 }
             }));
 
@@ -1930,7 +1928,10 @@ impl Editor {
             }
         }
 
-        let doc = self.documents.remove(&doc_id).unwrap();
+        let mut doc = self.documents.remove(&doc_id).unwrap();
+        if let Some(sync_handle) = doc.sync_handle.take() {
+            sync_handle.abort();
+        }
 
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view

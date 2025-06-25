@@ -8,8 +8,9 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         let doc = event.doc.clone();
         let text = String::from(event.text);
         job::dispatch_blocking(move |editor, _| {
-            let doc = editor.document_mut(doc).unwrap();
-            doc.apply_directly(&text);
+            if let Some(doc) = editor.document_mut(doc) {
+                doc.append(&text);
+            }
         });
         Ok(())
     });
