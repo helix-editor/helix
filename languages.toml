@@ -1424,6 +1424,7 @@ file-types = [
   { glob = ".clangd" },
   { glob = ".clang-format" },
   { glob = ".clang-tidy" },
+  { glob = ".gem/credentials" },
   "sublime-syntax"
 ]
 comment-token = "#"
