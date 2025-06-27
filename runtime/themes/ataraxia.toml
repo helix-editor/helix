@@ -56,6 +56,7 @@ diagnostic = "cool-sky"
 
 "comment" = "purple-gray"
 "comment.line" = "purple-gray"
+"comment.line.documentation" = "purple-gray"
 "comment.block" = "dead-green"
 "comment.block.documentation" = "dead-green"
 

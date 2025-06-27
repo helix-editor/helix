@@ -76,6 +76,7 @@
 
 "comment" = { fg = "regular5", modifiers = ["italic"] }
 "comment.line" = { fg = "regular5", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "regular5", modifiers = ["bold"] }
 "comment.block" = { fg = "regular5", modifiers = ["italic"] }
 "comment.block.documentation" = { fg = "regular5", modifiers = ["bold"] }
 

@@ -1,51 +1,22 @@
 use std::ops::Range;
 use std::time::Instant;
 
-use imara_diff::intern::InternedInput;
-use imara_diff::Algorithm;
+use imara_diff::{Algorithm, Diff, Hunk, IndentHeuristic, IndentLevel, InternedInput};
 use ropey::RopeSlice;
 
 use crate::{ChangeSet, Rope, Tendril, Transaction};
 
-/// A `imara_diff::Sink` that builds a `ChangeSet` for a character diff of a hunk
-struct CharChangeSetBuilder<'a> {
-    res: &'a mut ChangeSet,
-    hunk: &'a InternedInput<char>,
-    pos: u32,
-}
-
-impl imara_diff::Sink for CharChangeSetBuilder<'_> {
-    type Out = ();
-    fn process_change(&mut self, before: Range<u32>, after: Range<u32>) {
-        self.res.retain((before.start - self.pos) as usize);
-        self.res.delete(before.len());
-        self.pos = before.end;
-
-        let res = self.hunk.after[after.start as usize..after.end as usize]
-            .iter()
-            .map(|&token| self.hunk.interner[token])
-            .collect();
-
-        self.res.insert(res);
-    }
-
-    fn finish(self) -> Self::Out {
-        self.res.retain(self.hunk.before.len() - self.pos as usize);
-    }
-}
-
-struct LineChangeSetBuilder<'a> {
+struct ChangeSetBuilder<'a> {
     res: ChangeSet,
     after: RopeSlice<'a>,
     file: &'a InternedInput<RopeSlice<'a>>,
     current_hunk: InternedInput<char>,
+    char_diff: Diff,
     pos: u32,
 }
 
-impl imara_diff::Sink for LineChangeSetBuilder<'_> {
-    type Out = ChangeSet;
-
-    fn process_change(&mut self, before: Range<u32>, after: Range<u32>) {
+impl ChangeSetBuilder<'_> {
+    fn process_hunk(&mut self, before: Range<u32>, after: Range<u32>) {
         let len = self.file.before[self.pos as usize..before.start as usize]
             .iter()
             .map(|&it| self.file.interner[it].len_chars())
@@ -109,25 +80,36 @@ impl imara_diff::Sink for LineChangeSetBuilder<'_> {
                 .flat_map(|&it| self.file.interner[it].chars());
             self.current_hunk.update_before(hunk_before);
             self.current_hunk.update_after(hunk_after);
-
             // the histogram heuristic does not work as well
             // for characters because the same characters often reoccur
             // use myer diff instead
-            imara_diff::diff(
+            self.char_diff.compute_with(
                 Algorithm::Myers,
-                &self.current_hunk,
-                CharChangeSetBuilder {
-                    res: &mut self.res,
-                    hunk: &self.current_hunk,
-                    pos: 0,
-                },
+                &self.current_hunk.before,
+                &self.current_hunk.after,
+                self.current_hunk.interner.num_tokens(),
             );
+            let mut pos = 0;
+            for Hunk { before, after } in self.char_diff.hunks() {
+                self.res.retain((before.start - pos) as usize);
+                self.res.delete(before.len());
+                pos = before.end;
 
+                let res = self.current_hunk.after[after.start as usize..after.end as usize]
+                    .iter()
+                    .map(|&token| self.current_hunk.interner[token])
+                    .collect();
+
+                self.res.insert(res);
+            }
+            self.res
+                .retain(self.current_hunk.before.len() - pos as usize);
+            // reuse allocations
             self.current_hunk.clear();
         }
     }
 
-    fn finish(mut self) -> Self::Out {
+    fn finish(mut self) -> ChangeSet {
         let len = self.file.before[self.pos as usize..]
             .iter()
             .map(|&it| self.file.interner[it].len_chars())
@@ -140,7 +122,7 @@ impl imara_diff::Sink for LineChangeSetBuilder<'_> {
 
 struct RopeLines<'a>(RopeSlice<'a>);
 
-impl<'a> imara_diff::intern::TokenSource for RopeLines<'a> {
+impl<'a> imara_diff::TokenSource for RopeLines<'a> {
     type Token = RopeSlice<'a>;
     type Tokenizer = ropey::iter::Lines<'a>;
 
@@ -161,15 +143,23 @@ pub fn compare_ropes(before: &Rope, after: &Rope) -> Transaction {
     let res = ChangeSet::with_capacity(32);
     let after = after.slice(..);
     let file = InternedInput::new(RopeLines(before.slice(..)), RopeLines(after));
-    let builder = LineChangeSetBuilder {
+    let mut builder = ChangeSetBuilder {
         res,
         file: &file,
         after,
         pos: 0,
         current_hunk: InternedInput::default(),
+        char_diff: Diff::default(),
     };
-
-    let res = imara_diff::diff(Algorithm::Histogram, &file, builder).into();
+    let mut diff = Diff::compute(Algorithm::Histogram, &file);
+    diff.postprocess_with_heuristic(
+        &file,
+        IndentHeuristic::new(|token| IndentLevel::for_ascii_line(file.interner[token].bytes(), 4)),
+    );
+    for hunk in diff.hunks() {
+        builder.process_hunk(hunk.before, hunk.after)
+    }
+    let res = builder.finish().into();
 
     log::debug!(
         "rope diff took {}s",
