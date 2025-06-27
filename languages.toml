@@ -1859,13 +1859,14 @@ name = "git-commit"
 scope = "git.commitmsg"
 file-types = [{ glob = "COMMIT_EDITMSG" }, { glob = "MERGE_MSG" }]
 comment-token = "#"
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "    " }
 rulers = [51, 73]
 text-width = 72
+grammar = "gitcommit"
 
 [[grammar]]
-name = "git-commit"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "6f193a66e9aa872760823dff020960c6cedc37b3" }
+name = "gitcommit"
+source = { git = "https://github.com/gbprod/tree-sitter-gitcommit", rev = "a716678c0f00645fed1e6f1d0eb221481dbd6f6d" }
 
 [[language]]
 name = "diff"
