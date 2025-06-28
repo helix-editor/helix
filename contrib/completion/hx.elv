@@ -50,6 +50,8 @@ set edit:completion:arg-completer[hx] = {|@args|
   $candidate "--grammar" "(Fetch or build the tree-sitter grammars)"
   $candidate "--vsplit" "(Splits all given files vertically)"
   $candidate "--hsplit" "(Splits all given files horizontally)"
+  $candidate "-x" "(Executes the given command on startup)"
+  $candidate "--execute" "(Executes the given command on startup)"
   $candidate "--config" "(Specifies a file to use for configuration)"
   $candidate "--log" "(Specifies a file to write log data into)"
 }

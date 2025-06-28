@@ -1,5 +1,6 @@
 use anyhow::{Context, Error, Result};
 use crossterm::event::EventStream;
+use futures_util::{stream, StreamExt};
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
@@ -40,7 +41,7 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let args = Args::parse_args().context("could not parse arguments")?;
+    let mut args = Args::parse_args().context("could not parse arguments")?;
 
     helix_loader::initialize_config_file(args.config_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
@@ -75,6 +76,7 @@ FLAGS:
     --hsplit                       Splits all given files horizontally into different windows
     -w, --working-dir <path>       Specify an initial working directory
     +N                             Open the first given file at line number N
+    -x, --execute <command>        Executes the given command on startup
 ",
             env!("CARGO_PKG_NAME"),
             VERSION_AND_GIT_HASH,
@@ -147,10 +149,20 @@ FLAGS:
         helix_core::config::default_lang_loader()
     });
 
+    // sequence of key events to execute before launching the editor
+    let execute_at_start =
+        stream::iter(std::mem::take(&mut args.execute).into_iter().map(|item| {
+            Ok(crossterm::event::Event::Key(
+                crossterm::event::KeyEvent::from(item),
+            ))
+        }));
+
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config, lang_loader).context("unable to start Helix")?;
 
-    let exit_code = app.run(&mut EventStream::new()).await?;
+    let exit_code = app
+        .run(&mut execute_at_start.chain(EventStream::new()))
+        .await?;
 
     Ok(exit_code)
 }

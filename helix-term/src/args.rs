@@ -19,6 +19,8 @@ pub struct Args {
     pub config_file: Option<PathBuf>,
     pub files: IndexMap<PathBuf, Vec<Position>>,
     pub working_directory: Option<PathBuf>,
+    /// The macro to execute on startup
+    pub execute: Vec<helix_view::input::KeyEvent>,
 }
 
 impl Args {
@@ -74,6 +76,13 @@ impl Args {
                     Some(path) => args.log_file = Some(path.into()),
                     None => anyhow::bail!("--log must specify a path to write"),
                 },
+                "-x" | "--execute" => {
+                    if let Some(command) = argv.next().as_deref() {
+                        args.execute = helix_view::input::parse_macro(command)?;
+                    } else {
+                        anyhow::bail!("--execute receives a command to execute")
+                    }
+                }
                 "-w" | "--working-dir" => match argv.next().as_deref() {
                     Some(path) => {
                         args.working_directory = if Path::new(path).is_dir() {
