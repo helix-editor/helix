@@ -230,13 +230,79 @@ fn force_buffer_close(
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
-fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
+enum OtherBuffers {
+    All,
+    Left,
+    Right,
+}
+
+fn buffer_gather_others_impl(editor: &mut Editor, sel: OtherBuffers) -> Vec<DocumentId> {
     let current_document = &doc!(editor).id();
-    editor
-        .documents()
-        .map(|doc| doc.id())
-        .filter(|doc_id| doc_id != current_document)
-        .collect()
+
+    let ids = editor.documents().map(|doc| doc.id());
+
+    match sel {
+        OtherBuffers::All => ids.filter(|doc_id| doc_id != current_document).collect(),
+        OtherBuffers::Left => ids
+            .take_while(|doc_id| doc_id != current_document)
+            .collect(),
+        OtherBuffers::Right => ids
+            .skip_while(|doc_id| doc_id != current_document)
+            .skip(1)
+            .collect(),
+    }
+}
+
+fn buffer_close_right(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_others_impl(cx.editor, OtherBuffers::Right);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn force_buffer_close_right(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_others_impl(cx.editor, OtherBuffers::Right);
+    buffer_close_by_ids_impl(cx, &document_ids, true)
+}
+
+fn buffer_close_left(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_others_impl(cx.editor, OtherBuffers::Left);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn force_buffer_close_left(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_others_impl(cx.editor, OtherBuffers::Left);
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_close_others(
@@ -248,7 +314,7 @@ fn buffer_close_others(
         return Ok(());
     }
 
-    let document_ids = buffer_gather_others_impl(cx.editor);
+    let document_ids = buffer_gather_others_impl(cx.editor, OtherBuffers::All);
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
@@ -261,7 +327,7 @@ fn force_buffer_close_others(
         return Ok(());
     }
 
-    let document_ids = buffer_gather_others_impl(cx.editor);
+    let document_ids = buffer_gather_others_impl(cx.editor, OtherBuffers::All);
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
@@ -2651,6 +2717,50 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bco!", "bcloseother!"],
         doc: "Force close all buffers but the currently focused one.",
         fun: force_buffer_close_others,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-left",
+        aliases: &["bcl", "bcloseleft"],
+        doc: "Close all buffers to the left of the currently focused one.",
+        fun: buffer_close_left,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-left!",
+        aliases: &["bcl!", "bcloseleft!"],
+        doc: "Force close all buffers to the left of the currently focused one.",
+        fun: force_buffer_close_left,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-right",
+        aliases: &["bcr", "bcloseright"],
+        doc: "Close all buffers to the right of the currently focused one.",
+        fun: buffer_close_right,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-right!",
+        aliases: &["bcr!", "bcloseright!"],
+        doc: "Force close all buffers to the right of the currently focused one.",
+        fun: force_buffer_close_right,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
