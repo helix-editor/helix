@@ -153,6 +153,7 @@
 | mojo | ✓ | ✓ | ✓ | `pixi` |
 | move | ✓ |  |  |  |
 | msbuild | ✓ |  | ✓ |  |
+| multicursor | ✓ |  |  |  |
 | nasm | ✓ | ✓ |  | `asm-lsp` |
 | nestedtext | ✓ | ✓ | ✓ |  |
 | nginx | ✓ |  |  |  |
