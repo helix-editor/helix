@@ -169,6 +169,9 @@ paramName = "All"
 paramType = true
 await = true
 
+[language-server.godot]
+command = "ncat"
+args = ["127.0.0.1", "6005"]
 
 [language-server.gopls]
 command = "gopls"
@@ -2241,6 +2244,7 @@ auto-format = true
 formatter = { command = "gdformat", args = ["-"] }
 comment-tokens = ["#", "##"]
 indent = { tab-width = 4, unit = "\t" }
+language-servers = [ "godot" ]
 
 [[grammar]]
 name = "gdscript"
