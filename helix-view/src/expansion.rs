@@ -33,6 +33,10 @@ pub enum Variable {
     BufferName,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
+    /// Curreng working directory
+    CurrentWorkingDirectory,
+    /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
+    WorkspaceDirectory,
     // The name of current buffers language as set in `languages.toml`
     Language,
     // Primary selection
@@ -45,6 +49,8 @@ impl Variable {
         Self::CursorColumn,
         Self::BufferName,
         Self::LineEnding,
+        Self::CurrentWorkingDirectory,
+        Self::WorkspaceDirectory,
         Self::Language,
         Self::Selection,
     ];
@@ -55,6 +61,8 @@ impl Variable {
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
             Self::LineEnding => "line_ending",
+            Self::CurrentWorkingDirectory => "current_working_directory",
+            Self::WorkspaceDirectory => "workspace_directory",
             Self::Language => "language",
             Self::Selection => "selection",
         }
@@ -66,6 +74,8 @@ impl Variable {
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
             "line_ending" => Some(Self::LineEnding),
+            "workspace_directory" => Some(Self::WorkspaceDirectory),
+            "current_working_directory" => Some(Self::CurrentWorkingDirectory),
             "language" => Some(Self::Language),
             "selection" => Some(Self::Selection),
             _ => None,
@@ -225,6 +235,17 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             }
         }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
+        Variable::CurrentWorkingDirectory => Ok(std::borrow::Cow::Owned(
+            helix_stdx::env::current_working_dir()
+                .to_string_lossy()
+                .to_string(),
+        )),
+        Variable::WorkspaceDirectory => Ok(std::borrow::Cow::Owned(
+            helix_loader::find_workspace()
+                .0
+                .to_string_lossy()
+                .to_string(),
+        )),
         Variable::Language => Ok(match doc.language_name() {
             Some(lang) => Cow::Owned(lang.to_owned()),
             None => Cow::Borrowed("text"),
