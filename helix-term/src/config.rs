@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::Error as IOError;
+use std::path::PathBuf;
 use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -20,8 +21,16 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
     pub theme: Option<String>,
+    pub keymap: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KeymapConfig {
+    pub inherits: Option<String>,
+    pub keys: HashMap<Mode, KeyTrie>,
 }
 
 impl Default for Config {
@@ -67,8 +76,18 @@ impl Config {
         let res = match (global_config, local_config) {
             (Ok(global), Ok(local)) => {
                 let mut keys = keymap::default();
+                if let Some(global_keymap) = global.keymap {
+                    for keymap in Self::load_keys(&global_keymap) {
+                        merge_keys(&mut keys, keymap);
+                    }
+                }
                 if let Some(global_keys) = global.keys {
                     merge_keys(&mut keys, global_keys)
+                }
+                if let Some(local_keymap) = local.keymap {
+                    for keymap in Self::load_keys(&local_keymap) {
+                        merge_keys(&mut keys, keymap);
+                    }
                 }
                 if let Some(local_keys) = local.keys {
                     merge_keys(&mut keys, local_keys)
@@ -97,6 +116,11 @@ impl Config {
             }
             (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
                 let mut keys = keymap::default();
+                if let Some(keymap) = config.keymap {
+                    for keymap in Self::load_keys(&keymap) {
+                        merge_keys(&mut keys, keymap);
+                    }
+                }
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
@@ -123,6 +147,46 @@ impl Config {
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
             .map_err(ConfigLoadError::Error);
         Config::load(global_config, local_config)
+    }
+
+    fn load_keys(keymap: &str) -> Vec<HashMap<Mode, KeyTrie>> {
+        Self::load_keys_with_inheritance(keymap, Default::default())
+    }
+
+    fn load_keys_with_inheritance(
+        keymap: &str,
+        mut history: Vec<String>,
+    ) -> Vec<HashMap<Mode, KeyTrie>> {
+        history.push(keymap.to_string());
+        match Self::load_keys_from_file(keymap) {
+            Ok(config) => {
+                if let Some(parent) = config.inherits {
+                    let mut ancestors = if history.contains(&parent) {
+                        log::warn!("Cyclic inheritance detected in '{}' keymap", keymap);
+                        Default::default()
+                    } else {
+                        Self::load_keys_with_inheritance(&parent, history)
+                    };
+                    ancestors.push(config.keys);
+                    ancestors
+                } else {
+                    vec![config.keys]
+                }
+            }
+            Err(e) => {
+                log::warn!("Fail to load '{}' keymap : {}", keymap, e);
+                Default::default()
+            }
+        }
+    }
+
+    fn load_keys_from_file(keymap: &str) -> Result<KeymapConfig, ConfigLoadError> {
+        let mut rel_path = PathBuf::new().join("keymaps").join(keymap);
+        rel_path.set_extension("toml");
+        let keymap = fs::read_to_string(helix_loader::runtime_file(rel_path))
+            .map_err(ConfigLoadError::Error)?;
+
+        toml::from_str(&keymap).map_err(ConfigLoadError::BadConfig)
     }
 }
 
