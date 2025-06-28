@@ -2963,6 +2963,7 @@ file-types = [
   "service",
   "automount",
   "desktop",
+  { glob = "mimeapps.list" },
   "device",
   "mount",
   "nspawn",
