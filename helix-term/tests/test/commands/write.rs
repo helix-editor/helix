@@ -746,7 +746,7 @@ async fn test_hardlink_write() -> anyhow::Result<()> {
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
-    file.as_file_mut().write_all(&file_content)?;
+    file.as_file_mut().write_all(file_content)?;
 
     helpers::test_key_sequence(
         &mut helpers::AppBuilder::new()
