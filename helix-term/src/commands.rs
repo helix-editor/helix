@@ -6638,7 +6638,7 @@ fn extend_to_word(cx: &mut Context) {
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     let doc = doc!(cx.editor);
     let alphabet = &cx.editor.config().jump_label_alphabet;
-    if labels.is_empty() {
+    if labels.is_empty() || alphabet.is_empty() {
         return;
     }
     let alphabet_char = |i| {
