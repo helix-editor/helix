@@ -513,6 +513,7 @@ impl MappableCommand {
         rotate_selections_backward, "Rotate selections backward",
         rotate_selection_contents_forward, "Rotate selection contents forward",
         rotate_selection_contents_backward, "Rotate selections contents backward",
+        toggle_move_primary_selection_only, "Toggle movement only of primary selection",
         reverse_selection_contents, "Reverse selections contents",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
@@ -5360,6 +5361,14 @@ fn rotate_selection_contents_backward(cx: &mut Context) {
 }
 fn reverse_selection_contents(cx: &mut Context) {
     reorder_selection_contents(cx, ReorderStrategy::Reverse)
+}
+
+fn toggle_move_primary_selection_only(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let mut selection = doc.selection(view.id).clone();
+
+    selection.set_edit_only_primary(!selection.edit_only_primary());
+    doc.set_selection(view.id, selection);
 }
 
 // tree sitter node selection
