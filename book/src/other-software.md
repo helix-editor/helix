@@ -10,6 +10,7 @@ Helix' keymap and interaction model ([Using Helix](#usage.md)) is easier to adop
 | --- | --- | --- |
 | [Vim](https://www.vim.org/) | [helix.vim](https://github.com/chtenb/helix.vim) config |
 | [IntelliJ IDEA](https://www.jetbrains.com/idea/) / [Android Studio](https://developer.android.com/studio)| [IdeaVim](https://plugins.jetbrains.com/plugin/164-ideavim) plugin + [helix.idea.vim](https://github.com/chtenb/helix.vim) config | Minimum recommended version is IdeaVim 2.19.0.
+| [Visual Studio](https://visualstudio.microsoft.com/) | [VsVim](https://marketplace.visualstudio.com/items?itemName=JaredParMSFT.VsVim) plugin + [helix.vs.vim](https://github.com/chtenb/helix.vim) config | 
 | [Visual Studio Code](https://code.visualstudio.com/) | [Dance](https://marketplace.visualstudio.com/items?itemName=gregoire.dance) extension, or its [Helix fork](https://marketplace.visualstudio.com/items?itemName=kend.dancehelixkey) | The Helix fork has diverged. You can also use the original Dance and tweak its keybindings directly (try [this config](https://github.com/71/dance/issues/299#issuecomment-1655509531)).
 | [Visual Studio Code](https://code.visualstudio.com/) | [Helix for VS Code](https://marketplace.visualstudio.com/items?itemName=jasew.vscode-helix-emulation) extension|
 | [Zed](https://zed.dev/) | native via keybindings ([Bug](https://github.com/zed-industries/zed/issues/4642)) |

@@ -339,8 +339,9 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
+    let (view, doc) = current_ref!(cx.editor);
     let fmt = if config.auto_format {
-        doc.auto_format().map(|fmt| {
+        doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
@@ -483,8 +484,8 @@ fn format(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
         return Ok(());
     }
 
-    let (view, doc) = current!(cx.editor);
-    let format = doc.format().context(
+    let (view, doc) = current_ref!(cx.editor);
+    let format = doc.format(cx.editor).context(
         "A formatter isn't available, and no language server provides formatting capabilities",
     )?;
     let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
@@ -752,7 +753,8 @@ pub fn write_all_impl(
         doc.append_changes_to_history(view);
 
         let fmt = if options.auto_format && config.auto_format {
-            doc.auto_format().map(|fmt| {
+            let doc = doc!(cx.editor, &doc_id);
+            doc.auto_format(cx.editor).map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
                     doc.version(),
@@ -1670,59 +1672,52 @@ fn tree_sitter_highlight_name(
     _args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    fn find_highlight_at_cursor(
-        cx: &mut compositor::Context<'_>,
-    ) -> Option<helix_core::syntax::Highlight> {
-        use helix_core::syntax::HighlightEvent;
-
-        let (view, doc) = current!(cx.editor);
-        let syntax = doc.syntax()?;
-        let text = doc.text().slice(..);
-        let cursor = doc.selection(view.id).primary().cursor(text);
-        let byte = text.char_to_byte(cursor);
-        let node = syntax.descendant_for_byte_range(byte, byte)?;
-        // Query the same range as the one used in syntax highlighting.
-        let range = {
-            // Calculate viewport byte ranges:
-            let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
-            // Saturating subs to make it inclusive zero indexing.
-            let last_line = text.len_lines().saturating_sub(1);
-            let height = view.inner_area(doc).height;
-            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-            let start = text.line_to_byte(row.min(last_line));
-            let end = text.line_to_byte(last_visible_line + 1);
-
-            start..end
-        };
-
-        let mut highlight = None;
-
-        for event in syntax.highlight_iter(text, Some(range), None) {
-            match event.unwrap() {
-                HighlightEvent::Source { start, end }
-                    if start == node.start_byte() && end == node.end_byte() =>
-                {
-                    return highlight;
-                }
-                HighlightEvent::HighlightStart(hl) => {
-                    highlight = Some(hl);
-                }
-                _ => (),
-            }
-        }
-
-        None
-    }
-
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let Some(highlight) = find_highlight_at_cursor(cx) else {
+    let (view, doc) = current_ref!(cx.editor);
+    let Some(syntax) = doc.syntax() else {
         return Ok(());
     };
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let byte = text.char_to_byte(cursor) as u32;
+    // Query the same range as the one used in syntax highlighting.
+    let range = {
+        // Calculate viewport byte ranges:
+        let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
+        // Saturating subs to make it inclusive zero indexing.
+        let last_line = text.len_lines().saturating_sub(1);
+        let height = view.inner_area(doc).height;
+        let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+        let start = text.line_to_byte(row.min(last_line)) as u32;
+        let end = text.line_to_byte(last_visible_line + 1) as u32;
 
-    let content = cx.editor.theme.scope(highlight.0).to_string();
+        start..end
+    };
+
+    let loader = cx.editor.syn_loader.load();
+    let mut highlighter = syntax.highlighter(text, &loader, range);
+    let mut highlights = Vec::new();
+
+    while highlighter.next_event_offset() <= byte {
+        let (event, new_highlights) = highlighter.advance();
+        if event == helix_core::syntax::HighlightEvent::Refresh {
+            highlights.clear();
+        }
+        highlights.extend(new_highlights);
+    }
+
+    let content = highlights
+        .into_iter()
+        .fold(String::new(), |mut acc, highlight| {
+            if !acc.is_empty() {
+                acc.push_str(", ");
+            }
+            acc.push_str(cx.editor.theme.scope(highlight));
+            acc
+        });
 
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
@@ -1799,7 +1794,7 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         return Ok(());
     }
 
-    if let Some(debugger) = cx.editor.debugger.as_mut() {
+    if let Some(debugger) = cx.editor.debug_adapters.get_active_client() {
         let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
             (Some(frame), Some(thread_id)) => (frame, thread_id),
             _ => {
@@ -2088,10 +2083,11 @@ fn language(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
 
     let doc = doc_mut!(cx.editor);
 
+    let loader = cx.editor.syn_loader.load();
     if &args[0] == DEFAULT_LANGUAGE_NAME {
-        doc.set_language(None, None)
+        doc.set_language(None, &loader)
     } else {
-        doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
+        doc.set_language_by_language_id(&args[0], &loader)?;
     }
     doc.detect_indent_and_line_ending();
 
@@ -2109,10 +2105,6 @@ fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
-    sort_impl(cx, args.has_flag("reverse"))
-}
-
-fn sort_impl(cx: &mut compositor::Context, reverse: bool) -> anyhow::Result<()> {
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -2128,10 +2120,14 @@ fn sort_impl(cx: &mut compositor::Context, reverse: bool) -> anyhow::Result<()> 
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
-    fragments.sort_by(match reverse {
-        true => |a: &Tendril, b: &Tendril| b.cmp(a),
-        false => |a: &Tendril, b: &Tendril| a.cmp(b),
-    });
+    fragments.sort_by(
+        match (args.has_flag("insensitive"), args.has_flag("reverse")) {
+            (true, true) => |a: &Tendril, b: &Tendril| b.to_lowercase().cmp(&a.to_lowercase()),
+            (true, false) => |a: &Tendril, b: &Tendril| a.to_lowercase().cmp(&b.to_lowercase()),
+            (false, true) => |a: &Tendril, b: &Tendril| b.cmp(a),
+            (false, false) => |a: &Tendril, b: &Tendril| a.cmp(b),
+        },
+    );
 
     let transaction = Transaction::change(
         doc.text(),
@@ -2197,8 +2193,8 @@ fn tree_sitter_subtree(
     if let Some(syntax) = doc.syntax() {
         let primary_selection = doc.selection(view.id).primary();
         let text = doc.text();
-        let from = text.char_to_byte(primary_selection.from());
-        let to = text.char_to_byte(primary_selection.to());
+        let from = text.char_to_byte(primary_selection.from()) as u32;
+        let to = text.char_to_byte(primary_selection.to()) as u32;
         if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
             let mut contents = String::from("```tsq\n");
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
@@ -2566,6 +2562,9 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+// TODO: SHELL_SIGNATURE should specify var args for arguments, so that just completers::filename can be used,
+// but Signature does not yet allow for var args.
+
 /// This command handles all of its input as-is with no quoting or flags.
 const SHELL_SIGNATURE: Signature = Signature {
     positionals: (1, Some(2)),
@@ -2574,10 +2573,10 @@ const SHELL_SIGNATURE: Signature = Signature {
 };
 
 const SHELL_COMPLETER: CommandCompleter = CommandCompleter::positional(&[
-    // Command name (TODO: consider a command completer - Kakoune has prior art)
-    completers::none,
+    // Command name
+    completers::program,
     // Shell argument(s)
-    completers::filename,
+    completers::repeating_filenames,
 ]);
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
@@ -3357,6 +3356,12 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             positionals: (0, Some(0)),
             flags: &[
                 Flag {
+                    name: "insensitive",
+                    alias: Some('i'),
+                    doc: "sort the ranges case-insensitively",
+                    ..Flag::DEFAULT
+                },
+                Flag {
                     name: "reverse",
                     alias: Some('r'),
                     doc: "sort ranges in reverse order",
@@ -3860,10 +3865,12 @@ fn quote_completion<'a>(
             span.content = Cow::Owned(format!(
                 "'{}{}'",
                 // Escape any inner single quotes by doubling them.
-                replace(token.content.as_ref().into(), '\'', "''"),
+                replace(token.content[..range.start].into(), '\'', "''"),
                 replace(span.content, '\'', "''")
             ));
-            // Ignore `range.start` here since we're replacing the entire token.
+            // Ignore `range.start` here since we're replacing the entire token. We used
+            // `range.start` above to emulate the replacement that using `range.start` would have
+            // done.
             ((offset + token.content_start).., span)
         }
         TokenKind::Quoted(quote) => {
