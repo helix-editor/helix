@@ -1634,6 +1634,7 @@ dependencies = [
  "helix-stdx",
  "helix-tui",
  "helix-vcs",
+ "kstring",
  "libc",
  "log",
  "once_cell",
