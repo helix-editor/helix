@@ -4436,3 +4436,17 @@ language-servers = [ "luau" ]
 [[grammar]]
 name = "luau"
 source = { git = "https://github.com/polychromatist/tree-sitter-luau", rev = "ec187cafba510cddac265329ca7831ec6f3b9955" }
+
+[[language]]
+name = "caddyfile"
+scope = "source.caddyfile"
+injection-regex = "caddyfile"
+file-types = [{ glob = "Caddyfile" }]
+comment-tokens = ["#"]
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = "caddy", args = ["fmt", "-"] }
+auto-format = true
+
+[[grammar]]
+name = "caddyfile"
+source = { git = "https://github.com/caddyserver/tree-sitter-caddyfile", rev = "b04bdb4ec53e40c44afbf001e15540f60a296aef" }
