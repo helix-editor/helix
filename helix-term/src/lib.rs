@@ -12,7 +12,11 @@ pub mod job;
 pub mod keymap;
 pub mod ui;
 
-use std::path::Path;
+use std::{
+    fs::File,
+    io::{self, Read},
+    path::Path,
+};
 
 use futures_util::Future;
 mod handlers;
@@ -44,8 +48,24 @@ fn true_color() -> bool {
     }
 }
 
+fn is_binary(path: &Path, read_buffer: &mut Vec<u8>) -> io::Result<bool> {
+    let content_type = File::open(path).and_then(|file| {
+        // Read up to 1kb to detect the content type
+        let n = file.take(1024).read_to_end(read_buffer)?;
+        let content_type = content_inspector::inspect(&read_buffer[..n]);
+        read_buffer.clear();
+        Ok(content_type)
+    })?;
+    Ok(content_type.is_binary())
+}
+
 /// Function used for filtering dir entries in the various file pickers.
-fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> bool {
+fn filter_picker_entry(
+    entry: &DirEntry,
+    root: &Path,
+    dedup_symlinks: bool,
+    ignore_binary_files: bool,
+) -> bool {
     // We always want to ignore popular VCS directories, otherwise if
     // `ignore` is turned off, we end up with a lot of noise
     // in our picker.
@@ -64,6 +84,12 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
             .canonicalize()
             .ok()
             .is_some_and(|path| !path.starts_with(root));
+    }
+
+    if ignore_binary_files {
+        if let Ok(is_binary) = is_binary(entry.path(), &mut Vec::new()) {
+            return !is_binary;
+        }
     }
 
     true

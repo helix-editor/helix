@@ -195,6 +195,7 @@ All git related options are only enabled in a git repository.
 | Key | Description | Default |
 |--|--|---------|
 |`hidden` | Enables ignoring hidden files | `true`
+|`binary` | Enables ignoring binary files | `false`
 |`follow-symlinks` | Follow symlinks instead of ignoring them | `true`
 |`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | `true`
 |`parents` | Enables reading ignore files from parent directories | `true`
