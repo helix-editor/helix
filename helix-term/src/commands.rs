@@ -2721,6 +2721,7 @@ fn global_refactor(cx: &mut Context) {
     match &document_type {
         helix_view::document::DocumentType::File => return,
         helix_view::document::DocumentType::Refactor { matches, line_map } => {
+            let line_ending: LineEnding = cx.editor.config.load().default_line_ending.into();
             let refactor_id = doc!(cx.editor).id();
             let replace_text = doc!(cx.editor).text().clone();
             let view = view!(cx.editor).clone();
@@ -2732,10 +2733,15 @@ fn global_refactor(cx: &mut Context) {
                     if let Some(re_line) = line_map.get(&(key.clone(), *line)) {
                         let mut replace = replace_text
                             .get_line(*re_line)
-                            .unwrap_or_else(|| "\n".into())
+                            .unwrap_or_else(|| "".into())
                             .to_string()
                             .clone();
-                        replace = replace.strip_suffix('\n').unwrap_or(&replace).to_string();
+
+                        replace = replace
+                            .strip_suffix(line_ending.as_str())
+                            .unwrap_or(&replace)
+                            .to_string();
+                        replace.push_str(line_ending.as_str());
                         if text != &replace {
                             changes.push((*line, text.chars().count(), replace));
                         }
