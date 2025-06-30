@@ -155,6 +155,7 @@ where
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
+        helix_view::editor::StatusLineElement::YankedSelections => render_yanked_selections,
         helix_view::editor::StatusLineElement::Register => render_register,
         helix_view::editor::StatusLineElement::CurrentWorkingDirectory => render_cwd,
     }
@@ -543,6 +544,25 @@ where
         .to_string();
 
     write(context, head.into());
+}
+
+fn render_yanked_selections<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let nb_values = context
+        .editor
+        .registers
+        .read(
+            context.editor.selected_register.unwrap_or('"'),
+            context.editor,
+        )
+        .map(|values| values.count())
+        .take_if(|count| *count > 1);
+
+    if let Some(nb) = nb_values {
+        write(context, format!(" {} sels yanked ", nb).into())
+    }
 }
 
 fn render_register<'a, F>(context: &mut RenderContext<'a>, write: F)
