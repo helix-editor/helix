@@ -140,7 +140,7 @@ pub enum DocumentOpenError {
     IoError(#[from] io::Error),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum DocumentType {
     File,
     Refactor {
@@ -221,6 +221,7 @@ pub struct Document {
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
 
+    pub document_type: DocumentType,
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
@@ -232,7 +233,6 @@ pub struct DocumentColorSwatches {
     pub color_swatches: Vec<InlineAnnotation>,
     pub colors: Vec<syntax::Highlight>,
     pub color_swatches_padding: Vec<InlineAnnotation>,
-    pub document_type: DocumentType,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -748,23 +748,30 @@ impl Document {
         text: Rope,
         matches: HashMap<PathBuf, Vec<(usize, String)>>,
         line_map: HashMap<(PathBuf, usize), usize>,
-        encoding: Option<&'static encoding::Encoding>,
+        encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
+        syn_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> Self {
-        let encoding = encoding.unwrap_or(encoding::UTF_8);
-        let changes = ChangeSet::new(&text);
+        let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
+        let line_ending = config.load().default_line_ending.into();
+        let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
         Self {
             id: DocumentId::default(),
+            active_snippet: None,
             path: None,
+            relative_path: OnceCell::new(),
             encoding,
+            has_bom,
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
+            view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
-            line_ending: DEFAULT_LINE_ENDING,
+            editor_config: EditorConfig::default(),
+            line_ending,
             restore_cursor: false,
             syntax: None,
             language: None,
@@ -777,10 +784,16 @@ impl Document {
             last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
-            language_server: None,
+            language_servers: HashMap::new(),
             diff_handle: None,
             config,
             version_control_head: None,
+            focused_at: std::time::Instant::now(),
+            readonly: false,
+            jump_labels: HashMap::new(),
+            color_swatches: None,
+            color_swatch_controller: TaskController::new(),
+            syn_loader,
             document_type: DocumentType::Refactor { matches, line_map },
         }
     }
