@@ -37,12 +37,12 @@
   (heredoc)
   (cel_expression)
 ] @string
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 [
   (duration_literal)
   (int_literal)
-] @number
+] @constant.numeric
 
 [
   "{"
@@ -62,11 +62,11 @@
 ;     output file /var/log/caddy.log
 ; }
 (directive
-  (argument) @_file @string.path
-  (#match? @_file "^/"))
+  (argument) @string.special.path
+  (#match? @string.special.path "^/"))
 
-((argument) @_arg @constant.builtin.boolean
-  (#any-of? @_arg "on" "off"))
+((argument) @constant.builtin.boolean
+  (#any-of? @constant.builtin.boolean "on" "off"))
 
-((argument) @_arg @type.enum.variant
-  (#any-of? @_arg "tcp" "udp" "ipv4" "ipv6"))
+((argument) @type.enum.variant
+  (#any-of? @type.enum.variant "tcp" "udp" "ipv4" "ipv6"))
