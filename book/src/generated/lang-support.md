@@ -18,6 +18,7 @@
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cabal |  |  |  | `haskell-language-server-wrapper` |
+| caddyfile | ✓ | ✓ | ✓ |  |
 | cairo | ✓ | ✓ | ✓ | `cairo-language-server` |
 | capnp | ✓ |  | ✓ |  |
 | cel | ✓ |  |  |  |
