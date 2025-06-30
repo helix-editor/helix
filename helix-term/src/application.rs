@@ -401,6 +401,8 @@ impl Application {
             // Re-parse any open documents with the new language config.
             let lang_loader = self.editor.syn_loader.load();
             for document in self.editor.documents.values_mut() {
+                // Re-detect .editorconfig
+                document.detect_editor_config();
                 document.detect_language(&lang_loader);
                 let diagnostics = Editor::doc_diagnostics(
                     &self.editor.language_servers,
