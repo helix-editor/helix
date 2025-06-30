@@ -2688,6 +2688,7 @@ fn global_search(cx: &mut Context) {
 
         let mut doc_text = Rope::new();
         let mut line_map = HashMap::new();
+        let language_id = doc!(cx.editor).language_id().map(String::from);
 
         let mut count = 0;
         for (key, value) in &matches {
@@ -2698,7 +2699,7 @@ fn global_search(cx: &mut Context) {
             }
         }
         doc_text.split_off(doc_text.len_chars().saturating_sub(1));
-        let doc = Document::refactor(
+        let mut doc = Document::refactor(
             doc_text,
             matches,
             line_map,
@@ -2707,6 +2708,10 @@ fn global_search(cx: &mut Context) {
             cx.editor.config.clone(),
             cx.editor.syn_loader.clone(),
         );
+        if let Some(language_id) = language_id {
+            doc.set_language_by_language_id(&language_id, &cx.editor.syn_loader.load())
+                .ok();
+        };
         cx.editor.new_file_from_document(Action::Replace, doc);
     })
     .with_history_register(Some(reg))
