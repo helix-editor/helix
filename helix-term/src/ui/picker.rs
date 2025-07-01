@@ -266,7 +266,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
     /// An event handler for syntax highlighting the currently previewed file.
-    quickfix_fn: QuickfixCallback<T>,
+    refactor_fn: RefactorCallback<T>,
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
 }
@@ -336,7 +336,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         primary_column: usize,
         injector: Injector<T, D>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-        quickfix_fn: Option<Box<dyn Fn(&mut Context, Vec<&T>) + 'static>>,
     ) -> Self {
         Self::with(
             matcher,
@@ -384,7 +383,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             truncate_start: true,
             show_preview: true,
             callback_fn: Box::new(callback_fn),
-            quickfix_fn: None,
+            refactor_fn: None,
             completion_height: 0,
             widths,
             preview_cache: HashMap::new(),
@@ -422,8 +421,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
-    pub fn with_quickfix(mut self, quickfix_fn: impl Fn(&mut Context, Vec<&T>) + 'static) -> Self {
-        self.quickfix_fn = Some(Box::new(quickfix_fn));
+    pub fn with_refactor(mut self, quickfix_fn: impl Fn(&mut Context, Vec<&T>) + 'static) -> Self {
+        self.refactor_fn = Some(Box::new(quickfix_fn));
         self
     }
 
@@ -1142,8 +1141,8 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 self.toggle_preview();
             }
             ctrl!('q') => {
-                if let Some(_) = self.selection() {
-                    if let Some(quickfix) = &self.quickfix_fn {
+                if self.selection().is_some() {
+                    if let Some(quickfix) = &self.refactor_fn {
                         let items = self.get_list();
                         (quickfix)(ctx, items);
                     }
@@ -1194,4 +1193,4 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
-type QuickfixCallback<T> = Option<Box<dyn Fn(&mut Context, Vec<&T>)>>;
+type RefactorCallback<T> = Option<Box<dyn Fn(&mut Context, Vec<&T>)>>;

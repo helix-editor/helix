@@ -2453,7 +2453,7 @@ fn global_search(cx: &mut Context) {
             Self {
                 path: path.to_path_buf(),
                 line_num,
-                line_content: line_content.into(),
+                line_content,
             }
         }
     }
@@ -2669,7 +2669,7 @@ fn global_search(cx: &mut Context) {
     .with_preview(|_editor, FileResult { path, line_num, .. }| {
         Some((path.as_path().into(), Some((*line_num, *line_num))))
     })
-    .with_quickfix(move |cx, results: Vec<&FileResult>| {
+    .with_refactor(move |cx, results: Vec<&FileResult>| {
         if results.is_empty() {
             cx.editor.set_status("No matches found");
             return;
@@ -2726,7 +2726,7 @@ fn global_refactor(cx: &mut Context) {
     let document_type = doc!(cx.editor).document_type.clone();
 
     match &document_type {
-        helix_view::document::DocumentType::File => return,
+        helix_view::document::DocumentType::File => (),
         helix_view::document::DocumentType::Refactor {
             matches, line_map, ..
         } => {
@@ -3309,7 +3309,6 @@ fn buffer_picker(cx: &mut Context) {
             flags.into()
         }),
         PickerColumn::new("path", |meta: &BufferMeta, _| {
-            // TODO: make this rust look like actual rust
             if meta.is_refactor {
                 return REFACTOR_BUFFER_NAME.into();
             }
