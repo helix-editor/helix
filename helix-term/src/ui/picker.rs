@@ -13,7 +13,6 @@ use crate::{
         EditorView,
     },
 };
-use crossterm::event::KeyEvent;
 use futures_util::future::BoxFuture;
 use helix_event::AsyncHook;
 use nucleo::pattern::{CaseMatching, Normalization};
@@ -30,10 +29,10 @@ use tui::{
 use tui::widgets::Widget;
 
 use std::{
-    borrow::{BorrowMut, Cow},
+    borrow::Cow,
     collections::HashMap,
     io::Read,
-    path::{Path, PathBuf},
+    path::Path,
     sync::{
         atomic::{self, AtomicUsize},
         Arc,

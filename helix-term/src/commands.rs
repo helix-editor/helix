@@ -52,7 +52,6 @@ use helix_view::{
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use anyhow::{anyhow, bail, ensure, Context as _};
 use insert::*;
@@ -3312,7 +3311,7 @@ fn buffer_picker(cx: &mut Context) {
         PickerColumn::new("path", |meta: &BufferMeta, _| {
             // TODO: make this rust look like actual rust
             if meta.is_refactor {
-                return helix_view::document::REFACTOR_BUFFER_NAME.into();
+                return REFACTOR_BUFFER_NAME.into();
             }
             let path = meta
                 .path
