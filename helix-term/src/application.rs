@@ -356,6 +356,8 @@ impl Application {
     }
 
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
+        let old_editor_config = self.editor.config();
+
         match config_event {
             ConfigEvent::Refresh => self.refresh_config(),
 
@@ -374,7 +376,7 @@ impl Application {
 
         // Update all the relevant members in the editor after updating
         // the configuration.
-        self.editor.refresh_config();
+        self.editor.refresh_config(&old_editor_config);
 
         // reset view position in case softwrap was enabled/disabled
         let scrolloff = self.editor.config().scrolloff;
@@ -399,6 +401,8 @@ impl Application {
             // Re-parse any open documents with the new language config.
             let lang_loader = self.editor.syn_loader.load();
             for document in self.editor.documents.values_mut() {
+                // Re-detect .editorconfig
+                document.detect_editor_config();
                 document.detect_language(&lang_loader);
                 let diagnostics = Editor::doc_diagnostics(
                     &self.editor.language_servers,
@@ -608,8 +612,8 @@ impl Application {
                 // limit render calls for fast language server messages
                 helix_event::request_redraw();
             }
-            EditorEvent::DebuggerEvent(payload) => {
-                let needs_render = self.editor.handle_debugger_message(payload).await;
+            EditorEvent::DebuggerEvent((id, payload)) => {
+                let needs_render = self.editor.handle_debugger_message(id, payload).await;
                 if needs_render {
                     self.render().await;
                 }

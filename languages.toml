@@ -545,7 +545,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "73076
 name = "jsonc"
 scope = "source.json"
 injection-regex = "jsonc"
-file-types = ["jsonc", { glob = "tsconfig.json" }, { glob = "bun.lock" }]
+file-types = ["jsonc", { glob = "{t,j}sconfig.json" }, { glob = "bun.lock" }]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 grammar = "json"
@@ -816,15 +816,16 @@ injection-regex = "(js|javascript)"
 language-id = "javascript"
 file-types = ["js", "mjs", "cjs", "rules", "es6", "pac", { glob = ".node_repl_history" }, { glob = "jakefile" }]
 shebangs = ["node"]
-roots = [ "package.json" ]
+roots = [ "package.json", "jsconfig.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
-name = "node-debug2"
-transport = "stdio"
+name = "js-debug-dap"
+transport = "tcp"
+port-arg = "{} 127.0.0.1"
 # args consisting of cmd (node) and path to adapter should be added to user's configuration
 quirks = { absolute-paths = true }
 
@@ -832,7 +833,7 @@ quirks = { absolute-paths = true }
 name = "source"
 request = "launch"
 completion = [ { name = "main", completion = "filename", default = "index.js" } ]
-args = { program = "{0}" }
+args = { program = "{0}", skipFiles = [ "<node_internals>/**" ] }
 
 [[grammar]]
 name = "javascript"
@@ -844,7 +845,7 @@ scope = "source.jsx"
 injection-regex = "jsx"
 language-id = "javascriptreact"
 file-types = ["jsx"]
-roots = [ "package.json" ]
+roots = [ "package.json", "jsconfig.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "typescript-language-server" ]
@@ -1423,6 +1424,7 @@ file-types = [
   { glob = ".clangd" },
   { glob = ".clang-format" },
   { glob = ".clang-tidy" },
+  { glob = ".gem/credentials" },
   "sublime-syntax"
 ]
 comment-token = "#"
@@ -1857,13 +1859,14 @@ name = "git-commit"
 scope = "git.commitmsg"
 file-types = [{ glob = "COMMIT_EDITMSG" }, { glob = "MERGE_MSG" }]
 comment-token = "#"
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "    " }
 rulers = [51, 73]
 text-width = 72
+grammar = "gitcommit"
 
 [[grammar]]
-name = "git-commit"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "6f193a66e9aa872760823dff020960c6cedc37b3" }
+name = "gitcommit"
+source = { git = "https://github.com/gbprod/tree-sitter-gitcommit", rev = "a716678c0f00645fed1e6f1d0eb221481dbd6f6d" }
 
 [[language]]
 name = "diff"
@@ -2960,6 +2963,7 @@ file-types = [
   "service",
   "automount",
   "desktop",
+  { glob = "mimeapps.list" },
   "device",
   "mount",
   "nspawn",
@@ -4432,3 +4436,17 @@ language-servers = [ "luau" ]
 [[grammar]]
 name = "luau"
 source = { git = "https://github.com/polychromatist/tree-sitter-luau", rev = "ec187cafba510cddac265329ca7831ec6f3b9955" }
+
+[[language]]
+name = "caddyfile"
+scope = "source.caddyfile"
+injection-regex = "caddyfile"
+file-types = [{ glob = "Caddyfile" }]
+comment-tokens = ["#"]
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = "caddy", args = ["fmt", "-"] }
+auto-format = true
+
+[[grammar]]
+name = "caddyfile"
+source = { git = "https://github.com/caddyserver/tree-sitter-caddyfile", rev = "b04bdb4ec53e40c44afbf001e15540f60a296aef" }
