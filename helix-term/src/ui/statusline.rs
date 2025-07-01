@@ -462,6 +462,7 @@ where
             helix_view::document::DocumentType::Refactor {
                 matches: _,
                 line_map: _,
+                lines: _,
             } => REFACTOR_BUFFER_NAME.into(),
         }
     };

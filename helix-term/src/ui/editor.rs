@@ -594,6 +594,7 @@ impl EditorView {
                 helix_view::document::DocumentType::Refactor {
                     matches: _,
                     line_map: _,
+                    lines: _,
                 } => helix_view::document::REFACTOR_BUFFER_NAME,
             };
 

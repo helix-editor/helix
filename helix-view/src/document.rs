@@ -144,8 +144,12 @@ pub enum DocumentOpenError {
 pub enum DocumentType {
     File,
     Refactor {
+        // Filepath: list of (line_num, text)
         matches: HashMap<PathBuf, Vec<(usize, String)>>,
+        // (Filepath, line_num): line_num (in buffer)
         line_map: HashMap<(PathBuf, usize), usize>,
+        // List of (line_num, Filepath) in buffer order
+        lines: Vec<(PathBuf, usize)>,
     },
 }
 
@@ -748,6 +752,7 @@ impl Document {
         text: Rope,
         matches: HashMap<PathBuf, Vec<(usize, String)>>,
         line_map: HashMap<(PathBuf, usize), usize>,
+        lines: Vec<(PathBuf, usize)>,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
@@ -794,7 +799,11 @@ impl Document {
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
             syn_loader,
-            document_type: DocumentType::Refactor { matches, line_map },
+            document_type: DocumentType::Refactor {
+                matches,
+                line_map,
+                lines,
+            },
         }
     }
 
@@ -1813,6 +1822,7 @@ impl Document {
             DocumentType::Refactor {
                 matches: _,
                 line_map: _,
+                lines: _,
             } => false,
         }
     }

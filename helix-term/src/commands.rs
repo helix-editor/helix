@@ -2677,12 +2677,14 @@ fn global_search(cx: &mut Context) {
         }
 
         let mut matches: HashMap<PathBuf, Vec<(usize, String)>> = HashMap::new();
+        let mut lines: Vec<(PathBuf, usize)> = vec![];
 
         for result in results {
             let path = result.path.clone();
             let line = result.line_num;
             let text = result.line_content.clone();
 
+            lines.push((path.clone(), line));
             matches.entry(path).or_default().push((line, text));
         }
 
@@ -2703,6 +2705,7 @@ fn global_search(cx: &mut Context) {
             doc_text,
             matches,
             line_map,
+            lines,
             // TODO: actually learn how to detect encoding
             None,
             cx.editor.config.clone(),
@@ -2725,7 +2728,9 @@ fn global_refactor(cx: &mut Context) {
 
     match &document_type {
         helix_view::document::DocumentType::File => return,
-        helix_view::document::DocumentType::Refactor { matches, line_map } => {
+        helix_view::document::DocumentType::Refactor {
+            matches, line_map, ..
+        } => {
             let line_ending: LineEnding = cx.editor.config.load().default_line_ending.into();
             let refactor_id = doc!(cx.editor).id();
             let replace_text = doc!(cx.editor).text().clone();
@@ -3276,7 +3281,8 @@ fn buffer_picker(cx: &mut Context) {
             &doc.document_type,
             helix_view::document::DocumentType::Refactor {
                 matches: _,
-                line_map: _
+                line_map: _,
+                lines: _,
             }
         ),
     };
