@@ -184,6 +184,7 @@
 | powershell | ✓ |  |  |  |
 | prisma | ✓ | ✓ |  | `prisma-language-server` |
 | prolog | ✓ |  | ✓ | `swipl` |
+| properties | ✓ | ✓ |  |  |
 | protobuf | ✓ | ✓ | ✓ | `buf`, `pb`, `protols` |
 | prql | ✓ |  |  |  |
 | pug | ✓ |  |  |  |
