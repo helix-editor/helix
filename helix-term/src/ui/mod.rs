@@ -738,4 +738,17 @@ pub mod completers {
 
         completions
     }
+
+    pub fn splits(editor: &Editor, input: &str) -> Vec<Completion> {
+        let iter = editor
+            .split_info
+            .keys()
+            .filter(|k| !k.is_empty())
+            .map(|k| k.to_string());
+
+        fuzzy_match(input, iter, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), name.into()))
+            .collect()
+    }
 }
