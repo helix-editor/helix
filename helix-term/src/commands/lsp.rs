@@ -807,7 +807,9 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).with_scrollbar(false);
+            let popup = Popup::new("code-action", picker)
+                .with_scrollbar(false)
+                .auto_close(true);
 
             compositor.replace_or_push("code-action", popup);
         };
