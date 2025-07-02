@@ -7210,6 +7210,10 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     // Calculate the jump candidates: ranges for any visible words with two or
     // more characters.
     let alphabet = &cx.editor.config().jump_label_alphabet;
+    if alphabet.is_empty() {
+        return;
+    }
+
     let jump_label_limit = alphabet.len() * alphabet.len();
     let mut words = Vec::with_capacity(jump_label_limit);
     let (view, doc) = current_ref!(cx.editor);
