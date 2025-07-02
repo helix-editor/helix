@@ -76,7 +76,7 @@ impl Args {
                     Some(path) => args.log_file = Some(path.into()),
                     None => anyhow::bail!("--log must specify a path to write"),
                 },
-                "-x" | "--execute" => {
+                "-e" | "--execute" => {
                     if let Some(command) = argv.next().as_deref() {
                         args.execute = helix_view::input::parse_macro(command)?;
                     } else {

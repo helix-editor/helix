@@ -18,7 +18,7 @@ _hx() {
 		"--hsplit[Splits all given files horizontally]" \
 		"-c[Specifies a file to use for configuration]" \
 		"--config[Specifies a file to use for configuration]" \
-		"-x[Executes the given command on startup]" \
+		"-e[Executes the given command on startup]" \
 		"--execute[Executes the given command on startup]" \
 		"-w[Specify initial working directory]" \
 		"--working-dir[Specify initial working directory]" \

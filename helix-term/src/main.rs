@@ -76,7 +76,7 @@ FLAGS:
     --hsplit                       Splits all given files horizontally into different windows
     -w, --working-dir <path>       Specify an initial working directory
     +N                             Open the first given file at line number N
-    -x, --execute <command>        Executes the given command on startup
+    -e, --execute <command>        Executes the given command on startup
 ",
             env!("CARGO_PKG_NAME"),
             VERSION_AND_GIT_HASH,

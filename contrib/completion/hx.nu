@@ -24,7 +24,7 @@ export extern hx [
     --version(-V),                              # Prints version information
     --vsplit,                                   # Splits all given files vertically into different windows
     --hsplit,                                   # Splits all given files horizontally into different windows
-    --execute(-x),                              # Executes the given command on startup
+    --execute(-e),                              # Executes the given command on startup
     --working-dir(-w): glob,                    # Specify an initial working directory
     ...files: glob,                             # Sets the input file to use, position can also be specified via file[:row[:col]]
 ]
