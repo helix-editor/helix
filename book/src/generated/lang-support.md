@@ -78,6 +78,7 @@
 | git-commit | ✓ | ✓ |  |  |
 | git-config | ✓ | ✓ |  |  |
 | git-ignore | ✓ |  |  |  |
+| git-notes | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
 | gjs | ✓ | ✓ | ✓ | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | gleam | ✓ | ✓ |  | `gleam` |
