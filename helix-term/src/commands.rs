@@ -2552,7 +2552,7 @@ fn global_search(cx: &mut Context) {
                 .git_exclude(config.file_picker_config.git_exclude)
                 .max_depth(config.file_picker_config.max_depth)
                 .filter_entry(move |entry| {
-                    filter_picker_entry(entry, &absolute_root, dedup_symlinks)
+                    filter_picker_entry(entry, &absolute_root, dedup_symlinks, false)
                 })
                 .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
                 .add_custom_ignore_filename(".helix/ignore")
