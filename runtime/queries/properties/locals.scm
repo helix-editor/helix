@@ -1,5 +1,5 @@
 (property
-  (key) @local.definition)
+  (key) @local.definition.attribute)
 
 (substitution
   (key) @local.reference)
