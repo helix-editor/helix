@@ -91,6 +91,8 @@ serde = { version = "1.0", features = ["derive"] }
 grep-regex = "0.1.13"
 grep-searcher = "0.1.14"
 
+dashmap = "6.0"
+
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 libc = "0.2.174"

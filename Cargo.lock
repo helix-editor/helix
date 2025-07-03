@@ -1547,6 +1547,7 @@ dependencies = [
  "chrono",
  "content_inspector",
  "crossterm",
+ "dashmap",
  "fern",
  "futures-util",
  "grep-regex",

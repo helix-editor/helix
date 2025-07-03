@@ -28,3 +28,4 @@
   - [Adding textobject queries](./guides/textobject.md)
   - [Adding indent queries](./guides/indent.md)
   - [Adding injection queries](./guides/injection.md)
+  - [Adding tags queries](./guides/tags.md)

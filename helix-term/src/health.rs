@@ -12,11 +12,17 @@ pub enum TsFeature {
     Highlight,
     TextObject,
     AutoIndent,
+    Tags,
 }
 
 impl TsFeature {
     pub fn all() -> &'static [Self] {
-        &[Self::Highlight, Self::TextObject, Self::AutoIndent]
+        &[
+            Self::Highlight,
+            Self::TextObject,
+            Self::AutoIndent,
+            Self::Tags,
+        ]
     }
 
     pub fn runtime_filename(&self) -> &'static str {
@@ -24,6 +30,7 @@ impl TsFeature {
             Self::Highlight => "highlights.scm",
             Self::TextObject => "textobjects.scm",
             Self::AutoIndent => "indents.scm",
+            Self::Tags => "tags.scm",
         }
     }
 
@@ -32,6 +39,7 @@ impl TsFeature {
             Self::Highlight => "Syntax Highlighting",
             Self::TextObject => "Treesitter Textobjects",
             Self::AutoIndent => "Auto Indent",
+            Self::Tags => "Code Navigation Tags",
         }
     }
 
@@ -40,6 +48,7 @@ impl TsFeature {
             Self::Highlight => "Highlight",
             Self::TextObject => "Textobject",
             Self::AutoIndent => "Indent",
+            Self::Tags => "Tags",
         }
     }
 }
