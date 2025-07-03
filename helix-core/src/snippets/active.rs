@@ -64,7 +64,7 @@ impl ActiveSnippet {
         let positions_to_map = self.ranges.iter_mut().flat_map(|range| {
             [
                 (&mut range.start, Assoc::After),
-                (&mut range.end, Assoc::Before),
+                (&mut range.end, Assoc::After),
             ]
         });
         changes.update_positions(positions_to_map);
@@ -72,14 +72,9 @@ impl ActiveSnippet {
         for (i, tabstop) in self.tabstops.iter_mut().enumerate() {
             if self.active_tabstops.contains(&TabstopIdx(i)) {
                 let positions_to_map = tabstop.ranges.iter_mut().flat_map(|range| {
-                    let end_assoc = if range.start == range.end {
-                        Assoc::Before
-                    } else {
-                        Assoc::After
-                    };
                     [
-                        (&mut range.start, Assoc::Before),
-                        (&mut range.end, end_assoc),
+                        (&mut range.start, Assoc::After),
+                        (&mut range.end, Assoc::After),
                     ]
                 });
                 changes.update_positions(positions_to_map);
@@ -110,11 +105,12 @@ impl ActiveSnippet {
                 tabstop_i += 1;
                 let retain = snippet_range.start <= snippet_range.end;
                 if retain {
-                    range.start = range.start.max(snippet_range.start);
-                    range.end = range.end.max(range.start).min(snippet_range.end);
                     // guaranteed by assoc
                     debug_assert!(prev.start <= range.start);
-                    debug_assert!(range.start <= range.end);
+                    debug_assert!(
+                        range.start <= range.end,
+                        "Changes: {changes:?} | Range: {range:?} | Tabstop_i: {tabstop_i:?} | Snippet_range: {snippet_range:?} | Prev: {prev:?}"
+                    );
                     if prev.end > range.start {
                         // not really sure what to do in this case. It shouldn't
                         // really occur in practice, the below just ensures
@@ -156,13 +152,15 @@ impl ActiveSnippet {
         }
         None
     }
-    // computes the primary idx adjusted for the number of cursors in the current tabstop
+    /// Computes the primary index adjusted for the number of cursors in the current tabstop.
+    /// We allow for the selection range to 1 over the end to avoid issues with tabstops
+    /// at the very end of snippets.
     fn primary_idx(&self, current_selection: &Selection) -> usize {
         let primary: Range = current_selection.primary().into();
         let res = self
             .ranges
             .iter()
-            .position(|&range| range.contains(primary));
+            .position(|&range| range.start <= primary.start && primary.end <= range.end + 1);
         res.unwrap_or_else(|| {
             unreachable!(
                 "active snippet must be valid {current_selection:?} {:?}",
@@ -172,8 +170,8 @@ impl ActiveSnippet {
     }
 
     fn activate_tabstop(&mut self) -> bool {
-        let tabstop = &self[self.current_tabstop];
-        if tabstop.has_placeholder() && tabstop.ranges.iter().all(|range| range.is_empty()) {
+        // We can activate a tabstop if are not at the final one
+        if self.current_tabstop.0 == self.tabstops.len() - 1 {
             return false;
         }
         self.active_tabstops.clear();
