@@ -8,9 +8,8 @@
 (ui_binding
   name: (identifier) @parameter.inside) @parameter.around
 
-; FIXME: `mia`/@parameter.inside only selects the (type_identifier)
 (ui_property
-  ((type_identifier) (identifier)) @parameter.inside) @parameter.around
+  (_)+ @parameter.inside ":") @parameter.around
 
 (function_declaration
   body: (_) @function.inside) @function.around
