@@ -278,6 +278,9 @@ pub struct Config {
     /// either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved).
     /// Defaults to true.
     pub path_completion: bool,
+    /// Configures completion of words from open buffers.
+    /// Defaults to enabled with a trigger length of 7.
+    pub word_completion: WordCompletion,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Default register used for yank/paste. Defaults to '"'
@@ -970,6 +973,22 @@ pub enum PopupBorderConfig {
     Menu,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct WordCompletion {
+    pub enable: bool,
+    pub trigger_length: NonZeroU8,
+}
+
+impl Default for WordCompletion {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            trigger_length: NonZeroU8::new(7).unwrap(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -989,6 +1008,7 @@ impl Default for Config {
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             path_completion: true,
+            word_completion: WordCompletion::default(),
             auto_format: true,
             default_yank_register: '"',
             auto_save: AutoSave::default(),

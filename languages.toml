@@ -1751,6 +1751,7 @@ roots = [".marksman.toml"]
 language-servers = [ "marksman", "markdown-oxide" ]
 indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "<!--", end = "-->" }
+word-completion.trigger-length = 4
 
 [[grammar]]
 name = "markdown"
