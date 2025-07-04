@@ -84,7 +84,7 @@
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
 | `:redraw` | Clear and re-render the whole UI |
-| `:move`, `:mv` | Move the current buffer and its corresponding file to a different path |
+| `:move`, `:mv` | Move files, updating any affected open buffers. A single argument moves the current buffer's file, multiple arguments move multiple source files to a target (same as the Unix `mv` command) |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |

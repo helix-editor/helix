@@ -1410,7 +1410,7 @@ impl Editor {
     }
 
     /// moves/renames a path, invoking any event handlers (currently only lsp)
-    /// and calling `set_doc_path` if the file is open in the editor
+    /// and calling `set_doc_path` for all affected files open in the editor
     pub fn move_path(&mut self, old_path: &Path, new_path: &Path) -> io::Result<()> {
         let new_path = canonicalize(new_path);
         // sanity check
@@ -1439,13 +1439,34 @@ impl Editor {
                 log::error!("failed to apply workspace edit: {err:?}")
             }
         }
-
         if old_path.exists() {
             fs::rename(old_path, &new_path)?;
         }
-
-        if let Some(doc) = self.document_by_path(old_path) {
-            self.set_doc_path(doc.id(), &new_path);
+        let mut to_update: Vec<_> = self
+            .documents
+            .iter()
+            .filter_map(|(id, doc)| {
+                let old_doc_path = doc.path()?;
+                let relative = old_doc_path.strip_prefix(old_path).ok()?;
+                let new_doc_path = new_path.join(relative);
+                Some((old_doc_path.to_owned(), new_doc_path, Some(*id)))
+            })
+            .collect();
+        // If old_path doesn't have an attached document, we haven't included it above.
+        // We can still tell the language servers that it changed.
+        if self.document_by_path(old_path).is_none() {
+            to_update.push((old_path.to_owned(), new_path.clone(), None));
+        }
+        for (old_doc_path, new_doc_path, id) in to_update {
+            if let Some(id) = id {
+                self.set_doc_path(id, &new_doc_path);
+            }
+            self.language_servers
+                .file_event_handler
+                .file_changed(old_doc_path);
+            self.language_servers
+                .file_event_handler
+                .file_changed(new_doc_path);
         }
         let is_dir = new_path.is_dir();
         for ls in self.language_servers.iter_clients() {
@@ -1456,12 +1477,6 @@ impl Editor {
             }
             ls.did_rename(old_path, &new_path, is_dir);
         }
-        self.language_servers
-            .file_event_handler
-            .file_changed(old_path.to_owned());
-        self.language_servers
-            .file_event_handler
-            .file_changed(new_path);
         Ok(())
     }
 
