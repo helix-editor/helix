@@ -21,6 +21,7 @@ pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
 use helix_view::theme::Style;
+use ignore::{types::TypesBuilder, WalkBuilder};
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{Column as PickerColumn, FileLocation, Picker};
@@ -185,28 +186,11 @@ pub fn raw_regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-#[derive(Debug)]
-pub struct FilePickerData {
-    root: PathBuf,
-    directory_style: Style,
-}
-type FilePicker = Picker<PathBuf, FilePickerData>;
-
-pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
-    use ignore::{types::TypesBuilder, WalkBuilder};
-    use std::time::Instant;
-
+fn get_walk_builder(root: &Path, editor: &Editor) -> WalkBuilder {
     let config = editor.config();
-    let data = FilePickerData {
-        root: root.clone(),
-        directory_style: editor.theme.get("ui.text.directory"),
-    };
-
-    let now = Instant::now();
-
     let dedup_symlinks = config.file_picker.deduplicate_links;
-    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
 
+    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     let mut walk_builder = WalkBuilder::new(&root);
     walk_builder
         .hidden(config.file_picker.hidden)
@@ -219,7 +203,6 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
-
     walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
     walk_builder.add_custom_ignore_filename(".helix/ignore");
 
@@ -236,6 +219,32 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .build()
         .expect("failed to build excluded_types");
     walk_builder.types(excluded_types);
+    walk_builder
+}
+
+#[derive(Debug)]
+pub struct FilePickerData {
+    root: PathBuf,
+    directory_style: Style,
+}
+type FilePicker = Picker<PathBuf, FilePickerData>;
+
+pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
+    use std::time::Instant;
+
+    let config = editor.config();
+    let data = FilePickerData {
+        root: root.clone(),
+        directory_style: editor.theme.get("ui.text.directory"),
+    };
+
+    let now = Instant::now();
+
+    let dedup_symlinks = config.file_picker.deduplicate_links;
+    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
+
+    let mut walk_builder = get_walk_builder(root.as_path(), &editor);
+
     let mut files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
         if !entry.file_type()?.is_file() {
@@ -304,7 +313,7 @@ type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
-    let directory_content = directory_content(&root)?;
+    let directory_content = directory_content(root.as_path(), &editor)?;
 
     let columns = [PickerColumn::new(
         "path",
@@ -350,14 +359,23 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     Ok(picker)
 }
 
-fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
-    let mut content: Vec<_> = std::fs::read_dir(path)?
-        .flatten()
-        .map(|entry| {
-            (
-                entry.path(),
-                entry.file_type().is_ok_and(|file_type| file_type.is_dir()),
-            )
+fn directory_content(path: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+    let mut walk_builder = get_walk_builder(&path, &editor);
+    let mut content: Vec<(PathBuf, bool)> = walk_builder
+        .max_depth(Some(1))
+        .build()
+        .filter_map(|entry| {
+            entry
+                .map(|entry| {
+                    (
+                        entry.path().to_path_buf(),
+                        entry
+                            .file_type()
+                            .is_some_and(|file_type| file_type.is_dir()),
+                    )
+                })
+                .ok()
+                .filter(|entry| entry.0 != path)
         })
         .collect();
 
