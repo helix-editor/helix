@@ -54,7 +54,6 @@
 
  [
    (operator)
-   (constructor_operator)
    (type_operator)
    (qualified_module)  ; grabs the `.` (dot), ex: import System.IO
    (all_names)

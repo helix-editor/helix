@@ -131,8 +131,8 @@
   "try"
   "except"
   "finally"
-] @keyword.control.except
-(raise_statement "from" @keyword.control.except)
+] @keyword.control.exception
+(raise_statement "from" @keyword.control.exception)
 
 ; Functions
 [
