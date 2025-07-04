@@ -191,7 +191,7 @@ fn get_walk_builder(root: &Path, editor: &Editor) -> WalkBuilder {
     let dedup_symlinks = config.file_picker.deduplicate_links;
 
     let absolute_root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    let mut walk_builder = WalkBuilder::new(&root);
+    let mut walk_builder = WalkBuilder::new(root);
     walk_builder
         .hidden(config.file_picker.hidden)
         .parents(config.file_picker.parents)
@@ -240,10 +240,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 
     let now = Instant::now();
 
-    let dedup_symlinks = config.file_picker.deduplicate_links;
-    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
-
-    let mut walk_builder = get_walk_builder(root.as_path(), &editor);
+    let walk_builder = get_walk_builder(root.as_path(), editor);
 
     let mut files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
@@ -313,7 +310,7 @@ type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
-    let directory_content = directory_content(root.as_path(), &editor)?;
+    let directory_content = directory_content(root.as_path(), editor)?;
 
     let columns = [PickerColumn::new(
         "path",
@@ -360,7 +357,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
 }
 
 fn directory_content(path: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
-    let mut walk_builder = get_walk_builder(&path, &editor);
+    let mut walk_builder = get_walk_builder(&path, editor);
     let mut content: Vec<(PathBuf, bool)> = walk_builder
         .max_depth(Some(1))
         .build()
