@@ -232,7 +232,6 @@ type FilePicker = Picker<PathBuf, FilePickerData>;
 pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     use std::time::Instant;
 
-    let config = editor.config();
     let data = FilePickerData {
         root: root.clone(),
         directory_style: editor.theme.get("ui.text.directory"),
@@ -357,7 +356,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
 }
 
 fn directory_content(path: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
-    let mut walk_builder = get_walk_builder(&path, editor);
+    let mut walk_builder = get_walk_builder(path, editor);
     let mut content: Vec<(PathBuf, bool)> = walk_builder
         .max_depth(Some(1))
         .build()
