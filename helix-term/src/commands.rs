@@ -5,6 +5,7 @@ pub(crate) mod typed;
 pub use dap::*;
 use futures_util::FutureExt;
 use helix_event::status;
+use helix_parsec::{seq, take_until, Parser};
 use helix_stdx::{
     path::{self, find_paths},
     rope::{self, RopeSliceExt},
@@ -47,6 +48,7 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
+    register::RegisterValues,
     theme::Style,
     tree,
     view::View,
@@ -74,6 +76,7 @@ use std::{
     future::Future,
     io::Read,
     num::NonZeroUsize,
+    str::FromStr,
 };
 
 use std::{
@@ -6633,6 +6636,10 @@ fn goto_word(cx: &mut Context) {
 
 fn extend_to_word(cx: &mut Context) {
     jump_to_word(cx, Movement::Extend)
+}
+
+fn read_from_register(editor: &mut Editor, reg: char) -> Option<RegisterValues> {
+    editor.registers.read(reg, &*editor)
 }
 
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {

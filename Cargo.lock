@@ -1556,6 +1556,7 @@ dependencies = [
  "helix-event",
  "helix-loader",
  "helix-lsp",
+ "helix-parsec",
  "helix-stdx",
  "helix-tui",
  "helix-vcs",
