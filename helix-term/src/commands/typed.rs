@@ -2231,6 +2231,16 @@ fn open_config(
         .open(&helix_loader::config_file(), Action::Replace)?;
     Ok(())
 }
+fn open_language(cx: &mut compositor::Context,
+_args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    // what does promt event do
+    // what does open do and how do i open the language file
+    if event != PromptEvent::Validate {
+        return Ok(())
+    }   
+    cx.editor.open(&helix_loader::lang_config_file(), Action::Replace)?;
+    Ok(())
+}
 
 fn open_workspace_config(
     cx: &mut compositor::Context,
@@ -3414,6 +3424,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
+    },
+    TypableCommand {
+        name: "language-open",
+        aliases: &["lo"],
+        doc: "Open the user language.toml file.",
+        fun: open_language,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        }  
     },
     TypableCommand {
         name: "config-open-workspace",
