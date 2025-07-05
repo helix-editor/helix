@@ -1869,6 +1869,16 @@ name = "gitcommit"
 source = { git = "https://github.com/gbprod/tree-sitter-gitcommit", rev = "a716678c0f00645fed1e6f1d0eb221481dbd6f6d" }
 
 [[language]]
+name = "git-notes"
+scope = "git.notesmsg"
+file-types = [{ glob = "NOTES_EDITMSG" }]
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+rulers = [73]
+text-width = 72
+grammar = "gitcommit"
+
+[[language]]
 name = "diff"
 scope = "source.diff"
 file-types = ["diff", "patch", "rej"]
