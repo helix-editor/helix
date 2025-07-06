@@ -1199,6 +1199,13 @@ impl Document {
         };
     }
 
+    /// Path given and externally modified since `last_saved_time`?
+    pub fn externally_overwritten(&self) -> bool {
+        self.path()
+            .and_then(|p| p.metadata().ok().and_then(|m| m.modified().ok()))
+            .is_some_and(|mtime| mtime > self.last_saved_time)
+    }
+
     // Detect if the file is readonly and change the readonly field if necessary (unix only)
     pub fn detect_readonly(&mut self) {
         // Allows setting the flag for files the user cannot modify, like root files
