@@ -98,18 +98,26 @@ fn setup_integration_logging() {
 async fn start_unix_socket_listener(tx: mpsc::Sender<String>) {
     use std::path::Path;
 
-    let path = "/tmp/helix.sock";
-    if Path::new(path).exists() {
-        let _ = std::fs::remove_file(path);
+    let path = match std::env::var("HELIX_SOCKET_PATH") {
+        Ok(path) => path,
+        Err(_) => "/tmp/helix".to_string()
+    };
+    if Path::new(&path).exists() {
+        let _ = std::fs::remove_file(&path);
     }
 
-    let listener = match UnixListener::bind(path) {
+    let listener = match UnixListener::bind(&path) {
         Ok(l) => l,
         Err(e) => {
             eprintln!("Failed to bind Unix socket: {}", e);
             return;
         }
     };
+
+    std::fs::set_permissions(
+        &path,
+        <std::fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o600)
+    ).expect("Failed to initialize socket");
 
     loop {
         match listener.accept().await {
