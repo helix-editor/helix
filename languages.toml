@@ -2922,6 +2922,7 @@ scope = "source.dtd"
 injection-regex = "dtd"
 file-types = ["dtd", "ent"]
 indent = {tab-width = 2, unit = "  "}
+block-comment-tokens = { start = "<!--", end = "-->" }
 
 [language.auto-pairs]
 '(' = ')'
