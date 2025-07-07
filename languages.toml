@@ -35,6 +35,7 @@ dhall-lsp-server = { command = "dhall-lsp-server" }
 docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
 docker-compose-langserver = { command = "docker-compose-langserver", args = ["--stdio"]}
 dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
+dts-lsp = { command = "dts-lsp" }
 earthlyls = { command = "earthlyls" }
 elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
 elm-language-server = { command = "elm-language-server" }
@@ -110,6 +111,7 @@ ruby-lsp = { command = "ruby-lsp" }
 serve-d = { command = "serve-d" }
 slangd = { command = "slangd" }
 slint-lsp = { command = "slint-lsp", args = [] }
+systemd-lsp = { command = "systemd-lsp" }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
@@ -2319,6 +2321,7 @@ file-types = ["dts", "dtsi"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
+language-servers = [ "dts-lsp" ]
 
 [[grammar]]
 name = "devicetree"
@@ -2966,15 +2969,12 @@ indent = { tab-width = 4, unit = "\t" }
 grammar = "bash"
 
 [[language]]
-name = "ini"
+name = "systemd"
 scope = "source.ini"
 file-types = [
-  "ini",
   # Systemd unit files
   "service",
   "automount",
-  "desktop",
-  { glob = "mimeapps.list" },
   "device",
   "mount",
   "nspawn",
@@ -2986,6 +2986,19 @@ file-types = [
   "target",
   "timer",
   { glob = "systemd/**/*.conf" },
+]
+injection-regex = "systemd"
+comment-token = "#"
+grammar = "ini"
+language-servers = ["systemd-lsp"]
+
+[[language]]
+name = "ini"
+scope = "source.ini"
+file-types = [
+  "ini",
+  "desktop",
+  { glob = "mimeapps.list" },
   # Podman quadlets
   "container",
   "volume",
