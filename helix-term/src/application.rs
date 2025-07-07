@@ -96,28 +96,47 @@ fn setup_integration_logging() {
 
 #[cfg(unix)]
 async fn start_unix_socket_listener(tx: mpsc::Sender<String>) {
-    use std::path::Path;
+    use std::fs::{create_dir, set_permissions, Permissions};
+    use std::os::unix::fs::PermissionsExt;
 
-    let path = match std::env::var("HELIX_SOCKET_PATH") {
-        Ok(path) => path,
-        Err(_) => "/tmp/helix".to_string()
+    let path = if let Ok(path) = std::env::var("HELIX_SOCKET_PATH") {
+        let path = path
+            .parse::<std::path::PathBuf>().unwrap();
+        // Check if parent folder exists
+        if !path.parent().map(|parent| parent.exists()).unwrap_or(true) {
+            eprintln!("Folder for socket {} does not exists!", path.parent().unwrap().display())
+        }
+        path
+    } else {
+        let path = std::env::var("XDG_RUNTIME_DIR")
+                .unwrap_or("/tmp".to_string())
+                .parse::<std::path::PathBuf>()
+                .unwrap()
+                .join("helix")
+                .join("helix.sock");
+        
+        // We unwrap, as any of variants will have parent folder
+        let parent_folder = path.parent().unwrap();
+        if !parent_folder.exists() {
+            if let Err(e) = create_dir(parent_folder.to_path_buf()) {
+                eprintln!("Failed to create socket directory: {}", e);
+                return
+            }
+        }
+        path
     };
-    if Path::new(&path).exists() {
-        let _ = std::fs::remove_file(&path);
-    }
 
     let listener = match UnixListener::bind(&path) {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("Failed to bind Unix socket: {}", e);
-            return;
+            eprintln!("Failed to bind listener to socket: {}", e);
+            return
         }
     };
 
-    std::fs::set_permissions(
-        &path,
-        <std::fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o600)
-    ).expect("Failed to initialize socket");
+    if let Err(e) = set_permissions(&path, Permissions::from_mode(0o600)) {
+        eprintln!("Failed to set permissions for file: {e}")
+    }
 
     loop {
         match listener.accept().await {
@@ -731,16 +750,37 @@ impl Application {
             return;
         }
 
-        let mut cx = crate::commands::Context {
-            editor: &mut self.editor,
-            count: None,
-            register: None,
-            callback: Vec::new(),
-            on_next_key_callback: None,
-            jobs: &mut self.jobs
-        };
-
         if let Ok(command) = command {
+            // command.execute(&mut cx);
+            if let MappableCommand::Typable {name, ..} = &command {
+                if [
+                    "run-shell-command", 
+                    "write", 
+                    "write!", 
+                    "write-buffet-close", 
+                    "write-buffer-close!", 
+                    "write-quit", 
+                    "write-quit!", 
+                    "write-all", 
+                    "write-all!", 
+                    "write-quit-all", 
+                    "write-quit-all!"
+                    ].contains(&name.as_str()) {
+                        let severity = Severity::Error;
+                        let err_string = Cow::from(format!("Running command {name} is forbidden from socket"));
+                        self.editor.status_msg = Some((err_string, severity));
+                        helix_event::request_redraw();
+                        return;
+                    }
+            }
+            let mut cx = crate::commands::Context {
+                editor: &mut self.editor,
+                count: None,
+                register: None,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs: &mut self.jobs
+            };
             command.execute(&mut cx);
         }
     }
