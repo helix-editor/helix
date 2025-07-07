@@ -98,7 +98,7 @@ impl helix_event::AsyncHook for PullDiagnosticsHandler {
         _timeout: Option<tokio::time::Instant>,
     ) -> Option<tokio::time::Instant> {
         self.document_ids.insert(event.document_id);
-        Some(Instant::now() + Duration::from_millis(125))
+        Some(Instant::now() + Duration::from_millis(250))
     }
 
     fn finish_debounce(&mut self) {
@@ -140,7 +140,7 @@ impl helix_event::AsyncHook for PullAllDocumentsDiagnosticHandler {
         _event: Self::Event,
         _timeout: Option<tokio::time::Instant>,
     ) -> Option<tokio::time::Instant> {
-        Some(Instant::now() + Duration::from_millis(500))
+        Some(Instant::now() + Duration::from_secs(1))
     }
 
     fn finish_debounce(&mut self) {
