@@ -1,17 +1,17 @@
 # SYNTAX
 "attribute" = "#7b79b5"
-"comment" = "#5C588A"
+"comment" = { fg = "#5C588A", modifiers = ["italic"] }
 "constant" = "#e591ff"
 "constant.builtin" = "#AC70FC"
 "constant.character" = "#71E4FE"
 "contant.character.escape" = "#71E4FE"
 "constant.numeric" = "#DA65BA"
-"constructor" = "#e591ff"
+"constructor" = { fg = "#e591ff", modifiers = ["italic"] }
 "diff.delta" = "#F1C56C"
 "diff.minus" = "#FF6E9C"
 "diff.plus" = "#45F5CF"
 "function" = "#D8608C"
-"function.builtin" = "#D8608C"
+"function.builtin" = { fg = "#D8608C", modifiers = ["italic"] }
 "function.macro" = "#AC70FC"
 "keyword" = "#AC70FC"
 "keyword.control" = "#A68AE1"
@@ -26,9 +26,9 @@
 "string.regexp" = "#71E4FE"
 "tag" = "#7EA7F3"
 "special" = "#7EA7FF"
-"type" = "#e591ff"
-"type.builtin" = "#e591ff"
-"type.enum.variant" = "#e591ff"
+"type" = { fg = "#e591ff", modifiers = ["italic"] }
+"type.builtin" = { fg = "#e591ff", modifiers = ["italic"] }
+"type.enum.variant" = { fg = "#e591ff", modifiers = ["italic"] }
 "variable" = "#C9CBDB"
 "variable.builtin" = "#e591ff"
 "variable.other.member" = "#C9CBDB"
@@ -61,6 +61,7 @@
 "ui.text.focus" = { fg = "#ffffff" }
 "ui.text.directory" = { fg = "#AC70FC" }
 "ui.text.inactive" = { fg = "#7EA7F3" }
+"ui.virtual.whitespace" = { fg = "#5C588A" }
 "ui.virtual.indent-guide" = { bg = "#24215E" }
 "ui.debug.active" = { fg = "#A68AE1" }
 "ui.debug.breakpoint" = { fg = "white" }
