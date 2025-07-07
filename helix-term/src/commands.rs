@@ -3726,11 +3726,13 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             .map(|token| token.len() + 1) // `+ 1` for the extra space added
             .unwrap_or_default();
         for i in 0..count {
-            // pos                    -> beginning of reference line,
-            // + (i * (1+indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
+            // pos                     -> beginning of reference line,
+            // + (i * (line_ending_len + indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
             // + indent_len + comment_len ->        -> indent for i'th line
             ranges.push(Range::point(
-                pos + (i * (1 + indent_len + comment_len)) + indent_len + comment_len,
+                pos + (i * (doc.line_ending.len_chars() + indent_len + comment_len))
+                    + indent_len
+                    + comment_len,
             ));
         }
 
