@@ -369,7 +369,8 @@ impl<'t> DocumentFormatter<'t> {
         loop {
             let mut col = self.visual_pos.col + word_width;
             let char_pos = self.char_pos + word_chars;
-            match col.cmp(&(self.text_fmt.viewport_width as usize)) {
+            let viewport_width = self.text_fmt.viewport_width as usize;
+            match col.cmp(&viewport_width) {
                 // The EOF char and newline chars are always selectable in helix. That means
                 // that wrapping happens "too-early" if a word fits a line perfectly. This
                 // is intentional so that all selectable graphemes are always visible (and
@@ -415,6 +416,14 @@ impl<'t> DocumentFormatter<'t> {
             self.word_buf.push(grapheme);
 
             if is_word_boundary {
+                if word_width > viewport_width {
+                    self.peeked_grapheme = self.word_buf.pop();
+                    return;
+                }
+                if word_width + self.visual_pos.col > viewport_width {
+                    self.wrap_word();
+                    return;
+                }
                 return;
             }
         }
