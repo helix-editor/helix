@@ -110,6 +110,7 @@ ruby-lsp = { command = "ruby-lsp" }
 serve-d = { command = "serve-d" }
 slangd = { command = "slangd" }
 slint-lsp = { command = "slint-lsp", args = [] }
+systemd-lsp = { command = "systemd-lsp" }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
@@ -2966,15 +2967,12 @@ indent = { tab-width = 4, unit = "\t" }
 grammar = "bash"
 
 [[language]]
-name = "ini"
+name = "systemd"
 scope = "source.ini"
 file-types = [
-  "ini",
   # Systemd unit files
   "service",
   "automount",
-  "desktop",
-  { glob = "mimeapps.list" },
   "device",
   "mount",
   "nspawn",
@@ -2986,6 +2984,19 @@ file-types = [
   "target",
   "timer",
   { glob = "systemd/**/*.conf" },
+]
+injection-regex = "systemd"
+comment-token = "#"
+grammar = "ini"
+language-servers = ["systemd-lsp"]
+
+[[language]]
+name = "ini"
+scope = "source.ini"
+file-types = [
+  "ini",
+  "desktop",
+  { glob = "mimeapps.list" },
   # Podman quadlets
   "container",
   "volume",
