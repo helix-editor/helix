@@ -1475,6 +1475,14 @@ The key modifier bits associated with the shift key modifier.
 The key modifier bits associated with the alt key modifier.
         "#
     );
+    register!(
+        value,
+        "key-modifier-super",
+        SteelVal::IntV(KeyModifiers::SUPER.bits() as isize),
+        r#"
+The key modifier bits associated with the super key modifier.
+        "#
+    );
 
     register!(
         "key-event-F?",
