@@ -100,21 +100,18 @@ async fn start_unix_socket_listener(tx: mpsc::Sender<String>) {
     use std::os::unix::fs::PermissionsExt;
 
     let path = if let Ok(path) = std::env::var("HELIX_SOCKET_PATH") {
-        let path = path
-            .parse::<std::path::PathBuf>().unwrap();
+        let path = std::path::PathBuf::from(path);
         // Check if parent folder exists
-        if !path.parent().map(|parent| parent.exists()).unwrap_or(true) {
+        if !path.parent().is_some_and(|parent| parent.exists()) {
             eprintln!("Folder for socket {} does not exists!", path.parent().unwrap().display())
         }
         path
     } else {
         let path = std::env::var("XDG_RUNTIME_DIR")
-                .unwrap_or("/tmp".to_string())
-                .parse::<std::path::PathBuf>()
-                .unwrap()
-                .join("helix")
-                .join("helix.sock");
-        
+                .unwrap_or("/tmp".to_string());
+        let path = std::path::PathBuf::from(path)
+            .join("helix")
+            .join("helix.sock");
         // We unwrap, as any of variants will have parent folder
         let parent_folder = path.parent().unwrap();
         if !parent_folder.exists() {
