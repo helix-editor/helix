@@ -413,9 +413,9 @@ dependencies = [
 
 [[package]]
 name = "fastrand"
-version = "2.1.1"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8c02a5121d4ea3eb16a80748c74f5549a5665e4c21333c6098f283870fbdea6"
+checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "fern"
@@ -1625,6 +1625,7 @@ dependencies = [
  "chardetng",
  "clipboard-win",
  "crossterm",
+ "fastrand",
  "futures-util",
  "helix-core",
  "helix-dap",
@@ -1642,7 +1643,6 @@ dependencies = [
  "serde",
  "serde_json",
  "slotmap",
- "tempfile",
  "thiserror 2.0.12",
  "tokio",
  "tokio-stream",

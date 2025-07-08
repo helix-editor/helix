@@ -14,7 +14,7 @@ use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
-use helix_stdx::faccess::{copy_metadata, readonly};
+use helix_stdx::faccess::readonly;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 use once_cell::sync::OnceCell;
 use thiserror;
@@ -25,7 +25,6 @@ use serde::Serialize;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::HashMap;
-use std::ffi::OsString;
 use std::fmt::Display;
 use std::future::Future;
 use std::io;
@@ -1026,14 +1025,21 @@ impl Document {
             }
 
             let mut tmp_write_path = write_path.clone();
+
+            let tmp_write_path_extension: String = std::iter::repeat_with(fastrand::alphabetic)
+                .take(8)
+                .chain(".tmp".chars())
+                .collect();
+
             // add_extension is unstable.
             tmp_write_path.set_extension(match tmp_write_path.extension() {
                 Some(existing) => {
                     let mut existing = existing.to_owned();
-                    existing.push(".tmp");
+                    existing.push(".");
+                    existing.push(tmp_write_path_extension);
                     existing
                 }
-                None => OsString::from("tmp"),
+                None => tmp_write_path_extension.into(),
             });
 
             let mut tmp_write = fs::File::create(&tmp_write_path)
