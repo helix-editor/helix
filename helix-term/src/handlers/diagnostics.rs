@@ -1,11 +1,13 @@
+use futures_util::stream::FuturesOrdered;
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::Instant;
+use tokio_stream::StreamExt;
 
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::Uri;
-use helix_event::{register_hook, send_blocking};
+use helix_event::{cancelable_future, register_hook, send_blocking};
 use helix_lsp::lsp;
 use helix_view::document::Mode;
 use helix_view::events::{
@@ -41,7 +43,10 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         if event
             .doc
             .has_language_server_with_feature(LanguageServerFeature::PullDiagnostics)
+            && !event.ghost_transaction
         {
+            // Cancel the ongoing request, if present.
+            event.doc.pull_diagnostic_controller.cancel();
             let document_id = event.doc.id();
             send_blocking(&tx, PullDiagnosticsEvent { document_id });
             send_blocking(&tx_all_documents, PullAllDocumentsDiagnosticsEvent {});
@@ -50,26 +55,16 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
 
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
-        let doc = doc!(event.editor, &event.doc);
-        for language_server in
-            doc.language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
-        {
-            pull_diagnostics_for_document(doc, language_server);
-        }
+        request_document_diagnostics(event.editor, event.doc, false);
 
         Ok(())
     });
 
     register_hook!(move |event: &mut LanguageServerInitialized<'_>| {
-        let language_server = event.editor.language_server_by_id(event.server_id).unwrap();
-        if language_server.supports_feature(LanguageServerFeature::PullDiagnostics) {
-            for doc in event
-                .editor
-                .documents()
-                .filter(|doc| doc.supports_language_server(event.server_id))
-            {
-                pull_diagnostics_for_document(doc, language_server);
-            }
+        let doc_ids: Vec<_> = event.editor.documents().map(|doc| doc.id()).collect();
+
+        for doc_id in doc_ids {
+            request_document_diagnostics(event.editor, doc_id, false);
         }
 
         Ok(())
@@ -105,19 +100,7 @@ impl helix_event::AsyncHook for PullDiagnosticsHandler {
         let document_ids = self.document_ids.clone();
         job::dispatch_blocking(move |editor, _| {
             for document_id in document_ids {
-                let document = editor.document(document_id);
-
-                let Some(document) = document else {
-                    return;
-                };
-
-                let language_servers = document
-                    .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
-                    .filter(|ls| ls.is_initialized());
-
-                for language_server in language_servers {
-                    pull_diagnostics_for_document(document, language_server);
-                }
+                request_document_diagnostics(editor, document_id, false);
             }
         })
     }
@@ -145,106 +128,140 @@ impl helix_event::AsyncHook for PullAllDocumentsDiagnosticHandler {
 
     fn finish_debounce(&mut self) {
         job::dispatch_blocking(move |editor, _| {
-            for document in editor.documents.values() {
-                let language_servers = document
-                    .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
-                    .filter(|ls| ls.is_initialized())
-                    .filter(|ls| {
-                        ls.capabilities().diagnostic_provider.as_ref().is_some_and(
-                            |diagnostic_provider| match diagnostic_provider {
-                                lsp::DiagnosticServerCapabilities::Options(options) => {
-                                    options.inter_file_dependencies
-                                }
-                                lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
-                                    options.diagnostic_options.inter_file_dependencies
-                                }
-                            },
-                        )
-                    });
+            let documents: Vec<_> = editor.documents.values().map(|doc| doc.id()).collect();
 
-                for language_server in language_servers {
-                    pull_diagnostics_for_document(document, language_server);
-                }
+            for document in documents {
+                request_document_diagnostics(editor, document, true);
             }
         })
     }
 }
 
-pub fn pull_diagnostics_for_document(
-    doc: &helix_view::Document,
-    language_server: &helix_lsp::Client,
+pub fn request_document_diagnostics(
+    editor: &mut Editor,
+    doc_id: DocumentId,
+    only_providers_with_inter_file_dependencies: bool,
 ) {
-    let Some(future) = language_server
-        .text_document_diagnostic(doc.identifier(), doc.previous_diagnostic_id.clone())
-    else {
+    let Some(doc) = editor.document_mut(doc_id) else {
         return;
     };
 
-    let Some(uri) = doc.uri() else {
-        return;
-    };
-
-    let identifier = language_server
-        .capabilities()
-        .diagnostic_provider
-        .as_ref()
-        .and_then(|diagnostic_provider| match diagnostic_provider {
-            lsp::DiagnosticServerCapabilities::Options(options) => options.identifier.clone(),
-            lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
-                options.diagnostic_options.identifier.clone()
-            }
-        });
-
-    let language_server_id = language_server.id();
-    let provider = DiagnosticProvider::Lsp {
-        server_id: language_server_id,
-        identifier,
-    };
-    let document_id = doc.id();
-
-    tokio::spawn(async move {
-        match future.0.await {
-            Ok(result) => {
-                job::dispatch(move |editor, _| {
-                    if let Some(language_server) = editor.language_server_by_id(language_server_id)
-                    {
-                        language_server.mark_work_as_done(future.1);
-                    };
-
-                    handle_pull_diagnostics_response(editor, result, provider, uri, document_id)
-                })
-                .await
-            }
-            Err(err) => {
-                let parsed_cancellation_data = if let helix_lsp::Error::Rpc(error) = err {
-                    error.data.and_then(|data| {
-                        serde_json::from_value::<lsp::DiagnosticServerCancellationData>(data).ok()
+    let mut seen_language_servers = HashSet::new();
+    let mut futures: FuturesOrdered<_> = doc
+        .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
+        .filter_map(|language_server| {
+            if only_providers_with_inter_file_dependencies
+                && !language_server
+                    .capabilities()
+                    .diagnostic_provider
+                    .as_ref()
+                    .is_some_and(|diagnostic_provider| match diagnostic_provider {
+                        lsp::DiagnosticServerCapabilities::Options(options) => {
+                            options.inter_file_dependencies
+                        }
+                        lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
+                            options.diagnostic_options.inter_file_dependencies
+                        }
                     })
-                } else {
-                    log::error!("Pull diagnostic request failed: {err}");
-                    return;
-                };
+            {
+                return None;
+            }
 
-                if let Some(parsed_cancellation_data) = parsed_cancellation_data {
-                    if parsed_cancellation_data.retrigger_request {
-                        tokio::time::sleep(Duration::from_millis(500)).await;
+            let future = language_server
+                .text_document_diagnostic(doc.identifier(), doc.previous_diagnostic_id.clone())?;
 
-                        job::dispatch(move |editor, _| {
-                            if let (Some(doc), Some(language_server)) = (
-                                editor.document(document_id),
-                                editor.language_server_by_id(language_server_id),
-                            ) {
-                                language_server.mark_work_as_done(future.1);
-                                if doc.supports_language_server(language_server_id) {
-                                    pull_diagnostics_for_document(doc, language_server);
+            let identifier = language_server
+                .capabilities()
+                .diagnostic_provider
+                .as_ref()
+                .and_then(|diagnostic_provider| match diagnostic_provider {
+                    lsp::DiagnosticServerCapabilities::Options(options) => {
+                        options.identifier.clone()
+                    }
+                    lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
+                        options.diagnostic_options.identifier.clone()
+                    }
+                });
+
+            let language_server_id = language_server.id();
+            let provider = DiagnosticProvider::Lsp {
+                server_id: language_server_id,
+                identifier,
+            };
+            let uri = doc.uri()?;
+
+            Some(async move {
+                let result = future.await;
+
+                (result, provider, uri)
+            })
+        })
+        .collect();
+
+    if futures.is_empty() {
+        return;
+    }
+
+    job::dispatch_blocking(move |editor, _| {
+        let Some(doc) = editor.document_mut(doc_id) else {
+            return;
+        };
+
+        let cancel = doc.pull_diagnostic_controller.restart();
+
+        tokio::spawn(async move {
+            loop {
+                match cancelable_future(futures.next(), &cancel).await {
+                    Some(Some(future_result)) => match future_result.0 {
+                        Ok(result) => {
+                            job::dispatch(move |editor, _| {
+                                handle_pull_diagnostics_response(
+                                    editor,
+                                    result,
+                                    future_result.1,
+                                    future_result.2,
+                                    doc_id,
+                                )
+                            })
+                            .await
+                        }
+                        Err(err) => {
+                            let parsed_cancellation_data = if let helix_lsp::Error::Rpc(error) = err
+                            {
+                                error.data.and_then(|data| {
+                                    serde_json::from_value::<lsp::DiagnosticServerCancellationData>(
+                                        data,
+                                    )
+                                    .ok()
+                                })
+                            } else {
+                                log::error!("Pull diagnostic request failed: {err}");
+                                return;
+                            };
+
+                            if let Some(parsed_cancellation_data) = parsed_cancellation_data {
+                                if parsed_cancellation_data.retrigger_request {
+                                    tokio::time::sleep(Duration::from_millis(500)).await;
+
+                                    job::dispatch(move |editor, _| {
+                                        request_document_diagnostics(
+                                            editor,
+                                            doc_id,
+                                            only_providers_with_inter_file_dependencies,
+                                        );
+                                    })
+                                    .await;
                                 }
                             }
-                        })
-                        .await;
-                    }
+                        }
+                    },
+                    Some(None) => break,
+                    // The request was cancelled.
+                    None => return,
                 }
             }
-        }
+        });
     });
 }
 

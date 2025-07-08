@@ -1022,18 +1022,17 @@ impl Application {
                         Ok(json!(result))
                     }
                     Ok(MethodCall::WorkspaceDiagnosticRefresh) => {
-                        for document in self.editor.documents() {
-                            let language_server = language_server!();
-                            if language_server.supports_feature(
-                                syntax::config::LanguageServerFeature::PullDiagnostics,
-                            ) && document.supports_language_server(language_server.id())
-                            {
-                                handlers::diagnostics::pull_diagnostics_for_document(
-                                    document,
-                                    language_server,
-                                );
-                            }
+                        let documents: Vec<_> =
+                            self.editor.documents.values().map(|x| x.id()).collect();
+
+                        for document in documents {
+                            handlers::diagnostics::request_document_diagnostics(
+                                &mut self.editor,
+                                document,
+                                false,
+                            );
                         }
+
                         Ok(serde_json::Value::Null)
                     }
                 };
