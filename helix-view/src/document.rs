@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Error};
+use anyhow::{anyhow, bail, Context, Error};
 use arc_swap::access::DynAccess;
 use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
@@ -25,6 +25,7 @@ use serde::Serialize;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::fmt::Display;
 use std::future::Future;
 use std::io;
@@ -966,12 +967,7 @@ impl Document {
 
         let path = match path {
             Some(path) => helix_stdx::path::canonicalize(path),
-            None => {
-                if self.path.is_none() {
-                    bail!("Can't save with no path set!");
-                }
-                self.path.as_ref().unwrap().clone()
-            }
+            None => self.path.clone().context("Can't save with no path set!")?,
         };
 
         let identifier = self.path().map(|_| self.identifier());
@@ -987,6 +983,7 @@ impl Document {
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::fs;
+
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -1008,7 +1005,8 @@ impl Document {
                     }
                 }
             }
-            let write_path = tokio::fs::read_link(&path)
+
+            let write_path = fs::read_link(&path)
                 .await
                 .ok()
                 .and_then(|p| {
@@ -1027,88 +1025,33 @@ impl Document {
                 ));
             }
 
-            // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
-            let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
-            let backup = if path.exists() {
-                let path_ = write_path.clone();
-                // hacks: we use tempfile to handle the complex task of creating
-                // non clobbered temporary path for us we don't want
-                // the whole automatically delete path on drop thing
-                // since the path doesn't exist yet, we just want
-                // the path
-                tokio::task::spawn_blocking(move || -> Option<PathBuf> {
-                    let mut builder = tempfile::Builder::new();
-                    builder.prefix(path_.file_name()?).suffix(".bck");
+            let mut tmp_write_path = write_path.clone();
+            // add_extension is unstable.
+            tmp_write_path.set_extension(match tmp_write_path.extension() {
+                Some(existing) => {
+                    let mut existing = existing.to_owned();
+                    existing.push(".tmp");
+                    existing
+                }
+                None => OsString::from("tmp"),
+            });
 
-                    let backup_path = if is_hardlink {
-                        builder
-                            .make_in(path_.parent()?, |backup| std::fs::copy(&path_, backup))
-                            .ok()?
-                            .into_temp_path()
-                    } else {
-                        builder
-                            .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
-                            .ok()?
-                            .into_temp_path()
-                    };
-
-                    backup_path.keep().ok()
-                })
+            let mut tmp_write = fs::File::create(&tmp_write_path)
                 .await
-                .ok()
-                .flatten()
-            } else {
-                None
-            };
+                .context("can't create a temporary write file in directory")?;
 
-            let write_result: anyhow::Result<_> = async {
-                let mut dst = tokio::fs::File::create(&write_path).await?;
-                to_writer(&mut dst, encoding_with_bom_info, &text).await?;
-                dst.sync_all().await?;
-                Ok(())
-            }
-            .await;
+            to_writer(&mut tmp_write, encoding_with_bom_info, &text).await?;
+            tmp_write.sync_all().await?;
+
+            // Move temporary file into destination atomically.
+            fs::rename(&tmp_write_path, &write_path)
+                .await
+                .context("can't move temporary write file to destination")?;
 
             let save_time = match fs::metadata(&write_path).await {
                 Ok(metadata) => metadata.modified().map_or(SystemTime::now(), |mtime| mtime),
                 Err(_) => SystemTime::now(),
             };
-
-            if let Some(backup) = backup {
-                if is_hardlink {
-                    let mut delete = true;
-                    if write_result.is_err() {
-                        // Restore backup
-                        let _ = tokio::fs::copy(&backup, &write_path).await.map_err(|e| {
-                            delete = false;
-                            log::error!("Failed to restore backup on write failure: {e}")
-                        });
-                    }
-
-                    if delete {
-                        // Delete backup
-                        let _ = tokio::fs::remove_file(backup)
-                            .await
-                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
-                    }
-                } else if write_result.is_err() {
-                    // restore backup
-                    let _ = tokio::fs::rename(&backup, &write_path)
-                        .await
-                        .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
-                } else {
-                    // copy metadata and delete backup
-                    let _ = tokio::task::spawn_blocking(move || {
-                        let _ = copy_metadata(&backup, &write_path)
-                            .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
-                        let _ = std::fs::remove_file(backup)
-                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
-                    })
-                    .await;
-                }
-            }
-
-            write_result?;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
