@@ -1040,13 +1040,25 @@ impl Document {
                 .await
                 .context("can't create a temporary write file in directory")?;
 
-            to_writer(&mut tmp_write, encoding_with_bom_info, &text).await?;
-            tmp_write.sync_all().await?;
+            let tmp_write_result: anyhow::Result<()> = async {
+                to_writer(&mut tmp_write, encoding_with_bom_info, &text).await?;
+                tmp_write.sync_all().await?;
 
-            // Move temporary file into destination atomically.
-            fs::rename(&tmp_write_path, &write_path)
-                .await
-                .context("can't move temporary write file to destination")?;
+                // Move temporary file into destination atomically.
+                fs::rename(&tmp_write_path, &write_path)
+                    .await
+                    .context("can't move temporary write file to destination")?;
+
+                Ok(())
+            }
+            .await;
+
+            if let Err(error) = tmp_write_result {
+                // Delete tmp write file if we failed to write to it or move it in place.
+                let _ = fs::remove_file(&tmp_write_path).await;
+
+                return Err(error);
+            }
 
             let save_time = match fs::metadata(&write_path).await {
                 Ok(metadata) => metadata.modified().map_or(SystemTime::now(), |mtime| mtime),
