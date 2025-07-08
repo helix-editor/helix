@@ -137,7 +137,7 @@ fn inject_nucleo_item<T, D>(
 ) {
     injector.push(item, |item, dst| {
         for (column, text) in columns.iter().filter(|column| column.filter).zip(dst) {
-            *text = column.format_text(item, editor_data).into()
+            *text = column.format_filter_text(item, editor_data).into()
         }
     });
 }
@@ -189,6 +189,7 @@ type ColumnFormatFn<T, D> = for<'a> fn(&'a T, &'a D) -> Cell<'a>;
 pub struct Column<T, D> {
     name: Arc<str>,
     format: ColumnFormatFn<T, D>,
+    filter_format: ColumnFormatFn<T, D>,
     /// Whether the column should be passed to nucleo for matching and filtering.
     /// `DynamicPicker` uses this so that the dynamic column (for example regex in
     /// global search) is not used for filtering twice.
@@ -201,6 +202,7 @@ impl<T, D> Column<T, D> {
         Self {
             name: name.into(),
             format,
+            filter_format: format,
             filter: true,
             hidden: false,
         }
@@ -213,6 +215,7 @@ impl<T, D> Column<T, D> {
         Self {
             name: name.into(),
             format,
+            filter_format: format,
             filter: false,
             hidden: true,
         }
@@ -223,12 +226,18 @@ impl<T, D> Column<T, D> {
         self
     }
 
+    pub fn with_filter_format(mut self, format_fn: ColumnFormatFn<T, D>) -> Self {
+        self.filter_format = format_fn;
+        self
+    }
+
     fn format<'a>(&self, item: &'a T, data: &'a D) -> Cell<'a> {
         (self.format)(item, data)
     }
 
-    fn format_text<'a>(&self, item: &'a T, data: &'a D) -> Cow<'a, str> {
-        let text: String = self.format(item, data).content.into();
+    fn format_filter_text<'a>(&self, item: &'a T, data: &'a D) -> Cow<'a, str> {
+        let cell = (self.filter_format)(item, data);
+        let text: String = cell.content.into();
         text.into()
     }
 }
