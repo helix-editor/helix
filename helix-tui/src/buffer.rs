@@ -326,43 +326,44 @@ impl Buffer {
             return (x, y);
         }
 
-        let max_offset = min(
-            self.area.right() as usize - 1,
-            width.saturating_add(x as usize),
-        );
-        let mut start_index = self.index_of(x, y);
-        let mut end_index = self.index_of(max_offset as u16, y);
-
-        if truncate_end {
-            self.content[end_index].set_symbol("…");
-            end_index -= 1;
-        }
+        let mut index = self.index_of(x, y);
+        let mut rendered_width = 0;
+        let mut graphemes = string.grapheme_indices(true);
 
         if truncate_start {
-            self.content[start_index].set_symbol("…");
-            start_index += 1;
+            for _ in 0..graphemes.next().map(|(_, g)| g.width()).unwrap_or_default() {
+                self.content[index].set_symbol("…");
+                index += 1;
+                rendered_width += 1;
+            }
         }
 
-        let graphemes = string.grapheme_indices(true);
-
-        for (byte_offset, s) in graphemes.skip(truncate_start as usize) {
-            if start_index > end_index {
+        for (byte_offset, s) in graphemes {
+            let grapheme_width = s.width();
+            if truncate_end && rendered_width + grapheme_width >= width {
                 break;
             }
-            let width = s.width();
-            if width == 0 {
+            if grapheme_width == 0 {
                 continue;
             }
 
-            self.content[start_index].set_symbol(s);
-            self.content[start_index].set_style(style(byte_offset));
+            self.content[index].set_symbol(s);
+            self.content[index].set_style(style(byte_offset));
 
             // Reset following cells if multi-width (they would be hidden by the grapheme):
-            for i in start_index + 1..start_index + width {
+            for i in index + 1..index + grapheme_width {
                 self.content[i].reset();
             }
 
-            start_index += width;
+            index += grapheme_width;
+            rendered_width += grapheme_width;
+        }
+
+        if truncate_end {
+            for _ in 0..width.saturating_sub(rendered_width) {
+                self.content[index].set_symbol("…");
+                index += 1;
+            }
         }
 
         (x, y)

@@ -14,8 +14,10 @@
 
 ; Definitions
 
-(parameter
-  pattern: (identifier) @local.definition.variable.parameter)
+(function_item
+  (parameters
+    (parameter
+      pattern: (identifier) @local.definition.variable.parameter)))
 
 (closure_parameters (identifier) @local.definition.variable.parameter)
 
