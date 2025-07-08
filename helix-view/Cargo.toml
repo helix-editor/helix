@@ -28,8 +28,6 @@ bitflags.workspace = true
 anyhow = "1"
 crossterm = { version = "0.28", optional = true }
 
-tempfile.workspace = true
-
 # Conversion traits
 once_cell = "1.21"
 url = "2.5.4"
