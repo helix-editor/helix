@@ -1724,6 +1724,11 @@ Get the `Rect` associated with the currently focused buffer.
 ```
         "#
     );
+    register_0!(
+        "selected-register!",
+        |cx: &mut Context| cx.editor.selected_register.unwrap_or(cx.editor.config().default_yank_register),
+        r#"Get currently selected register"#
+    );
 
     // Arity 1
     module.register_fn("editor->doc-id", cx_get_document_id);
