@@ -416,10 +416,10 @@ impl<'t> DocumentFormatter<'t> {
 
             if grapheme.width() > 1
                 && (word_width >= viewport_width
-                    || self.visual_pos.col + grapheme.width() >= viewport_width)
+                    || self.visual_pos.col + word_width >= viewport_width)
             {
                 self.peeked_grapheme = Some(grapheme);
-                if word_width < viewport_width {
+                if word_chars == 1 {
                     self.wrap_word();
                 }
                 return;

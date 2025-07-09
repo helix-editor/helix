@@ -110,6 +110,22 @@ fn softwrap_multichar_grapheme() {
     )
 }
 
+#[test]
+fn softwrap_cjk_grapheme() {
+    assert_eq!(
+        softwrap_text("xxxx1xxxx2xxxx3x《\n"),
+        "xxxx1xxxx2xxxx3x\n.《 \n "
+    );
+    assert_eq!(
+        softwrap_text("xxxx1xxxx》xxxx2》\n"),
+        "xxxx1xxxx》xxxx2\n.》 \n "
+    );
+    assert_eq!(
+        softwrap_text("这应该是一句中文。\n"),
+        "这应该是一句中文\n.。 \n "
+    );
+}
+
 fn softwrap_text_at_text_width(text: &str) -> String {
     let mut text_fmt = TextFormat::new_test(true);
     text_fmt.soft_wrap_at_text_width = true;
