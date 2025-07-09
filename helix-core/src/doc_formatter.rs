@@ -413,17 +413,21 @@ impl<'t> DocumentFormatter<'t> {
 
             let is_word_boundary = grapheme.is_word_boundary();
             word_width += grapheme.width();
+
+            if grapheme.width() > 1
+                && (word_width >= viewport_width
+                    || self.visual_pos.col + grapheme.width() >= viewport_width)
+            {
+                self.peeked_grapheme = Some(grapheme);
+                if word_width < viewport_width {
+                    self.wrap_word();
+                }
+                return;
+            }
+
             self.word_buf.push(grapheme);
 
             if is_word_boundary {
-                if word_width > viewport_width {
-                    self.peeked_grapheme = self.word_buf.pop();
-                    return;
-                }
-                if word_width + self.visual_pos.col > viewport_width {
-                    self.wrap_word();
-                    return;
-                }
                 return;
             }
         }
