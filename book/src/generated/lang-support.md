@@ -117,6 +117,7 @@
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jinja | ✓ |  |  |  |
 | jjdescription | ✓ |  |  |  |
+| jjtemplate | ✓ |  |  |  |
 | jq | ✓ | ✓ |  | `jq-lsp` |
 | jsdoc | ✓ |  |  |  |
 | json | ✓ | ✓ | ✓ | `vscode-json-language-server` |
