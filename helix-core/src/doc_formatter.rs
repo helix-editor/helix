@@ -414,15 +414,23 @@ impl<'t> DocumentFormatter<'t> {
             let is_word_boundary = grapheme.is_word_boundary();
             word_width += grapheme.width();
 
-            if grapheme.width() > 1
-                && (word_width >= viewport_width
-                    || self.visual_pos.col + word_width >= viewport_width)
-            {
-                self.peeked_grapheme = Some(grapheme);
-                if word_chars == 1 {
-                    self.wrap_word();
+            if grapheme.width() > 1 {
+                if is_word_boundary && self.visual_pos.col + word_width >= viewport_width {
+                    if word_chars == 2 {
+                        self.peeked_grapheme = Some(grapheme);
+                        self.wrap_word();
+                        return;
+                    } else if word_chars == 1 {
+                        self.word_buf.push(grapheme);
+                        self.wrap_word();
+                        return;
+                    }
                 }
-                return;
+
+                if word_chars > 1 {
+                    self.peeked_grapheme = Some(grapheme);
+                    return;
+                }
             }
 
             self.word_buf.push(grapheme);

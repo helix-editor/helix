@@ -122,7 +122,7 @@ fn softwrap_cjk_grapheme() {
     );
     assert_eq!(
         softwrap_text("这应该是一句中文。\n"),
-        "这应该是一句中文\n.。 \n "
+        "这应该是一句中\n.文。 \n "
     );
 }
 
