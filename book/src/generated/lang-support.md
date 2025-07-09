@@ -119,6 +119,7 @@
 | jinja | ✓ |  |  |  |
 | jjconfig | ✓ | ✓ | ✓ | `taplo`, `tombi` |
 | jjdescription | ✓ |  |  |  |
+| jjrevset | ✓ |  |  |  |
 | jjtemplate | ✓ |  |  |  |
 | jq | ✓ | ✓ |  | `jq-lsp` |
 | jsdoc | ✓ |  |  |  |
