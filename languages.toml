@@ -3565,6 +3565,15 @@ name = "jjdescription"
 source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "1613b8c85b6ead48464d73668f39910dcbb41911" }
 
 [[language]]
+name = "jjtemplate"
+scope = "jj.template"
+file-types = ["jjtemplate"]
+
+[[grammar]]
+name = "jjtemplate"
+source = { git = "https://github.com/bryceberger/tree-sitter-jjtemplate", rev = "4313eda8ac31c60e550e3ad5841b100a0a686715" }
+
+[[language]]
 name = "jq"
 scope = "source.jq"
 injection-regex = "jq"

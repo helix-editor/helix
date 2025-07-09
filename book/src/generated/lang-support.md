@@ -119,6 +119,7 @@
 | jinja | ✓ |  |  |  |
 | jjconfig | ✓ | ✓ | ✓ | `taplo`, `tombi` |
 | jjdescription | ✓ |  |  |  |
+| jjtemplate | ✓ |  |  |  |
 | jq | ✓ | ✓ |  | `jq-lsp` |
 | jsdoc | ✓ |  |  |  |
 | json | ✓ | ✓ | ✓ | `vscode-json-language-server` |
