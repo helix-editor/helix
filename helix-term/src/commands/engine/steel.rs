@@ -3466,18 +3466,29 @@ fn configure_lsp_globals() {
     }
 
     writeln!(&mut output, "").unwrap();
+    let search_path = helix_loader::config_dir();
+    let search_path_str = search_path.to_str().unwrap();
+
+    #[cfg(target_os = "windows")]
+    let search_path_str: String = search_path_str.escape_default().collect();
+
     writeln!(
         &mut output,
         "(#%register-additional-search-path \"{}\")",
-        helix_loader::config_dir().to_str().unwrap()
+        search_path_str
     )
     .unwrap();
 
     for dir in helix_loader::runtime_dirs() {
+        let dir = dir.to_str().unwrap();
+
+        #[cfg(target_os = "windows")]
+        let dir: String = dir.escape_default().collect();
+
         writeln!(
             &mut output,
             "(#%register-additional-search-path \"{}\")",
-            dir.to_str().unwrap()
+            dir
         )
         .unwrap();
     }
