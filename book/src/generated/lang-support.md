@@ -40,7 +40,7 @@
 | dart | ✓ | ✓ | ✓ | `dart` |
 | dbml | ✓ |  |  |  |
 | debian | ✓ |  |  |  |
-| devicetree | ✓ |  |  |  |
+| devicetree | ✓ |  |  | `dts-lsp` |
 | dhall | ✓ | ✓ |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |
 | djot | ✓ |  |  |  |
@@ -228,6 +228,7 @@
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ | `forc` |
 | swift | ✓ | ✓ |  | `sourcekit-lsp` |
+| systemd | ✓ |  |  | `systemd-lsp` |
 | t32 | ✓ |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |
 | tact | ✓ | ✓ | ✓ |  |
