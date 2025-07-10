@@ -2463,7 +2463,7 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         .path()
         .context("Scratch buffer cannot be moved. Use :write instead")?
         .clone();
-    let new_path: PathBuf = args.first().unwrap().to_string().into();
+    let new_path: PathBuf = args.first().unwrap().into();
 
     // if new_path is a directory, append the original file name
     // to move the file into that directory.
