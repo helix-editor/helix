@@ -76,13 +76,10 @@ impl Args {
                     Some(path) => args.log_file = Some(path.into()),
                     None => anyhow::bail!("--log must specify a path to write"),
                 },
-                "-e" | "--execute" => {
-                    if let Some(command) = argv.next().as_deref() {
-                        args.execute = helix_view::input::parse_macro(command)?;
-                    } else {
-                        anyhow::bail!("--execute receives a command to execute")
-                    }
-                }
+                "-e" | "--execute" => match argv.next().as_deref() {
+                    Some(command) => args.execute = helix_view::input::parse_macro(command)?,
+                    None => anyhow::bail!("--execute receives a command to execute"),
+                },
                 "-w" | "--working-dir" => match argv.next().as_deref() {
                     Some(path) => {
                         args.working_directory = if Path::new(path).is_dir() {
