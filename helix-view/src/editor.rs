@@ -346,7 +346,9 @@ pub struct Config {
     pub default_line_ending: LineEndingConfig,
     /// Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`.
     pub insert_final_newline: bool,
-    /// Whether the document should write its contents to a backup file, then rename that backup to the target file when saving. This prevents data loss if the editor is interrupted while writing the file, but may confuse some file watching/hot reloading programs. Defaults to `true`
+    /// Whether to use atomic operations to write documents to disk.
+    /// This prevents data loss if the editor is interrupted while writing the file, but may
+    /// confuse some file watching/hot reloading programs. Defaults to `true`.
     pub atomic_save: bool,
     /// Whether to automatically remove all trailing line-endings after the final one on write.
     /// Defaults to `false`.

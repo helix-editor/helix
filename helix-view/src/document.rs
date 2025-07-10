@@ -980,7 +980,7 @@ impl Document {
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
         let doc_id = self.id();
-        let atomic_save = self.atomic_save();
+        let atomic_save = self.config.load().atomic_save;
 
         let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
@@ -1913,11 +1913,6 @@ impl Document {
         self.editor_config
             .insert_final_newline
             .unwrap_or_else(|| self.config.load().insert_final_newline)
-    }
-
-    /// Whether the document should write its contents to a backup file, then rename that backup to the target file when saving. This prevents data loss if the editor is interrupted while writing the file, but may confuse some file watching/hot reloading programs.
-    pub fn atomic_save(&self) -> bool {
-        self.config.load().atomic_save
     }
 
     /// Whether the document should trim whitespace preceding line endings on save.
