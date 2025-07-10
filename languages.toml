@@ -514,7 +514,6 @@ file-types = [
   "css.map",
   { glob = ".jslintrc" },
   "jsonl",
-  "jsonld",
   { glob = ".vuerc" },
   { glob = "composer.lock" },
   { glob = ".watchmanconfig" },
@@ -552,6 +551,17 @@ comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 grammar = "json"
 language-servers = [ "vscode-json-language-server" ]
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+
+# https://www.w3.org/TR/json-ld/
+[[language]]
+name = "json-ld"
+scope = "source.json-ld"
+injection-regex = "json-ld"
+grammar = "json"
+file-types = ["jsonld"]
+language-servers = ["vscode-json-language-server"]
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
