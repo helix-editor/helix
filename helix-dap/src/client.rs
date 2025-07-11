@@ -1,10 +1,11 @@
 use crate::{
-    requests::DisconnectArguments,
+    registry::DebugAdapterId,
+    requests::{DisconnectArguments, TerminateArguments},
     transport::{Payload, Request, Response, Transport},
     types::*,
     Error, Result,
 };
-use helix_core::syntax::DebuggerQuirks;
+use helix_core::syntax::config::{DebugAdapterConfig, DebuggerQuirks};
 
 use serde_json::Value;
 
@@ -27,12 +28,14 @@ use tokio::{
 
 #[derive(Debug)]
 pub struct Client {
-    id: usize,
+    id: DebugAdapterId,
     _process: Option<Child>,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     connection_type: Option<ConnectionType>,
     starting_request_args: Option<Value>,
+    /// The socket address of the debugger, if using TCP transport.
+    pub socket: Option<SocketAddr>,
     pub caps: Option<DebuggerCapabilities>,
     // thread_id -> frames
     pub stack_frames: HashMap<ThreadId, Vec<StackFrame>>,
@@ -41,23 +44,20 @@ pub struct Client {
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
     pub quirks: DebuggerQuirks,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ConnectionType {
-    Launch,
-    Attach,
+    /// The config which was used to start this debugger.
+    pub config: Option<DebugAdapterConfig>,
 }
 
 impl Client {
     // Spawn a process and communicate with it by either TCP or stdio
+    // The returned stream includes the Client ID so consumers can differentiate between multiple clients
     pub async fn process(
         transport: &str,
         command: &str,
         args: Vec<&str>,
         port_arg: Option<&str>,
-        id: usize,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+        id: DebugAdapterId,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         if command.is_empty() {
             return Result::Err(Error::Other(anyhow!("Command not provided")));
         }
@@ -72,9 +72,9 @@ impl Client {
         rx: Box<dyn AsyncBufRead + Unpin + Send>,
         tx: Box<dyn AsyncWrite + Unpin + Send>,
         err: Option<Box<dyn AsyncBufRead + Unpin + Send>>,
-        id: usize,
+        id: DebugAdapterId,
         process: Option<Child>,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         let (server_rx, server_tx) = Transport::start(rx, tx, err, id);
         let (client_tx, client_rx) = unbounded_channel();
 
@@ -86,22 +86,24 @@ impl Client {
             caps: None,
             connection_type: None,
             starting_request_args: None,
+            socket: None,
             stack_frames: HashMap::new(),
             thread_states: HashMap::new(),
             thread_id: None,
             active_frame: None,
             quirks: DebuggerQuirks::default(),
+            config: None,
         };
 
-        tokio::spawn(Self::recv(server_rx, client_tx));
+        tokio::spawn(Self::recv(id, server_rx, client_tx));
 
         Ok((client, client_rx))
     }
 
     pub async fn tcp(
         addr: std::net::SocketAddr,
-        id: usize,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+        id: DebugAdapterId,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         let stream = TcpStream::connect(addr).await?;
         let (rx, tx) = stream.into_split();
         Self::streams(Box::new(BufReader::new(rx)), Box::new(tx), None, id, None)
@@ -110,8 +112,8 @@ impl Client {
     pub fn stdio(
         cmd: &str,
         args: Vec<&str>,
-        id: usize,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+        id: DebugAdapterId,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
 
@@ -162,8 +164,8 @@ impl Client {
         cmd: &str,
         args: Vec<&str>,
         port_format: &str,
-        id: usize,
-    ) -> Result<(Self, UnboundedReceiver<Payload>)> {
+        id: DebugAdapterId,
+    ) -> Result<(Self, UnboundedReceiver<(DebugAdapterId, Payload)>)> {
         let port = Self::get_port().await.unwrap();
 
         let process = Command::new(cmd)
@@ -178,40 +180,49 @@ impl Client {
 
         // Wait for adapter to become ready for connection
         time::sleep(time::Duration::from_millis(500)).await;
-
-        let stream = TcpStream::connect(SocketAddr::new(
-            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            port,
-        ))
-        .await?;
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
+        let stream = TcpStream::connect(socket).await?;
 
         let (rx, tx) = stream.into_split();
-        Self::streams(
+        let mut result = Self::streams(
             Box::new(BufReader::new(rx)),
             Box::new(tx),
             None,
             id,
             Some(process),
-        )
+        );
+
+        // Set the socket address for the client
+        if let Ok((client, _)) = &mut result {
+            client.socket = Some(socket);
+        }
+
+        result
     }
 
-    async fn recv(mut server_rx: UnboundedReceiver<Payload>, client_tx: UnboundedSender<Payload>) {
+    async fn recv(
+        id: DebugAdapterId,
+        mut server_rx: UnboundedReceiver<Payload>,
+        client_tx: UnboundedSender<(DebugAdapterId, Payload)>,
+    ) {
         while let Some(msg) = server_rx.recv().await {
             match msg {
                 Payload::Event(ev) => {
-                    client_tx.send(Payload::Event(ev)).expect("Failed to send");
+                    client_tx
+                        .send((id, Payload::Event(ev)))
+                        .expect("Failed to send");
                 }
                 Payload::Response(_) => unreachable!(),
                 Payload::Request(req) => {
                     client_tx
-                        .send(Payload::Request(req))
+                        .send((id, Payload::Request(req)))
                         .expect("Failed to send");
                 }
             }
         }
     }
 
-    pub fn id(&self) -> usize {
+    pub fn id(&self) -> DebugAdapterId {
         self.id
     }
 
@@ -352,6 +363,14 @@ impl Client {
     ) -> impl Future<Output = Result<Value>> {
         self.connection_type = None;
         self.call::<requests::Disconnect>(args)
+    }
+
+    pub fn terminate(
+        &mut self,
+        args: Option<TerminateArguments>,
+    ) -> impl Future<Output = Result<Value>> {
+        self.connection_type = None;
+        self.call::<requests::Terminate>(args)
     }
 
     pub fn launch(&mut self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {

@@ -6,6 +6,7 @@
 "comment.block" = "comments"
 "comment.block.documentation" = "comments"
 "comment.line" = "comments"
+"comment.line.documentation" = "comments"
 #"constant" = ""
 "constant.builtin" = { fg = "builtins", modifiers = ["italic"] }
 "constant.character" = "strings"

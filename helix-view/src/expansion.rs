@@ -33,6 +33,14 @@ pub enum Variable {
     BufferName,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
+    // The name of current buffers language as set in `languages.toml`
+    Language,
+    // Primary selection
+    Selection,
+    // The one-indexed line number of the start of the primary selection in the currently focused document.
+    SelectionLineStart,
+    // The one-indexed line number of the end of the primary selection in the currently focused document.
+    SelectionLineEnd,
 }
 
 impl Variable {
@@ -41,6 +49,10 @@ impl Variable {
         Self::CursorColumn,
         Self::BufferName,
         Self::LineEnding,
+        Self::Language,
+        Self::Selection,
+        Self::SelectionLineStart,
+        Self::SelectionLineEnd,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -49,6 +61,10 @@ impl Variable {
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
             Self::LineEnding => "line_ending",
+            Self::Language => "language",
+            Self::Selection => "selection",
+            Self::SelectionLineStart => "selection_line_start",
+            Self::SelectionLineEnd => "selection_line_end",
         }
     }
 
@@ -58,6 +74,10 @@ impl Variable {
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
             "line_ending" => Some(Self::LineEnding),
+            "language" => Some(Self::Language),
+            "selection" => Some(Self::Selection),
+            "selection_line_start" => Some(Self::SelectionLineStart),
+            "selection_line_end" => Some(Self::SelectionLineEnd),
             _ => None,
         }
     }
@@ -215,5 +235,20 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             }
         }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
+        Variable::Language => Ok(match doc.language_name() {
+            Some(lang) => Cow::Owned(lang.to_owned()),
+            None => Cow::Borrowed("text"),
+        }),
+        Variable::Selection => Ok(Cow::Owned(
+            doc.selection(view.id).primary().fragment(text).to_string(),
+        )),
+        Variable::SelectionLineStart => {
+            let start_line = doc.selection(view.id).primary().line_range(text).0;
+            Ok(Cow::Owned((start_line + 1).to_string()))
+        }
+        Variable::SelectionLineEnd => {
+            let end_line = doc.selection(view.id).primary().line_range(text).1;
+            Ok(Cow::Owned((end_line + 1).to_string()))
+        }
     }
 }

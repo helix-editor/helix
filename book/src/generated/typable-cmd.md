@@ -78,9 +78,9 @@
 | `:log-open` | Open the helix log file. |
 | `:insert-output` | Run shell command, inserting output before each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
-| `:pipe` | Pipe each selection to the shell command. |
+| `:pipe`, `:\|` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
-| `:run-shell-command`, `:sh` | Run a shell command |
+| `:run-shell-command`, `:sh`, `:!` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
 | `:redraw` | Clear and re-render the whole UI |

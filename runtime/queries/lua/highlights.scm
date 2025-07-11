@@ -189,6 +189,9 @@
     name: (identifier) @function
     value: (function_definition)))
 
+;; Property
+(dot_index_expression field: (identifier) @variable.other.member)
+
 (function_call
   name: [
     (identifier) @function.call
@@ -216,6 +219,3 @@
 ; A bit of a tricky one, this will only match field names
 (field . (identifier) @variable.other.member (_))
 (hash_bang_line) @comment
-
-;; Property
-(dot_index_expression field: (identifier) @variable.other.member)

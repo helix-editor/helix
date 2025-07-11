@@ -256,3 +256,17 @@
 
 ((indented_string_expression (string_fragment) @injection.shebang @injection.content)
   (#set! injection.combined))
+
+; string contents of lib.literalExpression is nix code
+((apply_expression
+    function: [
+      (select_expression) ; `lib.literalExpression`
+      (variable_expression) ; `literalExpression` this is the case when the symbol is brougth into scope e.g. `let inherit (lib) literalExpression; in`
+    ] @_func
+    argument: [
+      (indented_string_expression (string_fragment) @injection.content)  ; lib.literalExpression ''...''
+      (string_expression (string_fragment) @injection.content) ; lib.literalExpression "..."
+    ])
+  (#any-of? @_func "lib.literalExpression" "literalExpression")
+  (#set! injection.language "nix")
+  (#set! injection.combined))

@@ -1,0 +1,204 @@
+# Syntax highlighting
+
+"attribute" = { fg = "blue60", modifiers = ["italic"] }
+
+"type" = { fg = "cyan30", modifiers = ["italic"] }
+"type.builtin" = { fg = "cyan30", modifiers = ["bold"] }
+"type.enum.variant" = "magenta40"
+
+"constructor" = { fg = "purple40", modifiers = ["bold"] }
+
+"constant" = "teal40"
+"constant.builtin" = { fg = "teal40", modifiers = ["bold"] }
+"constant.character" = "green40"
+"constant.character.escape" = "purple40"
+"constant.numeric" = "teal30"
+
+"string" = "green50"
+"string.regexp" = "purple40"
+"string.special" = "blue40"
+"string.special.symbol" = "cyan30"
+"string.special.url" = { fg = "blue30", modifiers = ["underlined"] }
+
+"comment" = { fg = "gray40", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "gray40", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "gray40", modifiers = ["italic"] }
+
+"variable" = "gray70"
+"variable.builtin" = { fg = "cyan30", modifiers = ["bold"] }
+"variable.parameter" = { fg = "magenta40", modifiers = ["italic"] }
+"variable.other.member" = { fg = "magenta30", modifiers = ["italic"] }
+
+"label" = { fg = "blue40", modifiers = ["italic"] }
+
+"punctuation" = "gray70"
+"punctuation.special" = "blue50"
+"punctuation.bracket" = "gray60"
+"punctuation.delimiter" = "gray60"
+
+"keyword" = { fg = "blue50", modifiers = ["bold"] }
+"keyword.control" = { fg = "blue50", modifiers = ["bold"] }
+"keyword.control.conditional" = { fg = "blue50", modifiers = ["bold"] }
+"keyword.control.repeat" = { fg = "blue50", modifiers = ["bold"] }
+"keyword.control.import" = { fg = "purple40", modifiers = ["bold"] }
+"keyword.control.return" = { fg = "red50", modifiers = ["bold"] }
+"keyword.control.exception" = { fg = "red40", modifiers = ["bold"] }
+"keyword.operator" = "blue40"
+"keyword.function" = { fg = "teal40", modifiers = ["bold", "italic"] }
+"keyword.storage" = { fg = "purple50", modifiers = ["bold"] }
+"keyword.storage.modifier" = { fg = "purple40", modifiers = ["italic"] }
+
+"operator" = "blue50"
+
+"function" = { fg = "blue40", modifiers = ["bold"] }
+"function.builtin" = { fg = "blue50", modifiers = ["bold"] }
+"function.method" = { fg = "blue40", modifiers = ["bold"] }
+# "function.macro" = { fg = "purple30", modifiers = ["bold", "italic"] }
+
+"tag" = "cyan40"
+"tag.builtin" = { fg = "cyan40", modifiers = ["bold"] }
+
+"namespace" = { fg = "teal40", modifiers = ["italic"] }
+
+"special" = "purple40"
+
+# Markup
+"markup.heading" = { fg = "blue50", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "gray60", modifiers = ["bold"] }
+"markup.heading.1" = { fg = "blue40", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "cyan40", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "teal40", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "green40", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "purple40", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "magenta40", modifiers = ["bold"] }
+"markup.list" = "blue30"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "blue30", modifiers = ["underlined"] }
+"markup.link.text" = "cyan30"
+"markup.quote" = { fg = "green30", modifiers = ["italic"] }
+"markup.raw" = "teal30"
+
+# Diff
+"diff.plus" = "green40"
+"diff.minus" = "red40"
+"diff.delta" = "blue40"
+"diff.delta.moved" = "purple40"
+
+# UI Elements
+"ui.background" = { fg = "gray70", bg = "gray10" }
+"ui.background.separator" = { fg = "gray30" }
+
+"ui.cursor" = { fg = "gray10", bg = "blue50" }
+"ui.cursor.normal" = { fg = "gray10", bg = "blue50" }
+"ui.cursor.insert" = { fg = "gray10", bg = "green50" }
+"ui.cursor.select" = { fg = "gray10", bg = "purple50" }
+"ui.cursor.match" = { fg = "gray10", bg = "cyan40" }
+
+"ui.cursor.primary" = { fg = "gray10", bg = "blue60" }
+"ui.cursor.primary.normal" = { fg = "gray10", bg = "blue60" }
+"ui.cursor.primary.insert" = { fg = "gray10", bg = "green60" }
+"ui.cursor.primary.select" = { fg = "gray10", bg = "purple60" }
+
+"ui.linenr" = { fg = "gray40" }
+"ui.linenr.selected" = { fg = "gray70" }
+
+"ui.statusline" = { fg = "gray70", bg = "gray20" }
+"ui.statusline.inactive" = { fg = "gray50", bg = "gray20" }
+"ui.statusline.normal" = { fg = "gray10", bg = "blue50", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "gray10", bg = "green50", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "gray10", bg = "purple50", modifiers = ["bold"] }
+
+"ui.popup" = { fg = "gray70", bg = "gray20" }
+"ui.popup.info" = { fg = "blue40", bg = "gray20" }
+"ui.window" = { fg = "gray30" }
+"ui.help" = { fg = "gray70", bg = "gray20" }
+
+"ui.text" = "gray70"
+"ui.text.focus" = { fg = "gray70", bg = "gray30", modifiers = ["bold"] }
+"ui.text.inactive" = { fg = "gray50" }
+"ui.text.info" = { fg = "blue40" }
+
+"ui.virtual.ruler" = { bg = "gray20" }
+"ui.virtual.whitespace" = "gray30"
+"ui.virtual.indent-guide" = "gray30"
+"ui.virtual.inlay-hint" = { fg = "gray50", bg = "gray10" }
+"ui.virtual.jump-label" = { fg = "yellow50", bg = "gray10" }
+
+"ui.selection" = { bg = "gray30" }
+"ui.selection.primary" = { bg = "gray40" }
+"ui.cursorline.primary" = { bg = "gray20" }
+
+"ui.highlight" = { bg = "gray30", modifiers = ["bold"] }
+"ui.highlight.frameline" = { bg = "blue20" }
+
+"ui.menu" = { fg = "gray70", bg = "gray20" }
+"ui.menu.selected" = { fg = "gray70", bg = "gray30", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "blue40", bg = "gray30" }
+
+# Diagnostics
+"diagnostic" = { fg = "gray60" }
+"diagnostic.error" = { underline = { color = "magenta30", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow30", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue40", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "cyan40", style = "curl" } }
+
+"error" = "magenta30"
+"warning" = "yellow30"
+"info" = "blue40"
+"hint" = "cyan40"
+
+[palette]
+# Softer, more aesthetic color palette inspired by IBM Carbon
+gray10 = "#161616"
+gray20 = "#262626"
+gray30 = "#393939"
+gray40 = "#525252"
+gray50 = "#6F6F6F"
+gray60 = "#8D8D8D"
+gray70 = "#a8a8a8"
+gray80 = "#c8ccd4"
+
+# Softer blues
+blue20 = "#0043ce"
+blue30 = "#4589ff"
+blue40 = "#78a9ff"
+blue50 = "#82cfff"
+blue60 = "#bae6ff"
+
+# Softer cyans
+cyan30 = "#08bdba"
+cyan40 = "#3ddbd9"
+cyan50 = "#9ef0f0"
+
+# Softer, more muted greens
+green30 = "#42be65"  # Softened
+green40 = "#6fdc8c"  # More pastel
+green50 = "#a7f0ba"  # Even softer
+green60 = "#defbe6"  # Very soft
+
+# Pinks and magentas (more prominent as per your preference)
+magenta30 = "#ff7eb6"  # Your original pink
+magenta40 = "#ff9ec7"  # Lighter pink
+magenta50 = "#ffd6e8"  # Very soft pink
+
+# Softer purples
+purple30 = "#a56eff"
+purple40 = "#be95ff"
+purple50 = "#d4bbff"
+purple60 = "#e8daff"
+
+# Softer reds with pink undertones
+red30 = "#ff8389"    # Softer red
+red40 = "#ffa4a9"    # Pink-red
+red50 = "#ffd7d9"    # Very soft
+
+# Softer teals
+teal30 = "#08bdba"
+teal40 = "#3ddbd9"
+teal50 = "#9ef0f0"
+
+# Warmer, softer yellows
+yellow30 = "#f1c21b"
+yellow40 = "#fddc69"
+yellow50 = "#fff1d2"

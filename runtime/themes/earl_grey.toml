@@ -1,0 +1,64 @@
+# Author : Steven Vancoillie <steven.vancoillie@gmail.com>
+#
+# Migraine-friendly, minimal color scheme focused only on structural elements
+# like types, functions, and keywords.
+
+"comment" = { modifiers = ["dim"] }
+"diagnostic.error" = { underline = { color = "blush", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "sky", style = "curl" } }
+"diagnostic.info" = { underline = { color = "grey", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "maple", style = "curl" } }
+"diff.delta" = "silver"
+"diff.minus" = "blush"
+"diff.plus" = "jade"
+"error" = "blush"
+"function" = { modifiers = ["bold"] }
+"hint" = "sky"
+"info" = "grey"
+"keyword" = "earl"
+"type" = "maple"
+"ui.background" = { bg = "chaotica" }
+"ui.background.separator" = { fg = "snow" }
+"ui.cursor" = { fg = "black", bg = "earl" }
+"ui.cursorline.primary" = { bg = "deepspace" }
+"ui.help" = { bg = "deepspace", fg = "snow" }
+"ui.highlight" = { bg = "space" }
+"ui.linenr" = { fg = "grey" }
+"ui.linenr.selected" = { fg = "earl" }
+"ui.menu" = { fg = "snow", bg = "deepspace" }
+"ui.menu.scroll" = { fg = "grey", bg = "deepspace" }
+"ui.menu.selected" = { fg = "snow", bg = "lacquer" }
+"ui.popup" = { bg = "deepspace" }
+"ui.selection" = { bg = "lacquer" }
+"ui.statusline" = { fg = "earl", bg = "deepspace" }
+"ui.statusline.inactive" = { fg = "snow", bg = "deepspace", modifiers = ["dim"] }
+"ui.statusline.insert" = { fg = "chaotica", bg = "earl", modifiers = ["bold"] }
+"ui.statusline.normal" = { fg = "chaotica", bg = "sky", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "chaotica", bg = "myrtle", modifiers = ["bold"] }
+"ui.text" = { fg = "silver" }
+"ui.text.focus" = { fg = "snow" }
+"ui.virtual" = { fg = "space" }
+"ui.virtual.indent-guide" = { fg = "space" }
+"ui.virtual.inlay-hint" = { fg = "lacquer" }
+"ui.virtual.jump-label" = { fg = "myrtle" }
+"ui.virtual.ruler" = { bg = "space" }
+"ui.window" = { fg = "space" }
+"warning" = "maple"
+
+[palette]
+black = "#000000"
+chaotica = "#101010"
+deepspace = "#1b1b1b"
+space = "#2a2a2d"
+lacquer = "#3e3e3e"
+darkgrey = "#505050"
+grey = "#808080"
+silver = "#a6a6a6"
+snow = "#f0f0f0"
+white = "#ffffff"
+blush = "#e78284"
+jade = "#90b99f"
+earl = "#b59efc"
+sky = "#99bbe0"
+myrtle = "#e29eca"
+maple = "#e5c890"

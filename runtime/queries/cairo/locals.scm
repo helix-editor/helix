@@ -14,14 +14,14 @@
 ; Definitions
 
 (parameter
-  (identifier) @local.definition)
+  (identifier) @local.definition.variable.parameter)
 
 (type_parameters
-  (type_identifier) @local.definition)
+  (type_identifier) @local.definition.type.parameter)
 (constrained_type_parameter
-  left: (type_identifier) @local.definition)
+  left: (type_identifier) @local.definition.type.parameter)
 
-(closure_parameters (identifier) @local.definition)
+(closure_parameters (identifier) @local.definition.variable.parameter)
 
 ; References
 (identifier) @local.reference

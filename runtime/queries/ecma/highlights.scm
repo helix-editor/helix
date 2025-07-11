@@ -74,16 +74,12 @@
 [
   "async"
   "debugger"
-  "delete"
   "extends"
   "from"
   "get"
   "new"
   "set"
   "target"
-  "typeof"
-  "instanceof"
-  "void"
   "with"
 ] @keyword
 
@@ -91,6 +87,10 @@
   "of"
   "as"
   "in"
+  "delete"
+  "typeof"
+  "instanceof"
+  "void"
 ] @keyword.operator
 
 [
@@ -234,6 +234,8 @@
   (string)
   (template_string)
 ] @string
+
+(escape_sequence) @constant.character.escape
 
 (regex) @string.regexp
 (number) @constant.numeric.integer

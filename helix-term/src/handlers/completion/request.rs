@@ -5,7 +5,7 @@ use std::time::Duration;
 use arc_swap::ArcSwap;
 use futures_util::Future;
 use helix_core::completion::CompletionProvider;
-use helix_core::syntax::LanguageServerFeature;
+use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{cancelable_future, TaskController, TaskHandle};
 use helix_lsp::lsp;
 use helix_lsp::lsp::{CompletionContext, CompletionTriggerKind};
@@ -303,7 +303,6 @@ fn request_completions_from_language_server(
     async move {
         let response: Option<lsp::CompletionResponse> = completion_response
             .await
-            .and_then(|json| serde_json::from_value(json).map_err(helix_lsp::Error::Parse))
             .inspect_err(|err| log::error!("completion request failed: {err}"))
             .ok()
             .flatten();

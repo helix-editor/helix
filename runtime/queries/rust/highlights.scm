@@ -106,12 +106,28 @@
   (string_literal)
   (raw_string_literal)
 ] @string
-(outer_doc_comment_marker "/" @comment)
-(inner_doc_comment_marker "!" @comment)
-[
-  (line_comment)
-  (block_comment)
-] @comment
+
+; -------
+; Comments
+; -------
+
+(line_comment) @comment.line
+(block_comment) @comment.block
+
+; Doc Comments
+(line_comment
+  (outer_doc_comment_marker "/" @comment.line.documentation)
+  (doc_comment)) @comment.line.documentation
+(line_comment
+  (inner_doc_comment_marker "!" @comment.line.documentation)
+  (doc_comment)) @comment.line.documentation
+
+(block_comment
+  (outer_doc_comment_marker) @comment.block.documentation
+  (doc_comment) "*/" @comment.block.documentation) @comment.block.documentation
+(block_comment
+  (inner_doc_comment_marker) @comment.block.documentation
+  (doc_comment) "*/" @comment.block.documentation) @comment.block.documentation
 
 ; ---
 ; Extraneous
@@ -421,6 +437,7 @@
   (#eq? @special "derive")
 )
 
+(token_repetition_pattern) @punctuation.delimiter
 (token_repetition_pattern [")" "(" "$"] @punctuation.special)
 (token_repetition_pattern "?" @operator)
 
