@@ -509,6 +509,7 @@ pub struct StatusLineConfig {
     pub mode: ModeConfig,
     pub diagnostics: Vec<Severity>,
     pub workspace_diagnostics: Vec<Severity>,
+    pub always_show_encoding: bool,
 }
 
 impl Default for StatusLineConfig {
@@ -535,6 +536,7 @@ impl Default for StatusLineConfig {
             mode: ModeConfig::default(),
             diagnostics: vec![Severity::Warning, Severity::Error],
             workspace_diagnostics: vec![Severity::Warning, Severity::Error],
+            always_show_encoding: false,
         }
     }
 }
