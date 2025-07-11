@@ -2642,7 +2642,7 @@ const BUFFER_CLOSE_OTHERS_SIGNATURE: Signature = Signature {
     flags: &[Flag {
         name: "skip-visible",
         alias: Some('s'),
-        doc: "Don't close buffers that are visible.",
+        doc: "don't close buffers that are visible",
         ..Flag::DEFAULT
     }],
     ..Signature::DEFAULT
