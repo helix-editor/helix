@@ -477,6 +477,7 @@ pub enum MethodCall {
     UnregisterCapability(lsp::UnregistrationParams),
     ShowDocument(lsp::ShowDocumentParams),
     WorkspaceDiagnosticRefresh,
+    ShowMessageRequest(lsp::ShowMessageRequestParams),
 }
 
 impl MethodCall {
@@ -509,6 +510,10 @@ impl MethodCall {
                 Self::ShowDocument(params)
             }
             lsp::request::WorkspaceDiagnosticRefresh::METHOD => Self::WorkspaceDiagnosticRefresh,
+            lsp::request::ShowMessageRequest::METHOD => {
+                let params: lsp::ShowMessageRequestParams = params.parse()?;
+                Self::ShowMessageRequest(params)
+            }
             _ => {
                 return Err(Error::Unhandled);
             }
