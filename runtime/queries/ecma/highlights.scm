@@ -235,6 +235,8 @@
   (template_string)
 ] @string
 
+(escape_sequence) @constant.character.escape
+
 (regex) @string.regexp
 (number) @constant.numeric.integer
 

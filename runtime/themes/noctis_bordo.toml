@@ -2,6 +2,7 @@
 
 "attribute" = { fg = "#7060eb", modifiers = ["bold"] }
 "comment" = { fg = "base03", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "base06", modifiers = ["italic"] }
 "comment.block.documentation" = { fg = "base06", modifiers = ["italic"] }
 "constant" = "base09"
 "constant.character.escape" = "base0C"

@@ -601,6 +601,8 @@ impl MappableCommand {
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
         goto_prev_tabstop, "Goto next snippet placeholder",
+        rotate_selections_first, "Make the first selection your primary one",
+        rotate_selections_last, "Make the last selection your primary one",
     );
 }
 
@@ -3724,11 +3726,13 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             .map(|token| token.len() + 1) // `+ 1` for the extra space added
             .unwrap_or_default();
         for i in 0..count {
-            // pos                    -> beginning of reference line,
-            // + (i * (1+indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
+            // pos                     -> beginning of reference line,
+            // + (i * (line_ending_len + indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
             // + indent_len + comment_len ->        -> indent for i'th line
             ranges.push(Range::point(
-                pos + (i * (1 + indent_len + comment_len)) + indent_len + comment_len,
+                pos + (i * (doc.line_ending.len_chars() + indent_len + comment_len))
+                    + indent_len
+                    + comment_len,
             ));
         }
 
@@ -4206,6 +4210,7 @@ pub mod insert {
             None
         };
 
+        let mut last_pos = 0;
         let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
             // Tracks the number of trailing whitespace characters deleted by this selection.
             let mut chars_deleted = 0;
@@ -4227,7 +4232,8 @@ pub mod insert {
             let (from, to, local_offs) = if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_char()
             {
-                let first_trailing_whitespace_char = (line_start + idx + 1).min(pos);
+                let first_trailing_whitespace_char = (line_start + idx + 1).clamp(last_pos, pos);
+                last_pos = pos;
                 let line = text.line(current_line);
 
                 let indent = match line.first_non_whitespace_char() {
@@ -5288,6 +5294,21 @@ fn rotate_selections_forward(cx: &mut Context) {
 }
 fn rotate_selections_backward(cx: &mut Context) {
     rotate_selections(cx, Direction::Backward)
+}
+
+fn rotate_selections_first(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let mut selection = doc.selection(view.id).clone();
+    selection.set_primary_index(0);
+    doc.set_selection(view.id, selection);
+}
+
+fn rotate_selections_last(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let mut selection = doc.selection(view.id).clone();
+    let len = selection.len();
+    selection.set_primary_index(len - 1);
+    doc.set_selection(view.id, selection);
 }
 
 enum ReorderStrategy {
@@ -6709,6 +6730,10 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     // Calculate the jump candidates: ranges for any visible words with two or
     // more characters.
     let alphabet = &cx.editor.config().jump_label_alphabet;
+    if alphabet.is_empty() {
+        return;
+    }
+
     let jump_label_limit = alphabet.len() * alphabet.len();
     let mut words = Vec::with_capacity(jump_label_limit);
     let (view, doc) = current_ref!(cx.editor);

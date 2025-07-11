@@ -173,6 +173,18 @@ async fn insert_newline_trim_trailing_whitespace() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn insert_newline_trim_whitespace_to_previous_selection() -> anyhow::Result<()> {
+    test((
+        indoc! {"\"#[a|]# #(a|)# #(a|)#\""},
+        "c<ret>",
+        indoc! {"\"\n#[\n|]##(\n|)##(\"|)#"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn insert_newline_continue_line_comment() -> anyhow::Result<()> {
     // `insert_newline` continues a single line comment
     test((

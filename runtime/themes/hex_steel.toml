@@ -2,6 +2,7 @@
 
 "comment" = { fg = "comment" }
 "comment.block.documentation" = { bg = "comment_doc", modifiers = ["italic"] }
+"comment.line.documentation" = { bg = "comment_doc", modifiers = ["italic"] }
 
 "constant" = { fg = "t11" }
 "function" = { fg = "t10" }
