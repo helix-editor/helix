@@ -230,38 +230,51 @@ fn force_buffer_close(
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
-fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
-    let current_document = &doc!(editor).id();
-    editor
-        .documents()
-        .map(|doc| doc.id())
-        .filter(|doc_id| doc_id != current_document)
-        .collect()
+fn buffer_gather_others_impl(editor: &mut Editor, skip_visible: bool) -> Vec<DocumentId> {
+    if skip_visible {
+        let visible_document_ids = editor
+            .tree
+            .views()
+            .map(|view| &view.0.doc)
+            .collect::<HashSet<_>>();
+        editor
+            .documents()
+            .map(|doc| doc.id())
+            .filter(|doc_id| !visible_document_ids.contains(doc_id))
+            .collect()
+    } else {
+        let current_document = &doc!(editor).id();
+        editor
+            .documents()
+            .map(|doc| doc.id())
+            .filter(|doc_id| doc_id != current_document)
+            .collect()
+    }
 }
 
 fn buffer_close_others(
     cx: &mut compositor::Context,
-    _args: Args,
+    args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let document_ids = buffer_gather_others_impl(cx.editor);
+    let document_ids = buffer_gather_others_impl(cx.editor, args.has_flag("skip-visible"));
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close_others(
     cx: &mut compositor::Context,
-    _args: Args,
+    args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let document_ids = buffer_gather_others_impl(cx.editor);
+    let document_ids = buffer_gather_others_impl(cx.editor, args.has_flag("skip-visible"));
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
@@ -2623,6 +2636,18 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+/// This command accepts a single boolean --skip-visible flag and no positionals.
+const BUFFER_CLOSE_OTHERS_SIGNATURE: Signature = Signature {
+    positionals: (0, Some(0)),
+    flags: &[Flag {
+        name: "skip-visible",
+        alias: Some('s'),
+        doc: "don't close buffers that are visible",
+        ..Flag::DEFAULT
+    }],
+    ..Signature::DEFAULT
+};
+
 // TODO: SHELL_SIGNATURE should specify var args for arguments, so that just completers::filename can be used,
 // but Signature does not yet allow for var args.
 
@@ -2708,10 +2733,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Close all buffers but the currently focused one.",
         fun: buffer_close_others,
         completer: CommandCompleter::none(),
-        signature: Signature {
-            positionals: (0, Some(0)),
-            ..Signature::DEFAULT
-        },
+        signature: BUFFER_CLOSE_OTHERS_SIGNATURE,
     },
     TypableCommand {
         name: "buffer-close-others!",
@@ -2719,10 +2741,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Force close all buffers but the currently focused one.",
         fun: force_buffer_close_others,
         completer: CommandCompleter::none(),
-        signature: Signature {
-            positionals: (0, Some(0)),
-            ..Signature::DEFAULT
-        },
+        signature: BUFFER_CLOSE_OTHERS_SIGNATURE,
     },
     TypableCommand {
         name: "buffer-close-all",
