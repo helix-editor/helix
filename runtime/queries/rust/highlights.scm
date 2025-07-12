@@ -305,13 +305,6 @@
 ; Functions
 ; -------
 
-; In here, `bar` is a function, as it is equal to a closure:
-;
-; let bar = || 4;
-(let_declaration
-  pattern: (identifier) @function
-  value: (closure_expression))
-
 ; highlight `baz` in `any_function(foo::bar::baz)` as function
 ; This generically works for an unlimited number of path segments:
 ;

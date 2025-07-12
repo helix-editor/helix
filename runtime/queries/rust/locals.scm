@@ -41,18 +41,3 @@
 
 ; References
 (identifier) @local.reference
-
-; In here, `bar` is a function, as it is equal to a closure:
-;
-; let bar = || 4;
-;
-; After this, we know that `bar` must be a function:
-;
-; let a = bar;
-;         ^^^ function
-;
-; let a = f(bar)
-;           ^^^ function
-(let_declaration
-  pattern: (identifier) @local.definition.function
-  value: (closure_expression))
