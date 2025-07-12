@@ -19,6 +19,16 @@ pub enum Operation {
     Insert(Tendril),
 }
 
+impl Operation {
+    /// The number of characters affected by the operation.
+    pub fn len_chars(&self) -> usize {
+        match self {
+            Self::Retain(n) | Self::Delete(n) => *n,
+            Self::Insert(s) => s.chars().count(),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Assoc {
     Before,
