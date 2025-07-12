@@ -206,11 +206,6 @@
   value: (identifier)? @variable
   field: (field_identifier) @variable.other.member))
 
-(parameter
-	pattern: (identifier) @variable.parameter)
-(closure_parameters
-	(identifier) @variable.parameter)
-
 ; -------
 ; Keywords
 ; -------
