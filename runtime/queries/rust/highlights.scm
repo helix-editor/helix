@@ -310,30 +310,37 @@
 ; Functions
 ; -------
 
-; Special handling for point-free functions passed to some "well-known"
-; methods, that are known to take a closure as the first argument
+; highlight `baz` in `any_function(foo::bar::baz)` as function
+; This generically works for an unlimited number of path segments:
+;
+; - `f(foo::bar)`
+; - `f(foo::bar::baz)`
+; - `f(foo::bar::baz::quux)`
+;
+; We know that in the above examples, the last component of each path is a function
+; as the only other valid thing (following Rust naming conventions) would be a module at
+; that position, however you cannot pass modules as arguments
+(call_expression
+  function: _
+  arguments: (arguments "("
+    (scoped_identifier
+      path: _
+      name: (identifier) @function) ")"))
+
+; Special handling for point-free functions that are not part of a path
+; but are just passed as variables to some "well-known"
+; methods, which are known to take a closure as the first argument
 ; 
-; For example, these are @function:
-; 
-; - `foo` in `a.map(foo)`
-; - `bar` in `a.map(foo::bar)`
-; - `baz` in `a.map(foo::bar::baz)`
+; For example, `foo` in `a.map(foo)` is a @function
 (call_expression
   function: (field_expression
     value: _
     field: (field_identifier) @_method_name)
-  arguments: [
-    ; handles `a.map(foo)`
+  arguments:
+    ; first argument is `@function`
     (arguments "("
       .
-      (identifier) @function ")")
-    ; `a.map(foo::bar)`, `a.map(foo::bar::baz)`... (unlimited path segments)
-    (arguments "("
-        .
-        (scoped_identifier
-          path: _
-          name: (identifier) @function) ")")
-  ]
+      (identifier) @function)
   (#any-of? @_method_name
   ; methods on `core::iter::Iterator`
   "map" "map_while" "filter_map" "flat_map" "map_windows"
@@ -411,22 +418,15 @@
   function: (field_expression
     value: _
     field: (field_identifier) @_method_name)
-  arguments: [
+  arguments: 
     ; handles `a.map_or_else(..., foo)`
     (arguments "("
       ; first argument is ignored
       .
       _
+      .
+      ; second argument is @function
       (identifier) @function ")")
-    ; `a.map_or_else(..., foo::bar)`, `a.map(..., foo::bar::baz)`... (unlimited path segments)
-    (arguments "("
-        ; first argument is ignored
-        .
-        _
-        (scoped_identifier
-          path: _
-          name: (identifier) @function) ")")
-  ]
   (#any-of? @_method_name
   ; methods on `Option`
   "map_or_else" "zip_with"
