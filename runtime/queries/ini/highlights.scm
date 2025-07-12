@@ -12,4 +12,4 @@
 
 (setting
   (setting_name) @variable.other.member
-  (setting_value) @string)
+  ((setting_value) @string)?)
