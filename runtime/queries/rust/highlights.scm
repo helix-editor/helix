@@ -310,6 +310,13 @@
 ; Functions
 ; -------
 
+; In here, `bar` is a function, as it is equal to a closure:
+;
+; let bar = || 4;
+(let_declaration
+  pattern: (identifier) @function
+  value: (closure_expression))
+
 ; highlight `baz` in `any_function(foo::bar::baz)` as function
 ; This generically works for an unlimited number of path segments:
 ;
@@ -322,10 +329,10 @@
 ; that position, however you cannot pass modules as arguments
 (call_expression
   function: _
-  arguments: (arguments "("
+  arguments: (arguments
     (scoped_identifier
       path: _
-      name: (identifier) @function) ")"))
+      name: (identifier) @function)))
 
 ; Special handling for point-free functions that are not part of a path
 ; but are just passed as variables to some "well-known"
@@ -338,7 +345,7 @@
     field: (field_identifier) @_method_name)
   arguments:
     ; first argument is `@function`
-    (arguments "("
+    (arguments
       .
       (identifier) @function)
   (#any-of? @_method_name
@@ -420,13 +427,13 @@
     field: (field_identifier) @_method_name)
   arguments: 
     ; handles `a.map_or_else(..., foo)`
-    (arguments "("
+    (arguments
       ; first argument is ignored
       .
       _
       .
       ; second argument is @function
-      (identifier) @function ")")
+      (identifier) @function)
   (#any-of? @_method_name
   ; methods on `Option`
   "map_or_else" "zip_with"
