@@ -49,7 +49,7 @@ foldhash = "0.1"
 parking_lot = "0.12"
 
 [workspace.package]
-version = "25.1.1"
+version = "25.7.0"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]
