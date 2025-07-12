@@ -1119,6 +1119,7 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+    pub editor_events: (UnboundedSender<EditorEvent>, UnboundedReceiver<EditorEvent>),
     pub needs_redraw: bool,
     /// Cached position of the cursor calculated during rendering.
     /// The content of `cursor_cache` is returned by `Editor::cursor` if
@@ -1146,6 +1147,10 @@ pub enum EditorEvent {
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent((DebugAdapterId, dap::Payload)),
+    PluginCommand(String, Vec<String>, Option<u32>),
+    RegisterPluginCommand(String, String, usize),
+    PluginResponse(u32, String),
+    PluginEvent(String, String), // event_name, event_data (JSON string)
     IdleTimer,
     Redraw,
 }
@@ -1253,6 +1258,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
+            editor_events: unbounded_channel(),
             needs_redraw: false,
             handlers,
             mouse_down_range: None,
@@ -1788,6 +1794,34 @@ impl Editor {
         self.document_by_path(path).map(|doc| doc.id)
     }
 
+    pub fn get_buffer_content(&self, doc_id: DocumentId) -> Option<String> {
+        self.documents.get(&doc_id).map(|doc| doc.text().to_string())
+    }
+
+    pub fn document_by_id(&self, id: DocumentId) -> Option<&Document> {
+        self.documents.get(&id)
+    }
+
+    pub fn get_buffer_content(&self, doc_id: DocumentId) -> Option<String> {
+        self.documents.get(&doc_id).map(|doc| doc.text().to_string())
+    }
+
+    pub fn insert_text(&mut self, doc_id: DocumentId, position: usize, text: String) -> anyhow::Result<()> {
+        let doc = self.documents.get_mut(&doc_id).ok_or_else(|| anyhow::anyhow!("Document not found"))?;
+        let view_id = self.tree.focus; // Assumindo a view focada para aplicar a transação
+        let transaction = helix_core::Transaction::insert(doc.text(), helix_core::Selection::point(position), text.into());
+        doc.apply(&transaction, view_id);
+        Ok(())
+    }
+
+    pub fn delete_text(&mut self, doc_id: DocumentId, start: usize, end: usize) -> anyhow::Result<()> {
+        let doc = self.documents.get_mut(&doc_id).ok_or_else(|| anyhow::anyhow!("Document not found"))?;
+        let view_id = self.tree.focus; // Assumindo a view focada para aplicar a transação
+        let transaction = helix_core::Transaction::delete(doc.text(), helix_core::Range::new(start, end));
+        doc.apply(&transaction, view_id);
+        Ok(())
+    }
+
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
@@ -2144,44 +2178,34 @@ impl Editor {
         .map(|_| ())
     }
 
+    pub fn dispatch_editor_event(&mut self, event: EditorEvent) {
+        if let Err(err) = self.editor_events.0.send(event) {
+            log::error!("Failed to send editor event: {}", err);
+        }
+    }
+
     pub async fn wait_event(&mut self) -> EditorEvent {
-        // the loop only runs once or twice and would be better implemented with a recursion + const generic
-        // however due to limitations with async functions that can not be implemented right now
-        loop {
-            tokio::select! {
-                biased;
-
-                Some(event) = self.save_queue.next() => {
-                    self.write_count -= 1;
-                    return EditorEvent::DocumentSaved(event)
-                }
-                Some(config_event) = self.config_events.1.recv() => {
-                    return EditorEvent::ConfigEvent(config_event)
-                }
-                Some(message) = self.language_servers.incoming.next() => {
-                    return EditorEvent::LanguageServerMessage(message)
-                }
-                Some(event) = self.debug_adapters.incoming.next() => {
-                    return EditorEvent::DebuggerEvent(event)
-                }
-
-                _ = helix_event::redraw_requested() => {
-                    if  !self.needs_redraw{
-                        self.needs_redraw = true;
-                        let timeout = Instant::now() + Duration::from_millis(33);
-                        if timeout < self.idle_timer.deadline() && timeout < self.redraw_timer.deadline(){
-                            self.redraw_timer.as_mut().reset(timeout)
-                        }
-                    }
-                }
-
-                _ = &mut self.redraw_timer  => {
-                    self.redraw_timer.as_mut().reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
-                    return EditorEvent::Redraw
-                }
-                _ = &mut self.idle_timer  => {
-                    return EditorEvent::IdleTimer
-                }
+        tokio::select! {
+            event = self.config_events.1.recv() => {
+                EditorEvent::ConfigEvent(event.expect("config event channel closed"))
+            }
+            event = self.language_servers.recv() => {
+                EditorEvent::LanguageServerMessage(event.expect("language server channel closed"))
+            }
+            event = self.debug_adapters.recv() => {
+                EditorEvent::DebuggerEvent(event.expect("debugger channel closed"))
+            }
+            event = self.save_queue.next() => {
+                EditorEvent::DocumentSaved(event.expect("save queue closed"))
+            }
+            _ = &mut self.idle_timer => {
+                EditorEvent::IdleTimer
+            }
+            _ = &mut self.redraw_timer => {
+                EditorEvent::Redraw
+            }
+            event = self.editor_events.1.recv() => {
+                event.expect("editor event channel closed")
             }
         }
     }

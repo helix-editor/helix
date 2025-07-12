@@ -221,6 +221,10 @@ pub enum MappableCommand {
         name: String,
         keys: Vec<KeyEvent>,
     },
+    Plugin {
+        name: String,
+        args: Vec<String>,
+    },
 }
 
 macro_rules! static_commands {
@@ -277,6 +281,9 @@ impl MappableCommand {
                     cx.editor.macro_replaying.pop();
                 }));
             }
+            Self::Plugin { name, args } => {
+                cx.editor.dispatch_editor_event(helix_view::editor::EditorEvent::PluginCommand(name.clone(), args.clone()));
+            }
         }
     }
 
@@ -285,6 +292,7 @@ impl MappableCommand {
             Self::Typable { name, .. } => name,
             Self::Static { name, .. } => name,
             Self::Macro { name, .. } => name,
+            Self::Plugin { name, .. } => name,
         }
     }
 
@@ -293,6 +301,7 @@ impl MappableCommand {
             Self::Typable { doc, .. } => doc,
             Self::Static { doc, .. } => doc,
             Self::Macro { name, .. } => name,
+            Self::Plugin { name, .. } => name, // For now, use name as doc
         }
     }
 
@@ -660,11 +669,17 @@ impl std::str::FromStr for MappableCommand {
                 keys,
             })
         } else {
-            MappableCommand::STATIC_COMMAND_LIST
+            match MappableCommand::STATIC_COMMAND_LIST
                 .iter()
                 .find(|cmd| cmd.name() == s)
                 .cloned()
-                .ok_or_else(|| anyhow!("No command named '{}'", s))
+            {
+                Some(cmd) => Ok(cmd),
+                None => Ok(MappableCommand::Plugin {
+                    name: s.to_string(),
+                    args: Vec::new(),
+                }),
+            }
         }
     }
 }

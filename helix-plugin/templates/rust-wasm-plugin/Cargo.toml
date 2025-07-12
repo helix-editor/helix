@@ -1,0 +1,17 @@
+[package]
+name = "{{project-name}}"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1.0"
+
+[profile.release]
+opt-level = "s"
+overflow-checks = true
+lto = true
+strip = true
+codegen-units = 1

@@ -16,6 +16,7 @@
   - [Commands](./commands.md)
   - [Language support](./lang-support.md)
 - [Ecosystem](./ecosystem.md)
+  - [Plugins](./plugins.md)
   - [Migrating from Vim](./from-vim.md)
   - [Helix mode in other software](./other-software.md)
 - [Configuration](./configuration.md)

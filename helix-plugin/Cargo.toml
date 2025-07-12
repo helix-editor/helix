@@ -1,0 +1,18 @@
+[package]
+name = "helix-plugin"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = "1.0.98"
+mlua = { version = "0.10.5", features = ["lua54"] }
+serde = "1.0.219"
+toml = "0.9.2"
+walkdir = "2.5.0"
+wasmtime = "30.0.2"

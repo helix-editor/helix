@@ -1,0 +1,8 @@
+name = "{{project-name}}"
+version = "0.1.0"
+authors = ["Your Name <your@email.com>"]
+description = "A sample Lua plugin for Helix."
+entrypoint = "main.lua"
+
+[activation]
+on_command = ["{{project-name}}:*"]

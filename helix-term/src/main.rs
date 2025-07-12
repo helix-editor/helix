@@ -147,8 +147,21 @@ FLAGS:
         helix_core::config::default_lang_loader()
     });
 
+    // -- Initialize Plugin System --
+    let (editor_event_sender, editor_event_receiver) = tokio::sync::mpsc::unbounded_channel();
+    let mut plugin_manager = helix_plugin::manager::PluginManager::new(editor_event_sender.clone());
+    let mut plugin_dir = helix_loader::config_dir();
+    plugin_dir.push("plugins");
+    if let Err(err) = plugin_manager.discover_plugins_in(&plugin_dir) {
+        log::error!("Failed to discover plugins: {}", err);
+    }
+    log::info!("Discovered plugins: {:?}", plugin_manager.loaded_plugins);
+    // ---------------------------
+
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config, lang_loader).context("unable to start Helix")?;
+    let mut app = Application::new(args, config, lang_loader, plugin_manager).context("unable to start Helix")?;
+
+    app.editor.editor_events.1 = editor_event_receiver;
 
     let exit_code = app.run(&mut EventStream::new()).await?;
 

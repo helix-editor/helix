@@ -62,12 +62,15 @@ pub struct Application {
     compositor: Compositor,
     terminal: Terminal,
     pub editor: Editor,
+    plugin_manager: helix_plugin::manager::PluginManager,
 
     config: Arc<ArcSwap<Config>>,
 
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+    next_request_id: u32,
+    event_subscribers: HashMap<String, Vec<(usize, String)>>, // event_name -> Vec<(plugin_idx, callback_fn_name)>
 }
 
 #[cfg(feature = "integration")]
@@ -93,7 +96,7 @@ fn setup_integration_logging() {
 }
 
 impl Application {
-    pub fn new(args: Args, config: Config, lang_loader: syntax::Loader) -> Result<Self, Error> {
+    pub fn new(args: Args, config: Config, lang_loader: syntax::Loader, plugin_manager: helix_plugin::manager::PluginManager) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
@@ -238,10 +241,13 @@ impl Application {
             compositor,
             terminal,
             editor,
+            plugin_manager,
             config,
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
+            next_request_id: 0,
+            event_subscribers: HashMap::new(),
         };
 
         Ok(app)
@@ -601,6 +607,7 @@ impl Application {
         match event {
             EditorEvent::DocumentSaved(event) => {
                 self.handle_document_write(event);
+                self.plugin_manager.dispatch_event("buffer_save", &"{}".to_string()); // Exemplo
                 self.render().await;
             }
             EditorEvent::ConfigEvent(event) => {
@@ -629,6 +636,72 @@ impl Application {
                 {
                     return true;
                 }
+            }
+            EditorEvent::PluginCommand(command_name, args, request_id) => {
+                match command_name.as_str() {
+                    "get_buffer_content" => {
+                        if let Some(doc_id_str) = args.first() {
+                            if let Ok(doc_id) = doc_id_str.parse::<u32>() {
+                                let doc_id = helix_view::DocumentId::from(doc_id);
+                                if let Some(content) = self.editor.get_buffer_content(doc_id) {
+                                    if let Some(req_id) = request_id {
+                                        self.editor.dispatch_editor_event(EditorEvent::PluginResponse(req_id, content));
+                                    }
+                                } else {
+                                    log::warn!("Document not found for get_buffer_content: {}", doc_id);
+                                }
+                            }
+                        }
+                    }
+                    "insert_text" => {
+                        if let (Some(doc_id_str), Some(pos_str), Some(text)) = (args.get(0), args.get(1), args.get(2)) {
+                            if let (Ok(doc_id), Ok(position)) = (doc_id_str.parse::<u32>(), pos_str.parse::<u32>()) {
+                                let doc_id = helix_view::DocumentId::from(doc_id);
+                                if let Err(e) = self.editor.insert_text(doc_id, position as usize, text.clone()) {
+                                    log::error!("Failed to insert text: {}", e);
+                                }
+                            }
+                        }
+                    }
+                    "delete_text" => {
+                        if let (Some(doc_id_str), Some(start_str), Some(end_str)) = (args.get(0), args.get(1), args.get(2)) {
+                            if let (Ok(doc_id), Ok(start), Ok(end)) = (doc_id_str.parse::<u32>(), start_str.parse::<u32>(), end_str.parse::<u32>()) {
+                                let doc_id = helix_view::DocumentId::from(doc_id);
+                                if let Err(e) = self.editor.delete_text(doc_id, start as usize, end as usize) {
+                                    log::error!("Failed to delete text: {}", e);
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        self.plugin_manager.execute_command(&command_name, &args);
+                    }
+                }
+            }
+            EditorEvent::PluginResponse(request_id, response_data) => {
+                self.plugin_manager.handle_plugin_response(request_id, response_data);
+            }
+            EditorEvent::PluginEvent(event_name, event_data) => {
+                if let Some(subscribers) = self.event_subscribers.get(&event_name) {
+                    for (plugin_idx, callback_fn_name) in subscribers.clone() {
+                        let plugin = &mut self.plugin_manager.loaded_plugins[plugin_idx];
+                        match &mut plugin.host {
+                            helix_plugin::manager::PluginHost::Wasm(host) => {
+                                if let Err(e) = host.call_function(&callback_fn_name, &[event_data.clone()]) {
+                                    log::error!("Error executing WASM plugin event callback '{}': {}", callback_fn_name, e);
+                                }
+                            }
+                            helix_plugin::manager::PluginHost::Lua(host) => {
+                                if let Err(e) = host.call_function(&callback_fn_name, &[event_data.clone()]) {
+                                    log::error!("Error executing Lua plugin event callback '{}': {}", callback_fn_name, e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            EditorEvent::RegisterPluginCommand(command_name, callback_function_name, plugin_idx) => {
+                self.plugin_manager.register_command(command_name, callback_function_name, plugin_idx);
             }
         }
 

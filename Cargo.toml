@@ -13,7 +13,7 @@ members = [
   "helix-vcs",
   "helix-parsec",
   "helix-stdx",
-  "xtask",
+  "xtask", "helix-plugin", "tests/test-plugins/my-first-plugin/my-first-plugin-source",
 ]
 
 default-members = [
