@@ -209,7 +209,7 @@ use helix_view::{align_view, Align};
 pub enum MappableCommand {
     Typable {
         name: String,
-        args: String,
+        args: Vec<String>,
         doc: String,
     },
     Static {
@@ -250,9 +250,12 @@ impl MappableCommand {
                         jobs: cx.jobs,
                         scroll: None,
                     };
-                    if let Err(e) =
-                        typed::execute_command(&mut cx, command, args, PromptEvent::Validate)
-                    {
+                    if let Err(e) = typed::execute_command(
+                        &mut cx,
+                        command,
+                        &args.join(" "),
+                        PromptEvent::Validate,
+                    ) {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {
@@ -280,11 +283,11 @@ impl MappableCommand {
         }
     }
 
-    pub fn name(&self) -> &str {
-        match &self {
-            Self::Typable { name, .. } => name,
+    pub fn name<'a>(&'a self) -> &'a str {
+        match self {
+            Self::Typable { name, .. } => name.as_str(),
             Self::Static { name, .. } => name,
-            Self::Macro { name, .. } => name,
+            Self::Macro { name, .. } => name.as_str(),
         }
     }
 
@@ -606,6 +609,37 @@ impl MappableCommand {
     );
 }
 
+/* const _: () = {
+    let mut i = 1usize;
+    let arr = MappableCommand::STATIC_COMMAND_LIST;
+    loop {
+        if i >= arr.len() {
+            break;
+        }
+        match (&arr[i - 1], &arr[i]) {
+            (MappableCommand::Static { name: a, .. }, MappableCommand::Static { name: b, .. }) => {
+                // assert!(a.len() <= b.len(), "Unsorted static command list");
+                let n = if a.len() < b.len() { a.len() } else { b.len() };
+                let mut j = 0;
+                loop {
+                    if j >= n {
+                        break;
+                    }
+                    assert!(
+                        a.as_bytes()[j] <= b.as_bytes()[j],
+                        "Unsorted static command list"
+                    );
+                    j += 1;
+                }
+            }
+            _ => {
+                panic!("nonstatic in static command list")
+            }
+        }
+        i += 1;
+    }
+}; */
+
 impl fmt::Debug for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -650,7 +684,7 @@ impl std::str::FromStr for MappableCommand {
                     MappableCommand::Typable {
                         name: cmd.name.to_owned(),
                         doc,
-                        args: args.to_string(),
+                        args: vec![args.to_string()],
                     }
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
@@ -3403,7 +3437,7 @@ pub fn command_palette(cx: &mut Context) {
                     .iter()
                     .map(|cmd| MappableCommand::Typable {
                         name: cmd.name.to_owned(),
-                        args: String::new(),
+                        args: Vec::new(),
                         doc: cmd.doc.to_owned(),
                     }),
             );
@@ -6209,7 +6243,12 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                if let Err(err) = shell_impl(shell, input, Some(fragment.into())) {
+                if let Err(err) = shell_impl(
+                    shell,
+                    input,
+                    Some(fragment.into()),
+                    doc.path().map(|x| x.as_path()),
+                ) {
                     log::debug!("Shell command failed: {}", err);
                 } else {
                     ranges.push(*range);
@@ -6230,14 +6269,22 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
-fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<Tendril> {
-    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
+fn shell_impl(
+    shell: &[String],
+    cmd: &str,
+    input: Option<Rope>,
+    file_path: Option<&Path>,
+) -> anyhow::Result<Tendril> {
+    tokio::task::block_in_place(|| {
+        helix_lsp::block_on(shell_impl_async(shell, cmd, input, file_path))
+    })
 }
 
 async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
     input: Option<Rope>,
+    file_path: Option<&Path>,
 ) -> anyhow::Result<Tendril> {
     use std::process::Stdio;
     use tokio::process::Command;
@@ -6254,6 +6301,19 @@ async fn shell_impl_async(
         process.stdin(Stdio::piped());
     } else {
         process.stdin(Stdio::null());
+    }
+
+    if let Some(file_path) = file_path {
+        process.env("HELIX_FILE_PATH", file_path);
+    }
+
+    {
+        // TODO get this as an arg.
+        let command_socket_path = {
+            let pid = std::process::id();
+            std::env::temp_dir().join(format!("helix.{pid}.sock"))
+        };
+        process.env("HELIX_SOCKET_PATH", command_socket_path);
     }
 
     let mut process = match process.spawn() {
@@ -6323,7 +6383,12 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             output.clone()
         } else {
             let input = range.slice(text);
-            match shell_impl(shell, cmd, pipe.then(|| input.into())) {
+            match shell_impl(
+                shell,
+                cmd,
+                pipe.then(|| input.into()),
+                doc.path().map(|x| x.as_path()),
+            ) {
                 Ok(mut output) => {
                     if !input.ends_with("\n") && output.ends_with('\n') {
                         output.pop();
