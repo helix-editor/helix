@@ -281,6 +281,16 @@ fn diag_picker(
                 } else {
                     Default::default()
                 }
+            })
+            .with_filter_format(|item: &PickerDiagnostic, _| {
+                if let Some(path) = item.location.uri.as_path() {
+                    path::get_relative_path(path)
+                        .to_string_lossy()
+                        .to_string()
+                        .into()
+                } else {
+                    Default::default()
+                }
             }),
         );
         primary_column += 1;
