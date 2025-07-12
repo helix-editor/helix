@@ -363,6 +363,8 @@
   ; methods on `Option`
   "and_then" "is_some_and" "is_none_or" "unwrap_or_else"
   "ok_or_else" "or_else" "get_or_insert_with" "take_if"
+  "map_or_else" ; NOTE: both arguments are closures, so it is here and also in the block to
+                ; highlight the 2nd argument
   
   ; methods on `Result
   "map_err" "inspect_err"
@@ -430,9 +432,9 @@
     (arguments
       ; first argument is ignored
       .
-      _
-      .
       ; second argument is @function
+      (_)
+      .
       (identifier) @function)
   (#any-of? @_method_name
   ; methods on `Option`
