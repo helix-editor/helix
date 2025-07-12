@@ -88,8 +88,13 @@
 ((type_arguments (type_identifier) @constant)
  (#match? @constant "^[A-Z_]+$"))
 (type_arguments (type_identifier) @type)
+; `_` in `(_, _)`
 (tuple_struct_pattern "_" @comment.unused)
+; `_` in `Vec<_>`
 ((type_arguments (type_identifier) @comment.unused)
+ (#eq? @comment.unused "_"))
+; `_` in `Rc<[_]>`
+((array_type (type_identifier) @comment.unused)
  (#eq? @comment.unused "_"))
 
 ; ---
@@ -201,11 +206,6 @@
   value: (identifier)? @variable
   field: (field_identifier) @variable.other.member))
 
-(parameter
-	pattern: (identifier) @variable.parameter)
-(closure_parameters
-	(identifier) @variable.parameter)
-
 ; -------
 ; Keywords
 ; -------
@@ -304,6 +304,146 @@
 ; -------
 ; Functions
 ; -------
+
+; highlight `baz` in `any_function(foo::bar::baz)` as function
+; This generically works for an unlimited number of path segments:
+;
+; - `f(foo::bar)`
+; - `f(foo::bar::baz)`
+; - `f(foo::bar::baz::quux)`
+;
+; We know that in the above examples, the last component of each path is a function
+; as the only other valid thing (following Rust naming conventions) would be a module at
+; that position, however you cannot pass modules as arguments
+(call_expression
+  function: _
+  arguments: (arguments
+    (scoped_identifier
+      path: _
+      name: (identifier) @function)))
+
+; Special handling for point-free functions that are not part of a path
+; but are just passed as variables to some "well-known"
+; methods, which are known to take a closure as the first argument
+; 
+; For example, `foo` in `a.map(foo)` is a @function
+(call_expression
+  function: (field_expression
+    value: _
+    field: (field_identifier) @_method_name)
+  arguments:
+    ; first argument is `@function`
+    (arguments
+      .
+      (identifier) @function)
+  (#any-of? @_method_name
+  ; methods on `core::iter::Iterator`
+  "map" "map_while" "filter_map" "flat_map" "map_windows"
+  "try_for_each" "for_each"
+  "is_sorted_by" "is_sorted_by_key"
+  "all" "any" "reduce" "try_reduce" 
+  "find" "find_map" "try_find" "position" "rposition"
+  "max_by" "max_by_key" "min_by" "min_by_key"
+  "filter" "inspect" "intersperse_with"
+  "partition" "partition_in_place" "is_partitioned"
+  "skip_while" "take_while"
+  
+  ; methods on `Option`
+  "and_then" "is_some_and" "is_none_or" "unwrap_or_else"
+  "ok_or_else" "or_else" "get_or_insert_with" "take_if"
+  "map_or_else" ; NOTE: both arguments are closures, so it is here and also in the block to
+                ; highlight the 2nd argument
+  
+  ; methods on `Result
+  "map_err" "inspect_err"
+
+  ; methods on `Entry`
+  "or_insert_with" "or_insert_with_key" "and_modify"
+
+  ; method on `bool
+  "then"
+
+  ; method on `Vec`
+  "chunk_by_mut" "split" "split_mut" "split_inclusive" "split_inclusive_mut"
+  "rsplit" "rsplit_mut" "binary_search_by"
+  "sort_unstable_by" "sort_unstable_by_key" "partition_dedup_by"
+  "partition_dedup_by_key" "fill_with" "partition_point" "sort_by"
+  "sort_by_key"
+
+  ; methods on `HashMap`
+  "extract_if" "retain"
+
+  ; methods on `itertools::Itertools`
+  "batching" "chunk_by" "group_by" "map_ok"
+  "filter_ok" "filter_map_ok" "process_results"
+  "kmerge_by" "coalesce" "dedup_by" "dedup_by_with_count"
+  "duplicates_by" "unique_by" "peeking_take_while"
+  "take_while_ref" "take_while_inclusive" "positions"
+  "update" "find_position" "find_or_last" "find_or_first"
+  "fold1" "tree_reduce" "tree_fold1" "partition_map"
+  "into_group_map_by" "into_grouping_map_by"
+  "min_set_by" "min_set_by_key" "max_set_by" "max_set_by_key"
+  "minmax_by_key" "minmax_by" "position_max_by_key"
+  "position_max_by" "position_min_by_key" "position_min_by"
+  "position_minmax_by_key" "position_minmax_by"
+  "sorted_unstable_by" "sorted_unstable_by_key" "sorted_by"
+  "sorted_by_key" "sorted_by_cached_key"
+
+  ; method on `core::iter::Peekable`
+  "next_if"
+
+  ; methods on `rayon::ParallelIterator`
+  ;
+  ; note: some of these methods are also
+  ; present in the 2nd argument highlights, because
+  ; those methods take a closure both as a 1st and 2nd arg
+  "for_each_init" "try_for_each_init" "map_init"
+  "update"
+  "flat_map_iter" "reduce_with" "try_reduce"
+  "try_reduce_with" "fold_with" "try_fold_with"
+  "find_any" "find_first" "find_last" "find_map_any"
+  "find_map_first" "find_map_last"
+  "take_any_while" "skip_any_while"
+
+  ; method on `tap::Pipe`
+  "pipe" "pipe_ref" "pipe_ref_mut" "pipe_borrow" "pipe_deref_mut"
+  "pipe_borrow_mut" "pipe_as_ref" "pipe_as_mut" "pipe_deref"))
+
+; Here, we do something similar to the above except for
+; methods that take a closure as a 2nd argument instead of the first
+(call_expression
+  function: (field_expression
+    value: _
+    field: (field_identifier) @_method_name)
+  arguments: 
+    ; handles `a.map_or_else(..., foo)`
+    (arguments
+      ; first argument is ignored
+      .
+      ; second argument is @function
+      (_)
+      .
+      (identifier) @function)
+  (#any-of? @_method_name
+  ; methods on `Option`
+  "map_or_else" "zip_with"
+
+  ; methods on `Iterator`
+  "try_fold" "scan" "fold" "cmp_by" "partial_cmp_by" "eq_by"
+
+  ; methods on `rayon::ParallelIterator`
+  "for_each_with" "for_each_init" "try_for_each_with" "try_for_each_init"
+  "map_with" "map_init" "try_reduce" "fold_with" "try_fold_with"
+    
+  ; methods on `Vec`
+  "splitn" "splitn_mut" "rsplitn" "rsplitn_mut" "split_once"
+  "rsplit_once" "binary_search_by_key" "select_nth_unstable_by"
+  "select_nth_unstable_by_key"
+  ; methods on `Itertools`
+  "k_largest_by" "k_largest_by_key" "k_largest_relaxed_by"
+  "k_largest_relaxed_by_key"
+  "k_smallest_by" "k_smallest_by_key" "k_smallest_relaxed_by" "k_smallest_relaxed_by_key"
+  "fold_while" "fold_ok" "fold_options" "merge_by" "merge_join_by" "pad_using" "format_with"))
 
 (call_expression
   function: [
