@@ -105,6 +105,7 @@
 | hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server`, `superhtml` |
+| htmldjango | ✓ |  |  | `djlsp`, `vscode-html-language-server`, `superhtml` |
 | hurl | ✓ | ✓ | ✓ |  |
 | hyprlang | ✓ |  | ✓ | `hyprls` |
 | idris |  |  |  | `idris2-lsp` |
@@ -120,6 +121,7 @@
 | jq | ✓ | ✓ |  | `jq-lsp` |
 | jsdoc | ✓ |  |  |  |
 | json | ✓ | ✓ | ✓ | `vscode-json-language-server` |
+| json-ld | ✓ | ✓ | ✓ | `vscode-json-language-server` |
 | json5 | ✓ |  |  |  |
 | jsonc | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |

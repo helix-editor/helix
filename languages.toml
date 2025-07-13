@@ -32,6 +32,7 @@ csharp-ls = { command = "csharp-ls" }
 cuelsp = { command = "cuelsp" }
 dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
 dhall-lsp-server = { command = "dhall-lsp-server" }
+djlsp = { command = "djlsp" }
 docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
 docker-compose-langserver = { command = "docker-compose-langserver", args = ["--stdio"]}
 dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
@@ -514,7 +515,6 @@ file-types = [
   "css.map",
   { glob = ".jslintrc" },
   "jsonl",
-  "jsonld",
   { glob = ".vuerc" },
   { glob = "composer.lock" },
   { glob = ".watchmanconfig" },
@@ -552,6 +552,17 @@ comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 grammar = "json"
 language-servers = [ "vscode-json-language-server" ]
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+
+# https://www.w3.org/TR/json-ld/
+[[language]]
+name = "json-ld"
+scope = "source.json-ld"
+injection-regex = "json-ld"
+grammar = "json"
+file-types = ["jsonld"]
+language-servers = ["vscode-json-language-server"]
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
@@ -945,6 +956,25 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "html"
 source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "cbb91a0ff3621245e890d1c50cc811bffb77a26b" }
+
+[[language]]
+name = "htmldjango"
+scope = "source.htmldjango"
+injection-regex = "htmldjango"
+language-servers = ["djlsp", "vscode-html-language-server", "superhtml"]
+file-types = []
+
+[language.auto-pairs]
+'"' = '"'
+'(' = ')'
+'[' = ']'
+'{' = '}'
+'%' = '%'
+'<' = '>'
+
+[[grammar]]
+name = "htmldjango"
+source = { git = "https://github.com/interdependence/tree-sitter-htmldjango", rev = "3a643167ad9afac5d61e092f08ff5b054576fadf" }
 
 [[language]]
 name = "python"
@@ -1849,9 +1879,9 @@ source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = 
 [[language]]
 name = "docker-compose"
 scope = "source.yaml.docker-compose"
-roots = ["docker-compose.yaml", "docker-compose.yml"]
+roots = ["docker-compose.yaml", "docker-compose.yml", "compose.yaml", "compose.yml"]
 language-servers = [ "docker-compose-langserver", "yaml-language-server" ]
-file-types = [{ glob = "docker-compose.yaml" }, { glob = "docker-compose.yml" }]
+file-types = [{ glob = "docker-compose.yaml" }, { glob = "docker-compose.yml" }, { glob = "compose.yaml" }, { glob = "compose.yml" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 grammar = "yaml"
