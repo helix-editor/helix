@@ -523,7 +523,7 @@ pub fn reflow(text: RopeSlice, char_pos: usize, opts: &ReflowOpts) -> Vec<Change
         let mut grapheme = Grapheme::new(GraphemeStr::from(Cow::from(grapheme)), col, TAB_WIDTH);
         if col + grapheme.width() > opts.width && !grapheme.is_whitespace() {
             if let Some(n) = last_word_boundary {
-                let indent = opts.find_indent(text.char_to_line(n - 1), text);
+                let indent = opts.find_indent(text.char_to_line(n), text);
                 let mut whitespace_start = n;
                 let mut whitespace_end = n;
                 while whitespace_start > 0 && text.char(whitespace_start - 1) == ' ' {
@@ -553,14 +553,17 @@ pub fn reflow(text: RopeSlice, char_pos: usize, opts: &ReflowOpts) -> Vec<Change
             }
         }
         col += grapheme.width();
-        word_width += grapheme.width();
         if grapheme == Grapheme::Newline {
             col = 0;
             word_width = 0;
             last_word_boundary = None;
         } else if grapheme.is_whitespace() {
-            last_word_boundary = Some(char_pos);
+            if word_width > 0 {
+                last_word_boundary = Some(char_pos);
+            }
             word_width = 0;
+        } else {
+            word_width += grapheme.width();
         }
         char_pos += grapheme_chars;
     }
