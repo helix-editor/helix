@@ -1,0 +1,88 @@
+# Author: IrishMaestro <github.com/irishmaestro>
+
+# Syntax highlighting
+"type" = { fg = "crystal_blue" }
+"type.builtin" = { fg = "crystal_blue" }
+"constructor" = { fg = "barium_green" }
+"constant" = { fg = "hazmat_yellow" }
+"string" = { fg = "crystal_blue" }
+"string.regexp" = { fg = "orange" }
+"string.special" = { fg = "vapor_yellow" }
+"comment" = { fg = "teddy_bear_pink", modifiers = ["slow_blink", "italic"] }
+"variable" = { fg = "element_green" }
+"variable.parameter" = { fg = "hazmat_yellow" }
+"label" = { fg = "vapor_yellow" }
+"punctuation" = { fg = "barium_green" }
+"keyword" = { fg = "barium_green" }
+"keyword.control" = { fg = "barium_green" }
+"keyword.directive" = { fg = "teddy_bear_pink" }
+"operator" = { fg = "hazmat_yellow" }
+"function" = { fg = "cash_green", modifiers = ["bold"] }
+"tag" = { fg = "crystal_blue" }
+"namespace" = { fg = "hazmat_yellow" }
+"markup.heading" = { fg = "hazmat_yellow" }
+"markup.list" = { fg = "vapor_yellow" }
+"markup.raw.block" = { bg = "background", fg = "orange" }
+"markup.link.url" = { fg = "crystal_blue" }
+"markup.link.text" = { fg = "vapor_yellow" }
+"markup.link.label" = { fg = "barium_green" }
+"markup.quote" = { fg = "vapor_yellow" }
+"diff.plus" = { fg = "cash_green" }
+"diff.minus" = { fg = "chili_powder_red" }
+"diff.delta" = { fg = "orange" }
+
+# Interface
+"ui.background" = { bg = "background" }
+"ui.cursor" = { bg = "crystal_blue", fg = "background" }
+"ui.cursor.match" = { fg = "hazmat_yellow" }
+"ui.linenr" = { fg = "crystal_blue" }
+"ui.linenr.selected" = { fg = "barium_green" }
+"ui.statusline" = { fg = "crystal_blue", bg = "black" }
+"ui.statusline.normal" = { fg = "crystal_blue", bg = "black" }
+"ui.statusline.insert" = { fg = "barium_green", bg = "black"} 
+"ui.statusline.select" = { fg = "hazmat_yellow", bg = "black" }
+"ui.cursorline.primary" = { bg = "#041B0E" }
+"ui.popup" = { fg = "crystal_blue", bg = "background" }
+"ui.window" = { fg = "barium_green" }
+"ui.help" = { fg = "crystal_blue", bg = "background"}
+"ui.text" = { fg = "crystal_blue" }
+"ui.text.focus" = { bg = "background", fg = "barium_green" }
+"ui.text.info" = { fg = "crystal_blue" }
+"ui.virtual.whitespace" = { fg = "#08341B" }
+"ui.virtual.ruler" = { bg = "#041B0E" }
+"ui.virtual.indent-guide" = { fg = "#08341B" }
+"ui.menu" = { fg = "crystal_blue", bg = "background" }
+"ui.menu.selected" = { bg = "hazmat_yellow", fg = "background" }
+"ui.selection" = { bg = "#1B0334" }
+"ui.selection.primary" = { bg = "desert_maroon" }
+"warning" = { fg = "vapor_yellow" }
+"error" = { fg = "chili_powder_red", modifiers = ["bold"] }
+"info" = { fg = "crystal_blue", modifiers = ["bold"] }
+"hint" = { fg = "crystal_blue", modifiers = ["bold"] }
+"diagnostic.hint" = { underline = {color = "chili_powder_red", style = "curl" } }
+"diagnostic.info" = { underline = {color = "crystal_blue", style = "curl" } }
+"diagnostic.warning" = { underline = {color = "vapor_yellow", style = "curl" } }
+"diagnostic.error" = { underline = {color = "chili_powder_red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"ui.bufferline" = { fg = "gray", bg = "background" }
+"ui.bufferline.active" = { fg = "foreground", bg = "dark_gray" }
+
+"special" = { fg = "cash_green" }
+
+[palette]
+background = "#000000"   
+foreground = "#cccccc"
+black = "#121212"
+dark_gray = "#2d3640"
+gray = "#5c6773"
+orange = "#ff8f40"
+barium_green = "#009669"
+hazmat_yellow = "#f7b90c"
+vapor_yellow = "#cecd19"
+teddy_bear_pink = "#bd5173"
+crystal_blue = "#32c9fa"
+cash_green = "#00ff80"
+element_green = "#186800"
+desert_maroon = "#2B0C02"
+chili_powder_red = "#c32101"

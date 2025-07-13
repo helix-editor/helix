@@ -1,0 +1,110 @@
+# Author : Nick Ogden <nick@nickogden.org>
+
+"ui.background" = { bg = "grey01" }
+"ui.menu" = { fg = "grey05", bg = "grey00" }
+"ui.menu.selected" = { fg = "grey01", bg = "grey04" }
+"ui.linenr" = { fg = "grey03", bg = "grey01" }
+"ui.linenr.selected" = { fg = "grey04", bg = "grey01", modifiers = ["bold"] }
+"ui.gutter" = { bg = "grey01" }
+"ui.popup" = { fg = "grey05", bg = "grey00" }
+"ui.window" = { bg = "grey01" }
+"ui.selection" = { bg = "grey02" }
+"ui.selection.primary" = { bg = "blue" }
+"ui.statusline" = { fg = "grey04", bg = "grey02" }
+"ui.statusline.insert" = { bg = "white", fg = "grey01" }
+"ui.statusline.select" = { bg = "orange", fg = "grey01" }
+"ui.help" = { fg = "grey04", bg = "grey01" }
+"ui.cursor" = { fg = "grey04", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "grey02", bg = "grey05" }
+"ui.cursor.match" = { fg = "white", modifiers = ["underlined"] }
+"ui.cursorline.primary" = { bg = "grey02" }
+"ui.cursorline.secondary" = { bg = "grey02" }
+"ui.text" = "white"
+"ui.text.focus" = "grey05"
+"ui.virtual.ruler" = { bg = "grey02" }
+"ui.virtual.indent-guide" = "grey02"
+"ui.virtual.whitespace" = "grey03"
+"ui.virtual.inlay-hint" = { fg = "grey03", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "lightblue", modifiers = ["italic", "bold"] }
+"ui.bufferline" = { fg = "grey04", bg = "grey00" }
+"ui.bufferline.active" = { fg = "grey07", bg = "grey02" }
+"ui.picker.header.column" = { fg = "grey05", modifiers = ["italic", "bold"] }
+"ui.picker.header.column.active" = { fg = "grey05", bg = "grey03", modifiers = ["italic", "bold"] }
+
+"operator" = "grey05"
+"variable" = "white"
+"variable.other.member" = "yellow"
+"constant" = "lightblue"
+"constant.numeric" = "lightblue"
+"constant.character.escape" = "white"
+"attribute" = "yellow"
+"type" = "white"
+"type.builtin" = "orange"
+"type.parameter" = { fg = "white", modifiers = ["bold"] }
+"type.enum" = "white"
+"type.enum.variant" = "orange"
+"string"  = "darkgreen"
+"function" = "yellow"
+"function.macro" = "green"
+"constructor" = "yellow"
+"special" = "green"
+"keyword" = "orange"
+"comment" = { fg = "grey", modifiers = ["italic"] }
+"label" = "purple"
+"namespace" = { fg = "purple", modifiers = ["italic"] }
+
+# HTML
+"tag" = "orange"
+
+"markup.heading.1" = "orange"
+"markup.heading.2" = "yellow"
+"markup.heading.3" = "darkred"
+"markup.heading.4" = "grey"
+"markup.heading.5" = "purple"
+"markup.heading.6" = "darkgreen"
+"markup.list" = "white"
+"markup.bold" = { fg = "white", modifiers = ["bold"] }
+"markup.italic" = { fg = "white", modifiers = ["italic"] }
+"markup.strikethrough" = { fg = "white", modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "lightblue", modifiers = ["underlined"] }
+"markup.link.text" = "white"
+"markup.quote" = "darkgreen"
+"markup.raw" = "purple"
+
+"diff.plus" = "green"
+"diff.delta" = "grey"
+"diff.minus" = "red"
+
+"diagnostic.warning" = { underline = { color = "orange", style = "curl"} }
+"diagnostic.error" = { underline = { color = "red", style = "curl"} }
+"diagnostic.info" = { underline = { color = "grey05", style = "curl"} }
+"diagnostic.hint" = { underline = { color = "grey05", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"info" = "grey05"
+"hint" = "grey05"
+"debug" = "grey05"
+"warning" = "orange"
+"error" = "red"
+
+[palette]
+grey00 = "#181818" # Default Background
+grey01 = "#282828" # Lighter Background (Used for status bars, line number and folding marks)
+grey02 = "#383838" # Selection Background
+grey03 = "#585858" # Comments, Invisibles, Line Highlighting
+grey04 = "#b8b8b8" # Dark Foreground (Used for status bars)
+grey05 = "#d8d8d8" # Default Foreground, Caret, Delimiters, Operators
+grey06 = "#e8e8e8" # Light Foreground (Not often used)
+grey07 = "#f8f8f8" # Light Background (Not often used)
+
+white = "#d0d0d0"
+yellow = "#eedd82"
+orange = "#cc7832"
+darkred = "#a34a27"
+purple = "#9876aa"
+green = "#32cd32"
+grey = "#808080"
+darkgreen = "#629755"
+lightblue = "#6897bb"
+blue = "#104158"

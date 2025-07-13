@@ -1,0 +1,114 @@
+# Zed OneDark
+# Author : EricHenry
+
+"attribute" = { fg = "yellow" }
+"comment" = { fg = "light-gray", modifiers = ["italic"] }
+"constant" = { fg = "yellow" }
+"constant.numeric" = { fg = "orange" }
+"constant.builtin" = { fg = "yellow" }
+"constant.builtin.boolean" = { fg = "yellow" }
+"constant.character.escape" = { fg = "yellow" }
+"constructor" = { fg = "blue" }
+"function" = { fg = "blue" }
+"function.builtin" = { fg = "blue" }
+"function.method" = { fg = "blue" }
+"function.macro" = { fg = "blue" }
+"keyword" = { fg = "purple" }
+"label" = { fg = "ui-text" }
+"namespace" = { fg = "ui-text" }
+"operator" = { fg = "ui-text" }
+"puncuation" = { fg = "ui-text" }
+"special" = { fg = "ui-text" }
+"string" = { fg = "green" }
+"type" = { fg = "cyan" }
+"variable.builtin" = { fg = "orange" }
+"variable.parameter" = { fg = "ui-text" }
+"variable.other.member" = { fg = "red" }
+
+"markup.heading" = { fg = "red" }
+"markup.raw.inline" = { fg = "green" }
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.list" = { fg = "red" }
+"markup.quote" = { fg = "yellow" }
+"markup.link.url" = { fg = "cyan", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "purple" }
+
+"diff.plus" = "green"
+"diff.delta" = "yellow"
+"diff.minus" = "red"
+
+"diagnostic.info".underline = { color = "blue", style = "curl" }
+"diagnostic.hint".underline = { color = "green", style = "curl" }
+"diagnostic.warning".underline = { color = "yellow", style = "curl" }
+"diagnostic.error".underline = { color = "red", style = "curl" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"info" = { fg = "blue", modifiers = ["bold"] }
+"hint" = { fg = "green", modifiers = ["bold"] }
+"warning" = { fg = "yellow", modifiers = ["bold"] }
+"error" = { fg = "red", modifiers = ["bold"] }
+
+"ui.background" = { bg = "ui-text-reversed" }
+"ui.gutter" = { bg = "gray" }
+"ui.virtual" = { fg = "faint-gray" }
+"ui.virtual.indent-guide" = { fg = "faint-gray" }
+"ui.virtual.whitespace" = { fg = "light-gray" }
+"ui.virtual.ruler" = { bg = "gray" }
+"ui.virtual.inlay-hint" = { fg = "blue-gray", modifiers = ["bold"] }
+"ui.virtual.jump-label" = { fg = "purple", modifiers = ["bold", "italic"] }
+
+"ui.cursor" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "blue", modifiers = ["underlined"] }
+# Malformed ANSI: dark-blue. See 'https://github.com/helix-editor/helix/issues/5709'
+# "ui.cursor.insert" = { fg = "dark-blue" }
+
+"ui.selection" = { bg = "faint-gray" }
+"ui.selection.primary" = { bg = "#293b5bff" }
+"ui.cursorline.primary" = { bg = "gray" }
+
+"ui.highlight" = { bg = "gray" }
+"ui.highlight.frameline" = { bg = "#97202a" }
+
+"ui.linenr" = { fg = "linenr" }
+"ui.linenr.selected" = { fg = "ui-text" }
+
+"ui.statusline" = { fg = "white", bg = "gray" }
+"ui.statusline.inactive" = { fg = "light-gray", bg = "black" }
+"ui.statusline.normal" = { fg = "black", bg = "blue" }
+"ui.statusline.insert" = { fg = "black", bg = "green" }
+"ui.statusline.select" = { fg = "black", bg = "purple" }
+
+"ui.text" = { fg = "ui-text" }
+"ui.text.focus" = { fg = "white", bg = "gray", modifiers = ["bold"] }
+
+"ui.help" = { fg = "white", bg = "gray" }
+"ui.popup" = { bg = "gray" }
+"ui.window" = { fg = "gray" }
+"ui.menu" = { fg = "ui-text", bg = "gray" }
+"ui.menu.selected" = { fg = "ui-text-reversed", bg = "blue" }
+"ui.menu.scroll" = { fg = "ui-text", bg = "light-gray" }
+
+"ui.debug" = { fg = "red" }
+
+[palette]
+yellow = "#dfc184ff"
+orange = "#bf956aff"
+blue = "#73ade9ff"
+blue-gray = "#5a6f89ff"
+red = "#d07277ff"
+purple = "#b477cfff"
+green = "#a1c181ff"
+cyan = "#6eb4bfff"
+gray = "#2f343ebf"
+light-gray = "#5d636fff"
+faint-gray = "#3B4048"
+linenr = "#5d636fff"
+
+white = "#c8ccd4ff"
+black = "#282c33ff"
+# black and white are used for a lot of the UI text
+ui-text = "#c8ccd4ff"          #white
+ui-text-reversed = "#282c33ff" #black

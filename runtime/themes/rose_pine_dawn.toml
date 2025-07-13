@@ -1,0 +1,30 @@
+# Author: Rosé Pine <hi@rosepinetheme.com>
+# Upstream: https://github.com/rose-pine/helix
+# Contributing:
+#   Please submit changes to https://github.com/rose-pine/helix.
+#   The Rosé Pine team will update Helix, including you as a co-author.
+
+inherits = "rose_pine"
+
+[palette]
+base           = "#faf4ed" 
+surface        = "#fffaf3" 
+overlay        = "#f2e9e1"
+muted          = "#9893a5"
+subtle         = "#797593"
+text           = "#575279"
+love           = "#b4637a"
+love_10        = "#f6e4e0"
+gold           = "#ea9d34"
+gold_10        = "#fbead8"
+rose           = "#d7827e"
+rose_10        = "#fae8e1"
+pine           = "#286983"
+pine_10        = "#e5e6e2"
+foam           = "#56949f"
+foam_10        = "#eaeae5"
+iris           = "#907aa9"
+iris_10        = "#f1e8e6"
+highlight_low  = "#f4ede8"
+highlight_med  = "#dfdad9"
+highlight_high = "#cecacd"

@@ -1,0 +1,10 @@
+[
+  (object)
+  (array)
+] @indent
+
+[
+  "]"
+  "}"
+] @outdent
+

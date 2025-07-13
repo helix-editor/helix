@@ -1,0 +1,20 @@
+# Material Theme <https://material-theme.com/> for Helix Editor
+
+inherits = "material_deep_ocean"
+
+[palette]
+bg = "#292d3e"
+text = "#a6accd"
+
+disabled = "#515772"
+
+accent = "#ab47bc"
+
+active = "#414863"
+highlight = "#444267"
+
+comment = "#676e95"
+
+selection = "#444267"
+
+line-number = "#3a3f58"

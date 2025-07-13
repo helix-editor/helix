@@ -1,0 +1,128 @@
+##########
+# SYNTAX #
+##########
+
+comment = "sky-"
+
+type = "green"
+"type.enum.variant" = "green"
+label = "blue"
+tag = "blue"
+
+constant = "purple"
+"constant.numeric" = "cyan"
+"constant.character" = "purple"
+
+string = "yellow"
+"string.special.symbol" = "cyan"
+"string.special.path" = "cyan"
+
+variable = "sky"
+"variable.builtin" = "red"
+
+keyword = "magenta"
+
+function = "blue"
+"function.macro" = "purple"
+
+punctuation = "sky"
+operator = "magenta"
+namespace = "sky"
+
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "cyan"
+
+
+##########
+#   UI   #
+##########
+
+hint = "sky-"
+info = "sky"
+warning = "yellow"
+error = "red"
+
+"diagnostic.hint".underline = { color = "sky-", style = "curl" } 
+"diagnostic.info".underline = { color = "sky", style = "curl" } 
+"diagnostic.warning".underline = { color = "yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "red", style = "curl" } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"ui.background" = { bg = "shade" }
+"ui.background.separator" = "sky"
+
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { bg = "shade+" }
+
+"ui.cursorline.primary" = { bg = "shade-" }
+# "ui.cursorline.secondary" = { bg = "shade+" }
+
+"ui.linenr" = "sky-"
+"ui.linenr.selected" = "sky"
+
+# Using themed status line:
+"ui.statusline" = { fg = "shade", bg = "sky" }
+"ui.statusline.inactive" = { fg = "sky", bg = "shade+" }
+"ui.statusline.normal" = { fg = "shade", bg = "blue" }
+"ui.statusline.insert" = { fg = "shade", bg = "green" }
+"ui.statusline.select" = { fg = "shade", bg = "purple" }
+
+# Without themed status line:
+# "ui.statusline" = { fg = "shade-", bg = "blue" }
+# "ui.statusline.inactive" = { fg = "sky", bg = "shade+" }
+
+"ui.popup" = { bg = "shade-" }
+"ui.popup.info" = { bg = "shade" }
+
+"ui.window" = "sky"
+"ui.help" = { fg = "sky", bg = "shade-" }
+
+"ui.text" = "sky"
+"ui.text.focus" = "blue"
+"ui.text.info" = "sky"
+
+"ui.virtual.ruler" = { bg = "shade-" }
+"ui.virtual.whitespace" = "sky-"
+"ui.virtual.indent-guide" = "shade+"
+
+"ui.menu" = { fg = "sky", bg = "shade-" }
+"ui.menu.selected" = { fg = "blue", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "sky", bg = "shade+" }
+
+"ui.selection" = { bg = "shade+" }
+
+"markup.heading" = { fg = "sky+", modifiers = ["bold"] }
+"markup.list" = "sky"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { modifiers = ["underlined"] }
+"markup.link.text" = "magenta"
+"markup.quote" = "green"
+"markup.raw" = "orange"
+
+
+[palette]
+
+# contrast+ accents
+red = "#DF7F78"
+orange = "#CE9042"
+yellow = "#9CA748"
+green = "#50B584"
+cyan = "#00B3C2"
+blue = "#61A3E6"
+purple = "#A48FE1"
+magenta = "#D080B6"
+
+# contrast+ base
+"sun+" = "#FFFDFB"
+"sun" = "#FFF7ED"
+"sun-" = "#F2E6D4"
+"sky+" = "#CECECE"
+"sky" = "#9E9E9E"
+"sky-" = "#636363"
+"shade+" = "#3E4044"
+"shade" = "#24272B"
+"shade-" = "#181B1F"

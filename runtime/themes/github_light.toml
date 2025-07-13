@@ -1,0 +1,234 @@
+# Author : OwOSwordsman <owoswordsman@gmail.com>
+# An unofficial GitHub theme, generated using colors from: https://primer.style/primitives/colors
+# Credit goes to the original VSCode theme: https://github.com/primer/github-vscode-theme
+# Only the Light and Dark variants were specifically tested
+
+attribute = "fg.default"
+keyword = "scale.red.5"
+"keyword.directive" = "scale.red.5"          # -- preprocessor comments (#if in C)
+namespace = "scale.orange.6"
+punctuation = "fg.default"
+"punctuation.delimiter" = "fg.default"
+operator = "scale.blue.8"
+special = "scale.blue.8"
+"variable.other.member" = "scale.blue.8"
+variable = "fg.default"
+"variable.parameter" = "scale.orange.6"
+"variable.builtin" = "scale.red.5"
+type = "scale.orange.6"
+"type.builtin" = "scale.blue.6"
+constructor = "done.fg"
+function = "done.fg"
+"function.macro" = "done.fg"
+tag = "scale.green.6"
+comment = "fg.muted"
+constant = "scale.blue.6"
+"constant.builtin" = "scale.blue.6"
+string = "scale.blue.8"
+"constant.numeric" = "scale.blue.6"
+"constant.character.escape" = "scale.blue.6"
+# used for lifetimes
+label = "scale.red.5"
+
+"markup.heading" = "scale.blue.6"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { modifiers = ["underlined"] }
+"markup.link.text" = { fg = "scale.blue.8", modifiers = ["underlined"] }
+"markup.raw" = "scale.blue.6"
+
+"diff.plus" = "open.fg"
+"diff.minus" = "closed.fg"
+"diff.delta" = "attention.fg"
+
+"ui.background" = { bg = "canvas.default" }
+"ui.background.separator" = { fg = "fg.subtle" }
+"ui.linenr" = { fg = "fg.subtle" }
+"ui.linenr.selected" = { fg = "fg.default" }
+"ui.statusline" = { fg = "fg.muted", bg = "neutral.subtle" }
+"ui.statusline.active" = { fg = "fg.default", bg = "canvas.default", underline = { color = "scale.coral.3", style = "line" } }
+"ui.statusline.normal" = { fg = "fg.default", bg = "accent.muted" }
+"ui.statusline.insert" = { fg = "fg.default", bg = "attention.muted" }
+"ui.statusline.select" = { fg = "fg.default", bg = "sponsors.muted" }
+"ui.popup" = { bg = "scale.gray.0" }
+"ui.popup.info" = { fg = "fg.default", bg = "scale.gray.0" }
+"ui.window" = { fg = "border.default" }
+"ui.help" = { fg = "fg.default", bg = "scale.gray.0" }
+
+"ui.text" = { fg = "fg.muted" }
+"ui.text.focus" = { fg = "fg.default" }
+"ui.text.inactive" = "fg.subtle"
+"ui.text.directory" = { fg = "scale.blue.4" }
+"ui.virtual" = { fg = "scale.gray.2" }
+"ui.virtual.ruler" = { bg = "canvas.subtle" }
+"ui.virtual.jump-label" = { modifiers = ["reversed"] }
+
+"ui.selection" = { bg = "scale.blue.0" }
+"ui.selection.primary" = { bg = "scale.blue.1" }
+"ui.cursor.match" = { fg = "attention.fg", modifiers = [
+    "bold",
+], underline = { style = "line" } }
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "canvas.subtle" }
+
+"ui.menu" = { fg = "fg.default", bg = "scale.gray.0" }
+"ui.menu.selected" = { bg = "scale.gray.1" }
+"ui.menu.scroll" = { fg = "scale.gray.2", bg = "scale.gray.0" }
+
+"diagnostic.hint" = { underline = { color = "success.fg", style = "curl" } }
+"diagnostic.info" = { underline = { color = "accent.fg", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "attention.fg", style = "curl" } }
+"diagnostic.error" = { underline = { color = "danger.fg", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+hint = "success.fg"
+info = "accent.fg"
+warning = "attention.fg"
+error = "danger.fg"
+
+[palette]
+"accent.emphasis" = "#0969da"
+"accent.fg" = "#0969da"
+"accent.muted" = "#54aeff66"
+"accent.subtle" = "#ddf4ff"
+"attention.emphasis" = "#bf8700"
+"attention.fg" = "#9a6700"
+"attention.muted" = "#d4a72c66"
+"attention.subtle" = "#fff8c5"
+"border.default" = "#d0d7de"
+"border.muted" = "#d8dee4"
+"border.subtle" = "#1b1f2426"
+"canvas.default" = "#ffffff"
+"canvas.inset" = "#f6f8fa"
+"canvas.overlay" = "#ffffff"
+"canvas.subtle" = "#f6f8fa"
+"closed.emphasis" = "#cf222e"
+"closed.fg" = "#cf222e"
+"closed.muted" = "#ff818266"
+"closed.subtle" = "#ffebe9"
+"danger.emphasis" = "#cf222e"
+"danger.fg" = "#cf222e"
+"danger.muted" = "#ff818266"
+"danger.subtle" = "#ffebe9"
+"done.emphasis" = "#8250df"
+"done.fg" = "#8250df"
+"done.muted" = "#c297ff66"
+"done.subtle" = "#fbefff"
+"fg.default" = "#24292f"
+"fg.muted" = "#57606a"
+"fg.onEmphasis" = "#ffffff"
+"fg.subtle" = "#6e7781"
+"neutral.emphasis" = "#6e7781"
+"neutral.emphasisPlus" = "#24292f"
+"neutral.muted" = "#afb8c133"
+"neutral.subtle" = "#eaeef280"
+"open.emphasis" = "#2da44e"
+"open.fg" = "#1a7f37"
+"open.muted" = "#4ac26b66"
+"open.subtle" = "#dafbe1"
+"scale.black" = "#1b1f24"
+"scale.blue.0" = "#ddf4ff"
+"scale.blue.1" = "#b6e3ff"
+"scale.blue.2" = "#80ccff"
+"scale.blue.3" = "#54aeff"
+"scale.blue.4" = "#218bff"
+"scale.blue.5" = "#0969da"
+"scale.blue.6" = "#0550ae"
+"scale.blue.7" = "#033d8b"
+"scale.blue.8" = "#0a3069"
+"scale.blue.9" = "#002155"
+"scale.coral.0" = "#fff0eb"
+"scale.coral.1" = "#ffd6cc"
+"scale.coral.2" = "#ffb4a1"
+"scale.coral.3" = "#fd8c73"
+"scale.coral.4" = "#ec6547"
+"scale.coral.5" = "#c4432b"
+"scale.coral.6" = "#9e2f1c"
+"scale.coral.7" = "#801f0f"
+"scale.coral.8" = "#691105"
+"scale.coral.9" = "#510901"
+"scale.gray.0" = "#f6f8fa"
+"scale.gray.1" = "#eaeef2"
+"scale.gray.2" = "#d0d7de"
+"scale.gray.3" = "#afb8c1"
+"scale.gray.4" = "#8c959f"
+"scale.gray.5" = "#6e7781"
+"scale.gray.6" = "#57606a"
+"scale.gray.7" = "#424a53"
+"scale.gray.8" = "#32383f"
+"scale.gray.9" = "#24292f"
+"scale.green.0" = "#dafbe1"
+"scale.green.1" = "#aceebb"
+"scale.green.2" = "#6fdd8b"
+"scale.green.3" = "#4ac26b"
+"scale.green.4" = "#2da44e"
+"scale.green.5" = "#1a7f37"
+"scale.green.6" = "#116329"
+"scale.green.7" = "#044f1e"
+"scale.green.8" = "#003d16"
+"scale.green.9" = "#002d11"
+"scale.orange.0" = "#fff1e5"
+"scale.orange.1" = "#ffd8b5"
+"scale.orange.2" = "#ffb77c"
+"scale.orange.3" = "#fb8f44"
+"scale.orange.4" = "#e16f24"
+"scale.orange.5" = "#bc4c00"
+"scale.orange.6" = "#953800"
+"scale.orange.7" = "#762c00"
+"scale.orange.8" = "#5c2200"
+"scale.orange.9" = "#471700"
+"scale.pink.0" = "#ffeff7"
+"scale.pink.1" = "#ffd3eb"
+"scale.pink.2" = "#ffadda"
+"scale.pink.3" = "#ff80c8"
+"scale.pink.4" = "#e85aad"
+"scale.pink.5" = "#bf3989"
+"scale.pink.6" = "#99286e"
+"scale.pink.7" = "#772057"
+"scale.pink.8" = "#611347"
+"scale.pink.9" = "#4d0336"
+"scale.purple.0" = "#fbefff"
+"scale.purple.1" = "#ecd8ff"
+"scale.purple.2" = "#d8b9ff"
+"scale.purple.3" = "#c297ff"
+"scale.purple.4" = "#a475f9"
+"scale.purple.5" = "#8250df"
+"scale.purple.6" = "#6639ba"
+"scale.purple.7" = "#512a97"
+"scale.purple.8" = "#3e1f79"
+"scale.purple.9" = "#2e1461"
+"scale.red.0" = "#ffebe9"
+"scale.red.1" = "#ffcecb"
+"scale.red.2" = "#ffaba8"
+"scale.red.3" = "#ff8182"
+"scale.red.4" = "#fa4549"
+"scale.red.5" = "#cf222e"
+"scale.red.6" = "#a40e26"
+"scale.red.7" = "#82071e"
+"scale.red.8" = "#660018"
+"scale.red.9" = "#4c0014"
+"scale.white" = "#ffffff"
+"scale.yellow.0" = "#fff8c5"
+"scale.yellow.1" = "#fae17d"
+"scale.yellow.2" = "#eac54f"
+"scale.yellow.3" = "#d4a72c"
+"scale.yellow.4" = "#bf8700"
+"scale.yellow.5" = "#9a6700"
+"scale.yellow.6" = "#7d4e00"
+"scale.yellow.7" = "#633c01"
+"scale.yellow.8" = "#4d2d00"
+"scale.yellow.9" = "#3b2300"
+"severe.emphasis" = "#bc4c00"
+"severe.fg" = "#bc4c00"
+"severe.muted" = "#fb8f4466"
+"severe.subtle" = "#fff1e5"
+"sponsors.emphasis" = "#bf3989"
+"sponsors.fg" = "#bf3989"
+"sponsors.muted" = "#ff80c866"
+"sponsors.subtle" = "#ffeff7"
+"success.emphasis" = "#2da44e"
+"success.fg" = "#1a7f37"
+"success.muted" = "#4ac26b66"
+"success.subtle" = "#dafbe1"

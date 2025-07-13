@@ -1,0 +1,103 @@
+# Author : Wojciech Kępka <wojciech@wkepka.dev>
+
+"attribute" = "bogster-orange"
+"keyword" = { fg = "bogster-yellow", modifiers = ["bold"] }
+"keyword.directive" = "bogster-yellow"
+"namespace" = "bogster-red"
+"punctuation" = "bogster-orange"
+"punctuation.delimiter" = "bogster-orange"
+"operator" = { fg = "bogster-orange", modifiers = ["bold"] }
+"special" = "bogster-lgreen"
+"variable.other.member" = "bogster-fg0"
+"variable" = "bogster-fg0"
+"variable.parameter" = "bogster-fg0"
+"type" = "bogster-lred"
+"type.builtin" = { fg = "bogster-red", modifiers = ["bold"] }
+"constructor" = "bogster-lred"
+"function" = "bogster-lblue"
+"function.macro" = { fg = "bogster-orange", modifiers = ["bold"] }
+"function.builtin" = { fg = "bogster-lblue", modifiers = ["bold"] }
+"comment" = "bogster-base5"
+"variable.builtin" = "bogster-fg0"
+"constant" = "bogster-teal"
+"constant.builtin" = "bogster-teal"
+"string" = "bogster-teal"
+"constant.numeric" = "bogster-blue"
+"constant.character.escape" = { fg = "bogster-lgreen", modifiers = ["bold"] }
+"label" = "bogster-blue"
+"module" = "bogster-red"
+
+"markup.heading" = "bogster-blue"
+"markup.list" = "bogster-red"
+"markup.bold" = { fg = "bogster-yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "bogster-yellow", modifiers = ["underlined"] }
+"markup.link.text" = "bogster-red"
+"markup.quote" = "bogster-lblue"
+"markup.raw" = "bogster-teal"
+
+"diff.plus" = "bogster-teal"
+"diff.delta" = "bogster-orange"
+"diff.minus" = "bogster-lred"
+
+"ui.background" = { bg = "bogster-base0" }
+"ui.linenr" = { fg = "bogster-base3" }
+"ui.linenr.selected" = { fg = "bogster-fg1" }
+"ui.cursorline" = { bg = "bogster-base00" }
+"ui.statusline" = { fg = "bogster-fg1", bg = "bogster-base1" }
+"ui.statusline.inactive" = { fg = "bogster-fg0", bg = "bogster-base1" }
+"ui.popup" = { bg = "bogster-base1" }
+"ui.window" = { bg = "bogster-base1" }
+"ui.help" = { bg = "bogster-base1", fg = "bogster-fg1" }
+
+"ui.statusline.normal" = { fg = "bogster-base0", bg = "bogster-blue", modifiers = [ "bold" ]}
+"ui.statusline.insert" = { fg = "bogster-base0", bg = "bogster-lgreen", modifiers = [ "bold" ]}
+"ui.statusline.select" = { fg = "bogster-base0", bg = "bogster-red", modifiers = [ "bold" ] }
+
+"ui.text" = { fg = "bogster-fg1" }
+"ui.text.focus" = { fg = "bogster-fg1", modifiers= ["bold"] }
+"ui.virtual.whitespace" = "bogster-base5"
+"ui.virtual.ruler" = { bg = "bogster-base00" }
+
+"ui.selection" = { bg = "bogster-base1" }
+"ui.cursor.match" = { fg = "bogster-base2", bg = "bogster-orange" }
+"ui.cursor" = { fg = "bogster-gray", modifiers = ["reversed"] }
+
+"ui.menu" = { fg = "bogster-fg1", bg = "bogster-base1" }
+"ui.menu.selected" = { bg = "bogster-base2" }
+
+"warning" = "bogster-orange"
+"error" = "bogster-lred"
+"info" = "bogster-teal"
+"hint" = "bogster-blue"
+
+# make diagnostic underlined, to distinguish with selection text.
+"diagnostic.warning" = { underline = { color = "bogster-orange", style = "curl"} }
+"diagnostic.error" = { underline = { color = "bogster-lred", style = "curl"} }
+"diagnostic.info" = { underline = { color = "bogster-teal", style = "curl"} }
+"diagnostic.hint" = { underline = { color = "bogster-blue", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+bogster-orange = "#dc7759"
+bogster-yellow = "#a58023"
+bogster-red = "#d32c5d"
+bogster-blue = "#59c0dc"
+bogster-gray = "#abb2bf"
+bogster-lgreen = "#7fdc59"
+bogster-lred = "#dc597f"
+bogster-lblue = "#289cbc"
+bogster-teal = "#23a580"
+
+bogster-fg1 = "#161c23" 
+bogster-fg0 = "#232d38"
+
+bogster-base00 = "#d7dbbb"
+bogster-base0 = "#f6fbd6"
+bogster-base1 = "#c7c7ba"
+bogster-base2 = "#aaaa97" 
+bogster-base3 = "#415367" 
+bogster-base5 = "#627d9d"
+

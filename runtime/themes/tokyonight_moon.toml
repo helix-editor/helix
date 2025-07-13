@@ -1,0 +1,41 @@
+# Author: Paul Graydon <untimely.creation97@proton.me>
+
+inherits = "tokyonight"
+
+[palette]
+red = "#ff757f"
+orange = "#ff966c"
+yellow = "#ffc777"
+light-green = "#c3e88d"
+green = "#4fd6be"
+aqua = "#65bcff"
+teal = "#4fd6be"
+turquoise = "#89ddff"
+light-cyan = "#b4f9f8"
+cyan = "#86e1fc"
+blue = "#82aaff"
+purple = "#fca7ea"
+magenta = "#c099ff"
+comment = "#636da6"
+black = "#444a73"
+
+add = "#b8db87"
+change = "#7ca1f2"
+delete = "#e26a75"
+
+error = "#c53b53"
+hint = "#4fd6be"
+info = "#0db9d7"
+
+fg = "#c8d3f5"
+fg-dark = "#828bb8"
+fg-gutter = "#3b4261"
+fg-linenr = "#737aa2"
+fg-selected = "#363c58"
+border = "#1b1d2b"
+border-highlight = "#589ed7"
+bg = "#222436"
+bg-inlay = "#273644"
+bg-selection = "#2f334d"
+bg-menu = "#1e2030"
+bg-focus = "#2d3f76"

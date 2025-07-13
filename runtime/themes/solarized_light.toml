@@ -1,0 +1,155 @@
+"attribute" = { fg = "violet" }
+"keyword" = { fg = "green" }
+"keyword.directive" = { fg = "orange" }
+"namespace" = { fg = "violet" }
+"operator" = { fg = "green" }
+"special" = { fg = "orange" }
+"variable.builtin" = { fg = "cyan", modifiers = ["bold"] }
+"variable.function" = { fg = "blue" }
+"type" = { fg = "yellow" }
+"type.builtin" = { fg = "yellow", modifiers = ["bold"] }
+"constructor" = { fg = "blue" }
+"function" = { fg = "blue" }
+"function.macro" = { fg = "magenta" }
+"function.builtin" = { fg = "blue", modifiers = ["bold"] }
+"function.special" = { fg = "magenta" }
+"comment" = { fg = "base01" }
+"string" = { fg = "cyan" }
+"constant" = { fg = "cyan" }
+"constant.builtin" = { fg = "cyan", modifiers = ["bold"] }
+"constant.character.escape" = { fg = "red", modifiers = ["bold"] }
+"label" = { fg = "green" }
+"module" = { fg = "violet" }
+"tag" = { fg = "magenta" }
+
+# TODO
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "yellow" }
+"diff.minus" = { fg = "red" }
+
+# 背景
+# background
+"ui.background" = { bg = "base03" }
+
+"ui.virtual.whitespace" = { fg = "base01" }
+"ui.virtual.inlay-hint" = { fg = "base01", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
+
+# 行号栏
+# line number column
+"ui.linenr" = { fg = "base0", bg = "base02" }
+# 当前行号栏
+# current line number column
+"ui.linenr.selected" = { fg = "blue", modifiers = ["bold"] }
+# cursorline
+"ui.cursorline" = { bg = "base0" }
+
+# 状态栏
+# status bar
+"ui.statusline" = { fg = "base03", bg = "base0" }
+"ui.statusline.normal" = { bg = "blue" }
+"ui.statusline.insert" = { bg = "green" }
+"ui.statusline.select" = { bg = "yellow" }
+
+# 非活动状态栏
+# inactive status bar
+"ui.statusline.inactive" = { fg = "base1", bg = "base01" }
+
+# 补全窗口, preview窗口
+# Completion window, preview window
+"ui.popup" = { bg = "base02" }
+# 影响 补全选中 cmd弹出信息选中
+# Affect completion selection, cmd pop-up information selection
+"ui.menu.selected" = { fg = "base02", bg = "base2"}
+"ui.menu" = { fg = "base0", bg = "base02" }
+# ??
+"ui.window" = { fg = "base3" }
+# 命令行 补全的帮助信息
+# Command line completion help information
+"ui.help" = { modifiers = ["reversed"] }
+
+# 快捷键窗口 
+# Shortcut window
+"ui.popup.info" = { bg = "base1" }
+# 快捷键字体
+# Shortcut font
+"ui.text.info" = {fg = "base02", modifiers = ["bold"]}
+
+# 普通ui的字体样式
+# Normal ui font style
+"ui.text" = { fg = "base1" }
+# 影响 picker列表选中, 快捷键帮助窗口文本
+# Affects picker list selection, shortcut key help window text
+"ui.text.focus" = { fg = "blue", modifiers = ["bold"]}
+
+# 主光标/selection
+# main cursor/selection
+"ui.cursor.primary" = { fg = "base03", bg = "base1" }
+"ui.cursor.select" = { fg = "base02", bg = "cyan" }
+
+"ui.cursorline.primary" = { bg = "base02" }
+"ui.cursorline.secondary" = { bg = "base025" }
+
+"ui.selection" = { bg = "base0175" }
+"ui.selection.primary" = { bg = "base015" }
+
+"ui.virtual.indent-guide" = { fg = "base02" }
+"ui.virtual.ruler" = { bg = "base02" }
+
+# normal模式的光标
+# normal mode cursor
+"ui.cursor" = {fg = "base02", bg = "cyan"}
+"ui.cursor.insert" = {fg = "base03", bg = "base3"}
+# 当前光标匹配的标点符号
+# The punctuation character matched by the current cursor
+"ui.cursor.match" = { fg = "base02", bg = "base015" }
+
+"warning" =  { fg = "orange", modifiers= ["bold", "underlined"] }
+"error" = { fg = "red", modifiers= ["bold", "underlined"] }
+"info" = { fg = "blue", modifiers= ["bold", "underlined"] }
+"hint" = { fg = "base01", modifiers= ["bold", "underlined"] }
+
+"diagnostic.warning" = { underline = { style = "curl", color = "orange" } }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.info" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "base01" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+
+[palette]
+red      = '#dc322f'
+green    = '#859900'
+yellow   = '#b58900'
+blue     = '#268bd2'
+magenta  = '#d33682'
+cyan     = '#2aa198'
+orange   = '#cb4b16'
+violet   = '#6c71c4'
+
+# 深色 越来越深
+# dark getting darker
+base0    = '#657b83'
+base1    = '#586e75'
+base2    = '#073642'
+base3    = '#002b36'
+
+# 浅色 越來越浅
+# Lighter and lighter
+base00   = '#839496'
+base01   = '#93a1a1'
+base015  = '#c5c8bd'
+base0175 = '#dddbcc'
+base02   = '#eee8d5'
+base025  = '#f5eedb'
+base03   = '#fdf6e3'

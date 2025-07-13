@@ -1,0 +1,32 @@
+# Author : Rohan Jain <crodjer@pm.me> 
+# Author : Jakub Bartodziej <kubabartodziej@gmail.com>
+# The theme uses the gruvbox light palette with standard contrast: github.com/morhetz/gruvbox
+
+inherits = "gruvbox"
+
+"ui.cursor.primary" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { bg = "bg2" }
+"ui.cursorline" = { bg = "bg1" }
+
+[palette]
+bg0 = "#fbf1c7" # main background
+bg1 = "#ebdbb2"
+bg2 = "#d5c4a1"
+bg3 = "#bdae93"
+bg4 = "#a89984"
+
+fg0 = "#282828" # main foreground
+fg1 = "#3c3836"
+fg2 = "#504945"
+fg3 = "#665c54"
+fg4 = "#7c6f64" # gray0
+
+gray0 = "#7c6f64"
+
+red1 = "#9d0006" # bright
+green1 = "#79740e"
+yellow1 = "#b57614"
+blue1 = "#076678"
+purple1 = "#8f3f71"
+aqua1 = "#427b58"
+orange1 = "#af3a03"

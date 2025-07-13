@@ -1,0 +1,147 @@
+# Everforest (Light Medium)
+# Authors: CptPotato, WindSoilder, basbebe
+
+# Original Author:
+# URL: https://github.com/sainnhe/everforest
+# Filename: colors/everforest.vim
+# Author: sainnhe
+# Email: sainnhe@gmail.com
+# License: MIT License
+
+"type" = "yellow"
+"constant" = "fg"
+"constant.builtin" = { fg = "purple", modifiers = ["italic"] }
+"constant.builtin.boolean" = "purple"
+"constant.numeric" = "purple"
+"constant.character.escape" = "green"
+"string" = "aqua"
+"string.regexp" = "green"
+"string.special" = "yellow"
+"comment" = { fg = "grey1", modifiers = ["italic"] }
+"variable" = "fg"
+"variable.builtin" = { fg = "purple", modifiers = ["italic"] }
+"variable.parameter" = "fg"
+"variable.other.member" = "blue"
+"label" = "orange"
+"punctuation" = "grey2"
+"punctuation.delimiter" = "grey1"
+"punctuation.bracket" = "fg"
+"punctuation.special" = "blue"
+"keyword" = "red"
+"keyword.operator" = "orange"
+"keyword.directive" = "purple"
+"keyword.storage" = "red"
+"operator" = "orange"
+"function" = "green"
+"function.macro" = "green"
+"tag" = "orange"
+"namespace" = { fg = "yellow", modifiers = ["italic"] }
+"attribute" = { fg = "purple", modifiers = ["italic"] }
+"constructor" = "green"
+"module" = "yellow"
+"special" = "blue"
+
+"markup.heading.marker" = "grey1"
+"markup.heading.1" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "orange", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "yellow", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "green", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "blue", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "purple", modifiers = ["bold"] }
+"markup.list" = "red"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "blue", underline = { style = "line" } }
+"markup.link.label" = "orange"
+"markup.link.text" = "purple"
+"markup.quote" = "grey1"
+"markup.raw.inline" = "green"
+"markup.raw.block" = "aqua"
+
+"diff.plus" = "green"
+"diff.delta" = "blue"
+"diff.minus" = "red"
+
+"ui.background" = { bg = "bg0" }
+"ui.background.separator" = "grey0"
+"ui.cursor" = { fg = "bg1", bg = "grey2" }
+"ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
+"ui.cursor.select" = { fg = "bg0", bg = "blue" }
+"ui.cursor.match" = { bg = "bg4", modifiers = ["bold"] }
+"ui.cursor.primary" = { fg = "bg0", bg = "fg" }
+"ui.cursorline.primary" = { bg = "bg1" }
+"ui.cursorline.secondary" = { bg = "bg2" }
+"ui.selection" = { bg = "bg3" }
+"ui.linenr" = "grey0"
+"ui.linenr.selected" = "grey2"
+"ui.statusline" = { fg = "grey2", bg = "bg3" }
+"ui.statusline.inactive" = { fg = "grey0", bg = "bg1" }
+"ui.statusline.normal" = { fg = "bg0", bg = "statusline1", modifiers = [
+  "bold",
+] }
+"ui.statusline.insert" = { fg = "bg0", bg = "statusline2", modifiers = [
+  "bold",
+] }
+"ui.statusline.select" = { fg = "bg0", bg = "blue", modifiers = ["bold"] }
+"ui.bufferline" = { fg = "grey2", bg = "bg3" }
+"ui.bufferline.active" = { fg = "bg0", bg = "statusline1", modifiers = [
+  "bold",
+] }
+"ui.popup" = { fg = "grey2", bg = "bg2" }
+"ui.picker.header" = { modifiers = ["bold", "underlined"] }
+"ui.window" = { fg = "bg4", bg = "bg_dim" }
+"ui.help" = { fg = "fg", bg = "bg2" }
+"ui.text" = "fg"
+"ui.text.directory" = { fg = "green" }
+"ui.text.focus" = "fg"
+"ui.menu" = { fg = "fg", bg = "bg3" }
+"ui.menu.selected" = { fg = "bg0", bg = "green" }
+"ui.virtual.ruler" = { bg = "bg3" }
+"ui.virtual.whitespace" = { fg = "bg4" }
+"ui.virtual.indent-guide" = { fg = "bg4" }
+"ui.virtual.inlay-hint" = { fg = "grey0" }
+"ui.virtual.wrap" = { fg = "grey0" }
+
+"hint" = "green"
+"info" = "blue"
+"warning" = "yellow"
+"error" = "red"
+
+"diagnostic.hint" = { underline = { color = "green", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+
+bg_dim = "#efebd4"
+bg0 = "#fdf6e3"
+bg1 = "#f4f0d9"
+bg2 = "#efebd4"
+bg3 = "#e6e2cc"
+bg4 = "#e0dcc7"
+bg5 = "#bdc3af"
+bg_red = "#fbe3da"
+bg_visual = "#eaedc8"
+bg_yellow = "#faedcd"
+bg_green = "#f0f1d2"
+bg_blue = "#e9f0e9"
+
+fg = "#5c6a72"
+red = "#f85552"
+orange = "#f57d26"
+yellow = "#dfa000"
+green = "#8da101"
+blue = "#3a94c5"
+aqua = "#35a77c"
+purple = "#df69ba"
+
+grey0 = "#a6b0a0"
+grey1 = "#939f91"
+grey2 = "#829181"
+statusline1 = "#93b259"
+statusline2 = "#708089"
+statusline3 = "#e66868"

@@ -1,0 +1,135 @@
+"attribute" = { fg = "violet" }
+"keyword" = { fg = "green" }
+"keyword.directive" = { fg = "orange" }
+"namespace" = { fg = "violet" }
+"operator" = { fg = "green" }
+"special" = { fg = "orange" }
+"variable.builtin" = { fg = "cyan", modifiers = ["bold"] }
+"variable.function" = { fg = "blue" }
+"type" = { fg = "yellow" }
+"type.builtin" = { fg = "yellow", modifiers = ["bold"] }
+"constructor" = { fg = "blue" }
+"function" = { fg = "blue" }
+"function.macro" = { fg = "magenta" }
+"function.builtin" = { fg = "blue", modifiers = ["bold"] }
+"function.special" = { fg = "magenta" }
+"comment" = { fg = "base01" }
+"string" = { fg = "cyan" }
+"constant" = { fg = "cyan" }
+"constant.builtin" = { fg = "cyan", modifiers = ["bold"] }
+"constant.character.escape" = { fg = "red", modifiers = ["bold"] }
+"label" = { fg = "green" }
+"module" = { fg = "violet" }
+"tag" = { fg = "magenta" }
+
+# TODO
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "yellow" }
+"diff.minus" = { fg = "red" }
+
+# 背景
+"ui.background" = { bg = "base03" }
+
+"ui.virtual.whitespace" = { fg = "base01" }
+"ui.virtual.inlay-hint" = { fg = "base01", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
+
+# 行号栏
+"ui.linenr" = { fg = "base0", bg = "base02" }
+# 当前行号栏
+"ui.linenr.selected" = { fg = "blue", modifiers = ["bold"] }
+#cursorline
+"ui.cursorline" = { bg = "base03" }
+
+# 状态栏
+"ui.statusline" = { fg = "base03", bg = "base0" }
+"ui.statusline.normal" = { bg = "blue" }
+"ui.statusline.insert" = { bg = "green" }
+"ui.statusline.select" = { bg = "yellow" }
+
+# 非活动状态栏
+"ui.statusline.inactive" = { fg = "base1", bg = "base01" }
+
+# 补全窗口, preview窗口
+"ui.popup" = { bg = "base02" }
+# 影响 补全选中 cmd弹出信息选中
+"ui.menu.selected" = { fg = "base02", bg = "base2"}
+"ui.menu" = { fg = "base0", bg = "base02" }
+# ??
+"ui.window" = { fg = "base3" }
+# 命令行 补全的帮助信息
+"ui.help" = { modifiers = ["reversed"] }
+
+# 快捷键窗口 
+"ui.popup.info" = {fg = "base02", bg = "base1", modifiers = ["bold"]}
+# 快捷键字体
+"ui.text.info" = {fg = "base02", modifiers = ["bold"]}
+
+# 普通ui的字体样式
+"ui.text" = { fg = "base1" }
+# 影响 picker列表选中, 快捷键帮助窗口文本
+"ui.text.focus" = { fg = "blue", modifiers = ["bold"]}
+
+# 主光标/selectio
+"ui.cursor.primary" = { fg = "base03", bg = "base1" }
+"ui.cursor.select" = { fg = "base02", bg = "cyan" }
+"ui.cursorline.primary" = { bg = "base02" }
+"ui.cursorline.secondary" = { bg = "base025" }
+
+"ui.selection" = { bg = "base0175" }
+"ui.selection.primary" = { bg = "base015" }
+
+"ui.virtual.indent-guide" = { fg = "base02" }
+"ui.virtual.ruler" = { bg = "base02" }
+
+# normal模式的光标
+"ui.cursor" = {fg = "base02", bg = "cyan"}
+"ui.cursor.insert" = {fg = "base03", bg = "base3"}
+# 当前光标匹配的标点符号
+"ui.cursor.match" = { fg = "base03", bg = "base00" }
+
+"warning" =  { fg = "orange", modifiers= ["bold", "underlined"] }
+"error" = { fg = "red", modifiers= ["bold", "underlined"] }
+"info" = { fg = "blue", modifiers= ["bold", "underlined"] }
+"hint" = { fg = "base01", modifiers= ["bold", "underlined"] }
+
+"diagnostic.warning" = { underline = { style = "curl", color = "orange" } }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.info" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "base01" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+# 深色 越来越深
+base03   = "#002b36"
+base025  = "#03303b"
+base02   = "#073642"
+base0175 = "#16404b"
+base015  = "#2c4f59"
+base01   = "#586e75"
+base00   = "#657b83"
+base0    = "#839496"
+base1    = "#93a1a1"
+base2    = "#eee8d5"
+base3    = "#fdf6e3"
+
+# 浅色 越來越浅
+yellow  = "#b58900"
+orange  = "#cb4b16"
+red     = "#dc322f"
+magenta = "#d33682"
+violet  = "#6c71c4"
+blue    = "#268bd2"
+cyan    = "#2aa198"
+green   = "#859900"

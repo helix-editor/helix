@@ -1,0 +1,218 @@
+# Palette based on https://github.com/NLKNguyen/papercolor-theme
+# Author: Soc Virnyl Estela <socvirnyl.estela@gmail.com>
+
+"ui.linenr.selected" = { fg = "cursorlinenr_fg", modifiers = ["bold"] }
+"ui.linenr" = { fg = "linenumber_fg" }
+"ui.background" = { bg = "background" }
+"ui.text" = "foreground"
+"ui.text.focus" = { fg = "selection_bg", modifiers = ["bold"] }
+"ui.selection" = { bg = "selection_secondary_bg", fg = "selection_secondary_fg" }
+"ui.selection.primary" = { bg = "selection_bg", fg = "selection_fg" }
+"ui.highlight" = { bg = "cursorline_bg" }
+
+"ui.cursorline" = { bg = "cursorline_bg" }
+"ui.cursorline.secondary" = { bg = "cursorline_secondary_bg" }
+"ui.cursorcolumn" = { bg = "cursorline_bg" }
+"ui.cursorcolumn.secondary" = { bg = "cursorcolumn_secondary_bg" }
+
+"ui.statusline" = { bg = "statusline_active_bg", fg = "statusline_active_fg" }
+"ui.statusline.inactive" = { bg = "statusline_inactive_bg", fg = "statusline_inactive_fg" }
+"ui.statusline.normal" = { bg = "statusline_inactive_bg", fg = "bright6" }
+"ui.statusline.insert" = { bg = "statusline_inactive_bg", fg = "bright4" }
+"ui.statusline.select" = { bg = "statusline_inactive_bg", fg = "regular3" }
+"ui.statusline.separator" = { bg = "statusline_active_bg", fg = "statusline_active_bg" }
+
+"ui.virtual" = { fg = "cursorlinenr_fg" }
+"ui.virtual.whitespace" = { fg = "regular5" }
+"ui.virtual.indent-guide" = { fg = "bright0" }
+"ui.virtual.ruler" = { bg = "cursorline_secondary_bg", fg = "regular4" }
+"ui.virtual.inlay-hint" = { fg = "regular5", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.parameter" = { fg = "regular5", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "regular5", modifiers = ["bold", "italic"] }
+"ui.virtual.jump-label" = { fg = "bright1", modifiers = ["bold"] }  
+"ui.cursor.match" = { bg = "matchparen_bg", fg = "matchparen_fg" }
+"ui.cursor" = { bg = "regular5", fg = "background" }
+"ui.cursor.primary" = { bg = "foreground", fg = "background" }
+"ui.window" = { fg = "vertsplit_fg" }
+"ui.help" = { bg = "wildmenu_bg", fg = "wildmenu_fg" }
+"ui.popup" = { bg = "popupmenu_bg", fg = "popupmenu_fg" }
+"ui.popup.info" = { bg = "popupmenu_bg", fg = "bright7", modifiers = ["bold"] }
+"ui.menu" = { bg = "popupmenu_bg", fg = "foreground" }
+"ui.menu.selected" = { bg = "selection_bg", fg = "selection_fg" }
+
+"warning" = "bright5"
+"error" = { bg = "error_bg", fg = "error_fg" }
+"info" = "todo_fg"
+
+"diagnostic.warning" = { fg = "bright0", modifiers = [
+  "dim",
+], underline = { color = "bright5", style = "curl" } }
+"diagnostic.error".underline = { color = "bright1", style = "curl" }
+"diagnostic.info".underline = { color = "bright4", style = "curl" }
+"diagnostic.hint".underline = { color = "bright6", style = "curl" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+# Tree-sitter scopes for syntax highlighting
+"attribute" = "bright4"
+
+"type" = { fg = "bright2", modifiers = ["bold"] }
+"type.builtin" = { fg = "bright2", modifiers = ["bold"] }
+"type.parameter" = { fg = "foreground" }
+"type.enum" = { fg = "foreground" }
+"type.enum.variant" = { fg = "foreground" }
+
+"constructor" = "foreground"
+
+"constant" = "bright5"
+"constant.builtin" = "regular3"
+"constant.builtin.boolean" = { fg = "regular2", modifiers = ["bold"] }
+"constant.character.escape" = { fg = "bright3", modifiers = ["bold"] }
+"constant.character" = { fg = "regular3" }
+"constant.numeric" = "bright5"
+
+"string" = "regular3"
+"string.regexp" = "bright3"
+
+"comment" = { fg = "regular5", modifiers = ["italic"] }
+"comment.line" = { fg = "regular5", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "regular5", modifiers = ["bold"] }
+"comment.block" = { fg = "regular5", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "regular5", modifiers = ["bold"] }
+
+"variable" = "foreground"
+"variable.builtin" = "bright5"
+"variable.other.member" = "foreground"
+"variable.parameter" = "foreground"
+
+"label" = { fg = "selection_bg", modifiers = ["bold", "italic"] }
+
+"punctuation" = { fg = "foreground" }
+"punctuation.delimiter" = { fg = "regular4", modifiers = ["bold"] }
+"punctuation.bracket" = { fg = "foreground" }
+"punctuation.special" = { fg = "bright1", modifiers = ["bold"] }
+
+"keyword" = { fg = "bright2" }
+"keyword.control" = "bright1"
+"keyword.control.conditional" = { fg = "bright3", modifiers = ["bold"] }
+"keyword.control.repeat" = { fg = "bright3", modifiers = ["bold"] }
+"keyword.control.import" = { fg = "bright2" }
+"keyword.control.return" = { fg = "bright2" }
+"keyword.control.exception" = { fg = "bright1" }
+
+"keyword.operator" = { fg = "regular4", modifiers = ["bold"] }
+"keyword.directive" = "regular4"
+"keyword.function" = "bright2"
+"keyword.storage" = "bright2"
+"keyword.storage.type" = { fg = "regular4", modifiers = ["bold"] }
+"keyword.storage.modifier" = { fg = "regular6", modifiers = ["bold"] }
+"keyword.storage.modifier.ref" = { fg = "regular4", modifiers = ["bold"] }
+"keyword.special" = "bright1"
+
+"operator" = { fg = "regular4", modifiers = ["bold"] }
+
+"function" = { fg = "foreground" }
+"function.builtin" = { fg = "bright6" }
+"function.method" = { fg = "foreground" }
+"function.macro" = { fg = "regular3", modifiers = ["bold"] }
+"function.special" = { fg = "bright4" }
+
+"tag" = { fg = "regular4" }
+
+"namespace" = "bright6"
+
+"special" = "special"
+
+"markup.heading" = { fg = "bright4", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "bright2", modifiers = ["bold"] }
+"markup.heading.1" = { fg = "bright2", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "bright5", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "bright3", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "bright4", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "bright4", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "bright4", modifiers = ["bold"] }
+"markup.list" = "regular4"
+"markup.bold" = { fg = "foreground", modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "bright6", underline.style = "line" }
+"markup.link.text" = "bright2"
+"markup.link.label" = { fg = "regular2", modifiers = ["bold"] }
+"markup.quote" = "regular4"
+# Both inline and block code
+"markup.raw" = "regular3"
+
+"diff.plus" = { bg = "diffadd_bg", fg = "diffadd_fg" }
+"diff.delta" = { bg = "diffchange_bg" }
+"diff.delta.moved" = { modifiers = ["italic"] }
+"diff.minus" = { bg = "diffdelete_bg", fg = "diffdelete_fg" }
+
+[palette]
+background = "#eeeeee"
+foreground = "#444444"
+regular0 = "#eeeeee"   # color00 "Background"
+regular1 = "#af0000"   # color01 "Negative"
+regular2 = "#008700"   # color02 "Positive"
+regular3 = "#5f8700"   # color03 "Olve"
+regular4 = "#0087af"   # color04 "Neutral" / Aqua
+regular5 = "#878787"   # color05 "Comment"
+regular6 = "#005f87"   # color06 "Navy"
+regular7 = "#444444"   # color07 "Foreground"
+bright0 = "#bcbcbc"    # color08 "Nontext"
+bright1 = "#d70000"    # color09 "Red"
+bright2 = "#d70087"    # color10 "Pink"
+bright3 = "#8700af"    # color11 "Purple"
+bright4 = "#d75f00"    # color12 "Accent"
+bright5 = "#d75f00"    # color13 "Orange"
+bright6 = "#005faf"    # color14 "Blue"
+bright7 = "#005f87"    # color15 "Highlight"
+
+selection_fg = "#eeeeee"
+selection_bg = "#0087af"
+selection_secondary_fg = "#d9d7d7"
+selection_secondary_bg = "#2c687a"
+special = "#3e999f"
+
+cursorline_bg = "#e4e4e4"
+cursorline_secondary_bg = "#eaeaea"
+cursorcolumn_bg = "#e4e4e4"
+cursorcolumn_secondary_bg = "#eaeaea"
+cursorlinenr_fg = "#af5f00"
+popupmenu_fg = "#444444"
+popupmenu_bg = "#d0d0d0"
+linenumber_fg = "#b2b2b2"
+vertsplit_fg = "#005f87"
+statusline_active_fg = "#e4e4e4"
+statusline_active_bg = "#005f87"
+statusline_inactive_fg = "#444444"
+statusline_inactive_bg = "#d0d0d0"
+todo_fg = "#00af5f"
+error_fg = "#af0000"
+error_bg = "#ffd7ff"
+matchparen_bg = "#c6c6c6"
+matchparen_fg = "#005f87"
+wildmenu_fg = "#444444"
+wildmenu_bg = "#ffff00"
+diffadd_fg = "#008700"
+diffadd_bg = "#afffaf"
+diffdelete_fg = "#af0000"
+diffdelete_bg = "#ffd7ff"
+diffchange_bg = "#ffd787"
+
+# 16 bit ANSI color names
+black = "#eeeeee"
+red = "#d70000"
+green = "#008700"
+yellow = "#5f8700"
+blue = "#0087af"
+magenta = "#878787"
+cyan = "#005f87"
+white = "#444444"
+light-black = "#bcbcbc"
+light-red = "#d70000"
+light-green = "#d70087"
+light-yellow = "#8700af"
+light-blue = "#d75f00"
+light-magenta = "#d75f00"
+light-cyan = "#4c7a4d"
+light-white = "#005faf"

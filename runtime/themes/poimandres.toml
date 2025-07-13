@@ -1,0 +1,116 @@
+# Author: Ambuj Kumar <ambujs89@gmail.com>
+# Ported from: https://github.com/drcmda/poimandres-theme
+
+attribute = { fg = "desaturatedBlue", modifiers = ["italic"] }
+keyword = "brightMint"
+"keyword.directive" = "gray"
+"keyword.storage.type" = "desaturatedBlue"
+"keyword.storage.modifier" = "lowerMint"
+"keyword.other" = "brightMint"
+"keyword.operator" = "desaturatedBlue"
+namespace = "lightBlue"
+punctuation = "gray"
+"punctuation.bracket" = "desaturatedBlue"
+operator = "desaturatedBlue"
+special = "desaturatedBlue"
+variable = "offWhite"
+"variable.parameter" = { fg = "offWhite" }
+"variable.builtin" = { fg = "lightBlue", modifiers = ["italic"] }
+"variable.other" = "offWhite"
+type = { fg = "gray.c0" }
+"type.builtin" = { fg = "desaturatedBlue" }
+constructor = "lightBlue"
+function = "lightBlue"
+"function.method" = { fg = "lightBlue" }
+tag = "brightMint"
+comment = { fg = "darkerGray.b0", modifiers = ["italic"] }
+constant = "brightMint"
+"constant.character.escape" = { fg = "offWhite" }
+"constant.numeric" = { fg = "brightMint" }
+"constant.builtin" = { fg = "hotRed" }
+label = { fg = "gray.c0" }
+string = { fg = "brightMint" }
+
+# Markup
+"markup.heading" = { fg = "brightMint" }
+"markup.bold" = { fg = "bluishGrayBrighter", modifiers = ["bold"] }
+"markup.italic" = { fg = "bluishGrayBrighter", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["italic", "crossed_out"] }
+
+# UI
+"markup.link.url" = { fg = "lightBlue", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "lightBlue", modifiers = ["underlined"] }
+"markup.raw" = { fg = "lightBlue" }
+
+"ui.background" = { bg = "bg" }
+"ui.background.separator" = { fg = "darkerGray" }
+"ui.linenr" = "darkerGray.50"
+"ui.linenr.selected" = "offWhite"
+"ui.cursor" = { bg = "gray", fg = "bg" }
+"ui.cursor.match" = { bg = "focus" }
+"ui.cursorline" = { bg = "#242837" }
+
+"ui.popup" = { bg = "#20232d" }
+"ui.window" = "gray"
+
+"ui.text" = "gray"
+"ui.text.focus" = { fg = "offWhite", bg = "focus", modifiers = ["bold"] }
+"ui.text.inactive" = "darkerGray"
+"ui.virtual" = { fg = "darkerGray.b0" }
+"ui.virtual.indent-guide" = "#303442"
+"ui.virtual.ruler" = { bg ="selection" }
+
+"ui.selection" = { bg = "focus" }
+"ui.selection.primary" = { bg = "selection" }
+
+"ui.menu" = { fg = "offWhite", bg = "bg" }
+"ui.menu.selected" = { fg = "bg", bg = "gray" }
+"ui.menu.scroll" = { fg = "gray", bg = "bg" }
+
+"ui.statusline" = { fg = "offWhite", bg = "selection" }
+"ui.statusline.inactive" = { fg = "lightBlue", bg = "bg" }
+"ui.statusline.normal" = { bg = "lightBlue", fg = "bg", modifiers = ["bold"] }
+"ui.statusline.insert" = { bg = "brightMint", fg = "bg", modifiers = ["bold"] }
+"ui.statusline.select" = { bg = "hotRed", fg = "bg", modifiers = ["bold"] }
+
+"diagnostic.hint" = { underline = { color = "lowerMint", style = "curl" } }
+"diagnostic.info" = { underline = { color = "lightBlue", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "brightYellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "hotRed", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+hint = "lowerMint"
+info = "lightBlue"
+warning = "brightYellow"
+error = "hotRed"
+
+# Version Control
+"diff.plus" = "lowerMint"
+"diff.minus" = "hotRed"
+"diff.delta" = "lightBlue"
+
+[palette]
+brightYellow = "#fffac2"
+brightMint = "#5DE4c7"
+lowerMint = "#5fb3a1"
+blueishGreen = "#42675A"
+lowerBlue = "#89ddff"
+lightBlue = "#ADD7FF"
+desaturatedBlue = "#91B4D5"
+bluishGrayBrighter = "#7390AA"
+hotRed = "#d0679d"
+pink = "#f087bd"
+gray = "#a6accd"
+"gray.c0" = "#98a0c2"
+darkerGray = "#767c9d"
+"darkerGray.50" = "#404559"
+"darkerGray.b0" = "#6c7494"
+bluishGray = "#506477"
+focus = "#303340"
+bg = "#1b1e28"
+offWhite = "#e4f0fb"
+selection = "#30354a"
+white = "#ffffff"
+black = "#000000"
+transparent = "#00000000"

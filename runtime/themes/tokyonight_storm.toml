@@ -1,0 +1,12 @@
+# Author: Paul Graydon <untimely.creation97@proton.me>
+
+inherits = "tokyonight"
+
+[palette]
+border = "#1d202f"
+bg = "#24283b"
+bg-inlay = "#233745"
+bg-selection = "#373d5a"
+bg-menu = "#1f2335"
+bg-focus = "#2e3c64"
+border-highlight = "#29a4bd"

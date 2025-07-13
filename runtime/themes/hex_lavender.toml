@@ -1,0 +1,41 @@
+# Author : portalsurfer <https://github.com/PORTALSURFER>
+
+inherits = "hex_steel"
+
+[palette]
+t1 = "#0e0e0d"
+t2 = "#181a17"
+t3 = "#2b3444"
+t4 = "#61586f"
+t5 = "#686e73"
+t6 = "#878480"
+t7 = "#8e80de"
+t8 = "#7b89a3"
+t9 = "#bcb6ba"
+t10 = "#9db2b8"
+t11 = "#a0c7cf"
+
+highlight = "#ff2e5f"
+highlight_two = "#0affa9"
+highlight_three = "#29bbff"
+
+black = "#000000"
+
+selection = "#290019"
+selection_fg = "#958e9a"
+
+comment = "#404768"
+comment_doc = "#0affa9"
+
+error = "#ff0900"
+warning = "#ffbf00"
+display = "#57ff89"
+info = "#dad7d5"
+
+hints = "#44273f"
+ruler  = "#1c1f1b"
+
+diff_minus = "#ff4000"
+diff_delta = "#0078bd"
+diff_plus = "#c9d400"
+diff_delta_moved = "#0048bd"

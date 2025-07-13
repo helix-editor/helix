@@ -1,0 +1,74 @@
+# Author: Alexis Mousset <contact@amousset.me>
+# modus_operandi.toml variant
+#
+# This variant is optimized for users with blue-yellow color deficiency (tritanopia)
+# Version 4.6.0
+
+inherits = "modus_operandi"
+
+"type" = "blue-warmer"
+"constructor" = "blue-warmer"
+"constant" = "green-cooler"
+"constant.character.escape" = "red-cooler"
+"string" = "cyan"
+"comment" = "red-faint"
+"variable.parameter" = "cyan-cooler"
+"keyword" = "red-cooler"
+"keyword.directive" = "red-warmer"
+"function" = "cyan-warmer"
+"function.macro" = "magenta"
+"tag" = "red-cooler"
+
+"markup.heading.2" = { fg = "red-faint", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "cyan-faint", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "magenta-faint", modifiers = ["bold"] }
+"markup.link.url" = { fg = "cyan-cooler" }
+"markup.link.text" = { fg = "cyan", modifiers = ["underlined"] }
+
+"ui.cursor" = { fg = "bg-main", bg = "red-intense" }
+"ui.cursor.primary.normal" = { fg = "bg-main", bg = "red-intense" }
+
+"diagnostic.error" = { underline = { color = "red-warmer", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "magenta", style = "curl" } }
+"diagnostic.info" = { underline = { color = "cyan", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "blue", style = "curl" } }
+
+error = "red-warmer"
+warning = "magenta"
+info = "cyan"
+hint = "blue"
+
+[palette]
+
+# Common accent foregrounds
+red-warmer = "#b21100"
+red-faint = "#702000"
+yellow = "#695500"
+yellow-warmer = "#973300"
+yellow-cooler = "#77492f"
+magenta-intense = "#cd22bd"
+cyan-faint = "#004f5f"
+
+# Special purpose
+bg-completion = "#afdfef"
+bg-hover = "#ffafbc"
+bg-hover-secondary = "#9fdfff"
+bg-hl-line = "#dfeaec"
+
+bg-char-0 = "#ff908f"
+bg-char-1 = "#bfbfff"
+bg-char-2 = "#5fcfdf"
+
+bg-mode-line-active = "#afe0f2"
+fg-mode-line-active = "#0f0f0f"
+border-mode-line-active = "#2f4f44"
+
+modeline-err = "#8f0000"
+modeline-warning = "#6f306f"
+modeline-info = "#00445f"
+
+# Diffs
+bg-added = "#b5e7ff"
+fg-added = "#005079"
+bg-changed = "#eecfdf"
+fg-changed = "#6f1343"

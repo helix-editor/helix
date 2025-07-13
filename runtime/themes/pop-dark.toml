@@ -1,0 +1,165 @@
+# Pop Dark theme for the Helix Editor
+# Author: workingj<workingj@pm.me>
+# Repo: https://github.com/workingJ/helix-pop-theme
+# Version: 1.0
+# This theme is based on Nathaniel Webb's VSCodePopTheme <https://github.com/ArtisanByteCrafter/VSCodePopTheme>
+
+info = { fg = 'brownD' }
+hint = { fg = 'yellowH', modifiers = ['bold'] }
+warning = { fg = 'orangeW', modifiers = ['bold'] }
+error = { fg = 'redE', modifiers = ['bold'] }
+'diagnostic.info'.underline = { color = 'yellowH', style = 'curl' } 
+'diagnostic.hint'.underline = { color = 'yellowH', style = 'curl' } 
+'diagnostic.warning'.underline = { color = 'orangeW', style = 'curl' } 
+'diagnostic.error'.underline = { color = 'redE', style = 'curl' } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+'ui.background' = { bg = 'brownN' }
+'ui.window' = { bg = 'brownH', fg = 'brownD' } 
+'ui.gutter' = { bg = 'brownU' }
+'ui.text' = { fg = 'greyT' }
+'ui.text.focus' = { fg = 'orangeN' }
+'ui.text.info' = { fg = 'orangeH', bg = 'brownH' }
+'ui.cursor' = { fg = 'greyD', bg = 'orangeY' }
+'ui.cursor.insert' = { fg = 'orangeN', bg = 'orangeN' }
+'ui.cursor.select' = { fg = 'black', bg = 'orangeN' }
+'ui.cursor.match' = { fg = 'black', bg = 'blueD' }
+'ui.cursor.primary' = { fg = 'black', bg = 'orangeN' }
+'ui.selection' = { bg = 'blueH', fg = 'white' }
+'ui.selection.primary' = { bg = 'blueD', fg = 'white' }
+'ui.linenr' = { bg = 'brownU', fg = 'greyL' }
+'ui.linenr.selected' = { fg = 'orangeH' }
+'ui.cursorline' = { bg = 'brownH' }
+'ui.statusline' = { fg = 'greyT', bg = 'brownU' }
+'ui.statusline.inactive' = { fg = 'greyT', bg = 'brownN' }
+'ui.statusline.normal' = { fg = 'greyT', bg = 'brownD', modifiers = ['bold'] }
+'ui.statusline.select' = { bg = 'blueL', fg = 'brownD', modifiers = ['bold'] }
+'ui.statusline.insert' = { bg = 'orangeL', fg = 'brownD', modifiers = ['bold'] }
+'ui.help' = { fg = 'greyT', bg = 'brownD' }
+'ui.highlight' = { bg = 'brownH' }
+'ui.virtual' = { fg = 'brownV' }
+'ui.virtual.ruler' = { bg = 'brownR' }
+'ui.virtual.whitespace' = { fg = 'brownV' }
+'ui.virtual.indent-guide' = { fg = 'brownR' }
+'ui.virtual.inlay-hint' = {fg = 'brownD', bg = 'brownU'}
+'ui.menu' = { fg = 'greyT', bg = 'brownD' }
+'ui.menu.selected' = { fg = 'orangeH', bg = 'brownH' }
+'ui.popup' = { bg = 'brownD' }
+'ui.popup.info' = { bg = 'brownH', fg = 'greyT' }
+tag = { fg = 'blueH' }
+label = { fg = 'greenS' }
+module = { bg = 'orangeL' }
+special = { fg = 'orangeW' }
+operator = { fg = 'orangeY' }
+attribute = { fg = 'orangeL' }
+namespace = { fg = 'orangeL' }
+'type' = { fg = 'redH' }
+'type.builtin' = { fg = 'orangeL' }
+'type.enum.variant' = { fg = 'orangeL' }
+'constructor' = { fg = 'blueD' }
+'constant' = { fg = 'greyG' }
+'constant.builtin' = { fg = 'redL' }
+'constant.builtin.boolean' = { fg = 'redL' }
+'constant.character' = { fg = 'greenS' }
+'constant.character.escape' = { fg = 'blueL' }
+'constant.numeric' = { fg = 'redH' }
+'string' = { fg = 'greenN' }
+'string.regexp' = { fg = 'blueL' }
+'string.special' = { fg = 'orangeW' }
+'string.special.path' = { fg = 'orangeW' }
+'string.special.url' = { fg = 'orangeW' }
+'string.special.symbol' = { fg = 'orangeW' }
+'comment' = { fg = 'greyC', modifiers = ['italic'] }
+'comment.line' = { fg = 'greyC', modifiers = ['italic'] }
+'comment.line.documentation' = { fg = 'greyC', modifiers = ['italic'] }
+'comment.block' = { fg = 'greyC', modifiers = ['italic'] }
+'comment.block.documentation' = { fg = 'greyC', modifiers = ['italic'] }
+'variable' = { fg = 'greyT' }
+'variable.builtin' = { fg = 'blueL' }
+'variable.parameter' = { fg = 'white' }
+'variable.other.member' = { fg = 'orangeH' }
+'variable.function' = { fg = 'blueL' }
+'punctuation' = { fg = 'blueL' }
+'punctuation.delimiter' = { fg = 'blueH' }
+'punctuation.bracket' = { fg = 'orangeN' }
+'keyword' = { fg = 'blueH' }
+'keyword.control' = { fg = 'blueL' }
+'keyword.control.conditional' = { fg = 'blueL' }
+'keyword.control.repeat' = { fg = 'blueL' }
+'keyword.control.import' = { fg = 'redH' }
+'keyword.control.return' = { fg = 'blueL' }
+'keyword.control.exception' = { fg = 'redH' }
+'keyword.operator' = { fg = 'blueL' }
+'keyword.directive' = { fg = 'blueL' }
+'keyword.function' = { fg = 'redH' }
+'function' = { fg = 'blueH' }
+'function.builtin' = { fg = 'blueH' }
+'function.method' = { fg = 'blueH' }
+'function.macro' = { fg = 'greyH' }
+'function.special' = { fg = 'blueD' }
+'markup.heading' = { fg = 'greenN' }
+'markup.heading.1' = { fg = '#FFC977' }
+'markup.heading.2' = { fg = '#FFC26C' }
+'markup.heading.3' = { fg = '#FFC166' }
+'markup.heading.4' = { fg = '#FFB950' }
+'markup.heading.5' = { fg = '#FFB340' }
+'markup.heading.6' = { fg = '#FFAD34' }
+'markup.heading.marker' = { fg = 'orangeN' }
+'markup.list' = { fg = 'greenN' }
+'markup.list.numbered' = { fg = 'greenN' }
+'markup.list.unnumbered' = { fg = 'greenN' }
+'markup.bold' = { modifiers = ['bold'] }
+'markup.italic' = { modifiers = ['italic'] }
+'markup.strikethrough' = { modifiers = ['crossed_out'] }
+'markup.link' = { fg = 'blueD' }
+'markup.link.url' = { fg = 'blueL' }
+'markup.link.label' = { fg = 'blueH' }
+'markup.link.text' = { fg = 'blueN' }
+'markup.quote' = { fg = 'blueL' }
+'markup.normal' = { fg = 'blueL' }
+'markup.normal.completion' = { bg = 'brownN' }
+'markup.normal.raw' = { bg = 'brownN' }
+'markup.heading.completion' = { fg = 'greenN' }
+'markup.heading.raw' = { bg = 'brownN' }
+'markup.raw' = { bg = 'brownN' }
+'markup.raw.block' = { bg = 'brownH', fg = 'orangeH' }
+'markup.raw.inline' = { fg = 'blueL' }
+'markup.raw.inline.completion' = { fg = 'greenN' }
+'markup.raw.inline.hover' = { fg = 'greenS' }
+'diff.plus' = { fg = '#4dd44d' }
+'diff.minus' = { fg = '#dd4d4d' }
+'diff.delta' = { fg = '#4d4ddd' }
+'diff.delta.moved' = { fg = '#dd4ddd' }
+
+[palette]
+white = '#FFFFFF'
+greyH = '#CFCFCF'
+greyT = '#DEDEDE'
+greyG = '#DDFFDD'
+greyC = '#A0B4A7'
+greyL = '#9A9A9A'
+greyD = '#444444'
+black = '#000000'
+yellowH = '#FFCC00'
+orangeH = '#FFD68A'
+orangeL = '#FFCB6B'
+orangeY = '#FDC33B'
+orangeN = '#FDAF1F'
+orangeW = '#FF9500'
+orangeS = '#F79A6C'
+redH = '#F78C6C'
+redL = '#F96964'
+redE = '#FF2200'
+redD = '#CC3333'
+greenN = '#73C48F'
+greenS = '#6FC475'
+blueH = '#8DEEF9'
+blueL = '#6dd2fa'
+blueN = '#39B7C7'
+blueD = '#4AAAD6'
+brownV = '#67634F'
+brownH = '#4b4845'
+brownN = '#3E3B39'
+brownR = '#35312f'
+brownD = '#2B2928'
+brownU = '#4C4643'

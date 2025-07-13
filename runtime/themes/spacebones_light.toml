@@ -1,0 +1,109 @@
+# Author : Koen Van der Auwera <atog@hey.com>
+# Based on SpaceBones Light https://github.com/chipotle/spacebones
+# https://github.com/chipotle/spacebones/blob/main/SpaceBones%20Light.bbColorScheme
+
+"attribute" = "#b1951d"
+"keyword" = { fg = "#3a81c3" }
+"keyword.directive" = "#3a81c3"
+"namespace" = "#b1951d"
+"punctuation" = "#6c3163"
+"punctuation.delimiter" = "#6c3163"
+"operator" = "#ba2f59"
+"special" = "#ba2f59"
+"variable.property" = "#7590db"
+"variable" = "#715ab1"
+"variable.builtin" = "#715ab1"
+"variable.parameter" = "#7590db"
+"variable.other.member" = "#002db3"
+"type" = "#6c3163"
+"type.builtin" = "#6c3163"
+"constructor" = { fg = "#4e3163", modifiers = ["bold"] }
+"function" = { fg = "#715ab1", modifiers = ["bold"] }
+"function.macro" = "#b1951d"
+"function.builtin" = "#b1951d"
+"comment" = { fg = "#a49da5", modifiers = ["italic"]  }
+"constant" = { fg = "#6c3163" }
+"constant.builtin" = { fg = "#6c3163", modifiers = ["bold"] }
+"string" = "theme_aqua"
+"number" = "#6c3163"
+"escape" = { fg = "fg2", modifiers = ["bold"] }
+"label" = "#b1951d"
+"module" = "#b1951d"
+
+# TODO
+"markup.heading" = "theme_blue"
+"markup.list" = "theme_red"
+"markup.bold" = { fg = "theme_yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "theme_magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "theme_yellow", modifiers = ["underlined"] }
+"markup.link.text" = "theme_red"
+"markup.quote" = "theme_cyan"
+"markup.raw" = "theme_green"
+
+"diff.plus" = "theme_aqua"
+"diff.delta" = "#715ab1"
+"diff.minus" = "#ba2f59"
+
+"warning" = { fg = "meta" }
+"error" = { fg = "#e0211d" }
+"info" = { fg = "theme_yellow" }
+"hint" = { fg = "bg2" }
+
+"ui.background" = { bg = "bg0" }
+"ui.linenr" = { fg = "bg3" }
+"ui.linenr.selected" = { fg = "theme_yellow" }
+"ui.cursorline" = { bg = "bg2" }
+"ui.statusline" = { fg = "fg1", bg = "bg2" }
+"ui.statusline.inactive" = { fg = "fg4", bg = "bg1" }
+"ui.statusline.normal" = { fg = "bg1", bg = "theme_cyan" }
+"ui.statusline.insert" = { fg = "bg1", bg = "theme_green" }
+"ui.statusline.select" = { fg = "bg1", bg = "theme_magenta" }
+"ui.popup" = { bg = "bg1" }
+"ui.window" = { bg = "bg1" }
+"ui.help" = { bg = "bg1", fg = "fg1" }
+"ui.text" = { fg = "fg1" }
+"ui.text.focus" = { fg = "fg1", modifiers = ["bold"] }
+"ui.text.directory" = { fg = "theme_blue" }
+"ui.selection" = { bg = "hl2" }
+"ui.selection.primary" = { bg = "hl1" }
+"ui.cursor.primary" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { bg = "bg3" }
+"ui.cursorline.primary" = { bg = "bg1" }
+"ui.menu" = { fg = "fg1", bg = "bg2" }
+"ui.menu.selected" = { fg = "base", bg = "bg2", modifiers = ["bold"] }
+"ui.virtual" = "base-dim"
+"ui.virtual.ruler" = { bg = "bg1" }
+
+"diagnostic.warning" = { underline = { style = "curl", color = "meta" } }
+"diagnostic.error" = { underline = { style = "curl", color = "#e0211d" } }
+"diagnostic.info" = { underline = { style = "curl", color = "theme_yellow" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "bg2" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+base = "#655370"
+base-dim = "#a094a2"
+meta = "#da8b55"
+
+bg0 = "#fbf8ef"
+bg1 = "#efeae9"
+bg2 = "#d1dcdf"
+bg3 = "#b4c6cb"
+
+hl1 = "#d3d3e7"
+hl2 = "#e7e7fc"
+
+fg1 = "#655370"
+fg2 = "#5f3bc4"
+fg3 = "#bdae93"
+fg4 = "#a89984"
+
+theme_magenta = "#a31db1"
+theme_blue = "#3a81c3"
+theme_yellow = "#b1951d"
+theme_cyan = "#21b8c7"
+theme_aqua = "#2d9574"
+theme_green = "#67b11d"
+theme_red = "#c10e0b"

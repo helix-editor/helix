@@ -1,0 +1,7 @@
+# Author : broke <broke@in-fucking.space>
+# The theme uses the gruvbox dark palette with soft contrast: github.com/morhetz/gruvbox
+
+inherits = "gruvbox"
+
+[palette]
+bg0 = "#32302f" # main background

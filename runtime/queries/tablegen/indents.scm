@@ -1,0 +1,3 @@
+(statement) @indent
+
+"}" @outdent

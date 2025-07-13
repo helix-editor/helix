@@ -1,0 +1,65 @@
+[workspace]
+resolver = "2"
+members = [
+  "helix-core",
+  "helix-view",
+  "helix-term",
+  "helix-tui",
+  "helix-lsp-types",
+  "helix-lsp",
+  "helix-event",
+  "helix-dap",
+  "helix-loader",
+  "helix-vcs",
+  "helix-parsec",
+  "helix-stdx",
+  "xtask",
+]
+
+default-members = [
+  "helix-term"
+]
+
+[profile.release]
+lto = "thin"
+
+[profile.opt]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+strip = true
+opt-level = 3
+
+[profile.integration]
+inherits = "test"
+package.helix-core.opt-level = 2
+package.helix-tui.opt-level = 2
+package.helix-term.opt-level = 2
+
+[workspace.dependencies]
+tree-house = { version = "0.3.0", default-features = false }
+nucleo = "0.5.0"
+slotmap = "1.0.7"
+thiserror = "2.0"
+tempfile = "3.20.0"
+bitflags = "2.9"
+unicode-segmentation = "1.2"
+ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
+foldhash = "0.1"
+parking_lot = "0.12"
+futures-executor = "0.3"
+futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
+tokio-stream = "0.1.17"
+
+[workspace.package]
+version = "25.1.1"
+edition = "2021"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+categories = ["editor"]
+repository = "https://github.com/helix-editor/helix"
+homepage = "https://helix-editor.com"
+license = "MPL-2.0"
+rust-version = "1.82"
+
+[workspace.lints.clippy]
+host_endian_bytes = "warn"

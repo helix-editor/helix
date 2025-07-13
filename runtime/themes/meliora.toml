@@ -1,0 +1,103 @@
+# Author: Ramojus Lapinskas <ramojus.lap@gmail.com>
+
+"comment" = { fg = "comment" }
+"constant" = { fg = "magenta" }
+"function" = { fg = "blue" }
+"keyword.control.import" = { fg = "orange" }
+"keyword.control" = { fg = "red" }
+"keyword.function" = { fg = "red" }
+"keyword" = { fg = "orange" }
+"operator" = { fg = "secondary_white" }
+"punctuation" = { fg = "secondary_white" }
+"string" = { fg = "yellow" }
+"string.regexp" = { fg = "orange" }
+"tag" = { fg = "red" }
+"type" = { fg = "secondary_white" }
+"namespace" = { fg = "blue" }
+"variable" = { fg = "white" }
+"label" = { fg = "orange" }
+
+"diff.plus" = { fg = "blue" }
+"diff.delta" = { fg = "magenta" }
+"diff.minus" = { fg = "red" }
+
+"ui.cursor" = { bg = "light_grey", fg = "black"}
+"ui.cursor.match" = { bg = "dark_grey" } 
+"ui.cursor.primary" = { bg = "secondary_white", fg = "black" }
+
+"ui.linenr" = { fg = "grey", bg = "dark_black"}
+"ui.linenr.selected" = { fg = "dark_white", bg = "dark_light_black"}
+"ui.gutter" = { bg = "dark_black" }
+
+"ui.background" = { fg = "light_grey", bg = "black" }
+"ui.background.separator" = { fg = "dark_grey" }
+"ui.help" = { fg = "white", bg = "light_black3" }
+"ui.menu" = { fg = "dark_white", bg = "light_black" }
+"ui.menu.selected" = { bg = "orange" , fg = "black" }
+"ui.popup" = { fg = "dark_white", bg = "light_black" }
+"ui.window" = { fg = "light_black3" }
+
+"ui.selection" = { bg = "light_black3" }
+"ui.selection.primary" = { bg = "light_black3", modifiers = ["bold"] }
+"ui.cursorline.primary" = { bg = "light_black" }
+
+"ui.statusline" = { fg = "dark_white", bg = "light_black3" }
+"ui.statusline.inactive" = { fg = "dark_white2", bg = "light_black" }
+"ui.statusline.normal" = { bg  = "dark_white2", fg = "black" }
+"ui.statusline.insert" = { bg  = "blue", fg = "black" }
+"ui.statusline.select" = { bg  = "orange", fg = "black" }
+
+"ui.text" = { fg = "white" }
+"ui.text.focus" = { fg = "orange" }
+
+"ui.virtual.ruler" = { bg = "light_black2" }
+"ui.virtual.indent-guide" = { fg = "dark_grey2" }
+"ui.virtual.whitespace" = { fg = "grey" }
+ 
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "magenta", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"error" = { fg = "red" }
+"warning" = { fg = "orange" }
+"info" = { fg = "blue" }
+"hint" = { fg = "magenta" }
+"special" = { fg = "yellow" }
+
+"markup.heading" = { fg = "orange" }
+"markup.list" = { fg = "blue" }
+"markup.bold" = { fg = "magenta", modifiers = ["bold"] }
+"markup.italic" = { fg = "blue", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "comment" , modifiers = ["underlined"] }
+"markup.link.text" = { fg = "comment" }
+"markup.quote" = { fg = "yellow" }
+"markup.raw" = { fg = "blue" }
+
+[palette]
+red = "#d29595"
+orange = "#cbab8a"
+yellow = "#c9b58e"
+blue = "#a49db9"
+magenta = "#b494af"
+
+comment = "#707035"
+
+light_black = "#252220"
+light_black2 = "#292725"
+light_black3 = "#302D2B"
+black = "#1c1917"
+dark_black = "#191514"
+dark_light_black = "#211d1c"
+
+white = "#dad7d5"
+dark_white = "#aaa7a6"
+dark_white2 = "#949290"
+light_grey = "#6a6867"
+grey = "#605e5d"
+dark_grey = "#4c4b49"
+dark_grey2 = "#383735"
+secondary_white = "#c2b4a8"

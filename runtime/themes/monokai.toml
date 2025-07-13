@@ -1,0 +1,121 @@
+# Author: Shafkath Shuhan <shafkathshuhannyc@gmail.com>
+
+"tag" = { fg = "tag" }
+
+"namespace" = { fg = "type" }
+"module" = { fg = "type" }
+
+"type" = { fg = "type" }
+"type.builtin" = { fg = "#66D9EF" }
+"type.enum.variant" = { fg = "text" } 
+"constructor" = { fg = "fn_declaration" }
+"variable.other.member" = { fg = "variable" }
+
+"keyword" = { fg = "keyword" }
+"keyword.directive" = { fg = "keyword" }
+"keyword.control" = { fg = "keyword" }
+"label" = { fg = "keyword" }
+
+"special" = { fg = "keyword" }
+"operator" = { fg = "text" }
+
+"punctuation" = { fg = "text" }
+"punctuation.delimiter" = { fg = "text" }
+
+"variable" = { fg = "variable" }
+"variable.parameter" = { fg = "#fd971f" }
+"variable.builtin" = { fg = "keyword" }
+"constant" = { fg = "variable" }
+"constant.builtin" = { fg = "#ae81ff" }
+
+"function" = { fg = "fn_declaration" }
+"function.builtin" = { fg = "fn_declaration" }
+"function.macro" = { fg = "keyword" }
+"attribute" = { fg = "fn_declaration" }
+
+"comment" = { fg = "#88846F" }
+"ui.virtual.whitespace" = "#88846F"
+"ui.virtual.ruler" = { bg = "#24241e" }
+"ui.virtual.jump-label" = { fg = "special", modifiers = ["bold"] }
+
+"string" = { fg = "#e6db74" }
+"constant.character" = { fg = "#e6db74" }
+"string.regexp" = { fg = "regex" }
+"constant.numeric" = { fg = "#ae81ff" }
+"constant.character.escape" = { fg = "#ae81ff" }
+
+# TODO
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
+"diff.plus" = { fg = "#a6e22e" }
+"diff.delta" = { fg = "#fd971f" }
+"diff.minus" = { fg = "#f92672" }
+
+"ui.background" = { fg = "text", bg = "background" }
+
+"ui.window" = { bg = "widget" }
+"ui.popup" = { fg = "text", bg = "widget" }
+"ui.help" = { fg = "text", bg = "widget" }
+"ui.menu" = { fg = "text", bg = "widget" }
+"ui.menu.selected" = { bg = "#414339" }
+
+"ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "cursor", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "#888888", modifiers = ["reversed"] }
+
+"ui.selection" = { bg = "#878b91" }
+"ui.selection.primary" = { bg = "#575b61" }
+
+"ui.linenr" = { fg = "#90908a" }
+"ui.linenr.selected" = { fg = "#c2c2bf" }
+
+"ui.cursorline" = { bg = "#24241e" }
+"ui.statusline" = { fg = "active_text", bg = "#414339" }
+"ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
+
+# Malformed ANSI: grey2, bg3. See 'https://github.com/helix-editor/helix/issues/5709'
+# "ui.bufferline" = { fg = "grey2", bg = "bg3" }
+"ui.bufferline.active" = { fg = "active_text", bg = "selection", modifiers = [
+  "bold",
+] }
+"ui.virtual.inlay-hint" = { fg = "#88846F" }
+
+"ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "active_text" }
+
+"warning" = { fg = "#cca700" }
+"error" = { fg = "#f48771" }
+"info" = { fg = "#75beff" }
+"hint" = { fg = "#eeeeb3" }
+
+"diagnostic.warning" = { underline = { color = "#cca700", style = "curl" } }
+"diagnostic.error" = { underline = { color = "#f48771", style = "curl" } }
+"diagnostic.info" = { underline = { color = "#75beff", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "#eeeeb3", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+type = "#A6E22E"
+keyword = "#F92672"
+regex = "#CE9178"
+special = "#C586C0"
+variable = "#F8F8F2"
+fn_declaration = "#A6E22E"
+
+background = "#272822"
+text = "#f8f8f2"
+active_text = "#ffffff"
+cursor = "#a6a6a6"
+inactive_cursor = "#878b91"
+widget = "#1e1f1c"
+selection = "#414339"
+tag = "#F92672"
