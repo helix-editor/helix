@@ -1986,7 +1986,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a793df0d7afeac54f95b471d3af7f0d4fb975699f972341a4b76988d49cdf0c"
 dependencies = [
  "cfg-if",
- "windows-targets 0.53.2",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -2844,9 +2844,9 @@ dependencies = [
 
 [[package]]
 name = "tree-house-bindings"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "690809022f44e3d2329882649724b6e0027ade3fada65e4631d303e744dc32b4"
+checksum = "3f1646788fe0afdbf8e191b5d0f558df7333d8857665a67053c532ec811e6086"
 dependencies = [
  "cc",
  "libloading",

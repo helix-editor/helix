@@ -208,6 +208,7 @@
 | ruby | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | rust-format-args | ✓ |  |  |  |
+| rust-format-args-macro | ✓ | ✓ | ✓ |  |
 | sage | ✓ | ✓ |  |  |
 | scala | ✓ | ✓ | ✓ | `metals` |
 | scheme | ✓ |  | ✓ |  |
