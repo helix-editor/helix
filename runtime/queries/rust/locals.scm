@@ -12,7 +12,7 @@
   (block)
 ] @local.scope
 
-; Definitions
+; Parameters
 
 (parameter
   pattern: [
@@ -38,6 +38,20 @@
       (identifier) @local.definition.variable.parameter @variable.parameter
     )
   ])
+
+; Mutable variables
+
+[
+  (let_declaration
+    (mutable_specifier)
+    pattern: (identifier) @local.definition.variable.mutable @variable.mutable)
+  (parameter
+    (mutable_specifier)
+    pattern: (identifier) @local.definition.variable.mutable @variable.mutable)
+  (mut_pattern
+    (mutable_specifier)
+    (identifier) @local.definition.variable.mutable @variable.mutable)
+]
 
 ; References
 (identifier) @local.reference

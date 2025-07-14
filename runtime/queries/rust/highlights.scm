@@ -289,8 +289,6 @@
   "dyn"
 ] @keyword.storage.modifier
 
-; TODO: variable.mut to highlight mutable identifiers via locals.scm
-
 ; ---
 ; Remaining Paths
 ; ---

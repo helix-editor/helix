@@ -179,6 +179,7 @@ We use a similar set of scopes as
 - `variable` - Variables
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
   - `parameter` - Function parameters
+  - `mutable` - Mutable variables (e.g. marked with `mut` in Rust)
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
       - `private` - Private fields that use a unique syntax (currently just ECMAScript-based languages)
