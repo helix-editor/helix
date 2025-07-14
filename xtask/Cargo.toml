@@ -17,3 +17,6 @@ helix-core = { path = "../helix-core" }
 helix-view = { path = "../helix-view" }
 helix-loader = { path = "../helix-loader" }
 toml = "0.8"
+
+[lints]
+workspace = true

@@ -27,3 +27,6 @@ futures-executor = "0.3.31"
 
 [features]
 integration_test = []
+
+[lints]
+workspace = true

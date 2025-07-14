@@ -30,3 +30,6 @@ tokio-stream.workspace = true
 
 [dev-dependencies]
 fern = "0.7"
+
+[lints]
+workspace = true

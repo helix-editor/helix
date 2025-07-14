@@ -61,3 +61,6 @@ regex-cursor = "0.1.5"
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
 indoc = "2.0.6"
+
+[lints]
+workspace = true

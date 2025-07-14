@@ -31,3 +31,6 @@ default = []
 # Enables proposed LSP extensions.
 # NOTE: No semver compatibility is guaranteed for types enabled by this feature.
 proposed = []
+
+[lints]
+workspace = true
