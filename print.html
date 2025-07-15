@@ -167,8 +167,8 @@ for defining custom keybindings, setting themes, etc.
 For everything else (e.g., how to install supported language servers), see the <a href="https://github.com/helix-editor/helix/wiki">Helix Wiki</a>.</p>
 <p>Refer the <a href="https://github.com/helix-editor/helix/wiki/FAQ">FAQ</a> for common questions.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installing-helix"><a class="header" href="#installing-helix">Installing Helix</a></h1>
-<p>To install Helix, follow the instructions specific to your operating system.
-Note that:</p>
+<p>The typical way to install Helix is via <a href="./package-managers.html">your operating system's package manager</a>.</p>
+<p>Note that:</p>
 <ul>
 <li>
 <p>To get the latest nightly version of Helix, you need to
@@ -340,9 +340,17 @@ cd helix
 </li>
 <li>
 <p>Compile from source:</p>
-<pre><code class="language-sh">cargo install --path helix-term --locked
+<pre><code class="language-sh"># Reproducible
+cargo install --path helix-term --locked
 </code></pre>
-<p>This command will create the <code>hx</code> executable and construct the tree-sitter
+<pre><code class="language-sh"># Optimized
+cargo install \
+   --profile opt \
+   --config 'build.rustflags="-C target-cpu=native"' \
+   --path helix-term \
+   --locked
+</code></pre>
+<p>Either command will create the <code>hx</code> executable and construct the tree-sitter
 grammars in the local <code>runtime</code> folder.</p>
 </li>
 </ol>
@@ -364,14 +372,13 @@ your <code>~/.bashrc</code> or equivalent:</p>
 <pre><code class="language-sh">export HELIX_RUNTIME=~/src/helix/runtime
 </code></pre>
 <p>Or, create a symbolic link:</p>
-<pre><code class="language-sh">ln -Ts $PWD/runtime ~/.config/helix/runtime
+<pre><code class="language-sh">ln -Tsf $PWD/runtime ~/.config/helix/runtime
 </code></pre>
-<p>If the above command fails to create a symbolic link because the file exists either move <code>~/.config/helix/runtime</code> to a new location or delete it, then run the symlink command above again.</p>
 <h4 id="windows-1"><a class="header" href="#windows-1">Windows</a></h4>
 <p>Either set the <code>HELIX_RUNTIME</code> environment variable to point to the runtime files using the Windows setting (search for
 <code>Edit environment variables for your account</code>) or use the <code>setx</code> command in
 Cmd:</p>
-<pre><code class="language-sh">setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
+<pre><code class="language-sh">setx HELIX_RUNTIME "%userprofile%\src\helix\runtime"
 </code></pre>
 <blockquote>
 <p>💡 <code>%userprofile%</code> resolves to your user directory like
@@ -457,10 +464,10 @@ use the following command to build the release binary and package it into a <cod
 As long as you leave a <code>target/release/hx</code> file, it will get packaged with <code>cargo deb --no-build</code></p>
 </blockquote>
 <blockquote>
-<p>💡 Don't worry about the repeated</p>
+<p>💡 Don't worry about the following:</p>
 <pre><code>warning: Failed to find dependency specification
 </code></pre>
-<p>warnings. Cargo deb just reports which packaged files it didn't derive dependencies for. But
+<p>Cargo deb just reports which packaged files it didn't derive dependencies for. But
 so far the dependency deriving seams very good, even if some of the grammar files are skipped.</p>
 </blockquote>
 <p>You can find the resulted <code>.deb</code> in <code>target/debian/</code>. It should contain everything it needs, including the</p>
@@ -717,9 +724,9 @@ selection to the "func" <code>identifier</code>.</p>
 <tr><td><code>W</code></td><td>Move next WORD start</td><td><code>move_next_long_word_start</code></td></tr>
 <tr><td><code>B</code></td><td>Move previous WORD start</td><td><code>move_prev_long_word_start</code></td></tr>
 <tr><td><code>E</code></td><td>Move next WORD end</td><td><code>move_next_long_word_end</code></td></tr>
-<tr><td><code>t</code></td><td>Find 'till next char</td><td><code>find_till_char</code></td></tr>
+<tr><td><code>t</code></td><td>Find till next char</td><td><code>find_till_char</code></td></tr>
 <tr><td><code>f</code></td><td>Find next char</td><td><code>find_next_char</code></td></tr>
-<tr><td><code>T</code></td><td>Find 'till previous char</td><td><code>till_prev_char</code></td></tr>
+<tr><td><code>T</code></td><td>Find till previous char</td><td><code>till_prev_char</code></td></tr>
 <tr><td><code>F</code></td><td>Find previous char</td><td><code>find_prev_char</code></td></tr>
 <tr><td><code>G</code></td><td>Go to line number <code>&lt;n&gt;</code></td><td><code>goto_line</code></td></tr>
 <tr><td><code>Alt-.</code></td><td>Repeat last motion (<code>f</code>, <code>t</code>, <code>m</code>, <code>[</code> or <code>]</code>)</td><td><code>repeat_last_motion</code></td></tr>
@@ -867,6 +874,7 @@ useful when you're simply looking over text and not actively editing it.</p>
 <p>Jumps to various locations.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>g</code></td><td>Go to line number <code>&lt;n&gt;</code> else start of file</td><td><code>goto_file_start</code></td></tr>
+<tr><td><code>|</code></td><td>Go to column number <code>&lt;n&gt;</code> else start of line</td><td><code>goto_column</code></td></tr>
 <tr><td><code>e</code></td><td>Go to the end of the file</td><td><code>goto_last_line</code></td></tr>
 <tr><td><code>f</code></td><td>Go to files in the selections</td><td><code>goto_file</code></td></tr>
 <tr><td><code>h</code></td><td>Go to the start of the line</td><td><code>goto_line_start</code></td></tr>
@@ -1112,7 +1120,70 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>BackTab</code></td><td>Select previous completion item</td></tr>
 <tr><td><code>Enter</code></td><td>Open selected</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="command-line"><a class="header" href="#command-line">Command line</a></h1>
+<ul>
+<li><a href="command-line.html#quoting">Quoting</a></li>
+<li><a href="command-line.html#flags">Flags</a></li>
+<li><a href="command-line.html#expansions">Expansions</a></li>
+<li><a href="command-line.html#exceptions">Exceptions</a></li>
+</ul>
+<p>The command line is used for executing <a href="./commands.html#typable-commands">typable commands</a> like <code>:write</code> or <code>:quit</code>. Press <code>:</code> to activate the command line.</p>
+<p>Typable commands optionally accept arguments. <code>:write</code> for example accepts an optional path to write the file contents. The command line also supports a quoting syntax for arguments, flags to modify command behaviors, and <em>expansions</em> - a way to insert values from the editor. Most commands support these features but some have custom parsing rules (see the <a href="command-line.html#exceptions">exceptions</a> below).</p>
+<h2 id="quoting"><a class="header" href="#quoting">Quoting</a></h2>
+<p>By default, command arguments are split on tabs and space characters. <code>:open README.md CHANGELOG.md</code> for example should open two files, <code>README.md</code> and <code>CHANGELOG.md</code>. Arguments that contain spaces can be surrounded in single quotes (<code>'</code>) or backticks (<code>`</code>) to prevent the space from separating the argument, like <code>:open 'a b.txt'</code>.</p>
+<p>Double quotes may be used the same way, but double quotes <em>expand</em> their inner content. <code>:echo "%{cursor_line}"</code> for example may print <code>1</code> because of the expansion for the <code>cursor_line</code> variable. <code>:echo '%{cursor_line}'</code> though prints <code>%{cursor_line}</code> literally: content within single quotes or backticks is interpreted as-is.</p>
+<p>On Unix systems the backslash character may be used to escape certain characters depending on where it is used. Within an argument which isn't surround in quotes, the backslash can be used to escape the space or tab characters: <code>:open a\ b.txt</code> is equivalent to <code>:open 'a b.txt'</code>. The backslash may also be used to escape quote characters (<code>'</code>, <code>`</code>, <code>"</code>) or the percent token (<code>%</code>) when used at the beginning of an argument. <code>:echo \%%sh{foo}</code> for example prints <code>%sh{foo}</code> instead of invoking a <code>foo</code> shell command and <code>:echo \"quote</code> prints <code>"quote</code>. The backslash character is treated literally in any other situation on Unix systems and always on Windows: <code>:echo \n</code> always prints <code>\n</code>.</p>
+<h2 id="flags"><a class="header" href="#flags">Flags</a></h2>
+<p>Command flags are optional switches that can be used to alter the behavior of a command. For example the <code>:sort</code> command accepts an optional <code>--reverse</code> (or <code>-r</code> for short) flag which causes the sort command to reverse the sorting direction. Typing the <code>-</code> character shows completions for the current command's flags, if any.</p>
+<p>The <code>--</code> flag specifies the end of flags. All arguments after <code>--</code> are treated as positional arguments: <code>:open -- -a.txt</code> opens a file called <code>-a.txt</code>.</p>
+<h2 id="expansions"><a class="header" href="#expansions">Expansions</a></h2>
+<p>Expansions are patterns that Helix recognizes and replaces within the command line. Helix recognizes anything starting with a percent token (<code>%</code>) as an expansion, for example <code>%sh{echo hi!}</code>. Expansions are particularly useful when used in commands like <code>:echo</code> or <code>:noop</code> for executing simple scripts. For example:</p>
+<pre><code class="language-toml">[keys.normal]
+# Print the current line's git blame information to the statusline.
+space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
+</code></pre>
+<p>Expansions take the form <code>%[&lt;kind&gt;]&lt;open&gt;&lt;contents&gt;&lt;close&gt;</code>. In <code>%sh{echo hi!}</code>, for example, the kind is <code>sh</code> - the shell expansion - and the contents are "echo hi!", with <code>{</code> and <code>}</code> acting as opening and closing delimiters. The following open/close characters are recognized as expansion delimiter pairs: <code>(</code>/<code>)</code>, <code>[</code>/<code>]</code>, <code>{</code>/<code>}</code> and <code>&lt;</code>/<code>&gt;</code>. Plus the single characters <code>'</code>, <code>"</code> or <code>|</code> may be used instead: <code>%{cursor_line}</code> is equivalent to <code>%&lt;cursor_line&gt;</code>, <code>%[cursor_line]</code> or <code>%|cursor_line|</code>.</p>
+<p>To escape a percent character instead of treating it as an expansion, use two percent characters consecutively. To execute a shell command like <code>date -u +'%Y-%m-%d'</code>, double the percent characters: <code>:echo %sh{date -u +'%%Y-%%m-%%d'}</code>.</p>
+<p>When no <code>&lt;kind&gt;</code> is provided, Helix will expand a <strong>variable</strong>. For example <code>%{cursor_line}</code> can be used as in argument to insert the line number. <code>:echo %{cursor_line}</code> for instance may print <code>1</code> to the statusline.</p>
+<p>The following variables are supported:</p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>cursor_line</code></td><td>The line number of the primary cursor in the currently focused document, starting at 1.</td></tr>
+<tr><td><code>cursor_column</code></td><td>The column number of the primary cursor in the currently focused document, starting at 1. This is counted as the number of grapheme clusters from the start of the line rather than bytes or codepoints.</td></tr>
+<tr><td><code>buffer_name</code></td><td>The relative path of the currently focused document. <code>[scratch]</code> is expanded instead for scratch buffers.</td></tr>
+<tr><td><code>line_ending</code></td><td>A string containing the line ending of the currently focused document. For example on Unix systems this is usually a line-feed character (<code>\n</code>) but on Windows systems this may be a carriage-return plus a line-feed (<code>\r\n</code>). The line ending kind of the currently focused document can be inspected with the <code>:line-ending</code> command.</td></tr>
+<tr><td><code>language</code></td><td>A string containing the language name of the currently focused document.</td></tr>
+<tr><td><code>selection</code></td><td>A string containing the contents of the primary selection of the currently focused document.</td></tr>
+<tr><td><code>selection_line_start</code></td><td>The line number of the start of the primary selection in the currently focused document, starting at 1.</td></tr>
+<tr><td><code>selection_line_end</code></td><td>The line number of the end of the primary selection in the currently focused document, starting at 1.</td></tr>
+</tbody></table>
+</div>
+<p>Aside from editor variables, the following expansions may be used:</p>
+<ul>
+<li>Unicode <code>%u{..}</code>. The contents may contain up to six hexadecimal numbers corresponding to a Unicode codepoint value. For example <code>:echo %u{25CF}</code> prints <code>●</code> to the statusline.</li>
+<li>Shell <code>%sh{..}</code>. The contents are passed to the configured shell command. For example <code>:echo %sh{echo "20 * 5" | bc}</code> may print <code>100</code> on the statusline on when using a shell with <code>echo</code> and the <code>bc</code> calculator installed. Shell expansions are evaluated recursively. <code>%sh{echo '%{buffer_name}:%{cursor_line}'}</code> for example executes a command like <code>echo 'README.md:1'</code>: the variables within the <code>%sh{..}</code> expansion are evaluated before executing the shell command.</li>
+</ul>
+<p>As mentioned above, double quotes can be used to surround arguments containing spaces but also support expansions within the quoted content unlike singe quotes or backticks. For example <code>:echo "circle: %u{25CF}"</code> prints <code>circle: ●</code> to the statusline while <code>:echo 'circle: %u{25CF}'</code> prints <code>circle: %u{25CF}</code>.</p>
+<p>Note that expansions are only evaluated once the Enter key is pressed in command mode.</p>
+<h2 id="exceptions"><a class="header" href="#exceptions">Exceptions</a></h2>
+<p>The following commands support expansions but otherwise pass the given argument directly to the shell program without interpreting quotes:</p>
+<ul>
+<li><code>:insert-output</code></li>
+<li><code>:append-output</code></li>
+<li><code>:pipe</code></li>
+<li><code>:pipe-to</code></li>
+<li><code>:run-shell-command</code></li>
+</ul>
+<p>For example executing <code>:sh echo "%{buffer_name}:%{cursor_column}"</code> would pass text like <code>echo "README.md:1"</code> as an argument to the shell program: the expansions are evaluated but not the quotes. As mentioned above, percent characters can be used in shell commands by doubling the percent character. To insert the output of a command like <code>date -u +'%Y-%m-%d'</code> use <code>:insert-output date -u +'%%Y-%%m-%%d'</code>.</p>
+<p>The <code>:set-option</code> and <code>:toggle-option</code> commands use regular parsing for the first argument - the config option name - and parse the rest depending on the config option's type. <code>:set-option</code> interprets the second argument as a string for string config options and parses everything else as JSON.</p>
+<p><code>:toggle-option</code>'s behavior depends on the JSON type of the config option supplied as the first argument:</p>
+<ul>
+<li>Booleans: only the config option name should be provided. For example <code>:toggle-option auto-format</code> will flip the <code>auto-format</code> option.</li>
+<li>Strings: the rest of the command line is parsed with regular quoting rules. For example <code>:toggle-option indent-heuristic hybrid tree-sitter simple</code> cycles through "hybrid", "tree-sitter" and "simple" values on each invocation of the command.</li>
+<li>Numbers, arrays and objects: the rest of the command line is parsed as a stream of JSON values. For example <code>:toggle-option rulers [81] [51, 73]</code> cycles through <code>[81]</code> and <code>[51, 73]</code>.</li>
+</ul>
+<p>When providing multiple values to <code>:toggle-option</code> there should be no duplicates. <code>:toggle-option indent-heuristic hybrid simple tree-sitter simple</code> for example would only toggle between "hybrid" and "tree-sitter" values.</p>
+<p><code>:lsp-workspace-command</code> works similarly to <code>:toggle-option</code>. The first argument (if present) is parsed according to normal rules. The rest of the line is parsed as JSON values. Unlike <code>:toggle-option</code>, string arguments for a command must be quoted. For example <code>:lsp-workspace-command lsp.Command "foo" "bar"</code>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
 <ul>
 <li><a href="commands.html#typable-commands">Typable commands</a></li>
 <li><a href="commands.html#static-commands">Static commands</a></li>
@@ -1172,8 +1243,8 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>:reload-all</code>, <code>:rla</code></td><td>Discard changes and reload all documents from the source files.</td></tr>
 <tr><td><code>:update</code>, <code>:u</code></td><td>Write changes only if the file has been modified.</td></tr>
 <tr><td><code>:lsp-workspace-command</code></td><td>Open workspace command picker</td></tr>
-<tr><td><code>:lsp-restart</code></td><td>Restarts the language servers used by the current doc</td></tr>
-<tr><td><code>:lsp-stop</code></td><td>Stops the language servers that are used by the current doc</td></tr>
+<tr><td><code>:lsp-restart</code></td><td>Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied</td></tr>
+<tr><td><code>:lsp-stop</code></td><td>Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied</td></tr>
 <tr><td><code>:tree-sitter-scopes</code></td><td>Display tree sitter scopes, primarily for theming and development.</td></tr>
 <tr><td><code>:tree-sitter-highlight-name</code></td><td>Display name of tree-sitter highlight scope under the cursor.</td></tr>
 <tr><td><code>:debug-start</code>, <code>:dbg</code></td><td>Start a debug session from a given template with given parameters.</td></tr>
@@ -1187,10 +1258,9 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>:goto</code>, <code>:g</code></td><td>Goto line number.</td></tr>
 <tr><td><code>:set-language</code>, <code>:lang</code></td><td>Set the language of current buffer (show current language if no value specified).</td></tr>
 <tr><td><code>:set-option</code>, <code>:set</code></td><td>Set a config option at runtime.<br>For example to disable smart case search, use <code>:set search.smart-case false</code>.</td></tr>
-<tr><td><code>:toggle-option</code>, <code>:toggle</code></td><td>Toggle a boolean config option at runtime.<br>For example to toggle smart case search, use <code>:toggle search.smart-case</code>.</td></tr>
+<tr><td><code>:toggle-option</code>, <code>:toggle</code></td><td>Toggle a config option at runtime.<br>For example to toggle smart case search, use <code>:toggle search.smart-case</code>.</td></tr>
 <tr><td><code>:get-option</code>, <code>:get</code></td><td>Get the current value of a config option.</td></tr>
 <tr><td><code>:sort</code></td><td>Sort ranges in selection.</td></tr>
-<tr><td><code>:rsort</code></td><td>Sort ranges in selection in reverse order.</td></tr>
 <tr><td><code>:reflow</code></td><td>Hard-wrap the current selection of lines to a given width.</td></tr>
 <tr><td><code>:tree-sitter-subtree</code>, <code>:ts-subtree</code></td><td>Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.</td></tr>
 <tr><td><code>:config-reload</code></td><td>Refresh user config.</td></tr>
@@ -1199,15 +1269,17 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>:log-open</code></td><td>Open the helix log file.</td></tr>
 <tr><td><code>:insert-output</code></td><td>Run shell command, inserting output before each selection.</td></tr>
 <tr><td><code>:append-output</code></td><td>Run shell command, appending output after each selection.</td></tr>
-<tr><td><code>:pipe</code></td><td>Pipe each selection to the shell command.</td></tr>
+<tr><td><code>:pipe</code>, <code>:|</code></td><td>Pipe each selection to the shell command.</td></tr>
 <tr><td><code>:pipe-to</code></td><td>Pipe each selection to the shell command, ignoring output.</td></tr>
-<tr><td><code>:run-shell-command</code>, <code>:sh</code></td><td>Run a shell command</td></tr>
+<tr><td><code>:run-shell-command</code>, <code>:sh</code>, <code>:!</code></td><td>Run a shell command</td></tr>
 <tr><td><code>:reset-diff-change</code>, <code>:diffget</code>, <code>:diffg</code></td><td>Reset the diff change at the cursor position.</td></tr>
 <tr><td><code>:clear-register</code></td><td>Clear given register. If no argument is provided, clear all registers.</td></tr>
 <tr><td><code>:redraw</code></td><td>Clear and re-render the whole UI</td></tr>
 <tr><td><code>:move</code>, <code>:mv</code></td><td>Move the current buffer and its corresponding file to a different path</td></tr>
 <tr><td><code>:yank-diagnostic</code></td><td>Yank diagnostic(s) under primary cursor to register, or clipboard by default</td></tr>
 <tr><td><code>:read</code>, <code>:r</code></td><td>Load a file into buffer</td></tr>
+<tr><td><code>:echo</code></td><td>Prints the given arguments to the statusline.</td></tr>
+<tr><td><code>:noop</code></td><td>Does nothing.</td></tr>
 </tbody></table>
 </div>
 <h2 id="static-commands"><a class="header" href="#static-commands">Static Commands</a></h2>
@@ -1313,6 +1385,9 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>file_picker</code></td><td>Open file picker</td><td>normal: <code>&lt;space&gt;f</code>, select: <code>&lt;space&gt;f</code></td></tr>
 <tr><td><code>file_picker_in_current_buffer_directory</code></td><td>Open file picker at current buffer's directory</td><td></td></tr>
 <tr><td><code>file_picker_in_current_directory</code></td><td>Open file picker at current working directory</td><td>normal: <code>&lt;space&gt;F</code>, select: <code>&lt;space&gt;F</code></td></tr>
+<tr><td><code>file_explorer</code></td><td>Open file explorer in workspace root</td><td>normal: <code>&lt;space&gt;e</code>, select: <code>&lt;space&gt;e</code></td></tr>
+<tr><td><code>file_explorer_in_current_buffer_directory</code></td><td>Open file explorer at current buffer's directory</td><td>normal: <code>&lt;space&gt;E</code>, select: <code>&lt;space&gt;E</code></td></tr>
+<tr><td><code>file_explorer_in_current_directory</code></td><td>Open file explorer at current working directory</td><td></td></tr>
 <tr><td><code>code_action</code></td><td>Perform code action</td><td>normal: <code>&lt;space&gt;a</code>, select: <code>&lt;space&gt;a</code></td></tr>
 <tr><td><code>buffer_picker</code></td><td>Open buffer picker</td><td>normal: <code>&lt;space&gt;b</code>, select: <code>&lt;space&gt;b</code></td></tr>
 <tr><td><code>jumplist_picker</code></td><td>Open jumplist picker</td><td>normal: <code>&lt;space&gt;j</code>, select: <code>&lt;space&gt;j</code></td></tr>
@@ -1336,8 +1411,10 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>add_newline_below</code></td><td>Add newline below</td><td>normal: <code>]&lt;space&gt;</code>, select: <code>]&lt;space&gt;</code></td></tr>
 <tr><td><code>goto_type_definition</code></td><td>Goto type definition</td><td>normal: <code>gy</code>, select: <code>gy</code></td></tr>
 <tr><td><code>goto_implementation</code></td><td>Goto implementation</td><td>normal: <code>gi</code>, select: <code>gi</code></td></tr>
-<tr><td><code>goto_file_start</code></td><td>Goto line number <n> else file start</td><td>normal: <code>gg</code>, select: <code>gg</code></td></tr>
+<tr><td><code>goto_file_start</code></td><td>Goto line number <n> else file start</td><td>normal: <code>gg</code></td></tr>
 <tr><td><code>goto_file_end</code></td><td>Goto file end</td><td></td></tr>
+<tr><td><code>extend_to_file_start</code></td><td>Extend to line number<n> else file start</td><td>select: <code>gg</code></td></tr>
+<tr><td><code>extend_to_file_end</code></td><td>Extend to file end</td><td></td></tr>
 <tr><td><code>goto_file</code></td><td>Goto files/URLs in selections</td><td>normal: <code>gf</code>, select: <code>gf</code></td></tr>
 <tr><td><code>goto_file_hsplit</code></td><td>Goto files in selections (hsplit)</td><td>normal: <code>&lt;C-w&gt;f</code>, <code>&lt;space&gt;wf</code>, select: <code>&lt;C-w&gt;f</code>, <code>&lt;space&gt;wf</code></td></tr>
 <tr><td><code>goto_file_vsplit</code></td><td>Goto files in selections (vsplit)</td><td>normal: <code>&lt;C-w&gt;F</code>, <code>&lt;space&gt;wF</code>, select: <code>&lt;C-w&gt;F</code>, <code>&lt;space&gt;wF</code></td></tr>
@@ -1349,7 +1426,8 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>goto_last_modified_file</code></td><td>Goto last modified file</td><td>normal: <code>gm</code>, select: <code>gm</code></td></tr>
 <tr><td><code>goto_last_modification</code></td><td>Goto last modification</td><td>normal: <code>g.</code>, select: <code>g.</code></td></tr>
 <tr><td><code>goto_line</code></td><td>Goto line</td><td>normal: <code>G</code>, select: <code>G</code></td></tr>
-<tr><td><code>goto_last_line</code></td><td>Goto last line</td><td>normal: <code>ge</code>, select: <code>ge</code></td></tr>
+<tr><td><code>goto_last_line</code></td><td>Goto last line</td><td>normal: <code>ge</code></td></tr>
+<tr><td><code>extend_to_last_line</code></td><td>Extend to last line</td><td>select: <code>ge</code></td></tr>
 <tr><td><code>goto_first_diag</code></td><td>Goto first diagnostic</td><td>normal: <code>[D</code>, select: <code>[D</code></td></tr>
 <tr><td><code>goto_last_diag</code></td><td>Goto last diagnostic</td><td>normal: <code>]D</code>, select: <code>]D</code></td></tr>
 <tr><td><code>goto_next_diag</code></td><td>Goto next diagnostic</td><td>normal: <code>]d</code>, select: <code>]d</code></td></tr>
@@ -1360,6 +1438,8 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>goto_last_change</code></td><td>Goto last change</td><td>normal: <code>]G</code>, select: <code>]G</code></td></tr>
 <tr><td><code>goto_line_start</code></td><td>Goto line start</td><td>normal: <code>gh</code>, <code>&lt;home&gt;</code>, select: <code>gh</code>, insert: <code>&lt;home&gt;</code></td></tr>
 <tr><td><code>goto_line_end</code></td><td>Goto line end</td><td>normal: <code>gl</code>, <code>&lt;end&gt;</code>, select: <code>gl</code></td></tr>
+<tr><td><code>goto_column</code></td><td>Goto column</td><td>normal: <code>g|</code></td></tr>
+<tr><td><code>extend_to_column</code></td><td>Extend to column</td><td>select: <code>g|</code></td></tr>
 <tr><td><code>goto_next_buffer</code></td><td>Goto next buffer</td><td>normal: <code>gn</code>, select: <code>gn</code></td></tr>
 <tr><td><code>goto_previous_buffer</code></td><td>Goto previous buffer</td><td>normal: <code>gp</code>, select: <code>gp</code></td></tr>
 <tr><td><code>goto_line_end_newline</code></td><td>Goto newline at line end</td><td>insert: <code>&lt;end&gt;</code></td></tr>
@@ -1449,6 +1529,7 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>wonly</code></td><td>Close windows except current</td><td>normal: <code>&lt;C-w&gt;o</code>, <code>&lt;space&gt;wo</code>, <code>&lt;C-w&gt;&lt;C-o&gt;</code>, <code>&lt;space&gt;w&lt;C-o&gt;</code>, select: <code>&lt;C-w&gt;o</code>, <code>&lt;space&gt;wo</code>, <code>&lt;C-w&gt;&lt;C-o&gt;</code>, <code>&lt;space&gt;w&lt;C-o&gt;</code></td></tr>
 <tr><td><code>select_register</code></td><td>Select register</td><td>normal: <code>"</code>, select: <code>"</code></td></tr>
 <tr><td><code>insert_register</code></td><td>Insert register</td><td>insert: <code>&lt;C-r&gt;</code></td></tr>
+<tr><td><code>copy_between_registers</code></td><td>Copy between two registers</td><td></td></tr>
 <tr><td><code>align_view_middle</code></td><td>Align view middle</td><td>normal: <code>Zm</code>, <code>zm</code>, select: <code>Zm</code>, <code>zm</code></td></tr>
 <tr><td><code>align_view_top</code></td><td>Align view top</td><td>normal: <code>Zt</code>, <code>zt</code>, select: <code>Zt</code>, <code>zt</code></td></tr>
 <tr><td><code>align_view_center</code></td><td>Align view center</td><td>normal: <code>Zc</code>, <code>Zz</code>, <code>zc</code>, <code>zz</code>, select: <code>Zc</code>, <code>Zz</code>, <code>zc</code>, <code>zz</code></td></tr>
@@ -1505,8 +1586,10 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
 <tr><td><code>command_palette</code></td><td>Open command palette</td><td>normal: <code>&lt;space&gt;?</code>, select: <code>&lt;space&gt;?</code></td></tr>
 <tr><td><code>goto_word</code></td><td>Jump to a two-character label</td><td>normal: <code>gw</code></td></tr>
 <tr><td><code>extend_to_word</code></td><td>Extend to a two-character label</td><td>select: <code>gw</code></td></tr>
-<tr><td><code>goto_next_tabstop</code></td><td>goto next snippet placeholder</td><td></td></tr>
-<tr><td><code>goto_prev_tabstop</code></td><td>goto next snippet placeholder</td><td></td></tr>
+<tr><td><code>goto_next_tabstop</code></td><td>Goto next snippet placeholder</td><td></td></tr>
+<tr><td><code>goto_prev_tabstop</code></td><td>Goto next snippet placeholder</td><td></td></tr>
+<tr><td><code>rotate_selections_first</code></td><td>Make the first selection your primary one</td><td></td></tr>
+<tr><td><code>rotate_selections_last</code></td><td>Make the last selection your primary one</td><td></td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h2 id="language-support"><a class="header" href="#language-support">Language Support</a></h2>
 <p>The following languages and Language Servers are supported. To use
@@ -1519,12 +1602,13 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>ada</td><td>✓</td><td>✓</td><td></td><td><code>ada_language_server</code></td></tr>
 <tr><td>adl</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>agda</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>amber</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>astro</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>alloy</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>amber</td><td>✓</td><td></td><td></td><td><code>amber-lsp</code></td></tr>
+<tr><td>astro</td><td>✓</td><td></td><td></td><td><code>astro-ls</code></td></tr>
 <tr><td>awk</td><td>✓</td><td>✓</td><td></td><td><code>awk-language-server</code></td></tr>
 <tr><td>bash</td><td>✓</td><td>✓</td><td>✓</td><td><code>bash-language-server</code></td></tr>
 <tr><td>bass</td><td>✓</td><td></td><td></td><td><code>bass</code></td></tr>
-<tr><td>beancount</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>beancount</td><td>✓</td><td></td><td></td><td><code>beancount-language-server</code></td></tr>
 <tr><td>bibtex</td><td>✓</td><td></td><td></td><td><code>texlab</code></td></tr>
 <tr><td>bicep</td><td>✓</td><td></td><td></td><td><code>bicep-langserver</code></td></tr>
 <tr><td>bitbake</td><td>✓</td><td></td><td></td><td><code>bitbake-language-server</code></td></tr>
@@ -1533,32 +1617,38 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>c</td><td>✓</td><td>✓</td><td>✓</td><td><code>clangd</code></td></tr>
 <tr><td>c-sharp</td><td>✓</td><td>✓</td><td></td><td><code>OmniSharp</code></td></tr>
 <tr><td>cabal</td><td></td><td></td><td></td><td><code>haskell-language-server-wrapper</code></td></tr>
+<tr><td>caddyfile</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>cairo</td><td>✓</td><td>✓</td><td>✓</td><td><code>cairo-language-server</code></td></tr>
 <tr><td>capnp</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>cel</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>circom</td><td>✓</td><td></td><td></td><td><code>circom-lsp</code></td></tr>
+<tr><td>clarity</td><td>✓</td><td></td><td></td><td><code>clarinet</code></td></tr>
 <tr><td>clojure</td><td>✓</td><td></td><td></td><td><code>clojure-lsp</code></td></tr>
-<tr><td>cmake</td><td>✓</td><td>✓</td><td>✓</td><td><code>cmake-language-server</code></td></tr>
+<tr><td>cmake</td><td>✓</td><td>✓</td><td>✓</td><td><code>neocmakelsp</code>, <code>cmake-language-server</code></td></tr>
 <tr><td>codeql</td><td>✓</td><td>✓</td><td></td><td><code>codeql</code></td></tr>
 <tr><td>comment</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>common-lisp</td><td>✓</td><td></td><td>✓</td><td><code>cl-lsp</code></td></tr>
 <tr><td>cpon</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>cpp</td><td>✓</td><td>✓</td><td>✓</td><td><code>clangd</code></td></tr>
-<tr><td>crystal</td><td>✓</td><td>✓</td><td></td><td><code>crystalline</code></td></tr>
+<tr><td>crystal</td><td>✓</td><td>✓</td><td>✓</td><td><code>crystalline</code>, <code>ameba-ls</code></td></tr>
 <tr><td>css</td><td>✓</td><td></td><td>✓</td><td><code>vscode-css-language-server</code></td></tr>
+<tr><td>csv</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>cue</td><td>✓</td><td></td><td></td><td><code>cuelsp</code></td></tr>
 <tr><td>cylc</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>d</td><td>✓</td><td>✓</td><td>✓</td><td><code>serve-d</code></td></tr>
 <tr><td>dart</td><td>✓</td><td>✓</td><td>✓</td><td><code>dart</code></td></tr>
 <tr><td>dbml</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>devicetree</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>debian</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>devicetree</td><td>✓</td><td></td><td></td><td><code>dts-lsp</code></td></tr>
 <tr><td>dhall</td><td>✓</td><td>✓</td><td></td><td><code>dhall-lsp-server</code></td></tr>
 <tr><td>diff</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>djot</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>docker-compose</td><td>✓</td><td>✓</td><td>✓</td><td><code>docker-compose-langserver</code>, <code>yaml-language-server</code></td></tr>
 <tr><td>dockerfile</td><td>✓</td><td>✓</td><td></td><td><code>docker-langserver</code></td></tr>
 <tr><td>dot</td><td>✓</td><td></td><td></td><td><code>dot-language-server</code></td></tr>
 <tr><td>dtd</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>dune</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>dunstrc</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>earthfile</td><td>✓</td><td>✓</td><td>✓</td><td><code>earthlyls</code></td></tr>
 <tr><td>edoc</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>eex</td><td>✓</td><td></td><td></td><td></td></tr>
@@ -1571,19 +1661,23 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>erb</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>erlang</td><td>✓</td><td>✓</td><td></td><td><code>erlang_ls</code>, <code>elp</code></td></tr>
 <tr><td>esdl</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>fennel</td><td>✓</td><td></td><td></td><td><code>fennel-ls</code></td></tr>
+<tr><td>fga</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>fidl</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>fish</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
+<tr><td>fish</td><td>✓</td><td>✓</td><td>✓</td><td><code>fish-lsp</code></td></tr>
 <tr><td>forth</td><td>✓</td><td></td><td></td><td><code>forth-lsp</code></td></tr>
 <tr><td>fortran</td><td>✓</td><td></td><td>✓</td><td><code>fortls</code></td></tr>
 <tr><td>fsharp</td><td>✓</td><td></td><td></td><td><code>fsautocomplete</code></td></tr>
-<tr><td>gas</td><td>✓</td><td>✓</td><td></td><td></td></tr>
+<tr><td>gas</td><td>✓</td><td>✓</td><td></td><td><code>asm-lsp</code></td></tr>
 <tr><td>gdscript</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>gemini</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>gherkin</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>ghostty</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>git-attributes</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>git-commit</td><td>✓</td><td>✓</td><td></td><td></td></tr>
 <tr><td>git-config</td><td>✓</td><td>✓</td><td></td><td></td></tr>
 <tr><td>git-ignore</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>git-notes</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>git-rebase</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>gjs</td><td>✓</td><td>✓</td><td>✓</td><td><code>typescript-language-server</code>, <code>vscode-eslint-language-server</code>, <code>ember-language-server</code></td></tr>
 <tr><td>gleam</td><td>✓</td><td>✓</td><td></td><td><code>gleam</code></td></tr>
@@ -1610,11 +1704,13 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>hoon</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>hosts</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>html</td><td>✓</td><td></td><td></td><td><code>vscode-html-language-server</code>, <code>superhtml</code></td></tr>
+<tr><td>htmldjango</td><td>✓</td><td></td><td></td><td><code>djlsp</code>, <code>vscode-html-language-server</code>, <code>superhtml</code></td></tr>
 <tr><td>hurl</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>hyprlang</td><td>✓</td><td></td><td>✓</td><td><code>hyprls</code></td></tr>
 <tr><td>idris</td><td></td><td></td><td></td><td><code>idris2-lsp</code></td></tr>
 <tr><td>iex</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>ini</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>ink</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>inko</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>janet</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>java</td><td>✓</td><td>✓</td><td>✓</td><td><code>jdtls</code></td></tr>
@@ -1624,15 +1720,16 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>jq</td><td>✓</td><td>✓</td><td></td><td><code>jq-lsp</code></td></tr>
 <tr><td>jsdoc</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>json</td><td>✓</td><td>✓</td><td>✓</td><td><code>vscode-json-language-server</code></td></tr>
+<tr><td>json-ld</td><td>✓</td><td>✓</td><td>✓</td><td><code>vscode-json-language-server</code></td></tr>
 <tr><td>json5</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>jsonc</td><td>✓</td><td></td><td>✓</td><td><code>vscode-json-language-server</code></td></tr>
 <tr><td>jsonnet</td><td>✓</td><td></td><td></td><td><code>jsonnet-language-server</code></td></tr>
 <tr><td>jsx</td><td>✓</td><td>✓</td><td>✓</td><td><code>typescript-language-server</code></td></tr>
 <tr><td>julia</td><td>✓</td><td>✓</td><td>✓</td><td><code>julia</code></td></tr>
-<tr><td>just</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
+<tr><td>just</td><td>✓</td><td>✓</td><td>✓</td><td><code>just-lsp</code></td></tr>
 <tr><td>kdl</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>koka</td><td>✓</td><td></td><td>✓</td><td><code>koka</code></td></tr>
-<tr><td>kotlin</td><td>✓</td><td></td><td></td><td><code>kotlin-language-server</code></td></tr>
+<tr><td>kotlin</td><td>✓</td><td>✓</td><td>✓</td><td><code>kotlin-language-server</code></td></tr>
 <tr><td>koto</td><td>✓</td><td>✓</td><td>✓</td><td><code>koto-ls</code></td></tr>
 <tr><td>latex</td><td>✓</td><td>✓</td><td></td><td><code>texlab</code></td></tr>
 <tr><td>ld</td><td>✓</td><td></td><td>✓</td><td></td></tr>
@@ -1645,23 +1742,26 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>log</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>lpf</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>lua</td><td>✓</td><td>✓</td><td>✓</td><td><code>lua-language-server</code></td></tr>
+<tr><td>luau</td><td>✓</td><td>✓</td><td>✓</td><td><code>luau-lsp</code></td></tr>
+<tr><td>mail</td><td>✓</td><td>✓</td><td></td><td></td></tr>
 <tr><td>make</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>markdoc</td><td>✓</td><td></td><td></td><td><code>markdoc-ls</code></td></tr>
 <tr><td>markdown</td><td>✓</td><td></td><td></td><td><code>marksman</code>, <code>markdown-oxide</code></td></tr>
+<tr><td>markdown-rustdoc</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>markdown.inline</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>matlab</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>mermaid</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>meson</td><td>✓</td><td></td><td>✓</td><td><code>mesonlsp</code></td></tr>
 <tr><td>mint</td><td></td><td></td><td></td><td><code>mint</code></td></tr>
-<tr><td>mojo</td><td>✓</td><td>✓</td><td>✓</td><td><code>magic</code></td></tr>
+<tr><td>mojo</td><td>✓</td><td>✓</td><td>✓</td><td><code>pixi</code></td></tr>
 <tr><td>move</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>msbuild</td><td>✓</td><td></td><td>✓</td><td></td></tr>
-<tr><td>nasm</td><td>✓</td><td>✓</td><td></td><td></td></tr>
+<tr><td>nasm</td><td>✓</td><td>✓</td><td></td><td><code>asm-lsp</code></td></tr>
 <tr><td>nestedtext</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>nginx</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>nickel</td><td>✓</td><td></td><td>✓</td><td><code>nls</code></td></tr>
 <tr><td>nim</td><td>✓</td><td>✓</td><td>✓</td><td><code>nimlangserver</code></td></tr>
-<tr><td>nix</td><td>✓</td><td>✓</td><td></td><td><code>nil</code>, <code>nixd</code></td></tr>
+<tr><td>nix</td><td>✓</td><td>✓</td><td>✓</td><td><code>nil</code>, <code>nixd</code></td></tr>
 <tr><td>nu</td><td>✓</td><td></td><td></td><td><code>nu</code></td></tr>
 <tr><td>nunjucks</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>ocaml</td><td>✓</td><td></td><td>✓</td><td><code>ocamllsp</code></td></tr>
@@ -1678,19 +1778,22 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>pest</td><td>✓</td><td>✓</td><td>✓</td><td><code>pest-language-server</code></td></tr>
 <tr><td>php</td><td>✓</td><td>✓</td><td>✓</td><td><code>intelephense</code></td></tr>
 <tr><td>php-only</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>pkgbuild</td><td>✓</td><td>✓</td><td>✓</td><td><code>pkgbuild-language-server</code>, <code>bash-language-server</code></td></tr>
-<tr><td>pkl</td><td>✓</td><td></td><td>✓</td><td></td></tr>
+<tr><td>pkgbuild</td><td>✓</td><td>✓</td><td>✓</td><td><code>termux-language-server</code>, <code>bash-language-server</code></td></tr>
+<tr><td>pkl</td><td>✓</td><td></td><td>✓</td><td><code>pkl-lsp</code></td></tr>
 <tr><td>po</td><td>✓</td><td>✓</td><td></td><td></td></tr>
 <tr><td>pod</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>ponylang</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>powershell</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>prisma</td><td>✓</td><td>✓</td><td></td><td><code>prisma-language-server</code></td></tr>
-<tr><td>prolog</td><td></td><td></td><td></td><td><code>swipl</code></td></tr>
-<tr><td>protobuf</td><td>✓</td><td>✓</td><td>✓</td><td><code>bufls</code>, <code>pb</code></td></tr>
+<tr><td>prolog</td><td>✓</td><td></td><td>✓</td><td><code>swipl</code></td></tr>
+<tr><td>properties</td><td>✓</td><td>✓</td><td></td><td></td></tr>
+<tr><td>protobuf</td><td>✓</td><td>✓</td><td>✓</td><td><code>buf</code>, <code>pb</code>, <code>protols</code></td></tr>
 <tr><td>prql</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>pug</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>purescript</td><td>✓</td><td>✓</td><td></td><td><code>purescript-language-server</code></td></tr>
-<tr><td>python</td><td>✓</td><td>✓</td><td>✓</td><td><code>ruff</code>, <code>jedi-language-server</code>, <code>pylsp</code></td></tr>
-<tr><td>qml</td><td>✓</td><td></td><td>✓</td><td><code>qmlls</code></td></tr>
+<tr><td>python</td><td>✓</td><td>✓</td><td>✓</td><td><code>ty</code>, <code>ruff</code>, <code>jedi-language-server</code>, <code>pylsp</code></td></tr>
+<tr><td>qml</td><td>✓</td><td>✓</td><td>✓</td><td><code>qmlls</code></td></tr>
+<tr><td>quarto</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>quint</td><td>✓</td><td></td><td></td><td><code>quint-language-server</code></td></tr>
 <tr><td>r</td><td>✓</td><td></td><td></td><td><code>R</code></td></tr>
 <tr><td>racket</td><td>✓</td><td></td><td>✓</td><td><code>racket</code></td></tr>
@@ -1701,28 +1804,33 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>robot</td><td>✓</td><td></td><td></td><td><code>robotframework_ls</code></td></tr>
 <tr><td>ron</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>rst</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>ruby</td><td>✓</td><td>✓</td><td>✓</td><td><code>solargraph</code></td></tr>
+<tr><td>ruby</td><td>✓</td><td>✓</td><td>✓</td><td><code>ruby-lsp</code>, <code>solargraph</code></td></tr>
 <tr><td>rust</td><td>✓</td><td>✓</td><td>✓</td><td><code>rust-analyzer</code></td></tr>
+<tr><td>rust-format-args</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>rust-format-args-macro</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>sage</td><td>✓</td><td>✓</td><td></td><td></td></tr>
 <tr><td>scala</td><td>✓</td><td>✓</td><td>✓</td><td><code>metals</code></td></tr>
 <tr><td>scheme</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>scss</td><td>✓</td><td></td><td></td><td><code>vscode-css-language-server</code></td></tr>
+<tr><td>slang</td><td>✓</td><td>✓</td><td>✓</td><td><code>slangd</code></td></tr>
 <tr><td>slint</td><td>✓</td><td>✓</td><td>✓</td><td><code>slint-lsp</code></td></tr>
 <tr><td>smali</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>smithy</td><td>✓</td><td></td><td></td><td><code>cs</code></td></tr>
 <tr><td>sml</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>snakemake</td><td>✓</td><td></td><td>✓</td><td><code>pylsp</code></td></tr>
 <tr><td>solidity</td><td>✓</td><td>✓</td><td></td><td><code>solc</code></td></tr>
+<tr><td>sourcepawn</td><td>✓</td><td>✓</td><td></td><td><code>sourcepawn-studio</code></td></tr>
 <tr><td>spade</td><td>✓</td><td></td><td>✓</td><td><code>spade-language-server</code></td></tr>
 <tr><td>spicedb</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>sql</td><td>✓</td><td>✓</td><td></td><td></td></tr>
 <tr><td>sshclientconfig</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>starlark</td><td>✓</td><td>✓</td><td></td><td></td></tr>
+<tr><td>starlark</td><td>✓</td><td>✓</td><td>✓</td><td><code>starpls</code></td></tr>
 <tr><td>strace</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>supercollider</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>svelte</td><td>✓</td><td></td><td>✓</td><td><code>svelteserver</code></td></tr>
 <tr><td>sway</td><td>✓</td><td>✓</td><td>✓</td><td><code>forc</code></td></tr>
 <tr><td>swift</td><td>✓</td><td>✓</td><td></td><td><code>sourcekit-lsp</code></td></tr>
+<tr><td>systemd</td><td>✓</td><td></td><td></td><td><code>systemd-lsp</code></td></tr>
 <tr><td>t32</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>tablegen</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>tact</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
@@ -1730,17 +1838,19 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>tcl</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>teal</td><td>✓</td><td></td><td></td><td><code>teal-language-server</code></td></tr>
 <tr><td>templ</td><td>✓</td><td></td><td></td><td><code>templ</code></td></tr>
+<tr><td>tera</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>textproto</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>tfvars</td><td>✓</td><td></td><td>✓</td><td><code>terraform-ls</code></td></tr>
 <tr><td>thrift</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>tlaplus</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>todotxt</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>toml</td><td>✓</td><td>✓</td><td></td><td><code>taplo</code></td></tr>
+<tr><td>toml</td><td>✓</td><td>✓</td><td></td><td><code>taplo</code>, <code>tombi</code></td></tr>
 <tr><td>tsq</td><td>✓</td><td></td><td></td><td><code>ts_query_ls</code></td></tr>
 <tr><td>tsx</td><td>✓</td><td>✓</td><td>✓</td><td><code>typescript-language-server</code></td></tr>
 <tr><td>twig</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>typescript</td><td>✓</td><td>✓</td><td>✓</td><td><code>typescript-language-server</code></td></tr>
 <tr><td>typespec</td><td>✓</td><td>✓</td><td>✓</td><td><code>tsp-server</code></td></tr>
-<tr><td>typst</td><td>✓</td><td></td><td></td><td><code>tinymist</code>, <code>typst-lsp</code></td></tr>
+<tr><td>typst</td><td>✓</td><td></td><td></td><td><code>tinymist</code></td></tr>
 <tr><td>ungrammar</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>unison</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>uxntal</td><td>✓</td><td></td><td></td><td></td></tr>
@@ -1752,19 +1862,24 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>vhs</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>vue</td><td>✓</td><td></td><td></td><td><code>vue-language-server</code></td></tr>
 <tr><td>wast</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>wat</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>wat</td><td>✓</td><td></td><td></td><td><code>wat_server</code></td></tr>
 <tr><td>webc</td><td>✓</td><td></td><td></td><td></td></tr>
-<tr><td>wgsl</td><td>✓</td><td></td><td></td><td><code>wgsl_analyzer</code></td></tr>
+<tr><td>werk</td><td>✓</td><td></td><td></td><td></td></tr>
+<tr><td>wesl</td><td>✓</td><td>✓</td><td></td><td></td></tr>
+<tr><td>wgsl</td><td>✓</td><td></td><td></td><td><code>wgsl-analyzer</code></td></tr>
 <tr><td>wit</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>wren</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>xit</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>xml</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>xtc</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>yaml</td><td>✓</td><td>✓</td><td>✓</td><td><code>yaml-language-server</code>, <code>ansible-language-server</code></td></tr>
+<tr><td>yara</td><td>✓</td><td></td><td></td><td><code>yls</code></td></tr>
 <tr><td>yuck</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>zig</td><td>✓</td><td>✓</td><td>✓</td><td><code>zls</code></td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="migrating-from-vim"><a class="header" href="#migrating-from-vim">Migrating from Vim</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="ecosystem"><a class="header" href="#ecosystem">Ecosystem</a></h1>
+<p>This section has information related to the wider Helix ecosystem.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="migrating-from-vim"><a class="header" href="#migrating-from-vim">Migrating from Vim</a></h1>
 <p>Helix's editing model is strongly inspired from Vim and Kakoune, and a notable
 difference from Vim (and the most striking similarity to Kakoune) is that Helix
 follows the <code>selection → action</code> model. This means that whatever you are
@@ -1775,7 +1890,33 @@ single width selection.</p>
 <blockquote>
 <p>TODO: Mention textobjects, surround, registers</p>
 </blockquote>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="helix-mode-in-other-software"><a class="header" href="#helix-mode-in-other-software">Helix mode in other software</a></h1>
+<p>Helix' keymap and interaction model (<a href="other-software.html#usage.md">Using Helix</a>) is easier to adopt if it can be used consistently in many editing contexts. Yet, certain use cases cannot easily be addressed directly in Helix. Similar to vim, this leads to the creation of "Helix mode" in various other software products, allowing Helix-style editing for a greater variety of use cases.</p>
+<p>"Helix mode" is frequently still in early stages or missing entirely. For such cases, we also link to relevant bugs or discussions.</p>
+<h2 id="other-editors"><a class="header" href="#other-editors">Other editors</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Editor</th><th>Plugin or feature providing Helix editing</th><th>Comments</th></tr></thead><tbody>
+<tr><td><a href="https://www.vim.org/">Vim</a></td><td><a href="https://github.com/chtenb/helix.vim">helix.vim</a> config</td><td></td></tr>
+<tr><td><a href="https://www.jetbrains.com/idea/">IntelliJ IDEA</a> / <a href="https://developer.android.com/studio">Android Studio</a></td><td><a href="https://plugins.jetbrains.com/plugin/164-ideavim">IdeaVim</a> plugin + <a href="https://github.com/chtenb/helix.vim">helix.idea.vim</a> config</td><td>Minimum recommended version is IdeaVim 2.19.0.</td></tr>
+<tr><td><a href="https://visualstudio.microsoft.com/">Visual Studio</a></td><td><a href="https://marketplace.visualstudio.com/items?itemName=JaredParMSFT.VsVim">VsVim</a> plugin + <a href="https://github.com/chtenb/helix.vim">helix.vs.vim</a> config</td><td></td></tr>
+<tr><td><a href="https://code.visualstudio.com/">Visual Studio Code</a></td><td><a href="https://marketplace.visualstudio.com/items?itemName=gregoire.dance">Dance</a> extension, or its <a href="https://marketplace.visualstudio.com/items?itemName=kend.dancehelixkey">Helix fork</a></td><td>The Helix fork has diverged. You can also use the original Dance and tweak its keybindings directly (try <a href="https://github.com/71/dance/issues/299#issuecomment-1655509531">this config</a>).</td></tr>
+<tr><td><a href="https://code.visualstudio.com/">Visual Studio Code</a></td><td><a href="https://marketplace.visualstudio.com/items?itemName=jasew.vscode-helix-emulation">Helix for VS Code</a> extension</td><td></td></tr>
+<tr><td><a href="https://zed.dev/">Zed</a></td><td>native via keybindings (<a href="https://github.com/zed-industries/zed/issues/4642">Bug</a>)</td><td></td></tr>
+<tr><td><a href="https://codemirror.net/">CodeMirror</a></td><td><a href="https://gitlab.com/_rvidal/codemirror-helix">codemirror-helix</a></td><td></td></tr>
+</tbody></table>
+</div>
+<h2 id="shells"><a class="header" href="#shells">Shells</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Shell</th><th>Plugin or feature providing Helix editing</th></tr></thead><tbody>
+<tr><td>Fish</td><td><a href="https://github.com/fish-shell/fish-shell/issues/7748">Feature Request</a></td></tr>
+<tr><td>Fish</td><td><a href="https://github.com/sshilovsky/fish-helix/tree/main">fish-helix</a></td></tr>
+<tr><td>Zsh</td><td><a href="https://github.com/john-h-k/helix-zsh">helix-zsh</a> or <a href="https://github.com/Multirious/zsh-helix-mode">zsh-helix-mode</a></td></tr>
+<tr><td>Nushell</td><td><a href="https://github.com/nushell/reedline/issues/639">Feature Request</a></td></tr>
+</tbody></table>
+</div>
+<h2 id="other-software"><a class="header" href="#other-software">Other software</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Software</th><th>Plugin or feature providing Helix editing.</th><th>Comments</th></tr></thead><tbody>
+<tr><td><a href="https://obsidian.md/">Obsidian</a></td><td><a href="https://github.com/Sinono3/obsidian-helix">Obsidian-Helix</a></td><td>Uses <code>codemirror-helix</code> listed above.</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>To override global configuration parameters, create a <code>config.toml</code> file located in your config directory:</p>
 <ul>
 <li>Linux and Mac: <code>~/.config/helix/config.toml</code></li>
@@ -1861,11 +2002,15 @@ Its settings will be merged with the configuration directory <code>config.toml</
 <tr><td><code>workspace-lsp-roots</code></td><td>Directories relative to the workspace root that are treated as LSP roots. Should only be set in <code>.helix/config.toml</code></td><td><code>[]</code></td></tr>
 <tr><td><code>default-line-ending</code></td><td>The line ending to use for new documents. Can be <code>native</code>, <code>lf</code>, <code>crlf</code>, <code>ff</code>, <code>cr</code> or <code>nel</code>. <code>native</code> uses the platform's native line ending (<code>crlf</code> on Windows, otherwise <code>lf</code>).</td><td><code>native</code></td></tr>
 <tr><td><code>insert-final-newline</code></td><td>Whether to automatically insert a trailing line-ending on write if missing</td><td><code>true</code></td></tr>
+<tr><td><code>atomic-save</code></td><td>Whether to use atomic operations to write documents to disk. This prevents data loss if the editor is interrupted while writing the file, but may confuse some file watching/hot reloading programs.</td><td><code>true</code></td></tr>
+<tr><td><code>trim-final-newlines</code></td><td>Whether to automatically remove line-endings after the final one on write</td><td><code>false</code></td></tr>
+<tr><td><code>trim-trailing-whitespace</code></td><td>Whether to automatically remove whitespace preceding line endings on write</td><td><code>false</code></td></tr>
 <tr><td><code>popup-border</code></td><td>Draw border around <code>popup</code>, <code>menu</code>, <code>all</code>, or <code>none</code></td><td><code>none</code></td></tr>
 <tr><td><code>indent-heuristic</code></td><td>How the indentation for a newly inserted line is computed: <code>simple</code> just copies the indentation level from the previous line, <code>tree-sitter</code> computes the indentation based on the syntax tree and <code>hybrid</code> combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being <code>hybrid</code> -&gt; <code>tree-sitter</code> -&gt; <code>simple</code>).</td><td><code>hybrid</code></td></tr>
 <tr><td><code>jump-label-alphabet</code></td><td>The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first.</td><td><code>"abcdefghijklmnopqrstuvwxyz"</code></td></tr>
 <tr><td><code>end-of-line-diagnostics</code></td><td>Minimum severity of diagnostics to render at the end of the line. Set to <code>disable</code> to disable entirely. Refer to the setting about <code>inline-diagnostics</code> for more details</td><td>"disable"</td></tr>
 <tr><td><code>clipboard-provider</code></td><td>Which API to use for clipboard interaction. One of <code>pasteboard</code> (MacOS), <code>wayland</code>, <code>x-clip</code>, <code>x-sel</code>, <code>win-32-yank</code>, <code>termux</code>, <code>tmux</code>, <code>windows</code>, <code>termcode</code>, <code>none</code>, or a custom command set.</td><td>Platform and environment specific.</td></tr>
+<tr><td><code>editor-config</code></td><td>Whether to read settings from <a href="https://editorconfig.org">EditorConfig</a> files</td><td><code>true</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="editorclipboard-provider-section"><a class="header" href="#editorclipboard-provider-section"><code>[editor.clipboard-provider]</code> Section</a></h3>
@@ -1875,7 +2020,7 @@ a provided command.</p>
 <pre><code class="language-toml">[editor]
 clipboard-provider = "termcode"
 </code></pre>
-<p>Alternatively, Helix can be configured to use arbitary commands for clipboard integration:</p>
+<p>Alternatively, Helix can be configured to use arbitrary commands for clipboard integration:</p>
 <pre><code class="language-toml">[editor.clipboard-provider.custom]
 yank = { command = "cat",  args = ["test.txt"] }
 paste = { command = "tee",  args = ["test.txt"] }
@@ -1896,6 +2041,8 @@ separator = "│"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+diagnostics = ["warning", "error"]
+workspace-diagnostics = ["warning", "error"]
 </code></pre>
 <p>The <code>[editor.statusline]</code> key takes the following sub-keys:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
@@ -1906,6 +2053,8 @@ mode.select = "SELECT"
 <tr><td><code>mode.normal</code></td><td>The text shown in the <code>mode</code> element for normal mode</td><td><code>"NOR"</code></td></tr>
 <tr><td><code>mode.insert</code></td><td>The text shown in the <code>mode</code> element for insert mode</td><td><code>"INS"</code></td></tr>
 <tr><td><code>mode.select</code></td><td>The text shown in the <code>mode</code> element for select mode</td><td><code>"SEL"</code></td></tr>
+<tr><td><code>diagnostics</code></td><td>A list of severities which are displayed for the current buffer</td><td><code>["warning", "error"]</code></td></tr>
+<tr><td><code>workspace-diagnostics</code></td><td>A list of severities which are displayed for the workspace</td><td><code>["warning", "error"]</code></td></tr>
 </tbody></table>
 </div>
 <p>The following statusline elements can be configured:</p>
@@ -1918,12 +2067,13 @@ mode.select = "SELECT"
 <tr><td><code>file-modification-indicator</code></td><td>The indicator to show whether the file is modified (a <code>[+]</code> appears when there are unsaved changes)</td></tr>
 <tr><td><code>file-encoding</code></td><td>The encoding of the opened file if it differs from UTF-8</td></tr>
 <tr><td><code>file-line-ending</code></td><td>The file line endings (CRLF or LF)</td></tr>
+<tr><td><code>file-indent-style</code></td><td>The file indentation style</td></tr>
 <tr><td><code>read-only-indicator</code></td><td>An indicator that shows <code>[readonly]</code> when a file cannot be written</td></tr>
 <tr><td><code>total-line-numbers</code></td><td>The total line numbers of the opened file</td></tr>
 <tr><td><code>file-type</code></td><td>The type of the opened file</td></tr>
 <tr><td><code>diagnostics</code></td><td>The number of warnings and/or errors</td></tr>
 <tr><td><code>workspace-diagnostics</code></td><td>The number of warnings and/or errors on workspace</td></tr>
-<tr><td><code>selections</code></td><td>The number of active selections</td></tr>
+<tr><td><code>selections</code></td><td>The primary selection index out of the number of active selections</td></tr>
 <tr><td><code>primary-selection-length</code></td><td>The number of characters currently in primary selection</td></tr>
 <tr><td><code>position</code></td><td>The cursor position</td></tr>
 <tr><td><code>position-percentage</code></td><td>The cursor position as a percentage of the total number of lines</td></tr>
@@ -1940,6 +2090,8 @@ mode.select = "SELECT"
 <tr><td><code>display-progress-messages</code></td><td>Display LSP progress messages below statusline<sup class="footnote-reference"><a href="#1">1</a></sup></td><td><code>false</code></td></tr>
 <tr><td><code>auto-signature-help</code></td><td>Enable automatic popup of signature help (parameter hints)</td><td><code>true</code></td></tr>
 <tr><td><code>display-inlay-hints</code></td><td>Display inlay hints<sup class="footnote-reference"><a href="#2">2</a></sup></td><td><code>false</code></td></tr>
+<tr><td><code>inlay-hints-length-limit</code></td><td>Maximum displayed length (non-zero number) of inlay hints</td><td>Unset by default</td></tr>
+<tr><td><code>display-color-swatches</code></td><td>Show color swatches next to colors</td><td><code>true</code></td></tr>
 <tr><td><code>display-signature-help-docs</code></td><td>Display docs under signature help popup</td><td><code>true</code></td></tr>
 <tr><td><code>snippets</code></td><td>Enables snippet completions. Requires a server restart (<code>:lsp-restart</code>) to take effect after <code>:config-reload</code>/<code>:set</code>.</td><td><code>true</code></td></tr>
 <tr><td><code>goto-reference-include-declaration</code></td><td>Include declaration in the goto references popup.</td><td><code>true</code></td></tr>
@@ -2345,12 +2497,17 @@ berry = "#2A2A4D"
 <li>
 <p><code>comment</code> - Code comments</p>
 <ul>
-<li><code>line</code> - Single line comments (<code>//</code>)</li>
-<li><code>block</code> - Block comments (e.g. (<code>/* */</code>)
+<li><code>line</code> - Single line comments (<code>//</code>)
 <ul>
-<li><code>documentation</code> - Documentation comments (e.g. <code>///</code> in Rust)</li>
+<li><code>documentation</code> - Line documentation comments (e.g. <code>///</code> in Rust)</li>
 </ul>
 </li>
+<li><code>block</code> - Block comments (e.g. (<code>/* */</code>)
+<ul>
+<li><code>documentation</code> - Block documentation comments (e.g. <code>/** */</code> in Rust)</li>
+</ul>
+</li>
+<li><code>unused</code> - Unused variables and patterns, e.g. <code>_</code> and <code>_foo</code></li>
 </ul>
 </li>
 <li>
@@ -2370,7 +2527,7 @@ berry = "#2A2A4D"
 </ul>
 </li>
 <li>
-<p><code>label</code></p>
+<p><code>label</code> - <code>.class</code>, <code>#id</code> in CSS, etc.</p>
 </li>
 <li>
 <p><code>punctuation</code></p>
@@ -2429,7 +2586,7 @@ berry = "#2A2A4D"
 <p><code>namespace</code></p>
 </li>
 <li>
-<p><code>special</code></p>
+<p><code>special</code> - <code>derive</code> in Rust, etc.</p>
 </li>
 <li>
 <p><code>markup</code></p>
@@ -2756,9 +2913,10 @@ language-servers = [ "mylang-lsp" ]
 <tr><td><code>indent</code></td><td>The indent to use. Has sub keys <code>unit</code> (the text inserted into the document when indenting; usually set to N spaces or <code>"\t"</code> for tabs) and <code>tab-width</code> (the number of spaces rendered for a tab)</td></tr>
 <tr><td><code>language-servers</code></td><td>The Language Servers used for this language. See below for more information in the section <a href="languages.html#configuring-language-servers-for-a-language">Configuring Language Servers for a language</a></td></tr>
 <tr><td><code>grammar</code></td><td>The tree-sitter grammar to use (defaults to the value of <code>name</code>)</td></tr>
-<tr><td><code>formatter</code></td><td>The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout</td></tr>
-<tr><td><code>soft-wrap</code></td><td><a href="./configuration.html#editorsoft-wrap-section">editor.softwrap</a></td></tr>
+<tr><td><code>formatter</code></td><td>The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout. The filename of the current buffer can be passed as argument by using the <code>%{buffer_name}</code> expansion variable. See below for more information in the <a href="languages.html#configuring-the-formatter-command">Configuring the formatter command</a></td></tr>
+<tr><td><code>soft-wrap</code></td><td><a href="./editor.html#editorsoft-wrap-section">editor.softwrap</a></td></tr>
 <tr><td><code>text-width</code></td><td>Maximum line length. Used for the <code>:reflow</code> command and soft-wrapping if <code>soft-wrap.wrap-at-text-width</code> is set, defaults to <code>editor.text-width</code></td></tr>
+<tr><td><code>rulers</code></td><td>Overrides the <code>editor.rulers</code> config key for the language.</td></tr>
 <tr><td><code>path-completion</code></td><td>Overrides the <code>editor.path-completion</code> config key for the language.</td></tr>
 <tr><td><code>workspace-lsp-roots</code></td><td>Directories relative to the workspace root that are treated as LSP roots. Should only be set in <code>.helix/config.toml</code>. Overwrites the setting of the same name in <code>config.toml</code> if set.</td></tr>
 <tr><td><code>persistent-diagnostic-sources</code></td><td>An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.</td></tr>
@@ -2788,6 +2946,12 @@ If the glob isn't an absolute path or doesn't already start with a glob prefix,
 the file extension of a given file wins. In the example above, the <code>"toml"</code>
 config matches files like <code>Cargo.toml</code> or <code>languages.toml</code>.</li>
 </ol>
+<h3 id="configuring-the-formatter-command"><a class="header" href="#configuring-the-formatter-command">Configuring the formatter command</a></h3>
+<p><a href="./command-line.html#expansions">Command line expansions</a> are supported in the arguments
+of the formatter command. In particular, the <code>%{buffer_name}</code> variable can be passed as
+argument to the formatter:</p>
+<pre><code class="language-toml">formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename %{buffer_name}"] }
+</code></pre>
 <h2 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h2>
 <p>Language servers are configured separately in the table <code>language-server</code> in the same file as the languages <code>languages.toml</code></p>
 <p>For example:</p>
@@ -2937,13 +3101,6 @@ you will need to add queries.</li>
 for more information on writing queries.</li>
 <li>A list of highlight captures can be found <a href="https://docs.helix-editor.com/themes.html#scopes">on the themes page</a>.</li>
 </ol>
-<blockquote>
-<p>💡 In Helix, the first matching query takes precedence when evaluating
-queries, which is different from other editors such as Neovim where the last
-matching query supersedes the ones before it. See
-<a href="https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090">this issue</a>
-for an example.</p>
-</blockquote>
 <h2 id="common-issues"><a class="header" href="#common-issues">Common issues</a></h2>
 <ul>
 <li>If you encounter errors when running Helix after switching branches, you may
@@ -2974,6 +3131,7 @@ for example).</p>
 <tr><td><code>test.inside</code></td></tr>
 <tr><td><code>test.around</code></td></tr>
 <tr><td><code>parameter.inside</code></td></tr>
+<tr><td><code>parameter.around</code></td></tr>
 <tr><td><code>comment.inside</code></td></tr>
 <tr><td><code>comment.around</code></td></tr>
 <tr><td><code>entry.inside</code></td></tr>
@@ -3327,9 +3485,13 @@ written explicitly for demonstration.)</p>
 <p>Writing language injection queries allows one to highlight a specific node as a different language.
 In addition to the <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">standard</a> language injection options used by tree-sitter, there
 are a few Helix specific extensions that allow for more control.</p>
-<p>And example of a simple query that would highlight all strings as bash in Nix:</p>
+<p>An example of a simple query that would highlight all strings as bash in Nix:</p>
 <pre><code class="language-scm">((string_expression (string_fragment) @injection.content)
   (#set! injection.language "bash"))
+</code></pre>
+<p>Another example is this query, which highlights links in comments and keywords like "TODO", by reusing the dedicated "comment" language:</p>
+<pre><code>((comment) @injection.content
+  (#set! injection.language "comment"))
 </code></pre>
 <h2 id="capture-types-1"><a class="header" href="#capture-types-1">Capture Types</a></h2>
 <ul>

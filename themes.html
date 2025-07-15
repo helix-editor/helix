@@ -325,12 +325,17 @@ berry = "#2A2A4D"
 <li>
 <p><code>comment</code> - Code comments</p>
 <ul>
-<li><code>line</code> - Single line comments (<code>//</code>)</li>
-<li><code>block</code> - Block comments (e.g. (<code>/* */</code>)
+<li><code>line</code> - Single line comments (<code>//</code>)
 <ul>
-<li><code>documentation</code> - Documentation comments (e.g. <code>///</code> in Rust)</li>
+<li><code>documentation</code> - Line documentation comments (e.g. <code>///</code> in Rust)</li>
 </ul>
 </li>
+<li><code>block</code> - Block comments (e.g. (<code>/* */</code>)
+<ul>
+<li><code>documentation</code> - Block documentation comments (e.g. <code>/** */</code> in Rust)</li>
+</ul>
+</li>
+<li><code>unused</code> - Unused variables and patterns, e.g. <code>_</code> and <code>_foo</code></li>
 </ul>
 </li>
 <li>
@@ -350,7 +355,7 @@ berry = "#2A2A4D"
 </ul>
 </li>
 <li>
-<p><code>label</code></p>
+<p><code>label</code> - <code>.class</code>, <code>#id</code> in CSS, etc.</p>
 </li>
 <li>
 <p><code>punctuation</code></p>
@@ -409,7 +414,7 @@ berry = "#2A2A4D"
 <p><code>namespace</code></p>
 </li>
 <li>
-<p><code>special</code></p>
+<p><code>special</code> - <code>derive</code> in Rust, etc.</p>
 </li>
 <li>
 <p><code>markup</code></p>

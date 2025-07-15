@@ -220,8 +220,8 @@
 <tr><td><code>:reload-all</code>, <code>:rla</code></td><td>Discard changes and reload all documents from the source files.</td></tr>
 <tr><td><code>:update</code>, <code>:u</code></td><td>Write changes only if the file has been modified.</td></tr>
 <tr><td><code>:lsp-workspace-command</code></td><td>Open workspace command picker</td></tr>
-<tr><td><code>:lsp-restart</code></td><td>Restarts the language servers used by the current doc</td></tr>
-<tr><td><code>:lsp-stop</code></td><td>Stops the language servers that are used by the current doc</td></tr>
+<tr><td><code>:lsp-restart</code></td><td>Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied</td></tr>
+<tr><td><code>:lsp-stop</code></td><td>Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied</td></tr>
 <tr><td><code>:tree-sitter-scopes</code></td><td>Display tree sitter scopes, primarily for theming and development.</td></tr>
 <tr><td><code>:tree-sitter-highlight-name</code></td><td>Display name of tree-sitter highlight scope under the cursor.</td></tr>
 <tr><td><code>:debug-start</code>, <code>:dbg</code></td><td>Start a debug session from a given template with given parameters.</td></tr>
@@ -235,10 +235,9 @@
 <tr><td><code>:goto</code>, <code>:g</code></td><td>Goto line number.</td></tr>
 <tr><td><code>:set-language</code>, <code>:lang</code></td><td>Set the language of current buffer (show current language if no value specified).</td></tr>
 <tr><td><code>:set-option</code>, <code>:set</code></td><td>Set a config option at runtime.<br>For example to disable smart case search, use <code>:set search.smart-case false</code>.</td></tr>
-<tr><td><code>:toggle-option</code>, <code>:toggle</code></td><td>Toggle a boolean config option at runtime.<br>For example to toggle smart case search, use <code>:toggle search.smart-case</code>.</td></tr>
+<tr><td><code>:toggle-option</code>, <code>:toggle</code></td><td>Toggle a config option at runtime.<br>For example to toggle smart case search, use <code>:toggle search.smart-case</code>.</td></tr>
 <tr><td><code>:get-option</code>, <code>:get</code></td><td>Get the current value of a config option.</td></tr>
 <tr><td><code>:sort</code></td><td>Sort ranges in selection.</td></tr>
-<tr><td><code>:rsort</code></td><td>Sort ranges in selection in reverse order.</td></tr>
 <tr><td><code>:reflow</code></td><td>Hard-wrap the current selection of lines to a given width.</td></tr>
 <tr><td><code>:tree-sitter-subtree</code>, <code>:ts-subtree</code></td><td>Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.</td></tr>
 <tr><td><code>:config-reload</code></td><td>Refresh user config.</td></tr>
@@ -247,15 +246,17 @@
 <tr><td><code>:log-open</code></td><td>Open the helix log file.</td></tr>
 <tr><td><code>:insert-output</code></td><td>Run shell command, inserting output before each selection.</td></tr>
 <tr><td><code>:append-output</code></td><td>Run shell command, appending output after each selection.</td></tr>
-<tr><td><code>:pipe</code></td><td>Pipe each selection to the shell command.</td></tr>
+<tr><td><code>:pipe</code>, <code>:|</code></td><td>Pipe each selection to the shell command.</td></tr>
 <tr><td><code>:pipe-to</code></td><td>Pipe each selection to the shell command, ignoring output.</td></tr>
-<tr><td><code>:run-shell-command</code>, <code>:sh</code></td><td>Run a shell command</td></tr>
+<tr><td><code>:run-shell-command</code>, <code>:sh</code>, <code>:!</code></td><td>Run a shell command</td></tr>
 <tr><td><code>:reset-diff-change</code>, <code>:diffget</code>, <code>:diffg</code></td><td>Reset the diff change at the cursor position.</td></tr>
 <tr><td><code>:clear-register</code></td><td>Clear given register. If no argument is provided, clear all registers.</td></tr>
 <tr><td><code>:redraw</code></td><td>Clear and re-render the whole UI</td></tr>
 <tr><td><code>:move</code>, <code>:mv</code></td><td>Move the current buffer and its corresponding file to a different path</td></tr>
 <tr><td><code>:yank-diagnostic</code></td><td>Yank diagnostic(s) under primary cursor to register, or clipboard by default</td></tr>
 <tr><td><code>:read</code>, <code>:r</code></td><td>Load a file into buffer</td></tr>
+<tr><td><code>:echo</code></td><td>Prints the given arguments to the statusline.</td></tr>
+<tr><td><code>:noop</code></td><td>Does nothing.</td></tr>
 </tbody></table>
 </div>
 <h2 id="static-commands"><a class="header" href="#static-commands">Static Commands</a></h2>
@@ -361,6 +362,9 @@
 <tr><td><code>file_picker</code></td><td>Open file picker</td><td>normal: <code>&lt;space&gt;f</code>, select: <code>&lt;space&gt;f</code></td></tr>
 <tr><td><code>file_picker_in_current_buffer_directory</code></td><td>Open file picker at current buffer's directory</td><td></td></tr>
 <tr><td><code>file_picker_in_current_directory</code></td><td>Open file picker at current working directory</td><td>normal: <code>&lt;space&gt;F</code>, select: <code>&lt;space&gt;F</code></td></tr>
+<tr><td><code>file_explorer</code></td><td>Open file explorer in workspace root</td><td>normal: <code>&lt;space&gt;e</code>, select: <code>&lt;space&gt;e</code></td></tr>
+<tr><td><code>file_explorer_in_current_buffer_directory</code></td><td>Open file explorer at current buffer's directory</td><td>normal: <code>&lt;space&gt;E</code>, select: <code>&lt;space&gt;E</code></td></tr>
+<tr><td><code>file_explorer_in_current_directory</code></td><td>Open file explorer at current working directory</td><td></td></tr>
 <tr><td><code>code_action</code></td><td>Perform code action</td><td>normal: <code>&lt;space&gt;a</code>, select: <code>&lt;space&gt;a</code></td></tr>
 <tr><td><code>buffer_picker</code></td><td>Open buffer picker</td><td>normal: <code>&lt;space&gt;b</code>, select: <code>&lt;space&gt;b</code></td></tr>
 <tr><td><code>jumplist_picker</code></td><td>Open jumplist picker</td><td>normal: <code>&lt;space&gt;j</code>, select: <code>&lt;space&gt;j</code></td></tr>
@@ -384,8 +388,10 @@
 <tr><td><code>add_newline_below</code></td><td>Add newline below</td><td>normal: <code>]&lt;space&gt;</code>, select: <code>]&lt;space&gt;</code></td></tr>
 <tr><td><code>goto_type_definition</code></td><td>Goto type definition</td><td>normal: <code>gy</code>, select: <code>gy</code></td></tr>
 <tr><td><code>goto_implementation</code></td><td>Goto implementation</td><td>normal: <code>gi</code>, select: <code>gi</code></td></tr>
-<tr><td><code>goto_file_start</code></td><td>Goto line number <n> else file start</td><td>normal: <code>gg</code>, select: <code>gg</code></td></tr>
+<tr><td><code>goto_file_start</code></td><td>Goto line number <n> else file start</td><td>normal: <code>gg</code></td></tr>
 <tr><td><code>goto_file_end</code></td><td>Goto file end</td><td></td></tr>
+<tr><td><code>extend_to_file_start</code></td><td>Extend to line number<n> else file start</td><td>select: <code>gg</code></td></tr>
+<tr><td><code>extend_to_file_end</code></td><td>Extend to file end</td><td></td></tr>
 <tr><td><code>goto_file</code></td><td>Goto files/URLs in selections</td><td>normal: <code>gf</code>, select: <code>gf</code></td></tr>
 <tr><td><code>goto_file_hsplit</code></td><td>Goto files in selections (hsplit)</td><td>normal: <code>&lt;C-w&gt;f</code>, <code>&lt;space&gt;wf</code>, select: <code>&lt;C-w&gt;f</code>, <code>&lt;space&gt;wf</code></td></tr>
 <tr><td><code>goto_file_vsplit</code></td><td>Goto files in selections (vsplit)</td><td>normal: <code>&lt;C-w&gt;F</code>, <code>&lt;space&gt;wF</code>, select: <code>&lt;C-w&gt;F</code>, <code>&lt;space&gt;wF</code></td></tr>
@@ -397,7 +403,8 @@
 <tr><td><code>goto_last_modified_file</code></td><td>Goto last modified file</td><td>normal: <code>gm</code>, select: <code>gm</code></td></tr>
 <tr><td><code>goto_last_modification</code></td><td>Goto last modification</td><td>normal: <code>g.</code>, select: <code>g.</code></td></tr>
 <tr><td><code>goto_line</code></td><td>Goto line</td><td>normal: <code>G</code>, select: <code>G</code></td></tr>
-<tr><td><code>goto_last_line</code></td><td>Goto last line</td><td>normal: <code>ge</code>, select: <code>ge</code></td></tr>
+<tr><td><code>goto_last_line</code></td><td>Goto last line</td><td>normal: <code>ge</code></td></tr>
+<tr><td><code>extend_to_last_line</code></td><td>Extend to last line</td><td>select: <code>ge</code></td></tr>
 <tr><td><code>goto_first_diag</code></td><td>Goto first diagnostic</td><td>normal: <code>[D</code>, select: <code>[D</code></td></tr>
 <tr><td><code>goto_last_diag</code></td><td>Goto last diagnostic</td><td>normal: <code>]D</code>, select: <code>]D</code></td></tr>
 <tr><td><code>goto_next_diag</code></td><td>Goto next diagnostic</td><td>normal: <code>]d</code>, select: <code>]d</code></td></tr>
@@ -408,6 +415,8 @@
 <tr><td><code>goto_last_change</code></td><td>Goto last change</td><td>normal: <code>]G</code>, select: <code>]G</code></td></tr>
 <tr><td><code>goto_line_start</code></td><td>Goto line start</td><td>normal: <code>gh</code>, <code>&lt;home&gt;</code>, select: <code>gh</code>, insert: <code>&lt;home&gt;</code></td></tr>
 <tr><td><code>goto_line_end</code></td><td>Goto line end</td><td>normal: <code>gl</code>, <code>&lt;end&gt;</code>, select: <code>gl</code></td></tr>
+<tr><td><code>goto_column</code></td><td>Goto column</td><td>normal: <code>g|</code></td></tr>
+<tr><td><code>extend_to_column</code></td><td>Extend to column</td><td>select: <code>g|</code></td></tr>
 <tr><td><code>goto_next_buffer</code></td><td>Goto next buffer</td><td>normal: <code>gn</code>, select: <code>gn</code></td></tr>
 <tr><td><code>goto_previous_buffer</code></td><td>Goto previous buffer</td><td>normal: <code>gp</code>, select: <code>gp</code></td></tr>
 <tr><td><code>goto_line_end_newline</code></td><td>Goto newline at line end</td><td>insert: <code>&lt;end&gt;</code></td></tr>
@@ -497,6 +506,7 @@
 <tr><td><code>wonly</code></td><td>Close windows except current</td><td>normal: <code>&lt;C-w&gt;o</code>, <code>&lt;space&gt;wo</code>, <code>&lt;C-w&gt;&lt;C-o&gt;</code>, <code>&lt;space&gt;w&lt;C-o&gt;</code>, select: <code>&lt;C-w&gt;o</code>, <code>&lt;space&gt;wo</code>, <code>&lt;C-w&gt;&lt;C-o&gt;</code>, <code>&lt;space&gt;w&lt;C-o&gt;</code></td></tr>
 <tr><td><code>select_register</code></td><td>Select register</td><td>normal: <code>"</code>, select: <code>"</code></td></tr>
 <tr><td><code>insert_register</code></td><td>Insert register</td><td>insert: <code>&lt;C-r&gt;</code></td></tr>
+<tr><td><code>copy_between_registers</code></td><td>Copy between two registers</td><td></td></tr>
 <tr><td><code>align_view_middle</code></td><td>Align view middle</td><td>normal: <code>Zm</code>, <code>zm</code>, select: <code>Zm</code>, <code>zm</code></td></tr>
 <tr><td><code>align_view_top</code></td><td>Align view top</td><td>normal: <code>Zt</code>, <code>zt</code>, select: <code>Zt</code>, <code>zt</code></td></tr>
 <tr><td><code>align_view_center</code></td><td>Align view center</td><td>normal: <code>Zc</code>, <code>Zz</code>, <code>zc</code>, <code>zz</code>, select: <code>Zc</code>, <code>Zz</code>, <code>zc</code>, <code>zz</code></td></tr>
@@ -553,15 +563,17 @@
 <tr><td><code>command_palette</code></td><td>Open command palette</td><td>normal: <code>&lt;space&gt;?</code>, select: <code>&lt;space&gt;?</code></td></tr>
 <tr><td><code>goto_word</code></td><td>Jump to a two-character label</td><td>normal: <code>gw</code></td></tr>
 <tr><td><code>extend_to_word</code></td><td>Extend to a two-character label</td><td>select: <code>gw</code></td></tr>
-<tr><td><code>goto_next_tabstop</code></td><td>goto next snippet placeholder</td><td></td></tr>
-<tr><td><code>goto_prev_tabstop</code></td><td>goto next snippet placeholder</td><td></td></tr>
+<tr><td><code>goto_next_tabstop</code></td><td>Goto next snippet placeholder</td><td></td></tr>
+<tr><td><code>goto_prev_tabstop</code></td><td>Goto next snippet placeholder</td><td></td></tr>
+<tr><td><code>rotate_selections_first</code></td><td>Make the first selection your primary one</td><td></td></tr>
+<tr><td><code>rotate_selections_last</code></td><td>Make the last selection your primary one</td><td></td></tr>
 </tbody></table>
 </div>
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="keymap.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="command-line.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
@@ -575,7 +587,7 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="keymap.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="command-line.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 

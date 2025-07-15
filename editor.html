@@ -216,11 +216,15 @@
 <tr><td><code>workspace-lsp-roots</code></td><td>Directories relative to the workspace root that are treated as LSP roots. Should only be set in <code>.helix/config.toml</code></td><td><code>[]</code></td></tr>
 <tr><td><code>default-line-ending</code></td><td>The line ending to use for new documents. Can be <code>native</code>, <code>lf</code>, <code>crlf</code>, <code>ff</code>, <code>cr</code> or <code>nel</code>. <code>native</code> uses the platform's native line ending (<code>crlf</code> on Windows, otherwise <code>lf</code>).</td><td><code>native</code></td></tr>
 <tr><td><code>insert-final-newline</code></td><td>Whether to automatically insert a trailing line-ending on write if missing</td><td><code>true</code></td></tr>
+<tr><td><code>atomic-save</code></td><td>Whether to use atomic operations to write documents to disk. This prevents data loss if the editor is interrupted while writing the file, but may confuse some file watching/hot reloading programs.</td><td><code>true</code></td></tr>
+<tr><td><code>trim-final-newlines</code></td><td>Whether to automatically remove line-endings after the final one on write</td><td><code>false</code></td></tr>
+<tr><td><code>trim-trailing-whitespace</code></td><td>Whether to automatically remove whitespace preceding line endings on write</td><td><code>false</code></td></tr>
 <tr><td><code>popup-border</code></td><td>Draw border around <code>popup</code>, <code>menu</code>, <code>all</code>, or <code>none</code></td><td><code>none</code></td></tr>
 <tr><td><code>indent-heuristic</code></td><td>How the indentation for a newly inserted line is computed: <code>simple</code> just copies the indentation level from the previous line, <code>tree-sitter</code> computes the indentation based on the syntax tree and <code>hybrid</code> combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being <code>hybrid</code> -&gt; <code>tree-sitter</code> -&gt; <code>simple</code>).</td><td><code>hybrid</code></td></tr>
 <tr><td><code>jump-label-alphabet</code></td><td>The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first.</td><td><code>"abcdefghijklmnopqrstuvwxyz"</code></td></tr>
 <tr><td><code>end-of-line-diagnostics</code></td><td>Minimum severity of diagnostics to render at the end of the line. Set to <code>disable</code> to disable entirely. Refer to the setting about <code>inline-diagnostics</code> for more details</td><td>"disable"</td></tr>
 <tr><td><code>clipboard-provider</code></td><td>Which API to use for clipboard interaction. One of <code>pasteboard</code> (MacOS), <code>wayland</code>, <code>x-clip</code>, <code>x-sel</code>, <code>win-32-yank</code>, <code>termux</code>, <code>tmux</code>, <code>windows</code>, <code>termcode</code>, <code>none</code>, or a custom command set.</td><td>Platform and environment specific.</td></tr>
+<tr><td><code>editor-config</code></td><td>Whether to read settings from <a href="https://editorconfig.org">EditorConfig</a> files</td><td><code>true</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="editorclipboard-provider-section"><a class="header" href="#editorclipboard-provider-section"><code>[editor.clipboard-provider]</code> Section</a></h3>
@@ -230,7 +234,7 @@ a provided command.</p>
 <pre><code class="language-toml">[editor]
 clipboard-provider = "termcode"
 </code></pre>
-<p>Alternatively, Helix can be configured to use arbitary commands for clipboard integration:</p>
+<p>Alternatively, Helix can be configured to use arbitrary commands for clipboard integration:</p>
 <pre><code class="language-toml">[editor.clipboard-provider.custom]
 yank = { command = "cat",  args = ["test.txt"] }
 paste = { command = "tee",  args = ["test.txt"] }
@@ -251,6 +255,8 @@ separator = "│"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+diagnostics = ["warning", "error"]
+workspace-diagnostics = ["warning", "error"]
 </code></pre>
 <p>The <code>[editor.statusline]</code> key takes the following sub-keys:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
@@ -261,6 +267,8 @@ mode.select = "SELECT"
 <tr><td><code>mode.normal</code></td><td>The text shown in the <code>mode</code> element for normal mode</td><td><code>"NOR"</code></td></tr>
 <tr><td><code>mode.insert</code></td><td>The text shown in the <code>mode</code> element for insert mode</td><td><code>"INS"</code></td></tr>
 <tr><td><code>mode.select</code></td><td>The text shown in the <code>mode</code> element for select mode</td><td><code>"SEL"</code></td></tr>
+<tr><td><code>diagnostics</code></td><td>A list of severities which are displayed for the current buffer</td><td><code>["warning", "error"]</code></td></tr>
+<tr><td><code>workspace-diagnostics</code></td><td>A list of severities which are displayed for the workspace</td><td><code>["warning", "error"]</code></td></tr>
 </tbody></table>
 </div>
 <p>The following statusline elements can be configured:</p>
@@ -273,12 +281,13 @@ mode.select = "SELECT"
 <tr><td><code>file-modification-indicator</code></td><td>The indicator to show whether the file is modified (a <code>[+]</code> appears when there are unsaved changes)</td></tr>
 <tr><td><code>file-encoding</code></td><td>The encoding of the opened file if it differs from UTF-8</td></tr>
 <tr><td><code>file-line-ending</code></td><td>The file line endings (CRLF or LF)</td></tr>
+<tr><td><code>file-indent-style</code></td><td>The file indentation style</td></tr>
 <tr><td><code>read-only-indicator</code></td><td>An indicator that shows <code>[readonly]</code> when a file cannot be written</td></tr>
 <tr><td><code>total-line-numbers</code></td><td>The total line numbers of the opened file</td></tr>
 <tr><td><code>file-type</code></td><td>The type of the opened file</td></tr>
 <tr><td><code>diagnostics</code></td><td>The number of warnings and/or errors</td></tr>
 <tr><td><code>workspace-diagnostics</code></td><td>The number of warnings and/or errors on workspace</td></tr>
-<tr><td><code>selections</code></td><td>The number of active selections</td></tr>
+<tr><td><code>selections</code></td><td>The primary selection index out of the number of active selections</td></tr>
 <tr><td><code>primary-selection-length</code></td><td>The number of characters currently in primary selection</td></tr>
 <tr><td><code>position</code></td><td>The cursor position</td></tr>
 <tr><td><code>position-percentage</code></td><td>The cursor position as a percentage of the total number of lines</td></tr>
@@ -295,6 +304,8 @@ mode.select = "SELECT"
 <tr><td><code>display-progress-messages</code></td><td>Display LSP progress messages below statusline<sup class="footnote-reference"><a href="#1">1</a></sup></td><td><code>false</code></td></tr>
 <tr><td><code>auto-signature-help</code></td><td>Enable automatic popup of signature help (parameter hints)</td><td><code>true</code></td></tr>
 <tr><td><code>display-inlay-hints</code></td><td>Display inlay hints<sup class="footnote-reference"><a href="#2">2</a></sup></td><td><code>false</code></td></tr>
+<tr><td><code>inlay-hints-length-limit</code></td><td>Maximum displayed length (non-zero number) of inlay hints</td><td>Unset by default</td></tr>
+<tr><td><code>display-color-swatches</code></td><td>Show color swatches next to colors</td><td><code>true</code></td></tr>
 <tr><td><code>display-signature-help-docs</code></td><td>Display docs under signature help popup</td><td><code>true</code></td></tr>
 <tr><td><code>snippets</code></td><td>Enables snippet completions. Requires a server restart (<code>:lsp-restart</code>) to take effect after <code>:config-reload</code>/<code>:set</code>.</td><td><code>true</code></td></tr>
 <tr><td><code>goto-reference-include-declaration</code></td><td>Include declaration in the goto references popup.</td><td><code>true</code></td></tr>

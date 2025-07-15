@@ -221,9 +221,9 @@
 <tr><td><code>W</code></td><td>Move next WORD start</td><td><code>move_next_long_word_start</code></td></tr>
 <tr><td><code>B</code></td><td>Move previous WORD start</td><td><code>move_prev_long_word_start</code></td></tr>
 <tr><td><code>E</code></td><td>Move next WORD end</td><td><code>move_next_long_word_end</code></td></tr>
-<tr><td><code>t</code></td><td>Find 'till next char</td><td><code>find_till_char</code></td></tr>
+<tr><td><code>t</code></td><td>Find till next char</td><td><code>find_till_char</code></td></tr>
 <tr><td><code>f</code></td><td>Find next char</td><td><code>find_next_char</code></td></tr>
-<tr><td><code>T</code></td><td>Find 'till previous char</td><td><code>till_prev_char</code></td></tr>
+<tr><td><code>T</code></td><td>Find till previous char</td><td><code>till_prev_char</code></td></tr>
 <tr><td><code>F</code></td><td>Find previous char</td><td><code>find_prev_char</code></td></tr>
 <tr><td><code>G</code></td><td>Go to line number <code>&lt;n&gt;</code></td><td><code>goto_line</code></td></tr>
 <tr><td><code>Alt-.</code></td><td>Repeat last motion (<code>f</code>, <code>t</code>, <code>m</code>, <code>[</code> or <code>]</code>)</td><td><code>repeat_last_motion</code></td></tr>
@@ -371,6 +371,7 @@ useful when you're simply looking over text and not actively editing it.</p>
 <p>Jumps to various locations.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>g</code></td><td>Go to line number <code>&lt;n&gt;</code> else start of file</td><td><code>goto_file_start</code></td></tr>
+<tr><td><code>|</code></td><td>Go to column number <code>&lt;n&gt;</code> else start of line</td><td><code>goto_column</code></td></tr>
 <tr><td><code>e</code></td><td>Go to the end of the file</td><td><code>goto_last_line</code></td></tr>
 <tr><td><code>f</code></td><td>Go to files in the selections</td><td><code>goto_file</code></td></tr>
 <tr><td><code>h</code></td><td>Go to the start of the line</td><td><code>goto_line_start</code></td></tr>
@@ -625,7 +626,7 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="commands.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="command-line.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -639,7 +640,7 @@ See the documentation page on <a href="./pickers.html">pickers</a> for more info
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="commands.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="command-line.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
