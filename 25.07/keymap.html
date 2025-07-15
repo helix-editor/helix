@@ -1,0 +1,671 @@
+<!DOCTYPE HTML>
+<html lang="en" class="colibri sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Keymap</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="custom.css">
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "colibri" : "colibri";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('colibri')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="colibri">Colibri</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/keymap.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h2 id="keymap"><a class="header" href="#keymap">Keymap</a></h2>
+<ul>
+<li><a href="#normal-mode">Normal mode</a>
+<ul>
+<li><a href="#movement">Movement</a></li>
+<li><a href="#changes">Changes</a>
+<ul>
+<li><a href="#shell">Shell</a></li>
+</ul>
+</li>
+<li><a href="#selection-manipulation">Selection manipulation</a></li>
+<li><a href="#search">Search</a></li>
+<li><a href="#minor-modes">Minor modes</a>
+<ul>
+<li><a href="#view-mode">View mode</a></li>
+<li><a href="#goto-mode">Goto mode</a></li>
+<li><a href="#match-mode">Match mode</a></li>
+<li><a href="#window-mode">Window mode</a></li>
+<li><a href="#space-mode">Space mode</a>
+<ul>
+<li><a href="#popup">Popup</a></li>
+<li><a href="#completion-menu">Completion Menu</a></li>
+<li><a href="#signature-help-popup">Signature-help Popup</a></li>
+</ul>
+</li>
+<li><a href="#unimpaired">Unimpaired</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#insert-mode">Insert mode</a></li>
+<li><a href="#select--extend-mode">Select / extend mode</a></li>
+<li><a href="#picker">Picker</a></li>
+<li><a href="#prompt">Prompt</a></li>
+</ul>
+<blockquote>
+<p>💡 Mappings marked (<strong>LSP</strong>) require an active language server for the file.</p>
+</blockquote>
+<blockquote>
+<p>💡 Mappings marked (<strong>TS</strong>) require a tree-sitter grammar for the file type.</p>
+</blockquote>
+<blockquote>
+<p>⚠️ Some terminals' default key mappings conflict with Helix's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the <a href="https://github.com/helix-editor/helix/wiki/Terminal-Support">wiki</a> for known conflicts.</p>
+</blockquote>
+<h2 id="normal-mode"><a class="header" href="#normal-mode">Normal mode</a></h2>
+<p>Normal mode is the default mode when you launch helix. You can return to it from other modes by pressing the <code>Escape</code> key.</p>
+<h3 id="movement"><a class="header" href="#movement">Movement</a></h3>
+<blockquote>
+<p>NOTE: Unlike Vim, <code>f</code>, <code>F</code>, <code>t</code> and <code>T</code> are not confined to the current line.</p>
+</blockquote>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>h</code>, <code>Left</code></td><td>Move left</td><td><code>move_char_left</code></td></tr>
+<tr><td><code>j</code>, <code>Down</code></td><td>Move down</td><td><code>move_visual_line_down</code></td></tr>
+<tr><td><code>k</code>, <code>Up</code></td><td>Move up</td><td><code>move_visual_line_up</code></td></tr>
+<tr><td><code>l</code>, <code>Right</code></td><td>Move right</td><td><code>move_char_right</code></td></tr>
+<tr><td><code>w</code></td><td>Move next word start</td><td><code>move_next_word_start</code></td></tr>
+<tr><td><code>b</code></td><td>Move previous word start</td><td><code>move_prev_word_start</code></td></tr>
+<tr><td><code>e</code></td><td>Move next word end</td><td><code>move_next_word_end</code></td></tr>
+<tr><td><code>W</code></td><td>Move next WORD start</td><td><code>move_next_long_word_start</code></td></tr>
+<tr><td><code>B</code></td><td>Move previous WORD start</td><td><code>move_prev_long_word_start</code></td></tr>
+<tr><td><code>E</code></td><td>Move next WORD end</td><td><code>move_next_long_word_end</code></td></tr>
+<tr><td><code>t</code></td><td>Find till next char</td><td><code>find_till_char</code></td></tr>
+<tr><td><code>f</code></td><td>Find next char</td><td><code>find_next_char</code></td></tr>
+<tr><td><code>T</code></td><td>Find till previous char</td><td><code>till_prev_char</code></td></tr>
+<tr><td><code>F</code></td><td>Find previous char</td><td><code>find_prev_char</code></td></tr>
+<tr><td><code>G</code></td><td>Go to line number <code>&lt;n&gt;</code></td><td><code>goto_line</code></td></tr>
+<tr><td><code>Alt-.</code></td><td>Repeat last motion (<code>f</code>, <code>t</code>, <code>m</code>, <code>[</code> or <code>]</code>)</td><td><code>repeat_last_motion</code></td></tr>
+<tr><td><code>Home</code></td><td>Move to the start of the line</td><td><code>goto_line_start</code></td></tr>
+<tr><td><code>End</code></td><td>Move to the end of the line</td><td><code>goto_line_end</code></td></tr>
+<tr><td><code>Ctrl-b</code>, <code>PageUp</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
+<tr><td><code>Ctrl-f</code>, <code>PageDown</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
+<tr><td><code>Ctrl-u</code></td><td>Move cursor and page half page up</td><td><code>page_cursor_half_up</code></td></tr>
+<tr><td><code>Ctrl-d</code></td><td>Move cursor and page half page down</td><td><code>page_cursor_half_down</code></td></tr>
+<tr><td><code>Ctrl-i</code></td><td>Jump forward on the jumplist</td><td><code>jump_forward</code></td></tr>
+<tr><td><code>Ctrl-o</code></td><td>Jump backward on the jumplist</td><td><code>jump_backward</code></td></tr>
+<tr><td><code>Ctrl-s</code></td><td>Save the current selection to the jumplist</td><td><code>save_selection</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="changes"><a class="header" href="#changes">Changes</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>r</code></td><td>Replace with a character</td><td><code>replace</code></td></tr>
+<tr><td><code>R</code></td><td>Replace with yanked text</td><td><code>replace_with_yanked</code></td></tr>
+<tr><td><code>~</code></td><td>Switch case of the selected text</td><td><code>switch_case</code></td></tr>
+<tr><td><code>`</code></td><td>Set the selected text to lower case</td><td><code>switch_to_lowercase</code></td></tr>
+<tr><td><code>Alt-`</code></td><td>Set the selected text to upper case</td><td><code>switch_to_uppercase</code></td></tr>
+<tr><td><code>i</code></td><td>Insert before selection</td><td><code>insert_mode</code></td></tr>
+<tr><td><code>a</code></td><td>Insert after selection (append)</td><td><code>append_mode</code></td></tr>
+<tr><td><code>I</code></td><td>Insert at the start of the line</td><td><code>insert_at_line_start</code></td></tr>
+<tr><td><code>A</code></td><td>Insert at the end of the line</td><td><code>insert_at_line_end</code></td></tr>
+<tr><td><code>o</code></td><td>Open new line below selection</td><td><code>open_below</code></td></tr>
+<tr><td><code>O</code></td><td>Open new line above selection</td><td><code>open_above</code></td></tr>
+<tr><td><code>.</code></td><td>Repeat last insert</td><td>N/A</td></tr>
+<tr><td><code>u</code></td><td>Undo change</td><td><code>undo</code></td></tr>
+<tr><td><code>U</code></td><td>Redo change</td><td><code>redo</code></td></tr>
+<tr><td><code>Alt-u</code></td><td>Move backward in history</td><td><code>earlier</code></td></tr>
+<tr><td><code>Alt-U</code></td><td>Move forward in history</td><td><code>later</code></td></tr>
+<tr><td><code>y</code></td><td>Yank selection</td><td><code>yank</code></td></tr>
+<tr><td><code>p</code></td><td>Paste after selection</td><td><code>paste_after</code></td></tr>
+<tr><td><code>P</code></td><td>Paste before selection</td><td><code>paste_before</code></td></tr>
+<tr><td><code>"</code> <code>&lt;reg&gt;</code></td><td>Select a register to yank to or paste from</td><td><code>select_register</code></td></tr>
+<tr><td><code>&gt;</code></td><td>Indent selection</td><td><code>indent</code></td></tr>
+<tr><td><code>&lt;</code></td><td>Unindent selection</td><td><code>unindent</code></td></tr>
+<tr><td><code>=</code></td><td>Format selection (<strong>LSP</strong>)</td><td><code>format_selections</code></td></tr>
+<tr><td><code>d</code></td><td>Delete selection</td><td><code>delete_selection</code></td></tr>
+<tr><td><code>Alt-d</code></td><td>Delete selection, without yanking</td><td><code>delete_selection_noyank</code></td></tr>
+<tr><td><code>c</code></td><td>Change selection (delete and enter insert mode)</td><td><code>change_selection</code></td></tr>
+<tr><td><code>Alt-c</code></td><td>Change selection (delete and enter insert mode, without yanking)</td><td><code>change_selection_noyank</code></td></tr>
+<tr><td><code>Ctrl-a</code></td><td>Increment object (number) under cursor</td><td><code>increment</code></td></tr>
+<tr><td><code>Ctrl-x</code></td><td>Decrement object (number) under cursor</td><td><code>decrement</code></td></tr>
+<tr><td><code>Q</code></td><td>Start/stop macro recording to the selected register (experimental)</td><td><code>record_macro</code></td></tr>
+<tr><td><code>q</code></td><td>Play back a recorded macro from the selected register (experimental)</td><td><code>replay_macro</code></td></tr>
+</tbody></table>
+</div>
+<h4 id="shell"><a class="header" href="#shell">Shell</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>|</code></td><td>Pipe each selection through shell command, replacing with output</td><td><code>shell_pipe</code></td></tr>
+<tr><td><code>Alt-|</code></td><td>Pipe each selection into shell command, ignoring output</td><td><code>shell_pipe_to</code></td></tr>
+<tr><td><code>!</code></td><td>Run shell command, inserting output before each selection</td><td><code>shell_insert_output</code></td></tr>
+<tr><td><code>Alt-!</code></td><td>Run shell command, appending output after each selection</td><td><code>shell_append_output</code></td></tr>
+<tr><td><code>$</code></td><td>Pipe each selection into shell command, keep selections where command returned 0</td><td><code>shell_keep_pipe</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="selection-manipulation"><a class="header" href="#selection-manipulation">Selection manipulation</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>s</code></td><td>Select all regex matches inside selections</td><td><code>select_regex</code></td></tr>
+<tr><td><code>S</code></td><td>Split selection into sub selections on regex matches</td><td><code>split_selection</code></td></tr>
+<tr><td><code>Alt-s</code></td><td>Split selection on newlines</td><td><code>split_selection_on_newline</code></td></tr>
+<tr><td><code>Alt-minus</code></td><td>Merge selections</td><td><code>merge_selections</code></td></tr>
+<tr><td><code>Alt-_</code></td><td>Merge consecutive selections</td><td><code>merge_consecutive_selections</code></td></tr>
+<tr><td><code>&amp;</code></td><td>Align selection in columns</td><td><code>align_selections</code></td></tr>
+<tr><td><code>_</code></td><td>Trim whitespace from the selection</td><td><code>trim_selections</code></td></tr>
+<tr><td><code>;</code></td><td>Collapse selection onto a single cursor</td><td><code>collapse_selection</code></td></tr>
+<tr><td><code>Alt-;</code></td><td>Flip selection cursor and anchor</td><td><code>flip_selections</code></td></tr>
+<tr><td><code>Alt-:</code></td><td>Ensures the selection is in forward direction</td><td><code>ensure_selections_forward</code></td></tr>
+<tr><td><code>,</code></td><td>Keep only the primary selection</td><td><code>keep_primary_selection</code></td></tr>
+<tr><td><code>Alt-,</code></td><td>Remove the primary selection</td><td><code>remove_primary_selection</code></td></tr>
+<tr><td><code>C</code></td><td>Copy selection onto the next line (Add cursor below)</td><td><code>copy_selection_on_next_line</code></td></tr>
+<tr><td><code>Alt-C</code></td><td>Copy selection onto the previous line (Add cursor above)</td><td><code>copy_selection_on_prev_line</code></td></tr>
+<tr><td><code>(</code></td><td>Rotate main selection backward</td><td><code>rotate_selections_backward</code></td></tr>
+<tr><td><code>)</code></td><td>Rotate main selection forward</td><td><code>rotate_selections_forward</code></td></tr>
+<tr><td><code>Alt-(</code></td><td>Rotate selection contents backward</td><td><code>rotate_selection_contents_backward</code></td></tr>
+<tr><td><code>Alt-)</code></td><td>Rotate selection contents forward</td><td><code>rotate_selection_contents_forward</code></td></tr>
+<tr><td><code>%</code></td><td>Select entire file</td><td><code>select_all</code></td></tr>
+<tr><td><code>x</code></td><td>Select current line, if already selected, extend to next line</td><td><code>extend_line_below</code></td></tr>
+<tr><td><code>X</code></td><td>Extend selection to line bounds (line-wise selection)</td><td><code>extend_to_line_bounds</code></td></tr>
+<tr><td><code>Alt-x</code></td><td>Shrink selection to line bounds (line-wise selection)</td><td><code>shrink_to_line_bounds</code></td></tr>
+<tr><td><code>J</code></td><td>Join lines inside selection</td><td><code>join_selections</code></td></tr>
+<tr><td><code>Alt-J</code></td><td>Join lines inside selection and select the inserted space</td><td><code>join_selections_space</code></td></tr>
+<tr><td><code>K</code></td><td>Keep selections matching the regex</td><td><code>keep_selections</code></td></tr>
+<tr><td><code>Alt-K</code></td><td>Remove selections matching the regex</td><td><code>remove_selections</code></td></tr>
+<tr><td><code>Ctrl-c</code></td><td>Comment/uncomment the selections</td><td><code>toggle_comments</code></td></tr>
+<tr><td><code>Alt-o</code>, <code>Alt-up</code></td><td>Expand selection to parent syntax node (<strong>TS</strong>)</td><td><code>expand_selection</code></td></tr>
+<tr><td><code>Alt-i</code>, <code>Alt-down</code></td><td>Shrink syntax tree object selection (<strong>TS</strong>)</td><td><code>shrink_selection</code></td></tr>
+<tr><td><code>Alt-p</code>, <code>Alt-left</code></td><td>Select previous sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_prev_sibling</code></td></tr>
+<tr><td><code>Alt-n</code>, <code>Alt-right</code></td><td>Select next sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_next_sibling</code></td></tr>
+<tr><td><code>Alt-a</code></td><td>Select all sibling nodes in syntax tree (<strong>TS</strong>)</td><td><code>select_all_siblings</code></td></tr>
+<tr><td><code>Alt-I</code>, <code>Alt-Shift-down</code></td><td>Select all children nodes in syntax tree (<strong>TS</strong>)</td><td><code>select_all_children</code></td></tr>
+<tr><td><code>Alt-e</code></td><td>Move to end of parent node in syntax tree (<strong>TS</strong>)</td><td><code>move_parent_node_end</code></td></tr>
+<tr><td><code>Alt-b</code></td><td>Move to start of parent node in syntax tree (<strong>TS</strong>)</td><td><code>move_parent_node_start</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="search"><a class="header" href="#search">Search</a></h3>
+<p>Search commands all operate on the <code>/</code> register by default. To use a different register, use <code>"&lt;char&gt;</code>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>/</code></td><td>Search for regex pattern</td><td><code>search</code></td></tr>
+<tr><td><code>?</code></td><td>Search for previous pattern</td><td><code>rsearch</code></td></tr>
+<tr><td><code>n</code></td><td>Select next search match</td><td><code>search_next</code></td></tr>
+<tr><td><code>N</code></td><td>Select previous search match</td><td><code>search_prev</code></td></tr>
+<tr><td><code>*</code></td><td>Use current selection as the search pattern, automatically wrapping with <code>\b</code> on word boundaries</td><td><code>search_selection_detect_word_boundaries</code></td></tr>
+<tr><td><code>Alt-*</code></td><td>Use current selection as the search pattern</td><td><code>search_selection</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="minor-modes"><a class="header" href="#minor-modes">Minor modes</a></h3>
+<p>These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>v</code></td><td>Enter <a href="#select--extend-mode">select (extend) mode</a></td><td><code>select_mode</code></td></tr>
+<tr><td><code>g</code></td><td>Enter <a href="#goto-mode">goto mode</a></td><td>N/A</td></tr>
+<tr><td><code>m</code></td><td>Enter <a href="#match-mode">match mode</a></td><td>N/A</td></tr>
+<tr><td><code>:</code></td><td>Enter command mode</td><td><code>command_mode</code></td></tr>
+<tr><td><code>z</code></td><td>Enter <a href="#view-mode">view mode</a></td><td>N/A</td></tr>
+<tr><td><code>Z</code></td><td>Enter sticky <a href="#view-mode">view mode</a></td><td>N/A</td></tr>
+<tr><td><code>Ctrl-w</code></td><td>Enter <a href="#window-mode">window mode</a></td><td>N/A</td></tr>
+<tr><td><code>Space</code></td><td>Enter <a href="#space-mode">space mode</a></td><td>N/A</td></tr>
+</tbody></table>
+</div>
+<p>These modes (except command mode) can be configured by
+<a href="https://docs.helix-editor.com/remapping.html#minor-modes">remapping keys</a>.</p>
+<h4 id="view-mode"><a class="header" href="#view-mode">View mode</a></h4>
+<p>Accessed by typing <code>z</code> in <a href="#normal-mode">normal mode</a>.</p>
+<p>View mode is intended for scrolling and manipulating the view without changing
+the selection. The "sticky" variant of this mode (accessed by typing <code>Z</code> in
+normal mode) is persistent and can be exited using the escape key. This is
+useful when you're simply looking over text and not actively editing it.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>z</code>, <code>c</code></td><td>Vertically center the line</td><td><code>align_view_center</code></td></tr>
+<tr><td><code>t</code></td><td>Align the line to the top of the screen</td><td><code>align_view_top</code></td></tr>
+<tr><td><code>b</code></td><td>Align the line to the bottom of the screen</td><td><code>align_view_bottom</code></td></tr>
+<tr><td><code>m</code></td><td>Align the line to the middle of the screen (horizontally)</td><td><code>align_view_middle</code></td></tr>
+<tr><td><code>j</code>, <code>down</code></td><td>Scroll the view downwards</td><td><code>scroll_down</code></td></tr>
+<tr><td><code>k</code>, <code>up</code></td><td>Scroll the view upwards</td><td><code>scroll_up</code></td></tr>
+<tr><td><code>Ctrl-f</code>, <code>PageDown</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
+<tr><td><code>Ctrl-b</code>, <code>PageUp</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
+<tr><td><code>Ctrl-u</code></td><td>Move cursor and page half page up</td><td><code>page_cursor_half_up</code></td></tr>
+<tr><td><code>Ctrl-d</code></td><td>Move cursor and page half page down</td><td><code>page_cursor_half_down</code></td></tr>
+</tbody></table>
+</div>
+<h4 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h4>
+<p>Accessed by typing <code>g</code> in <a href="#normal-mode">normal mode</a>.</p>
+<p>Jumps to various locations.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>g</code></td><td>Go to line number <code>&lt;n&gt;</code> else start of file</td><td><code>goto_file_start</code></td></tr>
+<tr><td><code>|</code></td><td>Go to column number <code>&lt;n&gt;</code> else start of line</td><td><code>goto_column</code></td></tr>
+<tr><td><code>e</code></td><td>Go to the end of the file</td><td><code>goto_last_line</code></td></tr>
+<tr><td><code>f</code></td><td>Go to files in the selections</td><td><code>goto_file</code></td></tr>
+<tr><td><code>h</code></td><td>Go to the start of the line</td><td><code>goto_line_start</code></td></tr>
+<tr><td><code>l</code></td><td>Go to the end of the line</td><td><code>goto_line_end</code></td></tr>
+<tr><td><code>s</code></td><td>Go to first non-whitespace character of the line</td><td><code>goto_first_nonwhitespace</code></td></tr>
+<tr><td><code>t</code></td><td>Go to the top of the screen</td><td><code>goto_window_top</code></td></tr>
+<tr><td><code>c</code></td><td>Go to the middle of the screen</td><td><code>goto_window_center</code></td></tr>
+<tr><td><code>b</code></td><td>Go to the bottom of the screen</td><td><code>goto_window_bottom</code></td></tr>
+<tr><td><code>d</code></td><td>Go to definition (<strong>LSP</strong>)</td><td><code>goto_definition</code></td></tr>
+<tr><td><code>y</code></td><td>Go to type definition (<strong>LSP</strong>)</td><td><code>goto_type_definition</code></td></tr>
+<tr><td><code>r</code></td><td>Go to references (<strong>LSP</strong>)</td><td><code>goto_reference</code></td></tr>
+<tr><td><code>i</code></td><td>Go to implementation (<strong>LSP</strong>)</td><td><code>goto_implementation</code></td></tr>
+<tr><td><code>a</code></td><td>Go to the last accessed/alternate file</td><td><code>goto_last_accessed_file</code></td></tr>
+<tr><td><code>m</code></td><td>Go to the last modified/alternate file</td><td><code>goto_last_modified_file</code></td></tr>
+<tr><td><code>n</code></td><td>Go to next buffer</td><td><code>goto_next_buffer</code></td></tr>
+<tr><td><code>p</code></td><td>Go to previous buffer</td><td><code>goto_previous_buffer</code></td></tr>
+<tr><td><code>.</code></td><td>Go to last modification in current file</td><td><code>goto_last_modification</code></td></tr>
+<tr><td><code>j</code></td><td>Move down textual (instead of visual) line</td><td><code>move_line_down</code></td></tr>
+<tr><td><code>k</code></td><td>Move up textual (instead of visual) line</td><td><code>move_line_up</code></td></tr>
+<tr><td><code>w</code></td><td>Show labels at each word and select the word that belongs to the entered labels</td><td><code>goto_word</code></td></tr>
+</tbody></table>
+</div>
+<h4 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h4>
+<p>Accessed by typing <code>m</code> in <a href="#normal-mode">normal mode</a>.</p>
+<p>Please refer to the relevant sections for detailed explanations about <a href="./surround.html">surround</a> and <a href="./textobjects.html">textobjects</a>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>m</code></td><td>Goto matching bracket (<strong>TS</strong>)</td><td><code>match_brackets</code></td></tr>
+<tr><td><code>s</code> <code>&lt;char&gt;</code></td><td>Surround current selection with <code>&lt;char&gt;</code></td><td><code>surround_add</code></td></tr>
+<tr><td><code>r</code> <code>&lt;from&gt;&lt;to&gt;</code></td><td>Replace surround character <code>&lt;from&gt;</code> with <code>&lt;to&gt;</code></td><td><code>surround_replace</code></td></tr>
+<tr><td><code>d</code> <code>&lt;char&gt;</code></td><td>Delete surround character <code>&lt;char&gt;</code></td><td><code>surround_delete</code></td></tr>
+<tr><td><code>a</code> <code>&lt;object&gt;</code></td><td>Select around textobject</td><td><code>select_textobject_around</code></td></tr>
+<tr><td><code>i</code> <code>&lt;object&gt;</code></td><td>Select inside textobject</td><td><code>select_textobject_inner</code></td></tr>
+</tbody></table>
+</div>
+<p>TODO: Mappings for selecting syntax nodes (a superset of <code>[</code>).</p>
+<h4 id="window-mode"><a class="header" href="#window-mode">Window mode</a></h4>
+<p>Accessed by typing <code>Ctrl-w</code> in <a href="#normal-mode">normal mode</a>.</p>
+<p>This layer is similar to Vim keybindings as Kakoune does not support windows.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>w</code>, <code>Ctrl-w</code></td><td>Switch to next window</td><td><code>rotate_view</code></td></tr>
+<tr><td><code>v</code>, <code>Ctrl-v</code></td><td>Vertical right split</td><td><code>vsplit</code></td></tr>
+<tr><td><code>s</code>, <code>Ctrl-s</code></td><td>Horizontal bottom split</td><td><code>hsplit</code></td></tr>
+<tr><td><code>f</code></td><td>Go to files in the selections in horizontal splits</td><td><code>goto_file</code></td></tr>
+<tr><td><code>F</code></td><td>Go to files in the selections in vertical splits</td><td><code>goto_file</code></td></tr>
+<tr><td><code>h</code>, <code>Ctrl-h</code>, <code>Left</code></td><td>Move to left split</td><td><code>jump_view_left</code></td></tr>
+<tr><td><code>j</code>, <code>Ctrl-j</code>, <code>Down</code></td><td>Move to split below</td><td><code>jump_view_down</code></td></tr>
+<tr><td><code>k</code>, <code>Ctrl-k</code>, <code>Up</code></td><td>Move to split above</td><td><code>jump_view_up</code></td></tr>
+<tr><td><code>l</code>, <code>Ctrl-l</code>, <code>Right</code></td><td>Move to right split</td><td><code>jump_view_right</code></td></tr>
+<tr><td><code>q</code>, <code>Ctrl-q</code></td><td>Close current window</td><td><code>wclose</code></td></tr>
+<tr><td><code>o</code>, <code>Ctrl-o</code></td><td>Only keep the current window, closing all the others</td><td><code>wonly</code></td></tr>
+<tr><td><code>H</code></td><td>Swap window to the left</td><td><code>swap_view_left</code></td></tr>
+<tr><td><code>J</code></td><td>Swap window downwards</td><td><code>swap_view_down</code></td></tr>
+<tr><td><code>K</code></td><td>Swap window upwards</td><td><code>swap_view_up</code></td></tr>
+<tr><td><code>L</code></td><td>Swap window to the right</td><td><code>swap_view_right</code></td></tr>
+</tbody></table>
+</div>
+<h4 id="space-mode"><a class="header" href="#space-mode">Space mode</a></h4>
+<p>Accessed by typing <code>Space</code> in <a href="#normal-mode">normal mode</a>.</p>
+<p>This layer is a kludge of mappings, mostly pickers.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>f</code></td><td>Open file picker at LSP workspace root</td><td><code>file_picker</code></td></tr>
+<tr><td><code>F</code></td><td>Open file picker at current working directory</td><td><code>file_picker_in_current_directory</code></td></tr>
+<tr><td><code>b</code></td><td>Open buffer picker</td><td><code>buffer_picker</code></td></tr>
+<tr><td><code>j</code></td><td>Open jumplist picker</td><td><code>jumplist_picker</code></td></tr>
+<tr><td><code>g</code></td><td>Open changed file picker</td><td><code>changed_file_picker</code></td></tr>
+<tr><td><code>G</code></td><td>Debug (experimental)</td><td>N/A</td></tr>
+<tr><td><code>k</code></td><td>Show documentation for item under cursor in a <a href="#popup">popup</a> (<strong>LSP</strong>)</td><td><code>hover</code></td></tr>
+<tr><td><code>s</code></td><td>Open document symbol picker (<strong>LSP</strong>)</td><td><code>symbol_picker</code></td></tr>
+<tr><td><code>S</code></td><td>Open workspace symbol picker (<strong>LSP</strong>)</td><td><code>workspace_symbol_picker</code></td></tr>
+<tr><td><code>d</code></td><td>Open document diagnostics picker (<strong>LSP</strong>)</td><td><code>diagnostics_picker</code></td></tr>
+<tr><td><code>D</code></td><td>Open workspace diagnostics picker (<strong>LSP</strong>)</td><td><code>workspace_diagnostics_picker</code></td></tr>
+<tr><td><code>r</code></td><td>Rename symbol (<strong>LSP</strong>)</td><td><code>rename_symbol</code></td></tr>
+<tr><td><code>a</code></td><td>Apply code action (<strong>LSP</strong>)</td><td><code>code_action</code></td></tr>
+<tr><td><code>h</code></td><td>Select symbol references (<strong>LSP</strong>)</td><td><code>select_references_to_symbol_under_cursor</code></td></tr>
+<tr><td><code>'</code></td><td>Open last fuzzy picker</td><td><code>last_picker</code></td></tr>
+<tr><td><code>w</code></td><td>Enter <a href="#window-mode">window mode</a></td><td>N/A</td></tr>
+<tr><td><code>c</code></td><td>Comment/uncomment selections</td><td><code>toggle_comments</code></td></tr>
+<tr><td><code>C</code></td><td>Block comment/uncomment selections</td><td><code>toggle_block_comments</code></td></tr>
+<tr><td><code>Alt-c</code></td><td>Line comment/uncomment selections</td><td><code>toggle_line_comments</code></td></tr>
+<tr><td><code>p</code></td><td>Paste system clipboard after selections</td><td><code>paste_clipboard_after</code></td></tr>
+<tr><td><code>P</code></td><td>Paste system clipboard before selections</td><td><code>paste_clipboard_before</code></td></tr>
+<tr><td><code>y</code></td><td>Yank selections to clipboard</td><td><code>yank_to_clipboard</code></td></tr>
+<tr><td><code>Y</code></td><td>Yank main selection to clipboard</td><td><code>yank_main_selection_to_clipboard</code></td></tr>
+<tr><td><code>R</code></td><td>Replace selections by clipboard contents</td><td><code>replace_selections_with_clipboard</code></td></tr>
+<tr><td><code>/</code></td><td>Global search in workspace folder</td><td><code>global_search</code></td></tr>
+<tr><td><code>?</code></td><td>Open command palette</td><td><code>command_palette</code></td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p>💡 Global search displays results in a fuzzy picker, use <code>Space + '</code> to bring it back up after opening a file.</p>
+</blockquote>
+<h5 id="popup"><a class="header" href="#popup">Popup</a></h5>
+<p>Displays documentation for item under cursor. Remapping currently not supported.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>Ctrl-u</code></td><td>Scroll up</td></tr>
+<tr><td><code>Ctrl-d</code></td><td>Scroll down</td></tr>
+</tbody></table>
+</div>
+<h5 id="completion-menu"><a class="header" href="#completion-menu">Completion Menu</a></h5>
+<p>Displays documentation for the selected completion item. Remapping currently not supported.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>Shift-Tab</code>, <code>Ctrl-p</code>, <code>Up</code></td><td>Previous entry</td></tr>
+<tr><td><code>Tab</code>, <code>Ctrl-n</code>, <code>Down</code></td><td>Next entry</td></tr>
+<tr><td><code>Enter</code></td><td>Close menu and accept completion</td></tr>
+<tr><td><code>Ctrl-c</code></td><td>Close menu and reject completion</td></tr>
+</tbody></table>
+</div>
+<p>Any other keypresses result in the completion being accepted.</p>
+<h5 id="signature-help-popup"><a class="header" href="#signature-help-popup">Signature-help Popup</a></h5>
+<p>Displays the signature of the selected completion item. Remapping currently not supported.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>Alt-p</code></td><td>Previous signature</td></tr>
+<tr><td><code>Alt-n</code></td><td>Next signature</td></tr>
+</tbody></table>
+</div>
+<h4 id="unimpaired"><a class="header" href="#unimpaired">Unimpaired</a></h4>
+<p>These mappings are in the style of <a href="https://github.com/tpope/vim-unimpaired">vim-unimpaired</a>.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>]d</code></td><td>Go to next diagnostic (<strong>LSP</strong>)</td><td><code>goto_next_diag</code></td></tr>
+<tr><td><code>[d</code></td><td>Go to previous diagnostic (<strong>LSP</strong>)</td><td><code>goto_prev_diag</code></td></tr>
+<tr><td><code>]D</code></td><td>Go to last diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_last_diag</code></td></tr>
+<tr><td><code>[D</code></td><td>Go to first diagnostic in document (<strong>LSP</strong>)</td><td><code>goto_first_diag</code></td></tr>
+<tr><td><code>]f</code></td><td>Go to next function (<strong>TS</strong>)</td><td><code>goto_next_function</code></td></tr>
+<tr><td><code>[f</code></td><td>Go to previous function (<strong>TS</strong>)</td><td><code>goto_prev_function</code></td></tr>
+<tr><td><code>]t</code></td><td>Go to next type definition (<strong>TS</strong>)</td><td><code>goto_next_class</code></td></tr>
+<tr><td><code>[t</code></td><td>Go to previous type definition (<strong>TS</strong>)</td><td><code>goto_prev_class</code></td></tr>
+<tr><td><code>]a</code></td><td>Go to next argument/parameter (<strong>TS</strong>)</td><td><code>goto_next_parameter</code></td></tr>
+<tr><td><code>[a</code></td><td>Go to previous argument/parameter (<strong>TS</strong>)</td><td><code>goto_prev_parameter</code></td></tr>
+<tr><td><code>]c</code></td><td>Go to next comment (<strong>TS</strong>)</td><td><code>goto_next_comment</code></td></tr>
+<tr><td><code>[c</code></td><td>Go to previous comment (<strong>TS</strong>)</td><td><code>goto_prev_comment</code></td></tr>
+<tr><td><code>]T</code></td><td>Go to next test (<strong>TS</strong>)</td><td><code>goto_next_test</code></td></tr>
+<tr><td><code>[T</code></td><td>Go to previous test (<strong>TS</strong>)</td><td><code>goto_prev_test</code></td></tr>
+<tr><td><code>]p</code></td><td>Go to next paragraph</td><td><code>goto_next_paragraph</code></td></tr>
+<tr><td><code>[p</code></td><td>Go to previous paragraph</td><td><code>goto_prev_paragraph</code></td></tr>
+<tr><td><code>]g</code></td><td>Go to next change</td><td><code>goto_next_change</code></td></tr>
+<tr><td><code>[g</code></td><td>Go to previous change</td><td><code>goto_prev_change</code></td></tr>
+<tr><td><code>]G</code></td><td>Go to last change</td><td><code>goto_last_change</code></td></tr>
+<tr><td><code>[G</code></td><td>Go to first change</td><td><code>goto_first_change</code></td></tr>
+<tr><td><code>]Space</code></td><td>Add newline below</td><td><code>add_newline_below</code></td></tr>
+<tr><td><code>[Space</code></td><td>Add newline above</td><td><code>add_newline_above</code></td></tr>
+</tbody></table>
+</div>
+<h2 id="insert-mode"><a class="header" href="#insert-mode">Insert mode</a></h2>
+<p>Accessed by typing <code>i</code> in <a href="#normal-mode">normal mode</a>.</p>
+<p>Insert mode bindings are minimal by default. Helix is designed to
+be a modal editor, and this is reflected in the user experience and internal
+mechanics. Changes to the text are only saved for undos when
+escaping from insert mode to normal mode.</p>
+<blockquote>
+<p>💡 New users are strongly encouraged to learn the modal editing paradigm
+to get the smoothest experience.</p>
+</blockquote>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>Escape</code></td><td>Switch to normal mode</td><td><code>normal_mode</code></td></tr>
+<tr><td><code>Ctrl-s</code></td><td>Commit undo checkpoint</td><td><code>commit_undo_checkpoint</code></td></tr>
+<tr><td><code>Ctrl-x</code></td><td>Autocomplete</td><td><code>completion</code></td></tr>
+<tr><td><code>Ctrl-r</code></td><td>Insert a register content</td><td><code>insert_register</code></td></tr>
+<tr><td><code>Ctrl-w</code>, <code>Alt-Backspace</code></td><td>Delete previous word</td><td><code>delete_word_backward</code></td></tr>
+<tr><td><code>Alt-d</code>, <code>Alt-Delete</code></td><td>Delete next word</td><td><code>delete_word_forward</code></td></tr>
+<tr><td><code>Ctrl-u</code></td><td>Delete to start of line</td><td><code>kill_to_line_start</code></td></tr>
+<tr><td><code>Ctrl-k</code></td><td>Delete to end of line</td><td><code>kill_to_line_end</code></td></tr>
+<tr><td><code>Ctrl-h</code>, <code>Backspace</code>, <code>Shift-Backspace</code></td><td>Delete previous char</td><td><code>delete_char_backward</code></td></tr>
+<tr><td><code>Ctrl-d</code>, <code>Delete</code></td><td>Delete next char</td><td><code>delete_char_forward</code></td></tr>
+<tr><td><code>Ctrl-j</code>, <code>Enter</code></td><td>Insert new line</td><td><code>insert_newline</code></td></tr>
+</tbody></table>
+</div>
+<p>These keys are not recommended, but are included for new users less familiar
+with modal editors.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
+<tr><td><code>Up</code></td><td>Move to previous line</td><td><code>move_line_up</code></td></tr>
+<tr><td><code>Down</code></td><td>Move to next line</td><td><code>move_line_down</code></td></tr>
+<tr><td><code>Left</code></td><td>Backward a char</td><td><code>move_char_left</code></td></tr>
+<tr><td><code>Right</code></td><td>Forward a char</td><td><code>move_char_right</code></td></tr>
+<tr><td><code>PageUp</code></td><td>Move one page up</td><td><code>page_up</code></td></tr>
+<tr><td><code>PageDown</code></td><td>Move one page down</td><td><code>page_down</code></td></tr>
+<tr><td><code>Home</code></td><td>Move to line start</td><td><code>goto_line_start</code></td></tr>
+<tr><td><code>End</code></td><td>Move to line end</td><td><code>goto_line_end_newline</code></td></tr>
+</tbody></table>
+</div>
+<p>As you become more comfortable with modal editing, you may want to disable some
+insert mode bindings. You can do this by editing your <code>config.toml</code> file.</p>
+<pre><code class="language-toml">[keys.insert]
+up = "no_op"
+down = "no_op"
+left = "no_op"
+right = "no_op"
+pageup = "no_op"
+pagedown = "no_op"
+home = "no_op"
+end = "no_op"
+</code></pre>
+<h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
+<p>Accessed by typing <code>v</code> in <a href="#normal-mode">normal mode</a>.</p>
+<p>Select mode echoes Normal mode, but changes any movements to extend
+selections rather than replace them. Goto motions are also changed to
+extend, so that <code>vgl</code>, for example, extends the selection to the end of
+the line.</p>
+<p>Search is also affected. By default, <code>n</code> and <code>N</code> will remove the current
+selection and select the next instance of the search term. Toggling this
+mode before pressing <code>n</code> or <code>N</code> makes it possible to keep the current
+selection. Toggling it on and off during your iterative searching allows
+you to selectively add search terms to your selections.</p>
+<h2 id="picker"><a class="header" href="#picker">Picker</a></h2>
+<p>Keys to use within picker. Remapping currently not supported.
+See the documentation page on <a href="./pickers.html">pickers</a> for more info.
+<a href="#prompt">Prompt</a> keybinds also work in pickers, except where they conflict with picker keybinds.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>Shift-Tab</code>, <code>Up</code>, <code>Ctrl-p</code></td><td>Previous entry</td></tr>
+<tr><td><code>Tab</code>, <code>Down</code>, <code>Ctrl-n</code></td><td>Next entry</td></tr>
+<tr><td><code>PageUp</code>, <code>Ctrl-u</code></td><td>Page up</td></tr>
+<tr><td><code>PageDown</code>, <code>Ctrl-d</code></td><td>Page down</td></tr>
+<tr><td><code>Home</code></td><td>Go to first entry</td></tr>
+<tr><td><code>End</code></td><td>Go to last entry</td></tr>
+<tr><td><code>Enter</code></td><td>Open selected</td></tr>
+<tr><td><code>Alt-Enter</code></td><td>Open selected in the background without closing the picker</td></tr>
+<tr><td><code>Ctrl-s</code></td><td>Open horizontally</td></tr>
+<tr><td><code>Ctrl-v</code></td><td>Open vertically</td></tr>
+<tr><td><code>Ctrl-t</code></td><td>Toggle preview</td></tr>
+<tr><td><code>Escape</code>, <code>Ctrl-c</code></td><td>Close picker</td></tr>
+</tbody></table>
+</div>
+<h2 id="prompt"><a class="header" href="#prompt">Prompt</a></h2>
+<p>Keys to use within prompt, Remapping currently not supported.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>Escape</code>, <code>Ctrl-c</code></td><td>Close prompt</td></tr>
+<tr><td><code>Alt-b</code>, <code>Ctrl-Left</code></td><td>Backward a word</td></tr>
+<tr><td><code>Ctrl-b</code>, <code>Left</code></td><td>Backward a char</td></tr>
+<tr><td><code>Alt-f</code>, <code>Ctrl-Right</code></td><td>Forward a word</td></tr>
+<tr><td><code>Ctrl-f</code>, <code>Right</code></td><td>Forward a char</td></tr>
+<tr><td><code>Ctrl-e</code>, <code>End</code></td><td>Move prompt end</td></tr>
+<tr><td><code>Ctrl-a</code>, <code>Home</code></td><td>Move prompt start</td></tr>
+<tr><td><code>Ctrl-w</code>, <code>Alt-Backspace</code>, <code>Ctrl-Backspace</code></td><td>Delete previous word</td></tr>
+<tr><td><code>Alt-d</code>, <code>Alt-Delete</code>, <code>Ctrl-Delete</code></td><td>Delete next word</td></tr>
+<tr><td><code>Ctrl-u</code></td><td>Delete to start of line</td></tr>
+<tr><td><code>Ctrl-k</code></td><td>Delete to end of line</td></tr>
+<tr><td><code>Backspace</code>, <code>Ctrl-h</code>, <code>Shift-Backspace</code></td><td>Delete previous char</td></tr>
+<tr><td><code>Delete</code>, <code>Ctrl-d</code></td><td>Delete next char</td></tr>
+<tr><td><code>Ctrl-s</code></td><td>Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later</td></tr>
+<tr><td><code>Ctrl-p</code>, <code>Up</code></td><td>Select previous history</td></tr>
+<tr><td><code>Ctrl-n</code>, <code>Down</code></td><td>Select next history</td></tr>
+<tr><td><code>Ctrl-r</code></td><td>Insert the content of the register selected by following input char</td></tr>
+<tr><td><code>Tab</code></td><td>Select next completion item</td></tr>
+<tr><td><code>BackTab</code></td><td>Select previous completion item</td></tr>
+<tr><td><code>Enter</code></td><td>Open selected</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="pickers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="command-line.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="pickers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="command-line.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
