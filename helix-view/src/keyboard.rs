@@ -13,9 +13,9 @@ bitflags! {
 }
 
 #[cfg(feature = "term")]
-impl From<KeyModifiers> for crossterm::event::KeyModifiers {
+impl From<KeyModifiers> for termina::event::Modifiers {
     fn from(key_modifiers: KeyModifiers) -> Self {
-        use crossterm::event::KeyModifiers as CKeyModifiers;
+        use termina::event::Modifiers as CKeyModifiers;
 
         let mut result = CKeyModifiers::NONE;
 
@@ -37,9 +37,9 @@ impl From<KeyModifiers> for crossterm::event::KeyModifiers {
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::KeyModifiers> for KeyModifiers {
-    fn from(val: crossterm::event::KeyModifiers) -> Self {
-        use crossterm::event::KeyModifiers as CKeyModifiers;
+impl From<termina::event::Modifiers> for KeyModifiers {
+    fn from(val: termina::event::Modifiers) -> Self {
+        use termina::event::Modifiers as CKeyModifiers;
 
         let mut result = KeyModifiers::NONE;
 
@@ -92,9 +92,9 @@ pub enum MediaKeyCode {
 }
 
 #[cfg(feature = "term")]
-impl From<MediaKeyCode> for crossterm::event::MediaKeyCode {
+impl From<MediaKeyCode> for termina::event::MediaKeyCode {
     fn from(media_key_code: MediaKeyCode) -> Self {
-        use crossterm::event::MediaKeyCode as CMediaKeyCode;
+        use termina::event::MediaKeyCode as CMediaKeyCode;
 
         match media_key_code {
             MediaKeyCode::Play => CMediaKeyCode::Play,
@@ -115,9 +115,9 @@ impl From<MediaKeyCode> for crossterm::event::MediaKeyCode {
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::MediaKeyCode> for MediaKeyCode {
-    fn from(val: crossterm::event::MediaKeyCode) -> Self {
-        use crossterm::event::MediaKeyCode as CMediaKeyCode;
+impl From<termina::event::MediaKeyCode> for MediaKeyCode {
+    fn from(val: termina::event::MediaKeyCode) -> Self {
+        use termina::event::MediaKeyCode as CMediaKeyCode;
 
         match val {
             CMediaKeyCode::Play => MediaKeyCode::Play,
@@ -171,9 +171,9 @@ pub enum ModifierKeyCode {
 }
 
 #[cfg(feature = "term")]
-impl From<ModifierKeyCode> for crossterm::event::ModifierKeyCode {
+impl From<ModifierKeyCode> for termina::event::ModifierKeyCode {
     fn from(modifier_key_code: ModifierKeyCode) -> Self {
-        use crossterm::event::ModifierKeyCode as CModifierKeyCode;
+        use termina::event::ModifierKeyCode as CModifierKeyCode;
 
         match modifier_key_code {
             ModifierKeyCode::LeftShift => CModifierKeyCode::LeftShift,
@@ -195,9 +195,9 @@ impl From<ModifierKeyCode> for crossterm::event::ModifierKeyCode {
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::ModifierKeyCode> for ModifierKeyCode {
-    fn from(val: crossterm::event::ModifierKeyCode) -> Self {
-        use crossterm::event::ModifierKeyCode as CModifierKeyCode;
+impl From<termina::event::ModifierKeyCode> for ModifierKeyCode {
+    fn from(val: termina::event::ModifierKeyCode) -> Self {
+        use termina::event::ModifierKeyCode as CModifierKeyCode;
 
         match val {
             CModifierKeyCode::LeftShift => ModifierKeyCode::LeftShift,
@@ -280,9 +280,9 @@ pub enum KeyCode {
 }
 
 #[cfg(feature = "term")]
-impl From<KeyCode> for crossterm::event::KeyCode {
+impl From<KeyCode> for termina::event::KeyCode {
     fn from(key_code: KeyCode) -> Self {
-        use crossterm::event::KeyCode as CKeyCode;
+        use termina::event::KeyCode as CKeyCode;
 
         match key_code {
             KeyCode::Backspace => CKeyCode::Backspace,
@@ -298,10 +298,10 @@ impl From<KeyCode> for crossterm::event::KeyCode {
             KeyCode::Tab => CKeyCode::Tab,
             KeyCode::Delete => CKeyCode::Delete,
             KeyCode::Insert => CKeyCode::Insert,
-            KeyCode::F(f_number) => CKeyCode::F(f_number),
+            KeyCode::F(f_number) => CKeyCode::Function(f_number),
             KeyCode::Char(character) => CKeyCode::Char(character),
             KeyCode::Null => CKeyCode::Null,
-            KeyCode::Esc => CKeyCode::Esc,
+            KeyCode::Esc => CKeyCode::Escape,
             KeyCode::CapsLock => CKeyCode::CapsLock,
             KeyCode::ScrollLock => CKeyCode::ScrollLock,
             KeyCode::NumLock => CKeyCode::NumLock,
@@ -316,9 +316,9 @@ impl From<KeyCode> for crossterm::event::KeyCode {
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::KeyCode> for KeyCode {
-    fn from(val: crossterm::event::KeyCode) -> Self {
-        use crossterm::event::KeyCode as CKeyCode;
+impl From<termina::event::KeyCode> for KeyCode {
+    fn from(val: termina::event::KeyCode) -> Self {
+        use termina::event::KeyCode as CKeyCode;
 
         match val {
             CKeyCode::Backspace => KeyCode::Backspace,
@@ -335,10 +335,10 @@ impl From<crossterm::event::KeyCode> for KeyCode {
             CKeyCode::BackTab => unreachable!("BackTab should have been handled on KeyEvent level"),
             CKeyCode::Delete => KeyCode::Delete,
             CKeyCode::Insert => KeyCode::Insert,
-            CKeyCode::F(f_number) => KeyCode::F(f_number),
+            CKeyCode::Function(f_number) => KeyCode::F(f_number),
             CKeyCode::Char(character) => KeyCode::Char(character),
             CKeyCode::Null => KeyCode::Null,
-            CKeyCode::Esc => KeyCode::Esc,
+            CKeyCode::Escape => KeyCode::Esc,
             CKeyCode::CapsLock => KeyCode::CapsLock,
             CKeyCode::ScrollLock => KeyCode::ScrollLock,
             CKeyCode::NumLock => KeyCode::NumLock,
