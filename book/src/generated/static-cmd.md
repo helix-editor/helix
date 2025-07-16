@@ -267,6 +267,8 @@
 | `goto_prev_comment` | Goto previous comment | normal: `` [c ``, select: `` [c `` |
 | `goto_next_test` | Goto next test | normal: `` ]T ``, select: `` ]T `` |
 | `goto_prev_test` | Goto previous test | normal: `` [T ``, select: `` [T `` |
+| `goto_next_xml_element` | Goto next (X)HTML element | normal: `` ]x ``, select: `` ]x `` |
+| `goto_prev_xml_element` | Goto previous (X)HTML element | normal: `` [x ``, select: `` [x `` |
 | `goto_next_entry` | Goto next pairing | normal: `` ]e ``, select: `` ]e `` |
 | `goto_prev_entry` | Goto previous pairing | normal: `` [e ``, select: `` [e `` |
 | `goto_next_paragraph` | Goto next paragraph | normal: `` ]p ``, select: `` ]p `` |

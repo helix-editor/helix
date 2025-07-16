@@ -128,11 +128,36 @@
 (call_expression (argument_list (identifier) @variable))
 (function_declarator
   declarator: [(identifier) (field_identifier)] @function)
+
+; Up to 6 layers of declarators
 (parameter_declaration
   declarator: (identifier) @variable.parameter)
 (parameter_declaration
-  (pointer_declarator
-    declarator: (identifier) @variable.parameter))
+  (_
+    (identifier) @variable.parameter))
+(parameter_declaration
+  (_
+    (_
+      (identifier) @variable.parameter)))
+(parameter_declaration
+  (_
+    (_
+      (_
+        (identifier) @variable.parameter))))
+(parameter_declaration
+  (_
+    (_
+      (_
+        (_
+          (identifier) @variable.parameter)))))
+(parameter_declaration
+  (_
+    (_
+      (_
+        (_
+          (_
+            (identifier) @variable.parameter))))))
+
 (preproc_function_def
   name: (identifier) @function.special)
 
