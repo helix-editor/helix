@@ -82,7 +82,7 @@ open = "5.3.2"
 url = "2.5.4"
 
 # config
-toml = "0.8"
+toml.workspace = true
 
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
