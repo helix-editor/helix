@@ -27,14 +27,14 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     let event_tx = completion::CompletionHandler::new(config).spawn();
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
-    let auto_read = AutoReloadHandler::new().spawn();
+    let auto_reload = AutoReloadHandler::new().spawn();
     let document_colors = DocumentColorsHandler::default().spawn();
 
     let handlers = Handlers {
         completions: helix_view::handlers::completion::CompletionHandler::new(event_tx),
         signature_hints,
         auto_save,
-        auto_reload: auto_read,
+        auto_reload,
         document_colors,
     };
 

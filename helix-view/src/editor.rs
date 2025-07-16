@@ -905,12 +905,12 @@ pub struct AutoReloadPeriodic {
     #[serde(default)]
     /// Enable auto reload periodically. Defaults to false.
     pub enable: bool,
-    #[serde(default = "default_auto_read_interval")]
-    /// Time interval in milliseconds. Defaults to [DEFAULT_AUTO_READ_INTERVAL].
+    #[serde(default = "default_auto_reload_interval")]
+    /// Time interval in milliseconds. Defaults to [DEFAULT_AUTO_RELOAD_INTERVAL].
     pub interval: u64,
 }
 
-pub fn default_auto_read_interval() -> u64 {
+pub fn default_auto_reload_interval() -> u64 {
     DEFAULT_AUTO_RELOAD_INTERVAL
 }
 
@@ -930,7 +930,7 @@ where
             focus_gained,
             ..Default::default()
         }),
-        AutoReloadToml::AutoReload(auto_read) => Ok(auto_read),
+        AutoReloadToml::AutoReload(auto_reload) => Ok(auto_reload),
     }
 }
 
