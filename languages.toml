@@ -3543,7 +3543,7 @@ source = { git = "https://github.com/varpeti/tree-sitter-jinja2", rev = "a533cd3
 
 [[language]]
 name = "jjconfig"
-scope = "source.toml"
+scope = "source.jjconfig"
 injection-regex = "jjconfig"
 grammar = "toml"
 file-types = [{ glob = "jj/config.toml" }, { glob = "jj/conf.d/*.toml" }, { glob = ".jj/repo/*.toml" }]
