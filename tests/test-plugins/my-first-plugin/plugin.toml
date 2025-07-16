@@ -1,0 +1,8 @@
+name = "my-first-plugin"
+version = "0.1.0"
+authors = ["Test User"]
+description = "A test plugin."
+entrypoint = "main.wasm"
+
+[activation]
+on_command = ["my-plugin:test-command"]
