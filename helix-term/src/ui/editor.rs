@@ -1468,6 +1468,12 @@ impl Component for EditorView {
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained => {
+                if context.editor.config().auto_reload.focus_gained {
+                    helix_event::send_blocking(
+                        &context.editor.handlers.auto_reload,
+                        helix_view::handlers::AutoReloadEvent::EditorFocused,
+                    );
+                }
                 self.terminal_focused = true;
                 EventResult::Consumed(None)
             }
