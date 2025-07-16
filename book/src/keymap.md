@@ -350,7 +350,7 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 
 | Key      | Description                                  | Command                 |
 | -----    | -----------                                  | -------                 |
-| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`        | 
+| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`        |
 | `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`        |
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`        |
 | `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`       |
