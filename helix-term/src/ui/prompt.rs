@@ -1,12 +1,16 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
-use crate::{alt, ctrl, key, shift, ui};
+use crate::ui::completers::CompletionResult;
+use crate::{alt, ctrl, job, key, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
+use helix_event::{AsyncHook, TaskController, TaskHandle};
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{borrow::Cow, ops::RangeFrom};
+use tokio::time::Instant;
 use tui::buffer::Buffer as Surface;
 use tui::text::Span;
 use tui::widgets::{Block, Widget};
@@ -21,10 +25,39 @@ use helix_view::{
     Editor,
 };
 
-type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
-
 pub type Completion = (RangeFrom<usize>, Span<'static>);
-type CompletionFn = Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>;
+struct CompletionEvent {
+    cancel: TaskHandle,
+    callback: Box<dyn FnOnce() -> Vec<Completion> + Send + Sync>,
+    send: std::sync::mpsc::SyncSender<Vec<Completion>>,
+}
+
+struct CompletionHandler {}
+
+impl helix_event::AsyncHook for CompletionHandler {
+    type Event = CompletionEvent;
+
+    fn handle_event(&mut self, event: CompletionEvent, _: Option<Instant>) -> Option<Instant> {
+        if event.cancel.is_canceled() {
+            return None;
+        };
+        let completion = (event.callback)();
+        if event.send.send(completion).is_err() {
+            return None;
+        }
+        job::dispatch_blocking(move |_editor, compositor| {
+            if let Some(prompt) = compositor.find::<Prompt>() {
+                prompt.process_async_completion();
+            }
+        });
+        None
+    }
+
+    fn finish_debounce(&mut self) {}
+}
+
+type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
+type CompletionFn = Box<dyn FnMut(&Editor, &str) -> CompletionResult>;
 type CallbackFn = Box<dyn FnMut(&mut Context, &str, PromptEvent)>;
 pub type DocFn = Box<dyn Fn(&str) -> Option<Cow<str>>>;
 
@@ -38,11 +71,14 @@ pub struct Prompt {
     truncate_start: bool,
     truncate_end: bool,
     // ---
+    completion_fn: CompletionFn,
+    completion_hook: tokio::sync::mpsc::Sender<CompletionEvent>,
+    task_controller: TaskController,
+    receive_completion: Option<std::sync::mpsc::Receiver<Vec<Completion>>>,
     completion: Vec<Completion>,
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
-    completion_fn: CompletionFn,
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
     next_char_handler: Option<PromptCharHandler>,
@@ -83,7 +119,7 @@ impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
         history_register: Option<char>,
-        completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
+        completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
         Self {
@@ -94,11 +130,14 @@ impl Prompt {
             anchor: 0,
             truncate_start: false,
             truncate_end: false,
+            completion_fn: Box::new(completion_fn),
+            completion_hook: CompletionHandler {}.spawn(),
+            task_controller: TaskController::new(),
+            receive_completion: None,
             completion: Vec::new(),
             selection: None,
             history_register,
             history_pos: None,
-            completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
             next_char_handler: None,
@@ -155,8 +194,33 @@ impl Prompt {
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
+        // Cancel any pending async completions.
+        let handle = self.task_controller.restart();
+        self.receive_completion = None;
+
         self.exit_selection();
-        self.completion = (self.completion_fn)(editor, &self.line);
+        match (self.completion_fn)(editor, &self.line) {
+            CompletionResult::Immediate(completion) => self.completion = completion,
+            CompletionResult::Callback(f) => {
+                let (send_completion, recv_completion) = std::sync::mpsc::sync_channel(1);
+                helix_event::send_blocking(
+                    &self.completion_hook,
+                    CompletionEvent {
+                        cancel: handle,
+                        callback: f,
+                        send: send_completion,
+                    },
+                );
+                // To avoid flicker, give the completion handler a small timeout to
+                // complete immediately.
+                if let Ok(completion) = recv_completion.recv_timeout(Duration::from_millis(50)) {
+                    self.completion = completion;
+                    return;
+                }
+                self.completion.clear();
+                self.receive_completion = Some(recv_completion);
+            }
+        }
     }
 
     /// Compute the cursor position after applying movement
@@ -396,6 +460,16 @@ impl Prompt {
     pub fn exit_selection(&mut self) {
         self.selection = None;
     }
+
+    fn process_async_completion(&mut self) {
+        let Some(receive_completion) = &self.receive_completion else {
+            return;
+        };
+        if let Ok(completion) = receive_completion.try_recv() {
+            self.completion = completion;
+            helix_event::request_redraw();
+        }
+    }
 }
 
 const BASE_WIDTH: u16 = 30;
@@ -408,7 +482,6 @@ impl Prompt {
         let selected_color = theme.get("ui.menu.selected");
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
-        // completion
 
         let max_len = self
             .completion
