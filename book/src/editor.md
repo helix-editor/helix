@@ -7,6 +7,7 @@
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
+- [`[editor.auto-reload]` Section](#editorauto-reload-section)
 - [`[editor.auto-save]` Section](#editorauto-save-section)
 - [`[editor.search]` Section](#editorsearch-section)
 - [`[editor.whitespace]` Section](#editorwhitespace-section)
@@ -263,6 +264,16 @@ name = "rust"
 '`' = '`'
 '<' = '>'
 ```
+
+### `[editor.auto-reload]` Section
+
+Controls auto reloading of externally modified files.
+
+| Key | Description | Default |
+|--|--|---------|
+| `focus-gained` | Enable automatic reloading of externally modified files when Helix is focused. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
+| `periodic.enable` | Enable periodic auto reloading of externally modified files | `false` |
+| `periodic.interval` | Time interval in milliseconds between auto reload checks | `3000` |
 
 ### `[editor.auto-save]` Section
 
