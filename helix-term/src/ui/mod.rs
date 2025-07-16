@@ -473,7 +473,7 @@ pub mod completers {
     }
 
     pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
-        filename_with_git_ignore(editor, input, true)
+        filename_with_git_ignore(editor, input, false)
     }
 
     pub fn filename_with_git_ignore(
@@ -524,7 +524,7 @@ pub mod completers {
     }
 
     pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
-        directory_with_git_ignore(editor, input, true)
+        directory_with_git_ignore(editor, input, false)
     }
 
     pub fn directory_with_git_ignore(
