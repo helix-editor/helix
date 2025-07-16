@@ -3,7 +3,7 @@
 (term (_) ("." @punctuation) ((function ((identifier) @function.method))))
 
 ["(" ")"] @punctuation.bracket
-"," @punctuation.comma
+"," @punctuation.delimiter
 
 ((identifier) @keyword.control.conditional (#eq? @keyword.control.conditional "if"))
 ((identifier) @keyword.control.repeat (#eq? @keyword.control.repeat "for"))

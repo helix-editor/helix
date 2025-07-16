@@ -7,7 +7,7 @@
 ] @operator
 
 ["(" ")"] @punctuation.bracket
-"," @punctuation.comma
+"," @punctuation.delimiter
 [(raw_string_literal) (string_literal)] @string
 
 (function ((strict_identifier) @function))
