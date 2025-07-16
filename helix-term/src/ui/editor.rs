@@ -1469,10 +1469,22 @@ impl Component for EditorView {
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained => {
                 if context.editor.config().auto_reload.focus_gained {
-                    helix_event::send_blocking(
-                        &context.editor.handlers.auto_reload,
-                        helix_view::handlers::AutoReloadEvent::EditorFocused,
-                    );
+                    if crate::handlers::auto_reload::count_externally_modified_documents(
+                        context.editor.documents(),
+                    ) > 0
+                    {
+                        if let Err(e) = commands::typed::reload_all(
+                            context,
+                            helix_core::command_line::Args::default(),
+                            super::PromptEvent::Validate,
+                        ) {
+                            context.editor.set_error(format!("{}", e));
+                        } else {
+                            context
+                                .editor
+                                .set_status("Reloaded files due to external changes");
+                        }
+                    }
                 }
                 self.terminal_focused = true;
                 EventResult::Consumed(None)

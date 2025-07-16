@@ -76,16 +76,8 @@ impl helix_event::AsyncHook for AutoReloadHandler {
 
 /// Requests a reload if any documents have been modified externally.
 fn prompt_to_reload_if_needed(editor: &mut Editor, compositor: &mut Compositor) {
-    let modified_docs = editor
-        .documents()
-        // Filter out documents that have unsaved changes.
-        .filter(|doc| !doc.is_modified())
-        // Get the documents that have been modified externally.
-        .filter(has_document_been_externally_modified)
-        .count();
-
     // If there are no externally modified documents, we can do nothing.
-    if modified_docs == 0 {
+    if count_externally_modified_documents(editor.documents()) == 0 {
         // Reset the debounce timer to allow for the next check.
         let config = editor.config.load();
         if config.auto_reload.periodic.enable {
@@ -132,21 +124,27 @@ fn prompt_to_reload_if_needed(editor: &mut Editor, compositor: &mut Compositor) 
     compositor.push(Box::new(prompt));
 }
 
-fn has_document_been_externally_modified(doc: &&Document) -> bool {
-    let last_saved_time = doc.get_last_saved_time();
-    let Some(path) = doc.path() else {
-        return false;
-    };
+pub fn count_externally_modified_documents<'a>(docs: impl Iterator<Item = &'a Document>) -> usize {
+    docs // Filter out documents that have unsaved changes.
+        .filter(|doc| !doc.is_modified())
+        // Get the documents that have been modified externally.
+        .filter(|doc| {
+            let last_saved_time = doc.get_last_saved_time();
+            let Some(path) = doc.path() else {
+                return false;
+            };
 
-    // Check if the file has been modified externally
-    if let Ok(metadata) = fs::metadata(path) {
-        if let Ok(modified_time) = metadata.modified() {
-            if modified_time > last_saved_time {
-                return true;
+            // Check if the file has been modified externally
+            if let Ok(metadata) = fs::metadata(path) {
+                if let Ok(modified_time) = metadata.modified() {
+                    if modified_time > last_saved_time {
+                        return true;
+                    }
+                }
             }
-        }
-    }
-    false
+            false
+        })
+        .count()
 }
 
 pub(super) fn register_hooks(handlers: &Handlers) {
