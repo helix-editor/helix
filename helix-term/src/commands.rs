@@ -5885,11 +5885,11 @@ fn goto_prev_test(cx: &mut Context) {
 }
 
 fn goto_next_xml_element(cx: &mut Context) {
-    goto_ts_object_impl(cx, "xml_element", Direction::Forward)
+    goto_ts_object_impl(cx, "xml-element", Direction::Forward)
 }
 
 fn goto_prev_xml_element(cx: &mut Context) {
-    goto_ts_object_impl(cx, "xml_element", Direction::Backward)
+    goto_ts_object_impl(cx, "xml-element", Direction::Backward)
 }
 
 fn goto_next_entry(cx: &mut Context) {
@@ -5959,7 +5959,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'c' => textobject_treesitter("comment", range),
                         'T' => textobject_treesitter("test", range),
                         'e' => textobject_treesitter("entry", range),
-                        'x' => textobject_treesitter("xml_element", range),
+                        'x' => textobject_treesitter("xml-element", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => textobject::textobject_pair_surround_closest(
                             doc.syntax(),

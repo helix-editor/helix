@@ -1,9 +1,9 @@
-(script_element (start_tag) (_) @xml_element.inside (end_tag))  @xml_element.around
+(script_element (start_tag) (_) @xml-element.inside (end_tag))  @xml-element.around
 
-(style_element (start_tag) (_) @xml_element.inside (end_tag)) @xml_element.around 
+(style_element (start_tag) (_) @xml-element.inside (end_tag)) @xml-element.around
 
-(element (start_tag) (_)* @xml_element.inside (end_tag))
+(element (start_tag) (_)* @xml-element.inside (end_tag))
 
-(element) @xml_element.around  
+(element) @xml-element.around
 
-(comment) @comment.around   
+(comment) @comment.around

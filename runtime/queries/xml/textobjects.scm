@@ -1,5 +1,5 @@
-(element (start_tag) (_)* @xml_element.inside (end_tag))
+(element (start_tag) (_)* @xml-element.inside (end_tag))
 
-(element) @xml_element.around
+(element) @xml-element.around
 
-(comment) @comment.around   
+(comment) @comment.around
