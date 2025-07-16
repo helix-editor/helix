@@ -1,0 +1,622 @@
+<!DOCTYPE HTML>
+<html lang="en" class="colibri sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Commands</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="custom.css">
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "colibri" : "colibri";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('colibri')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="colibri">Colibri</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/commands.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
+<ul>
+<li><a href="#typable-commands">Typable commands</a></li>
+<li><a href="#static-commands">Static commands</a></li>
+</ul>
+<h2 id="typable-commands"><a class="header" href="#typable-commands">Typable commands</a></h2>
+<p>Typable commands are used from command mode and may take arguments. Command mode can be activated by pressing <code>:</code>. The built-in typable commands are:</p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>:quit</code>, <code>:q</code></td><td>Close the current view.</td></tr>
+<tr><td><code>:quit!</code>, <code>:q!</code></td><td>Force close the current view, ignoring unsaved changes.</td></tr>
+<tr><td><code>:open</code>, <code>:o</code>, <code>:edit</code>, <code>:e</code></td><td>Open a file from disk into the current view.</td></tr>
+<tr><td><code>:buffer-close</code>, <code>:bc</code>, <code>:bclose</code></td><td>Close the current buffer.</td></tr>
+<tr><td><code>:buffer-close!</code>, <code>:bc!</code>, <code>:bclose!</code></td><td>Close the current buffer forcefully, ignoring unsaved changes.</td></tr>
+<tr><td><code>:buffer-close-others</code>, <code>:bco</code>, <code>:bcloseother</code></td><td>Close all buffers but the currently focused one.</td></tr>
+<tr><td><code>:buffer-close-others!</code>, <code>:bco!</code>, <code>:bcloseother!</code></td><td>Force close all buffers but the currently focused one.</td></tr>
+<tr><td><code>:buffer-close-all</code>, <code>:bca</code>, <code>:bcloseall</code></td><td>Close all buffers without quitting.</td></tr>
+<tr><td><code>:buffer-close-all!</code>, <code>:bca!</code>, <code>:bcloseall!</code></td><td>Force close all buffers ignoring unsaved changes without quitting.</td></tr>
+<tr><td><code>:buffer-next</code>, <code>:bn</code>, <code>:bnext</code></td><td>Goto next buffer.</td></tr>
+<tr><td><code>:buffer-previous</code>, <code>:bp</code>, <code>:bprev</code></td><td>Goto previous buffer.</td></tr>
+<tr><td><code>:write</code>, <code>:w</code></td><td>Write changes to disk. Accepts an optional path (:write some/path.txt)</td></tr>
+<tr><td><code>:write!</code>, <code>:w!</code></td><td>Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)</td></tr>
+<tr><td><code>:write-buffer-close</code>, <code>:wbc</code></td><td>Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)</td></tr>
+<tr><td><code>:write-buffer-close!</code>, <code>:wbc!</code></td><td>Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)</td></tr>
+<tr><td><code>:new</code>, <code>:n</code></td><td>Create a new scratch buffer.</td></tr>
+<tr><td><code>:format</code>, <code>:fmt</code></td><td>Format the file using an external formatter or language server.</td></tr>
+<tr><td><code>:indent-style</code></td><td>Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)</td></tr>
+<tr><td><code>:line-ending</code></td><td>Set the document's default line ending. Options: crlf, lf.</td></tr>
+<tr><td><code>:earlier</code>, <code>:ear</code></td><td>Jump back to an earlier point in edit history. Accepts a number of steps or a time span.</td></tr>
+<tr><td><code>:later</code>, <code>:lat</code></td><td>Jump to a later point in edit history. Accepts a number of steps or a time span.</td></tr>
+<tr><td><code>:write-quit</code>, <code>:wq</code>, <code>:x</code></td><td>Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)</td></tr>
+<tr><td><code>:write-quit!</code>, <code>:wq!</code>, <code>:x!</code></td><td>Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)</td></tr>
+<tr><td><code>:write-all</code>, <code>:wa</code></td><td>Write changes from all buffers to disk.</td></tr>
+<tr><td><code>:write-all!</code>, <code>:wa!</code></td><td>Forcefully write changes from all buffers to disk creating necessary subdirectories.</td></tr>
+<tr><td><code>:write-quit-all</code>, <code>:wqa</code>, <code>:xa</code></td><td>Write changes from all buffers to disk and close all views.</td></tr>
+<tr><td><code>:write-quit-all!</code>, <code>:wqa!</code>, <code>:xa!</code></td><td>Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).</td></tr>
+<tr><td><code>:quit-all</code>, <code>:qa</code></td><td>Close all views.</td></tr>
+<tr><td><code>:quit-all!</code>, <code>:qa!</code></td><td>Force close all views ignoring unsaved changes.</td></tr>
+<tr><td><code>:cquit</code>, <code>:cq</code></td><td>Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).</td></tr>
+<tr><td><code>:cquit!</code>, <code>:cq!</code></td><td>Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).</td></tr>
+<tr><td><code>:theme</code></td><td>Change the editor theme (show current theme if no name specified).</td></tr>
+<tr><td><code>:yank-join</code></td><td>Yank joined selections. A separator can be provided as first argument. Default value is newline.</td></tr>
+<tr><td><code>:clipboard-yank</code></td><td>Yank main selection into system clipboard.</td></tr>
+<tr><td><code>:clipboard-yank-join</code></td><td>Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.</td></tr>
+<tr><td><code>:primary-clipboard-yank</code></td><td>Yank main selection into system primary clipboard.</td></tr>
+<tr><td><code>:primary-clipboard-yank-join</code></td><td>Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.</td></tr>
+<tr><td><code>:clipboard-paste-after</code></td><td>Paste system clipboard after selections.</td></tr>
+<tr><td><code>:clipboard-paste-before</code></td><td>Paste system clipboard before selections.</td></tr>
+<tr><td><code>:clipboard-paste-replace</code></td><td>Replace selections with content of system clipboard.</td></tr>
+<tr><td><code>:primary-clipboard-paste-after</code></td><td>Paste primary clipboard after selections.</td></tr>
+<tr><td><code>:primary-clipboard-paste-before</code></td><td>Paste primary clipboard before selections.</td></tr>
+<tr><td><code>:primary-clipboard-paste-replace</code></td><td>Replace selections with content of system primary clipboard.</td></tr>
+<tr><td><code>:show-clipboard-provider</code></td><td>Show clipboard provider name in status bar.</td></tr>
+<tr><td><code>:change-current-directory</code>, <code>:cd</code></td><td>Change the current working directory.</td></tr>
+<tr><td><code>:show-directory</code>, <code>:pwd</code></td><td>Show the current working directory.</td></tr>
+<tr><td><code>:encoding</code></td><td>Set encoding. Based on <code>https://encoding.spec.whatwg.org</code>.</td></tr>
+<tr><td><code>:character-info</code>, <code>:char</code></td><td>Get info about the character under the primary cursor.</td></tr>
+<tr><td><code>:reload</code>, <code>:rl</code></td><td>Discard changes and reload from the source file.</td></tr>
+<tr><td><code>:reload-all</code>, <code>:rla</code></td><td>Discard changes and reload all documents from the source files.</td></tr>
+<tr><td><code>:update</code>, <code>:u</code></td><td>Write changes only if the file has been modified.</td></tr>
+<tr><td><code>:lsp-workspace-command</code></td><td>Open workspace command picker</td></tr>
+<tr><td><code>:lsp-restart</code></td><td>Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied</td></tr>
+<tr><td><code>:lsp-stop</code></td><td>Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied</td></tr>
+<tr><td><code>:tree-sitter-scopes</code></td><td>Display tree sitter scopes, primarily for theming and development.</td></tr>
+<tr><td><code>:tree-sitter-highlight-name</code></td><td>Display name of tree-sitter highlight scope under the cursor.</td></tr>
+<tr><td><code>:debug-start</code>, <code>:dbg</code></td><td>Start a debug session from a given template with given parameters.</td></tr>
+<tr><td><code>:debug-remote</code>, <code>:dbg-tcp</code></td><td>Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.</td></tr>
+<tr><td><code>:debug-eval</code></td><td>Evaluate expression in current debug context.</td></tr>
+<tr><td><code>:vsplit</code>, <code>:vs</code></td><td>Open the file in a vertical split.</td></tr>
+<tr><td><code>:vsplit-new</code>, <code>:vnew</code></td><td>Open a scratch buffer in a vertical split.</td></tr>
+<tr><td><code>:hsplit</code>, <code>:hs</code>, <code>:sp</code></td><td>Open the file in a horizontal split.</td></tr>
+<tr><td><code>:hsplit-new</code>, <code>:hnew</code></td><td>Open a scratch buffer in a horizontal split.</td></tr>
+<tr><td><code>:tutor</code></td><td>Open the tutorial.</td></tr>
+<tr><td><code>:goto</code>, <code>:g</code></td><td>Goto line number.</td></tr>
+<tr><td><code>:set-language</code>, <code>:lang</code></td><td>Set the language of current buffer (show current language if no value specified).</td></tr>
+<tr><td><code>:set-option</code>, <code>:set</code></td><td>Set a config option at runtime.<br>For example to disable smart case search, use <code>:set search.smart-case false</code>.</td></tr>
+<tr><td><code>:toggle-option</code>, <code>:toggle</code></td><td>Toggle a config option at runtime.<br>For example to toggle smart case search, use <code>:toggle search.smart-case</code>.</td></tr>
+<tr><td><code>:get-option</code>, <code>:get</code></td><td>Get the current value of a config option.</td></tr>
+<tr><td><code>:sort</code></td><td>Sort ranges in selection.</td></tr>
+<tr><td><code>:reflow</code></td><td>Hard-wrap the current selection of lines to a given width.</td></tr>
+<tr><td><code>:tree-sitter-subtree</code>, <code>:ts-subtree</code></td><td>Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.</td></tr>
+<tr><td><code>:config-reload</code></td><td>Refresh user config.</td></tr>
+<tr><td><code>:config-open</code></td><td>Open the user config.toml file.</td></tr>
+<tr><td><code>:config-open-workspace</code></td><td>Open the workspace config.toml file.</td></tr>
+<tr><td><code>:log-open</code></td><td>Open the helix log file.</td></tr>
+<tr><td><code>:insert-output</code></td><td>Run shell command, inserting output before each selection.</td></tr>
+<tr><td><code>:append-output</code></td><td>Run shell command, appending output after each selection.</td></tr>
+<tr><td><code>:pipe</code>, <code>:|</code></td><td>Pipe each selection to the shell command.</td></tr>
+<tr><td><code>:pipe-to</code></td><td>Pipe each selection to the shell command, ignoring output.</td></tr>
+<tr><td><code>:run-shell-command</code>, <code>:sh</code>, <code>:!</code></td><td>Run a shell command</td></tr>
+<tr><td><code>:reset-diff-change</code>, <code>:diffget</code>, <code>:diffg</code></td><td>Reset the diff change at the cursor position.</td></tr>
+<tr><td><code>:clear-register</code></td><td>Clear given register. If no argument is provided, clear all registers.</td></tr>
+<tr><td><code>:redraw</code></td><td>Clear and re-render the whole UI</td></tr>
+<tr><td><code>:move</code>, <code>:mv</code></td><td>Move the current buffer and its corresponding file to a different path</td></tr>
+<tr><td><code>:yank-diagnostic</code></td><td>Yank diagnostic(s) under primary cursor to register, or clipboard by default</td></tr>
+<tr><td><code>:read</code>, <code>:r</code></td><td>Load a file into buffer</td></tr>
+<tr><td><code>:echo</code></td><td>Prints the given arguments to the statusline.</td></tr>
+<tr><td><code>:noop</code></td><td>Does nothing.</td></tr>
+</tbody></table>
+</div>
+<h2 id="static-commands"><a class="header" href="#static-commands">Static Commands</a></h2>
+<p>Static commands take no arguments and can be bound to keys. Static commands can also be executed from the command picker (<code>&lt;space&gt;?</code>). The built-in static commands are:</p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th><th>Default keybinds</th></tr></thead><tbody>
+<tr><td><code>no_op</code></td><td>Do nothing</td><td></td></tr>
+<tr><td><code>move_char_left</code></td><td>Move left</td><td>normal: <code>h</code>, <code>&lt;left&gt;</code>, insert: <code>&lt;left&gt;</code></td></tr>
+<tr><td><code>move_char_right</code></td><td>Move right</td><td>normal: <code>l</code>, <code>&lt;right&gt;</code>, insert: <code>&lt;right&gt;</code></td></tr>
+<tr><td><code>move_line_up</code></td><td>Move up</td><td>normal: <code>gk</code></td></tr>
+<tr><td><code>move_line_down</code></td><td>Move down</td><td>normal: <code>gj</code></td></tr>
+<tr><td><code>move_visual_line_up</code></td><td>Move up</td><td>normal: <code>k</code>, <code>&lt;up&gt;</code>, insert: <code>&lt;up&gt;</code></td></tr>
+<tr><td><code>move_visual_line_down</code></td><td>Move down</td><td>normal: <code>j</code>, <code>&lt;down&gt;</code>, insert: <code>&lt;down&gt;</code></td></tr>
+<tr><td><code>extend_char_left</code></td><td>Extend left</td><td>select: <code>h</code>, <code>&lt;left&gt;</code></td></tr>
+<tr><td><code>extend_char_right</code></td><td>Extend right</td><td>select: <code>l</code>, <code>&lt;right&gt;</code></td></tr>
+<tr><td><code>extend_line_up</code></td><td>Extend up</td><td>select: <code>gk</code></td></tr>
+<tr><td><code>extend_line_down</code></td><td>Extend down</td><td>select: <code>gj</code></td></tr>
+<tr><td><code>extend_visual_line_up</code></td><td>Extend up</td><td>select: <code>k</code>, <code>&lt;up&gt;</code></td></tr>
+<tr><td><code>extend_visual_line_down</code></td><td>Extend down</td><td>select: <code>j</code>, <code>&lt;down&gt;</code></td></tr>
+<tr><td><code>copy_selection_on_next_line</code></td><td>Copy selection on next line</td><td>normal: <code>C</code>, select: <code>C</code></td></tr>
+<tr><td><code>copy_selection_on_prev_line</code></td><td>Copy selection on previous line</td><td>normal: <code>&lt;A-C&gt;</code>, select: <code>&lt;A-C&gt;</code></td></tr>
+<tr><td><code>move_next_word_start</code></td><td>Move to start of next word</td><td>normal: <code>w</code></td></tr>
+<tr><td><code>move_prev_word_start</code></td><td>Move to start of previous word</td><td>normal: <code>b</code></td></tr>
+<tr><td><code>move_next_word_end</code></td><td>Move to end of next word</td><td>normal: <code>e</code></td></tr>
+<tr><td><code>move_prev_word_end</code></td><td>Move to end of previous word</td><td></td></tr>
+<tr><td><code>move_next_long_word_start</code></td><td>Move to start of next long word</td><td>normal: <code>W</code></td></tr>
+<tr><td><code>move_prev_long_word_start</code></td><td>Move to start of previous long word</td><td>normal: <code>B</code></td></tr>
+<tr><td><code>move_next_long_word_end</code></td><td>Move to end of next long word</td><td>normal: <code>E</code></td></tr>
+<tr><td><code>move_prev_long_word_end</code></td><td>Move to end of previous long word</td><td></td></tr>
+<tr><td><code>move_next_sub_word_start</code></td><td>Move to start of next sub word</td><td></td></tr>
+<tr><td><code>move_prev_sub_word_start</code></td><td>Move to start of previous sub word</td><td></td></tr>
+<tr><td><code>move_next_sub_word_end</code></td><td>Move to end of next sub word</td><td></td></tr>
+<tr><td><code>move_prev_sub_word_end</code></td><td>Move to end of previous sub word</td><td></td></tr>
+<tr><td><code>move_parent_node_end</code></td><td>Move to end of the parent node</td><td>normal: <code>&lt;A-e&gt;</code></td></tr>
+<tr><td><code>move_parent_node_start</code></td><td>Move to beginning of the parent node</td><td>normal: <code>&lt;A-b&gt;</code></td></tr>
+<tr><td><code>extend_next_word_start</code></td><td>Extend to start of next word</td><td>select: <code>w</code></td></tr>
+<tr><td><code>extend_prev_word_start</code></td><td>Extend to start of previous word</td><td>select: <code>b</code></td></tr>
+<tr><td><code>extend_next_word_end</code></td><td>Extend to end of next word</td><td>select: <code>e</code></td></tr>
+<tr><td><code>extend_prev_word_end</code></td><td>Extend to end of previous word</td><td></td></tr>
+<tr><td><code>extend_next_long_word_start</code></td><td>Extend to start of next long word</td><td>select: <code>W</code></td></tr>
+<tr><td><code>extend_prev_long_word_start</code></td><td>Extend to start of previous long word</td><td>select: <code>B</code></td></tr>
+<tr><td><code>extend_next_long_word_end</code></td><td>Extend to end of next long word</td><td>select: <code>E</code></td></tr>
+<tr><td><code>extend_prev_long_word_end</code></td><td>Extend to end of prev long word</td><td></td></tr>
+<tr><td><code>extend_next_sub_word_start</code></td><td>Extend to start of next sub word</td><td></td></tr>
+<tr><td><code>extend_prev_sub_word_start</code></td><td>Extend to start of previous sub word</td><td></td></tr>
+<tr><td><code>extend_next_sub_word_end</code></td><td>Extend to end of next sub word</td><td></td></tr>
+<tr><td><code>extend_prev_sub_word_end</code></td><td>Extend to end of prev sub word</td><td></td></tr>
+<tr><td><code>extend_parent_node_end</code></td><td>Extend to end of the parent node</td><td>select: <code>&lt;A-e&gt;</code></td></tr>
+<tr><td><code>extend_parent_node_start</code></td><td>Extend to beginning of the parent node</td><td>select: <code>&lt;A-b&gt;</code></td></tr>
+<tr><td><code>find_till_char</code></td><td>Move till next occurrence of char</td><td>normal: <code>t</code></td></tr>
+<tr><td><code>find_next_char</code></td><td>Move to next occurrence of char</td><td>normal: <code>f</code></td></tr>
+<tr><td><code>extend_till_char</code></td><td>Extend till next occurrence of char</td><td>select: <code>t</code></td></tr>
+<tr><td><code>extend_next_char</code></td><td>Extend to next occurrence of char</td><td>select: <code>f</code></td></tr>
+<tr><td><code>till_prev_char</code></td><td>Move till previous occurrence of char</td><td>normal: <code>T</code></td></tr>
+<tr><td><code>find_prev_char</code></td><td>Move to previous occurrence of char</td><td>normal: <code>F</code></td></tr>
+<tr><td><code>extend_till_prev_char</code></td><td>Extend till previous occurrence of char</td><td>select: <code>T</code></td></tr>
+<tr><td><code>extend_prev_char</code></td><td>Extend to previous occurrence of char</td><td>select: <code>F</code></td></tr>
+<tr><td><code>repeat_last_motion</code></td><td>Repeat last motion</td><td>normal: <code>&lt;A-.&gt;</code>, select: <code>&lt;A-.&gt;</code></td></tr>
+<tr><td><code>replace</code></td><td>Replace with new char</td><td>normal: <code>r</code>, select: <code>r</code></td></tr>
+<tr><td><code>switch_case</code></td><td>Switch (toggle) case</td><td>normal: <code>~</code>, select: <code>~</code></td></tr>
+<tr><td><code>switch_to_uppercase</code></td><td>Switch to uppercase</td><td>normal: <code>&lt;A-`&gt;</code>, select: <code>&lt;A-`&gt;</code></td></tr>
+<tr><td><code>switch_to_lowercase</code></td><td>Switch to lowercase</td><td>normal: <code>`</code>, select: <code>`</code></td></tr>
+<tr><td><code>page_up</code></td><td>Move page up</td><td>normal: <code>&lt;C-b&gt;</code>, <code>Z&lt;C-b&gt;</code>, <code>z&lt;C-b&gt;</code>, <code>&lt;pageup&gt;</code>, <code>Z&lt;pageup&gt;</code>, <code>z&lt;pageup&gt;</code>, select: <code>&lt;C-b&gt;</code>, <code>Z&lt;C-b&gt;</code>, <code>z&lt;C-b&gt;</code>, <code>&lt;pageup&gt;</code>, <code>Z&lt;pageup&gt;</code>, <code>z&lt;pageup&gt;</code>, insert: <code>&lt;pageup&gt;</code></td></tr>
+<tr><td><code>page_down</code></td><td>Move page down</td><td>normal: <code>&lt;C-f&gt;</code>, <code>Z&lt;C-f&gt;</code>, <code>z&lt;C-f&gt;</code>, <code>&lt;pagedown&gt;</code>, <code>Z&lt;pagedown&gt;</code>, <code>z&lt;pagedown&gt;</code>, select: <code>&lt;C-f&gt;</code>, <code>Z&lt;C-f&gt;</code>, <code>z&lt;C-f&gt;</code>, <code>&lt;pagedown&gt;</code>, <code>Z&lt;pagedown&gt;</code>, <code>z&lt;pagedown&gt;</code>, insert: <code>&lt;pagedown&gt;</code></td></tr>
+<tr><td><code>half_page_up</code></td><td>Move half page up</td><td></td></tr>
+<tr><td><code>half_page_down</code></td><td>Move half page down</td><td></td></tr>
+<tr><td><code>page_cursor_up</code></td><td>Move page and cursor up</td><td></td></tr>
+<tr><td><code>page_cursor_down</code></td><td>Move page and cursor down</td><td></td></tr>
+<tr><td><code>page_cursor_half_up</code></td><td>Move page and cursor half up</td><td>normal: <code>&lt;C-u&gt;</code>, <code>Z&lt;C-u&gt;</code>, <code>z&lt;C-u&gt;</code>, <code>Z&lt;backspace&gt;</code>, <code>z&lt;backspace&gt;</code>, select: <code>&lt;C-u&gt;</code>, <code>Z&lt;C-u&gt;</code>, <code>z&lt;C-u&gt;</code>, <code>Z&lt;backspace&gt;</code>, <code>z&lt;backspace&gt;</code></td></tr>
+<tr><td><code>page_cursor_half_down</code></td><td>Move page and cursor half down</td><td>normal: <code>&lt;C-d&gt;</code>, <code>Z&lt;C-d&gt;</code>, <code>z&lt;C-d&gt;</code>, <code>Z&lt;space&gt;</code>, <code>z&lt;space&gt;</code>, select: <code>&lt;C-d&gt;</code>, <code>Z&lt;C-d&gt;</code>, <code>z&lt;C-d&gt;</code>, <code>Z&lt;space&gt;</code>, <code>z&lt;space&gt;</code></td></tr>
+<tr><td><code>select_all</code></td><td>Select whole document</td><td>normal: <code>%</code>, select: <code>%</code></td></tr>
+<tr><td><code>select_regex</code></td><td>Select all regex matches inside selections</td><td>normal: <code>s</code>, select: <code>s</code></td></tr>
+<tr><td><code>split_selection</code></td><td>Split selections on regex matches</td><td>normal: <code>S</code>, select: <code>S</code></td></tr>
+<tr><td><code>split_selection_on_newline</code></td><td>Split selection on newlines</td><td>normal: <code>&lt;A-s&gt;</code>, select: <code>&lt;A-s&gt;</code></td></tr>
+<tr><td><code>merge_selections</code></td><td>Merge selections</td><td>normal: <code>&lt;A-minus&gt;</code>, select: <code>&lt;A-minus&gt;</code></td></tr>
+<tr><td><code>merge_consecutive_selections</code></td><td>Merge consecutive selections</td><td>normal: <code>&lt;A-_&gt;</code>, select: <code>&lt;A-_&gt;</code></td></tr>
+<tr><td><code>search</code></td><td>Search for regex pattern</td><td>normal: <code>/</code>, <code>Z/</code>, <code>z/</code>, select: <code>/</code>, <code>Z/</code>, <code>z/</code></td></tr>
+<tr><td><code>rsearch</code></td><td>Reverse search for regex pattern</td><td>normal: <code>?</code>, <code>Z?</code>, <code>z?</code>, select: <code>?</code>, <code>Z?</code>, <code>z?</code></td></tr>
+<tr><td><code>search_next</code></td><td>Select next search match</td><td>normal: <code>n</code>, <code>Zn</code>, <code>zn</code>, select: <code>Zn</code>, <code>zn</code></td></tr>
+<tr><td><code>search_prev</code></td><td>Select previous search match</td><td>normal: <code>N</code>, <code>ZN</code>, <code>zN</code>, select: <code>ZN</code>, <code>zN</code></td></tr>
+<tr><td><code>extend_search_next</code></td><td>Add next search match to selection</td><td>select: <code>n</code></td></tr>
+<tr><td><code>extend_search_prev</code></td><td>Add previous search match to selection</td><td>select: <code>N</code></td></tr>
+<tr><td><code>search_selection</code></td><td>Use current selection as search pattern</td><td>normal: <code>&lt;A-*&gt;</code>, select: <code>&lt;A-*&gt;</code></td></tr>
+<tr><td><code>search_selection_detect_word_boundaries</code></td><td>Use current selection as the search pattern, automatically wrapping with <code>\b</code> on word boundaries</td><td>normal: <code>*</code>, select: <code>*</code></td></tr>
+<tr><td><code>make_search_word_bounded</code></td><td>Modify current search to make it word bounded</td><td></td></tr>
+<tr><td><code>global_search</code></td><td>Global search in workspace folder</td><td>normal: <code>&lt;space&gt;/</code>, select: <code>&lt;space&gt;/</code></td></tr>
+<tr><td><code>extend_line</code></td><td>Select current line, if already selected, extend to another line based on the anchor</td><td></td></tr>
+<tr><td><code>extend_line_below</code></td><td>Select current line, if already selected, extend to next line</td><td>normal: <code>x</code>, select: <code>x</code></td></tr>
+<tr><td><code>extend_line_above</code></td><td>Select current line, if already selected, extend to previous line</td><td></td></tr>
+<tr><td><code>select_line_above</code></td><td>Select current line, if already selected, extend or shrink line above based on the anchor</td><td></td></tr>
+<tr><td><code>select_line_below</code></td><td>Select current line, if already selected, extend or shrink line below based on the anchor</td><td></td></tr>
+<tr><td><code>extend_to_line_bounds</code></td><td>Extend selection to line bounds</td><td>normal: <code>X</code>, select: <code>X</code></td></tr>
+<tr><td><code>shrink_to_line_bounds</code></td><td>Shrink selection to line bounds</td><td>normal: <code>&lt;A-x&gt;</code>, select: <code>&lt;A-x&gt;</code></td></tr>
+<tr><td><code>delete_selection</code></td><td>Delete selection</td><td>normal: <code>d</code>, select: <code>d</code></td></tr>
+<tr><td><code>delete_selection_noyank</code></td><td>Delete selection without yanking</td><td>normal: <code>&lt;A-d&gt;</code>, select: <code>&lt;A-d&gt;</code></td></tr>
+<tr><td><code>change_selection</code></td><td>Change selection</td><td>normal: <code>c</code>, select: <code>c</code></td></tr>
+<tr><td><code>change_selection_noyank</code></td><td>Change selection without yanking</td><td>normal: <code>&lt;A-c&gt;</code>, select: <code>&lt;A-c&gt;</code></td></tr>
+<tr><td><code>collapse_selection</code></td><td>Collapse selection into single cursor</td><td>normal: <code>;</code>, select: <code>;</code></td></tr>
+<tr><td><code>flip_selections</code></td><td>Flip selection cursor and anchor</td><td>normal: <code>&lt;A-;&gt;</code>, select: <code>&lt;A-;&gt;</code></td></tr>
+<tr><td><code>ensure_selections_forward</code></td><td>Ensure all selections face forward</td><td>normal: <code>&lt;A-:&gt;</code>, select: <code>&lt;A-:&gt;</code></td></tr>
+<tr><td><code>insert_mode</code></td><td>Insert before selection</td><td>normal: <code>i</code>, select: <code>i</code></td></tr>
+<tr><td><code>append_mode</code></td><td>Append after selection</td><td>normal: <code>a</code>, select: <code>a</code></td></tr>
+<tr><td><code>command_mode</code></td><td>Enter command mode</td><td>normal: <code>:</code>, select: <code>:</code></td></tr>
+<tr><td><code>file_picker</code></td><td>Open file picker</td><td>normal: <code>&lt;space&gt;f</code>, select: <code>&lt;space&gt;f</code></td></tr>
+<tr><td><code>file_picker_in_current_buffer_directory</code></td><td>Open file picker at current buffer's directory</td><td></td></tr>
+<tr><td><code>file_picker_in_current_directory</code></td><td>Open file picker at current working directory</td><td>normal: <code>&lt;space&gt;F</code>, select: <code>&lt;space&gt;F</code></td></tr>
+<tr><td><code>file_explorer</code></td><td>Open file explorer in workspace root</td><td>normal: <code>&lt;space&gt;e</code>, select: <code>&lt;space&gt;e</code></td></tr>
+<tr><td><code>file_explorer_in_current_buffer_directory</code></td><td>Open file explorer at current buffer's directory</td><td>normal: <code>&lt;space&gt;E</code>, select: <code>&lt;space&gt;E</code></td></tr>
+<tr><td><code>file_explorer_in_current_directory</code></td><td>Open file explorer at current working directory</td><td></td></tr>
+<tr><td><code>code_action</code></td><td>Perform code action</td><td>normal: <code>&lt;space&gt;a</code>, select: <code>&lt;space&gt;a</code></td></tr>
+<tr><td><code>buffer_picker</code></td><td>Open buffer picker</td><td>normal: <code>&lt;space&gt;b</code>, select: <code>&lt;space&gt;b</code></td></tr>
+<tr><td><code>jumplist_picker</code></td><td>Open jumplist picker</td><td>normal: <code>&lt;space&gt;j</code>, select: <code>&lt;space&gt;j</code></td></tr>
+<tr><td><code>symbol_picker</code></td><td>Open symbol picker</td><td>normal: <code>&lt;space&gt;s</code>, select: <code>&lt;space&gt;s</code></td></tr>
+<tr><td><code>changed_file_picker</code></td><td>Open changed file picker</td><td>normal: <code>&lt;space&gt;g</code>, select: <code>&lt;space&gt;g</code></td></tr>
+<tr><td><code>select_references_to_symbol_under_cursor</code></td><td>Select symbol references</td><td>normal: <code>&lt;space&gt;h</code>, select: <code>&lt;space&gt;h</code></td></tr>
+<tr><td><code>workspace_symbol_picker</code></td><td>Open workspace symbol picker</td><td>normal: <code>&lt;space&gt;S</code>, select: <code>&lt;space&gt;S</code></td></tr>
+<tr><td><code>diagnostics_picker</code></td><td>Open diagnostic picker</td><td>normal: <code>&lt;space&gt;d</code>, select: <code>&lt;space&gt;d</code></td></tr>
+<tr><td><code>workspace_diagnostics_picker</code></td><td>Open workspace diagnostic picker</td><td>normal: <code>&lt;space&gt;D</code>, select: <code>&lt;space&gt;D</code></td></tr>
+<tr><td><code>last_picker</code></td><td>Open last picker</td><td>normal: <code>&lt;space&gt;'</code>, select: <code>&lt;space&gt;'</code></td></tr>
+<tr><td><code>insert_at_line_start</code></td><td>Insert at start of line</td><td>normal: <code>I</code>, select: <code>I</code></td></tr>
+<tr><td><code>insert_at_line_end</code></td><td>Insert at end of line</td><td>normal: <code>A</code>, select: <code>A</code></td></tr>
+<tr><td><code>open_below</code></td><td>Open new line below selection</td><td>normal: <code>o</code>, select: <code>o</code></td></tr>
+<tr><td><code>open_above</code></td><td>Open new line above selection</td><td>normal: <code>O</code>, select: <code>O</code></td></tr>
+<tr><td><code>normal_mode</code></td><td>Enter normal mode</td><td>normal: <code>&lt;esc&gt;</code>, select: <code>v</code>, insert: <code>&lt;esc&gt;</code></td></tr>
+<tr><td><code>select_mode</code></td><td>Enter selection extend mode</td><td>normal: <code>v</code></td></tr>
+<tr><td><code>exit_select_mode</code></td><td>Exit selection mode</td><td>select: <code>&lt;esc&gt;</code></td></tr>
+<tr><td><code>goto_definition</code></td><td>Goto definition</td><td>normal: <code>gd</code>, select: <code>gd</code></td></tr>
+<tr><td><code>goto_declaration</code></td><td>Goto declaration</td><td>normal: <code>gD</code>, select: <code>gD</code></td></tr>
+<tr><td><code>add_newline_above</code></td><td>Add newline above</td><td>normal: <code>[&lt;space&gt;</code>, select: <code>[&lt;space&gt;</code></td></tr>
+<tr><td><code>add_newline_below</code></td><td>Add newline below</td><td>normal: <code>]&lt;space&gt;</code>, select: <code>]&lt;space&gt;</code></td></tr>
+<tr><td><code>goto_type_definition</code></td><td>Goto type definition</td><td>normal: <code>gy</code>, select: <code>gy</code></td></tr>
+<tr><td><code>goto_implementation</code></td><td>Goto implementation</td><td>normal: <code>gi</code>, select: <code>gi</code></td></tr>
+<tr><td><code>goto_file_start</code></td><td>Goto line number <n> else file start</td><td>normal: <code>gg</code></td></tr>
+<tr><td><code>goto_file_end</code></td><td>Goto file end</td><td></td></tr>
+<tr><td><code>extend_to_file_start</code></td><td>Extend to line number<n> else file start</td><td>select: <code>gg</code></td></tr>
+<tr><td><code>extend_to_file_end</code></td><td>Extend to file end</td><td></td></tr>
+<tr><td><code>goto_file</code></td><td>Goto files/URLs in selections</td><td>normal: <code>gf</code>, select: <code>gf</code></td></tr>
+<tr><td><code>goto_file_hsplit</code></td><td>Goto files in selections (hsplit)</td><td>normal: <code>&lt;C-w&gt;f</code>, <code>&lt;space&gt;wf</code>, select: <code>&lt;C-w&gt;f</code>, <code>&lt;space&gt;wf</code></td></tr>
+<tr><td><code>goto_file_vsplit</code></td><td>Goto files in selections (vsplit)</td><td>normal: <code>&lt;C-w&gt;F</code>, <code>&lt;space&gt;wF</code>, select: <code>&lt;C-w&gt;F</code>, <code>&lt;space&gt;wF</code></td></tr>
+<tr><td><code>goto_reference</code></td><td>Goto references</td><td>normal: <code>gr</code>, select: <code>gr</code></td></tr>
+<tr><td><code>goto_window_top</code></td><td>Goto window top</td><td>normal: <code>gt</code>, select: <code>gt</code></td></tr>
+<tr><td><code>goto_window_center</code></td><td>Goto window center</td><td>normal: <code>gc</code>, select: <code>gc</code></td></tr>
+<tr><td><code>goto_window_bottom</code></td><td>Goto window bottom</td><td>normal: <code>gb</code>, select: <code>gb</code></td></tr>
+<tr><td><code>goto_last_accessed_file</code></td><td>Goto last accessed file</td><td>normal: <code>ga</code>, select: <code>ga</code></td></tr>
+<tr><td><code>goto_last_modified_file</code></td><td>Goto last modified file</td><td>normal: <code>gm</code>, select: <code>gm</code></td></tr>
+<tr><td><code>goto_last_modification</code></td><td>Goto last modification</td><td>normal: <code>g.</code>, select: <code>g.</code></td></tr>
+<tr><td><code>goto_line</code></td><td>Goto line</td><td>normal: <code>G</code>, select: <code>G</code></td></tr>
+<tr><td><code>goto_last_line</code></td><td>Goto last line</td><td>normal: <code>ge</code></td></tr>
+<tr><td><code>extend_to_last_line</code></td><td>Extend to last line</td><td>select: <code>ge</code></td></tr>
+<tr><td><code>goto_first_diag</code></td><td>Goto first diagnostic</td><td>normal: <code>[D</code>, select: <code>[D</code></td></tr>
+<tr><td><code>goto_last_diag</code></td><td>Goto last diagnostic</td><td>normal: <code>]D</code>, select: <code>]D</code></td></tr>
+<tr><td><code>goto_next_diag</code></td><td>Goto next diagnostic</td><td>normal: <code>]d</code>, select: <code>]d</code></td></tr>
+<tr><td><code>goto_prev_diag</code></td><td>Goto previous diagnostic</td><td>normal: <code>[d</code>, select: <code>[d</code></td></tr>
+<tr><td><code>goto_next_change</code></td><td>Goto next change</td><td>normal: <code>]g</code>, select: <code>]g</code></td></tr>
+<tr><td><code>goto_prev_change</code></td><td>Goto previous change</td><td>normal: <code>[g</code>, select: <code>[g</code></td></tr>
+<tr><td><code>goto_first_change</code></td><td>Goto first change</td><td>normal: <code>[G</code>, select: <code>[G</code></td></tr>
+<tr><td><code>goto_last_change</code></td><td>Goto last change</td><td>normal: <code>]G</code>, select: <code>]G</code></td></tr>
+<tr><td><code>goto_line_start</code></td><td>Goto line start</td><td>normal: <code>gh</code>, <code>&lt;home&gt;</code>, select: <code>gh</code>, insert: <code>&lt;home&gt;</code></td></tr>
+<tr><td><code>goto_line_end</code></td><td>Goto line end</td><td>normal: <code>gl</code>, <code>&lt;end&gt;</code>, select: <code>gl</code></td></tr>
+<tr><td><code>goto_column</code></td><td>Goto column</td><td>normal: <code>g|</code></td></tr>
+<tr><td><code>extend_to_column</code></td><td>Extend to column</td><td>select: <code>g|</code></td></tr>
+<tr><td><code>goto_next_buffer</code></td><td>Goto next buffer</td><td>normal: <code>gn</code>, select: <code>gn</code></td></tr>
+<tr><td><code>goto_previous_buffer</code></td><td>Goto previous buffer</td><td>normal: <code>gp</code>, select: <code>gp</code></td></tr>
+<tr><td><code>goto_line_end_newline</code></td><td>Goto newline at line end</td><td>insert: <code>&lt;end&gt;</code></td></tr>
+<tr><td><code>goto_first_nonwhitespace</code></td><td>Goto first non-blank in line</td><td>normal: <code>gs</code>, select: <code>gs</code></td></tr>
+<tr><td><code>trim_selections</code></td><td>Trim whitespace from selections</td><td>normal: <code>_</code>, select: <code>_</code></td></tr>
+<tr><td><code>extend_to_line_start</code></td><td>Extend to line start</td><td>select: <code>&lt;home&gt;</code></td></tr>
+<tr><td><code>extend_to_first_nonwhitespace</code></td><td>Extend to first non-blank in line</td><td></td></tr>
+<tr><td><code>extend_to_line_end</code></td><td>Extend to line end</td><td>select: <code>&lt;end&gt;</code></td></tr>
+<tr><td><code>extend_to_line_end_newline</code></td><td>Extend to line end</td><td></td></tr>
+<tr><td><code>signature_help</code></td><td>Show signature help</td><td></td></tr>
+<tr><td><code>smart_tab</code></td><td>Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.</td><td>insert: <code>&lt;tab&gt;</code></td></tr>
+<tr><td><code>insert_tab</code></td><td>Insert tab char</td><td>insert: <code>&lt;S-tab&gt;</code></td></tr>
+<tr><td><code>insert_newline</code></td><td>Insert newline char</td><td>insert: <code>&lt;C-j&gt;</code>, <code>&lt;ret&gt;</code></td></tr>
+<tr><td><code>delete_char_backward</code></td><td>Delete previous char</td><td>insert: <code>&lt;C-h&gt;</code>, <code>&lt;backspace&gt;</code>, <code>&lt;S-backspace&gt;</code></td></tr>
+<tr><td><code>delete_char_forward</code></td><td>Delete next char</td><td>insert: <code>&lt;C-d&gt;</code>, <code>&lt;del&gt;</code></td></tr>
+<tr><td><code>delete_word_backward</code></td><td>Delete previous word</td><td>insert: <code>&lt;C-w&gt;</code>, <code>&lt;A-backspace&gt;</code></td></tr>
+<tr><td><code>delete_word_forward</code></td><td>Delete next word</td><td>insert: <code>&lt;A-d&gt;</code>, <code>&lt;A-del&gt;</code></td></tr>
+<tr><td><code>kill_to_line_start</code></td><td>Delete till start of line</td><td>insert: <code>&lt;C-u&gt;</code></td></tr>
+<tr><td><code>kill_to_line_end</code></td><td>Delete till end of line</td><td>insert: <code>&lt;C-k&gt;</code></td></tr>
+<tr><td><code>undo</code></td><td>Undo change</td><td>normal: <code>u</code>, select: <code>u</code></td></tr>
+<tr><td><code>redo</code></td><td>Redo change</td><td>normal: <code>U</code>, select: <code>U</code></td></tr>
+<tr><td><code>earlier</code></td><td>Move backward in history</td><td>normal: <code>&lt;A-u&gt;</code>, select: <code>&lt;A-u&gt;</code></td></tr>
+<tr><td><code>later</code></td><td>Move forward in history</td><td>normal: <code>&lt;A-U&gt;</code>, select: <code>&lt;A-U&gt;</code></td></tr>
+<tr><td><code>commit_undo_checkpoint</code></td><td>Commit changes to new checkpoint</td><td>insert: <code>&lt;C-s&gt;</code></td></tr>
+<tr><td><code>yank</code></td><td>Yank selection</td><td>normal: <code>y</code>, select: <code>y</code></td></tr>
+<tr><td><code>yank_to_clipboard</code></td><td>Yank selections to clipboard</td><td>normal: <code>&lt;space&gt;y</code>, select: <code>&lt;space&gt;y</code></td></tr>
+<tr><td><code>yank_to_primary_clipboard</code></td><td>Yank selections to primary clipboard</td><td></td></tr>
+<tr><td><code>yank_joined</code></td><td>Join and yank selections</td><td></td></tr>
+<tr><td><code>yank_joined_to_clipboard</code></td><td>Join and yank selections to clipboard</td><td></td></tr>
+<tr><td><code>yank_main_selection_to_clipboard</code></td><td>Yank main selection to clipboard</td><td>normal: <code>&lt;space&gt;Y</code>, select: <code>&lt;space&gt;Y</code></td></tr>
+<tr><td><code>yank_joined_to_primary_clipboard</code></td><td>Join and yank selections to primary clipboard</td><td></td></tr>
+<tr><td><code>yank_main_selection_to_primary_clipboard</code></td><td>Yank main selection to primary clipboard</td><td></td></tr>
+<tr><td><code>replace_with_yanked</code></td><td>Replace with yanked text</td><td>normal: <code>R</code>, select: <code>R</code></td></tr>
+<tr><td><code>replace_selections_with_clipboard</code></td><td>Replace selections by clipboard content</td><td>normal: <code>&lt;space&gt;R</code>, select: <code>&lt;space&gt;R</code></td></tr>
+<tr><td><code>replace_selections_with_primary_clipboard</code></td><td>Replace selections by primary clipboard</td><td></td></tr>
+<tr><td><code>paste_after</code></td><td>Paste after selection</td><td>normal: <code>p</code>, select: <code>p</code></td></tr>
+<tr><td><code>paste_before</code></td><td>Paste before selection</td><td>normal: <code>P</code>, select: <code>P</code></td></tr>
+<tr><td><code>paste_clipboard_after</code></td><td>Paste clipboard after selections</td><td>normal: <code>&lt;space&gt;p</code>, select: <code>&lt;space&gt;p</code></td></tr>
+<tr><td><code>paste_clipboard_before</code></td><td>Paste clipboard before selections</td><td>normal: <code>&lt;space&gt;P</code>, select: <code>&lt;space&gt;P</code></td></tr>
+<tr><td><code>paste_primary_clipboard_after</code></td><td>Paste primary clipboard after selections</td><td></td></tr>
+<tr><td><code>paste_primary_clipboard_before</code></td><td>Paste primary clipboard before selections</td><td></td></tr>
+<tr><td><code>indent</code></td><td>Indent selection</td><td>normal: <code>&lt;gt&gt;</code>, select: <code>&lt;gt&gt;</code></td></tr>
+<tr><td><code>unindent</code></td><td>Unindent selection</td><td>normal: <code>&lt;lt&gt;</code>, select: <code>&lt;lt&gt;</code></td></tr>
+<tr><td><code>format_selections</code></td><td>Format selection</td><td>normal: <code>=</code>, select: <code>=</code></td></tr>
+<tr><td><code>join_selections</code></td><td>Join lines inside selection</td><td>normal: <code>J</code>, select: <code>J</code></td></tr>
+<tr><td><code>join_selections_space</code></td><td>Join lines inside selection and select spaces</td><td>normal: <code>&lt;A-J&gt;</code>, select: <code>&lt;A-J&gt;</code></td></tr>
+<tr><td><code>keep_selections</code></td><td>Keep selections matching regex</td><td>normal: <code>K</code>, select: <code>K</code></td></tr>
+<tr><td><code>remove_selections</code></td><td>Remove selections matching regex</td><td>normal: <code>&lt;A-K&gt;</code>, select: <code>&lt;A-K&gt;</code></td></tr>
+<tr><td><code>align_selections</code></td><td>Align selections in column</td><td>normal: <code>&amp;</code>, select: <code>&amp;</code></td></tr>
+<tr><td><code>keep_primary_selection</code></td><td>Keep primary selection</td><td>normal: <code>,</code>, select: <code>,</code></td></tr>
+<tr><td><code>remove_primary_selection</code></td><td>Remove primary selection</td><td>normal: <code>&lt;A-,&gt;</code>, select: <code>&lt;A-,&gt;</code></td></tr>
+<tr><td><code>completion</code></td><td>Invoke completion popup</td><td>insert: <code>&lt;C-x&gt;</code></td></tr>
+<tr><td><code>hover</code></td><td>Show docs for item under cursor</td><td>normal: <code>&lt;space&gt;k</code>, select: <code>&lt;space&gt;k</code></td></tr>
+<tr><td><code>toggle_comments</code></td><td>Comment/uncomment selections</td><td>normal: <code>&lt;C-c&gt;</code>, <code>&lt;space&gt;c</code>, select: <code>&lt;C-c&gt;</code>, <code>&lt;space&gt;c</code></td></tr>
+<tr><td><code>toggle_line_comments</code></td><td>Line comment/uncomment selections</td><td>normal: <code>&lt;space&gt;&lt;A-c&gt;</code>, select: <code>&lt;space&gt;&lt;A-c&gt;</code></td></tr>
+<tr><td><code>toggle_block_comments</code></td><td>Block comment/uncomment selections</td><td>normal: <code>&lt;space&gt;C</code>, select: <code>&lt;space&gt;C</code></td></tr>
+<tr><td><code>rotate_selections_forward</code></td><td>Rotate selections forward</td><td>normal: <code>)</code>, select: <code>)</code></td></tr>
+<tr><td><code>rotate_selections_backward</code></td><td>Rotate selections backward</td><td>normal: <code>(</code>, select: <code>(</code></td></tr>
+<tr><td><code>rotate_selection_contents_forward</code></td><td>Rotate selection contents forward</td><td>normal: <code>&lt;A-)&gt;</code>, select: <code>&lt;A-)&gt;</code></td></tr>
+<tr><td><code>rotate_selection_contents_backward</code></td><td>Rotate selections contents backward</td><td>normal: <code>&lt;A-(&gt;</code>, select: <code>&lt;A-(&gt;</code></td></tr>
+<tr><td><code>reverse_selection_contents</code></td><td>Reverse selections contents</td><td></td></tr>
+<tr><td><code>expand_selection</code></td><td>Expand selection to parent syntax node</td><td>normal: <code>&lt;A-o&gt;</code>, <code>&lt;A-up&gt;</code>, select: <code>&lt;A-o&gt;</code>, <code>&lt;A-up&gt;</code></td></tr>
+<tr><td><code>shrink_selection</code></td><td>Shrink selection to previously expanded syntax node</td><td>normal: <code>&lt;A-i&gt;</code>, <code>&lt;A-down&gt;</code>, select: <code>&lt;A-i&gt;</code>, <code>&lt;A-down&gt;</code></td></tr>
+<tr><td><code>select_next_sibling</code></td><td>Select next sibling in the syntax tree</td><td>normal: <code>&lt;A-n&gt;</code>, <code>&lt;A-right&gt;</code>, select: <code>&lt;A-n&gt;</code>, <code>&lt;A-right&gt;</code></td></tr>
+<tr><td><code>select_prev_sibling</code></td><td>Select previous sibling the in syntax tree</td><td>normal: <code>&lt;A-p&gt;</code>, <code>&lt;A-left&gt;</code>, select: <code>&lt;A-p&gt;</code>, <code>&lt;A-left&gt;</code></td></tr>
+<tr><td><code>select_all_siblings</code></td><td>Select all siblings of the current node</td><td>normal: <code>&lt;A-a&gt;</code>, select: <code>&lt;A-a&gt;</code></td></tr>
+<tr><td><code>select_all_children</code></td><td>Select all children of the current node</td><td>normal: <code>&lt;A-I&gt;</code>, <code>&lt;S-A-down&gt;</code>, select: <code>&lt;A-I&gt;</code>, <code>&lt;S-A-down&gt;</code></td></tr>
+<tr><td><code>jump_forward</code></td><td>Jump forward on jumplist</td><td>normal: <code>&lt;C-i&gt;</code>, <code>&lt;tab&gt;</code>, select: <code>&lt;C-i&gt;</code>, <code>&lt;tab&gt;</code></td></tr>
+<tr><td><code>jump_backward</code></td><td>Jump backward on jumplist</td><td>normal: <code>&lt;C-o&gt;</code>, select: <code>&lt;C-o&gt;</code></td></tr>
+<tr><td><code>save_selection</code></td><td>Save current selection to jumplist</td><td>normal: <code>&lt;C-s&gt;</code>, select: <code>&lt;C-s&gt;</code></td></tr>
+<tr><td><code>jump_view_right</code></td><td>Jump to right split</td><td>normal: <code>&lt;C-w&gt;l</code>, <code>&lt;space&gt;wl</code>, <code>&lt;C-w&gt;&lt;C-l&gt;</code>, <code>&lt;C-w&gt;&lt;right&gt;</code>, <code>&lt;space&gt;w&lt;C-l&gt;</code>, <code>&lt;space&gt;w&lt;right&gt;</code>, select: <code>&lt;C-w&gt;l</code>, <code>&lt;space&gt;wl</code>, <code>&lt;C-w&gt;&lt;C-l&gt;</code>, <code>&lt;C-w&gt;&lt;right&gt;</code>, <code>&lt;space&gt;w&lt;C-l&gt;</code>, <code>&lt;space&gt;w&lt;right&gt;</code></td></tr>
+<tr><td><code>jump_view_left</code></td><td>Jump to left split</td><td>normal: <code>&lt;C-w&gt;h</code>, <code>&lt;space&gt;wh</code>, <code>&lt;C-w&gt;&lt;C-h&gt;</code>, <code>&lt;C-w&gt;&lt;left&gt;</code>, <code>&lt;space&gt;w&lt;C-h&gt;</code>, <code>&lt;space&gt;w&lt;left&gt;</code>, select: <code>&lt;C-w&gt;h</code>, <code>&lt;space&gt;wh</code>, <code>&lt;C-w&gt;&lt;C-h&gt;</code>, <code>&lt;C-w&gt;&lt;left&gt;</code>, <code>&lt;space&gt;w&lt;C-h&gt;</code>, <code>&lt;space&gt;w&lt;left&gt;</code></td></tr>
+<tr><td><code>jump_view_up</code></td><td>Jump to split above</td><td>normal: <code>&lt;C-w&gt;k</code>, <code>&lt;C-w&gt;&lt;up&gt;</code>, <code>&lt;space&gt;wk</code>, <code>&lt;C-w&gt;&lt;C-k&gt;</code>, <code>&lt;space&gt;w&lt;up&gt;</code>, <code>&lt;space&gt;w&lt;C-k&gt;</code>, select: <code>&lt;C-w&gt;k</code>, <code>&lt;C-w&gt;&lt;up&gt;</code>, <code>&lt;space&gt;wk</code>, <code>&lt;C-w&gt;&lt;C-k&gt;</code>, <code>&lt;space&gt;w&lt;up&gt;</code>, <code>&lt;space&gt;w&lt;C-k&gt;</code></td></tr>
+<tr><td><code>jump_view_down</code></td><td>Jump to split below</td><td>normal: <code>&lt;C-w&gt;j</code>, <code>&lt;space&gt;wj</code>, <code>&lt;C-w&gt;&lt;C-j&gt;</code>, <code>&lt;C-w&gt;&lt;down&gt;</code>, <code>&lt;space&gt;w&lt;C-j&gt;</code>, <code>&lt;space&gt;w&lt;down&gt;</code>, select: <code>&lt;C-w&gt;j</code>, <code>&lt;space&gt;wj</code>, <code>&lt;C-w&gt;&lt;C-j&gt;</code>, <code>&lt;C-w&gt;&lt;down&gt;</code>, <code>&lt;space&gt;w&lt;C-j&gt;</code>, <code>&lt;space&gt;w&lt;down&gt;</code></td></tr>
+<tr><td><code>swap_view_right</code></td><td>Swap with right split</td><td>normal: <code>&lt;C-w&gt;L</code>, <code>&lt;space&gt;wL</code>, select: <code>&lt;C-w&gt;L</code>, <code>&lt;space&gt;wL</code></td></tr>
+<tr><td><code>swap_view_left</code></td><td>Swap with left split</td><td>normal: <code>&lt;C-w&gt;H</code>, <code>&lt;space&gt;wH</code>, select: <code>&lt;C-w&gt;H</code>, <code>&lt;space&gt;wH</code></td></tr>
+<tr><td><code>swap_view_up</code></td><td>Swap with split above</td><td>normal: <code>&lt;C-w&gt;K</code>, <code>&lt;space&gt;wK</code>, select: <code>&lt;C-w&gt;K</code>, <code>&lt;space&gt;wK</code></td></tr>
+<tr><td><code>swap_view_down</code></td><td>Swap with split below</td><td>normal: <code>&lt;C-w&gt;J</code>, <code>&lt;space&gt;wJ</code>, select: <code>&lt;C-w&gt;J</code>, <code>&lt;space&gt;wJ</code></td></tr>
+<tr><td><code>transpose_view</code></td><td>Transpose splits</td><td>normal: <code>&lt;C-w&gt;t</code>, <code>&lt;space&gt;wt</code>, <code>&lt;C-w&gt;&lt;C-t&gt;</code>, <code>&lt;space&gt;w&lt;C-t&gt;</code>, select: <code>&lt;C-w&gt;t</code>, <code>&lt;space&gt;wt</code>, <code>&lt;C-w&gt;&lt;C-t&gt;</code>, <code>&lt;space&gt;w&lt;C-t&gt;</code></td></tr>
+<tr><td><code>rotate_view</code></td><td>Goto next window</td><td>normal: <code>&lt;C-w&gt;w</code>, <code>&lt;space&gt;ww</code>, <code>&lt;C-w&gt;&lt;C-w&gt;</code>, <code>&lt;space&gt;w&lt;C-w&gt;</code>, select: <code>&lt;C-w&gt;w</code>, <code>&lt;space&gt;ww</code>, <code>&lt;C-w&gt;&lt;C-w&gt;</code>, <code>&lt;space&gt;w&lt;C-w&gt;</code></td></tr>
+<tr><td><code>rotate_view_reverse</code></td><td>Goto previous window</td><td></td></tr>
+<tr><td><code>hsplit</code></td><td>Horizontal bottom split</td><td>normal: <code>&lt;C-w&gt;s</code>, <code>&lt;space&gt;ws</code>, <code>&lt;C-w&gt;&lt;C-s&gt;</code>, <code>&lt;space&gt;w&lt;C-s&gt;</code>, select: <code>&lt;C-w&gt;s</code>, <code>&lt;space&gt;ws</code>, <code>&lt;C-w&gt;&lt;C-s&gt;</code>, <code>&lt;space&gt;w&lt;C-s&gt;</code></td></tr>
+<tr><td><code>hsplit_new</code></td><td>Horizontal bottom split scratch buffer</td><td>normal: <code>&lt;C-w&gt;ns</code>, <code>&lt;space&gt;wns</code>, <code>&lt;C-w&gt;n&lt;C-s&gt;</code>, <code>&lt;space&gt;wn&lt;C-s&gt;</code>, select: <code>&lt;C-w&gt;ns</code>, <code>&lt;space&gt;wns</code>, <code>&lt;C-w&gt;n&lt;C-s&gt;</code>, <code>&lt;space&gt;wn&lt;C-s&gt;</code></td></tr>
+<tr><td><code>vsplit</code></td><td>Vertical right split</td><td>normal: <code>&lt;C-w&gt;v</code>, <code>&lt;space&gt;wv</code>, <code>&lt;C-w&gt;&lt;C-v&gt;</code>, <code>&lt;space&gt;w&lt;C-v&gt;</code>, select: <code>&lt;C-w&gt;v</code>, <code>&lt;space&gt;wv</code>, <code>&lt;C-w&gt;&lt;C-v&gt;</code>, <code>&lt;space&gt;w&lt;C-v&gt;</code></td></tr>
+<tr><td><code>vsplit_new</code></td><td>Vertical right split scratch buffer</td><td>normal: <code>&lt;C-w&gt;nv</code>, <code>&lt;space&gt;wnv</code>, <code>&lt;C-w&gt;n&lt;C-v&gt;</code>, <code>&lt;space&gt;wn&lt;C-v&gt;</code>, select: <code>&lt;C-w&gt;nv</code>, <code>&lt;space&gt;wnv</code>, <code>&lt;C-w&gt;n&lt;C-v&gt;</code>, <code>&lt;space&gt;wn&lt;C-v&gt;</code></td></tr>
+<tr><td><code>wclose</code></td><td>Close window</td><td>normal: <code>&lt;C-w&gt;q</code>, <code>&lt;space&gt;wq</code>, <code>&lt;C-w&gt;&lt;C-q&gt;</code>, <code>&lt;space&gt;w&lt;C-q&gt;</code>, select: <code>&lt;C-w&gt;q</code>, <code>&lt;space&gt;wq</code>, <code>&lt;C-w&gt;&lt;C-q&gt;</code>, <code>&lt;space&gt;w&lt;C-q&gt;</code></td></tr>
+<tr><td><code>wonly</code></td><td>Close windows except current</td><td>normal: <code>&lt;C-w&gt;o</code>, <code>&lt;space&gt;wo</code>, <code>&lt;C-w&gt;&lt;C-o&gt;</code>, <code>&lt;space&gt;w&lt;C-o&gt;</code>, select: <code>&lt;C-w&gt;o</code>, <code>&lt;space&gt;wo</code>, <code>&lt;C-w&gt;&lt;C-o&gt;</code>, <code>&lt;space&gt;w&lt;C-o&gt;</code></td></tr>
+<tr><td><code>select_register</code></td><td>Select register</td><td>normal: <code>"</code>, select: <code>"</code></td></tr>
+<tr><td><code>insert_register</code></td><td>Insert register</td><td>insert: <code>&lt;C-r&gt;</code></td></tr>
+<tr><td><code>copy_between_registers</code></td><td>Copy between two registers</td><td></td></tr>
+<tr><td><code>align_view_middle</code></td><td>Align view middle</td><td>normal: <code>Zm</code>, <code>zm</code>, select: <code>Zm</code>, <code>zm</code></td></tr>
+<tr><td><code>align_view_top</code></td><td>Align view top</td><td>normal: <code>Zt</code>, <code>zt</code>, select: <code>Zt</code>, <code>zt</code></td></tr>
+<tr><td><code>align_view_center</code></td><td>Align view center</td><td>normal: <code>Zc</code>, <code>Zz</code>, <code>zc</code>, <code>zz</code>, select: <code>Zc</code>, <code>Zz</code>, <code>zc</code>, <code>zz</code></td></tr>
+<tr><td><code>align_view_bottom</code></td><td>Align view bottom</td><td>normal: <code>Zb</code>, <code>zb</code>, select: <code>Zb</code>, <code>zb</code></td></tr>
+<tr><td><code>scroll_up</code></td><td>Scroll view up</td><td>normal: <code>Zk</code>, <code>zk</code>, <code>Z&lt;up&gt;</code>, <code>z&lt;up&gt;</code>, select: <code>Zk</code>, <code>zk</code>, <code>Z&lt;up&gt;</code>, <code>z&lt;up&gt;</code></td></tr>
+<tr><td><code>scroll_down</code></td><td>Scroll view down</td><td>normal: <code>Zj</code>, <code>zj</code>, <code>Z&lt;down&gt;</code>, <code>z&lt;down&gt;</code>, select: <code>Zj</code>, <code>zj</code>, <code>Z&lt;down&gt;</code>, <code>z&lt;down&gt;</code></td></tr>
+<tr><td><code>match_brackets</code></td><td>Goto matching bracket</td><td>normal: <code>mm</code>, select: <code>mm</code></td></tr>
+<tr><td><code>surround_add</code></td><td>Surround add</td><td>normal: <code>ms</code>, select: <code>ms</code></td></tr>
+<tr><td><code>surround_replace</code></td><td>Surround replace</td><td>normal: <code>mr</code>, select: <code>mr</code></td></tr>
+<tr><td><code>surround_delete</code></td><td>Surround delete</td><td>normal: <code>md</code>, select: <code>md</code></td></tr>
+<tr><td><code>select_textobject_around</code></td><td>Select around object</td><td>normal: <code>ma</code>, select: <code>ma</code></td></tr>
+<tr><td><code>select_textobject_inner</code></td><td>Select inside object</td><td>normal: <code>mi</code>, select: <code>mi</code></td></tr>
+<tr><td><code>goto_next_function</code></td><td>Goto next function</td><td>normal: <code>]f</code>, select: <code>]f</code></td></tr>
+<tr><td><code>goto_prev_function</code></td><td>Goto previous function</td><td>normal: <code>[f</code>, select: <code>[f</code></td></tr>
+<tr><td><code>goto_next_class</code></td><td>Goto next type definition</td><td>normal: <code>]t</code>, select: <code>]t</code></td></tr>
+<tr><td><code>goto_prev_class</code></td><td>Goto previous type definition</td><td>normal: <code>[t</code>, select: <code>[t</code></td></tr>
+<tr><td><code>goto_next_parameter</code></td><td>Goto next parameter</td><td>normal: <code>]a</code>, select: <code>]a</code></td></tr>
+<tr><td><code>goto_prev_parameter</code></td><td>Goto previous parameter</td><td>normal: <code>[a</code>, select: <code>[a</code></td></tr>
+<tr><td><code>goto_next_comment</code></td><td>Goto next comment</td><td>normal: <code>]c</code>, select: <code>]c</code></td></tr>
+<tr><td><code>goto_prev_comment</code></td><td>Goto previous comment</td><td>normal: <code>[c</code>, select: <code>[c</code></td></tr>
+<tr><td><code>goto_next_test</code></td><td>Goto next test</td><td>normal: <code>]T</code>, select: <code>]T</code></td></tr>
+<tr><td><code>goto_prev_test</code></td><td>Goto previous test</td><td>normal: <code>[T</code>, select: <code>[T</code></td></tr>
+<tr><td><code>goto_next_entry</code></td><td>Goto next pairing</td><td>normal: <code>]e</code>, select: <code>]e</code></td></tr>
+<tr><td><code>goto_prev_entry</code></td><td>Goto previous pairing</td><td>normal: <code>[e</code>, select: <code>[e</code></td></tr>
+<tr><td><code>goto_next_paragraph</code></td><td>Goto next paragraph</td><td>normal: <code>]p</code>, select: <code>]p</code></td></tr>
+<tr><td><code>goto_prev_paragraph</code></td><td>Goto previous paragraph</td><td>normal: <code>[p</code>, select: <code>[p</code></td></tr>
+<tr><td><code>dap_launch</code></td><td>Launch debug target</td><td>normal: <code>&lt;space&gt;Gl</code>, select: <code>&lt;space&gt;Gl</code></td></tr>
+<tr><td><code>dap_restart</code></td><td>Restart debugging session</td><td>normal: <code>&lt;space&gt;Gr</code>, select: <code>&lt;space&gt;Gr</code></td></tr>
+<tr><td><code>dap_toggle_breakpoint</code></td><td>Toggle breakpoint</td><td>normal: <code>&lt;space&gt;Gb</code>, select: <code>&lt;space&gt;Gb</code></td></tr>
+<tr><td><code>dap_continue</code></td><td>Continue program execution</td><td>normal: <code>&lt;space&gt;Gc</code>, select: <code>&lt;space&gt;Gc</code></td></tr>
+<tr><td><code>dap_pause</code></td><td>Pause program execution</td><td>normal: <code>&lt;space&gt;Gh</code>, select: <code>&lt;space&gt;Gh</code></td></tr>
+<tr><td><code>dap_step_in</code></td><td>Step in</td><td>normal: <code>&lt;space&gt;Gi</code>, select: <code>&lt;space&gt;Gi</code></td></tr>
+<tr><td><code>dap_step_out</code></td><td>Step out</td><td>normal: <code>&lt;space&gt;Go</code>, select: <code>&lt;space&gt;Go</code></td></tr>
+<tr><td><code>dap_next</code></td><td>Step to next</td><td>normal: <code>&lt;space&gt;Gn</code>, select: <code>&lt;space&gt;Gn</code></td></tr>
+<tr><td><code>dap_variables</code></td><td>List variables</td><td>normal: <code>&lt;space&gt;Gv</code>, select: <code>&lt;space&gt;Gv</code></td></tr>
+<tr><td><code>dap_terminate</code></td><td>End debug session</td><td>normal: <code>&lt;space&gt;Gt</code>, select: <code>&lt;space&gt;Gt</code></td></tr>
+<tr><td><code>dap_edit_condition</code></td><td>Edit breakpoint condition on current line</td><td>normal: <code>&lt;space&gt;G&lt;C-c&gt;</code>, select: <code>&lt;space&gt;G&lt;C-c&gt;</code></td></tr>
+<tr><td><code>dap_edit_log</code></td><td>Edit breakpoint log message on current line</td><td>normal: <code>&lt;space&gt;G&lt;C-l&gt;</code>, select: <code>&lt;space&gt;G&lt;C-l&gt;</code></td></tr>
+<tr><td><code>dap_switch_thread</code></td><td>Switch current thread</td><td>normal: <code>&lt;space&gt;Gst</code>, select: <code>&lt;space&gt;Gst</code></td></tr>
+<tr><td><code>dap_switch_stack_frame</code></td><td>Switch stack frame</td><td>normal: <code>&lt;space&gt;Gsf</code>, select: <code>&lt;space&gt;Gsf</code></td></tr>
+<tr><td><code>dap_enable_exceptions</code></td><td>Enable exception breakpoints</td><td>normal: <code>&lt;space&gt;Ge</code>, select: <code>&lt;space&gt;Ge</code></td></tr>
+<tr><td><code>dap_disable_exceptions</code></td><td>Disable exception breakpoints</td><td>normal: <code>&lt;space&gt;GE</code>, select: <code>&lt;space&gt;GE</code></td></tr>
+<tr><td><code>shell_pipe</code></td><td>Pipe selections through shell command</td><td>normal: <code>|</code>, select: <code>|</code></td></tr>
+<tr><td><code>shell_pipe_to</code></td><td>Pipe selections into shell command ignoring output</td><td>normal: <code>&lt;A-|&gt;</code>, select: <code>&lt;A-|&gt;</code></td></tr>
+<tr><td><code>shell_insert_output</code></td><td>Insert shell command output before selections</td><td>normal: <code>!</code>, select: <code>!</code></td></tr>
+<tr><td><code>shell_append_output</code></td><td>Append shell command output after selections</td><td>normal: <code>&lt;A-!&gt;</code>, select: <code>&lt;A-!&gt;</code></td></tr>
+<tr><td><code>shell_keep_pipe</code></td><td>Filter selections with shell predicate</td><td>normal: <code>$</code>, select: <code>$</code></td></tr>
+<tr><td><code>suspend</code></td><td>Suspend and return to shell</td><td>normal: <code>&lt;C-z&gt;</code>, select: <code>&lt;C-z&gt;</code></td></tr>
+<tr><td><code>rename_symbol</code></td><td>Rename symbol</td><td>normal: <code>&lt;space&gt;r</code>, select: <code>&lt;space&gt;r</code></td></tr>
+<tr><td><code>increment</code></td><td>Increment item under cursor</td><td>normal: <code>&lt;C-a&gt;</code>, select: <code>&lt;C-a&gt;</code></td></tr>
+<tr><td><code>decrement</code></td><td>Decrement item under cursor</td><td>normal: <code>&lt;C-x&gt;</code>, select: <code>&lt;C-x&gt;</code></td></tr>
+<tr><td><code>record_macro</code></td><td>Record macro</td><td>normal: <code>Q</code>, select: <code>Q</code></td></tr>
+<tr><td><code>replay_macro</code></td><td>Replay macro</td><td>normal: <code>q</code>, select: <code>q</code></td></tr>
+<tr><td><code>command_palette</code></td><td>Open command palette</td><td>normal: <code>&lt;space&gt;?</code>, select: <code>&lt;space&gt;?</code></td></tr>
+<tr><td><code>goto_word</code></td><td>Jump to a two-character label</td><td>normal: <code>gw</code></td></tr>
+<tr><td><code>extend_to_word</code></td><td>Extend to a two-character label</td><td>select: <code>gw</code></td></tr>
+<tr><td><code>goto_next_tabstop</code></td><td>Goto next snippet placeholder</td><td></td></tr>
+<tr><td><code>goto_prev_tabstop</code></td><td>Goto next snippet placeholder</td><td></td></tr>
+<tr><td><code>rotate_selections_first</code></td><td>Make the first selection your primary one</td><td></td></tr>
+<tr><td><code>rotate_selections_last</code></td><td>Make the last selection your primary one</td><td></td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="command-line.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="lang-support.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="command-line.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="lang-support.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
