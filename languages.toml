@@ -1228,6 +1228,21 @@ name = "bibtex"
 source = { git = "https://github.com/latex-lsp/tree-sitter-bibtex", rev = "ccfd77db0ed799b6c22c214fe9d2937f47bc8b34" }
 
 [[language]]
+name = "lilypond"
+scope = "source.lilypond"
+injection-regex = "lilypond"
+file-types = ["ly"]
+roots = []
+comment-token = "%"
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = "ly", args = ["reformat"] }
+auto-format = true
+
+[[grammar]]
+name = "lilypond"
+source = { git = "https://github.com/nwhetsell/tree-sitter-lilypond", rev = "6b0f470b2e5acbfc4d1d64ba89b396adecf06ea4", subpath = "lilypond" }
+
+[[language]]
 name = "lean"
 scope = "source.lean"
 injection-regex = "lean"
