@@ -229,10 +229,10 @@
 | `jump_view_left` | Jump to left split | normal: `` <C-w>h ``, `` <space>wh ``, `` <C-w><C-h> ``, `` <C-w><left> ``, `` <space>w<C-h> ``, `` <space>w<left> ``, select: `` <C-w>h ``, `` <space>wh ``, `` <C-w><C-h> ``, `` <C-w><left> ``, `` <space>w<C-h> ``, `` <space>w<left> `` |
 | `jump_view_up` | Jump to split above | normal: `` <C-w>k ``, `` <C-w><up> ``, `` <space>wk ``, `` <C-w><C-k> ``, `` <space>w<up> ``, `` <space>w<C-k> ``, select: `` <C-w>k ``, `` <C-w><up> ``, `` <space>wk ``, `` <C-w><C-k> ``, `` <space>w<up> ``, `` <space>w<C-k> `` |
 | `jump_view_down` | Jump to split below | normal: `` <C-w>j ``, `` <space>wj ``, `` <C-w><C-j> ``, `` <C-w><down> ``, `` <space>w<C-j> ``, `` <space>w<down> ``, select: `` <C-w>j ``, `` <space>wj ``, `` <C-w><C-j> ``, `` <C-w><down> ``, `` <space>w<C-j> ``, `` <space>w<down> `` |
-| `swap_view_right` | Swap with right split | normal: `` <C-w>L ``, `` <space>wL ``, select: `` <C-w>L ``, `` <space>wL `` |
-| `swap_view_left` | Swap with left split | normal: `` <C-w>H ``, `` <space>wH ``, select: `` <C-w>H ``, `` <space>wH `` |
-| `swap_view_up` | Swap with split above | normal: `` <C-w>K ``, `` <space>wK ``, select: `` <C-w>K ``, `` <space>wK `` |
-| `swap_view_down` | Swap with split below | normal: `` <C-w>J ``, `` <space>wJ ``, select: `` <C-w>J ``, `` <space>wJ `` |
+| `swap_view_right` | Swap with right split | normal: `` <C-w>L ``, `` <space>wL ``, `` <C-w><S-right> ``, `` <space>w<S-right> ``, select: `` <C-w>L ``, `` <space>wL ``, `` <C-w><S-right> ``, `` <space>w<S-right> `` |
+| `swap_view_left` | Swap with left split | normal: `` <C-w>H ``, `` <space>wH ``, `` <C-w><S-left> ``, `` <space>w<S-left> ``, select: `` <C-w>H ``, `` <space>wH ``, `` <C-w><S-left> ``, `` <space>w<S-left> `` |
+| `swap_view_up` | Swap with split above | normal: `` <C-w>K ``, `` <space>wK ``, `` <C-w><S-up> ``, `` <space>w<S-up> ``, select: `` <C-w>K ``, `` <space>wK ``, `` <C-w><S-up> ``, `` <space>w<S-up> `` |
+| `swap_view_down` | Swap with split below | normal: `` <C-w>J ``, `` <space>wJ ``, `` <C-w><S-down> ``, `` <space>w<S-down> ``, select: `` <C-w>J ``, `` <space>wJ ``, `` <C-w><S-down> ``, `` <space>w<S-down> `` |
 | `transpose_view` | Transpose splits | normal: `` <C-w>t ``, `` <space>wt ``, `` <C-w><C-t> ``, `` <space>w<C-t> ``, select: `` <C-w>t ``, `` <space>wt ``, `` <C-w><C-t> ``, `` <space>w<C-t> `` |
 | `rotate_view` | Goto next window | normal: `` <C-w>w ``, `` <space>ww ``, `` <C-w><C-w> ``, `` <space>w<C-w> ``, select: `` <C-w>w ``, `` <space>ww ``, `` <C-w><C-w> ``, `` <space>w<C-w> `` |
 | `rotate_view_reverse` | Goto previous window |  |
