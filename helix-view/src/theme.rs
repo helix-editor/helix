@@ -39,6 +39,9 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
 pub struct Loader {
     /// Theme directories to search from highest to lowest priority
     theme_dirs: Vec<PathBuf>,
+
+    /// Themes which are dynamically created at runtime
+    dynamic_themes: HashMap<String, Theme>,
 }
 impl Loader {
     /// Creates a new loader that can load themes from multiple directories.
@@ -48,18 +51,34 @@ impl Loader {
     pub fn new(dirs: &[PathBuf]) -> Self {
         Self {
             theme_dirs: dirs.iter().map(|p| p.join("themes")).collect(),
+            dynamic_themes: HashMap::new(),
         }
+    }
+
+    pub fn dynamic_themes(&self) -> impl Iterator<Item = &String> {
+        self.dynamic_themes.keys()
     }
 
     /// Loads a theme searching directories in priority order.
     pub fn load(&self, name: &str) -> Result<Theme> {
-        let (theme, warnings) = self.load_with_warnings(name)?;
+        match self.load_with_warnings(name) {
+            Ok((theme, warnings)) => {
+                for warning in warnings {
+                    warn!("Theme '{}': {}", name, warning);
+                }
 
-        for warning in warnings {
-            warn!("Theme '{}': {}", name, warning);
+                Ok(theme)
+            }
+            Err(_) => self
+                .dynamic_themes
+                .get(name)
+                .ok_or_else(|| anyhow::anyhow!("Could not load theme: {}", name))
+                .cloned(),
         }
+    }
 
-        Ok(theme)
+    pub fn add_dynamic_theme(&mut self, name: String, theme: Theme) {
+        self.dynamic_themes.insert(name, theme);
     }
 
     /// Loads a theme searching directories in priority order, returning any warnings

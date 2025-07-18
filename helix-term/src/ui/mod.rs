@@ -412,7 +412,7 @@ pub mod completers {
         names.push("base16_default".into());
 
         // Include any user defined themes as well
-        names.extend(editor.user_defined_themes.keys().map(|x| x.into()));
+        names.extend(editor.theme_loader.dynamic_themes().map(|x| x.into()));
 
         names.sort();
         names.dedup();

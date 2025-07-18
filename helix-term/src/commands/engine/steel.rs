@@ -5,13 +5,15 @@ use helix_core::{
     diagnostic::Severity,
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     find_workspace, graphemes,
-    syntax::config::{
-        default_timeout, AutoPairConfig, LanguageConfiguration, LanguageServerConfiguration,
-        SoftWrap,
+    syntax::{
+        self,
+        config::{
+            default_timeout, AutoPairConfig, LanguageConfiguration, LanguageServerConfiguration,
+            SoftWrap,
+        },
     },
-    syntax::{self},
     text_annotations::InlineAnnotation,
-    Range, Selection, Tendril,
+    Range, Selection, Tendril, Transaction,
 };
 use helix_event::register_hook;
 use helix_view::{
@@ -71,7 +73,7 @@ use super::{
     components::{self, helix_component_module},
     Context, MappableCommand, TYPABLE_COMMAND_LIST,
 };
-use insert::{insert_char, insert_string};
+use insert::insert_char;
 
 pub static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
 
@@ -1586,9 +1588,8 @@ fn theme_from_json_string(name: String, value: SteelVal) -> Result<SteelTheme, a
 
 // Mutate the theme?
 fn add_theme(cx: &mut Context, theme: SteelTheme) {
-    cx.editor
-        .user_defined_themes
-        .insert(theme.0.name().to_owned(), theme.0);
+    Arc::make_mut(&mut cx.editor.theme_loader)
+        .add_dynamic_theme(theme.0.name().to_owned(), theme.0);
 }
 
 fn get_style(theme: &SteelTheme, name: SteelString) -> helix_view::theme::Style {
@@ -1726,7 +1727,10 @@ Get the `Rect` associated with the currently focused buffer.
     );
     register_0!(
         "selected-register!",
-        |cx: &mut Context| cx.editor.selected_register.unwrap_or(cx.editor.config().default_yank_register),
+        |cx: &mut Context| cx
+            .editor
+            .selected_register
+            .unwrap_or(cx.editor.config().default_yank_register),
         r#"Get currently selected register"#
     );
 
@@ -5311,4 +5315,16 @@ pub fn remove_inlay_hint(cx: &mut Context, char_index: usize, _completion: Steel
         .retain(|x| x.char_idx != char_index);
     doc.set_inlay_hints(view_id, new_inlay_hints);
     true
+}
+
+pub fn insert_string(cx: &mut Context, string: SteelString) {
+    let (view, doc) = current!(cx.editor);
+
+    let indent = Tendril::from(string.as_str());
+    let transaction = Transaction::insert(
+        doc.text(),
+        &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
+        indent,
+    );
+    doc.apply(&transaction, view.id);
 }

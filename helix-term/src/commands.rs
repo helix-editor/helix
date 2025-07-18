@@ -15,9 +15,6 @@ pub use lsp::*;
 
 pub use engine::ScriptingEngine;
 
-#[cfg(feature = "steel")]
-pub use engine::steel::{helix_module_file, steel_init_file};
-
 use tui::{
     text::{Span, Spans},
     widgets::Cell,
@@ -252,7 +249,6 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
             Self::Typable { name, args, doc: _ } => {
-                // TODO: Swap the order to allow overriding the existing commands?
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
@@ -265,7 +261,6 @@ impl MappableCommand {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {
-                    // TODO: Update this
                     let args = args.split_whitespace().map(Cow::from).collect();
                     if !ScriptingEngine::call_function_by_name(cx, name, args) {
                         cx.editor.set_error(format!("no such command: '{name}'"));
@@ -3162,11 +3157,9 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
-    #[allow(unused)]
     struct BufferMeta {
         id: DocumentId,
         path: Option<PathBuf>,
-        name: Option<String>,
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
@@ -3175,7 +3168,6 @@ fn buffer_picker(cx: &mut Context) {
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
         path: doc.path().cloned(),
-        name: doc.name.clone(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
@@ -4169,18 +4161,6 @@ pub mod insert {
         }
 
         helix_event::dispatch(PostInsertChar { c, cx });
-    }
-
-    pub fn insert_string(cx: &mut Context, string: String) {
-        let (view, doc) = current!(cx.editor);
-
-        let indent = Tendril::from(string);
-        let transaction = Transaction::insert(
-            doc.text(),
-            &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
-            indent,
-        );
-        doc.apply(&transaction, view.id);
     }
 
     pub fn smart_tab(cx: &mut Context) {

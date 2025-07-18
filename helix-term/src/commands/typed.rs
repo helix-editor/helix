@@ -1000,20 +1000,7 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                // if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
-                //     if !(true_color || theme.is_16_color()) {
-                //         bail!("Unsupported theme: theme requires true color support");
-                //     }
-                //     cx.editor.set_theme_preview(theme);
-                // };
-
-                if let Ok(theme) = cx.editor.theme_loader.load(theme_name).or_else(|_| {
-                    cx.editor
-                        .user_defined_themes
-                        .get(theme_name)
-                        .ok_or_else(|| anyhow::anyhow!("Could not load theme"))
-                        .cloned()
-                }) {
+                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
                     }
@@ -1023,19 +1010,12 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
-                let theme = cx.editor.theme_loader.load(theme_name).or_else(|_| {
-                    cx.editor
-                        .user_defined_themes
-                        .get(theme_name)
-                        .ok_or_else(|| anyhow::anyhow!("Could not load theme"))
-                        .cloned()
-                })?;
+                let theme = cx
+                    .editor
+                    .theme_loader
+                    .load(theme_name)
+                    .map_err(|err| anyhow::anyhow!("could not load theme: {}", err))?;
 
-                // let theme = cx
-                //     .editor
-                //     .theme_loader
-                //     .load(theme_name)
-                //     .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
                 if !(true_color || theme.is_16_color()) {
                     bail!("Unsupported theme: theme requires true color support");
                 }
