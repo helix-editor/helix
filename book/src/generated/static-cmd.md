@@ -163,6 +163,8 @@
 | `extend_to_line_start` | Extend to line start | select: `` <home> `` |
 | `extend_to_first_nonwhitespace` | Extend to first non-blank in line |  |
 | `extend_to_line_end` | Extend to line end | select: `` <end> `` |
+| `undo_selection` | Go to previous selection | normal: `` <A-k> ``, select: `` <A-k> `` |
+| `redo_selection` | Go to next selection | normal: `` <A-w> ``, select: `` <A-w> `` |
 | `extend_to_line_end_newline` | Extend to line end |  |
 | `signature_help` | Show signature help |  |
 | `smart_tab` | Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command. | insert: `` <tab> `` |
