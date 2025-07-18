@@ -512,6 +512,8 @@ pub enum Notification {
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
     ProgressMessage(lsp::ProgressParams),
+    // Other kind specifically for extensions
+    Other(String, jsonrpc::Params),
 }
 
 impl Notification {
@@ -538,9 +540,7 @@ impl Notification {
                 let params: lsp::ProgressParams = params.parse()?;
                 Self::ProgressMessage(params)
             }
-            _ => {
-                return Err(Error::Unhandled);
-            }
+            _ => Self::Other(method.to_owned(), params),
         };
 
         Ok(notification)

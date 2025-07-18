@@ -1,4 +1,5 @@
 pub(crate) mod dap;
+pub(crate) mod engine;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
@@ -11,6 +12,9 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
+
+pub use engine::ScriptingEngine;
+
 use tui::{
     text::{Span, Spans},
     widgets::Cell,
@@ -20,7 +24,8 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    command_line, comment,
+    command_line::{self},
+    comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary},
@@ -256,7 +261,10 @@ impl MappableCommand {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {
-                    cx.editor.set_error(format!("no such command: '{name}'"));
+                    let args = args.split_whitespace().map(Cow::from).collect();
+                    if !ScriptingEngine::call_function_by_name(cx, name, args) {
+                        cx.editor.set_error(format!("no such command: '{name}'"));
+                    }
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
@@ -293,6 +301,14 @@ impl MappableCommand {
             Self::Typable { doc, .. } => doc,
             Self::Static { doc, .. } => doc,
             Self::Macro { name, .. } => name,
+        }
+    }
+
+    pub(crate) fn doc_mut(&mut self) -> Option<&mut String> {
+        if let Self::Typable { doc, .. } = self {
+            Some(doc)
+        } else {
+            None
         }
     }
 
@@ -643,17 +659,17 @@ impl std::str::FromStr for MappableCommand {
             ensure!(!name.is_empty(), "Expected typable command name");
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
-                .map(|cmd| {
-                    let doc = if args.is_empty() {
-                        cmd.doc.to_string()
-                    } else {
-                        format!(":{} {:?}", cmd.name, args)
-                    };
-                    MappableCommand::Typable {
-                        name: cmd.name.to_owned(),
-                        doc,
-                        args: args.to_string(),
-                    }
+                .map(|cmd| MappableCommand::Typable {
+                    name: cmd.name.to_owned(),
+                    doc: format!(":{} {:?}", cmd.name, args),
+                    args: args.to_owned(),
+                })
+                .or_else(|| {
+                    Some(MappableCommand::Typable {
+                        name: name.to_owned(),
+                        args: args.to_owned(),
+                        doc: "Undocumented plugin command".to_string(),
+                    })
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
         } else if let Some(suffix) = s.strip_prefix('@') {
