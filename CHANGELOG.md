@@ -20,6 +20,10 @@ Updated languages and queries:
 Packaging:
 -->
 
+# 25.07.1 (2025-07-18)
+
+This is a patch release which lowers the GLIBC requirements of the release artifacts published to GitHub ([#13983](https://github.com/helix-editor/helix/pull/13983))
+
 # 25.07 (2025-07-15)
 
 As always, a big thank you to all of the contributors! This release saw changes from 195 contributors.
