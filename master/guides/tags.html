@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Adding injection queries</title>
+        <title>Adding tags queries</title>
 
 
         <!-- Custom HTML head -->
@@ -131,7 +131,7 @@
                         <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/guides/injection.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/guides/tags.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -160,91 +160,40 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h2 id="adding-injection-queries"><a class="header" href="#adding-injection-queries">Adding Injection Queries</a></h2>
-<p>Writing language injection queries allows one to highlight a specific node as a different language.
-In addition to the <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">standard</a> language injection options used by tree-sitter, there
-are a few Helix specific extensions that allow for more control.</p>
-<p>An example of a simple query that would highlight all strings as bash in Nix:</p>
-<pre><code class="language-scm">((string_expression (string_fragment) @injection.content)
-  (#set! injection.language "bash"))
-</code></pre>
-<p>Another example is this query, which highlights links in comments and keywords like "TODO", by reusing the dedicated "comment" language:</p>
-<pre><code>((comment) @injection.content
-  (#set! injection.language "comment"))
-</code></pre>
-<h2 id="capture-types"><a class="header" href="#capture-types">Capture Types</a></h2>
-<ul>
-<li>
-<p><code>@injection.language</code> (standard):
-The captured node may contain the language name used to highlight the node captured by
-<code>@injection.content</code>.</p>
-</li>
-<li>
-<p><code>@injection.content</code> (standard):
-Marks the content to be highlighted as the language captured with <code>@injection.language</code> <em>et al</em>.</p>
-</li>
-<li>
-<p><code>@injection.filename</code> (extension):
-The captured node may contain a filename with a file-extension known to Helix,
-highlighting <code>@injection.content</code> as that language. This uses the language extensions defined in
-both the default languages.toml distributed with Helix, as well as user defined languages.</p>
-</li>
-<li>
-<p><code>@injection.shebang</code> (extension):
-The captured node may contain a shebang used to choose a language to highlight as. This also uses
-the shebangs defined in the default and user <code>languages.toml</code>.</p>
-</li>
-</ul>
-<h2 id="settings"><a class="header" href="#settings">Settings</a></h2>
-<ul>
-<li>
-<p><code>injection.combined</code> (standard):
-Indicates that all the matching nodes in the tree should have their content parsed as one
-nested document.</p>
-</li>
-<li>
-<p><code>injection.language</code> (standard):
-Forces the captured content to be highlighted as the given language</p>
-</li>
-<li>
-<p><code>injection.include-children</code> (standard):
-Indicates that the content node’s entire text should be re-parsed, including the text of its child
-nodes. By default, child nodes’ text will be excluded from the injected document.</p>
-</li>
-<li>
-<p><code>injection.include-unnamed-children</code> (extension):
-Same as <code>injection.include-children</code> but only for unnamed child nodes.</p>
-</li>
-</ul>
-<h2 id="predicates"><a class="header" href="#predicates">Predicates</a></h2>
-<ul>
-<li>
-<p><code>#eq?</code> (standard):
-The first argument (a capture) must be equal to the second argument
-(a capture or a string).</p>
-</li>
-<li>
-<p><code>#match?</code> (standard):
-The first argument (a capture) must match the regex given in the
-second argument (a string).</p>
-</li>
-<li>
-<p><code>#any-of?</code> (standard):
-The first argument (a capture) must be one of the other arguments (strings).</p>
-</li>
-</ul>
+                        <h2 id="adding-tags-queries"><a class="header" href="#adding-tags-queries">Adding tags queries</a></h2>
+<p>See tree-sitter's documentation on <a href="https://tree-sitter.github.io/tree-sitter/4-code-navigation.html">Code Navigation Systems</a> for more
+background on tags queries.</p>
+<p>Helix provides LSP-like features such as document and workspace symbol pickers
+out-of-the-box for languages with <code>tags.scm</code> queries based on syntax trees. To
+be analyzed a language must have a tree-sitter grammar and a <code>tags.scm</code> query
+file which pattern matches interesting nodes from syntax trees.</p>
+<p>Query files should be placed in <code>runtime/queries/{language}/tags.scm</code>
+when contributing to Helix. You may place these under your local runtime
+directory (<code>~/.config/helix/runtime</code> in Linux for example) for the sake of
+testing.</p>
+<p>The following <a href="https://tree-sitter.github.io/tree-sitter/using-parsers/queries/index.html">captures</a> are recognized:</p>
+<div class="table-wrapper"><table><thead><tr><th>Capture name</th></tr></thead><tbody>
+<tr><td><code>definition.class</code></td></tr>
+<tr><td><code>definition.constant</code></td></tr>
+<tr><td><code>definition.function</code></td></tr>
+<tr><td><code>definition.interface</code></td></tr>
+<tr><td><code>definition.macro</code></td></tr>
+<tr><td><code>definition.module</code></td></tr>
+<tr><td><code>definition.struct</code></td></tr>
+<tr><td><code>definition.type</code></td></tr>
+</tbody></table>
+</div>
+<p><a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+path%3A%2A%2A/tags.scm&amp;type=Code">Example query files</a> can be found in the Helix GitHub
+repository.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../guides/indent.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../guides/injection.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../guides/tags.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <i class="fa fa-angle-right"></i>
-                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -252,13 +201,10 @@ The first argument (a capture) must be one of the other arguments (strings).</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../guides/indent.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../guides/injection.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../guides/tags.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <i class="fa fa-angle-right"></i>
-                    </a>
             </nav>
 
         </div>
