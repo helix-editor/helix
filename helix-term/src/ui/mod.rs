@@ -32,6 +32,7 @@ pub use text::Text;
 use helix_view::Editor;
 use tui::text::{Span, Spans};
 
+use std::borrow::Cow;
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
@@ -185,6 +186,23 @@ pub fn raw_regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
+/// Get the relative directory as a string.
+///
+/// NOTE: Assumes the given path is a directory, and will always output wiht a
+/// trailing slash.
+fn get_relative_dir(path: &Path) -> Cow<'static, str> {
+    let path = helix_stdx::path::get_relative_path(path);
+    if path.components().next().is_none() {
+        "./".into()
+    } else {
+        let mut str = path.to_string_lossy().into_owned();
+        if !str.ends_with('/') {
+            str.push('/');
+        }
+        str.into()
+    }
+}
+
 #[derive(Debug)]
 pub struct FilePickerData {
     root: PathBuf,
@@ -246,7 +264,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
     let columns = [PickerColumn::new(
-        "path",
+        get_relative_dir(&root),
         |item: &PathBuf, data: &FilePickerData| {
             let path = item.strip_prefix(&data.root).unwrap_or(item);
             let mut spans = Vec::with_capacity(3);
@@ -274,6 +292,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
             cx.editor.set_error(err);
         }
     })
+    .always_show_headers()
     .with_preview(|_editor, path| Some((path.as_path().into(), None)));
     let injector = picker.injector();
     let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
@@ -307,7 +326,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     let directory_content = directory_content(&root)?;
 
     let columns = [PickerColumn::new(
-        "path",
+        get_relative_dir(&root),
         |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
             let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
             if *is_dir {
@@ -345,6 +364,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
             }
         },
     )
+    .always_show_headers()
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
 
     Ok(picker)
