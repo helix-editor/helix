@@ -53,7 +53,7 @@ tokio-stream = "0.1.17"
 toml = "0.9"
 
 [workspace.package]
-version = "25.7.0"
+version = "25.7.1"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]
