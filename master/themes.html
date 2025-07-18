@@ -1,0 +1,630 @@
+<!DOCTYPE HTML>
+<html lang="en" class="colibri sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Themes</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="custom.css">
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "colibri" : "colibri";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('colibri')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="colibri">Colibri</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/themes.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h2 id="themes"><a class="header" href="#themes">Themes</a></h2>
+<p>To use a theme add <code>theme = "&lt;name&gt;"</code> to the top of your <a href="./configuration.html"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
+<h2 id="creating-a-theme"><a class="header" href="#creating-a-theme">Creating a theme</a></h2>
+<p>Create a file with the name of your theme as the file name (i.e <code>mytheme.toml</code>) and place it in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code> or <code>%AppData%\helix\themes</code> on Windows). The directory might have to be created beforehand.</p>
+<blockquote>
+<p>💡 The names "default" and "base16_default" are reserved for built-in themes
+and cannot be overridden by user-defined themes.</p>
+</blockquote>
+<h3 id="overview"><a class="header" href="#overview">Overview</a></h3>
+<p>Each line in the theme file is specified as below:</p>
+<pre><code class="language-toml">key = { fg = "#ffffff", bg = "#000000", underline = { color = "#ff0000", style = "curl"}, modifiers = ["bold", "italic"] }
+</code></pre>
+<p>Where <code>key</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, <code>underline</code> the underline <code>style</code>/<code>color</code>, and <code>modifiers</code> is a list of style modifiers. <code>bg</code>, <code>underline</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
+<p>To specify only the foreground color:</p>
+<pre><code class="language-toml">key = "#ffffff"
+</code></pre>
+<p>If the key contains a dot <code>'.'</code>, it must be quoted to prevent it being parsed as a <a href="https://toml.io/en/v1.0.0#keys">dotted key</a>.</p>
+<pre><code class="language-toml">"key.key" = "#ffffff"
+</code></pre>
+<p>For inspiration, you can find the default <code>theme.toml</code>
+<a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a> and
+user-submitted themes
+<a href="https://github.com/helix-editor/helix/blob/master/runtime/themes">here</a>.</p>
+<h2 id="the-details-of-theme-creation"><a class="header" href="#the-details-of-theme-creation">The details of theme creation</a></h2>
+<h3 id="color-palettes"><a class="header" href="#color-palettes">Color palettes</a></h3>
+<p>It's recommended to define a palette of named colors, and refer to them in the
+configuration values in your theme. To do this, add a table called
+<code>palette</code> to your theme file:</p>
+<pre><code class="language-toml">"ui.background" = "white"
+"ui.text" = "black"
+
+[palette]
+white = "#ffffff"
+black = "#000000"
+</code></pre>
+<p>Keep in mind that the <code>[palette]</code> table includes all keys after its header,
+so it should be defined after the normal theme options.</p>
+<p>The default palette uses the terminal's default 16 colors, and the colors names
+are listed below. The <code>[palette]</code> section in the config file takes precedence
+over it and is merged into the default palette.</p>
+<div class="table-wrapper"><table><thead><tr><th>Color Name</th></tr></thead><tbody>
+<tr><td><code>default</code></td></tr>
+<tr><td><code>black</code></td></tr>
+<tr><td><code>red</code></td></tr>
+<tr><td><code>green</code></td></tr>
+<tr><td><code>yellow</code></td></tr>
+<tr><td><code>blue</code></td></tr>
+<tr><td><code>magenta</code></td></tr>
+<tr><td><code>cyan</code></td></tr>
+<tr><td><code>gray</code></td></tr>
+<tr><td><code>light-red</code></td></tr>
+<tr><td><code>light-green</code></td></tr>
+<tr><td><code>light-yellow</code></td></tr>
+<tr><td><code>light-blue</code></td></tr>
+<tr><td><code>light-magenta</code></td></tr>
+<tr><td><code>light-cyan</code></td></tr>
+<tr><td><code>light-gray</code></td></tr>
+<tr><td><code>white</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="modifiers"><a class="header" href="#modifiers">Modifiers</a></h3>
+<p>The following values may be used as modifier, provided they are supported by
+your terminal emulator.</p>
+<div class="table-wrapper"><table><thead><tr><th>Modifier</th></tr></thead><tbody>
+<tr><td><code>bold</code></td></tr>
+<tr><td><code>dim</code></td></tr>
+<tr><td><code>italic</code></td></tr>
+<tr><td><code>underlined</code></td></tr>
+<tr><td><code>slow_blink</code></td></tr>
+<tr><td><code>rapid_blink</code></td></tr>
+<tr><td><code>reversed</code></td></tr>
+<tr><td><code>hidden</code></td></tr>
+<tr><td><code>crossed_out</code></td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p>💡 The <code>underlined</code> modifier is deprecated and only available for backwards compatibility.
+Its behavior is equivalent to setting <code>underline.style="line"</code>.</p>
+</blockquote>
+<h3 id="underline-style"><a class="header" href="#underline-style">Underline style</a></h3>
+<p>One of the following values may be used as a value for <code>underline.style</code>, providing it is
+supported by your terminal emulator.</p>
+<div class="table-wrapper"><table><thead><tr><th>Modifier</th></tr></thead><tbody>
+<tr><td><code>line</code></td></tr>
+<tr><td><code>curl</code></td></tr>
+<tr><td><code>dashed</code></td></tr>
+<tr><td><code>dotted</code></td></tr>
+<tr><td><code>double_line</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="inheritance"><a class="header" href="#inheritance">Inheritance</a></h3>
+<p>Extend other themes by setting the <code>inherits</code> property to an existing theme.</p>
+<pre><code class="language-toml">inherits = "boo_berry"
+
+# Override the theming for "keyword"s:
+"keyword" = { fg = "gold" }
+
+# Override colors in the palette:
+[palette]
+berry = "#2A2A4D"
+</code></pre>
+<h3 id="scopes"><a class="header" href="#scopes">Scopes</a></h3>
+<p>The following is a list of scopes available to use for styling:</p>
+<h4 id="syntax-highlighting"><a class="header" href="#syntax-highlighting">Syntax highlighting</a></h4>
+<p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights">tree-sitter scopes</a>.</p>
+<p>When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is <code>function.builtin.static</code>, the key <code>function.builtin</code> will be used instead of <code>function</code>.</p>
+<p>We use a similar set of scopes as
+<a href="https://www.sublimetext.com/docs/scope_naming.html">Sublime Text</a>. See also
+<a href="https://macromates.com/manual/en/language_grammars">TextMate</a> scopes.</p>
+<ul>
+<li>
+<p><code>attribute</code> - Class attributes, HTML tag attributes</p>
+</li>
+<li>
+<p><code>type</code> - Types</p>
+<ul>
+<li><code>builtin</code> - Primitive types provided by the language (<code>int</code>, <code>usize</code>)</li>
+<li><code>parameter</code> - Generic type parameters (<code>T</code>)</li>
+<li><code>enum</code>
+<ul>
+<li><code>variant</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>constructor</code></p>
+</li>
+<li>
+<p><code>constant</code> (TODO: constant.other.placeholder for <code>%v</code>)</p>
+<ul>
+<li><code>builtin</code> Special constants provided by the language (<code>true</code>, <code>false</code>, <code>nil</code> etc)
+<ul>
+<li><code>boolean</code></li>
+</ul>
+</li>
+<li><code>character</code>
+<ul>
+<li><code>escape</code></li>
+</ul>
+</li>
+<li><code>numeric</code> (numbers)
+<ul>
+<li><code>integer</code></li>
+<li><code>float</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>string</code> (TODO: string.quoted.{single, double}, string.raw/.unquoted)?</p>
+<ul>
+<li><code>regexp</code> - Regular expressions</li>
+<li><code>special</code>
+<ul>
+<li><code>path</code></li>
+<li><code>url</code></li>
+<li><code>symbol</code> - Erlang/Elixir atoms, Ruby symbols, Clojure keywords</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>comment</code> - Code comments</p>
+<ul>
+<li><code>line</code> - Single line comments (<code>//</code>)
+<ul>
+<li><code>documentation</code> - Line documentation comments (e.g. <code>///</code> in Rust)</li>
+</ul>
+</li>
+<li><code>block</code> - Block comments (e.g. (<code>/* */</code>)
+<ul>
+<li><code>documentation</code> - Block documentation comments (e.g. <code>/** */</code> in Rust)</li>
+</ul>
+</li>
+<li><code>unused</code> - Unused variables and patterns, e.g. <code>_</code> and <code>_foo</code></li>
+</ul>
+</li>
+<li>
+<p><code>variable</code> - Variables</p>
+<ul>
+<li><code>builtin</code> - Reserved language variables (<code>self</code>, <code>this</code>, <code>super</code>, etc.)</li>
+<li><code>parameter</code> - Function parameters</li>
+<li><code>other</code>
+<ul>
+<li><code>member</code> - Fields of composite data types (e.g. structs, unions)
+<ul>
+<li><code>private</code> - Private fields that use a unique syntax (currently just ECMAScript-based languages)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>label</code> - <code>.class</code>, <code>#id</code> in CSS, etc.</p>
+</li>
+<li>
+<p><code>punctuation</code></p>
+<ul>
+<li><code>delimiter</code> - Commas, colons</li>
+<li><code>bracket</code> - Parentheses, angle brackets, etc.</li>
+<li><code>special</code> - String interpolation brackets.</li>
+</ul>
+</li>
+<li>
+<p><code>keyword</code></p>
+<ul>
+<li><code>control</code>
+<ul>
+<li><code>conditional</code> - <code>if</code>, <code>else</code></li>
+<li><code>repeat</code> - <code>for</code>, <code>while</code>, <code>loop</code></li>
+<li><code>import</code> - <code>import</code>, <code>export</code></li>
+<li><code>return</code></li>
+<li><code>exception</code></li>
+</ul>
+</li>
+<li><code>operator</code> - <code>or</code>, <code>in</code></li>
+<li><code>directive</code> - Preprocessor directives (<code>#if</code> in C)</li>
+<li><code>function</code> - <code>fn</code>, <code>func</code></li>
+<li><code>storage</code> - Keywords describing how things are stored
+<ul>
+<li><code>type</code> - The type of something, <code>class</code>, <code>function</code>, <code>var</code>, <code>let</code>, etc.</li>
+<li><code>modifier</code> - Storage modifiers like <code>static</code>, <code>mut</code>, <code>const</code>, <code>ref</code>, etc.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>operator</code> - <code>||</code>, <code>+=</code>, <code>&gt;</code></p>
+</li>
+<li>
+<p><code>function</code></p>
+<ul>
+<li><code>builtin</code></li>
+<li><code>method</code>
+<ul>
+<li><code>private</code> - Private methods that use a unique syntax (currently just ECMAScript-based languages)</li>
+</ul>
+</li>
+<li><code>macro</code></li>
+<li><code>special</code> (preprocessor in C)</li>
+</ul>
+</li>
+<li>
+<p><code>tag</code> - Tags (e.g. <code>&lt;body&gt;</code> in HTML)</p>
+<ul>
+<li><code>builtin</code></li>
+</ul>
+</li>
+<li>
+<p><code>namespace</code></p>
+</li>
+<li>
+<p><code>special</code> - <code>derive</code> in Rust, etc.</p>
+</li>
+<li>
+<p><code>markup</code></p>
+<ul>
+<li><code>heading</code>
+<ul>
+<li><code>marker</code></li>
+<li><code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, <code>5</code>, <code>6</code> - heading text for h1 through h6</li>
+</ul>
+</li>
+<li><code>list</code>
+<ul>
+<li><code>unnumbered</code></li>
+<li><code>numbered</code></li>
+<li><code>checked</code></li>
+<li><code>unchecked</code></li>
+</ul>
+</li>
+<li><code>bold</code></li>
+<li><code>italic</code></li>
+<li><code>strikethrough</code></li>
+<li><code>link</code>
+<ul>
+<li><code>url</code> - URLs pointed to by links</li>
+<li><code>label</code> - non-URL link references</li>
+<li><code>text</code> - URL and image descriptions in links</li>
+</ul>
+</li>
+<li><code>quote</code></li>
+<li><code>raw</code>
+<ul>
+<li><code>inline</code></li>
+<li><code>block</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>diff</code> - version control changes</p>
+<ul>
+<li><code>plus</code> - additions
+<ul>
+<li><code>gutter</code> - gutter indicator</li>
+</ul>
+</li>
+<li><code>minus</code> - deletions
+<ul>
+<li><code>gutter</code> - gutter indicator</li>
+</ul>
+</li>
+<li><code>delta</code> - modifications
+<ul>
+<li><code>moved</code> - renamed or moved files/changes</li>
+<li><code>conflict</code> - merge conflicts</li>
+<li><code>gutter</code> - gutter indicator</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="interface"><a class="header" href="#interface">Interface</a></h4>
+<p>These scopes are used for theming the editor interface:</p>
+<ul>
+<li><code>markup</code>
+<ul>
+<li><code>normal</code>
+<ul>
+<li><code>completion</code> - for completion doc popup UI</li>
+<li><code>hover</code> - for hover popup UI</li>
+</ul>
+</li>
+<li><code>heading</code>
+<ul>
+<li><code>completion</code> - for completion doc popup UI</li>
+<li><code>hover</code> - for hover popup UI</li>
+</ul>
+</li>
+<li><code>raw</code>
+<ul>
+<li><code>inline</code>
+<ul>
+<li><code>completion</code> - for completion doc popup UI</li>
+<li><code>hover</code> - for hover popup UI</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>ui.background</code></td><td></td></tr>
+<tr><td><code>ui.background.separator</code></td><td>Picker separator below input line</td></tr>
+<tr><td><code>ui.cursor</code></td><td></td></tr>
+<tr><td><code>ui.cursor.normal</code></td><td></td></tr>
+<tr><td><code>ui.cursor.insert</code></td><td></td></tr>
+<tr><td><code>ui.cursor.select</code></td><td></td></tr>
+<tr><td><code>ui.cursor.match</code></td><td>Matching bracket etc.</td></tr>
+<tr><td><code>ui.cursor.primary</code></td><td>Cursor with primary selection</td></tr>
+<tr><td><code>ui.cursor.primary.normal</code></td><td></td></tr>
+<tr><td><code>ui.cursor.primary.insert</code></td><td></td></tr>
+<tr><td><code>ui.cursor.primary.select</code></td><td></td></tr>
+<tr><td><code>ui.debug.breakpoint</code></td><td>Breakpoint indicator, found in the gutter</td></tr>
+<tr><td><code>ui.debug.active</code></td><td>Indicator for the line at which debugging execution is paused at, found in the gutter</td></tr>
+<tr><td><code>ui.gutter</code></td><td>Gutter</td></tr>
+<tr><td><code>ui.gutter.selected</code></td><td>Gutter for the line the cursor is on</td></tr>
+<tr><td><code>ui.linenr</code></td><td>Line numbers</td></tr>
+<tr><td><code>ui.linenr.selected</code></td><td>Line number for the line the cursor is on</td></tr>
+<tr><td><code>ui.statusline</code></td><td>Statusline</td></tr>
+<tr><td><code>ui.statusline.inactive</code></td><td>Statusline (unfocused document)</td></tr>
+<tr><td><code>ui.statusline.normal</code></td><td>Statusline mode during normal mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
+<tr><td><code>ui.statusline.insert</code></td><td>Statusline mode during insert mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
+<tr><td><code>ui.statusline.select</code></td><td>Statusline mode during select mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
+<tr><td><code>ui.statusline.separator</code></td><td>Separator character in statusline</td></tr>
+<tr><td><code>ui.bufferline</code></td><td>Style for the buffer line</td></tr>
+<tr><td><code>ui.bufferline.active</code></td><td>Style for the active buffer in buffer line</td></tr>
+<tr><td><code>ui.bufferline.background</code></td><td>Style for bufferline background</td></tr>
+<tr><td><code>ui.popup</code></td><td>Documentation popups (e.g. Space + k)</td></tr>
+<tr><td><code>ui.popup.info</code></td><td>Prompt for multiple key options</td></tr>
+<tr><td><code>ui.picker.header</code></td><td>Header row area in pickers with multiple columns</td></tr>
+<tr><td><code>ui.picker.header.column</code></td><td>Column names in pickers with multiple columns</td></tr>
+<tr><td><code>ui.picker.header.column.active</code></td><td>The column name in pickers with multiple columns where the cursor is entering into.</td></tr>
+<tr><td><code>ui.window</code></td><td>Borderlines separating splits</td></tr>
+<tr><td><code>ui.help</code></td><td>Description box for commands</td></tr>
+<tr><td><code>ui.text</code></td><td>Default text style, command prompts, popup text, etc.</td></tr>
+<tr><td><code>ui.text.focus</code></td><td>The currently selected line in the picker</td></tr>
+<tr><td><code>ui.text.inactive</code></td><td>Same as <code>ui.text</code> but when the text is inactive (e.g. suggestions)</td></tr>
+<tr><td><code>ui.text.info</code></td><td>The key: command text in <code>ui.popup.info</code> boxes</td></tr>
+<tr><td><code>ui.text.directory</code></td><td>Directory names in prompt completion</td></tr>
+<tr><td><code>ui.virtual.ruler</code></td><td>Ruler columns (see the <a href="./configuration.html#editor-section"><code>editor.rulers</code> config</a>)</td></tr>
+<tr><td><code>ui.virtual.whitespace</code></td><td>Visible whitespace characters</td></tr>
+<tr><td><code>ui.virtual.indent-guide</code></td><td>Vertical indent width guides</td></tr>
+<tr><td><code>ui.virtual.inlay-hint</code></td><td>Default style for inlay hints of all kinds</td></tr>
+<tr><td><code>ui.virtual.inlay-hint.parameter</code></td><td>Style for inlay hints of kind <code>parameter</code> (language servers are not required to set a kind)</td></tr>
+<tr><td><code>ui.virtual.inlay-hint.type</code></td><td>Style for inlay hints of kind <code>type</code> (language servers are not required to set a kind)</td></tr>
+<tr><td><code>ui.virtual.wrap</code></td><td>Soft-wrap indicator (see the <a href="./configuration.html#editor-section"><code>editor.soft-wrap</code> config</a>)</td></tr>
+<tr><td><code>ui.virtual.jump-label</code></td><td>Style for virtual jump labels</td></tr>
+<tr><td><code>ui.menu</code></td><td>Code and command completion menus</td></tr>
+<tr><td><code>ui.menu.selected</code></td><td>Selected autocomplete item</td></tr>
+<tr><td><code>ui.menu.scroll</code></td><td><code>fg</code> sets thumb color, <code>bg</code> sets track color of scrollbar</td></tr>
+<tr><td><code>ui.selection</code></td><td>For selections in the editing area</td></tr>
+<tr><td><code>ui.selection.primary</code></td><td></td></tr>
+<tr><td><code>ui.highlight</code></td><td>Highlighted lines in the picker preview</td></tr>
+<tr><td><code>ui.highlight.frameline</code></td><td>Line at which debugging execution is paused at</td></tr>
+<tr><td><code>ui.cursorline.primary</code></td><td>The line of the primary cursor (<a href="./configuration.html#editor-section">if cursorline is enabled</a>)</td></tr>
+<tr><td><code>ui.cursorline.secondary</code></td><td>The lines of any other cursors (<a href="./configuration.html#editor-section">if cursorline is enabled</a>)</td></tr>
+<tr><td><code>ui.cursorcolumn.primary</code></td><td>The column of the primary cursor (<a href="./configuration.html#editor-section">if cursorcolumn is enabled</a>)</td></tr>
+<tr><td><code>ui.cursorcolumn.secondary</code></td><td>The columns of any other cursors (<a href="./configuration.html#editor-section">if cursorcolumn is enabled</a>)</td></tr>
+<tr><td><code>warning</code></td><td>Diagnostics warning (gutter)</td></tr>
+<tr><td><code>error</code></td><td>Diagnostics error (gutter)</td></tr>
+<tr><td><code>info</code></td><td>Diagnostics info (gutter)</td></tr>
+<tr><td><code>hint</code></td><td>Diagnostics hint (gutter)</td></tr>
+<tr><td><code>diagnostic</code></td><td>Diagnostics fallback style (editing area)</td></tr>
+<tr><td><code>diagnostic.hint</code></td><td>Diagnostics hint (editing area)</td></tr>
+<tr><td><code>diagnostic.info</code></td><td>Diagnostics info (editing area)</td></tr>
+<tr><td><code>diagnostic.warning</code></td><td>Diagnostics warning (editing area)</td></tr>
+<tr><td><code>diagnostic.error</code></td><td>Diagnostics error (editing area)</td></tr>
+<tr><td><code>diagnostic.unnecessary</code></td><td>Diagnostics with unnecessary tag (editing area)</td></tr>
+<tr><td><code>diagnostic.deprecated</code></td><td>Diagnostics with deprecated tag (editing area)</td></tr>
+<tr><td><code>tabstop</code></td><td>Snippet placeholder</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="editor.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="remapping.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="editor.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="remapping.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

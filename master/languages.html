@@ -1,0 +1,421 @@
+<!DOCTYPE HTML>
+<html lang="en" class="colibri sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Languages</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="custom.css">
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "colibri" : "colibri";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('colibri')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="colibri">Colibri</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/languages.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h2 id="languages"><a class="header" href="#languages">Languages</a></h2>
+<p>Language-specific settings and settings for language servers are configured
+in <code>languages.toml</code> files.</p>
+<h2 id="languagestoml-files"><a class="header" href="#languagestoml-files"><code>languages.toml</code> files</a></h2>
+<p>There are three possible locations for a <code>languages.toml</code> file:</p>
+<ol>
+<li>
+<p>In the Helix source code, which lives in the
+<a href="https://github.com/helix-editor/helix/blob/master/languages.toml">Helix repository</a>.
+It provides the default configurations for languages and language servers.</p>
+</li>
+<li>
+<p>In your <a href="./configuration.html">configuration directory</a>. This overrides values
+from the built-in language configuration. For example, to disable
+auto-formatting for Rust:</p>
+<pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
+
+[language-server.mylang-lsp]
+command = "mylang-lsp"
+
+[[language]]
+name = "rust"
+auto-format = false
+</code></pre>
+</li>
+<li>
+<p>In a <code>.helix</code> folder in your project. Language configuration may also be
+overridden local to a project by creating a <code>languages.toml</code> file in a
+<code>.helix</code> folder. Its settings will be merged with the language configuration
+in the configuration directory and the built-in configuration.</p>
+</li>
+</ol>
+<h2 id="language-configuration"><a class="header" href="#language-configuration">Language configuration</a></h2>
+<p>Each language is configured by adding a <code>[[language]]</code> section to a
+<code>languages.toml</code> file. For example:</p>
+<pre><code class="language-toml">[[language]]
+name = "mylang"
+scope = "source.mylang"
+injection-regex = "mylang"
+file-types = ["mylang", "myl"]
+comment-tokens = "#"
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "mylang-formatter" , args = ["--stdin"] }
+language-servers = [ "mylang-lsp" ]
+</code></pre>
+<p>These configuration keys are available:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td>The name of the language</td></tr>
+<tr><td><code>language-id</code></td><td>The language-id for language servers, checkout the table at <a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem">TextDocumentItem</a> for the right id</td></tr>
+<tr><td><code>scope</code></td><td>A string like <code>source.js</code> that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually <code>source.&lt;name&gt;</code> or <code>text.&lt;name&gt;</code> in case of markup languages</td></tr>
+<tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">language injection</a> site.</td></tr>
+<tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>["yml", "yaml"]</code>. See the file-type detection section below.</td></tr>
+<tr><td><code>shebangs</code></td><td>The interpreters from the shebang line, for example <code>["sh", "bash"]</code></td></tr>
+<tr><td><code>roots</code></td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code></td></tr>
+<tr><td><code>auto-format</code></td><td>Whether to autoformat this language when saving</td></tr>
+<tr><td><code>diagnostic-severity</code></td><td>Minimal severity of diagnostic for it to be displayed. (Allowed values: <code>error</code>, <code>warning</code>, <code>info</code>, <code>hint</code>)</td></tr>
+<tr><td><code>comment-tokens</code></td><td>The tokens to use as a comment token, either a single token <code>"//"</code> or an array <code>["//", "///", "//!"]</code> (the first token will be used for commenting). Also configurable as <code>comment-token</code> for backwards compatibility</td></tr>
+<tr><td><code>block-comment-tokens</code></td><td>The start and end tokens for a multiline comment either an array or single table of <code>{ start = "/*", end = "*/"}</code>. The first set of tokens will be used for commenting, any pairs in the array can be uncommented</td></tr>
+<tr><td><code>indent</code></td><td>The indent to use. Has sub keys <code>unit</code> (the text inserted into the document when indenting; usually set to N spaces or <code>"\t"</code> for tabs) and <code>tab-width</code> (the number of spaces rendered for a tab)</td></tr>
+<tr><td><code>language-servers</code></td><td>The Language Servers used for this language. See below for more information in the section <a href="#configuring-language-servers-for-a-language">Configuring Language Servers for a language</a></td></tr>
+<tr><td><code>grammar</code></td><td>The tree-sitter grammar to use (defaults to the value of <code>name</code>)</td></tr>
+<tr><td><code>formatter</code></td><td>The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout. The filename of the current buffer can be passed as argument by using the <code>%{buffer_name}</code> expansion variable. See below for more information in the <a href="#configuring-the-formatter-command">Configuring the formatter command</a></td></tr>
+<tr><td><code>soft-wrap</code></td><td><a href="./editor.html#editorsoft-wrap-section">editor.softwrap</a></td></tr>
+<tr><td><code>text-width</code></td><td>Maximum line length. Used for the <code>:reflow</code> command and soft-wrapping if <code>soft-wrap.wrap-at-text-width</code> is set, defaults to <code>editor.text-width</code></td></tr>
+<tr><td><code>rulers</code></td><td>Overrides the <code>editor.rulers</code> config key for the language.</td></tr>
+<tr><td><code>path-completion</code></td><td>Overrides the <code>editor.path-completion</code> config key for the language.</td></tr>
+<tr><td><code>workspace-lsp-roots</code></td><td>Directories relative to the workspace root that are treated as LSP roots. Should only be set in <code>.helix/config.toml</code>. Overwrites the setting of the same name in <code>config.toml</code> if set.</td></tr>
+<tr><td><code>persistent-diagnostic-sources</code></td><td>An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.</td></tr>
+</tbody></table>
+</div>
+<h3 id="file-type-detection-and-the-file-types-key"><a class="header" href="#file-type-detection-and-the-file-types-key">File-type detection and the <code>file-types</code> key</a></h3>
+<p>Helix determines which language configuration to use based on the <code>file-types</code> key
+from the above section. <code>file-types</code> is a list of strings or tables, for
+example:</p>
+<pre><code class="language-toml">file-types = ["toml", { glob = "Makefile" }, { glob = ".git/config" }, { glob = ".github/workflows/*.yaml" } ]
+</code></pre>
+<p>When determining a language configuration to use, Helix searches the file-types
+with the following priorities:</p>
+<ol>
+<li>Glob: values in <code>glob</code> tables are checked against the full path of the given
+file. Globs are standard Unix-style path globs (e.g. the kind you use in Shell)
+and can be used to match paths for a specific prefix, suffix, directory, etc.
+In the above example, the <code>{ glob = "Makefile" }</code> config would match files
+with the name <code>Makefile</code>, the <code>{ glob = ".git/config" }</code> config would match
+<code>config</code> files in <code>.git</code> directories, and the <code>{ glob = ".github/workflows/*.yaml" }</code>
+config would match any <code>yaml</code> files in <code>.github/workflow</code> directories. Note
+that globs should always use the Unix path separator <code>/</code> even on Windows systems;
+the matcher will automatically take the machine-specific separators into account.
+If the glob isn't an absolute path or doesn't already start with a glob prefix,
+<code>*/</code> will automatically be added to ensure it matches for any subdirectory.</li>
+<li>Extension: if there are no glob matches, any <code>file-types</code> string that matches
+the file extension of a given file wins. In the example above, the <code>"toml"</code>
+config matches files like <code>Cargo.toml</code> or <code>languages.toml</code>.</li>
+</ol>
+<h3 id="configuring-the-formatter-command"><a class="header" href="#configuring-the-formatter-command">Configuring the formatter command</a></h3>
+<p><a href="./command-line.html#expansions">Command line expansions</a> are supported in the arguments
+of the formatter command. In particular, the <code>%{buffer_name}</code> variable can be passed as
+argument to the formatter:</p>
+<pre><code class="language-toml">formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename %{buffer_name}"] }
+</code></pre>
+<h2 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h2>
+<p>Language servers are configured separately in the table <code>language-server</code> in the same file as the languages <code>languages.toml</code></p>
+<p>For example:</p>
+<pre><code class="language-toml">[language-server.mylang-lsp]
+command = "mylang-lsp"
+args = ["--stdio"]
+config = { provideFormatter = true }
+environment = { "ENV1" = "value1", "ENV2" = "value2" }
+
+[language-server.efm-lsp-prettier]
+command = "efm-langserver"
+
+[language-server.efm-lsp-prettier.config]
+documentFormatting = true
+languages = { typescript = [ { formatCommand ="prettier --stdin-filepath ${INPUT}", formatStdin = true } ] }
+</code></pre>
+<p>These are the available options for a language server.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>command</code></td><td>The name or path of the language server binary to execute. Binaries must be in <code>$PATH</code></td></tr>
+<tr><td><code>args</code></td><td>A list of arguments to pass to the language server binary</td></tr>
+<tr><td><code>config</code></td><td>Language server initialization options</td></tr>
+<tr><td><code>timeout</code></td><td>The maximum time a request to the language server may take, in seconds. Defaults to <code>20</code></td></tr>
+<tr><td><code>environment</code></td><td>Any environment variables that will be used when starting the language server <code>{ "KEY1" = "Value1", "KEY2" = "Value2" }</code></td></tr>
+<tr><td><code>required-root-patterns</code></td><td>A list of <code>glob</code> patterns to look for in the working directory. The language server is started if at least one of them is found.</td></tr>
+</tbody></table>
+</div>
+<p>A <code>format</code> sub-table within <code>config</code> can be used to pass extra formatting options to
+<a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting">Document Formatting Requests</a>.
+For example, with typescript:</p>
+<pre><code class="language-toml">[language-server.typescript-language-server]
+# pass format options according to https://github.com/typescript-language-server/typescript-language-server#workspacedidchangeconfiguration omitting the "[language].format." prefix.
+config = { format = { "semicolons" = "insert", "insertSpaceBeforeFunctionParenthesis" = true } }
+</code></pre>
+<h3 id="configuring-language-servers-for-a-language"><a class="header" href="#configuring-language-servers-for-a-language">Configuring Language Servers for a language</a></h3>
+<p>The <code>language-servers</code> attribute in a language tells helix which language servers are used for this language.</p>
+<p>They have to be defined in the <code>[language-server]</code> table as described in the previous section.</p>
+<p>Different languages can use the same language server instance, e.g. <code>typescript-language-server</code> is used for javascript, jsx, tsx and typescript by default.</p>
+<p>The definition order of language servers affects the order in the results list of code action menu.</p>
+<p>In case multiple language servers are specified in the <code>language-servers</code> attribute of a <code>language</code>,
+it's often useful to only enable/disable certain language-server features for these language servers.</p>
+<p>As an example, <code>efm-lsp-prettier</code> of the previous example is used only with a formatting command <code>prettier</code>,
+so everything else should be handled by the <code>typescript-language-server</code> (which is configured by default).
+The language configuration for typescript could look like this:</p>
+<pre><code class="language-toml">[[language]]
+name = "typescript"
+language-servers = [ { name = "efm-lsp-prettier", only-features = [ "format" ] }, "typescript-language-server" ]
+</code></pre>
+<p>or equivalent:</p>
+<pre><code class="language-toml">[[language]]
+name = "typescript"
+language-servers = [ { name = "typescript-language-server", except-features = [ "format" ] }, "efm-lsp-prettier" ]
+</code></pre>
+<p>Each requested LSP feature is prioritized in the order of the <code>language-servers</code> array.
+For example, the first <code>goto-definition</code> supported language server (in this case <code>typescript-language-server</code>) will be taken for the relevant LSP request (command <code>goto_definition</code>).
+The features <code>diagnostics</code>, <code>code-action</code>, <code>completion</code>, <code>document-symbols</code> and <code>workspace-symbols</code> are an exception to that rule, as they are working for all language servers at the same time and are merged together, if enabled for the language.
+If no <code>except-features</code> or <code>only-features</code> is given, all features for the language server are enabled.
+If a language server itself doesn't support a feature, the next language server array entry will be tried (and so on).</p>
+<p>The list of supported features is:</p>
+<ul>
+<li><code>format</code></li>
+<li><code>goto-definition</code></li>
+<li><code>goto-declaration</code></li>
+<li><code>goto-type-definition</code></li>
+<li><code>goto-reference</code></li>
+<li><code>goto-implementation</code></li>
+<li><code>signature-help</code></li>
+<li><code>hover</code></li>
+<li><code>document-highlight</code></li>
+<li><code>completion</code></li>
+<li><code>code-action</code></li>
+<li><code>workspace-command</code></li>
+<li><code>document-symbols</code></li>
+<li><code>workspace-symbols</code></li>
+<li><code>diagnostics</code></li>
+<li><code>rename-symbol</code></li>
+<li><code>inlay-hints</code></li>
+</ul>
+<h2 id="tree-sitter-grammar-configuration"><a class="header" href="#tree-sitter-grammar-configuration">Tree-sitter grammar configuration</a></h2>
+<p>The source for a language's tree-sitter grammar is specified in a <code>[[grammar]]</code>
+section in <code>languages.toml</code>. For example:</p>
+<pre><code class="language-toml">[[grammar]]
+name = "mylang"
+source = { git = "https://github.com/example/mylang", rev = "a250c4582510ff34767ec3b7dcdd3c24e8c8aa68" }
+</code></pre>
+<p>Grammar configuration takes these keys:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td>The name of the tree-sitter grammar</td></tr>
+<tr><td><code>source</code></td><td>The method of fetching the grammar - a table with a schema defined below</td></tr>
+</tbody></table>
+</div>
+<p>Where <code>source</code> is a table with either these keys when using a grammar from a
+git repository:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>git</code></td><td>A git remote URL from which the grammar should be cloned</td></tr>
+<tr><td><code>rev</code></td><td>The revision (commit hash or tag) which should be fetched</td></tr>
+<tr><td><code>subpath</code></td><td>A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example <code>tree-sitter-typescript</code> and <code>tree-sitter-ocaml</code>) in subdirectories. This key is used to point <code>hx --grammar build</code> to the correct path for compilation. When omitted, the root of repository is used</td></tr>
+</tbody></table>
+</div>
+<h3 id="choosing-grammars"><a class="header" href="#choosing-grammars">Choosing grammars</a></h3>
+<p>You may use a top-level <code>use-grammars</code> key to control which grammars are
+fetched and built when using <code>hx --grammar fetch</code> and <code>hx --grammar build</code>.</p>
+<pre><code class="language-toml"># Note: this key must come **before** the [[language]] and [[grammar]] sections
+use-grammars = { only = [ "rust", "c", "cpp" ] }
+# or
+use-grammars = { except = [ "yaml", "json" ] }
+</code></pre>
+<p>When omitted, all grammars are fetched and built.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="remapping.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="guides/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="remapping.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="guides/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
