@@ -1,7 +1,9 @@
 [
   (module)
+  (submodule)
   (program)
   (subroutine)
+  (module_procedure)
   (function)
   ; (interface)
   (if_statement)
@@ -13,8 +15,10 @@
 
 [
   (end_module_statement)
+  (end_submodule_statement)
   (end_program_statement)
   (end_subroutine_statement)
+  (end_module_procedure_statement)
   (end_function_statement)
   ; (end_interface_statement)
   (end_if_statement)
@@ -24,4 +28,4 @@
   (end_type_statement)
   (end_enum_statement)
   (end_where_statement)
-] @outdent
+] @branch
