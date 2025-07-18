@@ -1978,6 +1978,7 @@ Its settings will be merged with the configuration directory <code>config.toml</
 <li><a href="editor.html#editorsoft-wrap-section"><code>[editor.soft-wrap]</code> Section</a></li>
 <li><a href="editor.html#editorsmart-tab-section"><code>[editor.smart-tab]</code> Section</a></li>
 <li><a href="editor.html#editorinline-diagnostics-section"><code>[editor.inline-diagnostics]</code> Section</a></li>
+<li><a href="editor.html#editorword-completion-section"><code>[editor.word-completion]</code> Section</a></li>
 </ul>
 <h3 id="editor-section"><a class="header" href="#editor-section"><code>[editor]</code> Section</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
@@ -2339,6 +2340,19 @@ S-tab = "extend_parent_node_start"
 end-of-line-diagnostics = "hint"
 [editor.inline-diagnostics]
 cursor-line = "warning" # show warnings and errors on the cursorline inline
+</code></pre>
+<h3 id="editorword-completion-section"><a class="header" href="#editorword-completion-section"><code>[editor.word-completion]</code> Section</a></h3>
+<p>Options for controlling completion of words from open buffers.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>enable</code></td><td>Whether word completion is enabled</td><td><code>true</code></td></tr>
+<tr><td><code>trigger-length</code></td><td>Number of word characters to type before triggering completion</td><td><code>7</code></td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.word-completion]
+enable = true
+# Set the trigger length lower so that words are completed more often
+trigger-length = 4
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h2 id="themes"><a class="header" href="#themes">Themes</a></h2>
 <p>To use a theme add <code>theme = "&lt;name&gt;"</code> to the top of your <a href="./configuration.html"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
@@ -2926,6 +2940,7 @@ language-servers = [ "mylang-lsp" ]
 <tr><td><code>text-width</code></td><td>Maximum line length. Used for the <code>:reflow</code> command and soft-wrapping if <code>soft-wrap.wrap-at-text-width</code> is set, defaults to <code>editor.text-width</code></td></tr>
 <tr><td><code>rulers</code></td><td>Overrides the <code>editor.rulers</code> config key for the language.</td></tr>
 <tr><td><code>path-completion</code></td><td>Overrides the <code>editor.path-completion</code> config key for the language.</td></tr>
+<tr><td><code>word-completion</code></td><td>Overrides the <a href="./editor.html#editorword-completion-section"><code>editor.word-completion</code></a> configuration for the language.</td></tr>
 <tr><td><code>workspace-lsp-roots</code></td><td>Directories relative to the workspace root that are treated as LSP roots. Should only be set in <code>.helix/config.toml</code>. Overwrites the setting of the same name in <code>config.toml</code> if set.</td></tr>
 <tr><td><code>persistent-diagnostic-sources</code></td><td>An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.</td></tr>
 </tbody></table>

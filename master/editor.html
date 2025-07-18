@@ -184,6 +184,7 @@
 <li><a href="#editorsoft-wrap-section"><code>[editor.soft-wrap]</code> Section</a></li>
 <li><a href="#editorsmart-tab-section"><code>[editor.smart-tab]</code> Section</a></li>
 <li><a href="#editorinline-diagnostics-section"><code>[editor.inline-diagnostics]</code> Section</a></li>
+<li><a href="#editorword-completion-section"><code>[editor.word-completion]</code> Section</a></li>
 </ul>
 <h3 id="editor-section"><a class="header" href="#editor-section"><code>[editor]</code> Section</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
@@ -545,6 +546,19 @@ S-tab = "extend_parent_node_start"
 end-of-line-diagnostics = "hint"
 [editor.inline-diagnostics]
 cursor-line = "warning" # show warnings and errors on the cursorline inline
+</code></pre>
+<h3 id="editorword-completion-section"><a class="header" href="#editorword-completion-section"><code>[editor.word-completion]</code> Section</a></h3>
+<p>Options for controlling completion of words from open buffers.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>enable</code></td><td>Whether word completion is enabled</td><td><code>true</code></td></tr>
+<tr><td><code>trigger-length</code></td><td>Number of word characters to type before triggering completion</td><td><code>7</code></td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.word-completion]
+enable = true
+# Set the trigger length lower so that words are completed more often
+trigger-length = 4
 </code></pre>
 
                     </main>
