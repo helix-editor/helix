@@ -20,6 +20,10 @@ use helix_vcs::DiffProviderRegistry;
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
+
+#[cfg(scancode)]
+use crate::scancode::{deserialize_scancode, KeyboardState, ScanCodeMap};
+
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -379,6 +383,9 @@ pub struct Config {
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
     /// `true`.
     pub editor_config: bool,
+    #[cfg(scancode)]
+    #[serde(skip_serializing, deserialize_with = "deserialize_scancode")]
+    pub scancode: ScanCodeMap,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -960,6 +967,7 @@ impl From<LineEndingConfig> for LineEnding {
             LineEndingConfig::Crlf => LineEnding::Crlf,
             #[cfg(feature = "unicode-lines")]
             LineEndingConfig::FF => LineEnding::FF,
+
             #[cfg(feature = "unicode-lines")]
             LineEndingConfig::CR => LineEnding::CR,
             #[cfg(feature = "unicode-lines")]
@@ -1055,6 +1063,8 @@ impl Default for Config {
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
+            #[cfg(scancode)]
+            scancode: ScanCodeMap::default(),
         }
     }
 }
@@ -1156,6 +1166,8 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+    #[cfg(scancode)]
+    pub keyboard_state: KeyboardState,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1277,6 +1289,8 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            #[cfg(scancode)]
+            keyboard_state: KeyboardState::new(),
         }
     }
 
@@ -2293,6 +2307,13 @@ impl Editor {
 
     pub fn get_last_cwd(&mut self) -> Option<&Path> {
         self.last_cwd.as_deref()
+    }
+
+    #[cfg(scancode)]
+    pub fn scancode_apply(&mut self, event: KeyEvent) -> KeyEvent {
+        self.config()
+            .scancode
+            .apply(event, &mut self.keyboard_state)
     }
 }
 
