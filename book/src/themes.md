@@ -287,7 +287,7 @@ These scopes are used for theming the editor interface:
 | `ui.gutter.selected`              | Gutter for the line the cursor is on                                                           |
 | `ui.linenr`                       | Line numbers                                                                                   |
 | `ui.linenr.selected`              | Line number for the line the cursor is on                                                      |
-| `ui.statusline`                   | Statusline                                                                                     |
+| `ui.statusline`                   | Statusline (support element style e.g. `ui.statusline.file-name`)                              |
 | `ui.statusline.inactive`          | Statusline (unfocused document)                                                                |
 | `ui.statusline.normal`            | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.insert`            | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
