@@ -127,7 +127,8 @@ pub fn raw_regex_prompt(
                         .syntax(
                             rope::Config::new()
                                 .case_insensitive(case_insensitive)
-                                .multi_line(true),
+                                .multi_line(true)
+                                .crlf(true),
                         )
                         .build(input)
                     {
