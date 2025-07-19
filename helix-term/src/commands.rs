@@ -3891,6 +3891,11 @@ fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) 
             current_line = text.line(line_idx);
         }
 
+        // If the first significant line is zeroth-indent, don't proceed
+        if current_line.chars().map_while(count_indent).sum::<u64>() == 0 {
+            return range;
+        }
+
         let first_char_pos = current_line.first_non_whitespace_char();
         let mut target_idx = line_idx;
         loop {
@@ -3922,6 +3927,15 @@ fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) 
             Direction::Forward => target_idx.saturating_sub(1),
             Direction::Backward => target_idx.saturating_add(1),
         };
+
+        let indents: Vec<u64> = (line_idx..target_idx)
+            .map(|i| text.line(i))
+            .map(|l| l.chars().map_while(count_indent).sum()).collect();
+
+        // If there are no indents, or all indents are 0, return the original range.
+        if indents.is_empty() || indents.into_iter().all(|n| n == 0) {
+            return range;
+        }
 
         range.put_cursor(
             text,
