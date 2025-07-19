@@ -638,8 +638,11 @@ impl EditorView {
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
-        let mut x = viewport.x;
         let current_doc = view!(editor).doc;
+
+        let mut before_active = String::new();
+        let mut active = String::new();
+        let mut after_active = String::new();
 
         for doc in editor.documents() {
             let fname = doc
@@ -650,24 +653,48 @@ impl EditorView {
                 .to_str()
                 .unwrap_or_default();
 
-            let style = if current_doc == doc.id() {
-                bufferline_active
-            } else {
-                bufferline_inactive
-            };
-
             let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
 
-            x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
-                .0;
-
-            if x >= surface.area.right() {
-                break;
+            if current_doc == doc.id() {
+                active = text.clone();
+            } else {
+                if active.len() > 0 {
+                    after_active.push_str(text.as_str());
+                } else {
+                    before_active.push_str(text.as_str());
+                }
             }
         }
+
+        let starting_index = (before_active
+            .len()
+            .saturating_sub(surface.area.width as usize / 2 - active.len() / 2))
+        .clamp(
+            0,
+            (before_active.len() + active.len() + after_active.len())
+                .saturating_sub(surface.area.width as usize),
+        );
+        surface.set_stringn(
+            viewport.x,
+            viewport.y,
+            before_active[starting_index..].to_string(),
+            surface.area.width as usize,
+            bufferline_inactive,
+        );
+        surface.set_stringn(
+            (before_active.len() - starting_index) as u16,
+            viewport.y,
+            active.clone(),
+            surface.area.width as usize,
+            bufferline_active,
+        );
+        surface.set_stringn(
+            ((before_active.len() - starting_index) + active.len()) as u16,
+            viewport.y,
+            after_active.clone(),
+            surface.area.width as usize,
+            bufferline_inactive,
+        );
     }
 
     pub fn render_gutter<'d>(
