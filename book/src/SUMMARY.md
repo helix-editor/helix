@@ -22,6 +22,7 @@
   - [Editor](./editor.md)
   - [Themes](./themes.md)
   - [Key remapping](./remapping.md)
+  - [Custom commands](./custom-commands.md)
   - [Languages](./languages.md)
 - [Guides](./guides/README.md)
   - [Adding languages](./guides/adding_languages.md)
