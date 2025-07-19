@@ -75,13 +75,13 @@
   (regular_identifier) @special) ; NOTE: an effect is a special type
 
 ; Namespaces
-(path) @namespace
+(path) @module
 
-(namespace) @namespace
+(namespace) @module
 
 ; Terms
 (type_signature
-  term_name: (path) @namespace
+  term_name: (path) @module
   term_name: (regular_identifier) @variable)
 
 (type_signature

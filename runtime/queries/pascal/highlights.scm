@@ -1,4 +1,4 @@
-; -- Identifier type inference
+; -- Identifier type inferrence
 
 ; VERY QUESTIONABLE: Highlighting of identifiers based on spelling
 (exprBinary ((identifier) @constant

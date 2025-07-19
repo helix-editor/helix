@@ -88,3 +88,5 @@
   "multiclass"
   "defm"
 ] @namespace
+
+(ERROR) @error

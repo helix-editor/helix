@@ -1,23 +1,5 @@
 (comment) @comment
 
-[
-  ";"
-  "."
-  ","
-  "="
-  ":"
-  (ellipses)
-] @punctuation.delimiter
-
-[
-  "("
-  ")"
-  "["
-  "]"
-  "{"
-  "}"
-] @punctuation.bracket
-
 "assert" @keyword.control.exception
 "or" @keyword.operator
 "rec" @keyword.control.repeat
@@ -34,18 +16,6 @@
   "in"
   "with" 
 ] @keyword
-
-(variable_expression name: (identifier) @variable)
-
-(select_expression
-  attrpath: (attrpath attr: (identifier)) @variable.other.member)
-
-(apply_expression
-  function: [
-    (variable_expression name: (identifier) @function)
-    (select_expression
-      attrpath: (attrpath
-        attr: (identifier) @function .))])
 
 ((identifier) @variable.builtin
  (#match? @variable.builtin "^(__currentSystem|__currentTime|__nixPath|__nixVersion|__storeDir|builtins)$")
@@ -89,15 +59,27 @@
   name: (identifier) @variable.parameter
   "?"? @punctuation.delimiter)
 
+(select_expression
+  attrpath: (attrpath attr: (identifier)) @variable.other.member)
+
 (interpolation
   "${" @punctuation.special
   "}" @punctuation.special) @embedded
+
+(apply_expression
+  function: [
+    (variable_expression name: (identifier) @function)
+    (select_expression
+      attrpath: (attrpath
+        attr: (identifier) @function .))])
 
 (unary_expression
   operator: _ @operator)
 
 (binary_expression
   operator: _ @operator)
+
+(variable_expression name: (identifier) @variable)
 
 (binding
   attrpath: (attrpath attr: (identifier)) @variable.other.member)
@@ -110,3 +92,21 @@
   "?" @operator
   attrpath: (attrpath
     attr: (identifier) @variable.other.member))
+
+[
+  ";"
+  "."
+  ","
+  "="
+  ":"
+  (ellipses)
+] @punctuation.delimiter
+
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket

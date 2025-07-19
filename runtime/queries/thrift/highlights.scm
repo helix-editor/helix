@@ -138,7 +138,7 @@
   "xsd_optional"
 ] @keyword
 
-; Extended Keywords
+; Extended Kewords
 [
   "package"
   "performs"

@@ -142,3 +142,5 @@
   (instruction_flag)
   (float_keyword)
 ] @keyword
+
+(ERROR) @error

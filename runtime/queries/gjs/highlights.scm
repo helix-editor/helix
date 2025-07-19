@@ -1,1 +1,1 @@
-; inherits: ecma,_javascript,_gjs
+; inherits: _gjs,_javascript,ecma

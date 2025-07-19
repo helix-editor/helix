@@ -49,12 +49,6 @@
   "|="
 ] @operator
 
-; Identifiers/variable references
-(identifier) @variable
-
-((identifier) @function
-  (#is-not? local))
-
 ; Keywords
 [
   "as"
@@ -191,3 +185,9 @@
   name: _ @function)
 
 (field) @variable.other.member
+
+; Identifiers/variable references
+((identifier) @function
+  (#is-not? local))
+
+(identifier) @variable

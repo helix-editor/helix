@@ -14,12 +14,18 @@
 
 ; Definitions
 
-(function_item
-  (parameters
-    (parameter
-      pattern: (identifier) @local.definition.variable.parameter)))
+(parameter
+  (identifier) @local.definition)
 
-(closure_parameters (identifier) @local.definition.variable.parameter)
+(type_parameters
+  (type_identifier) @local.definition)
+(constrained_type_parameter
+  left: (type_identifier) @local.definition)
+(optional_type_parameter
+  name: (type_identifier) @local.definition)
+
+(closure_parameters (identifier) @local.definition)
 
 ; References
 (identifier) @local.reference
+(type_identifier) @local.reference

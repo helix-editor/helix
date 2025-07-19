@@ -11,7 +11,7 @@
 ;------------
 
 (type_parameter
-  name: (type_identifier) @local.definition.type.parameter)
+  name: (type_identifier) @local.definition)
 
 ; Javascript and Typescript Treesitter grammars deviate when defining the
 ; tree structure for parameters, so we need to address them in each specific
@@ -20,15 +20,14 @@
 ; (i: t)
 ; (i: t = 1)
 (required_parameter
-  (identifier) @local.definition.variable.parameter)
+  (identifier) @local.definition)
 
 ; (i?: t)
-; (i?: t = 1) // Invalid but still possible to highlight.
+; (i?: t = 1) // Invalid but still posible to hihglight.
 (optional_parameter
-  (identifier) @local.definition.variable.parameter)
+  (identifier) @local.definition)
 
 ; References
 ;-----------
 
 (type_identifier) @local.reference
-(identifier) @local.reference

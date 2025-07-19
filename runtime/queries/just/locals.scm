@@ -8,19 +8,19 @@
 ; Definitions
 
 (alias
-  name: (identifier) @local.definition.variable)
+  name: (identifier) @local.definition)
 
 (assignment
-  name: (identifier) @local.definition.variable)
+  name: (identifier) @local.definition)
 
 (mod
-  name: (identifier) @local.definition.namespace)
+  name: (identifier) @local.definition)
 
 (recipe_parameter
-  name: (identifier) @local.definition.variable.parameter)
+  name: (identifier) @local.definition)
 
 (recipe
-  name: (identifier) @local.definition.function)
+  name: (identifier) @local.definition)
 
 ; References
 

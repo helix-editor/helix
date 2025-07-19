@@ -44,14 +44,6 @@
 	(heredoc_line)
 ] @string
 
-[
-  (heredoc_marker)
-  (heredoc_end)
-] @label
-
-((heredoc_block
-  (heredoc_line) @string))
-
 (expansion
   [
 	"$"
@@ -67,6 +59,3 @@
 	(param)
 	(mount_param)
 ] @constant
-
-(expose_instruction
-  (expose_port) @constant.numeric.integer)

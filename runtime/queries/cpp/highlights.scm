@@ -1,9 +1,32 @@
-; inherits: c
+; Functions
 
-; Constants
+; These casts are parsed as function calls, but are not.
+((identifier) @keyword (#eq? @keyword "static_cast"))
+((identifier) @keyword (#eq? @keyword "dynamic_cast"))
+((identifier) @keyword (#eq? @keyword "reinterpret_cast"))
+((identifier) @keyword (#eq? @keyword "const_cast"))
 
-(this) @variable.builtin
-(null) @constant.builtin
+(call_expression
+  function: (qualified_identifier
+    name: (identifier) @function))
+
+(template_function
+  name: (identifier) @function)
+
+(template_method
+  name: (field_identifier) @function)
+
+(function_declarator
+  declarator: (qualified_identifier
+    name: (identifier) @function))
+
+(function_declarator
+  declarator: (qualified_identifier
+    name: (qualified_identifier
+      name: (identifier) @function)))
+
+(function_declarator
+  declarator: (field_identifier) @function)
 
 ; Types
 
@@ -12,6 +35,8 @@
 (namespace_definition name: (namespace_identifier) @namespace)
 (namespace_identifier) @namespace
 
+(qualified_identifier name: (identifier) @type.enum.variant)
+
 (auto) @type
 "decltype" @type
 
@@ -19,71 +44,10 @@
 (reference_declarator ["&" "&&"] @type.builtin)
 (abstract_reference_declarator ["&" "&&"] @type.builtin)
 
-; -------
-; Functions
-; -------
-; Support up to 4 levels of nesting of qualifiers
-; i.e. a::b::c::d::func();
-(call_expression
-  function: (qualified_identifier
-    name: (identifier) @function))
-(call_expression
-  function: (qualified_identifier
-    name: (qualified_identifier
-      name: (identifier) @function)))
-(call_expression
-  function: (qualified_identifier
-    name: (qualified_identifier
-      name: (qualified_identifier
-        name: (identifier) @function))))
-(call_expression
-  function: (qualified_identifier
-    name: (qualified_identifier
-      name: (qualified_identifier
-        name: (qualified_identifier
-          name: (identifier) @function)))))
+; Constants
 
-(template_function
-  name: (identifier) @function)
-
-(template_method
-  name: (field_identifier) @function)
-
-; Support up to 4 levels of nesting of qualifiers
-; i.e. a::b::c::d::func();
-(function_declarator
-  declarator: (qualified_identifier
-    name: (identifier) @function))
-(function_declarator
-  declarator: (qualified_identifier
-    name: (qualified_identifier
-      name: (identifier) @function)))
-(function_declarator
-  declarator: (qualified_identifier
-    name: (qualified_identifier
-      name: (qualified_identifier
-        name: (identifier) @function))))
-(function_declarator
-  declarator: (qualified_identifier
-    name: (qualified_identifier
-      name: (qualified_identifier
-        name: (qualified_identifier
-          name: (identifier) @function)))))
-
-(function_declarator
-  declarator: (field_identifier) @function)
-
-; Constructors
-
-(class_specifier
-  (type_identifier) @type
-  (field_declaration_list
-    (function_definition
-      (function_declarator
-        (identifier) @constructor)))
-        (#eq? @type @constructor)) 
-(destructor_name "~" @constructor
-  (identifier) @constructor)
+(this) @variable.builtin
+(nullptr) @constant.builtin
 
 ; Parameters
 
@@ -105,13 +69,6 @@
   "[]"
   "()"
 ] @operator
-
-
-; These casts are parsed as function calls, but are not.
-((identifier) @keyword (#eq? @keyword "static_cast"))
-((identifier) @keyword (#eq? @keyword "dynamic_cast"))
-((identifier) @keyword (#eq? @keyword "reinterpret_cast"))
-((identifier) @keyword (#eq? @keyword "const_cast"))
 
 [
   "co_await"
@@ -175,3 +132,5 @@
 ; Strings
 
 (raw_string_literal) @string
+
+; inherits: c

@@ -1,21 +1,6 @@
 (php_tag) @tag
 "?>" @tag
 
-; Variables
-
-(relative_scope) @variable.builtin
-
-(variable_name) @variable
-
-((name) @constant
- (#match? @constant "^_?[A-Z][A-Z\\d_]+$"))
-
-((name) @constructor
- (#match? @constructor "^[A-Z]"))
-
-((name) @variable.builtin
- (#eq? @variable.builtin "this"))
-
 ; Types
 [
   (primitive_type)
@@ -124,6 +109,21 @@
   name: (variable_name (name)) @variable.other.member)
 (member_access_expression
   name: (name) @variable.other.member)
+
+; Variables
+
+(relative_scope) @variable.builtin
+
+((name) @constant
+ (#match? @constant "^_?[A-Z][A-Z\\d_]+$"))
+
+((name) @constructor
+ (#match? @constructor "^[A-Z]"))
+
+((name) @variable.builtin
+ (#eq? @variable.builtin "this"))
+
+(variable_name) @variable
 
 ; Attributes
 (attribute_list) @attribute

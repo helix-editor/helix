@@ -106,11 +106,6 @@
 
 [(true) (false)] @constant.builtin.boolean
 
-(identifier) @variable
-
-((identifier) @constant
-  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
-
 (enumerator name: (identifier) @type.enum.variant)
 
 (string_literal) @string
@@ -146,5 +141,10 @@
 (sized_type_specifier) @type.builtin
 (vector_type) @type.builtin
 (other_builtin_type) @type.builtin
+
+((identifier) @constant
+  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
+
+(identifier) @variable
 
 (comment) @comment

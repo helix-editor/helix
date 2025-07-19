@@ -4,31 +4,31 @@
 
 # Syntax highlighting
 # ----------------------------------------------------------------
-attribute = "mud"
+attribute = "rose"
 
-type = "mud"
-"type.builtin" = { fg = "mud", modifiers = ["italic"] }
+type = "rose"
+"type.builtin" = { fg = "rose", modifiers = ["italic"] }
 
 constructor = "wood"
 
 constant = "fire"
 "constant.builtin"   = { fg = "fire", modifiers = ["italic"] }
 "constant.character" = "wood"
+"constant.character.escape" = "pink"
 "constant.numeric"   = "wood"
 
 string = "grass"
-"string.regexp"  = "mud"
+"string.regexp"  = "pink"
 "string.special" = "rose"
 "string.special.symbol" = "fire"
 
 comment = { fg = "cmnt", modifiers = ["italic"] }
 "comment.block.documentation" = "grass"
-"comment.line.documentation" = "grass"
 
 variable = "text"
-"variable.builtin"   = { fg = "sky", modifiers = ["italic"] }
-"variable.parameter" = "rose"
-"variable.other.member" = "pink"
+"variable.builtin" = { fg = "sky", modifiers = ["italic"] }
+# TODO: variable.parameter
+"variable.other.member" = "mud"
 
 label = "sky"
 
@@ -44,23 +44,23 @@ operator = "wine"
 
 function = "peach"
 "function.builtin" = { fg = "peach", modifiers = ["italic"] }
-"function.macro"   = "sky"
+"function.macro"   = "pink"
 
 tag = "peach"
 
-namespace = { fg = "text", modifiers = ["italic"] }
+namespace = { fg = "pink", modifiers = ["italic"] }
 
-special = "wine"
+special = "sky"
 
 # Editor interface
 # ----------------------------------------------------------------
 "markup.heading.marker" = "sun"
-"markup.heading.1" = "fire"
-"markup.heading.2" = "wine"
+"markup.heading.1" = "attn"
+"markup.heading.2" = "fire"
 "markup.heading.3" = "rose"
 "markup.heading.4" = "peach"
-"markup.heading.5" = "grass"
-"markup.heading.6" = "wood"
+"markup.heading.5" = "wine"
+"markup.heading.6" = "grass"
 
 "markup.list" = "wood"
 
@@ -69,12 +69,12 @@ special = "wine"
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
 
 "markup.link.url"   = { fg = "sky", underline.style = "line" }
-"markup.link.label" = "sky"
+"markup.link.label" = { fg = "sky", modifiers = ["italic"] }
 "markup.link.text"  = "mud"
 
-"markup.quote" = "mud"
+"markup.quote" = "grass"
 
-"markup.raw" = "pink"
+"markup.raw"   = "pink"
 
 "diff.plus"  = "grass"
 "diff.minus" = "attn"
@@ -84,10 +84,7 @@ special = "wine"
 # ----------------------------------------------------------------
 "ui.background" = { fg = "text", bg = "base" }
 
-"ui.cursor" = { fg = "base", bg = "cmnt" }
-"ui.cursor.primary.normal" = { fg = "base", bg = "text" }
-"ui.cursor.primary.insert" = { fg = "base", bg = "grass" }
-"ui.cursor.primary.select" = { fg = "base", bg = "sky" }
+"ui.cursor" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "attn", modifiers = ["bold"] }
 
 # TODO: ui.debug
@@ -97,35 +94,34 @@ special = "wine"
 
 "ui.statusline" = { bg = "block" }
 "ui.statusline.inactive" = { fg = "cmnt" }
-"ui.statusline.normal"   = { fg = "block", bg = "text",  modifiers = ["bold"] }
+"ui.statusline.normal"   = { fg = "block", bg = "sun",  modifiers = ["bold"] }
 "ui.statusline.insert"   = { fg = "block", bg = "grass", modifiers = ["bold"] }
-"ui.statusline.select"   = { fg = "block", bg = "sky",   modifiers = ["bold"] }
+"ui.statusline.select"   = { fg = "block", bg = "wine",  modifiers = ["bold"] }
 
 "ui.bufferline" = { fg = "cmnt", bg = "block" }
-"ui.bufferline.active" = "fire"
+"ui.bufferline.active" = "sun"
 
 "ui.popup" = { fg = "text", bg = "base" }
 "ui.popup.info" = { fg = "text", bg = "block" }
-
-"ui.picker.header" = { underline.style = "line" }
 
 "ui.window" = { fg = "block", modifiers = ["bold"] }
 
 "ui.help" = { fg = "text", bg = "block" }
 
-"ui.text" = "text"
+"ui.text" = { fg = "text", bg = "base" }
+"ui.text.directory" = "sky"
 "ui.text.focus"     = "sun"
 "ui.text.inactive"  = { fg = "cmnt", modifiers = ["italic"] }
 "ui.text.info"      = { bg = "block" }
-"ui.text.directory" = "sky"
 
 "ui.virtual" = { fg = "block" }
 "ui.virtual.ruler"        = { bg = "block" }
+"ui.virtual.indent-guide" = "sel"
 "ui.virtual.jump-label"   = { fg = "attn", modifiers = ["bold"] }
 
 "ui.menu" = { fg = "text", bg = "base" }
 "ui.menu.selected" = { bg = "sel" }
-"ui.menu.scroll"   = "block"
+"ui.menu.scroll"   = "sel"
 
 "ui.selection" = { bg = "sel" }
 
@@ -133,8 +129,8 @@ special = "wine"
 
 error   = "attn"
 warning = "fire"
-info    = "sky"
-hint    = "mud"
+info    = "pink"
+hint    = "sky"
 
 diagnostic = { underline.style = "line" }
 
@@ -148,12 +144,12 @@ wood  = "#997755"
 
 # Greenish
 grass = "#66CC33"
-mud   = "#AACC77"
+mud   = "#BBCC77"
 sun   = "#EEEE11"
 
 # Bluish
-sky   = "#77AAAA"
-wine  = "#775599"
+sky  = "#77AAAA"
+wine = "#775599"
 
 # Ui
 base  = "#111111"

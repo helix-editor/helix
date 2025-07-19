@@ -22,9 +22,15 @@
 "in"
 ] @keyword
 
-; Identifiers
+; Function calls
 
-(identifier) @variable.other.member
+(call_expression
+  function: (identifier) @function)
+
+(member_call_expression
+  function: (identifier) @function)
+
+; Identifiers
 
 (select_expression
   operand: (identifier) @type)
@@ -33,13 +39,7 @@
   operand: (select_expression
     member: (identifier) @type))
 
-; Function calls
-
-(call_expression
-  function: (identifier) @function)
-
-(member_call_expression
-  function: (identifier) @function)
+(identifier) @variable.other.member
 
 ; Literals
 

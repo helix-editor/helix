@@ -75,7 +75,7 @@
    "parallel"
    "reverse"
    "some"
-] @keyword.control.repeat
+] @kewyord.control.repeat
 [
    "return"
 ] @keyword.control.return
@@ -113,6 +113,7 @@
 
 (loop_statement "end" @keyword.control.repeat)
 (if_statement "end" @keyword.control.conditional)
+(loop_parameter_specification "in" @keyword.control.repeat)
 (loop_parameter_specification "in" @keyword.control.repeat)
 (iterator_specification ["in" "of"] @keyword.control.repeat)
 (range_attribute_designator "range" @keyword.control.repeat)

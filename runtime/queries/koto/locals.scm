@@ -5,20 +5,26 @@
   body: (_) @local.scope)
 
 ; Definitions
-(arg
-  (identifier) @local.definition.variable.parameter)
+(assign
+  lhs: (identifier) @local.definition)
+
+(variable
+  (identifier) @local.definition)
 
 (arg
-  (variable (identifier)) @local.definition.parameter)
+  (identifier) @local.definition)
+
+(arg
+  (variable (identifier)) @local.definition)
 
 (import_item
-  (identifier) @local.definition.namespace)
+  (identifier) @local.definition)
 
 (entry_block
-  (identifier) @local.definition.variable.other.member)
+  (identifier) @local.definition)
 
 (entry_inline
-  (identifier) @local.definition.variable.other.member)
+  (identifier) @local.definition)
 
 ; References
 (identifier) @local.reference

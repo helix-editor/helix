@@ -28,9 +28,6 @@
  "or"
 ] @keyword.operator
 
-(property_name) @variable.other.member
-(plain_value) @constant
-
 ((property_name) @variable
  (#match? @variable "^--"))
 ((plain_value) @variable
@@ -42,6 +39,7 @@
 (function_name) @function
 (id_name) @label
 (namespace_name) @namespace
+(property_name) @variable.other.member
 
 [
  "@charset"
@@ -54,9 +52,6 @@
  (from)
  (important)
  (to)
- (keyword_query)
- (keyframes_name)
- (unit)
 ] @keyword
 
 [
@@ -65,7 +60,7 @@
 ] @punctuation
 
 (string_value) @string
-(color_value "#" @string.special)
+((color_value) "#") @string.special
 (color_value) @string.special
 
 (integer_value) @constant.numeric.integer
@@ -86,3 +81,5 @@
  ":"
  "::"
 ] @punctuation.delimiter
+
+(plain_value) @constant

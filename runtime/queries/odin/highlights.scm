@@ -1,39 +1,31 @@
-
-; Variables
-
-(identifier) @variable
-
 [
   (calling_convention)
   (tag)
 ] @keyword.directive
 
 [
+ "package"
+] @namespace
+
+[
   "import" 
 ] @keyword.control.import
 
 [
-  "package"
   "foreign"
   "using"
-  "cast"
-  "transmute"
-  "auto_cast"
-] @keyword
-
-[
-  "defer"
-] @keyword.control
-
-[
   "struct"
   "enum"
   "union"
+  "defer"
+  "cast"
+  "transmute"
+  "auto_cast"
   "map"
   "bit_set"
   "matrix"
   "bit_field"
-] @keyword.storage.type
+] @keyword
 
 [
   "proc"
@@ -57,7 +49,6 @@
   "case"
   "where"
   "break"
-  "or_break"
   (fallthrough_statement)
 ] @keyword.control.conditional
 
@@ -74,7 +65,6 @@
   "for"
   "do"
   "continue"
-  "or_continue"
 ] @keyword.control.repeat
 
 [
@@ -156,7 +146,7 @@
 
 (character) @string
 
-(escape_sequence) @constant.character.escape
+(escape_sequence) @string.special
 
 (boolean) @constant.builtin.boolean
 
@@ -198,39 +188,6 @@
 (overloaded_procedure_declaration (identifier) @function)
 
 (call_expression function: (identifier) @function)
-
-(call_expression
-  function: (identifier) @function.builtin
-  (#any-of? @function.builtin
-    "abs" "align_of" "append" "append_elem" "append_elem_string" 
-    "append_elems" "append_nothing" "append_soa" "append_soa_elem" 
-    "append_soa_elems" "append_string" "assert" "assert_contextless" 
-    "assign_at" "assign_at_elem" "assign_at_elem_string" "assign_at_elems" 
-    "cap" "card" "clamp" "clear" "clear_dynamic_array" "clear_map" "clear_soa" 
-    "complex" "conj" "container_of" "copy" "copy_from_string" "copy_slice" 
-    "delete" "delete_cstring" "delete_dynamic_array" "delete_key" 
-    "delete_map" "delete_slice" "delete_soa" "delete_string" 
-    "expand_values" "free" "free_all" "imag" "init_global_temporary_allocator" 
-    "inject_at" "inject_at_elem" "inject_at_elem_string" "inject_at_elems" 
-    "jmag" "kmag" "len" "make" "make_dynamic_array" "make_dynamic_array_len" 
-    "make_dynamic_array_len_cap" "make_map" "make_multi_pointer" "make_slice" 
-    "make_soa" "make_soa_aligned" "make_soa_dynamic_array" 
-    "make_soa_dynamic_array_len" "make_soa_dynamic_array_len_cap" 
-    "make_soa_slice" "map_insert" "map_upsert" "max" "min" 
-    "new_clone" "non_zero_append" "non_zero_append_elem" 
-    "non_zero_append_elem_string" "non_zero_append_elems" 
-    "non_zero_append_soa_elem" "non_zero_append_soa_elems" 
-    "non_zero_resize" "non_zero_resize_dynamic_array" "non_zero_resize_soa" 
-    "non_zero_reserve" "non_zero_reserve_dynamic_array" "non_zero_reserve_soa" 
-    "offset_of" "offset_of_by_string" "offset_of_member" "offset_of_selector" 
-    "ordered_remove" "panic" "panic_contextless" "pop" "pop_front" 
-    "pop_front_safe" "pop_safe" "raw_data" "raw_soa_footer_dynamic_array" 
-    "raw_soa_footer_slice" "real" "remove_range" "reserve" 
-    "reserve_dynamic_array" "reserve_map" "reserve_soa" "resize" 
-    "resize_dynamic_array" "resize_soa" "shrink" "shrink_map" 
-    "size_of" "soa_unzip" "soa_zip" "swizzle" "type_info_of" "type_of" 
-    "typeid_of" "unordered_remove" "unordered_remove_soa" 
-    "unimplemented" "unimplemented_contextless"))
 
 ; Types
 
@@ -277,10 +234,6 @@
 ; Fields
 
 (member_expression "." (identifier) @variable.other.member)
-(member_expression
-  (identifier) "."
-  (call_expression
-    function: (identifier) @function.method))
 
 (struct_type "{" (identifier) @variable.other.member)
 
@@ -298,7 +251,7 @@
 
 (using_statement (identifier) @namespace)
 
-(import_declaration (identifier) @namespace)
+(import_declaration (identifier) @keyword.storage.type)
 
 ; Parameters
 
@@ -311,3 +264,7 @@
 (call_expression argument: (identifier) @variable.parameter "=")
 
 (procedure_type (parameters (parameter (identifier) @variable.parameter)))
+
+; Variables
+
+(identifier) @variable

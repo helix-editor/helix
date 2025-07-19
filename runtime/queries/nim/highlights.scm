@@ -1,5 +1,3 @@
-(identifier) @variable
-
 ;; Constants, Comments, and Literals
 
 (comment) @comment.line
@@ -228,7 +226,7 @@
       "isnot"
     ]
   right: (_) @type)
-; types in "is" comparisons
+; types in "is" comparisions
 
 (except_branch
   values: (expression_list
@@ -331,3 +329,5 @@
 (dot_expression
   left: (identifier) @variable
   right: (identifier) @variable.other.member)
+
+(identifier) @variable

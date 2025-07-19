@@ -1,7 +1,13 @@
 [
-  (block)
-  (switch_expression)
-  (initializer_list)
+  (AsmExpr)
+  (AssignExpr)
+  (Block)
+  (BlockExpr)
+  (ContainerDecl)
+  (ErrorUnionExpr)
+  (InitList)
+  (SwitchExpr)
+  (TestDecl)
 ] @indent
 
 [

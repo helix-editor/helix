@@ -2,24 +2,29 @@
 
 (block) @local.scope
 
-(pparameter
-  (pattern
-    (identifier
-      (varid) @local.definition.variable.parameter)))
+(pattern
+  (identifier
+    (varid) @local.definition))
+
+(decl
+  (apattern
+    (pattern
+      (identifier
+        (varid) @local.definition))))
 
 (puredecl
   (funid
     (identifier
-      (varid) @local.definition.function)))
+      (varid) @local.definition)))
 
 (puredecl
   (binder
     (identifier
-      (varid) @local.definition.function)))
+      (varid) @local.definition)))
 
 (decl
   (binder
     (identifier
-      (varid) @local.definition.function)))
+      (varid) @local.definition)))
 
 (identifier (varid) @local.reference)

@@ -26,8 +26,6 @@
   "while"
 ] @keyword
 
-(string) @string
-
 ;; Function definitions
 [
  "defun"
@@ -48,6 +46,8 @@
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
 (char) @constant.character
+
+(string) @string
 
 [
   "("

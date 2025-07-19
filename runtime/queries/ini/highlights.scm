@@ -1,15 +1,6 @@
-(section_name
-  (text) @type)
+(section_name) @namespace
+
+(setting_name) @keyword
+(setting_value) @string
 
 (comment) @comment
-
-[
-  "["
-  "]"
-] @punctuation.bracket
-
-"=" @operator
-
-(setting
-  (setting_name) @variable.other.member
-  ((setting_value) @string)?)

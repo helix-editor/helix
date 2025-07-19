@@ -1,4 +1,6 @@
 ;; General syntax
+(ERROR) @error
+
 (command_name) @function
 (caption
   command: _ @function)

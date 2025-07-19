@@ -1,24 +1,13 @@
 (comment) @comment.inside
-(comment)+ @comment.around
 
-(newtype
-	(newtype_constructor
-		(_) @class.inside)) @class.around
-(data_type
-	constructors: (_) @class.inside) @class.around
-(decl/function
-	(match expression:(_) @function.inside)) @function.around
-(lambda
-	expression:(_) @function.inside) @function.around
+[
+  (adt)
+  (type_alias)
+  (newtype)
+] @class.around
 
-(decl/function
-	patterns: (patterns
-		(_) @parameter.inside))
+((signature)? (function rhs:(_) @function.inside)) @function.around 
+(exp_lambda) @function.around
 
-(expression/lambda
-	patterns: (patterns
-	(_) @parameter.inside))
-
-(decl/function
-	(infix
-		(pattern) @parameter.inside))
+(adt (type_variable) @parameter.inside)
+(patterns (_) @parameter.inside)

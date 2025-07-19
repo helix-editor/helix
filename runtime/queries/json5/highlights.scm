@@ -5,11 +5,11 @@
 (null) @constant.builtin
 (number) @constant.numeric
 
-(string) @string
-(comment) @comment
-
 (member
   name: (_) @variable.other.member)
+
+(string) @string
+(comment) @comment
 
 "," @punctuation.delimiter
 [

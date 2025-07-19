@@ -24,7 +24,7 @@
 (template_definition
   name:  (identifier) @keyword.function)
 
-; Use constructor coloring for special functions
+; Use contructor coloring for special functions
 (main_component_definition) @constructor
 
 ; Invocations

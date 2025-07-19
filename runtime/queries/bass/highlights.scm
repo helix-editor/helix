@@ -38,17 +38,6 @@
 (subpath (slash) @function)
 
 
-;;; generic highlighting for all forms
-
-; first symbol in a list form is a combiner call
-(list . (symbol) @function)
-
-; highlight symbols as vars only when they're clearly vars
-(cons (symbol) @variable)
-(scope (symbol) @variable)
-(path form: (symbol) @variable)
-(symbind form: (symbol) @variable)
-
 
 ;;; specific highlighting for builtins & special forms
 
@@ -99,3 +88,14 @@
   .
   (_)
   (symbol) @function)
+
+;;; generic highlighting for all forms
+
+; first symbol in a list form is a combiner call
+(list . (symbol) @function)
+
+; highlight symbols as vars only when they're clearly vars
+(cons (symbol) @variable)
+(scope (symbol) @variable)
+(path form: (symbol) @variable)
+(symbind form: (symbol) @variable)

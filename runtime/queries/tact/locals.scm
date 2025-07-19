@@ -14,11 +14,14 @@
 ; Definitions  @local.definition
 ; ------------------------------
 
+(let_statement
+  name: (identifier) @local.definition)
+
 (parameter
-  name: (identifier) @local.definition.variable.parameter)
+  name: (identifier) @local.definition)
 
 (constant
-  name: (identifier) @local.definition.constant)
+  name: (identifier) @local.definition)
 
 ; References   @local.reference
 ; -----------------------------

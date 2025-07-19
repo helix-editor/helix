@@ -2,39 +2,38 @@
 (erroneous_end_tag_name) @error
 (doctype) @constant
 (attribute_name) @attribute
-(entity) @string.special.symbol
 (comment) @comment
 
 ((attribute
-  (attribute_name) @attribute
+  (attribute_name) @_attr
   (quoted_attribute_value (attribute_value) @markup.link.url))
- (#any-of? @attribute "href" "src"))
+ (#any-of? @_attr "href" "src"))
 
 ((element
   (start_tag
-    (tag_name) @tag)
+    (tag_name) @_tag)
   (text) @markup.link.label)
-  (#eq? @tag "a"))
+  (#eq? @_tag "a"))
 
 (attribute [(attribute_value) (quoted_attribute_value)] @string)
 
 ((element
   (start_tag
-    (tag_name) @tag)
+    (tag_name) @_tag)
   (text) @markup.bold)
-  (#any-of? @tag "strong" "b"))
+  (#any-of? @_tag "strong" "b"))
 
 ((element
   (start_tag
-    (tag_name) @tag)
+    (tag_name) @_tag)
   (text) @markup.italic)
-  (#any-of? @tag "em" "i"))
+  (#any-of? @_tag "em" "i"))
 
 ((element
   (start_tag
-    (tag_name) @tag)
+    (tag_name) @_tag)
   (text) @markup.strikethrough)
-  (#any-of? @tag "s" "del"))
+  (#any-of? @_tag "s" "del"))
 
 [
   "<"

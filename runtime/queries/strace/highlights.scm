@@ -1,4 +1,4 @@
-(syscall) @function.builtin
+(syscall) @function
 (integer) @constant.numeric
 (pointer) @constant.numeric
 (value) @label

@@ -6,4 +6,16 @@
 (field) @local.reference
 (static_field) @local.reference
 
-(parameter) @local.definition.variable.parameter
+(for_statement
+	loop_variable: (name) @local.definition)
+
+(variable_definition
+	name: (name) @local.definition)
+
+(assignment
+	left: (field) @local.definition)
+
+(assignment
+	left: (static_field) @local.definition)
+
+(parameter) @local.definition

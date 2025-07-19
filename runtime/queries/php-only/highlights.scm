@@ -1,23 +1,6 @@
 (php_tag) @tag
 "?>" @tag
 
-; Variables
-
-(variable_name) @variable
-
-(relative_scope) @variable.builtin
-
-((name) @constant
- (#match? @constant "^_?[A-Z][A-Z\\d_]+$"))
-((name) @constant.builtin
- (#match? @constant.builtin "^__[A-Z][A-Z\d_]+__$"))
-
-((name) @constructor
- (#match? @constructor "^[A-Z]"))
-
-((name) @variable.builtin
- (#eq? @variable.builtin "this"))
-
 ; Types
 
 (primitive_type) @type.builtin
@@ -54,6 +37,23 @@
   name: (variable_name (name)) @variable.other.member)
 (member_access_expression
   name: (name) @variable.other.member)
+
+; Variables
+
+(relative_scope) @variable.builtin
+
+((name) @constant
+ (#match? @constant "^_?[A-Z][A-Z\\d_]+$"))
+((name) @constant.builtin
+ (#match? @constant.builtin "^__[A-Z][A-Z\d_]+__$"))
+
+((name) @constructor
+ (#match? @constructor "^[A-Z]"))
+
+((name) @variable.builtin
+ (#eq? @variable.builtin "this"))
+
+(variable_name) @variable
 
 ; Basic tokens
 [

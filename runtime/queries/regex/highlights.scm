@@ -50,3 +50,4 @@
   ])
 
 (class_character) @constant.character
+(ERROR) @error

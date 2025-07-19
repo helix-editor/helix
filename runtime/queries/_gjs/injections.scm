@@ -16,4 +16,5 @@
 (call_expression
   function: ((identifier) @_name
              (#eq? @_name "hbs"))
-  arguments: (template_string) @glimmer)
+  arguments: ((template_string) @glimmer
+              (#offset! @glimmer 0 1 0 -1)))

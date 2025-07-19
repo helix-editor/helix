@@ -7,21 +7,18 @@
   (type_item)
   (trait_item)
   (impl_item)
-  (closure_expression)
   (block)
 ] @local.scope
 
 ; Definitions
 
 (parameter
-  (identifier) @local.definition.variable.parameter)
+  (identifier) @local.definition)
 
 (type_parameters
-  (type_identifier) @local.definition.type.parameter)
+  (type_identifier) @local.definition)
 (constrained_type_parameter
-  left: (type_identifier) @local.definition.type.parameter)
-
-(closure_parameters (identifier) @local.definition.variable.parameter)
+  left: (type_identifier) @local.definition)
 
 ; References
 (identifier) @local.reference

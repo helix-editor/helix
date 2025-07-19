@@ -40,7 +40,6 @@
 (float) @constant.numeric.float
 (integer) @constant.numeric.integer
 (comment) @comment
-[(string) (json)] @string.special.path
-(path) @string.special.path
+[(path) (string) (json)] @string.special.path
 (time) @string.special.symbol
 (boolean) @constant.builtin.boolean

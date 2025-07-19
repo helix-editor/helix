@@ -1,6 +1,7 @@
 (comment) @comment
 
-(identifier) @variable
+; these are listed first, because they override keyword queries
+(function_expression (identifier) @function)
 
 [
     (assignment_operator)
@@ -58,5 +59,4 @@
     (fstring_literal)
 ] @string
 
-; these are listed last, because they override keyword queries
-(function_expression (identifier) @function)
+(identifier) @variable

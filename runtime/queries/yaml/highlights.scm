@@ -1,3 +1,13 @@
+(block_mapping_pair
+  key: (flow_node [(double_quote_scalar) (single_quote_scalar)] @variable.other.member))
+(block_mapping_pair
+  key: (flow_node (plain_scalar (string_scalar) @variable.other.member)))
+
+(flow_mapping
+  (_ key: (flow_node [(double_quote_scalar) (single_quote_scalar)] @variable.other.member)))
+(flow_mapping
+  (_ key: (flow_node (plain_scalar (string_scalar) @variable.other.member))))
+
 (boolean_scalar) @constant.builtin.boolean
 (null_scalar) @constant.builtin
 (double_quote_scalar) @string
@@ -12,16 +22,7 @@
 (alias_name) @type
 (tag) @type
 (yaml_directive) @keyword
-
-(block_mapping_pair
-  key: (flow_node [(double_quote_scalar) (single_quote_scalar)] @variable.other.member))
-(block_mapping_pair
-  key: (flow_node (plain_scalar (string_scalar) @variable.other.member)))
-
-(flow_mapping
-  (_ key: (flow_node [(double_quote_scalar) (single_quote_scalar)] @variable.other.member)))
-(flow_mapping
-  (_ key: (flow_node (plain_scalar (string_scalar) @variable.other.member))))
+(ERROR) @error
 
 [
 ","

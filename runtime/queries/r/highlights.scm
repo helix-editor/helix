@@ -1,6 +1,5 @@
 ; highlights.scm
 
-(identifier) @variable
 
 ; Literals
 
@@ -122,3 +121,8 @@
 
 (namespace_get function: (identifier) @function.method)
 (namespace_get_internal function: (identifier) @function.method)
+
+(identifier) @variable
+
+; Error
+(ERROR) @error

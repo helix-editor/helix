@@ -23,8 +23,8 @@
 
 ] @operator
 
-[ "(" ")" "{" "}" "[" "]" ] @punctuation.bracket
 (variable_expansion [ "${" "}" ] @punctuation.special)
+[ "(" ")" "{" "}" "[" "]" ] @punctuation.bracket
 
 [
   "noexec"

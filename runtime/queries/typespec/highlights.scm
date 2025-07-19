@@ -59,10 +59,6 @@
 
 "?" @punctuation.special
 
-; Identifiers
-
-(identifier_or_member_expression) @type
-
 ; Imports
 
 (import_statement
@@ -175,3 +171,7 @@
 ] @constant.numeric.integer
 
 (builtin_type) @type.builtin
+
+; Identifiers
+
+(identifier_or_member_expression) @type

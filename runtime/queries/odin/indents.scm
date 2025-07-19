@@ -6,7 +6,6 @@
   (struct)
   (parameters)
   (tuple_type)
-  (struct_type)
   (call_expression)
   (switch_case)
 ] @indent
@@ -22,4 +21,3 @@
 (union_declaration "}" @outdent)
 (struct_declaration "}" @outdent)
 (struct "}" @outdent)
-(struct_type "}" @outdent)

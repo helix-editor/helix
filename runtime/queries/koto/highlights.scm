@@ -70,6 +70,9 @@
   "as"
 ] @keyword.control.import
 
+(string (interpolation ("{") @punctuation.special))
+(string (interpolation ("}") @punctuation.special))
+
 [
   "("
   ")"
@@ -80,24 +83,20 @@
   "|"
 ] @punctuation.bracket
 
-(string (interpolation ["{" "}"] @punctuation.special))
-
 [
   ";"
   ":"
   ","
 ] @punctuation.delimiter
 
-(identifier) @variable
-
 (import_module
-  (identifier) @namespace)
+  (identifier) @module)
 
 (import_item
-  (identifier) @namespace)
+  (identifier) @module)
 
 (export
-  (identifier) @namespace)
+  (identifier) @module)
 
 (call
   function: (identifier) @function.method)
@@ -149,3 +148,5 @@
 
 (function
   output_type: (identifier) @type)
+
+(identifier) @variable

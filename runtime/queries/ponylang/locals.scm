@@ -23,8 +23,12 @@
 (try_block then_block: (block) @local.scope)
 (with else_block: (block) @local.scope)
 
-(param name: (identifier) @local.definition.variable.parameter)
-(lambdaparam name: (identifier) @local.definition.variable.parameter)
+(field name: (identifier) @local.definition)
+(local name: (identifier) @local.definition)
+(param name: (identifier) @local.definition)
+(lambdaparam name: (identifier) @local.definition)
+("for" element: (idseq (identifier) @local.definition))
+(withelem name: (idseq (identifier) @local.definition))
 
 ; only lower case identifiers are references
 (

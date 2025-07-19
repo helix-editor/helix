@@ -12,7 +12,7 @@
 ;------------
 
 (class_definition
- body: (_) @local.definition.type)
+ body: (_) @local.definition)
 
 ; References
 ;------------

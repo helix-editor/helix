@@ -73,3 +73,4 @@
 (nil) @constant.builtin
 
 (comment) @comment
+(ERROR) @error

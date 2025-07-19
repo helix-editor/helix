@@ -2803,6 +2803,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
+        name: "buffer-reopen",
+        aliases: &["br", "breopen"],
+        doc: "Re-open the most previously closed buffer.",
+        fun: buffer_reopen,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
         name: "write",
         aliases: &["w"],
         doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",

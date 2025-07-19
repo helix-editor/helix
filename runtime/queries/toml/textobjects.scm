@@ -3,5 +3,3 @@
 
 (array
   (_) @entry.around)
-
-(comment)+ @comment.around

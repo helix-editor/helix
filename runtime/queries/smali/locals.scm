@@ -16,7 +16,27 @@
   (jmp_label)
 ] @local.reference
 
-(method_definition
-  (method_signature (method_identifier) @local.definition.function.method))
+(enum_reference
+  (field_identifier) @local.definition)
 
-(param_identifier) @local.definition.variable.parameter
+((field_definition
+  (access_modifiers) @_mod
+  (field_identifier) @local.definition)
+  (#eq? @_mod "enum"))
+
+(field_definition
+  (field_identifier) @local.definition
+  (field_type) @local.definition)
+
+(annotation_key) @local.definition
+
+(method_definition
+  (method_signature (method_identifier) @local.definition))
+
+(param_identifier) @local.definition
+
+(annotation_directive
+  (class_identifier) @local.definition)
+
+(class_directive
+  (class_identifier) @local.definition)

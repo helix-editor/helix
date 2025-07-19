@@ -15,7 +15,6 @@
 (binaryop) @operator
 (unaryop) @operator
 
-(id) @variable
 (param identifier: (id) @variable.parameter)
 (bind function: (id) @function)
 (fieldname (id) @variable.other.member)
@@ -36,3 +35,4 @@
   ";"
   "="
 ] @punctuation.delimiter
+(id) @variable

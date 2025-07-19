@@ -11,3 +11,5 @@
 
 (number) @constant.numeric
 (string) @string
+
+(ERROR) @error

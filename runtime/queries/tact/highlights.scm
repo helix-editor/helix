@@ -9,90 +9,40 @@
   "@interface"
 ] @attribute
 
-; operator
-; --------
+; comment.line
+; ------------
 
-[
-  "-" "-="
-  "+" "+="
-  "*" "*="
-  "/" "/="
-  "%" "%="
-  "=" "=="
-  "!" "!=" "!!"
-  "<" "<=" "<<"
-  ">" ">=" ">>"
-  "&" "|"
-  "&&" "||"
-] @operator
-
-; punctuation.bracket
-; -------------------
-
-[
-  "(" ")"
-  "{" "}"
-] @punctuation.bracket
-
-; punctuation.delimiter
-; ---------------------
-
-[
-  ";"
-  ","
-  "."
-  ":"
-  "?"
-] @punctuation.delimiter
-
-; variable
-; --------
-
-(identifier) @variable
-
-; variable.builtin
-; ----------------
-
-(self) @variable.builtin
-
-; variable.parameter
-; ------------------
-
-(parameter
-  name: (identifier) @variable.parameter)
-
-; variable.other.member
-; ---------------------
-
-(field
-  name: (identifier) @variable.other.member)
-
-(contract_body
-  (constant
-    name: (identifier) @variable.other.member))
-
-(trait_body
-  (constant
-    name: (identifier) @variable.other.member))
-
-(field_access_expression
-  name: (identifier) @variable.other.member)
-
-(lvalue (_) (_) @variable.other.member)
-
-(instance_argument
-  name: (identifier) @variable.other.member)
+((comment) @comment.line
+  (#match? @comment.line "^//"))
 
 ; comment.block
 ; -------------
 
 (comment) @comment.block
 
-; comment.line
-; ------------
+; function.builtin
+; ----------------
 
-((comment) @comment.line
-  (#match? @comment.line "^//"))
+((identifier) @function.builtin
+  (#any-of? @function.builtin
+    "send" "sender" "require" "now"
+    "myBalance" "myAddress" "newAddress"
+    "contractAddress" "contractAddressExt"
+    "emit" "cell" "ton"
+    "beginString" "beginComment" "beginTailString" "beginStringFromBuilder" "beginCell" "emptyCell"
+    "randomInt" "random"
+    "checkSignature" "checkDataSignature" "sha256"
+    "min" "max" "abs" "pow"
+    "throw" "dump" "getConfigParam"
+    "nativeThrowWhen" "nativeThrowUnless" "nativeReserve"
+    "nativeRandomize" "nativeRandomizeLt" "nativePrepareRandom" "nativeRandom" "nativeRandomInterval")
+  (#is-not? local))
+
+; function.method
+; ---------------
+
+(method_call_expression
+  name: (identifier) @function.method)
 
 ; function
 ; --------
@@ -122,30 +72,6 @@
 
 (function
   name: (identifier) @function.method)
-
-; function.method
-; ---------------
-
-(method_call_expression
-  name: (identifier) @function.method)
-
-; function.builtin
-; ----------------
-
-((identifier) @function.builtin
-  (#any-of? @function.builtin
-    "send" "sender" "require" "now"
-    "myBalance" "myAddress" "newAddress"
-    "contractAddress" "contractAddressExt"
-    "emit" "cell" "ton"
-    "beginString" "beginComment" "beginTailString" "beginStringFromBuilder" "beginCell" "emptyCell"
-    "randomInt" "random"
-    "checkSignature" "checkDataSignature" "sha256"
-    "min" "max" "abs" "pow"
-    "throw" "dump" "getConfigParam"
-    "nativeThrowWhen" "nativeThrowUnless" "nativeReserve"
-    "nativeRandomize" "nativeRandomizeLt" "nativePrepareRandom" "nativeRandom" "nativeRandomInterval")
-  (#is-not? local))
 
 ; keyword.control.conditional
 ; ---------------------------
@@ -243,21 +169,16 @@
 (constant
   name: (identifier) @constant)
 
-; string
-; ------
-
-(string) @string
-
 ; string.special.path
 ; -------------------
 
 (import_statement
   library: (string) @string.special.path)
 
-; type
-; ----
+; string
+; ------
 
-(type_identifier) @type
+(string) @string
 
 ; type.builtin
 ; ------------
@@ -288,6 +209,11 @@
   (#eq? @type.builtin "SendParameters")
   (#is-not? local))
 
+; type
+; ----
+
+(type_identifier) @type
+
 ; constructor
 ; -----------
 
@@ -296,3 +222,77 @@
 
 (initOf
   name: (identifier) @constructor)
+
+; operator
+; --------
+
+[
+  "-" "-="
+  "+" "+="
+  "*" "*="
+  "/" "/="
+  "%" "%="
+  "=" "=="
+  "!" "!=" "!!"
+  "<" "<=" "<<"
+  ">" ">=" ">>"
+  "&" "|"
+  "&&" "||"
+] @operator
+
+; punctuation.bracket
+; -------------------
+
+[
+  "(" ")"
+  "{" "}"
+] @punctuation.bracket
+
+; punctuation.delimiter
+; ---------------------
+
+[
+  ";"
+  ","
+  "."
+  ":"
+  "?"
+] @punctuation.delimiter
+
+; variable.other.member
+; ---------------------
+
+(field
+  name: (identifier) @variable.other.member)
+
+(contract_body
+  (constant
+    name: (identifier) @variable.other.member))
+
+(trait_body
+  (constant
+    name: (identifier) @variable.other.member))
+
+(field_access_expression
+  name: (identifier) @variable.other.member)
+
+(lvalue (_) (_) @variable.other.member)
+
+(instance_argument
+  name: (identifier) @variable.other.member)
+
+; variable.parameter
+; ------------------
+
+(parameter
+  name: (identifier) @variable.parameter)
+
+; variable.builtin
+; ----------------
+
+(self) @variable.builtin
+
+; variable
+; --------
+
+(identifier) @variable

@@ -1,25 +1,3 @@
-; Punctuation
-;------------
-
-"%" @punctuation.special
-
-["(" ")" "[" "]" "{" "}" "[|" "|]" "[<" "[>"] @punctuation.bracket
-
-[
-  "," "." ";" ":" "=" "|" "~" "?" "+" "-" "!" ">" "&"
-  "->" ";;" ":>" "+=" ":=" ".."
-] @punctuation.delimiter
-
-(object_type ["<" ">"] @punctuation.bracket)
-
-(attribute ["[@" "]"] @punctuation.special)
-(item_attribute ["[@@" "]"] @punctuation.special)
-(floating_attribute ["[@@@" "]"] @punctuation.special)
-(extension ["[%" "]"] @punctuation.special)
-(item_extension ["[%%" "]"] @punctuation.special)
-(quoted_extension ["{%" "}"] @punctuation.special)
-(quoted_item_extension ["{%%" "}"] @punctuation.special)
-
 ; Modules
 ;--------
 
@@ -36,13 +14,6 @@
 [(class_name) (class_type_name) (type_constructor)] @type
 
 [(constructor_name) (tag)] @constructor
-
-; Variables
-;----------
-
-[(value_name) (type_variable)] @variable
-
-(value_pattern) @variable.parameter
 
 ; Functions
 ;----------
@@ -82,6 +53,13 @@
 (application_expression
   function: (value_path (value_name) @function))
 
+; Variables
+;----------
+
+[(value_name) (type_variable)] @variable
+
+(value_pattern) @variable.parameter
+
 ; Properties
 ;-----------
 
@@ -105,7 +83,9 @@
 ; Operators
 ;----------
 
-["*" "#" "::" "<-"] @operator
+(match_expression (match_operator) @keyword)
+
+(value_definition [(let_operator) (let_and_operator)] @keyword)
 
 [
   (prefix_operator)
@@ -125,9 +105,7 @@
   (match_operator)
 ] @operator
 
-(match_expression (match_operator) @keyword)
-
-(value_definition [(let_operator) (let_and_operator)] @keyword)
+["*" "#" "::" "<-"] @operator
 
 ; Keywords
 ;---------
@@ -139,6 +117,28 @@
   "mutable" "new" "nonrec" "object" "of" "open" "private" "rec" "sig" "struct"
   "then" "to" "try" "type" "val" "virtual" "when" "while" "with"
 ] @keyword
+
+; Punctuation
+;------------
+
+(attribute ["[@" "]"] @punctuation.special)
+(item_attribute ["[@@" "]"] @punctuation.special)
+(floating_attribute ["[@@@" "]"] @punctuation.special)
+(extension ["[%" "]"] @punctuation.special)
+(item_extension ["[%%" "]"] @punctuation.special)
+(quoted_extension ["{%" "}"] @punctuation.special)
+(quoted_item_extension ["{%%" "}"] @punctuation.special)
+
+"%" @punctuation.special
+
+["(" ")" "[" "]" "{" "}" "[|" "|]" "[<" "[>"] @punctuation.bracket
+
+(object_type ["<" ">"] @punctuation.bracket)
+
+[
+  "," "." ";" ":" "=" "|" "~" "?" "+" "-" "!" ">" "&"
+  "->" ";;" ":>" "+=" ":=" ".."
+] @punctuation.delimiter
 
 ; Attributes
 ;-----------

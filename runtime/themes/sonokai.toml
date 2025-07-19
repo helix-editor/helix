@@ -7,7 +7,6 @@
 
 "type" = "blue"
 "constant" = "fg"
-"constant.builtin" = "purple"
 "constant.numeric" = "purple"
 "constant.character.escape" = "orange"
 "string" = "yellow"

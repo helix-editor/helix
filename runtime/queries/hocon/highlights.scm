@@ -10,8 +10,6 @@
 
 (value [":" "=" "+=" ] @operator)
 
-[ "(" ")" "[" "]" "{" "}" ]  @punctuation.bracket
-
 (substitution (_) @string)
 (substitution ["${" "${?" "}"] @punctuation.special)
 
@@ -23,6 +21,8 @@
 ] @function.builtin
 
 (include) @keyword.directive
+
+[ "(" ")" "[" "]" "{" "}" ]  @punctuation.bracket
 
 (unit) @keyword
 (path (_) @keyword)

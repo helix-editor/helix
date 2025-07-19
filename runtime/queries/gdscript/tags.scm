@@ -2,4 +2,4 @@
 
 (function_definition (name) @name) @definition.function
 
-(call (identifier) @name) @reference.call
+(call (name) @name) @reference.call

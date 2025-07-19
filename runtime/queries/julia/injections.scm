@@ -9,8 +9,7 @@
       (primitive_definition)
       (abstract_definition)
       (struct_definition)
-      (short_function_definition)
-      (assignment)
+      (assignment_expression)
       (const_statement)
     ])
   (#set! injection.language "markdown"))
@@ -23,16 +22,9 @@
   (#set! injection.language "comment"))
 
 (
-  [
-    (command_literal)
-    (prefixed_command_literal)
-  ] @injection.content
-  (#set! injection.language "sh"))
-
-(
   (prefixed_string_literal
     prefix: (identifier) @function.macro) @injection.content
-  (#eq? @function.macro "r")
+  (#eq? @function.macro "re")
   (#set! injection.language "regex"))
 
 (
