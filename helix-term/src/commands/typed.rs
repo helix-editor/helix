@@ -334,6 +334,21 @@ fn buffer_previous(
     Ok(())
 }
 
+fn buffer_reopen(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if let Some(last_closed_doc_path) = cx.editor.closed_document_paths.pop() {
+        cx.editor.open(&last_closed_doc_path, Action::Replace)?;
+    }
+    Ok(())
+}
+
 fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&str>,
