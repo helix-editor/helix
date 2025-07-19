@@ -3878,44 +3878,30 @@ fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) 
     };
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let line_idx = range.cursor_line(text);
-        let current_line = text.line(line_idx);
+        let mut line_idx = range.cursor_line(text);
+        let mut current_line = text.line(line_idx);
 
-        let indent_count: u64 = current_line.chars().map_while(count_indent).sum();
-        if indent_count > 0 {
-            // If the line is empty, just return the current range.
-            return range;
+        // If cursor line is empty or contains only whitespace, move to the next line
+        while current_line.len_chars() == 0 || current_line.chars().all(|ch| ch.is_whitespace()) {
+            line_idx = match direction {
+                Direction::Forward => line_idx.saturating_add(1),
+                Direction::Backward => line_idx.saturating_sub(1),
+            };
+
+            current_line = text.line(line_idx);
         }
 
         let first_char_pos = current_line.first_non_whitespace_char();
-
-        // let indentation_level: u64 = current_line
-        //     .clone()
-        //     .chars()
-        //     .map_while(count_indent)
-        //     .sum();
-
-        // let mut target_idx = match direction {
-        //     Direction::Forward => line_idx.saturating_add(1),
-        //     Direction::Backward => line_idx.saturating_sub(1),
-        // };
-
         let mut target_idx = line_idx;
         loop {
             target_idx = match direction {
-                Direction::Forward => {
-                    if target_idx + 1 >= text.len_lines() {
-                        break;
-                    }
-                    target_idx + 1
-                }
-                Direction::Backward => {
-                    if target_idx == 0 {
-                        break;
-                    }
-                    target_idx - 1
-                }
+                Direction::Forward => target_idx.saturating_add(1),
+                Direction::Backward => target_idx.saturating_sub(1),
             };
+
+            if target_idx >= text.len_lines() || target_idx == 0 {
+                break
+            }
 
             let target_line = text.line(target_idx);
             let target_first_char_pos = target_line.first_non_whitespace_char();
