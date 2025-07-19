@@ -3900,7 +3900,7 @@ fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) 
             };
 
             if target_idx >= text.len_lines() || target_idx == 0 {
-                break
+                break;
             }
 
             let target_line = text.line(target_idx);
@@ -3911,8 +3911,8 @@ fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) 
                 continue;
             }
 
-            // Stop when indentation changes
-            if target_first_char_pos != first_char_pos {
+            // Stop when scoped up
+            if target_first_char_pos < first_char_pos {
                 break;
             }
         }
