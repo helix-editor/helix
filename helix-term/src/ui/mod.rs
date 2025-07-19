@@ -205,8 +205,8 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     let now = Instant::now();
 
     let dedup_symlinks = config.file_picker.deduplicate_links;
+    let ignore_binaries = config.file_picker.binary_files;
     let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
-
     let mut walk_builder = WalkBuilder::new(&root);
     walk_builder
         .hidden(config.file_picker.hidden)
@@ -218,7 +218,9 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .git_exclude(config.file_picker.git_exclude)
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .max_depth(config.file_picker.max_depth)
-        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
+        .filter_entry(move |entry| {
+            filter_picker_entry(entry, &absolute_root, dedup_symlinks, ignore_binaries)
+        });
 
     walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
     walk_builder.add_custom_ignore_filename(".helix/ignore");
