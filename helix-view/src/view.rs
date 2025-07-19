@@ -189,6 +189,18 @@ impl View {
         self.docs_access_history.push(id);
     }
 
+    /// The range of lines in the document that the view sees
+    pub fn line_range(&self, doc: &Document) -> std::ops::Range<usize> {
+        let text = doc.text();
+        let text_line_count = text.len_lines();
+        let first_line = text.char_to_line(doc.view_offset(self.id).anchor.min(text.len_chars()));
+        let last_line = first_line
+            .saturating_add(self.inner_height())
+            .min(text_line_count);
+
+        first_line..last_line
+    }
+
     pub fn inner_area(&self, doc: &Document) -> Rect {
         self.area.clip_left(self.gutter_offset(doc)).clip_bottom(1) // -1 for statusline
     }

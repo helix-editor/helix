@@ -1,11 +1,11 @@
 use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
+use gix::bstr::ByteSlice as _;
 use gix::filter::plumbing::driver::apply::Delay;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 
-use gix::bstr::ByteSlice;
 use gix::diff::Rewrites;
 use gix::dir::entry::Status;
 use gix::objs::tree::EntryKind;
@@ -21,6 +21,8 @@ use crate::FileChange;
 
 #[cfg(test)]
 mod test;
+
+pub mod blame;
 
 #[inline]
 fn get_repo_dir(file: &Path) -> Result<&Path> {

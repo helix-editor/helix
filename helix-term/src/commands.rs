@@ -11,6 +11,7 @@ use helix_stdx::{
     rope::{self, RopeSliceExt},
 };
 use helix_vcs::{FileChange, Hunk};
+use helix_view::document::LineBlameError;
 pub use lsp::*;
 pub use syntax::*;
 use tui::{
@@ -609,6 +610,7 @@ impl MappableCommand {
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
         goto_prev_tabstop, "Goto next snippet placeholder",
+        blame_line, "Show blame for the current line",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
     );
@@ -3499,6 +3501,55 @@ enum IndentFallbackPos {
 // If the line is empty, automatically indent.
 fn insert_at_line_start(cx: &mut Context) {
     insert_with_indent(cx, IndentFallbackPos::LineStart);
+}
+
+pub(crate) fn blame_line_impl(editor: &mut Editor, doc_id: DocumentId, cursor_line: u32) {
+    let inline_blame_config = &editor.config().inline_blame;
+    let Some(doc) = editor.document(doc_id) else {
+        return;
+    };
+    let line_blame = match doc.line_blame(cursor_line, &inline_blame_config.format) {
+        result
+            if (result.is_ok() && doc.is_blame_potentially_out_of_date)
+                || matches!(result, Err(LineBlameError::NotReadyYet) if !inline_blame_config.auto_fetch) =>
+        {
+            if let Some(path) = doc.path() {
+                let tx = editor.handlers.blame.clone();
+                helix_event::send_blocking(
+                    &tx,
+                    helix_view::handlers::BlameEvent {
+                        path: path.to_path_buf(),
+                        doc_id: doc.id(),
+                        line: Some(cursor_line),
+                    },
+                );
+                editor.set_status(format!("Requested blame for {}...", path.display()));
+                let doc = editor
+                    .document_mut(doc_id)
+                    .expect("exists since we return from the function earlier if it does not");
+                doc.is_blame_potentially_out_of_date = false;
+            } else {
+                editor.set_error("Could not get path of document");
+            };
+            return;
+        }
+        Ok(line_blame) => line_blame,
+        Err(err @ (LineBlameError::NotCommittedYet | LineBlameError::NotReadyYet)) => {
+            editor.set_status(err.to_string());
+            return;
+        }
+        Err(err @ LineBlameError::NoFileBlame(_, _)) => {
+            editor.set_error(err.to_string());
+            return;
+        }
+    };
+
+    editor.set_status(line_blame);
+}
+
+fn blame_line(cx: &mut Context) {
+    let (view, doc) = current_ref!(cx.editor);
+    blame_line_impl(cx.editor, doc.id(), doc.cursor_line(view.id) as u32);
 }
 
 // `A` inserts at the end of each line with a selection.
