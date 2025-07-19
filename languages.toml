@@ -3422,7 +3422,7 @@ language-servers = ["just-lsp"]
 
 [[grammar]]
 name = "just"
-source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "8d03cfdd7ab89ff76d935827de1b93450fa0ec0a" }
+source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "0f84211c637813bcf1eb32c9e35847cdaea8760d" }
 
 [[language]]
 name = "gn"

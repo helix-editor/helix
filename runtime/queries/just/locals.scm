@@ -30,6 +30,9 @@
 (function_call
   name: (identifier) @local.reference)
 
+(module_path
+  name: (identifier) @local.reference)
+
 (recipe_dependency
   name: (identifier) @local.reference)
 
