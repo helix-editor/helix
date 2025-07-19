@@ -127,6 +127,18 @@ impl EditorView {
             &text_annotations,
         ));
 
+        if doc
+            .language_config()
+            .and_then(|config| config.rainbow_brackets)
+            .unwrap_or(config.rainbow_brackets)
+        {
+            if let Some(overlay) =
+                Self::doc_rainbow_highlights(doc, view_offset.anchor, inner.height, theme, &loader)
+            {
+                overlays.push(overlay);
+            }
+        }
+
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
 
         if is_focused {
@@ -302,6 +314,27 @@ impl EditorView {
         range = text.byte_to_char(range.start)..text.byte_to_char(range.end);
 
         text_annotations.collect_overlay_highlights(range)
+    }
+
+    pub fn doc_rainbow_highlights(
+        doc: &Document,
+        anchor: usize,
+        height: u16,
+        theme: &Theme,
+        loader: &syntax::Loader,
+    ) -> Option<OverlayHighlights> {
+        let syntax = doc.syntax()?;
+        let text = doc.text().slice(..);
+        let row = text.char_to_line(anchor.min(text.len_chars()));
+        let visible_range = Self::viewport_byte_range(text, row, height);
+        let start = syntax::child_for_byte_range(
+            &syntax.tree().root_node(),
+            visible_range.start as u32..visible_range.end as u32,
+        )
+        .map_or(visible_range.start as u32, |node| node.start_byte());
+        let range = start..visible_range.end as u32;
+
+        Some(syntax.rainbow_highlights(text, theme.rainbow_length(), loader, range))
     }
 
     /// Get highlight spans for document diagnostics

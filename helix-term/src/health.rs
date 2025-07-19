@@ -13,6 +13,7 @@ pub enum TsFeature {
     TextObject,
     AutoIndent,
     Tags,
+    RainbowBracket,
 }
 
 impl TsFeature {
@@ -22,6 +23,7 @@ impl TsFeature {
             Self::TextObject,
             Self::AutoIndent,
             Self::Tags,
+            Self::RainbowBracket,
         ]
     }
 
@@ -31,6 +33,7 @@ impl TsFeature {
             Self::TextObject => "textobjects.scm",
             Self::AutoIndent => "indents.scm",
             Self::Tags => "tags.scm",
+            Self::RainbowBracket => "rainbows.scm",
         }
     }
 
@@ -40,6 +43,7 @@ impl TsFeature {
             Self::TextObject => "Treesitter Textobjects",
             Self::AutoIndent => "Auto Indent",
             Self::Tags => "Code Navigation Tags",
+            Self::RainbowBracket => "Rainbow Brackets",
         }
     }
 
@@ -49,6 +53,7 @@ impl TsFeature {
             Self::TextObject => "Textobject",
             Self::AutoIndent => "Indent",
             Self::Tags => "Tags",
+            Self::RainbowBracket => "Rainbow",
         }
     }
 }
