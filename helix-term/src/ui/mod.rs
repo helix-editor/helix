@@ -722,7 +722,8 @@ pub mod completers {
                 .flatten()
                 .filter_map(|res| {
                     let entry = res.ok()?;
-                    if entry.metadata().ok()?.is_file() {
+                    let metadata = entry.metadata().ok()?;
+                    if metadata.is_file() || metadata.is_symlink() {
                         entry.file_name().into_string().ok()
                     } else {
                         None

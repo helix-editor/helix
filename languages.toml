@@ -32,9 +32,11 @@ csharp-ls = { command = "csharp-ls" }
 cuelsp = { command = "cuelsp" }
 dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
 dhall-lsp-server = { command = "dhall-lsp-server" }
+djlsp = { command = "djlsp" }
 docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
 docker-compose-langserver = { command = "docker-compose-langserver", args = ["--stdio"]}
 dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
+dts-lsp = { command = "dts-lsp" }
 earthlyls = { command = "earthlyls" }
 elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
 elm-language-server = { command = "elm-language-server" }
@@ -110,6 +112,7 @@ ruby-lsp = { command = "ruby-lsp" }
 serve-d = { command = "serve-d" }
 slangd = { command = "slangd" }
 slint-lsp = { command = "slint-lsp", args = [] }
+systemd-lsp = { command = "systemd-lsp" }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
@@ -512,7 +515,6 @@ file-types = [
   "css.map",
   { glob = ".jslintrc" },
   "jsonl",
-  "jsonld",
   { glob = ".vuerc" },
   { glob = "composer.lock" },
   { glob = ".watchmanconfig" },
@@ -550,6 +552,17 @@ comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 grammar = "json"
 language-servers = [ "vscode-json-language-server" ]
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+
+# https://www.w3.org/TR/json-ld/
+[[language]]
+name = "json-ld"
+scope = "source.json-ld"
+injection-regex = "json-ld"
+grammar = "json"
+file-types = ["jsonld"]
+language-servers = ["vscode-json-language-server"]
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
@@ -943,6 +956,25 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "html"
 source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "cbb91a0ff3621245e890d1c50cc811bffb77a26b" }
+
+[[language]]
+name = "htmldjango"
+scope = "source.htmldjango"
+injection-regex = "htmldjango"
+language-servers = ["djlsp", "vscode-html-language-server", "superhtml"]
+file-types = []
+
+[language.auto-pairs]
+'"' = '"'
+'(' = ')'
+'[' = ']'
+'{' = '}'
+'%' = '%'
+'<' = '>'
+
+[[grammar]]
+name = "htmldjango"
+source = { git = "https://github.com/interdependence/tree-sitter-htmldjango", rev = "3a643167ad9afac5d61e092f08ff5b054576fadf" }
 
 [[language]]
 name = "python"
@@ -1751,6 +1783,7 @@ roots = [".marksman.toml"]
 language-servers = [ "marksman", "markdown-oxide" ]
 indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "<!--", end = "-->" }
+word-completion.trigger-length = 4
 
 [[grammar]]
 name = "markdown"
@@ -1847,9 +1880,9 @@ source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = 
 [[language]]
 name = "docker-compose"
 scope = "source.yaml.docker-compose"
-roots = ["docker-compose.yaml", "docker-compose.yml"]
+roots = ["docker-compose.yaml", "docker-compose.yml", "compose.yaml", "compose.yml"]
 language-servers = [ "docker-compose-langserver", "yaml-language-server" ]
-file-types = [{ glob = "docker-compose.yaml" }, { glob = "docker-compose.yml" }]
+file-types = [{ glob = "docker-compose.yaml" }, { glob = "docker-compose.yml" }, { glob = "compose.yaml" }, { glob = "compose.yml" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 grammar = "yaml"
@@ -1867,6 +1900,16 @@ grammar = "gitcommit"
 [[grammar]]
 name = "gitcommit"
 source = { git = "https://github.com/gbprod/tree-sitter-gitcommit", rev = "a716678c0f00645fed1e6f1d0eb221481dbd6f6d" }
+
+[[language]]
+name = "git-notes"
+scope = "git.notesmsg"
+file-types = [{ glob = "NOTES_EDITMSG" }]
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+rulers = [73]
+text-width = 72
+grammar = "gitcommit"
 
 [[language]]
 name = "diff"
@@ -2004,7 +2047,10 @@ roots = ["rebar.config"]
 shebangs = ["escript"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
-language-servers = [ "erlang-ls", "elp" ]
+language-servers = [
+  { name = "erlang-ls", except-features = ["document-symbols", "workspace-symbols"] },
+  { name = "elp", except-features = ["document-symbols", "workspace-symbols"] }
+]
 
 [[grammar]]
 name = "erlang"
@@ -2309,6 +2355,7 @@ file-types = ["dts", "dtsi"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
+language-servers = [ "dts-lsp" ]
 
 [[grammar]]
 name = "devicetree"
@@ -2378,7 +2425,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "odin"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-odin", rev = "b5f668ef8918aab13812ce73acd89fe191fb8c5e" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-odin", rev = "6c6b07e354a52f8f2a9bc776cbc262a74e74fd26" }
 
 [[language]]
 name = "meson"
@@ -2912,6 +2959,7 @@ scope = "source.dtd"
 injection-regex = "dtd"
 file-types = ["dtd", "ent"]
 indent = {tab-width = 2, unit = "  "}
+block-comment-tokens = { start = "<!--", end = "-->" }
 
 [language.auto-pairs]
 '(' = ')'
@@ -2955,15 +3003,12 @@ indent = { tab-width = 4, unit = "\t" }
 grammar = "bash"
 
 [[language]]
-name = "ini"
+name = "systemd"
 scope = "source.ini"
 file-types = [
-  "ini",
   # Systemd unit files
   "service",
   "automount",
-  "desktop",
-  { glob = "mimeapps.list" },
   "device",
   "mount",
   "nspawn",
@@ -2975,6 +3020,19 @@ file-types = [
   "target",
   "timer",
   { glob = "systemd/**/*.conf" },
+]
+injection-regex = "systemd"
+comment-token = "#"
+grammar = "ini"
+language-servers = ["systemd-lsp"]
+
+[[language]]
+name = "ini"
+scope = "source.ini"
+file-types = [
+  "ini",
+  "desktop",
+  { glob = "mimeapps.list" },
   # Podman quadlets
   "container",
   "volume",
@@ -3488,6 +3546,16 @@ name = "jinja2"
 source = { git = "https://github.com/varpeti/tree-sitter-jinja2", rev = "a533cd3c33aea6acb0f9bf9a56f35dcfe6a8eb53" }
 
 [[language]]
+name = "jjconfig"
+scope = "source.jjconfig"
+injection-regex = "jjconfig"
+grammar = "toml"
+file-types = [{ glob = "jj/config.toml" }, { glob = "jj/conf.d/*.toml" }, { glob = ".jj/repo/*.toml" }]
+comment-token = "#"
+language-servers = [ "taplo", "tombi" ]
+indent = { tab-width = 2, unit = "  " }
+
+[[language]]
 name = "jjdescription"
 scope = "jj.description"
 file-types = [{ glob = "*.jjdescription" }]
@@ -3499,6 +3567,24 @@ text-width = 72
 [[grammar]]
 name = "jjdescription"
 source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "1613b8c85b6ead48464d73668f39910dcbb41911" }
+
+[[language]]
+name = "jjrevset"
+scope = "jj.revset"
+file-types = ["jjrevset"]
+
+[[grammar]]
+name = "jjrevset"
+source = { git = "https://github.com/bryceberger/tree-sitter-jjrevset", rev = "d9af23944b884ec528b505f41d81923bb3136a51" }
+
+[[language]]
+name = "jjtemplate"
+scope = "jj.template"
+file-types = ["jjtemplate"]
+
+[[grammar]]
+name = "jjtemplate"
+source = { git = "https://github.com/bryceberger/tree-sitter-jjtemplate", rev = "4313eda8ac31c60e550e3ad5841b100a0a686715" }
 
 [[language]]
 name = "jq"
@@ -4392,6 +4478,12 @@ name = "rust-format-args"
 source = { git = "https://github.com/nik-rev/tree-sitter-rust-format-args", rev = "84ffe550e261cf5ea40a0ec31849ba2443bae99f" }
 
 [[language]]
+name = "rust-format-args-macro"
+scope = "source.rust-format-args-macro"
+file-types = []
+grammar = "rust"
+
+[[language]]
 name = "clarity"
 scope = "source.clar"
 injection-regex = "clarity"
@@ -4450,3 +4542,14 @@ auto-format = true
 [[grammar]]
 name = "caddyfile"
 source = { git = "https://github.com/caddyserver/tree-sitter-caddyfile", rev = "b04bdb4ec53e40c44afbf001e15540f60a296aef" }
+
+[[language]]
+name = "properties"
+scope = "source.properties"
+injection-regex = "properties"
+file-types = ["properties", "prefs"]
+comment-tokens = ["#"]
+
+[[grammar]]
+name = "properties"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-properties", rev = "579b62f5ad8d96c2bb331f07d1408c92767531d9" }

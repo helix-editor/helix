@@ -57,6 +57,7 @@
   "case"
   "where"
   "break"
+  "or_break"
   (fallthrough_statement)
 ] @keyword.control.conditional
 
@@ -73,6 +74,7 @@
   "for"
   "do"
   "continue"
+  "or_continue"
 ] @keyword.control.repeat
 
 [
