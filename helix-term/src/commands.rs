@@ -3928,7 +3928,7 @@ fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) 
             Direction::Backward => target_idx.saturating_add(1),
         };
 
-        let indents: Vec<u64> = (line_idx..target_idx)
+        let indents: Vec<u64> = (line_idx.min(target_idx)..=line_idx.max(target_idx))
             .map(|i| text.line(i))
             .map(|l| l.chars().map_while(count_indent).sum()).collect();
 
