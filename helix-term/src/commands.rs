@@ -463,6 +463,10 @@ impl MappableCommand {
         goto_previous_buffer, "Goto previous buffer",
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        goto_indent_start, "Goto start of scope indentaion",
+        goto_indent_end, "Goto end of scope indentation",
+        extend_to_indent_start, "Extend to start of scope indentation",
+        extend_to_indent_end, "Extend to end of scope indentation",
         trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
@@ -3841,6 +3845,104 @@ fn goto_last_line_impl(cx: &mut Context, movement: Movement) {
         .clone()
         .transform(|range| range.put_cursor(text, pos, movement == Movement::Extend));
 
+    push_jump(view, doc);
+    doc.set_selection(view.id, selection);
+}
+
+fn goto_indent_start(cx: &mut Context) {
+    goto_indent_impl(cx, Movement::Move, Direction::Backward);
+}
+
+fn goto_indent_end(cx: &mut Context) {
+    goto_indent_impl(cx, Movement::Move, Direction::Forward);
+}
+
+fn extend_to_indent_start(cx: &mut Context) {
+    goto_indent_impl(cx, Movement::Extend, Direction::Backward);
+}
+
+fn extend_to_indent_end(cx: &mut Context) {
+    goto_indent_impl(cx, Movement::Extend, Direction::Forward);
+}
+
+fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let count_indent = |ch: char| -> Option<u64> {
+        match ch {
+            ' ' => Some(1),
+            '\t' => Some(4),
+            _ => None,
+        }
+    };
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line_idx = range.cursor_line(text);
+        let current_line = text.line(line_idx);
+
+        let indent_count: u64 = current_line.chars().map_while(count_indent).sum();
+        if indent_count > 0 {
+            // If the line is empty, just return the current range.
+            return range;
+        }
+
+        let first_char_pos = current_line.first_non_whitespace_char();
+
+        // let indentation_level: u64 = current_line
+        //     .clone()
+        //     .chars()
+        //     .map_while(count_indent)
+        //     .sum();
+
+        // let mut target_idx = match direction {
+        //     Direction::Forward => line_idx.saturating_add(1),
+        //     Direction::Backward => line_idx.saturating_sub(1),
+        // };
+
+        let mut target_idx = line_idx;
+        loop {
+            target_idx = match direction {
+                Direction::Forward => {
+                    if target_idx + 1 >= text.len_lines() {
+                        break;
+                    }
+                    target_idx + 1
+                }
+                Direction::Backward => {
+                    if target_idx == 0 {
+                        break;
+                    }
+                    target_idx - 1
+                }
+            };
+
+            let target_line = text.line(target_idx);
+            let target_first_char_pos = target_line.first_non_whitespace_char();
+
+            // Skip empty lines
+            if target_line.chars().all(|c| c.is_whitespace()) || target_first_char_pos == None {
+                continue;
+            }
+
+            // Stop when indentation changes
+            if target_first_char_pos != first_char_pos {
+                break;
+            }
+        }
+
+        // Off by one
+        let target_idx = match direction {
+            Direction::Forward => target_idx.saturating_sub(1),
+            Direction::Backward => target_idx.saturating_add(1),
+        };
+
+        range.put_cursor(
+            text,
+            text.line_to_char(target_idx),
+            movement == Movement::Extend,
+        )
+    });
     push_jump(view, doc);
     doc.set_selection(view.id, selection);
 }
