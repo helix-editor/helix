@@ -222,7 +222,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
     for arg in args {
         let doc_id = editor.documents().find_map(|doc| {
             let arg_path = Some(Path::new(arg.as_ref()));
-            if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path {
+            if doc.path() == arg_path || doc.relative_path() == arg_path {
                 Some(doc.id())
             } else {
                 None
@@ -1512,11 +1512,11 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })?;
-    if let Some(path) = doc.path() {
+    if let Some(path) = doc.pathbuf() {
         cx.editor
             .language_servers
             .file_event_handler
-            .file_changed(path.clone());
+            .file_changed(path);
     }
     Ok(())
 }
@@ -1558,11 +1558,11 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
             continue;
         }
 
-        if let Some(path) = doc.path() {
+        if let Some(path) = doc.pathbuf() {
             cx.editor
                 .language_servers
                 .file_event_handler
-                .file_changed(path.clone());
+                .file_changed(path);
         }
 
         for view_id in view_ids {
@@ -2736,9 +2736,8 @@ fn move_buffer_impl(
 ) -> anyhow::Result<()> {
     let doc = doc!(cx.editor);
     let old_path = doc
-        .path()
-        .context("Scratch buffer cannot be moved. Use :write instead")?
-        .clone();
+        .pathbuf()
+        .context("Scratch buffer cannot be moved. Use :write instead")?;
 
     // if new_path is a directory, append the original file name
     // to move the file into that directory.
