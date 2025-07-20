@@ -65,7 +65,7 @@ impl Decoration for InlineBlame {
         let end_of_line = virt_off.col as u16;
         // length of line in the document
         // draw the git blame 6 spaces after the end of the line
-        let start_drawing_at = end_of_line + 6;
+        let start_drawing_at = (end_of_line.saturating_sub(renderer.offset.col as u16)) + 6;
 
         let amount_of_characters_drawn = renderer
             .column_in_bounds(start_drawing_at as usize, 1)
