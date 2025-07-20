@@ -591,7 +591,7 @@ impl Registry {
         &mut self,
         name: String,
         ls_config: &LanguageConfiguration,
-        doc_path: Option<&std::path::PathBuf>,
+        doc_path: Option<&std::path::Path>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
     ) -> Result<Arc<Client>, StartupError> {
@@ -624,7 +624,7 @@ impl Registry {
         &mut self,
         name: &str,
         language_config: &LanguageConfiguration,
-        doc_path: Option<&std::path::PathBuf>,
+        doc_path: Option<&std::path::Path>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
     ) -> Option<Result<Arc<Client>>> {
@@ -679,7 +679,7 @@ impl Registry {
     pub fn get<'a>(
         &'a mut self,
         language_config: &'a LanguageConfiguration,
-        doc_path: Option<&'a std::path::PathBuf>,
+        doc_path: Option<&'a std::path::Path>,
         root_dirs: &'a [PathBuf],
         enable_snippets: bool,
     ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
@@ -867,7 +867,7 @@ fn start_client(
     name: String,
     config: &LanguageConfiguration,
     ls_config: &LanguageServerConfiguration,
-    doc_path: Option<&std::path::PathBuf>,
+    doc_path: Option<&std::path::Path>,
     root_dirs: &[PathBuf],
     enable_snippets: bool,
 ) -> Result<NewClient, StartupError> {

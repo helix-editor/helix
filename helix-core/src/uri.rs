@@ -37,6 +37,12 @@ impl From<PathBuf> for Uri {
     }
 }
 
+impl From<&Path> for Uri {
+    fn from(path: &Path) -> Self {
+        Self::File(path.into())
+    }
+}
+
 impl fmt::Display for Uri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
