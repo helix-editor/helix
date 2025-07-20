@@ -1673,6 +1673,7 @@ event: Event?"#, $name, $name));
         "up" => Up,
         "down" => Down,
         "home" => Home,
+        "end" => End,
         "page-up" => PageUp,
         "page-down" => PageDown,
         "tab" => Tab,
