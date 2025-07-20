@@ -112,7 +112,7 @@
 | iex | ✓ |  |  |  |  |
 | ini | ✓ |  |  |  |  |
 | ink | ✓ |  |  |  |  |
-| inko | ✓ | ✓ | ✓ |  |  |
+| inko | ✓ | ✓ | ✓ | ✓ |  |
 | janet | ✓ |  |  |  |  |
 | java | ✓ | ✓ | ✓ |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
