@@ -16,6 +16,7 @@ pub struct CompletionItem {
 pub enum CompletionProvider {
     Lsp(LanguageServerId),
     Path,
+    Word,
 }
 
 impl From<LanguageServerId> for CompletionProvider {

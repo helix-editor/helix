@@ -1,0 +1,303 @@
+name: Release
+on:
+  push:
+    tags:
+    - '[0-9]+.[0-9]+'
+    - '[0-9]+.[0-9]+.[0-9]+'
+    branches:
+    - 'patch/ci-release-*'
+  pull_request:
+    paths:
+    - '.github/workflows/release.yml'
+
+env:
+  # Preview mode: Publishes the build output as a CI artifact instead of creating
+  # a release, allowing for manual inspection of the output. This mode is
+  # activated if the CI run was triggered by events other than pushed tags, or
+  # if the repository is a fork.
+  preview: ${{ !startsWith(github.ref, 'refs/tags/') || github.repository != 'helix-editor/helix' }}
+
+jobs:
+  fetch-grammars:
+    name: Fetch Grammars
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Fetch tree-sitter grammars
+        run: cargo run --package=helix-loader --bin=hx-loader
+
+      - name: Bundle grammars
+        run: tar cJf grammars.tar.xz -C runtime/grammars/sources .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grammars
+          path: grammars.tar.xz
+
+  dist:
+    name: Dist
+    needs: [fetch-grammars]
+    env:
+      # For some builds, we use cross to test on 32-bit and big-endian
+      # systems.
+      CARGO: cargo
+      # When CARGO is set to CROSS, this is set to `--target matrix.target`.
+      TARGET_FLAGS:
+      # When CARGO is set to CROSS, TARGET_DIR includes matrix.target.
+      TARGET_DIR: ./target
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # don't fail other jobs if one fails
+      matrix:
+        build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
+        include:
+        - build: x86_64-linux
+          # WARN: When changing this to a newer version, make sure that the GLIBC isnt too new, as this can cause issues
+          # with portablity on older systems that dont follow ubuntus more rapid release cadence.
+          os: ubuntu-22.04
+          rust: stable
+          target: x86_64-unknown-linux-gnu
+          cross: false
+        - build: aarch64-linux
+          # Version should be kept in lockstep with the x86_64 version
+          os: ubuntu-22.04-arm
+          rust: stable
+          target: aarch64-unknown-linux-gnu
+          cross: false
+        # - build: riscv64-linux
+        #   os: ubuntu-22.04
+        #   rust: stable
+        #   target: riscv64gc-unknown-linux-gnu
+        #   cross: true
+        - build: x86_64-macos
+          os: macos-latest
+          rust: stable
+          target: x86_64-apple-darwin
+          cross: false
+        - build: x86_64-windows
+          os: windows-latest
+          rust: stable
+          target: x86_64-pc-windows-msvc
+          cross: false
+        # 23.03: build issues
+        - build: aarch64-macos
+          os: macos-latest
+          rust: stable
+          target: aarch64-apple-darwin
+          cross: false
+          skip_tests: true  # x86_64 host can't run aarch64 code
+        # - build: x86_64-win-gnu
+        #   os: windows-2019
+        #   rust: stable-x86_64-gnu
+        #   target: x86_64-pc-windows-gnu
+        # - build: win32-msvc
+        #   os: windows-2019
+        #   rust: stable
+        #   target: i686-pc-windows-msvc
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Download grammars
+        uses: actions/download-artifact@v4
+
+      - name: Move grammars under runtime
+        if: "!startsWith(matrix.os, 'windows')"
+        run: |
+          mkdir -p runtime/grammars/sources
+          tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
+
+      # The rust-toolchain action ignores rust-toolchain.toml files.
+      # Removing this before building with cargo ensures that the rust-toolchain
+      # is considered the same between installation and usage.
+      - name: Remove the rust-toolchain.toml file
+        run: rm rust-toolchain.toml
+
+      - name: Install ${{ matrix.rust }} toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+
+      # Install a pre-release version of Cross
+      # TODO: We need to pre-install Cross because we need cross-rs/cross#591 to
+      #       get a newer C++ compiler toolchain. Remove this step when Cross
+      #       0.3.0, which includes cross-rs/cross#591, is released.
+      - name: Install Cross
+        if: "matrix.cross"
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross.git --rev 47df5c76e7cba682823a0b6aa6d95c17b31ba63a
+          echo "CARGO=cross" >> $GITHUB_ENV
+        # echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
+        # echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+
+      - name: Show command used for Cargo
+        run: |
+          echo "cargo command is: ${{ env.CARGO }}"
+          echo "target flag is: ${{ env.TARGET_FLAGS }}"
+
+      - name: Run cargo test
+        if: "!matrix.skip_tests"
+        run: ${{ env.CARGO }} test --release --locked --target ${{ matrix.target }} --workspace
+
+      - name: Build release binary
+        run: ${{ env.CARGO }} build --profile opt --locked --target ${{ matrix.target }}
+
+      - name: Build AppImage
+        shell: bash
+        if: matrix.build == 'x86_64-linux'
+        run: |
+          # Required as of 22.x https://github.com/AppImage/AppImageKit/wiki/FUSE
+          sudo add-apt-repository universe
+          sudo apt install libfuse2
+
+          mkdir dist
+
+          name=dev
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            name=${GITHUB_REF:10}
+          fi
+
+          build="${{ matrix.build }}"
+
+          export VERSION="$name"
+          export ARCH=${build%-linux}
+          export APP=helix
+          export OUTPUT="helix-$VERSION-$ARCH.AppImage"
+          export UPDATE_INFORMATION="gh-releases-zsync|$GITHUB_REPOSITORY_OWNER|helix|latest|$APP-*-$ARCH.AppImage.zsync"
+
+          mkdir -p "$APP.AppDir"/usr/{bin,lib/helix}
+
+          cp "target/${{ matrix.target }}/opt/hx" "$APP.AppDir/usr/bin/hx"
+          rm -rf runtime/grammars/sources
+          cp -r runtime "$APP.AppDir/usr/lib/helix/runtime"
+
+          cat << 'EOF' > "$APP.AppDir/AppRun"
+          #!/bin/sh
+
+          APPDIR="$(dirname "$(readlink -f "${0}")")"
+          HELIX_RUNTIME="$APPDIR/usr/lib/helix/runtime" exec "$APPDIR/usr/bin/hx" "$@"
+          EOF
+          chmod 755 "$APP.AppDir/AppRun"
+
+          curl -Lo linuxdeploy-x86_64.AppImage \
+              https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+
+          ./linuxdeploy-x86_64.AppImage \
+              --appdir "$APP.AppDir" -d contrib/Helix.desktop \
+              -i contrib/helix.png --output appimage
+
+          mv "$APP-$VERSION-$ARCH.AppImage" \
+              "$APP-$VERSION-$ARCH.AppImage.zsync" dist
+
+      - name: Build Deb
+        shell: bash
+        if: matrix.build == 'x86_64-linux'
+        run: |
+          cargo install cargo-deb
+          mkdir -p target/release
+          cp target/${{ matrix.target }}/opt/hx target/release/
+          cargo deb --no-build
+          mkdir -p dist
+          mv target/debian/*.deb dist/
+
+      - name: Build archive
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [ "${{ matrix.os }}" = "windows-2019" ]; then
+            cp "target/${{ matrix.target }}/opt/hx.exe" "dist/"
+          else
+            cp "target/${{ matrix.target }}/opt/hx" "dist/"
+          fi
+          if [ -d runtime/grammars/sources ]; then
+            rm -rf runtime/grammars/sources
+          fi
+          cp -r runtime dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bins-${{ matrix.build }}
+          path: dist
+
+  publish:
+    name: Publish
+    needs: [dist]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+
+      - name: Build archive
+        shell: bash
+        run: |
+          set -ex
+
+          source="$(pwd)"
+          tag=${GITHUB_REF_NAME//\//}
+          mkdir -p runtime/grammars/sources
+          tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
+          rm -rf grammars
+
+          cd "$(mktemp -d)"
+          mv $source/bins-* .
+          mkdir dist
+
+          for dir in bins-* ; do
+              platform=${dir#"bins-"}
+              if [[ $platform =~ "windows" ]]; then
+                  exe=".exe"
+              fi
+              pkgname=helix-$tag-$platform
+              mkdir -p $pkgname
+              cp $source/LICENSE $source/README.md $pkgname
+              mkdir $pkgname/contrib
+              cp -r $source/contrib/completion $pkgname/contrib
+              mv bins-$platform/runtime $pkgname/
+              mv bins-$platform/hx$exe $pkgname
+              chmod +x $pkgname/hx$exe
+
+              if [[ "$platform" = "x86_64-linux" ]]; then
+                  mv bins-$platform/helix-*.AppImage* dist/
+                  mv bins-$platform/*.deb dist/
+              fi
+
+              if [ "$exe" = "" ]; then
+                  tar cJf dist/$pkgname.tar.xz $pkgname
+              else
+                  7z a -r dist/$pkgname.zip $pkgname
+              fi
+          done
+
+          tar cJf dist/helix-$tag-source.tar.xz -C $source .
+          mv dist $source/
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        if: env.preview == 'false'
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/*
+          file_glob: true
+          tag: ${{ github.ref_name }}
+          overwrite: true
+
+      - name: Upload binaries as artifact
+        uses: actions/upload-artifact@v4
+        if: env.preview == 'true'
+        with:
+          name: release
+          path: dist/*

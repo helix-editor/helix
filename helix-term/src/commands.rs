@@ -1,5 +1,6 @@
 pub(crate) mod dap;
 pub(crate) mod lsp;
+pub(crate) mod syntax;
 pub(crate) mod typed;
 
 pub use dap::*;
@@ -11,6 +12,7 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
+pub use syntax::*;
 use tui::{
     text::{Span, Spans},
     widgets::Cell,
@@ -409,9 +411,13 @@ impl MappableCommand {
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
+        syntax_symbol_picker, "Open symbol picker from syntax information",
+        lsp_or_syntax_symbol_picker, "Open symbol picker from LSP or syntax information",
         changed_file_picker, "Open changed file picker",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
+        syntax_workspace_symbol_picker, "Open workspace symbol picker from syntax information",
+        lsp_or_syntax_workspace_symbol_picker, "Open workspace symbol picker from LSP or syntax information",
         diagnostics_picker, "Open diagnostic picker",
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
@@ -7316,4 +7322,35 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
         }
     }
     jump_to_label(cx, words, behaviour)
+}
+
+fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
+        .next()
+        .is_some()
+    {
+        lsp::symbol_picker(cx);
+    } else if doc.syntax().is_some() {
+        syntax_symbol_picker(cx);
+    } else {
+        cx.editor
+            .set_error("No language server supporting document symbols or syntax info available");
+    }
+}
+
+fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
+        .next()
+        .is_some()
+    {
+        lsp::workspace_symbol_picker(cx);
+    } else {
+        syntax_workspace_symbol_picker(cx);
+    }
 }
