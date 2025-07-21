@@ -3,11 +3,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
 
-use smartstring::{LazyCompact, SmartString};
-
 use crate::theme::Color;
-
-type String = SmartString<LazyCompact>;
 
 pub static ICONS: Lazy<ArcSwap<Icons>> = Lazy::new(ArcSwap::default);
 
