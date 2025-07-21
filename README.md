@@ -1,3 +1,11 @@
+This fork adds a collection of various other forks & small features to helix:
+- [inline git blame](https://github.com/helix-editor/helix/pull/13133) (Nik Revenco)
+- fixing a bug on that one ☝️ where scrolling horizontally doesn't affect the blame rendering (Taylor Plewe)
+- `:buffer-reopen` - ability to re-open recently closed buffers (Taylor Plewe)
+- keep active tab in bufferline in view at all times (Taylor Plewe)
+
+---
+
 <div align="center">
 
 <h1>
