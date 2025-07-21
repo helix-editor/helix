@@ -113,7 +113,7 @@
 | ini | ✓ |  |  |  |  |
 | ink | ✓ |  |  |  |  |
 | inko | ✓ | ✓ | ✓ | ✓ |  |
-| janet | ✓ |  |  |  |  |
+| janet | ✓ |  | ✓ |  |  |
 | java | ✓ | ✓ | ✓ |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jinja | ✓ |  |  |  |  |
