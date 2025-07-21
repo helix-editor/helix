@@ -356,7 +356,7 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
         .map(|entry| {
             (
                 entry.path(),
-                entry.file_type().is_ok_and(|file_type| file_type.is_dir()),
+                std::fs::metadata(entry.path()).is_ok_and(|metadata| metadata.is_dir()),
             )
         })
         .collect();
