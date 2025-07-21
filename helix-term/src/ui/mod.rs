@@ -32,6 +32,7 @@ pub use text::Text;
 use helix_view::Editor;
 use tui::text::{Span, Spans};
 
+use std::fs::metadata;
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
@@ -356,7 +357,7 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
         .map(|entry| {
             (
                 entry.path(),
-                entry.file_type().is_ok_and(|file_type| file_type.is_dir()),
+                metadata(entry.path()).is_ok_and(|metadata| metadata.is_dir()),
             )
         })
         .collect();
