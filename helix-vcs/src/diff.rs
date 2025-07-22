@@ -1,4 +1,5 @@
 use std::iter::Peekable;
+use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use helix_core::Rope;
@@ -233,7 +234,7 @@ impl Diff<'_> {
     /// ranges.
     pub fn hunks_intersecting_line_ranges<I>(&self, line_ranges: I) -> impl Iterator<Item = &Hunk>
     where
-        I: Iterator<Item = (usize, usize)>,
+        I: Iterator<Item = RangeInclusive<usize>>,
     {
         HunksInLineRangesIter {
             hunks: &self.diff.hunks,
@@ -276,14 +277,14 @@ impl Diff<'_> {
     }
 }
 
-pub struct HunksInLineRangesIter<'a, I: Iterator<Item = (usize, usize)>> {
+pub struct HunksInLineRangesIter<'a, I: Iterator<Item = RangeInclusive<usize>>> {
     hunks: &'a [Hunk],
     line_ranges: Peekable<I>,
     inverted: bool,
     cursor: usize,
 }
 
-impl<'a, I: Iterator<Item = (usize, usize)>> Iterator for HunksInLineRangesIter<'a, I> {
+impl<'a, I: Iterator<Item = RangeInclusive<usize>>> Iterator for HunksInLineRangesIter<'a, I> {
     type Item = &'a Hunk;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -294,15 +295,15 @@ impl<'a, I: Iterator<Item = (usize, usize)>> Iterator for HunksInLineRangesIter<
         };
 
         loop {
-            let (start_line, end_line) = self.line_ranges.peek()?;
+            let line_range = self.line_ranges.peek()?;
             let hunk = self.hunks.get(self.cursor)?;
 
-            if (hunk_range(hunk).end as usize) < *start_line {
+            if (hunk_range(hunk).end as usize) < *line_range.start() {
                 // If the hunk under the cursor comes before this range, jump the cursor
                 // ahead to the next hunk that overlaps with the line range.
                 self.cursor += self.hunks[self.cursor..]
-                    .partition_point(|hunk| (hunk_range(hunk).end as usize) < *start_line);
-            } else if (hunk_range(hunk).start as usize) <= *end_line {
+                    .partition_point(|hunk| (hunk_range(hunk).end as usize) < *line_range.start());
+            } else if (hunk_range(hunk).start as usize) <= *line_range.end() {
                 // If the hunk under the cursor overlaps with this line range, emit it
                 // and move the cursor up so that the hunk cannot be emitted twice.
                 self.cursor += 1;

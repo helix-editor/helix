@@ -78,13 +78,12 @@ use std::{
     num::NonZeroUsize,
 };
 
+use once_cell::sync::Lazy;
+use serde::de::{self, Deserialize, Deserializer};
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
 };
-
-use once_cell::sync::Lazy;
-use serde::de::{self, Deserialize, Deserializer};
 use url::Url;
 
 use grep_regex::RegexMatcherBuilder;
@@ -2703,7 +2702,9 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
 
     let text = doc.text();
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let (start_line, end_line) = range.line_range(text.slice(..));
+        let line_range = range.line_range(text.slice(..));
+        let start_line = *line_range.start();
+        let end_line = *line_range.end();
 
         let start = text.line_to_char(start_line);
         let end = text.line_to_char(
@@ -2747,7 +2748,10 @@ fn select_line_impl(cx: &mut Context, extend: Extend) {
     let text = doc.text();
     let saturating_add = |a: usize, b: usize| (a + b).min(text.len_lines());
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let (start_line, end_line) = range.line_range(text.slice(..));
+        let line_range = range.line_range(text.slice(..));
+        let start_line = *line_range.start();
+        let end_line = *line_range.end();
+
         let start = text.line_to_char(start_line);
         let end = text.line_to_char(saturating_add(end_line, 1));
         let direction = range.direction();
@@ -2797,9 +2801,9 @@ fn extend_to_line_bounds(cx: &mut Context) {
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text();
 
-            let (start_line, end_line) = range.line_range(text.slice(..));
-            let start = text.line_to_char(start_line);
-            let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+            let line_range = range.line_range(text.slice(..));
+            let start = text.line_to_char(*line_range.start());
+            let end = text.line_to_char((line_range.end() + 1).min(text.len_lines()));
 
             Range::new(start, end).with_direction(range.direction())
         }),
@@ -2814,7 +2818,9 @@ fn shrink_to_line_bounds(cx: &mut Context) {
         doc.selection(view.id).clone().transform(|range| {
             let text = doc.text();
 
-            let (start_line, end_line) = range.line_range(text.slice(..));
+            let line_range = range.line_range(text.slice(..));
+            let start_line = *line_range.start();
+            let end_line = *line_range.end();
 
             // Do nothing if the selection is within one line to prevent
             // conditional logic for the behavior of this command
@@ -2855,9 +2861,9 @@ fn selection_is_linewise(selection: &Selection, text: &Rope) -> bool {
             return false;
         }
         // If the start of the selection is at the start of a line and the end at the end of a line.
-        let (start_line, end_line) = range.line_range(text);
-        let start = text.line_to_char(start_line);
-        let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+        let line_range = range.line_range(text);
+        let start = text.line_to_char(*line_range.start());
+        let end = text.line_to_char((*line_range.end() + 1).min(text.len_lines()));
         start == range.from() && end == range.to()
     })
 }
@@ -4685,7 +4691,7 @@ fn paste_impl(
             (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
             // paste linewise after
             (Paste::After, true) => {
-                let line = range.line_range(text.slice(..)).1;
+                let line = *range.line_range(text.slice(..)).end();
                 text.line_to_char((line + 1).min(text.len_lines()))
             }
             // paste insert
@@ -4850,9 +4856,9 @@ fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
 
     // Get all line numbers
     for range in doc.selection(view_id) {
-        let (start, end) = range.line_range(doc.text().slice(..));
+        let line_range = range.line_range(doc.text().slice(..));
 
-        for line in start..=end {
+        for line in line_range {
             lines.push(line)
         }
     }
@@ -5008,15 +5014,12 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
     let mut changes = Vec::new();
 
     for selection in doc.selection(view.id) {
-        let (start, mut end) = selection.line_range(slice);
-        if start == end {
-            end = (end + 1).min(text.len_lines() - 1);
-        }
-        let lines = start..end;
+        let line_range = selection.line_range(slice);
+        let (number_of_lines, _) = line_range.size_hint();
 
-        changes.reserve(lines.len());
+        changes.reserve(number_of_lines);
 
-        let first_line_idx = slice.line_to_char(start);
+        let first_line_idx = slice.line_to_char(*line_range.start());
         let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | '\t'))
             .unwrap_or(first_line_idx);
         let first_line = slice.slice(first_line_idx..);
@@ -5024,7 +5027,7 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
             .iter()
             .find(|token| first_line.starts_with(token));
 
-        for line in lines {
+        for line in line_range {
             let start = line_end_char_index(&slice, line);
             let mut end = text.line_to_char(line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
@@ -6443,10 +6446,10 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
     let slice = text.slice(..);
 
     let changes = selection.into_iter().map(|range| {
-        let (start, end) = range.line_range(slice);
+        let line_range = range.line_range(slice);
         let line = match open {
-            Open::Above => start,
-            Open::Below => end + 1,
+            Open::Above => *line_range.start(),
+            Open::Below => line_range.end() + 1,
         };
         let pos = text.line_to_char(line);
         (

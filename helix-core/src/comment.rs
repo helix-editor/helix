@@ -89,9 +89,9 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
 
     let mut min_next_line = 0;
     for selection in selection {
-        let (start, end) = selection.line_range(text);
-        let start = start.clamp(min_next_line, text.len_lines());
-        let end = (end + 1).min(text.len_lines());
+        let line_range = selection.line_range(text);
+        let start = (*line_range.start()).clamp(min_next_line, text.len_lines());
+        let end = (line_range.end() + 1).min(text.len_lines());
 
         lines.extend(start..end);
         min_next_line = end;
@@ -314,9 +314,12 @@ pub fn toggle_block_comments(
 pub fn split_lines_of_selection(text: RopeSlice, selection: &Selection) -> Selection {
     let mut ranges = SmallVec::new();
     for range in selection.ranges() {
-        let (line_start, line_end) = range.line_range(text.slice(..));
-        let mut pos = text.line_to_char(line_start);
-        for line in text.slice(pos..text.line_to_char(line_end + 1)).lines() {
+        let line_range = range.line_range(text.slice(..));
+        let mut pos = text.line_to_char(*line_range.start());
+        for line in text
+            .slice(pos..text.line_to_char(line_range.end() + 1))
+            .lines()
+        {
             let start = pos;
             pos += line.len_chars();
             ranges.push(Range::new(start, pos));

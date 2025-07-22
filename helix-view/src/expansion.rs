@@ -243,11 +243,11 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             doc.selection(view.id).primary().fragment(text).to_string(),
         )),
         Variable::SelectionLineStart => {
-            let start_line = doc.selection(view.id).primary().line_range(text).0;
+            let start_line = *doc.selection(view.id).primary().line_range(text).start();
             Ok(Cow::Owned((start_line + 1).to_string()))
         }
         Variable::SelectionLineEnd => {
-            let end_line = doc.selection(view.id).primary().line_range(text).1;
+            let end_line = *doc.selection(view.id).primary().line_range(text).end();
             Ok(Cow::Owned((end_line + 1).to_string()))
         }
     }

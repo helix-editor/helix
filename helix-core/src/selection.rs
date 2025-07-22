@@ -15,6 +15,7 @@ use crate::{
 use helix_stdx::range::is_subset;
 use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
+use std::ops::RangeInclusive;
 use std::{borrow::Cow, iter, slice};
 
 /// A single selection range.
@@ -102,10 +103,10 @@ impl Range {
         self.to() - self.from()
     }
 
-    /// The (inclusive) range of lines that the range overlaps.
+    /// The range of lines that the range overlaps.
     #[inline]
     #[must_use]
-    pub fn line_range(&self, text: RopeSlice) -> (usize, usize) {
+    pub fn line_range(&self, text: RopeSlice) -> RangeInclusive<usize> {
         let from = self.from();
         let to = if self.is_empty() {
             self.to()
@@ -113,7 +114,7 @@ impl Range {
             prev_grapheme_boundary(text, self.to()).max(from)
         };
 
-        (text.char_to_line(from), text.char_to_line(to))
+        text.char_to_line(from)..=text.char_to_line(to)
     }
 
     /// `true` when head and anchor are at the same position.
@@ -741,24 +742,24 @@ pub struct LineRangeIter<'a> {
 }
 
 impl Iterator for LineRangeIter<'_> {
-    type Item = (usize, usize);
+    type Item = RangeInclusive<usize>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (start, mut end) = self.ranges.next()?.line_range(self.text);
-        while let Some((next_start, next_end)) =
-            self.ranges.peek().map(|range| range.line_range(self.text))
-        {
+        let line_range = self.ranges.next()?.line_range(self.text);
+        let mut end = *line_range.end();
+
+        while let Some(next_range) = self.ranges.peek().map(|range| range.line_range(self.text)) {
             // Merge overlapping and adjacent ranges.
             // This subtraction cannot underflow because the ranges are sorted.
-            if next_start - end <= 1 {
-                end = next_end;
+            if next_range.start() - end <= 1 {
+                end = *next_range.end();
                 self.ranges.next();
             } else {
                 break;
             }
         }
 
-        Some((start, end))
+        Some(*line_range.start()..=end)
     }
 }
 
@@ -1176,28 +1177,28 @@ mod test {
         let s = r.slice(..);
 
         // Zero-width ranges.
-        assert_eq!(Range::new(0, 0).line_range(s), (0, 0));
-        assert_eq!(Range::new(1, 1).line_range(s), (0, 0));
-        assert_eq!(Range::new(2, 2).line_range(s), (1, 1));
-        assert_eq!(Range::new(3, 3).line_range(s), (1, 1));
+        assert_eq!(Range::new(0, 0).line_range(s), 0..=0);
+        assert_eq!(Range::new(1, 1).line_range(s), 0..=0);
+        assert_eq!(Range::new(2, 2).line_range(s), 1..=1);
+        assert_eq!(Range::new(3, 3).line_range(s), 1..=1);
 
         // Forward ranges.
-        assert_eq!(Range::new(0, 1).line_range(s), (0, 0));
-        assert_eq!(Range::new(0, 2).line_range(s), (0, 0));
-        assert_eq!(Range::new(0, 3).line_range(s), (0, 1));
-        assert_eq!(Range::new(1, 2).line_range(s), (0, 0));
-        assert_eq!(Range::new(2, 3).line_range(s), (1, 1));
-        assert_eq!(Range::new(3, 8).line_range(s), (1, 2));
-        assert_eq!(Range::new(0, 12).line_range(s), (0, 2));
+        assert_eq!(Range::new(0, 1).line_range(s), 0..=0);
+        assert_eq!(Range::new(0, 2).line_range(s), 0..=0);
+        assert_eq!(Range::new(0, 3).line_range(s), 0..=1);
+        assert_eq!(Range::new(1, 2).line_range(s), 0..=0);
+        assert_eq!(Range::new(2, 3).line_range(s), 1..=1);
+        assert_eq!(Range::new(3, 8).line_range(s), 1..=2);
+        assert_eq!(Range::new(0, 12).line_range(s), 0..=2);
 
         // Reverse ranges.
-        assert_eq!(Range::new(1, 0).line_range(s), (0, 0));
-        assert_eq!(Range::new(2, 0).line_range(s), (0, 0));
-        assert_eq!(Range::new(3, 0).line_range(s), (0, 1));
-        assert_eq!(Range::new(2, 1).line_range(s), (0, 0));
-        assert_eq!(Range::new(3, 2).line_range(s), (1, 1));
-        assert_eq!(Range::new(8, 3).line_range(s), (1, 2));
-        assert_eq!(Range::new(12, 0).line_range(s), (0, 2));
+        assert_eq!(Range::new(1, 0).line_range(s), 0..=0);
+        assert_eq!(Range::new(2, 0).line_range(s), 0..=0);
+        assert_eq!(Range::new(3, 0).line_range(s), 0..=1);
+        assert_eq!(Range::new(2, 1).line_range(s), 0..=0);
+        assert_eq!(Range::new(3, 2).line_range(s), 1..=1);
+        assert_eq!(Range::new(8, 3).line_range(s), 1..=2);
+        assert_eq!(Range::new(12, 0).line_range(s), 0..=2);
     }
 
     #[test]
@@ -1221,7 +1222,7 @@ mod test {
         );
         let rope = Rope::from_str(&text);
         assert_eq!(
-            vec![(1, 1), (3, 3), (5, 6), (8, 10), (12, 13)],
+            vec![1..=1, 3..=3, 5..=6, 8..=10, 12..=13],
             selection.line_ranges(rope.slice(..)).collect::<Vec<_>>(),
         );
     }
