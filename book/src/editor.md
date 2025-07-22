@@ -19,6 +19,7 @@
 - [`[editor.soft-wrap]` Section](#editorsoft-wrap-section)
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
+- [`[editor.word-completion]` Section](#editorword-completion-section)
 
 ### `[editor]` Section
 
@@ -53,6 +54,7 @@
 | `workspace-lsp-roots` | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml` | `[]` |
 | `default-line-ending` | The line ending to use for new documents. Can be `native`, `lf`, `crlf`, `ff`, `cr` or `nel`. `native` uses the platform's native line ending (`crlf` on Windows, otherwise `lf`). | `native` |
 | `insert-final-newline` | Whether to automatically insert a trailing line-ending on write if missing | `true` |
+| `atomic-save` | Whether to use atomic operations to write documents to disk. This prevents data loss if the editor is interrupted while writing the file, but may confuse some file watching/hot reloading programs. | `true` |
 | `trim-final-newlines` | Whether to automatically remove line-endings after the final one on write | `false` |
 | `trim-trailing-whitespace` | Whether to automatically remove whitespace preceding line endings on write | `false` |
 | `popup-border` | Draw border around `popup`, `menu`, `all`, or `none` | `none` |
@@ -475,4 +477,22 @@ The new diagnostic rendering is not yet enabled by default. As soon as end of li
 end-of-line-diagnostics = "hint"
 [editor.inline-diagnostics]
 cursor-line = "warning" # show warnings and errors on the cursorline inline
+```
+
+### `[editor.word-completion]` Section
+
+Options for controlling completion of words from open buffers.
+
+| Key                  | Description                                                    | Default  |
+| ---                  | ---                                                            | ---      |
+| `enable`             | Whether word completion is enabled                             | `true`   |
+| `trigger-length`     | Number of word characters to type before triggering completion | `7`      |
+
+Example:
+
+```toml
+[editor.word-completion]
+enable = true
+# Set the trigger length lower so that words are completed more often
+trigger-length = 4
 ```

@@ -1,3 +1,6 @@
+//! Terminal interface provided through the [Terminal] type.
+//! Frontend for [Backend]
+
 use crate::{backend::Backend, buffer::Buffer};
 use helix_view::editor::Config as EditorConfig;
 use helix_view::graphics::{CursorKind, Rect};
@@ -17,6 +20,7 @@ pub struct Viewport {
     resize_behavior: ResizeBehavior,
 }
 
+/// Terminal configuration
 #[derive(Debug)]
 pub struct Config {
     pub enable_mouse_capture: bool,
@@ -47,7 +51,7 @@ pub struct TerminalOptions {
     pub viewport: Viewport,
 }
 
-/// Interface to the terminal backed by Termion
+/// Interface to the terminal backed by crossterm
 #[derive(Debug)]
 pub struct Terminal<B>
 where

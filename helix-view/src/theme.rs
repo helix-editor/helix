@@ -300,7 +300,7 @@ impl Theme {
     /// Interpret a Highlight with the RGB foreground
     fn decode_rgb_highlight(highlight: Highlight) -> Option<(u8, u8, u8)> {
         (highlight.get() > Self::RGB_START).then(|| {
-            let [b, g, r, ..] = (highlight.get() + 1).to_ne_bytes();
+            let [b, g, r, ..] = (highlight.get() + 1).to_le_bytes();
             (r, g, b)
         })
     }
@@ -309,7 +309,7 @@ impl Theme {
     pub fn rgb_highlight(r: u8, g: u8, b: u8) -> Highlight {
         // -1 because highlight is "non-max": u32::MAX is reserved for the null pointer
         // optimization.
-        Highlight::new(u32::from_ne_bytes([b, g, r, u8::MAX]) - 1)
+        Highlight::new(u32::from_le_bytes([b, g, r, u8::MAX]) - 1)
     }
 
     #[inline]
