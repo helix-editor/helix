@@ -1396,6 +1396,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix"
+version = "0.1.0"
+
+[[package]]
 name = "helix-core"
 version = "25.7.1"
 dependencies = [
@@ -1565,6 +1569,7 @@ dependencies = [
  "indexmap",
  "indoc",
  "libc",
+ "libloading",
  "log",
  "nucleo",
  "once_cell",
@@ -1983,9 +1988,9 @@ checksum = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776"
 
 [[package]]
 name = "libloading"
-version = "0.8.7"
+version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a793df0d7afeac54f95b471d3af7f0d4fb975699f972341a4b76988d49cdf0c"
+checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
  "windows-targets 0.53.2",

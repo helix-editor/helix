@@ -26,6 +26,7 @@ use crate::{
     handlers,
     job::Jobs,
     keymap::Keymaps,
+    plugins::Plugins,
     ui::{self, overlay::overlaid},
 };
 
@@ -234,6 +235,9 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        // after everything has been set up, load all plugins
+        Plugins::reconfigure(&config.load())?;
+
         let app = Self {
             compositor,
             terminal,
@@ -367,9 +371,21 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
+
                 if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
                     self.editor.set_error(err.to_string());
                 };
+
+                if let Err(err) = Plugins::reconfigure(&app_config) {
+                    self.editor.set_error(err.to_string());
+                }
+
+                // helix_event::dispatch(crate::events::ConfigDidChange {
+                //     editor: &mut self.editor,
+                //     old: &self.config.load(),
+                //     new: &app_config,
+                // });
+
                 self.config.store(Arc::new(app_config));
             }
         }
@@ -414,6 +430,15 @@ impl Application {
 
             self.terminal
                 .reconfigure(default_config.editor.clone().into())?;
+
+            Plugins::reconfigure(&default_config)?;
+
+            // helix_event::dispatch(crate::events::ConfigDidChange {
+            //     editor: &mut self.editor,
+            //     old: &self.config.load(),
+            //     new: &default_config,
+            // });
+
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())

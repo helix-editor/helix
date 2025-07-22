@@ -15,6 +15,9 @@ members = [
   "helix-stdx",
   "xtask",
 ]
+exclude = [
+	"helix-plugins"
+]
 
 default-members = [
   "helix-term"
@@ -61,3 +64,11 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
 rust-version = "1.82"
+
+[package]
+name = "helix"
+version = "0.1.0"
+
+[lib]
+name = "helix"
+path = "helix-core/src/lib.rs"
