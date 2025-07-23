@@ -4243,10 +4243,11 @@ comment-token = "#"
 block-comment-tokens = ["#-", "-#"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = ["koto-ls"]
+formatter = {command = "koto", args = ["--format"]}
 
 [[grammar]]
 name = "koto"
-source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "b420f7922d0d74905fd0d771e5b83be9ee8a8a9a" }
+source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "2ffc77c14f0ac1674384ff629bfc207b9c57ed89" }
 
 [[language]]
 name = "gpr"
