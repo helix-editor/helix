@@ -50,9 +50,10 @@ parking_lot = "0.12"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 tokio-stream = "0.1.17"
+toml = "0.9"
 
 [workspace.package]
-version = "25.1.1"
+version = "25.7.1"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]
