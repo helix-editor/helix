@@ -12,6 +12,7 @@ complete -c hx -l hsplit -d "Splits all given files horizontally"
 complete -c hx -s c -l config -r -d "Specifies a file to use for config"
 complete -c hx -l log -r -d "Specifies a file to use for logging"
 complete -c hx -s w -l working-dir -d "Specify initial working directory" -xa "(__fish_complete_directories)"
+complete -c hx -s e -l execute -d "Executes the given command on startup"
 
 function __hx_langs_ops
     hx --health languages | tail -n '+2' | string replace -fr '^(\S+) .*' '$1'
