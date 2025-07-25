@@ -647,9 +647,11 @@ impl EditorView {
 
         let current_doc = view!(editor).doc;
 
-        let mut before_active = String::new();
-        let mut active = String::new();
-        let mut after_active = String::new();
+        let mut sections: Vec<(usize, String, Style)> = Vec::new();
+        let mut before_active_len: usize = 0;
+        let mut active_len: usize = 0;
+        let mut after_active_len: usize = 0;
+        let mut x: usize = 0;
 
         for doc in editor.documents() {
             let fname = doc
@@ -660,48 +662,87 @@ impl EditorView {
                 .to_str()
                 .unwrap_or_default();
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-
-            if current_doc == doc.id() {
-                active = text.clone();
+            let is_active = current_doc == doc.id();
+            let style = if is_active {
+                bufferline_active
             } else {
-                if active.len() > 0 {
-                    after_active.push_str(text.as_str());
+                bufferline_inactive
+            };
+
+            let icons = ICONS.load();
+
+            let lang = doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+
+            let mut space = " ";
+            if let Some(icon) = icons
+                .fs()
+                .from_optional_path_or_lang(doc.path().map(|path| path.as_path()), lang)
+            {
+                let style = icon.color().map_or(style, |color| style.fg(color));
+                let text = format!(" {icon} ");
+                sections.push((x, text.clone(), style));
+                x += text.width();
+                if is_active {
+                    active_len += text.width();
                 } else {
-                    before_active.push_str(text.as_str());
+                    if active_len == 0 {
+                        before_active_len += text.width();
+                    } else {
+                        after_active_len += text.width();
+                    }
+                }
+                space = "";
+            }
+
+            let text = format!(
+                "{}{} {}",
+                space,
+                fname,
+                if doc.is_modified() { "[+] " } else { "" }
+            );
+            sections.push((x, text.clone(), style));
+            x += text.width();
+            if is_active {
+                active_len += text.width();
+            } else {
+                if active_len == 0 {
+                    before_active_len += text.width();
+                } else {
+                    after_active_len += text.width();
                 }
             }
         }
 
-        let starting_index = (before_active
-            .len()
-            .saturating_sub(surface.area.width as usize / 2 - active.len() / 2))
+        let starting_index = (before_active_len
+            .saturating_sub(surface.area.width as usize / 2 - active_len / 2))
         .clamp(
             0,
-            (before_active.len() + active.len() + after_active.len())
+            (before_active_len + active_len + after_active_len)
                 .saturating_sub(surface.area.width as usize),
         );
-        surface.set_stringn(
-            viewport.x,
-            viewport.y,
-            before_active[starting_index..].to_string(),
-            surface.area.width as usize,
-            bufferline_inactive,
-        );
-        surface.set_stringn(
-            (before_active.len() - starting_index) as u16,
-            viewport.y,
-            active.clone(),
-            surface.area.width as usize,
-            bufferline_active,
-        );
-        surface.set_stringn(
-            ((before_active.len() - starting_index) + active.len()) as u16,
-            viewport.y,
-            after_active.clone(),
-            surface.area.width as usize,
-            bufferline_inactive,
-        );
+
+        let mut visual_x: u16 = 0;
+        for (x, text, style) in sections {
+            if x + text.width() < starting_index {
+                continue;
+            }
+            visual_x = surface
+                .set_stringn(
+                    visual_x,
+                    viewport.y,
+                    text.chars()
+                        .skip(starting_index.saturating_sub(x))
+                        .collect::<String>(),
+                    // text[(starting_index.saturating_sub(x))..].to_string(),
+                    surface.area.width as usize,
+                    style,
+                )
+                .0;
+
+            if visual_x >= surface.area.right() {
+                break;
+            }
+        }
     }
 
     pub fn render_gutter<'d>(
