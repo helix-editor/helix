@@ -580,24 +580,41 @@ impl Application {
         doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
 
         let lines = doc_save_event.text.len_lines();
-        let mut sz = doc_save_event.text.len_bytes() as f32;
+        let size = doc_save_event.text.len_bytes();
 
-        const SUFFIX: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
-        let mut i = 0;
-        while i < SUFFIX.len() - 1 && sz >= 1024.0 {
-            sz /= 1024.0;
-            i += 1;
+        enum Size {
+            Bytes(u16),
+            HumanReadable(f32, &'static str),
         }
+
+        impl std::fmt::Display for Size {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Bytes(bytes) => write!(f, "{bytes}B"),
+                    Self::HumanReadable(size, suffix) => write!(f, "{size:.1}{suffix}"),
+                }
+            }
+        }
+
+        let size = if size < 1024 {
+            Size::Bytes(size as u16)
+        } else {
+            const SUFFIX: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
+            let mut size = size as f32;
+            let mut i = 0;
+            while i < SUFFIX.len() - 1 && size >= 1024.0 {
+                size /= 1024.0;
+                i += 1;
+            }
+            Size::HumanReadable(size, SUFFIX[i])
+        };
 
         self.editor
             .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
         self.editor.set_status(format!(
-            "'{}' written, {}L {:.1}{}",
+            "'{}' written, {lines}L {size}",
             get_relative_path(&doc_save_event.path).to_string_lossy(),
-            lines,
-            sz,
-            SUFFIX[i],
         ));
     }
 
