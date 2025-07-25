@@ -3,6 +3,7 @@ pub(crate) mod lsp;
 pub(crate) mod syntax;
 pub(crate) mod typed;
 
+use crate::make::make_picker;
 pub use dap::*;
 use futures_util::FutureExt;
 use helix_event::status;
@@ -615,6 +616,7 @@ impl MappableCommand {
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
+        make_cmd_picker, "MAKE PICKER",
     );
 }
 
@@ -5378,6 +5380,16 @@ fn rotate_selections_last(cx: &mut Context) {
     let len = selection.len();
     selection.set_primary_index(len - 1);
     doc.set_selection(view.id, selection);
+}
+
+fn make_cmd_picker(cx: &mut Context) {
+    let root = find_workspace().0;
+    if !root.exists() {
+        cx.editor.set_error("Workspace directory does not exist");
+        return;
+    }
+    let picker = make_picker(cx, root);
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 #[derive(Debug)]

@@ -1,8 +1,10 @@
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::{self, Deref};
+use std::str::FromStr;
 
 use crate::job::Job;
+use crate::make::{self, MakeFormatType};
 
 use super::*;
 
@@ -2640,6 +2642,35 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+fn make(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let shell = cx.editor.config().shell.clone();
+    let args = args.join(" ");
+    let make_format_type;
+    match MakeFormatType::from_str("rust") {
+        Ok(format_type) => make_format_type = format_type,
+        Err(_) => return Ok(()),
+    }
+
+    let callback = async move {
+        let output = shell_impl_async(&shell, &args, None).await?;
+        // TODO(szulf): parsing and putting in make picker here
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, _compositor: &mut Compositor| {
+                let entries = make::format(make_format_type, output.as_str());
+                editor.set_status(format!("Filled make list with {} entries.", entries.len()));
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 /// This command accepts a single boolean --skip-visible flag and no positionals.
 const BUFFER_CLOSE_OTHERS_SIGNATURE: Signature = Signature {
     positionals: (0, Some(0)),
@@ -3663,6 +3694,18 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "make",
+        aliases: &["mk"],
+        doc: "Executes the command and fills the make picker with its output.",
+        fun: make,
+        completer: SHELL_COMPLETER,
+        signature: Signature {
+            positionals: (2, Some(3)),
+            raw_after: Some(2),
             ..Signature::DEFAULT
         },
     },

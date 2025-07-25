@@ -32,7 +32,9 @@ use crate::{
     ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
-use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
+use std::{
+    cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path, path::PathBuf,
+};
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
@@ -59,10 +61,20 @@ macro_rules! language_server_with_feature {
 /// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri` and adds
 /// the server's  offset encoding.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Location {
+pub struct Location {
     uri: Uri,
     range: lsp::Range,
     offset_encoding: OffsetEncoding,
+}
+
+impl Location {
+    pub fn new(path: PathBuf, range: lsp::Range, offset_encoding: OffsetEncoding) -> Self {
+        Self {
+            uri: path.into(),
+            range: range,
+            offset_encoding: offset_encoding,
+        }
+    }
 }
 
 fn lsp_location_to_location(
@@ -109,7 +121,7 @@ fn location_to_file_location(location: &Location) -> Option<FileLocation<'_>> {
     Some((path.into(), line))
 }
 
-fn jump_to_location(editor: &mut Editor, location: &Location, action: Action) {
+pub fn jump_to_location(editor: &mut Editor, location: &Location, action: Action) {
     let (view, doc) = current!(editor);
     push_jump(view, doc);
 
