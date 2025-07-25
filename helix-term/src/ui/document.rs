@@ -9,6 +9,7 @@ use helix_core::{visual_offset_from_block, Position, RopeSlice};
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
+use helix_view::icons::ICONS;
 use helix_view::theme::Style;
 use helix_view::view::ViewPosition;
 use helix_view::{Document, Theme};
@@ -214,38 +215,41 @@ impl<'a> TextRenderer<'a> {
         viewport: Rect,
     ) -> TextRenderer<'a> {
         let editor_config = doc.config.load();
-        let WhitespaceConfig {
-            render: ws_render,
-            characters: ws_chars,
-        } = &editor_config.whitespace;
+
+        let WhitespaceConfig { render } = &editor_config.whitespace;
 
         let tab_width = doc.tab_width();
-        let tab = if ws_render.tab() == WhitespaceRenderValue::All {
-            std::iter::once(ws_chars.tab)
-                .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
+
+        let icons = ICONS.load();
+
+        let whitespace = icons.ui().r#virtual();
+
+        let tab = if render.tab() == WhitespaceRenderValue::All {
+            std::iter::once(whitespace.tab())
+                .chain(std::iter::repeat(whitespace.tabpad()).take(tab_width - 1))
                 .collect()
         } else {
             " ".repeat(tab_width)
         };
         let virtual_tab = " ".repeat(tab_width);
-        let newline = if ws_render.newline() == WhitespaceRenderValue::All {
-            ws_chars.newline.into()
+        let newline = if render.newline() == WhitespaceRenderValue::All {
+            whitespace.newline().into()
         } else {
             " ".to_owned()
         };
 
-        let space = if ws_render.space() == WhitespaceRenderValue::All {
-            ws_chars.space.into()
+        let space = if render.space() == WhitespaceRenderValue::All {
+            whitespace.space().into()
         } else {
             " ".to_owned()
         };
-        let nbsp = if ws_render.nbsp() == WhitespaceRenderValue::All {
-            ws_chars.nbsp.into()
+        let nbsp = if render.nbsp() == WhitespaceRenderValue::All {
+            whitespace.nbsp().into()
         } else {
             " ".to_owned()
         };
-        let nnbsp = if ws_render.nnbsp() == WhitespaceRenderValue::All {
-            ws_chars.nnbsp.into()
+        let nnbsp = if render.nnbsp() == WhitespaceRenderValue::All {
+            whitespace.nnbsp().into()
         } else {
             " ".to_owned()
         };
@@ -279,6 +283,7 @@ impl<'a> TextRenderer<'a> {
             offset,
         }
     }
+
     /// Draws a single `grapheme` at the current render position with a specified `style`.
     pub fn draw_decoration_grapheme(
         &mut self,

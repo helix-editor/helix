@@ -15,7 +15,7 @@ use helix_view::document::LineBlameError;
 pub use lsp::*;
 pub use syntax::*;
 use tui::{
-    text::{Span, Spans},
+    text::{Span, Spans, ToSpan},
     widgets::Cell,
 };
 pub use typed::*;
@@ -51,6 +51,7 @@ use helix_core::{
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
+    icons::ICONS,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -2502,12 +2503,22 @@ fn global_search(cx: &mut Context) {
                 .expect("global search paths are normalized (can't end in `..`)")
                 .to_string_lossy();
 
-            Cell::from(Spans::from(vec![
+            let mut spans = Vec::with_capacity(5);
+
+            let icons = ICONS.load();
+
+            if let Some(icon) = icons.fs().from_path(&path) {
+                spans.push(icon.to_span_with(|icon| format!("{icon} ")));
+            }
+
+            spans.extend_from_slice(&[
                 Span::styled(directories, config.directory_style),
                 Span::raw(filename),
                 Span::styled(":", config.colon_style),
                 Span::styled((item.line_num + 1).to_string(), config.number_style),
-            ]))
+            ]);
+
+            Cell::from(Spans::from(spans))
         }),
         PickerColumn::hidden("contents"),
     ];
@@ -3196,11 +3207,23 @@ fn buffer_picker(cx: &mut Context) {
                 .path
                 .as_deref()
                 .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
+
+            let name = path
+                .as_deref()
                 .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+                .unwrap_or(SCRATCH_BUFFER_NAME);
+
+            let icons = ICONS.load();
+
+            let mut spans = Vec::with_capacity(2);
+
+            if let Some(icon) = icons.fs().from_optional_path(path.as_deref()) {
+                spans.push(icon.to_span_with(|icon| format!("{icon} ")));
+            }
+
+            spans.push(Span::raw(name.to_string()));
+
+            Cell::from(Spans::from(spans))
         }),
     ];
     let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
@@ -3259,11 +3282,23 @@ fn jumplist_picker(cx: &mut Context) {
                 .path
                 .as_deref()
                 .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
+
+            let name = path
+                .as_deref()
                 .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+                .unwrap_or(SCRATCH_BUFFER_NAME);
+
+            let icons = ICONS.load();
+
+            let mut spans = Vec::with_capacity(2);
+
+            if let Some(icon) = icons.fs().from_optional_path(path.as_deref()) {
+                spans.push(icon.to_span_with(|icon| format!("{icon} ")));
+            }
+
+            spans.push(Span::raw(name.to_string()));
+
+            Cell::from(Spans::from(spans))
         }),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
@@ -3333,12 +3368,43 @@ fn changed_file_picker(cx: &mut Context) {
 
     let columns = [
         PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
+            let icons = ICONS.load();
             match change {
-                FileChange::Untracked { .. } => Span::styled("+ untracked", data.style_untracked),
-                FileChange::Modified { .. } => Span::styled("~ modified", data.style_modified),
-                FileChange::Conflict { .. } => Span::styled("x conflict", data.style_conflict),
-                FileChange::Deleted { .. } => Span::styled("- deleted", data.style_deleted),
-                FileChange::Renamed { .. } => Span::styled("> renamed", data.style_renamed),
+                FileChange::Untracked { .. } => Span::styled(
+                    match icons.vcs().added() {
+                        Some(icon) => Cow::from(format!("{icon} untracked")),
+                        None => Cow::from("untracked"),
+                    },
+                    data.style_untracked,
+                ),
+                FileChange::Modified { .. } => Span::styled(
+                    match icons.vcs().modified() {
+                        Some(icon) => Cow::from(format!("{icon} modified")),
+                        None => Cow::from("modified"),
+                    },
+                    data.style_modified,
+                ),
+                FileChange::Conflict { .. } => Span::styled(
+                    match icons.vcs().conflict() {
+                        Some(icon) => Cow::from(format!("{icon} conflict")),
+                        None => Cow::from("conflict"),
+                    },
+                    data.style_conflict,
+                ),
+                FileChange::Deleted { .. } => Span::styled(
+                    match icons.vcs().removed() {
+                        Some(icon) => Cow::from(format!("{icon} deleted")),
+                        None => Cow::from("deleted"),
+                    },
+                    data.style_deleted,
+                ),
+                FileChange::Renamed { .. } => Span::styled(
+                    match icons.vcs().renamed() {
+                        Some(icon) => Cow::from(format!("{icon} renamed")),
+                        None => Cow::from("renamed"),
+                    },
+                    data.style_renamed,
+                ),
             }
             .into()
         }),

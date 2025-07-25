@@ -61,6 +61,9 @@
 (mod
   name: (identifier) @namespace)
 
+(module_path
+  name: (identifier) @namespace)
+
 ; Paths
 
 (mod
