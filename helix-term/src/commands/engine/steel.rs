@@ -415,12 +415,6 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     );
 
     function1!(
-        "cx->current-file",
-        current_path,
-        "Get the currently focused file path"
-    );
-
-    function1!(
         "enqueue-expression-in-engine",
         run_expression_in_engine,
         "Enqueue an expression to run at the top level context, 
@@ -450,6 +444,12 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
             template_function_arity_0($name, $doc);
         }};
     }
+
+    function0!(
+        "cx->current-file",
+        current_path,
+        "Get the currently focused file path"
+    );
 
     function0!(
         "current_selection",

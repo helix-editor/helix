@@ -524,7 +524,11 @@ callback : (-> any?)
 ```
        
 ### **set-status!**
-Sets the content of the status line
+Sets the content of the status line, with the info severity
+### **set-warning!**
+Sets the content of the status line, with the warning severity
+### **set-error!**
+Sets the content of the status line, with the error severity
 ### **send-lsp-command**
 Send an lsp command. The `lsp-name` must correspond to an active lsp.
 The method name corresponds to the method name that you'd expect to see
@@ -596,10 +600,12 @@ Await the given value, and call the callback function on once the future is comp
 
 Warning: this is experimental
 
-Adds an inlay hint at the given character index.
+Adds an inlay hint at the given character index. Returns the (first-line, last-line) list
+associated with this snapshot of the inlay hints. Use this pair of line numbers to invalidate
+the inlay hints.
 
 ```scheme
-(add-inlay-hint char-index completion)
+(add-inlay-hint char-index completion) -> (list int? int?)
 ```
 
 char-index : int?
@@ -607,7 +613,8 @@ completion : string?
 
 ### **remove-inlay-hint**
 
-Warning: this is experimental
+Warning: this is experimental and should not be used.
+This will most likely be removed soon.
 
 Removes an inlay hint at the given character index. Note - to remove
 properly, the completion must match what was already there.
@@ -618,6 +625,19 @@ properly, the completion must match what was already there.
 
 char-index : int?
 completion : string?
+
+### **remove-inlay-hint-by-id**
+
+Warning: this is experimental
+
+Removes an inlay hint by the id that was associated with the added inlay hints.
+
+```scheme
+(remove-inlay-hint first-line last-line)
+```
+
+first-line : int?
+last-line : int?
 
 # /home/matt/.steel/cogs/helix/editor.scm
 ### **editor-focus**
@@ -672,6 +692,8 @@ Get the `Rect` associated with the currently focused buffer.
 (editor-focused-buffer-area) -> (or Rect? #false)
 ```
        
+### **selected-register!**
+Get currently selected register
 ### **editor->doc-id**
 Get the document from a given view.
 ### **editor-switch!**
@@ -1552,6 +1574,10 @@ Goto previous comment
 Goto next test
 ### **goto_prev_test**
 Goto previous test
+### **goto_next_xml_element**
+Goto next (X)HTML element
+### **goto_prev_xml_element**
+Goto previous (X)HTML element
 ### **goto_next_entry**
 Goto next pairing
 ### **goto_prev_entry**
@@ -1634,15 +1660,21 @@ Insert a given character at the cursor cursor position
 Insert a given string at the current cursor position
 ### **set-current-selection-object!**
 Update the selection object to the current selection within the editor
+### **push-range-to-selection!**
+Push a new range to a selection. The new selection will be the primary one
+### **set-current-selection-primary-index!**
+Set the primary index of the current selection
+### **remove-current-selection-range!**
+Remove a range from the current selection
 ### **regex-selection**
 Run the given regex within the existing buffer
 ### **replace-selection-with**
 Replace the existing selection with the given string
-### **cx->current-file**
-Get the currently focused file path
 ### **enqueue-expression-in-engine**
 Enqueue an expression to run at the top level context, 
        after the existing function context has exited.
+### **cx->current-file**
+Get the currently focused file path
 ### **current_selection**
 Returns the current selection as a string
 ### **load-buffer!**
@@ -1659,6 +1691,31 @@ Returns the current working directly that helix is using
 Moves the current window to the far left
 ### **move-window-far-right**
 Moves the current window to the far right
+### **selection->primary-index**
+Returns index of the primary selection
+### **selection->primary-range**
+Returns the range for primary selection
+### **selection->ranges**
+Returns all ranges of the selection
+### **range-anchor**
+Get the anchor of the range: the side that doesn't move when extending.
+### **range->from**
+Get the start of the range
+### **range-head**
+Get the head of the range, moved when extending.
+### **range->to**
+Get the end of the range
+### **range->span**
+Get the span of the range (from, to)
+### **range**
+Construct a new range object
+
+```scheme
+(range anchor head) -> Range?
+```
+       
+### **range->selection**
+Convert a range into a selection
 ### **get-helix-scm-path**
 Returns the path to the helix.scm file as a string
 ### **get-init-scm-path**
@@ -2445,6 +2502,26 @@ Check if this value is an `Event`
 ```
 value : any?
        
+### **paste-event?**
+Checks if the given event is a paste event.
+
+```scheme
+(paste-event? event) -> bool?
+```
+
+* event : Event?
+           
+       
+### **paste-event-string**
+Get the string from the paste event, if it is a paste event.
+
+```scheme
+(paste-event-string event) -> (or string? #false)
+```
+
+* event : Event?
+
+       
 ### **key-event?**
 Checks if the given event is a key event.
 
@@ -2482,6 +2559,10 @@ The key modifier bits associated with the shift key modifier.
 ### **key-modifier-alt**
 
 The key modifier bits associated with the alt key modifier.
+       
+### **key-modifier-super**
+
+The key modifier bits associated with the super key modifier.
        
 ### **key-event-F?**
 Check if this key event is associated with an `F<x>` key, e.g. F1, F2, etc.
@@ -2741,6 +2822,7 @@ Check whether the given event is the key: keypad-begin
 ```
 event: Event?
 # helix/core/text
+To use, you can include with `(require-builtin helix/core/text)`
 ### **Rope?**
 Check if the given value is a rope
 ### **rope->byte-slice**
