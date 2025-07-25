@@ -65,6 +65,7 @@ julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--hist
 just-lsp = { command = "just-lsp" }
 koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 koto-ls = { command = "koto-ls" }
+kotlin-lsp = { command = "kotlin-lsp", args = ["--stdio"] }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server", "--memory=1024" ] }
 ltex-ls = { command = "ltex-ls" }
@@ -1021,6 +1022,7 @@ shebangs = []
 comment-token = "#"
 language-servers = [ "nil", "nixd" ]
 indent = { tab-width = 2, unit = "  " }
+formatter = { command = "nixfmt" }
 
 [[grammar]]
 name = "nix"
@@ -3068,7 +3070,7 @@ formatter = { command = "inko", args = ["fmt", "-"] }
 
 [[grammar]]
 name = "inko"
-source = { git = "https://github.com/inko-lang/tree-sitter-inko", rev = "7860637ce1b43f5f79cfb7cc3311bf3234e9479f" }
+source = { git = "https://github.com/inko-lang/tree-sitter-inko", rev = "f58a87ac4dc6a7955c64c9e4408fbd693e804686" }
 
 [[language]]
 name = "bicep"
@@ -4242,10 +4244,11 @@ comment-token = "#"
 block-comment-tokens = ["#-", "-#"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = ["koto-ls"]
+formatter = {command = "koto", args = ["--format"]}
 
 [[grammar]]
 name = "koto"
-source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "b420f7922d0d74905fd0d771e5b83be9ee8a8a9a" }
+source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "2ffc77c14f0ac1674384ff629bfc207b9c57ed89" }
 
 [[language]]
 name = "gpr"

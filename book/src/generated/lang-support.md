@@ -112,8 +112,8 @@
 | iex | ✓ |  |  |  |  |
 | ini | ✓ |  |  |  |  |
 | ink | ✓ |  |  |  |  |
-| inko | ✓ | ✓ | ✓ |  |  |
-| janet | ✓ |  |  |  |  |
+| inko | ✓ | ✓ | ✓ | ✓ |  |
+| janet | ✓ |  | ✓ |  |  |
 | java | ✓ | ✓ | ✓ |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jinja | ✓ |  |  |  |  |
