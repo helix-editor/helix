@@ -154,7 +154,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "y" => yank,
         // yank_all
         "p" => paste_after,
-        // paste_all
         "P" => paste_before,
 
         "Q" => record_macro,
