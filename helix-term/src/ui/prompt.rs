@@ -779,8 +779,7 @@ impl Component for Prompt {
             col += self.line[self.cursor..]
                 .graphemes(true)
                 .next()
-                .map(|g| g.width())
-                .unwrap_or(0);
+                .map_or(0, |g| g.width());
         }
 
         let line = area.height as usize - 1;
