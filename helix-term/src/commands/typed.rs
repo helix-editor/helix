@@ -2650,18 +2650,19 @@ fn make(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
     let shell = cx.editor.config().shell.clone();
     let args = args.join(" ");
     let make_format_type;
-    match MakeFormatType::from_str("rust") {
+    match MakeFormatType::from_str("clang") {
         Ok(format_type) => make_format_type = format_type,
         Err(_) => return Ok(()),
     }
 
     let callback = async move {
         let output = shell_impl_async(&shell, &args, None).await?;
-        // TODO(szulf): parsing and putting in make picker here
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, _compositor: &mut Compositor| {
-                let entries = make::format(make_format_type, output.as_str());
-                editor.set_status(format!("Filled make list with {} entries.", entries.len()));
+                let entries = make::parse(make_format_type, output.as_str());
+                let entries_count = entries.len();
+                editor.make_list.set(entries);
+                editor.set_status(format!("Filled make list with {} entries.", entries_count));
             },
         ));
         Ok(call)
@@ -3702,10 +3703,11 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["mk"],
         doc: "Executes the command and fills the make picker with its output.",
         fun: make,
+        // TODO(szulf): change this to proper signature with specyfing type of make cmd
         completer: SHELL_COMPLETER,
         signature: Signature {
-            positionals: (2, Some(3)),
-            raw_after: Some(2),
+            positionals: (1, Some(2)),
+            raw_after: Some(1),
             ..Signature::DEFAULT
         },
     },
