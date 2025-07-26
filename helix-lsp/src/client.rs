@@ -72,8 +72,12 @@ impl Client {
         doc_path: Option<&std::path::PathBuf>,
         may_support_workspace: bool,
     ) -> bool {
-        let (workspace, workspace_is_cwd) = find_workspace();
-        let workspace = path::normalize(workspace);
+        let (workspace_path, workspace_is_cwd) = find_workspace();
+        // Attempt to canonicalize the workspace path. Fallback to original if error.
+        let workspace = match helix_stdx::path::canonicalize(&workspace_path) {
+            Ok(p) => p,
+            Err(_) => workspace_path, // Or handle error more explicitly, e.g. return false
+        };
         let root = find_lsp_workspace(
             doc_path
                 .and_then(|x| x.parent().and_then(|x| x.to_str()))
