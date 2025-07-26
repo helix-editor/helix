@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Guides</title>
+        <title>Adding rainbow bracket queries</title>
 
 
         <!-- Custom HTML head -->
@@ -131,7 +131,7 @@
                         <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/guides/README.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/guides/rainbow_bracket_queries.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -160,21 +160,111 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="guides"><a class="header" href="#guides">Guides</a></h1>
-<p>This section contains guides for adding new language server configurations,
-tree-sitter grammars, textobject and rainbow bracket queries, and other similar items.</p>
+                        <h1 id="adding-rainbow-bracket-queries"><a class="header" href="#adding-rainbow-bracket-queries">Adding Rainbow Bracket Queries</a></h1>
+<p>Helix uses <code>rainbows.scm</code> tree-sitter query files to provide rainbow bracket
+functionality.</p>
+<p>Tree-sitter queries are documented in the tree-sitter online documentation.
+If you're writing queries for the first time, be sure to check out the section
+on <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#highlights">syntax highlighting queries</a> and on <a href="https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries">query syntax</a>.</p>
+<p>Rainbow queries have two captures: <code>@rainbow.scope</code> and <code>@rainbow.bracket</code>.
+<code>@rainbow.scope</code> should capture any node that increases the nesting level
+while <code>@rainbow.bracket</code> should capture any bracket nodes. Put another way:
+<code>@rainbow.scope</code> switches to the next rainbow color for all nodes in the tree
+under it while <code>@rainbow.bracket</code> paints captured nodes with the current
+rainbow color.</p>
+<p>For an example, let's add rainbow queries for the tree-sitter query (TSQ)
+language itself. These queries will go into a
+<code>runtime/queries/tsq/rainbows.scm</code> file in the repository root.</p>
+<p>First we'll add the <code>@rainbow.bracket</code> captures. TSQ only has parentheses and
+square brackets:</p>
+<pre><code class="language-tsq">["(" ")" "[" "]"] @rainbow.bracket
+</code></pre>
+<p>The ordering of the nodes within the alternation (square brackets) is not
+taken into consideration.</p>
+<blockquote>
+<p>Note: Why are these nodes quoted? Most syntax highlights capture text
+surrounded by parentheses. These are <em>named nodes</em> and correspond to the
+names of rules in the grammar. Brackets are usually written in tree-sitter
+grammars as literal strings, for example:</p>
+<pre><code class="language-js">{
+  // ...
+  arguments: seq("(", repeat($.argument), ")"),
+  // ...
+}
+</code></pre>
+<p>Nodes written as literal strings in tree-sitter grammars may be captured
+in queries with those same literal strings.</p>
+</blockquote>
+<p>Then we'll add <code>@rainbow.scope</code> captures. The easiest way to do this is to
+view the <code>grammar.js</code> file in the tree-sitter grammar's repository. For TSQ,
+that file is <a href="https://github.com/the-mikedavis/tree-sitter-tsq/blob/48b5e9f82ae0a4727201626f33a17f69f8e0ff86/grammar.js">here</a>. As we scroll down the <code>grammar.js</code>, we
+see that the <code>(alternation)</code>, (L36) <code>(group)</code> (L57), <code>(named_node)</code> (L59),
+<code>(predicate)</code> (L87) and  <code>(wildcard_node)</code> (L97) nodes all contain literal
+parentheses or square brackets in their definitions. These nodes are all
+direct parents of brackets and happen to also be the nodes we want to change
+to the next rainbow color, so we capture them as <code>@rainbow.scope</code>.</p>
+<pre><code class="language-tsq">[
+  (group)
+  (named_node)
+  (wildcard_node)
+  (predicate)
+  (alternation)
+] @rainbow.scope
+</code></pre>
+<p>This strategy works as a rule of thumb for most programming and configuration
+languages. Markup languages can be trickier and may take additional
+experimentation to find the correct nodes to use for scopes and brackets.</p>
+<p>The <code>:tree-sitter-subtree</code> command shows the syntax tree under the primary
+selection in S-expression format and can be a useful tool for determining how
+to write a query.</p>
+<h3 id="properties"><a class="header" href="#properties">Properties</a></h3>
+<p>The <code>rainbow.include-children</code> property may be applied to <code>@rainbow.scope</code>
+captures. By default, all <code>@rainbow.bracket</code> captures must be direct descendant
+of a node captured with <code>@rainbow.scope</code> in a syntax tree in order to be
+highlighted. The <code>rainbow.include-children</code> property disables that check and
+allows <code>@rainbow.bracket</code> captures to be highlighted if they are direct or
+indirect descendants of some node captured with <code>@rainbow.scope</code>.</p>
+<p>For example, this property is used in the HTML rainbow queries.</p>
+<p>For a document like <code>&lt;a&gt;link&lt;/a&gt;</code>, the syntax tree is:</p>
+<pre><code class="language-tsq">(element                   ; &lt;a&gt;link&lt;/a&gt;
+  (start_tag               ; &lt;a&gt;
+    (tag_name))            ; a
+  (text)                   ; link
+  (end_tag                 ; &lt;/a&gt;
+    (tag_name)))           ; a
+</code></pre>
+<p>If we want to highlight the <code>&lt;</code>, <code>&gt;</code> and <code>&lt;/</code> nodes with rainbow colors, we
+capture them as <code>@rainbow.bracket</code>:</p>
+<pre><code class="language-tsq">["&lt;" "&gt;" "&lt;/"] @rainbow.bracket
+</code></pre>
+<p>And we capture <code>(element)</code> as <code>@rainbow.scope</code> because <code>(element)</code> nodes nest
+within each other: they increment the nesting level and switch to the next
+color in the rainbow.</p>
+<pre><code class="language-tsq">(element) @rainbow.scope
+</code></pre>
+<p>But this combination of <code>@rainbow.scope</code> and <code>@rainbow.bracket</code> will not
+highlight any nodes. <code>&lt;</code>, <code>&gt;</code> and <code>&lt;/</code> are children of the <code>(start_tag)</code> and
+<code>(end_tag)</code> nodes. We can't capture <code>(start_tag)</code> and <code>(end_tag)</code> as
+<code>@rainbow.scope</code> because they don't nest other elements. We can fix this case
+by removing the requirement that <code>&lt;</code>, <code>&gt;</code> and <code>&lt;/</code> are direct descendants of
+<code>(element)</code> using the <code>rainbow.include-children</code> property.</p>
+<pre><code class="language-tsq">((element) @rainbow.scope
+ (#set! rainbow.include-children))
+</code></pre>
+<p>With this property set, <code>&lt;</code>, <code>&gt;</code>, and <code>&lt;/</code> will highlight with rainbow colors
+even though they aren't direct descendents of the <code>(element)</code> node.</p>
+<p><code>rainbow.include-children</code> is not necessary for the vast majority of programming
+languages. It is only necessary when the node that increments the nesting level
+(changes rainbow color) is not the direct parent of the bracket node.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../languages.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../guides/tags.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../guides/adding_languages.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <i class="fa fa-angle-right"></i>
-                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -182,13 +272,10 @@ tree-sitter grammars, textobject and rainbow bracket queries, and other similar 
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../languages.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../guides/tags.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../guides/adding_languages.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <i class="fa fa-angle-right"></i>
-                    </a>
             </nav>
 
         </div>
