@@ -678,7 +678,7 @@ impl EditorView {
 
             let render_x = buffer_x.saturating_sub(scroll_offset);
 
-            let text = format!(
+            let mut text = format!(
                 " {}{} ",
                 doc.path()
                     .unwrap_or(&scratch)
@@ -688,6 +688,13 @@ impl EditorView {
                     .unwrap_or_default(),
                 if doc.is_modified() { "[+]" } else { "" }
             );
+
+            if buffer_x < scroll_offset {
+                text = text
+                    .chars()
+                    .skip((scroll_offset - buffer_x) as usize)
+                    .collect::<String>();
+            }
 
             surface.set_stringn(
                 render_x,
