@@ -44,6 +44,7 @@ pub struct EditorView {
     spinners: ProgressSpinners,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
     terminal_focused: bool,
+    bufferline_positions: Vec<u16>,
 }
 
 #[derive(Debug, Clone)]
@@ -67,6 +68,7 @@ impl EditorView {
             completion: None,
             spinners: ProgressSpinners::default(),
             terminal_focused: true,
+            bufferline_positions: Vec::new(),
         }
     }
 
@@ -559,8 +561,10 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
-    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+    pub fn render_bufferline(&mut self, editor: &Editor, viewport: Rect, surface: &mut Surface) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+        self.bufferline_positions.clear();
+
         surface.clear_with(
             viewport,
             editor
@@ -583,32 +587,129 @@ impl EditorView {
         let current_doc = view!(editor).doc;
 
         for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+            let text = format!(
+                " {}{} ",
+                doc.path()
+                    .unwrap_or(&scratch)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default(),
+                if doc.is_modified() { "[+]" } else { "" }
+            );
 
-            let style = if current_doc == doc.id() {
-                bufferline_active
-            } else {
-                bufferline_inactive
-            };
+            self.bufferline_positions.push(x);
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
+            if x < viewport.width {
+                surface.set_stringn(
+                    x,
+                    viewport.y,
+                    &text,
+                    viewport.width.saturating_sub(x) as usize,
+                    if current_doc == doc.id() {
+                        bufferline_active
+                    } else {
+                        bufferline_inactive
+                    },
+                );
+            }
 
-            x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
-                .0;
+            x += text.len() as u16;
+        }
 
-            if x >= surface.area.right() {
-                break;
+        if let Some(current_idx) = editor.documents().position(|d| d.id() == current_doc) {
+            if let Some(&target_x) = self.bufferline_positions.get(current_idx) {
+                if target_x >= viewport.width
+                    || current_idx >= self.bufferline_positions.len().saturating_sub(2)
+                {
+                    let scroll_offset = target_x
+                        .saturating_sub(viewport.width / 2)
+                        .min(x.saturating_sub(viewport.width));
+                    self.render_with_offset(editor, viewport, surface, scroll_offset);
+                }
             }
         }
+    }
+
+    /// Render bufferline with horizontal offset
+    pub fn render_with_offset(
+        &mut self,
+        editor: &Editor,
+        viewport: Rect,
+        surface: &mut Surface,
+        scroll_offset: u16,
+    ) {
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+
+        surface.clear_with(
+            viewport,
+            editor
+                .theme
+                .try_get("ui.bufferline.background")
+                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
+        );
+
+        let bufferline_active = editor
+            .theme
+            .try_get("ui.bufferline.active")
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
+
+        let bufferline_inactive = editor
+            .theme
+            .try_get("ui.bufferline")
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
+        let current_doc = view!(editor).doc;
+
+        let visible_end = scroll_offset + viewport.width;
+
+        for (i, doc) in editor.documents().enumerate() {
+            let Some(&buffer_x) = self.bufferline_positions.get(i) else {
+                continue;
+            };
+
+            // skip invisible buffers
+            if buffer_x + Self::calculate_buffer_width(doc) < scroll_offset {
+                continue;
+            }
+
+            if buffer_x > visible_end {
+                break;
+            }
+
+            let render_x = buffer_x.saturating_sub(scroll_offset);
+
+            let text = format!(
+                " {}{} ",
+                doc.path()
+                    .unwrap_or(&scratch)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default(),
+                if doc.is_modified() { "[+]" } else { "" }
+            );
+
+            surface.set_stringn(
+                render_x,
+                viewport.y,
+                &text,
+                viewport.width.saturating_sub(render_x) as usize,
+                if current_doc == doc.id() {
+                    bufferline_active
+                } else {
+                    bufferline_inactive
+                },
+            );
+        }
+    }
+
+    /// Calculate buffer display width
+    fn calculate_buffer_width(doc: &Document) -> u16 {
+        let name_len = doc
+            .path()
+            .and_then(|p| p.file_name())
+            .map_or(0, |n| n.len());
+        (name_len + 3 + if doc.is_modified() { 3 } else { 0 }) as u16
     }
 
     pub fn render_gutter<'d>(
@@ -1511,7 +1612,7 @@ impl Component for EditorView {
         cx.editor.resize(editor_area);
 
         if use_bufferline {
-            Self::render_bufferline(cx.editor, area.with_height(1), surface);
+            self.render_bufferline(cx.editor, area.with_height(1), surface);
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
