@@ -1,44 +1,27 @@
-use helix_lsp::lsp::{Position, Range};
+use helix_lsp::lsp::{DiagnosticSeverity, Range};
 use std::path::PathBuf;
-
-// TODO(szulf): better naming cause god damn
-
-#[derive(Debug, Default, Clone)]
-pub struct Value {
-    // TODO(szulf): not sure about this
-    pub err_msg: String,
-}
-
-impl Value {
-    pub fn new(err_msg: &str) -> Self {
-        Self {
-            err_msg: err_msg.to_string(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Default)]
 pub struct Location {
     pub path: PathBuf,
-    pub range: Range,
+    pub line: usize,
 }
 
-// NOTE(szulf): would absolutely love to use helix-term::commands::Location
-// but cannot access it from here whyyyyy
-#[derive(Debug, Clone, Default)]
+// TODO(szulf): maybe add a way for entries to reference other entries
+// so that things like note: can actually be linked back to the original error
+#[derive(Debug, Clone)]
 pub struct Entry {
     pub location: Location,
-    pub value: Value,
+    pub msg: String,
+    pub severity: DiagnosticSeverity,
 }
 
 impl Entry {
-    pub fn new(path: PathBuf, value: Value) -> Self {
+    pub fn new(location: Location, msg: &str, severity: DiagnosticSeverity) -> Self {
         Self {
-            location: Location {
-                path: path,
-                range: Range::new(Position::new(2, 5), Position::new(2, 6)),
-            },
-            value: value,
+            location: location,
+            msg: msg.to_string(),
+            severity: severity,
         }
     }
 }
@@ -59,5 +42,9 @@ impl List {
 
     pub fn into_iter(self) -> impl Iterator<Item = Entry> {
         self.entries.into_iter()
+    }
+
+    pub fn set(&mut self, entries: Vec<Entry>) {
+        self.entries = entries;
     }
 }
