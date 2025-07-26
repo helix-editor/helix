@@ -1,0 +1,166 @@
+# ataraxia theme for Helix (｡•̀ᴗ-)✧☆*:・ﾟ
+
+# Author : mazrine <mazrine@protonmail.com>
+# -------------------
+# purple and violet centered with contrasting cyan and green plus some blue shades in the mix, making a mostly cold palette.
+# -------------------
+# if you wanna see my full config, check out https://github.com/Mazrine/helix-configuration it has kaomojis for modes instead of the usual normal / insert etc
+# -------------------
+
+# GENERAL ==============================
+
+warning = "soft-blue"
+error = "electric-violet"
+info = "sky-cyan"
+hint = "neon-cyan"
+diagnostic = "cool-sky"
+
+ 
+"diagnostic.error" = "electric-violet"
+"diagnostic.warning" = "soft-blue"
+"diagnostic.info" = "sky-cyan"
+"diagnostic.hint" = "neon-cyan"
+
+ 
+# UI ==============================
+
+"ui.background" = { fg = "orchid", bg = "midnight" }
+"ui.help" = {fg = "neon-cyan", bg = "midnight"}
+"ui.text" = {fg = "neon-cyan", bg = "midnight"}
+"ui.window" = "orchid"
+"ui.cursor" = { fg = "#000000", bg = "neon-cyan" }
+"ui.cursor.primary" = { fg = "#000000", bg = "electric-violet" }
+"ui.cursor.primary.normal" = { fg = "#000000", bg = "neon-cyan" }
+"ui.cursor.primary.insert" = { fg = "#000000", bg = "ufo-green" }
+"ui.cursor.primary.select" = { fg = "#000000", bg = "muted-violet" }
+"ui.cursor.match" = "orchid"
+"ui.popup" = {fg = "neon-cyan", bg = "midnight"}
+"ui.selection" = { fg = "#000000", bg = "muted-violet" }
+"ui.selection.primary" = { fg = "#000000", bg = "muted-violet" }
+"ui.virtual" = "eggplant"
+"ui.virtual.whitespace" = "deep-indigo"
+"ui.linenr" = "purple-gray"
+"ui.linenr.selected" = "neon-cyan"
+"ui.statusline" = "sky-cyan"
+"ui.statusline.inactive" = "orchid"
+"ui.statusline.normal" = "neon-cyan"
+"ui.statusline.insert" = "ufo-green"
+"ui.statusline.select" = "muted-violet"
+"ui.statusline.separator" = "neon-cyan"
+"ui.bufferline" = { fg = "orchid", bg = "midnight"}
+"ui.bufferline.active" = { fg = "neon-cyan", bg = "midnight"}
+"ui.menu" = "orchid"
+"ui.menu.selected" = "orchid"
+
+# SYNTAX HIGHLIGHTING  ==============================
+
+"comment" = "purple-gray"
+"comment.line" = "purple-gray"
+"comment.line.documentation" = "purple-gray"
+"comment.block" = "dead-green"
+"comment.block.documentation" = "dead-green"
+
+"constant" = "soft-blue"
+"constant.builtin" = "royal-blue"
+"constant.builtin.boolean" = "ufo-green"
+"constant.character" = "royal-blue"
+"constant.character.escape" = "royal-blue"
+"constant.numeric"  = "cool-sky"
+"constant.numeric.integer" = "cool-sky"
+"constant.numeric.float" = "cool-sky"
+
+"string" = "ufo-green" 
+"string.regexp" = "orchid"
+"string.special" = "orchid"
+"string.special.path" = "orchid"
+"string.special.url" = "orchid"
+"string.special.symbol" = "orchid"
+
+"constructor" = "royal-blue"
+
+"variable" = "deep-grape"
+"variable.builtin" = "neon-cyan"
+"variable.parameter" = "neon-cyan" 
+"variable.other.member" = "orchid"
+
+"function" = "royal-blue"
+"function.builtin" = "royal-blue"
+"function.method" = "royal-blue"
+"function.macro" = "ufo-green"
+"function.special" = "royal-blue"
+
+"punctuation.special" = "neon-cyan"
+"punctuation.delimiter" = "neon-cyan"
+"punctuation.bracket" = "neon-cyan"
+
+"keyword" = "royal-blue"
+"keyword.control" = "orchid"
+"keyword.control.conditional" = "deep-grape"
+"keyword.control.repeat" = "deep-grape"
+"keyword.control.import" = "royal-blue"
+"keyword.control.return" = "deep-grape"
+"keyword.control.exception" = "orchid"
+"keyword.operator" = "royal-blue"
+"keyword.directive" = "royal-blue"
+"keyword.storage" = "orchid"
+"keyword.function" = "orchid"
+
+"operator" = "amethyst"
+"type" = "soft-blue"
+"type.builtin" = "plum"
+"type.parameter" = "orchid"
+"type.enum" = "soft-blue"
+"type.enum.variant" = "royal-blue"
+"attribute" = "deep-grape"
+"namespace" = "muted-violet"
+"special" = "cool-sky"
+"tag" = "neon-cyan"
+"tag.error" = "bad"
+
+# Markup  ==============================
+
+"markup.heading.1" = "deep-grape"
+"markup.heading.2" = "muted-violet"
+"markup.heading.3" = "orchid"
+"markup.heading.4" = "amethyst"
+"markup.heading.5" = "soft-blue"
+"markup.heading.6" = "cool-sky"
+"markup.heading.marker" = "ufo-green"
+"markup.list" = "ufo-green"
+"markup.list.checked" = "ufo-green"
+"markup.list.unchecked" = "deep-indigo"
+"markup.bold" = "soft-blue"
+"markup.italic" = "cool-sky"
+"markup.strikethrough" = "deep-indigo"
+"markup.link.url" = "sky-cyan"
+"markup.link.text" = "orchid"
+"markup.quote" = "muted-violet"
+"markup.raw" = "eggplant"
+
+
+# Diff ==============================
+
+"diff.plus" = "ufo-green"
+"diff.minus" = "bad"
+"diff.delta" = "soft-blue"
+ 
+
+[palette]
+midnight = "#1c0c28"
+eggplant = "#301b4d"
+deep-indigo = "#432775"
+purple-gray = "#5c3a9e"
+muted-violet = "#7b52c7"
+neon-cyan = "#00D2F7"
+cool-sky = "#7a88ff"
+orchid = "#8f45ff"
+soft-blue = "#8AA3FE"
+plum = "#6d4db8"
+ufo-green = "#00D974"
+dead-green = "#025c33"
+sky-cyan = "#00ddff"
+royal-blue = "#4264d9"
+electric-violet = "#A600FF"
+amethyst = "#9963ff"
+deep-grape = "#7640cc"
+bad = "#EB3E5EFF"

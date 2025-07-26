@@ -734,7 +734,7 @@ async fn surround_replace_ts() -> anyhow::Result<()> {
     const INPUT: &str = r#"\
 fn foo() {
     if let Some(_) = None {
-        todo!("f#[|o]#o)");
+        testing!("f#[|o]#o)");
     }
 }
 "#;
@@ -744,7 +744,7 @@ fn foo() {
         r#"\
 fn foo() {
     if let Some(_) = None {
-        todo!('f#[|o]#o)');
+        testing!('f#[|o]#o)');
     }
 }
 "#,
@@ -757,7 +757,7 @@ fn foo() {
         r#"\
 fn foo() {
     if let Some(_) = None [
-        todo!("f#[|o]#o)");
+        testing!("f#[|o]#o)");
     ]
 }
 "#,
@@ -770,7 +770,7 @@ fn foo() {
         r#"\
 fn foo() {
     if let Some(_) = None {
-        todo!{"f#[|o]#o)"};
+        testing!{"f#[|o]#o)"};
     }
 }
 "#,
@@ -815,6 +815,28 @@ async fn macro_play_within_macro_record() -> anyhow::Result<()> {
         indoc! {"\
             hello world
             #[|]#"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
+    // Assert that `helix_term::commands::global_search` handles multibyte characters correctly.
+    test((
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
+        // start global search
+        " /«十分に長い マルチバイトキャラクター列» で検索<ret><esc>",
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
     ))
     .await?;
 

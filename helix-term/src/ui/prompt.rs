@@ -12,7 +12,9 @@ use tui::text::Span;
 use tui::widgets::{Block, Widget};
 
 use helix_core::{
-    unicode::segmentation::GraphemeCursor, unicode::width::UnicodeWidthStr, Position,
+    unicode::segmentation::{GraphemeCursor, UnicodeSegmentation},
+    unicode::width::UnicodeWidthStr,
+    Position,
 };
 use helix_view::{
     graphics::{CursorKind, Margin, Rect},
@@ -529,27 +531,57 @@ impl Prompt {
                 &self.line,
                 language,
                 Some(&cx.editor.theme),
-                loader.clone(),
+                &loader.load(),
                 None,
             )
             .into();
             text.render(self.line_area, surface, cx);
         } else {
-            if self.line.len() < self.line_area.width as usize {
+            let line_width = self.line_area.width as usize;
+
+            if self.line.width() < line_width {
                 self.anchor = 0;
-            } else if self.cursor < self.anchor {
-                self.anchor = self.cursor;
-            } else if self.cursor - self.anchor > self.line_area.width as usize {
-                self.anchor = self.cursor - self.line_area.width as usize;
+            } else if self.cursor <= self.anchor {
+                // Ensure the grapheme under the cursor is in view.
+                self.anchor = self.line[..self.cursor]
+                    .grapheme_indices(true)
+                    .next_back()
+                    .map(|(i, _)| i)
+                    .unwrap_or_default();
+            } else if self.line[self.anchor..self.cursor].width() > line_width {
+                // Set the anchor to the last grapheme cluster before the width is exceeded.
+                let mut width = 0;
+                self.anchor = self.line[..self.cursor]
+                    .grapheme_indices(true)
+                    .rev()
+                    .find_map(|(idx, g)| {
+                        width += g.width();
+                        if width > line_width {
+                            Some(idx + g.len())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
             }
 
             self.truncate_start = self.anchor > 0;
-            self.truncate_end = self.line.len() - self.anchor > self.line_area.width as usize;
+            self.truncate_end = self.line[self.anchor..].width() > line_width;
 
             // if we keep inserting characters just before the end elipsis, we move the anchor
             // so that those new characters are displayed
-            if self.truncate_end && self.cursor - self.anchor >= self.line_area.width as usize {
-                self.anchor += 1;
+            if self.truncate_end && self.line[self.anchor..self.cursor].width() >= line_width {
+                // Move the anchor forward by one non-zero-width grapheme.
+                self.anchor += self.line[self.anchor..]
+                    .grapheme_indices(true)
+                    .find_map(|(idx, g)| {
+                        if g.width() > 0 {
+                            Some(idx + g.len())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
             }
 
             surface.set_string_anchored(
@@ -558,7 +590,7 @@ impl Prompt {
                 self.truncate_start,
                 self.truncate_end,
                 &self.line.as_str()[self.anchor..],
-                self.line_area.width as usize - self.truncate_end as usize,
+                line_width,
                 |_| prompt_color,
             );
         }
@@ -734,17 +766,20 @@ impl Component for Prompt {
             .clip_left(self.prompt.len() as u16)
             .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
 
-        let anchor = self.anchor.min(self.line.len().saturating_sub(1));
-        let mut col = area.left() as usize
-            + UnicodeWidthStr::width(&self.line[anchor..self.cursor.max(anchor)]);
+        let mut col = area.left() as usize + self.line[self.anchor..self.cursor].width();
 
         // ensure the cursor does not go beyond elipses
-        if self.truncate_end && self.cursor - self.anchor >= self.line_area.width as usize {
+        if self.truncate_end
+            && self.line[self.anchor..self.cursor].width() >= self.line_area.width as usize
+        {
             col -= 1;
         }
 
         if self.truncate_start && self.cursor == self.anchor {
-            col += 1;
+            col += self.line[self.cursor..]
+                .graphemes(true)
+                .next()
+                .map_or(0, |g| g.width());
         }
 
         let line = area.height as usize - 1;

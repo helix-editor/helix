@@ -5,7 +5,7 @@ use std::time::Duration;
 use arc_swap::ArcSwap;
 use futures_util::Future;
 use helix_core::completion::CompletionProvider;
-use helix_core::syntax::LanguageServerFeature;
+use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{cancelable_future, TaskController, TaskHandle};
 use helix_lsp::lsp;
 use helix_lsp::lsp::{CompletionContext, CompletionTriggerKind};
@@ -27,6 +27,8 @@ use crate::handlers::completion::{
 use crate::job::{dispatch, dispatch_blocking};
 use crate::ui;
 use crate::ui::editor::InsertEvent;
+
+use super::word;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum TriggerKind {
@@ -242,9 +244,14 @@ fn request_completions(
         doc.selection(view.id).clone(),
         doc,
         handle.clone(),
-        savepoint,
+        savepoint.clone(),
     ) {
         requests.spawn_blocking(path_completion_request);
+    }
+    if let Some(word_completion_request) =
+        word::completion(editor, trigger, handle.clone(), savepoint)
+    {
+        requests.spawn_blocking(word_completion_request);
     }
 
     let ui = compositor.find::<ui::EditorView>().unwrap();

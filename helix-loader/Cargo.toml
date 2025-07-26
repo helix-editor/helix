@@ -19,9 +19,8 @@ helix-stdx = { path = "../helix-stdx" }
 
 anyhow = "1"
 serde = { version = "1.0", features = ["derive"] }
-toml = "0.8"
+toml.workspace = true
 etcetera = "0.10"
-tree-sitter.workspace = true
 once_cell = "1.21"
 log = "0.4"
 
@@ -32,5 +31,4 @@ cc = { version = "1" }
 threadpool = { version = "1.0" }
 tempfile.workspace = true
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-libloading = "0.8"
+tree-house.workspace = true
