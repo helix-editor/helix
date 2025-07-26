@@ -1,5 +1,6 @@
 [
   "syntax"
+  "edition"
   "package"
   "option"
   "import"
@@ -7,44 +8,45 @@
   "rpc"
   "returns"
   "message"
+  "map"
   "enum"
   "oneof"
   "repeated"
+  "optional"
+  "required"
   "reserved"
   "to"
   "stream"
   "extend"
-  "optional"
 ] @keyword
 
 [
-  (keyType)
+  (key_type)
   (type)
+  (message_or_enum_type)
 ] @type.builtin
 
 [
-  (mapName)
-  (enumName)
-  (messageName)
-  (extendName)
-  (serviceName)
-  (rpcName)
+  (enum_name)
+  (message_name)
+  (service_name)
+  (rpc_name)
 ] @type
 
 [
-  (fieldName)
-  (optionName)
+  (field_name)
+  (option_name)
 ] @variable.other.member
-(enumVariantName) @type.enum.variant
+(enum_variant_name) @type.enum.variant
 
-(fullIdent) @namespace
+(full_ident) @namespace
 
-(intLit) @constant.numeric.integer
-(floatLit) @constant.numeric.float
-(boolLit) @constant.builtin.boolean
-(strLit) @string
+(int_lit) @constant.numeric.integer
+(float_lit) @constant.numeric.float
+(bool) @constant.builtin.boolean
+(string) @string
 
-(constant) @constant
+(block_lit) @constant
 
 (comment) @comment
 
@@ -56,3 +58,7 @@
   "{"
   "}"
 ]  @punctuation.bracket
+
+"=" @operator
+
+";" @punctuation.delimiter

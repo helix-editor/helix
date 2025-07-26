@@ -10,7 +10,7 @@
 //! These types form a hierarchy: [`Spans`] is a collection of [`Span`] and each line of [`Text`]
 //! is a [`Spans`].
 //!
-//! Keep it mind that a lot of widgets will use those types to advertise what kind of string is
+//! Keep in mind that a lot of widgets will use those types to advertise what kind of string is
 //! supported for their properties. Moreover, `tui` provides convenient `From` implementations so
 //! that you can start by using simple `String` or `&str` and then promote them to the previous
 //! primitives when you need additional styling capabilities.
@@ -212,7 +212,7 @@ impl<'a> From<Cow<'a, str>> for Span<'a> {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Spans<'a>(pub Vec<Span<'a>>);
 
-impl<'a> Spans<'a> {
+impl Spans<'_> {
     /// Returns the width of the underlying string.
     ///
     /// ## Examples

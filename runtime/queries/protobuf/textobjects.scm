@@ -1,9 +1,9 @@
-(message (messageBody) @class.inside) @class.around
-(enum (enumBody) @class.inside) @class.around
-(service (serviceBody) @class.inside) @class.around
+(message (message_body) @class.inside) @class.around
+(enum (enum_body) @class.inside) @class.around
+(service (service_body) @class.inside) @class.around
 
-(rpc (enumMessageType) @parameter.inside) @function.inside
-(rpc (enumMessageType) @parameter.around) @function.around
+(rpc (message_or_enum_type) @parameter.inside) @function.inside
+(rpc (message_or_enum_type) @parameter.around) @function.around
 
 (comment) @comment.inside
 (comment)+ @comment.around

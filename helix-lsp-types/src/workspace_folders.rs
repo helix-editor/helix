@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
-use url::Url;
 
-use crate::OneOf;
+use crate::{OneOf, Url};
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

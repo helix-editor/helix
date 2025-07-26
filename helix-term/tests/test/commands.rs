@@ -2,8 +2,29 @@ use helix_term::application::Application;
 
 use super::*;
 
+mod insert;
 mod movement;
 mod write;
+
+#[tokio::test(flavor = "multi_thread")]
+async fn search_selection_detect_word_boundaries_at_eof() -> anyhow::Result<()> {
+    // <https://github.com/helix-editor/helix/issues/12609>
+    test((
+        indoc! {"\
+            #[o|]#ne
+            two
+            three"},
+        "gej*h",
+        indoc! {"\
+            one
+            two
+            three#[
+            |]#"},
+    ))
+    .await?;
+
+    Ok(())
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_selection_duplication() -> anyhow::Result<()> {
@@ -664,6 +685,14 @@ async fn test_join_selections_comment() -> anyhow::Result<()> {
     ))
     .await?;
 
+    test((
+        "#[|\t// Join comments
+\t// with indent]#",
+        ":lang go<ret>J",
+        "#[|\t// Join comments with indent]#",
+    ))
+    .await?;
+
     Ok(())
 }
 
@@ -705,7 +734,7 @@ async fn surround_replace_ts() -> anyhow::Result<()> {
     const INPUT: &str = r#"\
 fn foo() {
     if let Some(_) = None {
-        todo!("f#[|o]#o)");
+        testing!("f#[|o]#o)");
     }
 }
 "#;
@@ -715,7 +744,7 @@ fn foo() {
         r#"\
 fn foo() {
     if let Some(_) = None {
-        todo!('f#[|o]#o)');
+        testing!('f#[|o]#o)');
     }
 }
 "#,
@@ -728,7 +757,7 @@ fn foo() {
         r#"\
 fn foo() {
     if let Some(_) = None [
-        todo!("f#[|o]#o)");
+        testing!("f#[|o]#o)");
     ]
 }
 "#,
@@ -741,7 +770,7 @@ fn foo() {
         r#"\
 fn foo() {
     if let Some(_) = None {
-        todo!{"f#[|o]#o)"};
+        testing!{"f#[|o]#o)"};
     }
 }
 "#,
@@ -759,6 +788,55 @@ fn foo() {
             "},
         "s\\n<ret>r,",
         "a#[,|]#b#(,|)#c#(,|)#d#(,|)#e\nf\n",
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn macro_play_within_macro_record() -> anyhow::Result<()> {
+    // <https://github.com/helix-editor/helix/issues/12697>
+    //
+    // * `"aQihello<esc>Q` record a macro to register 'a' which inserts "hello"
+    // * `Q"aq<space>world<esc>Q` record a macro to the default macro register which plays the
+    //   macro in register 'a' and then inserts " world"
+    // * `%d` clear the buffer
+    // * `q` replay the macro in the default macro register
+    // * `i<ret>` add a newline at the end
+    //
+    // The inner macro in register 'a' should replay within the outer macro exactly once to insert
+    // "hello world".
+    test((
+        indoc! {"\
+            #[|]#
+        "},
+        r#""aQihello<esc>QQ"aqi<space>world<esc>Q%dqi<ret>"#,
+        indoc! {"\
+            hello world
+            #[|]#"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
+    // Assert that `helix_term::commands::global_search` handles multibyte characters correctly.
+    test((
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
+        // start global search
+        " /«十分に長い マルチバイトキャラクター列» で検索<ret><esc>",
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
     ))
     .await?;
 

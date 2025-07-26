@@ -63,7 +63,7 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
             .path()
             .canonicalize()
             .ok()
-            .map_or(false, |path| !path.starts_with(root));
+            .is_some_and(|path| !path.starts_with(root));
     }
 
     true
@@ -76,8 +76,7 @@ fn open_external_url_callback(
     let commands = open::commands(url.as_str());
     async {
         for cmd in commands {
-            let mut command = tokio::process::Command::new(cmd.get_program());
-            command.args(cmd.get_args());
+            let mut command: tokio::process::Command = cmd.into();
             if command.output().await.is_ok() {
                 return Ok(job::Callback::Editor(Box::new(|_| {})));
             }

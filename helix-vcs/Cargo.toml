@@ -9,18 +9,16 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 helix-core = { path = "../helix-core" }
 helix-event = { path = "../helix-event" }
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
-parking_lot = "0.12"
+parking_lot.workspace = true
 arc-swap = { version = "1.7.1" }
 
-gix = { version = "0.66.0", features = ["attributes", "status"], default-features = false, optional = true }
-imara-diff = "0.1.7"
+gix = { version = "0.72.1", features = ["attributes", "status"], default-features = false, optional = true }
+imara-diff =  "0.2.0"
 anyhow = "1"
 
 log = "0.4"
@@ -29,4 +27,4 @@ log = "0.4"
 git = ["gix"]
 
 [dev-dependencies]
-tempfile = "3.12"
+tempfile.workspace = true
