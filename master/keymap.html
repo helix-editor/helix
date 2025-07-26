@@ -210,6 +210,9 @@
 <blockquote>
 <p>NOTE: Unlike Vim, <code>f</code>, <code>F</code>, <code>t</code> and <code>T</code> are not confined to the current line.</p>
 </blockquote>
+<blockquote>
+<p>Hereafter, <code>&lt;n&gt;</code> represents an integer by typing a sequence of digits.</p>
+</blockquote>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>h</code>, <code>Left</code></td><td>Move left</td><td><code>move_char_left</code></td></tr>
 <tr><td><code>j</code>, <code>Down</code></td><td>Move down</td><td><code>move_visual_line_down</code></td></tr>
@@ -225,7 +228,7 @@
 <tr><td><code>f</code></td><td>Find next char</td><td><code>find_next_char</code></td></tr>
 <tr><td><code>T</code></td><td>Find till previous char</td><td><code>till_prev_char</code></td></tr>
 <tr><td><code>F</code></td><td>Find previous char</td><td><code>find_prev_char</code></td></tr>
-<tr><td><code>G</code></td><td>Go to line number <code>&lt;n&gt;</code></td><td><code>goto_line</code></td></tr>
+<tr><td><code>&lt;n&gt;G</code>, <code>&lt;n&gt;gg</code></td><td>Go to line number <code>&lt;n&gt;</code></td><td><code>goto_line</code></td></tr>
 <tr><td><code>Alt-.</code></td><td>Repeat last motion (<code>f</code>, <code>t</code>, <code>m</code>, <code>[</code> or <code>]</code>)</td><td><code>repeat_last_motion</code></td></tr>
 <tr><td><code>Home</code></td><td>Move to the start of the line</td><td><code>goto_line_start</code></td></tr>
 <tr><td><code>End</code></td><td>Move to the end of the line</td><td><code>goto_line_end</code></td></tr>
@@ -370,8 +373,10 @@ useful when you're simply looking over text and not actively editing it.</p>
 <p>Accessed by typing <code>g</code> in <a href="#normal-mode">normal mode</a>.</p>
 <p>Jumps to various locations.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>g</code></td><td>Go to line number <code>&lt;n&gt;</code> else start of file</td><td><code>goto_file_start</code></td></tr>
-<tr><td><code>|</code></td><td>Go to column number <code>&lt;n&gt;</code> else start of line</td><td><code>goto_column</code></td></tr>
+<tr><td><code>&lt;n&gt;g</code></td><td>Go to line number <code>&lt;n&gt;</code></td><td><code>goto_file_start</code></td></tr>
+<tr><td><code>g</code></td><td>Go to the start of the file</td><td><code>goto_file_start</code></td></tr>
+<tr><td><code>&lt;n&gt;|</code></td><td>Go to column number <code>&lt;n&gt;</code></td><td><code>goto_column</code></td></tr>
+<tr><td><code>|</code></td><td>Go to the start of line</td><td><code>goto_column</code></td></tr>
 <tr><td><code>e</code></td><td>Go to the end of the file</td><td><code>goto_last_line</code></td></tr>
 <tr><td><code>f</code></td><td>Go to files in the selections</td><td><code>goto_file</code></td></tr>
 <tr><td><code>h</code></td><td>Go to the start of the line</td><td><code>goto_line_start</code></td></tr>
