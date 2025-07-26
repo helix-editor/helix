@@ -39,12 +39,12 @@
   name: (_) @function)
 
 (call_expression
-  function: (identifier) @function.call)
+  function: (identifier) @function)
 
 (call_expression
   function:
     (scoped_identifier
-      (identifier) @function.call))
+      (identifier) @function))
 
 (parameters
   (identifier) @variable.parameter)
@@ -68,7 +68,7 @@
   (scope)
   "a:"
   "$"
-] @module
+] @namespace
 
 ; Commands and user defined commands
 [
@@ -180,7 +180,7 @@
   "<unique>"
 ] @constant.builtin
 
-(augroup_name) @module
+(augroup_name) @namespace
 
 (au_event) @constant
 
@@ -264,9 +264,9 @@
 ((scoped_identifier
   (scope) @_scope
   .
-  (identifier) @boolean)
+  (identifier) @constant.builtin.boolean)
   (#eq? @_scope "v:")
-  (#any-of? @boolean "true" "false"))
+  (#any-of? @constant.builtin.boolean "true" "false"))
 
 ; Operators
 [
