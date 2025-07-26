@@ -1,7 +1,6 @@
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::{self, Deref};
-use std::str::FromStr;
 
 use crate::job::Job;
 use crate::make::{self, MakeFormatType};
@@ -2647,13 +2646,14 @@ fn make(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
+    let make_format_type;
+    match args.get_flag("format") {
+        Some(flag) => make_format_type = MakeFormatType::from(flag),
+        None => make_format_type = MakeFormatType::Default,
+    }
+
     let shell = cx.editor.config().shell.clone();
     let args = args.join(" ");
-    let make_format_type;
-    match MakeFormatType::from_str("clang") {
-        Ok(format_type) => make_format_type = format_type,
-        Err(_) => return Ok(()),
-    }
 
     let callback = async move {
         let output = shell_impl_async(&shell, &args, None).await?;
@@ -3703,12 +3703,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["mk"],
         doc: "Executes the command and fills the make picker with its output.",
         fun: make,
-        // TODO(szulf): change this to proper signature with specyfing type of make cmd
         completer: SHELL_COMPLETER,
         signature: Signature {
-            positionals: (1, Some(2)),
-            raw_after: Some(1),
-            ..Signature::DEFAULT
+            flags: &[
+                Flag {
+                    name: "format",
+                    alias: Some('f'),
+                    doc: "sets the make output format",
+                    completions: Some(&["rust", "gcc", "clang", "msvc"]),
+                },
+            ],
+            ..SHELL_SIGNATURE
         },
     },
 ];

@@ -1,4 +1,4 @@
-use helix_lsp::lsp::{DiagnosticSeverity, Range};
+use helix_lsp::lsp::DiagnosticSeverity;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Default)]
@@ -40,6 +40,7 @@ impl List {
         self.entries.push(entry);
     }
 
+    // TODO(szulf): change this to implementing the IntoIterator trait instead
     pub fn into_iter(self) -> impl Iterator<Item = Entry> {
         self.entries.into_iter()
     }
