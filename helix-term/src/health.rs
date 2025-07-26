@@ -5,7 +5,7 @@ use crossterm::{
 };
 use helix_core::config::{default_lang_config, user_lang_config};
 use helix_loader::grammar::load_runtime_file;
-use std::io::Write;
+use std::{collections::HashSet, io::Write};
 
 #[derive(Copy, Clone)]
 pub enum TsFeature {
@@ -143,6 +143,15 @@ pub fn clipboard() -> std::io::Result<()> {
 }
 
 pub fn languages_all() -> std::io::Result<()> {
+    languages(None)
+}
+
+pub fn languages_selection() -> std::io::Result<()> {
+    let selection = helix_loader::grammar::get_grammar_names().unwrap_or_default();
+    languages(selection)
+}
+
+fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
@@ -205,6 +214,13 @@ pub fn languages_all() -> std::io::Result<()> {
     let check_binary = |cmd: Option<&str>| check_binary_with_name(cmd.map(|cmd| (cmd, cmd)));
 
     for lang in &syn_loader_conf.language {
+        if selection
+            .as_ref()
+            .is_some_and(|s| !s.contains(&lang.language_id))
+        {
+            continue;
+        }
+
         write!(stdout, "{}", fit(&lang.language_id))?;
 
         let mut cmds = lang.language_servers.iter().filter_map(|ls| {
@@ -237,6 +253,14 @@ pub fn languages_all() -> std::io::Result<()> {
             write!(stdout, "{}", fit(""))?;
             writeln!(stdout, "{}", check_binary_with_name(Some(cmd)))?;
         }
+    }
+
+    if selection.is_some() {
+        writeln!(
+            stdout,
+            "\nThis list is filtered according to the 'use-grammars' option in languages.toml file.\n\
+            To see the full list, use the '--health all' or '--health all-languages' option."
+        )?;
     }
 
     Ok(())
@@ -400,9 +424,16 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
 
 pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
     match health_arg.as_deref() {
-        Some("languages") => languages_all()?,
+        Some("languages") => languages_selection()?,
+        Some("all-languages") => languages_all()?,
         Some("clipboard") => clipboard()?,
-        None | Some("all") => {
+        None => {
+            general()?;
+            clipboard()?;
+            writeln!(std::io::stdout().lock())?;
+            languages_selection()?;
+        }
+        Some("all") => {
             general()?;
             clipboard()?;
             writeln!(std::io::stdout().lock())?;
