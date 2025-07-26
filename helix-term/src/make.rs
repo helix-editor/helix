@@ -8,15 +8,12 @@ use helix_view::{
     theme::Style,
     Align,
 };
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::path::{Path, PathBuf};
 use tui::text::Span;
 
 // TODO(szulf): check the not closing error after opening logs on a non modified version of helix
 // TODO(szulf): figure out how to display messages from the make_list the same way as diagnostics
-// and make it togglable i think
+// and make it togglable in the config i think
 
 #[derive(Debug, Clone)]
 pub struct MakePickerData {
@@ -100,25 +97,30 @@ pub fn make_picker(cx: &Context, root: PathBuf) -> MakePicker {
 }
 
 pub enum MakeFormatType {
+    Default,
     Rust,
     Gcc,
     Clang,
     Msvc,
 }
 
-impl FromStr for MakeFormatType {
-    // TODO(szulf): change this later
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "rust" => Ok(MakeFormatType::Rust),
-            "gcc" => Ok(MakeFormatType::Gcc),
-            "clang" => Ok(MakeFormatType::Clang),
-            "msvc" => Ok(MakeFormatType::Msvc),
-            _ => Err(()),
+impl From<&str> for MakeFormatType {
+    fn from(value: &str) -> Self {
+        match value {
+            "rust" => MakeFormatType::Rust,
+            "gcc" => MakeFormatType::Rust,
+            "clang" => MakeFormatType::Clang,
+            "msvc" => MakeFormatType::Msvc,
+            _ => MakeFormatType::Default,
         }
     }
+}
+
+pub fn parse_default<'a, T>(_lines: T) -> Vec<Entry>
+where
+    T: IntoIterator<Item = &'a str>,
+{
+    todo!();
 }
 
 pub fn parse_rust<'a, T>(_lines: T) -> Vec<Entry>
@@ -255,6 +257,7 @@ pub fn parse(format_type: MakeFormatType, source: &str) -> Vec<Entry> {
     let lines = source.lines();
 
     match format_type {
+        MakeFormatType::Default => parse_default(lines),
         MakeFormatType::Rust => parse_rust(lines),
         MakeFormatType::Gcc => parse_gcc(lines),
         MakeFormatType::Clang => parse_clang(lines),
