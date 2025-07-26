@@ -542,12 +542,6 @@ S-tab = "extend_parent_node_start"
             └─ no such value in this scope
 }
 </code></pre>
-<p>The new diagnostic rendering is not yet enabled by default. As soon as end of line or inline diagnostics are enabled the old diagnostics rendering is automatically disabled. The recommended default setting are:</p>
-<pre><code class="language-toml">[editor]
-end-of-line-diagnostics = "hint"
-[editor.inline-diagnostics]
-cursor-line = "warning" # show warnings and errors on the cursorline inline
-</code></pre>
 <h3 id="editorword-completion-section"><a class="header" href="#editorword-completion-section"><code>[editor.word-completion]</code> Section</a></h3>
 <p>Options for controlling completion of words from open buffers.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
