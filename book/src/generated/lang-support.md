@@ -147,6 +147,7 @@
 | log | ✓ |  |  |  |  |
 | lpf | ✓ |  |  |  |  |
 | lua | ✓ | ✓ | ✓ |  | `lua-language-server` |
+| lua-format-string | ✓ |  |  |  |  |
 | luau | ✓ | ✓ | ✓ |  | `luau-lsp` |
 | mail | ✓ | ✓ |  |  |  |
 | make | ✓ |  | ✓ |  |  |
