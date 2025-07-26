@@ -619,7 +619,9 @@ impl EditorView {
 
         if let Some(current_idx) = editor.documents().position(|d| d.id() == current_doc) {
             if let Some(&target_x) = self.bufferline_positions.get(current_idx) {
-                if target_x >= viewport.width
+                if target_x
+                    + Self::calculate_buffer_width(editor.documents.get(&current_doc).unwrap())
+                    > viewport.width
                     || current_idx >= self.bufferline_positions.len().saturating_sub(2)
                 {
                     let scroll_offset = target_x
