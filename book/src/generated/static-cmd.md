@@ -172,6 +172,8 @@
 | `smart_tab` | Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command. | insert: `` <tab> `` |
 | `insert_tab` | Insert tab char | insert: `` <S-tab> `` |
 | `insert_newline` | Insert newline char | insert: `` <C-j> ``, `` <ret> `` |
+| `insert_char_interactive` | Insert an interactively-chosen char |  |
+| `append_char_interactive` | Append an interactively-chosen char |  |
 | `delete_char_backward` | Delete previous char | insert: `` <C-h> ``, `` <backspace> ``, `` <S-backspace> `` |
 | `delete_char_forward` | Delete next char | insert: `` <C-d> ``, `` <del> `` |
 | `delete_word_backward` | Delete previous word | insert: `` <C-w> ``, `` <A-backspace> `` |
