@@ -8,28 +8,43 @@ pub mod menu;
 pub mod overlay;
 pub mod picker;
 pub mod popup;
-mod prompt;
+pub mod prompt;
 mod spinner;
 mod statusline;
 mod text;
+mod text_decorations;
 
 use crate::compositor::Compositor;
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
-pub use completion::{Completion, CompletionItem};
+pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
+use helix_view::theme::Style;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::{DynamicPicker, FileLocation, Picker};
+pub use picker::{Column as PickerColumn, FileLocation, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_view::Editor;
+use tui::text::{Span, Spans};
 
+use std::path::Path;
 use std::{error::Error, path::PathBuf};
+
+struct Utf8PathBuf {
+    path: String,
+    is_dir: bool,
+}
+
+impl AsRef<str> for Utf8PathBuf {
+    fn as_ref(&self) -> &str {
+        &self.path
+    }
+}
 
 pub fn prompt(
     cx: &mut crate::commands::Context,
@@ -82,7 +97,7 @@ pub fn raw_regex_prompt(
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
     let snapshot = doc.selection(view.id).clone();
-    let offset_snapshot = view.offset;
+    let offset_snapshot = doc.view_offset(view.id);
     let config = cx.editor.config();
 
     let mut prompt = Prompt::new(
@@ -94,7 +109,7 @@ pub fn raw_regex_prompt(
                 PromptEvent::Abort => {
                     let (view, doc) = current!(cx.editor);
                     doc.set_selection(view.id, snapshot.clone());
-                    view.offset = offset_snapshot;
+                    doc.set_view_offset(view.id, offset_snapshot);
                 }
                 PromptEvent::Update | PromptEvent::Validate => {
                     // skip empty input
@@ -135,7 +150,7 @@ pub fn raw_regex_prompt(
                         Err(err) => {
                             let (view, doc) = current!(cx.editor);
                             doc.set_selection(view.id, snapshot.clone());
-                            view.offset = offset_snapshot;
+                            doc.set_view_offset(view.id, offset_snapshot);
 
                             if event == PromptEvent::Validate {
                                 let callback = async move {
@@ -170,9 +185,22 @@ pub fn raw_regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker<PathBuf> {
+#[derive(Debug)]
+pub struct FilePickerData {
+    root: PathBuf,
+    directory_style: Style,
+}
+type FilePicker = Picker<PathBuf, FilePickerData>;
+
+pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
+
+    let config = editor.config();
+    let data = FilePickerData {
+        root: root.clone(),
+        directory_style: editor.theme.get("ui.text.directory"),
+    };
 
     let now = Instant::now();
 
@@ -217,7 +245,26 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
     });
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
-    let picker = Picker::new(Vec::new(), root, move |cx, path: &PathBuf, action| {
+    let columns = [PickerColumn::new(
+        "path",
+        |item: &PathBuf, data: &FilePickerData| {
+            let path = item.strip_prefix(&data.root).unwrap_or(item);
+            let mut spans = Vec::with_capacity(3);
+            if let Some(dirs) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+                spans.extend([
+                    Span::styled(dirs.to_string_lossy(), data.directory_style),
+                    Span::styled(std::path::MAIN_SEPARATOR_STR, data.directory_style),
+                ]);
+            }
+            let filename = path
+                .file_name()
+                .expect("normalized paths can't end in `..`")
+                .to_string_lossy();
+            spans.push(Span::raw(filename));
+            Spans::from(spans).into()
+        },
+    )];
+    let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
         if let Err(e) = cx.editor.open(path, action) {
             let err = if let Some(err) = e.source() {
                 format!("{}", err)
@@ -227,7 +274,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
             cx.editor.set_error(err);
         }
     })
-    .with_preview(|_editor, path| Some((path.clone().into(), None)));
+    .with_preview(|_editor, path| Some((path.as_path().into(), None)));
     let injector = picker.injector();
     let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
 
@@ -253,15 +300,87 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
     picker
 }
 
+type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
+
+pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
+    let directory_style = editor.theme.get("ui.text.directory");
+    let directory_content = directory_content(&root)?;
+
+    let columns = [PickerColumn::new(
+        "path",
+        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
+            let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
+            if *is_dir {
+                Span::styled(format!("{}/", name), *directory_style).into()
+            } else {
+                name.into()
+            }
+        },
+    )];
+    let picker = Picker::new(
+        columns,
+        0,
+        directory_content,
+        (root, directory_style),
+        move |cx, (path, is_dir): &(PathBuf, bool), action| {
+            if *is_dir {
+                let new_root = helix_stdx::path::normalize(path);
+                let callback = Box::pin(async move {
+                    let call: Callback =
+                        Callback::EditorCompositor(Box::new(move |editor, compositor| {
+                            if let Ok(picker) = file_explorer(new_root, editor) {
+                                compositor.push(Box::new(overlay::overlaid(picker)));
+                            }
+                        }));
+                    Ok(call)
+                });
+                cx.jobs.callback(callback);
+            } else if let Err(e) = cx.editor.open(path, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+    )
+    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
+
+    Ok(picker)
+}
+
+fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+    let mut content: Vec<_> = std::fs::read_dir(path)?
+        .flatten()
+        .map(|entry| {
+            (
+                entry.path(),
+                std::fs::metadata(entry.path()).is_ok_and(|metadata| metadata.is_dir()),
+            )
+        })
+        .collect();
+
+    content.sort_by(|(path1, is_dir1), (path2, is_dir2)| (!is_dir1, path1).cmp(&(!is_dir2, path2)));
+    if path.parent().is_some() {
+        content.insert(0, (path.join(".."), true));
+    }
+    Ok(content)
+}
+
 pub mod completers {
+    use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
+    use helix_core::command_line::{self, Tokenizer};
     use helix_core::fuzzy::fuzzy_match;
-    use helix_core::syntax::LanguageServerFeature;
+    use helix_core::syntax::config::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
+    use std::collections::BTreeSet;
+    use tui::text::Span;
 
     pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
 
@@ -278,7 +397,7 @@ pub mod completers {
 
         fuzzy_match(input, names, true)
             .into_iter()
-            .map(|(name, _)| ((0..), name))
+            .map(|(name, _)| ((0..), name.into()))
             .collect()
     }
 
@@ -314,6 +433,31 @@ pub mod completers {
         }
     }
 
+    /// Completes names of language servers which are running for the current document.
+    pub fn active_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+        let language_servers = doc!(editor).language_servers().map(|ls| ls.name());
+
+        fuzzy_match(input, language_servers, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), Span::raw(name.to_string())))
+            .collect()
+    }
+
+    /// Completes names of language servers which are configured for the language of the current
+    /// document.
+    pub fn configured_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+        let language_servers = doc!(editor)
+            .language_config()
+            .into_iter()
+            .flat_map(|config| &config.language_servers)
+            .map(|ls| ls.name.as_str());
+
+        fuzzy_match(input, language_servers, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), Span::raw(name.to_string())))
+            .collect()
+    }
+
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
@@ -324,7 +468,7 @@ pub mod completers {
 
         fuzzy_match(input, &*KEYS, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 
@@ -338,7 +482,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
             if is_dir {
                 FileMatch::AcceptIncomplete
@@ -364,14 +508,16 @@ pub mod completers {
     }
 
     pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
-        let Some(options) = doc!(editor)
+        let commands = doc!(editor)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
-            .find_map(|ls| ls.capabilities().execute_command_provider.as_ref())
-        else {
-            return vec![];
-        };
+            .flat_map(|ls| {
+                ls.capabilities()
+                    .execute_command_provider
+                    .iter()
+                    .flat_map(|options| options.commands.iter())
+            });
 
-        fuzzy_match(input, &options.commands, false)
+        fuzzy_match(input, commands, false)
             .into_iter()
             .map(|(name, _)| ((0..), name.to_owned().into()))
             .collect()
@@ -387,7 +533,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
             if is_dir {
                 FileMatch::Accept
@@ -410,7 +556,7 @@ pub mod completers {
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     fn filename_impl<F>(
-        _editor: &Editor,
+        editor: &Editor,
         input: &str,
         git_ignore: bool,
         filter_fn: F,
@@ -468,7 +614,7 @@ pub mod completers {
                         return None;
                     }
 
-                    //let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+                    let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
                     let path = entry.path();
                     let mut path = if is_tilde {
@@ -487,23 +633,35 @@ pub mod completers {
                     }
 
                     let path = path.into_os_string().into_string().ok()?;
-                    Some(Cow::from(path))
+                    Some(Utf8PathBuf { path, is_dir })
                 })
             }) // TODO: unwrap or skip
-            .filter(|path| !path.is_empty());
+            .filter(|path| !path.path.is_empty());
+
+        let directory_color = editor.theme.get("ui.text.directory");
+
+        let style_from_file = |file: Utf8PathBuf| {
+            if file.is_dir {
+                Span::styled(file.path, directory_color)
+            } else {
+                Span::raw(file.path)
+            }
+        };
 
         // if empty, return a list of dirs and files in current dir
         if let Some(file_name) = file_name {
             let range = (input.len().saturating_sub(file_name.len()))..;
             fuzzy_match(&file_name, files, true)
                 .into_iter()
-                .map(|(name, _)| (range.clone(), name))
+                .map(|(name, _)| (range.clone(), style_from_file(name)))
                 .collect()
 
             // TODO: complete to longest common match
         } else {
-            let mut files: Vec<_> = files.map(|file| (end.clone(), file)).collect();
-            files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
+            let mut files: Vec<_> = files
+                .map(|file| (end.clone(), style_from_file(file)))
+                .collect();
+            files.sort_unstable_by(|(_, path1), (_, path2)| path1.content.cmp(&path2.content));
             files
         }
     }
@@ -520,5 +678,65 @@ pub mod completers {
             .into_iter()
             .map(|(name, _)| ((0..), name.into()))
             .collect()
+    }
+
+    pub fn program(_editor: &Editor, input: &str) -> Vec<Completion> {
+        static PROGRAMS_IN_PATH: Lazy<BTreeSet<String>> = Lazy::new(|| {
+            // Go through the entire PATH and read all files into a set.
+            let Some(path) = std::env::var_os("PATH") else {
+                return Default::default();
+            };
+
+            std::env::split_paths(&path)
+                .filter_map(|path| std::fs::read_dir(path).ok())
+                .flatten()
+                .filter_map(|res| {
+                    let entry = res.ok()?;
+                    let metadata = entry.metadata().ok()?;
+                    if metadata.is_file() || metadata.is_symlink() {
+                        entry.file_name().into_string().ok()
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        });
+
+        fuzzy_match(input, PROGRAMS_IN_PATH.iter(), false)
+            .into_iter()
+            .map(|(name, _)| ((0..), name.clone().into()))
+            .collect()
+    }
+
+    /// This expects input to be a raw string of arguments, because this is what Signature's raw_after does.
+    pub fn repeating_filenames(editor: &Editor, input: &str) -> Vec<Completion> {
+        let token = match Tokenizer::new(input, false).last() {
+            Some(token) => token.unwrap(),
+            None => return filename(editor, input),
+        };
+
+        let offset = token.content_start;
+
+        let mut completions = filename(editor, &input[offset..]);
+        for completion in completions.iter_mut() {
+            completion.0.start += offset;
+        }
+        completions
+    }
+
+    pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
+        let (command, args, complete_command) = command_line::split(input);
+
+        if complete_command {
+            return program(editor, command);
+        }
+
+        let mut completions = repeating_filenames(editor, args);
+        for completion in completions.iter_mut() {
+            // + 1 for separator between `command` and `args`
+            completion.0.start += command.len() + 1;
+        }
+
+        completions
     }
 }

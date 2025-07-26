@@ -1,13 +1,86 @@
 ; -------
-; Tree-Sitter doesn't allow overrides in regards to captures,
-; though it is possible to affect the child node of a captured
-; node. Thus, the approach here is to flip the order so that
-; overrides are unnecessary.
+; Basic identifiers
 ; -------
 
+; We do not style ? as an operator on purpose as it allows styling ? differently, as many highlighters do. @operator.special might have been a better scope, but @special is already documented so the change would break themes (including the intent of the default theme)
+"?" @special
+
+(type_identifier) @type
+(identifier) @variable
+(field_identifier) @variable.other.member
+
 ; -------
-; Types
+; Operators
 ; -------
+
+[
+  "*"
+  "'"
+  "->"
+  "=>"
+  "<="
+  "="
+  "=="
+  "!"
+  "!="
+  "%"
+  "%="
+  "&"
+  "&="
+  "&&"
+  "|"
+  "|="
+  "||"
+  "^"
+  "^="
+  "*"
+  "*="
+  "-"
+  "-="
+  "+"
+  "+="
+  "/"
+  "/="
+  ">"
+  "<"
+  ">="
+  ">>"
+  "<<"
+  ">>="
+  "<<="
+  "@"
+  ".."
+  "..="
+  "'"
+] @operator
+
+; -------
+; Paths
+; -------
+
+(use_declaration
+  argument: (identifier) @namespace)
+(use_wildcard
+  (identifier) @namespace)
+(dep_item
+  name: (identifier) @namespace)
+(scoped_use_list
+  path: (identifier)? @namespace)
+(use_list
+  (identifier) @namespace)
+(use_as_clause
+  path: (identifier)? @namespace
+  alias: (identifier) @namespace)
+
+; ---
+; Remaining Paths
+; ---
+
+(scoped_identifier
+  path: (identifier)? @namespace
+  name: (identifier) @namespace)
+(scoped_type_identifier
+  path: (identifier) @namespace)
 
 ; ---
 ; Primitives
@@ -179,6 +252,10 @@
 ; -------
 ; Guess Other Types
 ; -------
+; Other PascalCase identifiers are assumed to be structs.
+
+((identifier) @type
+  (#match? @type "^[A-Z]"))
 
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
@@ -190,40 +267,28 @@
 
 (call_expression
   function: [
-    ((identifier) @type.enum.variant
-      (#match? @type.enum.variant "^[A-Z]"))
+    ((identifier) @constructor
+      (#match? @constructor "^[A-Z]"))
     (scoped_identifier
-      name: ((identifier) @type.enum.variant
-        (#match? @type.enum.variant "^[A-Z]")))
+      name: ((identifier) @constructor
+        (#match? @constructor "^[A-Z]")))
   ])
 
 ; ---
-; Assume that types in match arms are enums and not
-; tuple structs. Same for `if let` expressions.
+; PascalCase identifiers under a path which is also PascalCase
+; are assumed to be constructors if they have methods or fields.
 ; ---
 
-(match_pattern
-    (scoped_identifier
-      name: (identifier) @constructor))
-(tuple_struct_pattern
-    type: [
-      ((identifier) @constructor)
-      (scoped_identifier  
-        name: (identifier) @constructor)
-      ])
-(struct_pattern
-  type: [
-    ((type_identifier) @constructor)
-    (scoped_type_identifier
-      name: (type_identifier) @constructor)
-    ])
-
-; ---
-; Other PascalCase identifiers are assumed to be structs.
-; ---
-
-((identifier) @type
-  (#match? @type "^[A-Z]"))
+(field_expression
+  value: (scoped_identifier
+    path: [
+      (identifier) @type
+      (scoped_identifier
+        name: (identifier) @type)
+    ]
+    name: (identifier) @constructor
+      (#match? @type "^[A-Z]")
+      (#match? @constructor "^[A-Z]")))
 
 ; -------
 ; Functions
@@ -251,86 +316,3 @@
 
 (function_signature_item
   name: (identifier) @function)
-
-; -------
-; Operators
-; -------
-
-[
-  "*"
-  "'"
-  "->"
-  "=>"
-  "<="
-  "="
-  "=="
-  "!"
-  "!="
-  "%"
-  "%="
-  "&"
-  "&="
-  "&&"
-  "|"
-  "|="
-  "||"
-  "^"
-  "^="
-  "*"
-  "*="
-  "-"
-  "-="
-  "+"
-  "+="
-  "/"
-  "/="
-  ">"
-  "<"
-  ">="
-  ">>"
-  "<<"
-  ">>="
-  "<<="
-  "@"
-  ".."
-  "..="
-  "'"
-] @operator
-
-; -------
-; Paths
-; -------
-
-(use_declaration
-  argument: (identifier) @namespace)
-(use_wildcard
-  (identifier) @namespace)
-(dep_item
-  name: (identifier) @namespace)
-(scoped_use_list
-  path: (identifier)? @namespace)
-(use_list
-  (identifier) @namespace)
-(use_as_clause
-  path: (identifier)? @namespace
-  alias: (identifier) @namespace)
-
-; ---
-; Remaining Paths
-; ---
-
-(scoped_identifier
-  path: (identifier)? @namespace
-  name: (identifier) @namespace)
-(scoped_type_identifier
-  path: (identifier) @namespace)
-
-; -------
-; Remaining Identifiers
-; -------
-
-"?" @special
-
-(type_identifier) @type
-(identifier) @variable
-(field_identifier) @variable.other.member

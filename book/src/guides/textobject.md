@@ -1,4 +1,4 @@
-# Adding textobject queries
+## Adding textobject queries
 
 Helix supports textobjects that are language specific, such as functions, classes, etc.
 These textobjects require an accompanying tree-sitter grammar and a `textobjects.scm` query file
@@ -23,10 +23,13 @@ The following [captures][tree-sitter-captures] are recognized:
 | `test.inside`      |
 | `test.around`      |
 | `parameter.inside` |
+| `parameter.around` |
 | `comment.inside`   |
 | `comment.around`   |
 | `entry.inside`     |
 | `entry.around`     |
+| `xml-element.inside` |
+| `xml-element.around` |
 
 [Example query files][textobject-examples] can be found in the helix GitHub repository.
 
@@ -44,6 +47,6 @@ in its `textobjects.scm` file, function navigation should also work automaticall
 `function.movement` should be defined only if the node captured by `function.around`
 doesn't make sense in a navigation context.
 
-[tree-sitter-queries]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
-[tree-sitter-captures]: https://tree-sitter.github.io/tree-sitter/using-parsers#capturing-nodes
+[tree-sitter-queries]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html
+[tree-sitter-captures]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html#capturing-nodes
 [textobject-examples]: https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+path%3A%2A%2A/textobjects.scm&type=Code&ref=advsearch&l=&l=

@@ -71,6 +71,8 @@
     "<"
     ">"
   ] @punctuation.bracket)
+(closure_parameters
+  "|" @punctuation.bracket)
 
 ; ---
 ; Variables
@@ -92,9 +94,17 @@
 (parameter
 	pattern: (identifier) @variable.parameter)
 
+(closure_parameters
+	(identifier) @variable.parameter)
 ; -------
 ; Keywords
 ; -------
+
+(for_expression
+  "for" @keyword.control.repeat)
+
+"in" @keyword.control
+
 [
   "match"
   "if"

@@ -8,7 +8,7 @@
 ; Definitions
 
 (type_parameter
-  (type_identifier) @local.definition)
+  (type_identifier) @local.definition.type.parameter)
 
 ; References
 

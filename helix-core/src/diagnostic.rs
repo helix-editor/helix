@@ -1,10 +1,12 @@
 //! LSP diagnostic utility types.
-use std::fmt;
+use std::{fmt, sync::Arc};
 
+pub use helix_stdx::range::Range;
 use serde::{Deserialize, Serialize};
 
 /// Describes the severity level of a [`Diagnostic`].
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Severity {
     Hint,
     Info,
@@ -16,13 +18,6 @@ impl Default for Severity {
     fn default() -> Self {
         Self::Hint
     }
-}
-
-/// A range of `char`s within the text.
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
-pub struct Range {
-    pub start: usize,
-    pub end: usize,
 }
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Deserialize, Serialize)]
@@ -55,8 +50,35 @@ pub struct Diagnostic {
     pub data: Option<serde_json::Value>,
 }
 
-// TODO turn this into an enum + feature flag when lsp becomes optional
-pub type DiagnosticProvider = LanguageServerId;
+/// The source of a diagnostic.
+///
+/// This type is cheap to clone: all data is either `Copy` or wrapped in an `Arc`.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DiagnosticProvider {
+    Lsp {
+        /// The ID of the language server which sent the diagnostic.
+        server_id: LanguageServerId,
+        /// An optional identifier under which diagnostics are managed by the client.
+        ///
+        /// `identifier` is a field from the LSP "Pull Diagnostics" feature meant to provide an
+        /// optional "namespace" for diagnostics: a language server can respond to a diagnostics
+        /// pull request with an identifier and these diagnostics should be treated as separate
+        /// from push diagnostics. Rust-analyzer uses this feature for example to provide Cargo
+        /// diagnostics with push and internal diagnostics with pull. The push diagnostics should
+        /// not clear the pull diagnostics and vice-versa.
+        identifier: Option<Arc<str>>,
+    },
+    // Future internal features can go here...
+}
+
+impl DiagnosticProvider {
+    pub fn language_server_id(&self) -> Option<LanguageServerId> {
+        match self {
+            Self::Lsp { server_id, .. } => Some(*server_id),
+            // _ => None,
+        }
+    }
+}
 
 // while I would prefer having this in helix-lsp that necessitates a bunch of
 // conversions I would rather not add. I think its fine since this just a very
@@ -69,5 +91,12 @@ slotmap::new_key_type! {
 impl fmt::Display for LanguageServerId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
+    }
+}
+
+impl Diagnostic {
+    #[inline]
+    pub fn severity(&self) -> Severity {
+        self.severity.unwrap_or(Severity::Warning)
     }
 }

@@ -1,4 +1,8 @@
-use crate::{jsonrpc, Error, LanguageServerId, Result};
+use crate::{
+    jsonrpc,
+    lsp::{self, notification::Notification as _},
+    Error, LanguageServerId, Result,
+};
 use anyhow::Context;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
@@ -86,11 +90,12 @@ impl Transport {
     async fn recv_server_message(
         reader: &mut (impl AsyncBufRead + Unpin + Send),
         buffer: &mut String,
+        content: &mut Vec<u8>,
         language_server_name: &str,
     ) -> Result<ServerMessage> {
         let mut content_length = None;
         loop {
-            buffer.truncate(0);
+            buffer.clear();
             if reader.read_line(buffer).await? == 0 {
                 return Err(Error::StreamClosed);
             };
@@ -122,16 +127,16 @@ impl Transport {
         }
 
         let content_length = content_length.context("missing content length")?;
-
-        //TODO: reuse vector
-        let mut content = vec![0; content_length];
-        reader.read_exact(&mut content).await?;
-        let msg = std::str::from_utf8(&content).context("invalid utf8 from server")?;
+        content.resize(content_length, 0);
+        reader.read_exact(content).await?;
+        let msg = std::str::from_utf8(content).context("invalid utf8 from server")?;
 
         info!("{language_server_name} <- {msg}");
 
         // try parsing as output (server response) or call (server request)
         let output: serde_json::Result<ServerMessage> = serde_json::from_str(msg);
+
+        content.clear();
 
         Ok(output?)
     }
@@ -219,10 +224,7 @@ impl Transport {
         language_server_name: &str,
     ) -> Result<()> {
         let (id, result) = match output {
-            jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
-                info!("{language_server_name} <- {}", result);
-                (id, Ok(result))
-            }
+            jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => (id, Ok(result)),
             jsonrpc::Output::Failure(jsonrpc::Failure { id, error, .. }) => {
                 error!("{language_server_name} <- {error}");
                 (id, Err(error.into()))
@@ -254,9 +256,15 @@ impl Transport {
         client_tx: UnboundedSender<(LanguageServerId, jsonrpc::Call)>,
     ) {
         let mut recv_buffer = String::new();
+        let mut content_buffer = Vec::new();
         loop {
-            match Self::recv_server_message(&mut server_stdout, &mut recv_buffer, &transport.name)
-                .await
+            match Self::recv_server_message(
+                &mut server_stdout,
+                &mut recv_buffer,
+                &mut content_buffer,
+                &transport.name,
+            )
+            .await
             {
                 Ok(msg) => {
                     match transport
@@ -289,11 +297,10 @@ impl Transport {
                     }
 
                     // Hack: inject a terminated notification so we trigger code that needs to happen after exit
-                    use lsp_types::notification::Notification as _;
                     let notification =
                         ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
                             jsonrpc: None,
-                            method: lsp_types::notification::Exit::METHOD.to_string(),
+                            method: lsp::notification::Exit::METHOD.to_string(),
                             params: jsonrpc::Params::None,
                         }));
                     match transport
@@ -338,8 +345,8 @@ impl Transport {
 
         // Determine if a message is allowed to be sent early
         fn is_initialize(payload: &Payload) -> bool {
-            use lsp_types::{
-                notification::{Initialized, Notification},
+            use lsp::{
+                notification::Initialized,
                 request::{Initialize, Request},
             };
             match payload {
@@ -357,7 +364,7 @@ impl Transport {
         }
 
         fn is_shutdown(payload: &Payload) -> bool {
-            use lsp_types::request::{Request, Shutdown};
+            use lsp::request::{Request, Shutdown};
             matches!(payload, Payload::Request { value: jsonrpc::MethodCall { method, .. }, .. } if method == Shutdown::METHOD)
         }
 
@@ -370,12 +377,11 @@ impl Transport {
                     // server successfully initialized
                     is_pending = false;
 
-                    use lsp_types::notification::Notification;
                     // Hack: inject an initialized notification so we trigger code that needs to happen after init
                     let notification = ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
                         jsonrpc: None,
 
-                        method: lsp_types::notification::Initialized::METHOD.to_string(),
+                        method: lsp::notification::Initialized::METHOD.to_string(),
                         params: jsonrpc::Params::None,
                     }));
                     let language_server_name = &transport.name;

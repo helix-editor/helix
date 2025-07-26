@@ -1,16 +1,17 @@
 use std::iter::Peekable;
-use std::ops::Range;
 use std::sync::Arc;
 
 use helix_core::Rope;
 use helix_event::RenderLockGuard;
 use imara_diff::Algorithm;
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::{RwLock, RwLockReadGuard};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
 use crate::diff::worker::DiffWorker;
+
+pub use imara_diff::Hunk;
 
 mod line_cache;
 mod worker;
@@ -34,10 +35,11 @@ struct DiffInner {
     hunks: Vec<Hunk>,
 }
 
+/// Representation of a diff that can be updated.
 #[derive(Clone, Debug)]
 pub struct DiffHandle {
     channel: UnboundedSender<Event>,
-    diff: Arc<Mutex<DiffInner>>,
+    diff: Arc<RwLock<DiffInner>>,
     inverted: bool,
 }
 
@@ -48,12 +50,12 @@ impl DiffHandle {
 
     fn new_with_handle(diff_base: Rope, doc: Rope) -> (DiffHandle, JoinHandle<()>) {
         let (sender, receiver) = unbounded_channel();
-        let diff: Arc<Mutex<DiffInner>> = Arc::default();
+        let diff: Arc<RwLock<DiffInner>> = Arc::default();
         let worker = DiffWorker {
             channel: receiver,
             diff: diff.clone(),
-            new_hunks: Vec::default(),
             diff_finished_notify: Arc::default(),
+            diff_alloc: imara_diff::Diff::default(),
         };
         let handle = tokio::spawn(worker.run(diff_base, doc));
         let differ = DiffHandle {
@@ -64,13 +66,15 @@ impl DiffHandle {
         (differ, handle)
     }
 
+    /// Switch base and modified texts' roles
     pub fn invert(&mut self) {
         self.inverted = !self.inverted;
     }
 
+    /// Load the actual diff
     pub fn load(&self) -> Diff {
         Diff {
-            diff: self.diff.lock(),
+            diff: self.diff.read(),
             inverted: self.inverted,
         }
     }
@@ -88,6 +92,7 @@ impl DiffHandle {
         self.update_document_impl(doc, self.inverted, Some(RenderLock { lock, timeout }))
     }
 
+    /// Updates the base text of the diff. Returns if the update was successful.
     pub fn update_diff_base(&self, diff_base: Rope) -> bool {
         self.update_document_impl(diff_base, !self.inverted, None)
     }
@@ -118,57 +123,16 @@ const MAX_DIFF_LINES: usize = 64 * u16::MAX as usize;
 // cap average line length to 128 for files with MAX_DIFF_LINES
 const MAX_DIFF_BYTES: usize = MAX_DIFF_LINES * 128;
 
-/// A single change in a file potentially spanning multiple lines
-/// Hunks produced by the differs are always ordered by their position
-/// in the file and non-overlapping.
-/// Specifically for any two hunks `x` and `y` the following properties hold:
-///
-/// ``` no_compile
-/// assert!(x.before.end <= y.before.start);
-/// assert!(x.after.end <= y.after.start);
-/// ```
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Hunk {
-    pub before: Range<u32>,
-    pub after: Range<u32>,
-}
-
-impl Hunk {
-    /// Can be used instead of `Option::None` for better performance
-    /// because lines larger then `i32::MAX` are not supported by `imara-diff` anyways.
-    /// Has some nice properties where it usually is not necessary to check for `None` separately:
-    /// Empty ranges fail contains checks and also fails smaller then checks.
-    pub const NONE: Hunk = Hunk {
-        before: u32::MAX..u32::MAX,
-        after: u32::MAX..u32::MAX,
-    };
-
-    /// Inverts a change so that `before`
-    pub fn invert(&self) -> Hunk {
-        Hunk {
-            before: self.after.clone(),
-            after: self.before.clone(),
-        }
-    }
-
-    pub fn is_pure_insertion(&self) -> bool {
-        self.before.is_empty()
-    }
-
-    pub fn is_pure_removal(&self) -> bool {
-        self.after.is_empty()
-    }
-}
-
 /// A list of changes in a file sorted in ascending
 /// non-overlapping order
 #[derive(Debug)]
 pub struct Diff<'a> {
-    diff: MutexGuard<'a, DiffInner>,
+    diff: RwLockReadGuard<'a, DiffInner>,
     inverted: bool,
 }
 
 impl Diff<'_> {
+    /// Returns the base [Rope] of the [Diff]
     pub fn diff_base(&self) -> &Rope {
         if self.inverted {
             &self.diff.doc
@@ -177,6 +141,7 @@ impl Diff<'_> {
         }
     }
 
+    /// Returns the [Rope] being compared against
     pub fn doc(&self) -> &Rope {
         if self.inverted {
             &self.diff.diff_base
@@ -207,6 +172,7 @@ impl Diff<'_> {
         self.len() == 0
     }
 
+    /// Gives the index of the first hunk after the given line, if one exists.
     pub fn next_hunk(&self, line: u32) -> Option<u32> {
         let hunk_range = if self.inverted {
             |hunk: &Hunk| hunk.before.clone()
@@ -233,6 +199,7 @@ impl Diff<'_> {
         }
     }
 
+    /// Gives the index of the first hunk before the given line, if one exists.
     pub fn prev_hunk(&self, line: u32) -> Option<u32> {
         let hunk_range = if self.inverted {
             |hunk: &Hunk| hunk.before.clone()
@@ -276,6 +243,7 @@ impl Diff<'_> {
         }
     }
 
+    /// Returns the index of the hunk containing the given line if it exists.
     pub fn hunk_at(&self, line: u32, include_removal: bool) -> Option<u32> {
         let hunk_range = if self.inverted {
             |hunk: &Hunk| hunk.before.clone()

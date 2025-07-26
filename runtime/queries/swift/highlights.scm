@@ -4,9 +4,50 @@
   ["\\(" ")"] @punctuation.special)
 
 ["." ";" ":" "," ] @punctuation.delimiter
-["(" ")" "[" "]" "{" "}"] @punctuation.bracket
+["(" ")" "[" "]" "{" "}" "<" ">"] @punctuation.bracket
+
+; Operators
+[
+  "!"
+  "?"
+  "+"
+  "-"
+  "\\"
+  "*"
+  "/"
+  "%"
+  "="
+  "+="
+  "-="
+  "*="
+  "/="
+  "<"
+  ">"
+  "<="
+  ">="
+  "++"
+  "--"
+  "&"
+  "~"
+  "%="
+  "!="
+  "!=="
+  "=="
+  "==="
+  "??"
+
+  "->"
+
+  "..<"
+  "..."
+  (custom_operator)
+] @operator
+
+"?" @type
+(type_annotation "!" @type)
 
 ; Identifiers
+(simple_identifier) @variable
 (attribute) @variable
 (type_identifier) @type
 (self_expression) @variable.builtin
@@ -24,6 +65,7 @@
 ] @keyword
 
 (function_declaration (simple_identifier) @function.method)
+(protocol_function_declaration (simple_identifier) @function.method)
 (init_declaration ["init" @constructor])
 (deinit_declaration ["deinit" @constructor])
 
@@ -91,6 +133,9 @@
    (#match? @type "^[A-Z]"))
 (call_expression (simple_identifier) @keyword (#eq? @keyword "defer")) ; defer { ... }
 
+(navigation_suffix
+  (simple_identifier) @variable.other.member)
+
 (try_operator) @operator
 (try_operator ["try" @keyword])
 
@@ -147,48 +192,7 @@
 (integer_literal) @constant.numeric.integer
 (real_literal) @constant.numeric.float
 (boolean_literal) @constant.builtin.boolean
-"nil" @variable.builtin
-
-"?" @type
-(type_annotation "!" @type)
-
-(simple_identifier) @variable
-
-; Operators
-[
-  "!"
-  "?"
-  "+"
-  "-"
-  "*"
-  "/"
-  "%"
-  "="
-  "+="
-  "-="
-  "*="
-  "/="
-  "<"
-  ">"
-  "<="
-  ">="
-  "++"
-  "--"
-  "&"
-  "~"
-  "%="
-  "!="
-  "!=="
-  "=="
-  "==="
-  "??"
-
-  "->"
-
-  "..<"
-  "..."
-  (custom_operator)
-] @operator
+"nil" @constant.builtin
 
 (value_parameter_pack ["each" @keyword])
 (value_pack_expansion ["repeat" @keyword])

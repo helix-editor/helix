@@ -1,10 +1,8 @@
-use std::mem::swap;
-use std::ops::Range;
 use std::sync::Arc;
 
 use helix_core::{Rope, RopeSlice};
-use imara_diff::intern::InternedInput;
-use parking_lot::Mutex;
+use imara_diff::{IndentHeuristic, IndentLevel, InternedInput};
+use parking_lot::RwLock;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::Notify;
 use tokio::time::{timeout, timeout_at, Duration};
@@ -14,16 +12,15 @@ use crate::diff::{
 };
 
 use super::line_cache::InternedRopeLines;
-use super::Hunk;
 
 #[cfg(test)]
 mod test;
 
 pub(super) struct DiffWorker {
     pub channel: UnboundedReceiver<Event>,
-    pub diff: Arc<Mutex<DiffInner>>,
-    pub new_hunks: Vec<Hunk>,
+    pub diff: Arc<RwLock<DiffInner>>,
     pub diff_finished_notify: Arc<Notify>,
+    pub diff_alloc: imara_diff::Diff,
 }
 
 impl DiffWorker {
@@ -73,18 +70,29 @@ impl DiffWorker {
     /// `self.new_hunks` is always empty after this function runs.
     /// To improve performance this function tries to reuse the allocation of the old diff previously stored in `self.line_diffs`
     fn apply_hunks(&mut self, diff_base: Rope, doc: Rope) {
-        let mut diff = self.diff.lock();
+        let mut diff = self.diff.write();
         diff.diff_base = diff_base;
         diff.doc = doc;
-        swap(&mut diff.hunks, &mut self.new_hunks);
+        diff.hunks.clear();
+        diff.hunks.extend(self.diff_alloc.hunks());
+        drop(diff);
         self.diff_finished_notify.notify_waiters();
-        self.new_hunks.clear();
     }
 
     fn perform_diff(&mut self, input: &InternedInput<RopeSlice>) {
-        imara_diff::diff(ALGORITHM, input, |before: Range<u32>, after: Range<u32>| {
-            self.new_hunks.push(Hunk { before, after })
-        })
+        self.diff_alloc.compute_with(
+            ALGORITHM,
+            &input.before,
+            &input.after,
+            input.interner.num_tokens(),
+        );
+        self.diff_alloc.postprocess_with(
+            &input.before,
+            &input.after,
+            IndentHeuristic::new(|token| {
+                IndentLevel::for_ascii_line(input.interner[token].bytes(), 4)
+            }),
+        );
     }
 }
 

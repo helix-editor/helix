@@ -1,6 +1,6 @@
 # Author: Alexis Mousset <contact@amousset.me>
 # Adapted from https://protesilaos.com/emacs/modus-themes, by Protesilaos Stavrou
-# Version 4.4.0
+# Version 4.6.0
 #
 
 # Syntax highlighting
@@ -72,9 +72,10 @@ punctuation = "fg-dim"
 
 "ui.popup" = { fg = "fg-main", bg = "bg-dim" }
 "ui.window" = { fg = "fg-dim" }
-"ui.help" = { fg = "fg-main", bg = "bg-dim" }
+"ui.help" = { fg = "fg-main", bg = "bg-active" }
 "ui.gutter" = { bg = "bg-dim" }
 "ui.text" = "fg-main"
+"ui.text.directory" = "blue"
 "ui.text.focus" = { fg = "fg-main", bg = "bg-completion", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "fg-dim" }
 "ui.virtual" = "bg-active"

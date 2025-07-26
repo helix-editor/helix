@@ -106,7 +106,7 @@ impl KeyTrieNode {
                 (events.join(", "), desc)
             })
             .collect();
-        Info::new(&self.name, &body)
+        Info::new(self.name.clone(), &body)
     }
 }
 
@@ -177,6 +177,19 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
                     .map_err(serde::de::Error::custom)?,
             )
         }
+
+        // Prevent macro keybindings from being used in command sequences.
+        // This is meant to be a temporary restriction pending a larger
+        // refactor of how command sequences are executed.
+        if commands
+            .iter()
+            .any(|cmd| matches!(cmd, MappableCommand::Macro { .. }))
+        {
+            return Err(serde::de::Error::custom(
+                "macro keybindings may not be used in command sequences",
+            ));
+        }
+
         Ok(KeyTrie::Sequence(commands))
     }
 
@@ -199,6 +212,7 @@ impl KeyTrie {
         // recursively visit all nodes in keymap
         fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
             match node {
+                KeyTrie::MappableCommand(MappableCommand::Macro { .. }) => {}
                 KeyTrie::MappableCommand(cmd) => {
                     let name = cmd.name();
                     if name != "no_op" {
@@ -587,11 +601,7 @@ mod tests {
                     MappableCommand::select_all,
                     MappableCommand::Typable {
                         name: "pipe".to_string(),
-                        args: vec!{
-                            "sed".to_string(),
-                            "-E".to_string(),
-                            "'s/\\s+$//g'".to_string()
-                        },
+                        args: "sed -E 's/\\s+$//g'".to_string(),
                         doc: "".to_string(),
                     },
                 })

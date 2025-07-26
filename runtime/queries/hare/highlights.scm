@@ -1,22 +1,5 @@
-[
-  "f32"
-  "f64"
-  "i16"
-  "i32"
-  "i64"
-  "i8"
-  "int"
-  "rune"
-  "str"
-  "u16"
-  "u32"
-  "u64"
-  "u8"
-  "uint"
-  "uintptr"
-  "void"
-] @type
-
+(type) @type
+(type "const" @type)
 
 [
   "else"
@@ -36,28 +19,23 @@
   "break"
 ] @keyword.control.repeat
 
-[
-  "return"
-  "yield"
-] @keyword.control.return
+"return" @keyword.control.return
 
 [
   "abort"
   "assert"
 ] @keyword.control.exception
 
-[
-  "def"
-  "fn"
-] @keyword.function
+"fn" @keyword.function
 
 [
   "alloc"
   "append"
   "as"
   "bool"
-  "char"
+  "case"
   "const"
+  "def"
   "defer"
   "delete"
   "enum"
@@ -68,12 +46,13 @@
   "match"
   "nullable"
   "offset"
-  "size"
-  "static"
   "struct"
   "type"
   "union"
+  "yield"
 ] @keyword
+
+"static" @keyword.storage.modifier
 
 [
   "."  
@@ -137,15 +116,19 @@
   "null"
   "true"
 ] @constant.builtin
+(literal "void") @constant.builtin
 
-(string_constant) @string
+(identifier) @variable
+
+(string_literal) @string
 (escape_sequence) @constant.character.escape
-(rune_constant) @string
-(integer_constant) @constant.numeric.integer 
-(floating_constant) @constant.numeric.float
+(rune_literal) @string
+(integer_literal) @constant.numeric.integer
+(floating_literal) @constant.numeric.float
 
 (call_expression
   (postfix_expression) @function)
+(size_expression "size" @function.builtin)
 
 (function_declaration
   name: (identifier) @function)
@@ -157,5 +140,4 @@
 (decl_attr) @special
 (fndec_attrs) @special
 
-(identifier) @variable
-
+(struct_union_field (name)) @variable

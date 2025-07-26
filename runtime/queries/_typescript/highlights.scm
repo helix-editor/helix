@@ -64,6 +64,10 @@
   (array_pattern
     (identifier) @variable.parameter))
 
+(public_field_definition) @punctuation.special
+(this_type) @variable.builtin
+(type_predicate) @keyword.operator
+
 ; Punctuation
 ; -----------
 
@@ -82,6 +86,7 @@
 [
   "abstract"
   "declare"
+  "module"
   "export"
   "infer"
   "implements"
@@ -107,9 +112,9 @@
 ; Types
 ; -----
 
+(type_identifier) @type
 (type_parameter
   name: (type_identifier) @type.parameter)
-(type_identifier) @type
 (predefined_type) @type.builtin
 
 ; Type arguments and parameters
@@ -127,6 +132,9 @@
     ">"
   ] @punctuation.bracket)
 
+(omitting_type_annotation) @punctuation.special
+(opting_type_annotation) @punctuation.special
+
 ; Literals
 ; --------
 
@@ -134,9 +142,6 @@
   (template_literal_type)
 ] @string
 
-; Tokens
-; ------
-
-(template_type
-  "${" @punctuation.special
-  "}" @punctuation.special) @embedded
+(import_require_clause
+  (identifier) "="
+  ("require") @keyword)

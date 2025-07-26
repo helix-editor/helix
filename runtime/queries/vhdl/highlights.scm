@@ -1,338 +1,377 @@
-(comment) @comment
+(line_comment) @comment.line
 
-; Keywords
+(block_comment) @comment.block
+
+(identifier) @variable
+
 [
-  ; vhdl 08
-  "abs"
   "access"
   "after"
   "alias"
-  "all"
-  "and"
   "architecture"
   "array"
-  "assert"
   "attribute"
-  "begin"
   "block"
   "body"
-  "buffer"
-  "bus"
-  "case"
   "component"
   "configuration"
-  "constant"
+  "context"
   "disconnect"
-  "downto"
-  "else"
-  "elsif"
-  "end"
   "entity"
-  "exit"
   "file"
-  "for"
-  "function"
+  "force"
+  "generate"
   "generic"
   "group"
-  "guarded"
-  "if"
-  "impure"
-  "in"
-  "inertial"
-  "inout"
-  "is"
   "label"
-  "library"
-  "linkage"
   "literal"
-  "loop"
   "map"
-  "mod"
-  "nand"
   "new"
-  "next"
-  "nor"
-  "not"
-  "null"
-  "of"
-  "on"
-  "open"
-  "or"
-  "others"
-  "out"
   "package"
+  "parameter"
   "port"
-  "postponed"
-  "procedure"
-  "process"
-  "protected"
-  "pure"
-  "range"
-  "record"
-  "register"
-  "reject"
-  "rem"
-  "report"
-  "return"
-  "rol"
-  "ror"
-  "select"
-  "severity"
-  "shared"
-  "signal"
-  "sla"
-  "sll"
-  "sra"
-  "srl"
-  "subtype"
-  "then"
-  "to"
-  "transport"
-  "type"
-  "unaffected"
-  "units"
-  "until"
-  "use"
-  "variable"
-  "wait"
-  "when"
-  "while"
-  "with"
-  "xnor"
-  "xor"
-  ; vhdl 08
-  "context"
-  "force"
   "property"
+  "range"
+  "reject"
   "release"
   "sequence"
+  "transport"
+  "unaffected"
+  "view"
+  "vunit"
 ] @keyword
 
 [
-  ; vhdl 02
-  "boolean"
-  "bit"
-  "bit_vector"
-  ;"character"
-  ;"severity_level"
-  ;"integer"
-  ;"real"
-  ;"time"
-  ;"natural"
-  ;"positive"
-  "string"
-  ;"line"
-  ;"text"
-  ;"side"
-  ;"unsigned"
-  ;"signed"
-  ;"delay_length"
-  ;"file_open_kind"
-  ;"file_open_status"
-  ;"std_logic"
-  ;"std_logic_vector"
-  ;"std_ulogic"
-  ;"std_ulogic_vector"
-  ; vhdl 08
-  ;"boolean_vector"
-  ;"integer_vector"
-  ;"real_vector"
-  ;"time_vector"
-  ; math types
-  ;"complex"
-  ;"complex_polar"
-  ;"positive_real"
-  ;"principal_value"
-] @type.builtin
+  (ALL)
+  (OTHERS)
+  "<>"
+  (DEFAULT)
+  (OPEN)
+] @constant.builtin
 
 [
-  ; vhdl 02
-  "base"
-  "left"
-  "right"
-  "high"
-  "low"
-  "pos"
-  "val"
-  "succ"
-  "pred"
-  "leftof"
-  "rightof"
-  "range"
-  "reverse_range"
-  "length"
-  "delayed"
-  "stable"
-  "quiet"
-  "transaction"
-  "event"
-  "active"
-  "last_event"
-  "last_active"
-  "last_value"
-  "driving"
-  "driving_value"
-  "ascending"
-  "value"
-  "image"
-  "simple_name"
-  "instance_name"
-  "path_name"
-  ;"foreign"
-  ; vhdl 08
-  "instance_name"
-  "path_name"
-] @attribute
+  "is"
+  "begin"
+  "end"
+] @keyword
 
-;[
-  ; vhdl 02
-  ;"now"
-  ;"resolved"
-  ;"rising_edge"
-  ;"falling_edge"
-  ;"read"
-  ;"readline"
-  ;"hread"
-  ;"oread"
-  ;"write"
-  ;"writeline"
-  ;"hwrite"
-  ;"owrite"
-  ;"endfile"
-  ;"resize"
-  ;"is_X"
-  ;"std_match"
-  ;"shift_left"
-  ;"shift_right"
-  ;"rotate_left"
-  ;"rotate_right"
-  ;"to_unsigned"
-  ;"to_signed"
-  ;"to_integer"
-  ;"to_stdLogicVector"
-  ;"to_stdULogic"
-  ;"to_stdULogicVector"
-  ;"to_bit"
-  ;"to_bitVector"
-  ;"to_X01"
-  ;"to_X01Z"
-  ;"to_UX01"
-  ;"to_01"
-  ;"conv_unsigned"
-  ;"conv_signed"
-  ;"conv_integer"
-  ;"conv_std_logic_vector"
-  ;"shl"
-  ;"shr"
-  ;"ext"
-  ;"sxt"
-  ;"deallocate"
-  ; vhdl 08
-  ;"finish"
-  ;"flush"
-  ;"justify"
-  ;"maximum"
-  ;"minimum"
-  ;"resolution_limit"
-  ;"stop"
-  ;"swrite"
-  ;"tee"
-  ;"to_binarystring"
-  ;"to_bstring"
-  ;"to_hexstring"
-  ;"to_hstring"
-  ;"to_octalstring"
-  ;"to_ostring"
-  ;"to_string"
-  ; vhdl math
-  ;"arccos"
-  ;"arccosh"
-  ;"arcsin"
-  ;"arcsinh"
-  ;"arctan"
-  ;"arctanh"
-  ;"arg"
-  ;"cbrt"
-  ;"ceil"
-  ;"cmplx"
-  ;"complex_to_polar"
-  ;"conj"
-  ;"cos"
-  ;"cosh"
-  ;"exp"
-  ;"floor"
-  ;"get_principal_value"
-  ;"log"
-  ;"log10"
-  ;"log2"
-  ;"polar_to_complex"
-  ;"realmax"
-  ;"realmin"
-  ;"round"
-  ;"sign"
-  ;"sin"
-  ;"sinh"
-  ;"sqrt"
-  ;"tan"
-  ;"tanh"
-  ;"trunc"
-  ;"uniform"
-;] @function.builtin
+(parameter_specification
+  "in" @keyword)
 
-; Operators
 [
-  "+"
-  "-"
+  "process"
+  "wait"
+  "on"
+  "until"
+] @keyword
+
+(timeout_clause
+  "for" @keyword)
+
+[
+  "function"
+  "procedure"
+] @keyword.function
+
+[
+  "to"
+  "downto"
+  "of"
+] @keyword.operator
+
+[
+  "library"
+  "use"
+] @keyword.control.import
+
+[
+  "subtype"
+  "type"
+  "record"
+  "units"
+  "constant"
+  "signal"
+  "variable"
+] @keyword.storage.type
+
+[
+  "protected"
+  "private"
+  "pure"
+  "impure"
+  "inertial"
+  "postponed"
+  "guarded"
+  "out"
+  "inout"
+  "linkage"
+  "buffer"
+  "register"
+  "bus"
+  "shared"
+] @keyword.storage.modifier
+
+(mode
+  "in" @keyword.storage.modifier)
+
+(force_mode
+  "in" @keyword.storage.modifier)
+
+[
+  "while"
+  "loop"
+  "next"
+  "exit"
+] @keyword.control.repeat
+
+(for_loop
+  "for" @keyword.control.repeat)
+
+(block_configuration
+  "for" @keyword)
+
+(configuration_specification
+  "for" @keyword)
+
+(component_configuration
+  "for" @keyword)
+
+(end_for
+  "for" @keyword)
+
+"return" @keyword.control.return
+
+[
+  "assert"
+  "report"
+  "severity"
+] @keyword
+
+[
+  "if"
+  "then"
+  "elsif"
+  "case"
+] @keyword.control.conditional
+
+(when_element
+  "when" @keyword.control.conditional)
+
+(case_generate_alternative
+  "when" @keyword.control.conditional)
+
+(else_statement
+  "else" @keyword.control.conditional)
+
+(else_generate
+  "else" @keyword.control.conditional)
+
+[
+  "with"
+  "select"
+] @keyword.control.conditional
+
+(when_expression
+  "when" @keyword.control.conditional)
+
+(else_expression
+  "else" @keyword.control.conditional)
+
+(else_waveform
+  "else" @keyword.control.conditional)
+
+(else_expression_or_unaffected
+  "else" @keyword.control.conditional)
+
+"null" @constant.builtin
+
+(user_directive) @keyword.directive
+
+(protect_directive) @keyword.directive
+
+(warning_directive) @keyword.directive
+
+(error_directive) @keyword.directive
+
+(if_conditional_analysis
+  "if" @keyword.directive)
+
+(if_conditional_analysis
+  "then" @keyword.directive)
+
+(elsif_conditional_analysis
+  "elsif" @keyword.directive)
+
+(else_conditional_analysis
+  "else" @keyword.directive)
+
+(end_conditional_analysis
+  "end" @keyword.directive)
+
+(end_conditional_analysis
+  "if" @keyword.directive)
+
+(directive_body) @keyword.directive
+
+(directive_constant_builtin) @constant.builtin
+
+(directive_error) @keyword.directive
+
+(directive_protect) @keyword.directive
+
+(directive_warning) @keyword.directive
+
+[
+  (condition_conversion)
+  (relational_operator)
+  (sign)
+  (adding_operator)
+  (exponentiate)
+  (variable_assignment)
+  (signal_assignment)
   "*"
   "/"
-  "**"
-  "abs"
-  "not"
-  "mod"
-  "rem"
-  "&"
-  "sll"
-  "srl"
-  "sla"
-  "sra"
-  "rol"
-  "ror"
-  "="
-  "/="
-  "?="
-  "?/="
-  "?<"
-  "?<="
-  "?>"
-  "?>="
-  "<"
-  "<="
-  ">"
-  ">="
-  "and"
-  "or"
-  "nand"
-  "nor"
-  "xor"
-  "xnor"
-  ":="
-  "<="
-  "??"
+  ":"
+  "=>"
 ] @operator
 
 [
-  ";"
+  (unary_operator)
+  (logical_operator)
+  (shift_operator)
+  "mod"
+  "not"
+  "rem"
+] @keyword.operator
+
+[
+  "'"
   ","
-] @punctuation.delimiter
+  "."
+  ";"
+] @punctuation.delimiters
 
 [
   "("
   ")"
-  "'"
+  "["
+  "]"
+  "<<"
+  ">>"
 ] @punctuation.bracket
 
-(full_type_declaration "type" name: (identifier) @type)
-(signal_declaration "signal" (identifier_list) @variable)
-(variable_declaration "variable" (identifier_list) @variable)
-(constant_declaration "constant" (identifier_list) @variable)
+"@" @punctuation.special
+
+[
+  (decimal_integer)
+  (string_literal_std_logic)
+] @constant.numeric.integer
+
+(decimal_float) @constant.numeric.float
+
+(bit_string_length) @type.parameter
+
+(bit_string_base) @type.builtin
+
+(bit_string_value) @constant.numeric.integer
+
+(based_literal
+  (based_base) @type.builtin
+  (based_integer) @constant.numeric.integer)
+
+(based_literal
+  (based_base) @type.builtin
+  (based_float) @constant.numeric.float)
+
+(string_literal) @string
+
+(character_literal) @constant.character
+
+(library_constant_std_logic) @constant.builtin
+
+(library_constant) @constant.builtin
+
+(library_function) @function.builtin
+
+(library_constant_boolean) @constant.builtin.boolean
+
+(library_constant_character) @constant.character
+
+(unit) @keyword.storage.modifier
+
+(library_constant_unit) @keyword.storage.modifier
+
+(label) @label
+
+(generic_map_aspect
+  "generic" @constructor
+  "map" @constructor)
+
+(port_map_aspect
+  "port" @constructor
+  "map" @constructor)
+
+(selection
+  (identifier) @variable.other.member)
+
+(_
+  view: (_) @type)
+
+(_
+  type: (_) @type)
+
+(_
+  library: (_) @namespace)
+
+(_
+  package: (_) @namespace)
+
+(_
+  entity: (_) @namespace)
+
+(_
+  component: (_) @namespace)
+
+(_
+  configuration: (_) @type.parameter)
+
+(_
+  architecture: (_) @type.parameter)
+
+(_
+  function: (_) @function)
+
+(_
+  procedure: (_) @function.method)
+
+(_
+  attribute: (_) @attribute)
+
+(_
+  constant: (_) @constant)
+
+(_
+  generic: (_) @variable.parameter)
+
+(_
+  view: (name
+    (_)) @type)
+
+(_
+  type: (name
+    (_)) @type)
+
+(_
+  entity: (name
+    (_)) @namespace)
+
+(_
+  component: (name
+    (_)) @namespace)
+
+(_
+  configuration: (name
+    (_)) @namespace)
+
+(library_type) @type.builtin
 
