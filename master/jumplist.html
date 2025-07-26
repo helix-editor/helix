@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Pickers</title>
+        <title>Jumplist</title>
 
 
         <!-- Custom HTML head -->
@@ -131,7 +131,7 @@
                         <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/pickers.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/jumplist.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -160,22 +160,64 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h2 id="using-pickers"><a class="header" href="#using-pickers">Using pickers</a></h2>
-<p>Helix has a variety of pickers, which are interactive windows used to select various kinds of items. These include a file picker, global search picker, and more. Most pickers are accessed via keybindings in <a href="./keymap.html#space-mode">space mode</a>. Pickers have their own <a href="./keymap.html#picker">keymap</a> for navigation.</p>
-<h3 id="filtering-picker-results"><a class="header" href="#filtering-picker-results">Filtering Picker Results</a></h3>
-<p>Most pickers perform fuzzy matching using <a href="https://github.com/junegunn/fzf?tab=readme-ov-file#search-syntax">fzf syntax</a>. Two exceptions are the global search picker, which uses regex, and the workspace symbol picker, which passes search terms to the language server. Note that OR operations (<code>|</code>) are not currently supported.</p>
-<p>If a picker shows multiple columns, you may apply the filter to a specific column by prefixing the column name with <code>%</code>. Column names can be shortened to any prefix, so <code>%p</code>, <code>%pa</code> or <code>%pat</code> all mean the same as <code>%path</code>. For example, a query of <code>helix %p .toml !lang</code> in the global search picker searches for the term "helix" within files with paths ending in ".toml" but not including "lang".</p>
-<p>You can insert the contents of a <a href="./registers.html">register</a> using <code>Ctrl-r</code> followed by a register name. For example, one could insert the currently selected text using <code>Ctrl-r</code>-<code>.</code>, or the directory of the current file using <code>Ctrl-r</code>-<code>%</code> followed by <code>Ctrl-w</code> to remove the last path section. The global search picker will use the contents of the <a href="./registers.html#default-registers">search register</a> if you press <code>Enter</code> without typing a filter. For example, pressing <code>*</code>-<code>Space-/</code>-<code>Enter</code> will start a global search for the currently selected text.</p>
+                        <h2 id="using-the-jumplist"><a class="header" href="#using-the-jumplist">Using the jumplist</a></h2>
+<p>To help with quick navigation, Helix maintains a list of "jumps" called the jumplist.
+Whenever you make a significant movement (see next section), Helix stores your selections from before the move as a jump.
+A jump serves as a kind of checkpoint, allowing you to jump to a separate location, make edits, and return to where you were with your previous selections.
+This way, the jumplist tracks both your previous location and your selections.
+You can manually save a jump by using <code>Ctrl-s</code>.
+To jump backward in the jumplist, use <code>Ctrl-o</code>; to go forward, use <code>Ctrl-i</code>. To view and select from the full jumplist, use <code>Space-j</code> to open the jumplist picker.</p>
+<h3 id="what-makes-a-jump"><a class="header" href="#what-makes-a-jump">What makes a jump</a></h3>
+<p>The following is a non-exhaustive list of which actions add a jump to the jumplist:</p>
+<ul>
+<li>Switching buffers
+<ul>
+<li>Using the buffer picker, going to the next/previous buffer</li>
+<li>Going to the last accessed/modified file</li>
+<li>Making a new file (<code>:new FILE</code>)</li>
+<li>Opening a file (<code>:open FILE</code>)
+<ul>
+<li>Includes <code>:log-open</code>, <code>:config-open</code>, <code>:config-open-workspace</code>, <code>:tutor</code></li>
+</ul>
+</li>
+<li>Navigating by pickers, global search, or the file explorer</li>
+<li><code>goto_file</code> (<code>gf</code>)</li>
+</ul>
+</li>
+<li>Big in-file movements
+<ul>
+<li><code>select_regex</code> (<code>s</code>)</li>
+<li><code>split_regex</code> (<code>S</code>)</li>
+<li><code>search</code> (<code>/</code>)</li>
+<li><code>keep_selections</code> and <code>remove_selections</code> (<code>K</code> and <code>&lt;A-K&gt;</code>)</li>
+<li><code>goto_file_start</code> (<code>gg</code>)</li>
+<li><code>goto_file_end</code></li>
+<li><code>goto_last_line</code> (<code>ge</code>)</li>
+<li><code>:goto 123</code> / <code>:123</code> / <code>123G</code></li>
+<li><code>goto_definition</code> (<code>gd</code>)</li>
+<li><code>goto_declaration</code> (<code>gD</code>)</li>
+<li><code>goto_type_definition</code> (<code>gy</code>)</li>
+<li><code>goto_reference</code> (<code>gr</code>)</li>
+</ul>
+</li>
+<li>Other
+<ul>
+<li><code>Ctrl-s</code> manually creates a jump</li>
+<li>Trying to close a modified buffer can switch you to that buffer and create a jump</li>
+<li>The debugger can create jumps as you jump stack frames</li>
+</ul>
+</li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="syntax-aware-motions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="pickers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="jumplist.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="keymap.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -185,11 +227,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="syntax-aware-motions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="pickers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="jumplist.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="keymap.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
