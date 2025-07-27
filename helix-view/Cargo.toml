@@ -54,6 +54,8 @@ thiserror.workspace = true
 
 kstring = "2.0"
 
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
 

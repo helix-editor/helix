@@ -32,6 +32,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
 use std::time::SystemTime;
+use xxhash_rust::xxh3::Xxh3Default;
 
 use helix_core::{
     editor_config::EditorConfig,
@@ -188,6 +189,8 @@ pub struct Document {
     // Last time we wrote to the file. This will carry the time the file was last opened if there
     // were no saves.
     last_saved_time: SystemTime,
+
+    last_saved_state: DocumentStateSignature,
 
     last_saved_revision: usize,
     version: i32, // should be usize?
@@ -691,6 +694,8 @@ impl Document {
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
+        let last_saved_state = DocumentStateSignature::compute(&text);
+
         Self {
             id: DocumentId::default(),
             active_snippet: None,
@@ -716,6 +721,7 @@ impl Document {
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
             last_saved_time: SystemTime::now(),
+            last_saved_state,
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_servers: HashMap::new(),
@@ -967,10 +973,11 @@ impl Document {
         let path = match path {
             Some(path) => helix_stdx::path::canonicalize(path),
             None => {
-                if self.path.is_none() {
+                if let Some(ref path) = self.path {
+                    path.clone()
+                } else {
                     bail!("Can't save with no path set!");
                 }
-                self.path.as_ref().unwrap().clone()
             }
         };
 
@@ -1740,7 +1747,8 @@ impl Document {
             self.last_saved_revision,
             current_revision
         );
-        current_revision != self.last_saved_revision || !self.changes.is_empty()
+        !self.changes.is_empty() || !self.last_saved_state.is_equal(&self.text)
+        // current_revision != self.last_saved_revision || !self.changes.is_empty()
     }
 
     /// Save modifications to history, and so [`Self::is_modified`] will return false.
@@ -1752,7 +1760,7 @@ impl Document {
     }
 
     /// Set the document's latest saved revision to the given one.
-    pub fn set_last_saved_revision(&mut self, rev: usize, save_time: SystemTime) {
+    pub fn set_last_saved(&mut self, rev: usize, save_time: SystemTime, text: &Rope) {
         log::debug!(
             "doc {} revision updated {} -> {}",
             self.id,
@@ -1761,6 +1769,7 @@ impl Document {
         );
         self.last_saved_revision = rev;
         self.last_saved_time = save_time;
+        self.last_saved_state = DocumentStateSignature::compute(text);
     }
 
     /// Get the document's latest saved revision.
@@ -2283,6 +2292,43 @@ impl Document {
     /// (since it often means inlay hints have been fully deactivated).
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
+    }
+}
+
+pub struct DocumentStateSignature {
+    /// Lines can be used to optimize the diffing of another state to this one
+    /// by not even computing the hash if the line count is different.
+    pub lines: usize,
+    pub hash: u64,
+}
+
+impl DocumentStateSignature {
+    pub fn compute(text: &Rope) -> Self {
+        let mut hasher = Xxh3Default::new();
+
+        for chunk in text.chunks() {
+            hasher.update(chunk.as_bytes());
+        }
+
+        Self {
+            lines: text.len_lines(),
+            hash: hasher.digest(),
+        }
+    }
+
+    pub fn is_equal(&self, text: &Rope) -> bool {
+        if self.lines != text.len_lines() {
+            // short-circuit.
+            return false;
+        }
+
+        let mut hasher = Xxh3Default::new();
+
+        for chunk in text.chunks() {
+            hasher.update(chunk.as_bytes());
+        }
+
+        self.hash == hasher.digest()
     }
 }
 

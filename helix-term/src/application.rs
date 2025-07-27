@@ -570,7 +570,11 @@ impl Application {
             doc_save_event.revision
         );
 
-        doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
+        doc.set_last_saved(
+            doc_save_event.revision,
+            doc_save_event.save_time,
+            &doc_save_event.text,
+        );
 
         let lines = doc_save_event.text.len_lines();
         let mut sz = doc_save_event.text.len_bytes() as f32;
