@@ -169,6 +169,10 @@ impl<T: Item> Menu<T> {
     }
 
     pub fn selection(&self) -> Option<&T> {
+        if self.options.len() == 1 {
+            return Some(&self.options[0]);
+        }
+
         self.cursor.and_then(|cursor| {
             self.matches
                 .get(cursor)
@@ -177,6 +181,10 @@ impl<T: Item> Menu<T> {
     }
 
     pub fn selection_mut(&mut self) -> Option<&mut T> {
+        if self.options.len() == 1 {
+            return Some(&mut self.options[0]);
+        }
+
         self.cursor.and_then(|cursor| {
             self.matches
                 .get(cursor)
