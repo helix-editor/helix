@@ -380,6 +380,8 @@ impl MappableCommand {
         search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
+        local_search_grep, "Local search in buffer",
+        local_search_fuzzy, "Fuzzy local search in buffer",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
@@ -2674,6 +2676,395 @@ fn global_search(cx: &mut Context) {
     })
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
+
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
+/// Local grep search in buffer
+fn local_search_grep(cx: &mut Context) {
+    #[derive(Debug)]
+    struct FileResult {
+        path: PathBuf,
+        line_num: usize,
+        line_content: String,
+    }
+
+    impl FileResult {
+        fn new(path: &Path, line_num: usize, line_content: String) -> Self {
+            Self {
+                path: path.to_path_buf(),
+                line_num,
+                line_content,
+            }
+        }
+    }
+
+    struct LocalSearchConfig {
+        smart_case: bool,
+        file_picker_config: helix_view::editor::FilePickerConfig,
+        number_style: Style,
+    }
+
+    let editor_config = cx.editor.config();
+    let config = LocalSearchConfig {
+        smart_case: editor_config.search.smart_case,
+        file_picker_config: editor_config.file_picker.clone(),
+        number_style: cx.editor.theme.get("constant.numeric.integer"),
+    };
+
+    let columns = [
+        PickerColumn::new("line", |item: &FileResult, config: &LocalSearchConfig| {
+            let line_num = (item.line_num + 1).to_string();
+            // files can never contain more than 99_999_999 lines
+            // thus using maximum line length to be 8 for this formatter is valid
+            let max_line_num_length = 8;
+            // whitespace padding to align results after the line number
+            let padding_length = max_line_num_length - line_num.len();
+            let padding = " ".repeat(padding_length);
+            // create column value to be displayed in the picker
+            Cell::from(Spans::from(vec![
+                Span::styled(line_num, config.number_style),
+                Span::raw(padding),
+            ]))
+        }),
+        PickerColumn::new("", |item: &FileResult, _config: &LocalSearchConfig| {
+            // extract line content to be displayed in the picker
+            // create column value to be displayed in the picker
+            Cell::from(Spans::from(vec![Span::raw(&item.line_content)]))
+        }),
+    ];
+
+    let get_files = |query: &str,
+                     editor: &mut Editor,
+                     config: std::sync::Arc<LocalSearchConfig>,
+                     injector: &ui::picker::Injector<_, _>| {
+        if query.is_empty() {
+            return async { Ok(()) }.boxed();
+        }
+
+        let search_root = helix_stdx::env::current_working_dir();
+        if !search_root.exists() {
+            return async { Err(anyhow::anyhow!("Current working directory does not exist")) }
+                .boxed();
+        }
+
+        // Only read the current document (not other documents opened in the buffer)
+        let doc = doc!(editor);
+        let documents = vec![(doc.path().cloned(), doc.text().to_owned())];
+
+        let matcher = match RegexMatcherBuilder::new()
+            .case_smart(config.smart_case)
+            .build(query)
+        {
+            Ok(matcher) => {
+                // Clear any "Failed to compile regex" errors out of the statusline.
+                editor.clear_status();
+                matcher
+            }
+            Err(err) => {
+                log::info!("Failed to compile search pattern in global search: {}", err);
+                return async { Err(anyhow::anyhow!("Failed to compile regex")) }.boxed();
+            }
+        };
+
+        let dedup_symlinks = config.file_picker_config.deduplicate_links;
+        let absolute_root = search_root
+            .canonicalize()
+            .unwrap_or_else(|_| search_root.clone());
+
+        let injector = injector.clone();
+        async move {
+            let searcher = SearcherBuilder::new()
+                .binary_detection(BinaryDetection::quit(b'\x00'))
+                .build();
+            WalkBuilder::new(search_root)
+                .hidden(config.file_picker_config.hidden)
+                .parents(config.file_picker_config.parents)
+                .ignore(config.file_picker_config.ignore)
+                .follow_links(config.file_picker_config.follow_symlinks)
+                .git_ignore(config.file_picker_config.git_ignore)
+                .git_global(config.file_picker_config.git_global)
+                .git_exclude(config.file_picker_config.git_exclude)
+                .max_depth(config.file_picker_config.max_depth)
+                .filter_entry(move |entry| {
+                    filter_picker_entry(entry, &absolute_root, dedup_symlinks)
+                })
+                .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
+                .add_custom_ignore_filename(".helix/ignore")
+                .build_parallel()
+                .run(|| {
+                    let mut searcher = searcher.clone();
+                    let matcher = matcher.clone();
+                    let injector = injector.clone();
+                    let documents = &documents;
+                    Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                        let entry = match entry {
+                            Ok(entry) => entry,
+                            Err(_) => return WalkState::Continue,
+                        };
+
+                        match entry.file_type() {
+                            Some(entry) if entry.is_file() => {}
+                            // skip everything else
+                            _ => return WalkState::Continue,
+                        };
+
+                        let mut stop = false;
+
+                        // Maximum line length of the content displayed within the result picker.
+                        // User should be allowed to control this to accomodate their monitor width.
+                        // TODO: Expose this setting to the user so they can control it.
+                        let local_search_result_line_length = 80;
+
+                        let sink = sinks::UTF8(|line_num, line_content| {
+                            stop = injector
+                                .push(FileResult::new(
+                                    entry.path(),
+                                    line_num as usize - 1,
+                                    line_content[0..std::cmp::min(
+                                        local_search_result_line_length,
+                                        line_content.len(),
+                                    )]
+                                        .to_string(),
+                                ))
+                                .is_err();
+
+                            Ok(!stop)
+                        });
+                        let doc = documents.iter().find(|&(doc_path, _)| {
+                            doc_path
+                                .as_ref()
+                                .is_some_and(|doc_path| doc_path == entry.path())
+                        });
+
+                        // search in current document
+                        let result = if let Some((_, doc)) = doc {
+                            // there is already a buffer for this file
+                            // search the buffer instead of the file because it's faster
+                            // and captures new edits without requiring a save
+                            if searcher.multi_line_with_matcher(&matcher) {
+                                // in this case a continuous buffer is required
+                                // convert the rope to a string
+                                let text = doc.to_string();
+                                searcher.search_slice(&matcher, text.as_bytes(), sink)
+                            } else {
+                                searcher.search_reader(
+                                    &matcher,
+                                    RopeReader::new(doc.slice(..)),
+                                    sink,
+                                )
+                            }
+                        } else {
+                            // Note: This is a hack!
+                            // We ignore all other files.
+                            // We only search an empty string (to satisfy rust's return type).
+                            searcher.search_slice(&matcher, "".to_owned().as_bytes(), sink)
+                        };
+
+                        if let Err(err) = result {
+                            log::error!("Local search error: {}, {}", entry.path().display(), err);
+                        }
+                        if stop {
+                            WalkState::Quit
+                        } else {
+                            WalkState::Continue
+                        }
+                    })
+                });
+            Ok(())
+        }
+        .boxed()
+    };
+
+    let reg = cx.register.unwrap_or('/');
+    cx.editor.registers.last_search_register = reg;
+
+    let picker = Picker::new(
+        columns,
+        1, // contents
+        [],
+        config,
+        move |cx, FileResult { path, line_num, .. }, action| {
+            let doc = match cx.editor.open(path, action) {
+                Ok(id) => doc_mut!(cx.editor, &id),
+                Err(e) => {
+                    cx.editor
+                        .set_error(format!("Failed to open file '{}': {}", path.display(), e));
+                    return;
+                }
+            };
+
+            let line_num = *line_num;
+            let view = view_mut!(cx.editor);
+            let text = doc.text();
+            if line_num >= text.len_lines() {
+                cx.editor.set_error(
+                    "The line you jumped to does not exist anymore because the file has changed.",
+                );
+                return;
+            }
+            let start = text.line_to_char(line_num);
+            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+
+            doc.set_selection(view.id, Selection::single(start, end));
+            if action.align_view(view, doc.id()) {
+                align_view(doc, view, Align::Center);
+            }
+        },
+    )
+    .with_preview(|_editor, FileResult { path, line_num, .. }| {
+        Some((path.as_path().into(), Some((*line_num, *line_num))))
+    })
+    .with_history_register(Some(reg))
+    .with_dynamic_query(get_files, Some(275));
+
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn local_search_fuzzy(cx: &mut Context) {
+    #[derive(Debug)]
+    struct FileResult {
+        path: std::sync::Arc<PathBuf>,
+        line_num: usize,
+        file_contents_byte_start: usize,
+        file_contents_byte_end: usize,
+    }
+
+    struct LocalSearchData {
+        file_contents: String,
+        number_style: Style,
+    }
+
+    let current_document = doc!(cx.editor);
+    let Some(current_document_path) = current_document.path() else {
+        cx.editor.set_error("Failed to get current document path");
+        return;
+    };
+
+    let file_contents = std::fs::read_to_string(current_document_path).unwrap();
+
+    let current_document_path = std::sync::Arc::new(current_document_path.clone());
+
+    let file_results: Vec<FileResult> = file_contents
+        .lines()
+        .enumerate()
+        .filter_map(|(line_num, line)| {
+            if !line.trim().is_empty() {
+                // SAFETY: The offsets will be used to index back into the original `file_contents` String
+                // as a byte slice. Since the `file_contents` will be moved into the `Picker` as part of
+                // `editor_data`, we know that the `Picker` will take ownership of the underlying String,
+                // so it will be valid for displaying the `Span` as long as the user uses the `Picker`
+                // (the `Picker` gets dropped only when a new `Picker` is created). Furthermore, the
+                // process of reconstructing a `&str` back requires that we have access to the original
+                // `String` anyways so we can index into it, as is the case when we construct the `Span`
+                // when creating the `PickerColumn`s, so we know that we are returning the correct
+                // substring from the original `file_contents`.
+                // In fact, since we only store offsets, and accessing them from safe rust, there is
+                // no risk of memory safety (like our &str not living long enough). The only real
+                // bug would be moving out the original underlying `String` (which we obviously
+                // don't do). This would lead to an out of bounds crash in the `PickerColumn` function
+                // call, or a crash when we recreate back the &str if the new underlying `String`
+                // makes it so that our byte offsets index into the middle of a Unicode grapheme cluster.
+                // Last but not least, it could make it so that we do display the lines correctly,
+                // but these are from a different underlying `String` than the original, which would be
+                // different from the lines in the current buffer.
+                let beg =
+                    unsafe { line.as_ptr().byte_offset_from(file_contents.as_ptr()) } as usize;
+                let end = beg + line.len();
+                let result = FileResult {
+                    path: current_document_path.clone(),
+                    line_num,
+                    file_contents_byte_start: beg,
+                    file_contents_byte_end: end,
+                };
+                Some(result)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let config = LocalSearchData {
+        number_style: cx.editor.theme.get("constant.numeric.integer"),
+        file_contents,
+    };
+
+    let columns = [
+        PickerColumn::new("line", |item: &FileResult, config: &LocalSearchData| {
+            let line_num = (item.line_num + 1).to_string();
+            // files can never contain more than 99_999_999 lines
+            // thus using maximum line length to be 8 for this formatter is valid
+            let max_line_num_length = 8;
+            // whitespace padding to align results after the line number
+            let padding_length = max_line_num_length - line_num.len();
+            let padding = " ".repeat(padding_length);
+            // create column value to be displayed in the picker
+            Cell::from(Spans::from(vec![
+                Span::styled(line_num, config.number_style),
+                Span::raw(padding),
+            ]))
+        }),
+        PickerColumn::new("", |item: &FileResult, config: &LocalSearchData| {
+            // extract line content to be displayed in the picker
+            let slice = &config.file_contents.as_bytes()
+                [item.file_contents_byte_start..item.file_contents_byte_end];
+            let content = std::str::from_utf8(slice).unwrap();
+            // create column value to be displayed in the picker
+            Cell::from(Spans::from(vec![Span::raw(content)]))
+        }),
+    ];
+
+    let reg = cx.register.unwrap_or('/');
+    cx.editor.registers.last_search_register = reg;
+
+    let picker = Picker::new(
+        columns,
+        1, // contents
+        [],
+        config,
+        move |cx, FileResult { path, line_num, .. }, action| {
+            let doc = match cx.editor.open(path, action) {
+                Ok(id) => doc_mut!(cx.editor, &id),
+                Err(e) => {
+                    cx.editor
+                        .set_error(format!("Failed to open file '{}': {}", path.display(), e));
+                    return;
+                }
+            };
+
+            let line_num = *line_num;
+            let view = view_mut!(cx.editor);
+            let text = doc.text();
+            if line_num >= text.len_lines() {
+                cx.editor.set_error(
+                    "The line you jumped to does not exist anymore because the file has changed.",
+                );
+                return;
+            }
+            let start = text.line_to_char(line_num);
+            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+
+            doc.set_selection(view.id, Selection::single(start, end));
+            if action.align_view(view, doc.id()) {
+                align_view(doc, view, Align::Center);
+            }
+        },
+    )
+    .with_preview(|_editor, FileResult { path, line_num, .. }| {
+        Some((path.as_path().into(), Some((*line_num, *line_num))))
+    })
+    .with_history_register(Some(reg));
+
+    let injector = picker.injector();
+    let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
+    for file_result in file_results {
+        if injector.push(file_result).is_err() {
+            break;
+        }
+        if std::time::Instant::now() >= timeout {
+            break;
+        }
+    }
 
     cx.push_layer(Box::new(overlaid(picker)));
 }
