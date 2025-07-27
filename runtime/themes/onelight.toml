@@ -33,6 +33,7 @@
 
 "comment" = { fg = "grey", modifiers = ["italic"] }
 "comment.line" = { fg = "grey", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "grey", modifiers = ["italic"] }
 "comment.block" = { fg = "grey", modifiers = ["italic"] }
 "comment.block.documentation" = { fg = "grey", modifiers = ["italic"] }
 

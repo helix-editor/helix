@@ -1,0 +1,13 @@
+# Gruvbox Material Dark Hard for Helix
+# Original Author: @sainnhe (https://github.com/sainnhe/gruvbox-material)
+# Base theme ported by: @satoqz
+# Palette ported by: @ivan-shymkiv
+# License: MIT
+
+inherits = "gruvbox_material_dark_medium"
+
+[palette]
+bg0 = "#1d2021"
+bg1 = "#282828"
+bg2 = "#3c3836"
+bg3 = "#504945"

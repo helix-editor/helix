@@ -100,8 +100,9 @@
 
 'comment' = { fg = "gray", modifiers = ["italic"] } # This is a comment.
 'comment.line' = { } # Line comments, like this.
+'comment.line.documentation' = { } # Doc comments, e.g '///' in rust.
 'comment.block' = { } # Block comments, like /* this */ in some languages.
-'comment.block.documentation' = { } # Doc comments, e.g '///' in rust.
+'comment.block.documentation' = { } # Doc comments, e.g '/** */' in rust.
 
 'variable' = { fg = "light-orange" }  # Variable names.
 # 'variable.builtin' = { } # Language reserved variables: `this`, `self`, `super`, etc.

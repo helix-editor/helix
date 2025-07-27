@@ -36,6 +36,7 @@
 "ui.virtual.indent-guide" = { fg = "black" } # Vertical indent width guides
 "ui.virtual.inlay-hint" = { fg = "comment", bg = "bg2" } # Default style for inlay hints of all kinds
 "ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold"] } # Style for virtual jump labels
+"ui.virtual.wrap" = { fg = "fg3" } # Soft-wrap indicator.
 
 "ui.statusline" = { fg = "fg2", bg = "bg0" } # Status line.
 "ui.statusline.inactive" = { fg = "fg3", bg = "bg0" } # Status line in unfocused windows.
@@ -106,7 +107,8 @@
 "string.special.url" = { fg = "cyan", modifiers = ["bold"] } # String containing a web URL.
 
 "comment" = { fg = "comment" } # This is a comment.
-"comment.block.documentation" = { fg = "comment", modifiers = ["bold"] } # Doc comments, e.g '///' in rust.
+"comment.block.documentation" = { fg = "comment", modifiers = ["bold"] } # Block doc comments, e.g '/** */' in rust.
+"comment.line.documentation" = { fg = "comment", modifiers = ["bold"] } # Line doc comments, e.g '///' in rust.
 
 "variable" = { fg = "white" }  # Variable names.
 "variable.builtin" = { fg = "red" } # Language reserved variables: `this`, `self`, `super`, etc.

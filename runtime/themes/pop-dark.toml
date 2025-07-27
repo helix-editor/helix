@@ -71,6 +71,7 @@ namespace = { fg = 'orangeL' }
 'string.special.symbol' = { fg = 'orangeW' }
 'comment' = { fg = 'greyC', modifiers = ['italic'] }
 'comment.line' = { fg = 'greyC', modifiers = ['italic'] }
+'comment.line.documentation' = { fg = 'greyC', modifiers = ['italic'] }
 'comment.block' = { fg = 'greyC', modifiers = ['italic'] }
 'comment.block.documentation' = { fg = 'greyC', modifiers = ['italic'] }
 'variable' = { fg = 'greyT' }

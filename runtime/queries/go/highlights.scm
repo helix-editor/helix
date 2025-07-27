@@ -7,16 +7,13 @@
 
 (package_identifier) @namespace
 
-(parameter_declaration (identifier) @variable.parameter)
-(variadic_parameter_declaration (identifier) @variable.parameter)
-
 (const_spec
   name: (identifier) @constant)
 
 (type_spec 
   name: (type_identifier) @constructor)
 
-(keyed_element (literal_element (identifier) @variable.other.member))
+(keyed_element . (literal_element (identifier) @variable.other.member))
 (field_declaration
   name: (field_identifier) @variable.other.member)
 
@@ -183,8 +180,9 @@
 [
   (interpreted_string_literal)
   (raw_string_literal)
-  (rune_literal)
 ] @string
+
+(rune_literal) @constant.character
 
 (escape_sequence) @constant.character.escape
 

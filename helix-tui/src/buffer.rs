@@ -1,3 +1,4 @@
+//! Contents of a terminal screen. A [Buffer] is made up of [Cell]s.
 use crate::text::{Span, Spans};
 use helix_core::unicode::width::UnicodeWidthStr;
 use std::cmp::min;
@@ -5,7 +6,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 
-/// A buffer cell
+/// One cell of the terminal. Contains one stylized grapheme.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell {
     pub symbol: String,
@@ -17,28 +18,33 @@ pub struct Cell {
 }
 
 impl Cell {
+    /// Set the cell's grapheme
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
         self.symbol.clear();
         self.symbol.push_str(symbol);
         self
     }
 
+    /// Set the cell's grapheme to a [char]
     pub fn set_char(&mut self, ch: char) -> &mut Cell {
         self.symbol.clear();
         self.symbol.push(ch);
         self
     }
 
+    /// Set the foreground [Color]
     pub fn set_fg(&mut self, color: Color) -> &mut Cell {
         self.fg = color;
         self
     }
 
+    /// Set the background [Color]
     pub fn set_bg(&mut self, color: Color) -> &mut Cell {
         self.bg = color;
         self
     }
 
+    /// Set the [Style] of the cell
     pub fn set_style(&mut self, style: Style) -> &mut Cell {
         if let Some(c) = style.fg {
             self.fg = c;
@@ -58,6 +64,7 @@ impl Cell {
         self
     }
 
+    /// Returns the current style of the cell
     pub fn style(&self) -> Style {
         Style::default()
             .fg(self.fg)
@@ -67,6 +74,7 @@ impl Cell {
             .add_modifier(self.modifier)
     }
 
+    /// Resets the cell to a default blank state
     pub fn reset(&mut self) {
         self.symbol.clear();
         self.symbol.push(' ');
@@ -326,43 +334,44 @@ impl Buffer {
             return (x, y);
         }
 
-        let max_offset = min(
-            self.area.right() as usize - 1,
-            width.saturating_add(x as usize),
-        );
-        let mut start_index = self.index_of(x, y);
-        let mut end_index = self.index_of(max_offset as u16, y);
-
-        if truncate_end {
-            self.content[end_index].set_symbol("…");
-            end_index -= 1;
-        }
+        let mut index = self.index_of(x, y);
+        let mut rendered_width = 0;
+        let mut graphemes = string.grapheme_indices(true);
 
         if truncate_start {
-            self.content[start_index].set_symbol("…");
-            start_index += 1;
+            for _ in 0..graphemes.next().map(|(_, g)| g.width()).unwrap_or_default() {
+                self.content[index].set_symbol("…");
+                index += 1;
+                rendered_width += 1;
+            }
         }
 
-        let graphemes = string.grapheme_indices(true);
-
-        for (byte_offset, s) in graphemes.skip(truncate_start as usize) {
-            if start_index > end_index {
+        for (byte_offset, s) in graphemes {
+            let grapheme_width = s.width();
+            if truncate_end && rendered_width + grapheme_width >= width {
                 break;
             }
-            let width = s.width();
-            if width == 0 {
+            if grapheme_width == 0 {
                 continue;
             }
 
-            self.content[start_index].set_symbol(s);
-            self.content[start_index].set_style(style(byte_offset));
+            self.content[index].set_symbol(s);
+            self.content[index].set_style(style(byte_offset));
 
             // Reset following cells if multi-width (they would be hidden by the grapheme):
-            for i in start_index + 1..start_index + width {
+            for i in index + 1..index + grapheme_width {
                 self.content[i].reset();
             }
 
-            start_index += width;
+            index += grapheme_width;
+            rendered_width += grapheme_width;
+        }
+
+        if truncate_end {
+            for _ in 0..width.saturating_sub(rendered_width) {
+                self.content[index].set_symbol("…");
+                index += 1;
+            }
         }
 
         (x, y)
@@ -494,6 +503,8 @@ impl Buffer {
         (x_offset as u16, y)
     }
 
+    /// Print at most the first `width` characters of a [Spans]  if enough space is available
+    /// until the end of the line. Appends a `…` at the end of truncated lines.
     pub fn set_spans_truncated(&mut self, x: u16, y: u16, spans: &Spans, width: u16) -> (u16, u16) {
         // prevent panic if out of range
         if !self.in_bounds(x, y) || width == 0 {
@@ -535,6 +546,8 @@ impl Buffer {
         (x_offset as u16, y)
     }
 
+    /// Print at most the first `width` characters of a [Spans] if enough space is available
+    /// until the end of the line
     pub fn set_spans(&mut self, x: u16, y: u16, spans: &Spans, width: u16) -> (u16, u16) {
         let mut remaining_width = width;
         let mut x = x;
@@ -556,6 +569,8 @@ impl Buffer {
         (x, y)
     }
 
+    /// Print at most the first `width` characters of a [Span] if enough space is available
+    /// until the end of the line
     pub fn set_span(&mut self, x: u16, y: u16, span: &Span, width: u16) -> (u16, u16) {
         self.set_stringn(x, y, span.content.as_ref(), width as usize, span.style)
     }
@@ -572,6 +587,7 @@ impl Buffer {
         }
     }
 
+    /// Set all cells in the [area](Rect) to the given [Style]
     pub fn set_style(&mut self, area: Rect, style: Style) {
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
