@@ -5318,16 +5318,6 @@ enum ReorderStrategy {
     Reverse,
 }
 
-/// Like `usize::wrapping_sub`, but provide a custom range from `0` to `range_length`
-fn wrapping_sub_in_range(index: usize, range_length: usize, delta: usize) -> usize {
-    (index + range_length - delta) % range_length
-}
-
-/// Like `usize::wrapping_add`, but provide a custom range from `0` to `range_length`
-fn wrapping_add_in_range(index: usize, range_length: usize, delta: usize) -> usize {
-    (index + range_length + delta) % range_length
-}
-
 fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
     let count = cx.count;
     let (view, doc) = current!(cx.editor);
@@ -5345,11 +5335,13 @@ fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
     let primary_index = match strategy {
         ReorderStrategy::RotateForward => {
             ranges.rotate_right(rotate_by);
-            wrapping_add_in_range(selection.primary_index(), ranges.len(), rotate_by)
+            // Like `usize::wrapping_add`, but provide a custom range from `0` to `ranges.len()`
+            (selection.primary_index() + ranges.len() + rotate_by) % ranges.len()
         }
         ReorderStrategy::RotateBackward => {
             ranges.rotate_left(rotate_by);
-            wrapping_sub_in_range(selection.primary_index(), ranges.len(), rotate_by)
+            // Like `usize::wrapping_sub`, but provide a custom range from `0` to `ranges.len()`
+            (selection.primary_index() + ranges.len() - rotate_by) % ranges.len()
         }
         ReorderStrategy::Reverse => {
             if rotate_by % 2 == 0 {
