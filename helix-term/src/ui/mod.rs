@@ -185,6 +185,22 @@ pub fn raw_regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
+/// We want to exclude files that the editor can't handle yet
+fn get_excluded_types() -> ignore::types::Types {
+    use ignore::types::TypesBuilder;
+    let mut type_builder = TypesBuilder::new();
+    type_builder
+        .add(
+            "compressed",
+            "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
+        )
+        .expect("Invalid type definition");
+    type_builder.negate("all");
+    type_builder
+        .build()
+        .expect("failed to build excluded_types")
+}
+
 #[derive(Debug)]
 pub struct FilePickerData {
     root: PathBuf,
@@ -193,7 +209,7 @@ pub struct FilePickerData {
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
 pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
-    use ignore::{types::TypesBuilder, WalkBuilder};
+    use ignore::WalkBuilder;
     use std::time::Instant;
 
     let config = editor.config();
@@ -208,7 +224,8 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
 
     let mut walk_builder = WalkBuilder::new(&root);
-    walk_builder
+
+    let mut files = walk_builder
         .hidden(config.file_picker.hidden)
         .parents(config.file_picker.parents)
         .ignore(config.file_picker.ignore)
@@ -218,31 +235,18 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .git_exclude(config.file_picker.git_exclude)
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .max_depth(config.file_picker.max_depth)
-        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
-
-    walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
-    walk_builder.add_custom_ignore_filename(".helix/ignore");
-
-    // We want to exclude files that the editor can't handle yet
-    let mut type_builder = TypesBuilder::new();
-    type_builder
-        .add(
-            "compressed",
-            "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
-        )
-        .expect("Invalid type definition");
-    type_builder.negate("all");
-    let excluded_types = type_builder
+        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks))
+        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
+        .add_custom_ignore_filename(".helix/ignore")
+        .types(get_excluded_types())
         .build()
-        .expect("failed to build excluded_types");
-    walk_builder.types(excluded_types);
-    let mut files = walk_builder.build().filter_map(|entry| {
-        let entry = entry.ok()?;
-        if !entry.file_type()?.is_file() {
-            return None;
-        }
-        Some(entry.into_path())
-    });
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            if !entry.file_type()?.is_file() {
+                return None;
+            }
+            Some(entry.into_path())
+        });
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
     let columns = [PickerColumn::new(
@@ -304,7 +308,7 @@ type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
-    let directory_content = directory_content(&root)?;
+    let directory_content = directory_content(&root, editor)?;
 
     let columns = [PickerColumn::new(
         "path",
@@ -350,21 +354,47 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     Ok(picker)
 }
 
-fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
-    let mut content: Vec<_> = std::fs::read_dir(path)?
-        .flatten()
-        .map(|entry| {
-            (
-                entry.path(),
-                std::fs::metadata(entry.path()).is_ok_and(|metadata| metadata.is_dir()),
-            )
+fn directory_content(path: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+    use ignore::WalkBuilder;
+
+    let config = editor.config();
+
+    let mut walk_builder = WalkBuilder::new(path);
+
+    let mut content: Vec<(PathBuf, bool)> = walk_builder
+        .hidden(config.file_explorer.hidden)
+        .parents(config.file_explorer.parents)
+        .ignore(config.file_explorer.ignore)
+        .follow_links(config.file_explorer.follow_symlinks)
+        .git_ignore(config.file_explorer.git_ignore)
+        .git_global(config.file_explorer.git_global)
+        .git_exclude(config.file_explorer.git_exclude)
+        .max_depth(Some(1))
+        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
+        .add_custom_ignore_filename(".helix/ignore")
+        .types(get_excluded_types())
+        .build()
+        .filter_map(|entry| {
+            entry
+                .map(|entry| {
+                    (
+                        entry.path().to_path_buf(),
+                        entry
+                            .file_type()
+                            .is_some_and(|file_type| file_type.is_dir()),
+                    )
+                })
+                .ok()
+                .filter(|entry| entry.0 != path)
         })
         .collect();
 
     content.sort_by(|(path1, is_dir1), (path2, is_dir2)| (!is_dir1, path1).cmp(&(!is_dir2, path2)));
+
     if path.parent().is_some() {
         content.insert(0, (path.join(".."), true));
     }
+
     Ok(content)
 }
 
