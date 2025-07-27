@@ -627,14 +627,14 @@ impl EditorView {
                     let scroll_offset = target_x
                         .saturating_sub(viewport.width / 2)
                         .min(x.saturating_sub(viewport.width));
-                    self.render_with_offset(editor, viewport, surface, scroll_offset);
+                    self.render_bufferline_offset(editor, viewport, surface, scroll_offset);
                 }
             }
         }
     }
 
     /// Render bufferline with horizontal offset
-    pub fn render_with_offset(
+    pub fn render_bufferline_offset(
         &mut self,
         editor: &Editor,
         viewport: Rect,
