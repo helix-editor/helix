@@ -44,7 +44,7 @@ use helix_core::{
     Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
-    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
+    document::{FormatterError, Mode, REFACTOR_BUFFER_NAME, SCRATCH_BUFFER_NAME},
     editor::Action,
     info::Info,
     input::KeyEvent,
@@ -380,6 +380,7 @@ impl MappableCommand {
         search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
+        global_refactor, "Global refactoring in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
@@ -2454,13 +2455,15 @@ fn global_search(cx: &mut Context) {
         path: PathBuf,
         /// 0 indexed lines
         line_num: usize,
+        line_content: String,
     }
 
     impl FileResult {
-        fn new(path: &Path, line_num: usize) -> Self {
+        fn new(path: &Path, line_num: usize, line_content: String) -> Self {
             Self {
                 path: path.to_path_buf(),
                 line_num,
+                line_content,
             }
         }
     }
@@ -2585,9 +2588,13 @@ fn global_search(cx: &mut Context) {
                         };
 
                         let mut stop = false;
-                        let sink = sinks::UTF8(|line_num, _line_content| {
+                        let sink = sinks::UTF8(|line_num, line_content| {
                             stop = injector
-                                .push(FileResult::new(entry.path(), line_num as usize - 1))
+                                .push(FileResult::new(
+                                    entry.path(),
+                                    line_num as usize - 1,
+                                    line_content.into(),
+                                ))
                                 .is_err();
 
                             Ok(!stop)
@@ -2672,10 +2679,125 @@ fn global_search(cx: &mut Context) {
     .with_preview(|_editor, FileResult { path, line_num, .. }| {
         Some((path.as_path().into(), Some((*line_num, *line_num))))
     })
+    .with_refactor(move |cx, results: Vec<&FileResult>| {
+        if results.is_empty() {
+            cx.editor.set_status("No matches found");
+            return;
+        }
+
+        let mut matches: HashMap<PathBuf, Vec<(usize, String)>> = HashMap::new();
+        let mut lines: Vec<(PathBuf, usize)> = vec![];
+
+        for result in results {
+            let path = result.path.clone();
+            let line = result.line_num;
+            let text = result.line_content.clone();
+
+            lines.push((path.clone(), line));
+            matches.entry(path).or_default().push((line, text));
+        }
+
+        let mut doc_text = Rope::new();
+        let mut line_map = HashMap::new();
+        let language_id = doc!(cx.editor).language_id().map(String::from);
+
+        let mut count = 0;
+        for (key, value) in &matches {
+            for (line, text) in value {
+                doc_text.insert(doc_text.len_chars(), text);
+                line_map.insert((key.clone(), *line), count);
+                count += 1;
+            }
+        }
+        doc_text.split_off(doc_text.len_chars().saturating_sub(1));
+        let mut doc = Document::refactor(
+            doc_text,
+            matches,
+            line_map,
+            lines,
+            // TODO: actually learn how to detect encoding
+            None,
+            cx.editor.config.clone(),
+            cx.editor.syn_loader.clone(),
+        );
+        if let Some(language_id) = language_id {
+            doc.set_language_by_language_id(&language_id, &cx.editor.syn_loader.load())
+                .ok();
+        };
+        cx.editor.new_file_from_document(Action::Replace, doc);
+    })
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
 
     cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn global_refactor(cx: &mut Context) {
+    let document_type = doc!(cx.editor).document_type.clone();
+
+    match &document_type {
+        helix_view::document::DocumentType::File => (),
+        helix_view::document::DocumentType::Refactor {
+            matches, line_map, ..
+        } => {
+            let line_ending: LineEnding = cx.editor.config.load().default_line_ending.into();
+            let refactor_id = doc!(cx.editor).id();
+            let replace_text = doc!(cx.editor).text().clone();
+            let view = view!(cx.editor).clone();
+            let mut documents: usize = 0;
+            let mut count: usize = 0;
+            for (key, value) in matches {
+                let mut changes = Vec::<(usize, usize, String)>::new();
+                for (line, text) in value {
+                    if let Some(re_line) = line_map.get(&(key.clone(), *line)) {
+                        let mut replace = replace_text
+                            .get_line(*re_line)
+                            .unwrap_or_else(|| "".into())
+                            .to_string()
+                            .clone();
+
+                        replace = replace
+                            .strip_suffix(line_ending.as_str())
+                            .unwrap_or(&replace)
+                            .to_string();
+                        replace.push_str(line_ending.as_str());
+                        if text != &replace {
+                            changes.push((*line, text.chars().count(), replace));
+                        }
+                    }
+                }
+                if !changes.is_empty() {
+                    if let Some(doc) = cx
+                        .editor
+                        .open(key, Action::Load)
+                        .ok()
+                        .and_then(|id| cx.editor.document_mut(id))
+                    {
+                        documents += 1;
+                        let mut applychanges = Vec::<(usize, usize, Option<Tendril>)>::new();
+                        for (line, length, text) in changes {
+                            if doc.text().len_lines() > line {
+                                let start = doc.text().line_to_char(line);
+                                applychanges.push((
+                                    start,
+                                    start + length,
+                                    Some(Tendril::from(text.to_string())),
+                                ));
+                                count += 1;
+                            }
+                        }
+                        let transaction = Transaction::change(doc.text(), applychanges.into_iter());
+                        doc.apply(&transaction, view.id);
+                    }
+                }
+            }
+            cx.editor.set_status(format!(
+                "Refactored {} documents, {} lines changed.",
+                documents, count
+            ));
+            cx.editor.close_document(refactor_id, true).ok();
+        }
+    }
 }
 
 enum Extend {
@@ -3155,6 +3277,7 @@ fn buffer_picker(cx: &mut Context) {
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
+        is_refactor: bool,
     }
 
     let new_meta = |doc: &Document| BufferMeta {
@@ -3163,6 +3286,14 @@ fn buffer_picker(cx: &mut Context) {
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
+        is_refactor: matches!(
+            &doc.document_type,
+            helix_view::document::DocumentType::Refactor {
+                matches: _,
+                line_map: _,
+                lines: _,
+            }
+        ),
     };
 
     let mut items = cx
@@ -3188,6 +3319,9 @@ fn buffer_picker(cx: &mut Context) {
             flags.into()
         }),
         PickerColumn::new("path", |meta: &BufferMeta, _| {
+            if meta.is_refactor {
+                return REFACTOR_BUFFER_NAME.into();
+            }
             let path = meta
                 .path
                 .as_deref()

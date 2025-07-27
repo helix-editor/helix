@@ -2,6 +2,7 @@ use std::fmt::Write;
 
 use helix_core::syntax::config::LanguageServerFeature;
 
+use crate::document::DocumentType;
 use crate::{
     editor::GutterType,
     graphics::{Style, UnderlineStyle},
@@ -15,6 +16,8 @@ fn count_digits(n: usize) -> usize {
 pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, bool, &mut String) -> Option<Style> + 'doc>;
 pub type Gutter =
     for<'doc> fn(&'doc Editor, &'doc Document, &View, &Theme, bool, usize) -> GutterFn<'doc>;
+
+const REFACTOR_GUTTER_WIDTH: usize = 20;
 
 impl GutterType {
     pub fn style<'doc>(
@@ -151,10 +154,6 @@ pub fn line_numbers<'doc>(
 
     let last_line_in_view = view.estimate_last_doc_line(doc);
 
-    // Whether to draw the line number for the last line of the
-    // document or not.  We only draw it if it's not an empty line.
-    let draw_last = text.line_to_byte(last_line_in_view) < text.len_bytes();
-
     let linenr = theme.get("ui.linenr");
     let linenr_select = theme.get("ui.linenr.selected");
 
@@ -163,43 +162,93 @@ pub fn line_numbers<'doc>(
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
     let line_number = editor.config().line_number;
-    let mode = editor.mode;
+    let draw_last = text.line_to_byte(last_line_in_view) < text.len_bytes();
 
-    Box::new(
-        move |line: usize, selected: bool, first_visual_line: bool, out: &mut String| {
-            if line == last_line_in_view && !draw_last {
-                write!(out, "{:>1$}", '~', width).unwrap();
-                Some(linenr)
-            } else {
-                use crate::{document::Mode, editor::LineNumber};
-
-                let relative = line_number == LineNumber::Relative
-                    && mode != Mode::Insert
-                    && is_focused
-                    && current_line != line;
-
-                let display_num = if relative {
-                    current_line.abs_diff(line)
+    match &doc.document_type {
+        DocumentType::File => Box::new(
+            move |line: usize, selected: bool, first_visual_line: bool, out: &mut String| {
+                // Whether to draw the line number for the last line of the
+                // document or not.  We only draw it if it's not an empty line.
+                let mode = editor.mode;
+                if line == last_line_in_view && !draw_last {
+                    write!(out, "{:>1$}", '~', width).unwrap();
+                    Some(linenr)
                 } else {
-                    line + 1
-                };
+                    use crate::{document::Mode, editor::LineNumber};
 
+                    let relative = line_number == LineNumber::Relative
+                        && mode != Mode::Insert
+                        && is_focused
+                        && current_line != line;
+
+                    let display_num = if relative {
+                        current_line.abs_diff(line)
+                    } else {
+                        line + 1
+                    };
+
+                    let style = if selected && is_focused {
+                        linenr_select
+                    } else {
+                        linenr
+                    };
+
+                    if first_visual_line {
+                        write!(out, "{:>1$}", display_num, width).unwrap();
+                    } else {
+                        write!(out, "{:>1$}", " ", width).unwrap();
+                    }
+
+                    first_visual_line.then_some(style)
+                }
+            },
+        ),
+        DocumentType::Refactor {
+            matches: _,
+            line_map: _,
+            lines,
+        } => Box::new(
+            move |line: usize, selected: bool, first_visual_line: bool, out: &mut String| {
+                if let Some((file_path, line_num)) = lines.get(line) {
+                    let gutter = format_path_line(
+                        file_path.to_str().unwrap_or("<invalid path>"),
+                        line_num + 1,
+                        REFACTOR_GUTTER_WIDTH,
+                    );
+                    write!(out, "{}", gutter).unwrap();
+                } else {
+                    write!(out, "{:>1$}", '~', REFACTOR_GUTTER_WIDTH).unwrap();
+                }
                 let style = if selected && is_focused {
                     linenr_select
                 } else {
                     linenr
                 };
-
-                if first_visual_line {
-                    write!(out, "{:>1$}", display_num, width).unwrap();
-                } else {
-                    write!(out, "{:>1$}", " ", width).unwrap();
-                }
-
+                // Some(style)
                 first_visual_line.then_some(style)
-            }
-        },
-    )
+            },
+        ),
+    }
+}
+
+fn format_path_line(path: &str, line: usize, max_width: usize) -> String {
+    let raw = format!("{path}:{line}");
+
+    if raw.len() <= max_width {
+        format!("{:>width$}", raw, width = max_width)
+    } else {
+        let ellipsis = "...";
+        let keep = max_width.saturating_sub(ellipsis.len());
+        let tail = raw
+            .chars()
+            .rev()
+            .take(keep)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect::<String>();
+        format!("{:>width$}", format!("{ellipsis}{tail}"), width = max_width)
+    }
 }
 
 /// The width of a "line-numbers" gutter
@@ -208,6 +257,9 @@ pub fn line_numbers<'doc>(
 /// whether there is content on the last line (the `~` line), and the
 /// `editor.gutters.line-numbers.min-width` settings.
 fn line_numbers_width(view: &View, doc: &Document) -> usize {
+    if matches!(doc.document_type, DocumentType::Refactor { .. }) {
+        return REFACTOR_GUTTER_WIDTH;
+    }
     let text = doc.text();
     let last_line = text.len_lines().saturating_sub(1);
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
