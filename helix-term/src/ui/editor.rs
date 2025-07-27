@@ -619,11 +619,7 @@ impl EditorView {
 
         if let Some(current_idx) = editor.documents().position(|d| d.id() == current_doc) {
             if let Some(&target_x) = self.bufferline_positions.get(current_idx) {
-                if target_x
-                    + Self::calculate_buffer_width(editor.documents.get(&current_doc).unwrap())
-                    > viewport.width
-                    || current_idx >= self.bufferline_positions.len().saturating_sub(2)
-                {
+                if target_x >= viewport.width / 2 {
                     let scroll_offset = target_x
                         .saturating_sub(viewport.width / 2)
                         .min(x.saturating_sub(viewport.width));
@@ -669,11 +665,6 @@ impl EditorView {
                 continue;
             };
 
-            // skip invisible buffers
-            if buffer_x + Self::calculate_buffer_width(doc) < scroll_offset {
-                continue;
-            }
-
             if buffer_x > visible_end {
                 break;
             }
@@ -690,6 +681,11 @@ impl EditorView {
                     .unwrap_or_default(),
                 if doc.is_modified() { "[+]" } else { "" }
             );
+
+            // skip invisible buffers
+            if buffer_x + (text.len() as u16) < scroll_offset {
+                continue;
+            }
 
             if buffer_x < scroll_offset {
                 text = text
@@ -710,15 +706,6 @@ impl EditorView {
                 },
             );
         }
-    }
-
-    /// Calculate buffer display width
-    fn calculate_buffer_width(doc: &Document) -> u16 {
-        let name_len = doc
-            .path()
-            .and_then(|p| p.file_name())
-            .map_or(0, |n| n.len());
-        (name_len + 3 + if doc.is_modified() { 3 } else { 0 }) as u16
     }
 
     pub fn render_gutter<'d>(
