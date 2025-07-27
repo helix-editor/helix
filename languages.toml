@@ -65,6 +65,7 @@ julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--hist
 just-lsp = { command = "just-lsp" }
 koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 koto-ls = { command = "koto-ls" }
+kotlin-lsp = { command = "kotlin-lsp", args = ["--stdio"] }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server", "--memory=1024" ] }
 ltex-ls = { command = "ltex-ls" }
@@ -823,6 +824,16 @@ name = "gowork"
 source = { git = "https://github.com/omertuc/tree-sitter-go-work", rev = "6dd9dd79fb51e9f2abc829d5e97b15015b6a8ae2" }
 
 [[language]]
+name = "go-format-string"
+scope = "source.go-format-string"
+file-types = []
+injection-regex = "go-format-string"
+
+[[grammar]]
+name = "go-format-string"
+source = { git = "https://codeberg.org/kpbaks/tree-sitter-go-format-string", rev = "45b559b74be97535abfc77ade4405343a43e5ca4" }
+
+[[language]]
 name = "javascript"
 scope = "source.js"
 injection-regex = "(js|javascript)"
@@ -1021,6 +1032,7 @@ shebangs = []
 comment-token = "#"
 language-servers = [ "nil", "nixd" ]
 indent = { tab-width = 2, unit = "  " }
+formatter = { command = "nixfmt" }
 
 [[grammar]]
 name = "nix"
@@ -1404,6 +1416,16 @@ language-servers = [ "lua-language-server" ]
 name = "lua"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-lua", rev = "88e446476a1e97a8724dff7a23e2d709855077f2" }
 
+[[language]]
+name = "luap"
+scope = "source.luap"
+file-types = []
+injection-regex = "luap"
+
+[[grammar]]
+name = "luap"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-luap", rev = "c134aaec6acf4fa95fe4aa0dc9aba3eacdbbe55a" }
+
 [[grammar]]
 name = "teal"
 source = { git = "https://github.com/euclidianAce/tree-sitter-teal", rev = "3db655924b2ff1c54fdf6371b5425ea6b5dccefe" }
@@ -1463,6 +1485,8 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "yaml-language-server", "ansible-language-server" ]
 injection-regex = "yml|yaml"
+formatter = { command = "yamlfmt", args = ['-'] }
+auto-format = true
 
 [[grammar]]
 name = "yaml"
@@ -1784,6 +1808,17 @@ language-servers = [ "marksman", "markdown-oxide" ]
 indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "<!--", end = "-->" }
 word-completion.trigger-length = 4
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+'`' = '`'
+'‘' = '’'
+'«' = '»'
+'“' = '”'
 
 [[grammar]]
 name = "markdown"
@@ -3068,7 +3103,7 @@ formatter = { command = "inko", args = ["fmt", "-"] }
 
 [[grammar]]
 name = "inko"
-source = { git = "https://github.com/inko-lang/tree-sitter-inko", rev = "7860637ce1b43f5f79cfb7cc3311bf3234e9479f" }
+source = { git = "https://github.com/inko-lang/tree-sitter-inko", rev = "f58a87ac4dc6a7955c64c9e4408fbd693e804686" }
 
 [[language]]
 name = "bicep"
@@ -4242,10 +4277,11 @@ comment-token = "#"
 block-comment-tokens = ["#-", "-#"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = ["koto-ls"]
+formatter = {command = "koto", args = ["--format"]}
 
 [[grammar]]
 name = "koto"
-source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "b420f7922d0d74905fd0d771e5b83be9ee8a8a9a" }
+source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "2ffc77c14f0ac1674384ff629bfc207b9c57ed89" }
 
 [[language]]
 name = "gpr"
@@ -4405,6 +4441,22 @@ language-servers = ["sourcepawn-studio"]
 [[grammar]]
 name = "sourcepawn"
 source = { git = "https://github.com/nilshelmig/tree-sitter-sourcepawn", rev = "f2af8d0dc14c6790130cceb2a20027eb41a8297c" }
+
+
+[[grammar]]
+name = "vim"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-vim", rev = "f3cd62d8bd043ef20507e84bb6b4b53731ccf3a7" }
+
+[[language]]
+name = "vim"
+scope = "source.vim"
+injection-regex = "vim"
+comment-token = '"'
+indent = { tab-width = 4, unit = "\t" }
+file-types = [
+  "vim",
+  { glob = ".vimrc" },
+]
 
 [[language]]
 name = "tlaplus"

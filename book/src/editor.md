@@ -63,6 +63,7 @@
 | `end-of-line-diagnostics` | Minimum severity of diagnostics to render at the end of the line. Set to `disable` to disable entirely. Refer to the setting about `inline-diagnostics` for more details | "disable"
 | `clipboard-provider` | Which API to use for clipboard interaction. One of `pasteboard` (MacOS), `wayland`, `x-clip`, `x-sel`, `win-32-yank`, `termux`, `tmux`, `windows`, `termcode`, `none`, or a custom command set. | Platform and environment specific. |
 | `editor-config` | Whether to read settings from [EditorConfig](https://editorconfig.org) files | `true` |
+| `rainbow-brackets` | Whether to render rainbow colors for matching brackets. Requires tree-sitter `rainbows.scm` queries for the language. | `false` |
 
 ### `[editor.clipboard-provider]` Section
 
@@ -132,6 +133,7 @@ The following statusline elements can be configured:
 | `file-name` | The path/name of the opened file |
 | `file-absolute-path` | The absolute path/name of the opened file |
 | `file-base-name` | The basename of the opened file |
+| `current-working-directory` | The current working directory  |
 | `file-modification-indicator` | The indicator to show whether the file is modified (a `[+]` appears when there are unsaved changes) |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
 | `file-line-ending` | The file line endings (CRLF or LF) |
@@ -467,16 +469,6 @@ fn main() {
   let foo = bar; a local variable with a similar name exists: baz
             └─ no such value in this scope
 }
-```
-
-
-The new diagnostic rendering is not yet enabled by default. As soon as end of line or inline diagnostics are enabled the old diagnostics rendering is automatically disabled. The recommended default setting are:
-
-```toml
-[editor]
-end-of-line-diagnostics = "hint"
-[editor.inline-diagnostics]
-cursor-line = "warning" # show warnings and errors on the cursorline inline
 ```
 
 ### `[editor.word-completion]` Section
