@@ -88,7 +88,7 @@ impl Decoration for InlineBlame {
 
                 stopped_drawing_at - line_length
             })
-            .unwrap_or_default();
+            .unwrap_or(0);
 
         Position::new(0, amount_of_characters_drawn as usize)
     }
