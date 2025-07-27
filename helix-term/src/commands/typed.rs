@@ -3692,7 +3692,13 @@ fn execute_command_line(
 
     match typed::TYPABLE_COMMAND_MAP.get(command) {
         Some(cmd) => execute_command(cx, cmd, rest, event),
-        None if event == PromptEvent::Validate => Err(anyhow!("no such command: '{command}'")),
+        None if event == PromptEvent::Validate => {
+            if Plugins::call_typed_command(cx, command, rest) {
+                Ok(())
+            } else {
+                Err(anyhow!("no such command: '{command}'"))
+            }
+        }
         None => Ok(()),
     }
 }
@@ -3813,7 +3819,10 @@ fn complete_command_line(editor: &Editor, input: &str) -> Vec<ui::prompt::Comple
     if complete_command {
         fuzzy_match(
             input,
-            TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
+            TYPABLE_COMMAND_LIST
+                .iter()
+                .map(|command| command.name.to_string())
+                .chain(crate::plugins::Plugins::available_commands()),
             false,
         )
         .into_iter()
