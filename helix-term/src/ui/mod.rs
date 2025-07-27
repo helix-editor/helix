@@ -1,6 +1,7 @@
 mod completion;
 mod document;
 pub(crate) mod editor;
+mod file_explorer;
 mod info;
 pub mod lsp;
 mod markdown;
@@ -19,6 +20,7 @@ use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
+pub use file_explorer::file_explorer;
 use helix_stdx::rope;
 use helix_view::theme::Style;
 pub use markdown::Markdown;
@@ -298,56 +300,6 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         });
     }
     picker
-}
-
-type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
-
-pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
-    let directory_style = editor.theme.get("ui.text.directory");
-    let directory_content = directory_content(&root)?;
-
-    let columns = [PickerColumn::new(
-        "path",
-        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
-            let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
-            if *is_dir {
-                Span::styled(format!("{}/", name), *directory_style).into()
-            } else {
-                name.into()
-            }
-        },
-    )];
-    let picker = Picker::new(
-        columns,
-        0,
-        directory_content,
-        (root, directory_style),
-        move |cx, (path, is_dir): &(PathBuf, bool), action| {
-            if *is_dir {
-                let new_root = helix_stdx::path::normalize(path);
-                let callback = Box::pin(async move {
-                    let call: Callback =
-                        Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                            if let Ok(picker) = file_explorer(new_root, editor) {
-                                compositor.push(Box::new(overlay::overlaid(picker)));
-                            }
-                        }));
-                    Ok(call)
-                });
-                cx.jobs.callback(callback);
-            } else if let Err(e) = cx.editor.open(path, action) {
-                let err = if let Some(err) = e.source() {
-                    format!("{}", err)
-                } else {
-                    format!("unable to open \"{}\"", path.display())
-                };
-                cx.editor.set_error(err);
-            }
-        },
-    )
-    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
-
-    Ok(picker)
 }
 
 fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
