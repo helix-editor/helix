@@ -208,6 +208,7 @@
 | rescript | ✓ | ✓ |  |  |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
 | robot | ✓ |  |  |  |  | `robotframework_ls` |
+| robots.txt | ✓ | ✓ |  | ✓ |  |  |
 | ron | ✓ |  | ✓ |  |  |  |
 | rst | ✓ |  |  |  |  |  |
 | ruby | ✓ | ✓ | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
