@@ -2673,7 +2673,8 @@ fn global_search(cx: &mut Context) {
         Some((path.as_path().into(), Some((*line_num, *line_num))))
     })
     .with_history_register(Some(reg))
-    .with_dynamic_query(get_files, Some(275));
+    .with_dynamic_query(get_files, Some(275))
+    .with_language("regex", std::sync::Arc::clone(&cx.editor.syn_loader));
 
     cx.push_layer(Box::new(overlaid(picker)));
 }
