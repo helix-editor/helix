@@ -35,6 +35,20 @@ mod steel_implementations {
                 false
             }
         }
+
+        fn equality_hint_general(&self, other: &steel::SteelVal) -> bool {
+            match other {
+                steel::SteelVal::StringV(steel_string) | steel::SteelVal::SymbolV(steel_string) => {
+                    match (self, steel_string.as_str()) {
+                        (Self::Normal, "normal") => true,
+                        (Self::Insert, "insert") => true,
+                        (Self::Select, "select") => true,
+                        _ => false,
+                    }
+                }
+                _ => false,
+            }
+        }
     }
     impl steel::rvals::Custom for Event {}
     impl Custom for Style {
