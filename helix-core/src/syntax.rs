@@ -13,6 +13,7 @@ use std::{
 use anyhow::{Context, Result};
 use arc_swap::{ArcSwap, Guard};
 use config::{Configuration, FileType, LanguageConfiguration, LanguageServerConfiguration};
+use foldhash::HashSet;
 use helix_loader::grammar::get_language;
 use helix_stdx::rope::RopeSliceExt as _;
 use once_cell::sync::OnceCell;
@@ -20,7 +21,10 @@ use ropey::RopeSlice;
 use tree_house::{
     highlighter,
     query_iter::QueryIter,
-    tree_sitter::{Grammar, InactiveQueryCursor, InputEdit, Node, Query, RopeInput, Tree},
+    tree_sitter::{
+        query::{InvalidPredicateError, UserPredicate},
+        Capture, Grammar, InactiveQueryCursor, InputEdit, Node, Pattern, Query, RopeInput, Tree,
+    },
     Error, InjectionLanguageMarker, LanguageConfig as SyntaxConfig, Layer,
 };
 
@@ -28,6 +32,7 @@ use crate::{indent::IndentQuery, tree_sitter, ChangeSet, Language};
 
 pub use tree_house::{
     highlighter::{Highlight, HighlightEvent},
+    query_iter::QueryIterEvent,
     Error as HighlighterError, LanguageLoader, TreeCursor, TREE_SITTER_MATCH_LIMIT,
 };
 
@@ -37,6 +42,8 @@ pub struct LanguageData {
     syntax: OnceCell<Option<SyntaxConfig>>,
     indent_query: OnceCell<Option<IndentQuery>>,
     textobject_query: OnceCell<Option<TextObjectQuery>>,
+    tag_query: OnceCell<Option<TagQuery>>,
+    rainbow_query: OnceCell<Option<RainbowQuery>>,
 }
 
 impl LanguageData {
@@ -46,6 +53,8 @@ impl LanguageData {
             syntax: OnceCell::new(),
             indent_query: OnceCell::new(),
             textobject_query: OnceCell::new(),
+            tag_query: OnceCell::new(),
+            rainbow_query: OnceCell::new(),
         }
     }
 
@@ -145,6 +154,74 @@ impl LanguageData {
             .get_or_init(|| {
                 let grammar = self.syntax_config(loader)?.grammar;
                 Self::compile_textobject_query(grammar, &self.config)
+                    .map_err(|err| {
+                        log::error!("{err}");
+                    })
+                    .ok()
+                    .flatten()
+            })
+            .as_ref()
+    }
+
+    /// Compiles the tags.scm query for a language.
+    /// This function should only be used by this module or the xtask crate.
+    pub fn compile_tag_query(
+        grammar: Grammar,
+        config: &LanguageConfiguration,
+    ) -> Result<Option<TagQuery>> {
+        let name = &config.language_id;
+        let text = read_query(name, "tags.scm");
+        if text.is_empty() {
+            return Ok(None);
+        }
+        let query = Query::new(grammar, &text, |_pattern, predicate| match predicate {
+            // TODO: these predicates are allowed in tags.scm queries but not yet used.
+            UserPredicate::IsPropertySet { key: "local", .. } => Ok(()),
+            UserPredicate::Other(pred) => match pred.name() {
+                "strip!" | "select-adjacent!" => Ok(()),
+                _ => Err(InvalidPredicateError::unknown(predicate)),
+            },
+            _ => Err(InvalidPredicateError::unknown(predicate)),
+        })
+        .with_context(|| format!("Failed to compile tags.scm query for '{name}'"))?;
+        Ok(Some(TagQuery { query }))
+    }
+
+    fn tag_query(&self, loader: &Loader) -> Option<&TagQuery> {
+        self.tag_query
+            .get_or_init(|| {
+                let grammar = self.syntax_config(loader)?.grammar;
+                Self::compile_tag_query(grammar, &self.config)
+                    .map_err(|err| {
+                        log::error!("{err}");
+                    })
+                    .ok()
+                    .flatten()
+            })
+            .as_ref()
+    }
+
+    /// Compiles the rainbows.scm query for a language.
+    /// This function should only be used by this module or the xtask crate.
+    pub fn compile_rainbow_query(
+        grammar: Grammar,
+        config: &LanguageConfiguration,
+    ) -> Result<Option<RainbowQuery>> {
+        let name = &config.language_id;
+        let text = read_query(name, "rainbows.scm");
+        if text.is_empty() {
+            return Ok(None);
+        }
+        let rainbow_query = RainbowQuery::new(grammar, &text)
+            .with_context(|| format!("Failed to compile rainbows.scm query for '{name}'"))?;
+        Ok(Some(rainbow_query))
+    }
+
+    fn rainbow_query(&self, loader: &Loader) -> Option<&RainbowQuery> {
+        self.rainbow_query
+            .get_or_init(|| {
+                let grammar = self.syntax_config(loader)?.grammar;
+                Self::compile_rainbow_query(grammar, &self.config)
                     .map_err(|err| {
                         log::error!("{err}");
                     })
@@ -339,6 +416,14 @@ impl Loader {
         self.language(lang).textobject_query(self)
     }
 
+    pub fn tag_query(&self, lang: Language) -> Option<&TagQuery> {
+        self.language(lang).tag_query(self)
+    }
+
+    fn rainbow_query(&self, lang: Language) -> Option<&RainbowQuery> {
+        self.language(lang).rainbow_query(self)
+    }
+
     pub fn language_server_configs(&self) -> &HashMap<String, LanguageServerConfiguration> {
         &self.language_server_configs
     }
@@ -510,6 +595,92 @@ impl Syntax {
         Range: RangeBounds<u32>,
     {
         QueryIter::new(&self.inner, source, loader, range)
+    }
+
+    pub fn tags<'a>(
+        &'a self,
+        source: RopeSlice<'a>,
+        loader: &'a Loader,
+        range: impl RangeBounds<u32>,
+    ) -> QueryIter<'a, 'a, impl FnMut(Language) -> Option<&'a Query> + 'a, ()> {
+        self.query_iter(
+            source,
+            |lang| loader.tag_query(lang).map(|q| &q.query),
+            range,
+        )
+    }
+
+    pub fn rainbow_highlights(
+        &self,
+        source: RopeSlice,
+        rainbow_length: usize,
+        loader: &Loader,
+        range: impl RangeBounds<u32>,
+    ) -> OverlayHighlights {
+        struct RainbowScope<'tree> {
+            end: u32,
+            node: Option<Node<'tree>>,
+            highlight: Highlight,
+        }
+
+        let mut scope_stack = Vec::<RainbowScope>::new();
+        let mut highlights = Vec::new();
+        let mut query_iter = self.query_iter::<_, (), _>(
+            source,
+            |lang| loader.rainbow_query(lang).map(|q| &q.query),
+            range,
+        );
+
+        while let Some(event) = query_iter.next() {
+            let QueryIterEvent::Match(mat) = event else {
+                continue;
+            };
+
+            let rainbow_query = loader
+                .rainbow_query(query_iter.current_language())
+                .expect("language must have a rainbow query to emit matches");
+
+            let byte_range = mat.node.byte_range();
+            // Pop any scopes that end before this capture begins.
+            while scope_stack
+                .last()
+                .is_some_and(|scope| byte_range.start >= scope.end)
+            {
+                scope_stack.pop();
+            }
+
+            let capture = Some(mat.capture);
+            if capture == rainbow_query.scope_capture {
+                scope_stack.push(RainbowScope {
+                    end: byte_range.end,
+                    node: if rainbow_query
+                        .include_children_patterns
+                        .contains(&mat.pattern)
+                    {
+                        None
+                    } else {
+                        Some(mat.node.clone())
+                    },
+                    highlight: Highlight::new((scope_stack.len() % rainbow_length) as u32),
+                });
+            } else if capture == rainbow_query.bracket_capture {
+                if let Some(scope) = scope_stack.last() {
+                    if !scope
+                        .node
+                        .as_ref()
+                        .is_some_and(|node| mat.node.parent().as_ref() != Some(node))
+                    {
+                        let start = source
+                            .byte_to_char(source.floor_char_boundary(byte_range.start as usize));
+                        let end =
+                            source.byte_to_char(source.ceil_char_boundary(byte_range.end as usize));
+                        highlights.push((scope.highlight, start..end));
+                    }
+                }
+            }
+        }
+
+        OverlayHighlights::Heterogenous { highlights }
     }
 }
 
@@ -881,6 +1052,11 @@ impl TextObjectQuery {
     }
 }
 
+#[derive(Debug)]
+pub struct TagQuery {
+    pub query: Query,
+}
+
 pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
     if node.child_count() == 0 {
         if node_is_visible(&node) {
@@ -951,6 +1127,57 @@ fn pretty_print_tree_impl<W: fmt::Write>(
     }
 
     Ok(())
+}
+
+/// Finds the child of `node` which contains the given byte range.
+
+pub fn child_for_byte_range<'a>(node: &Node<'a>, range: ops::Range<u32>) -> Option<Node<'a>> {
+    for child in node.children() {
+        let child_range = child.byte_range();
+
+        if range.start >= child_range.start && range.end <= child_range.end {
+            return Some(child);
+        }
+    }
+
+    None
+}
+
+#[derive(Debug)]
+pub struct RainbowQuery {
+    query: Query,
+    include_children_patterns: HashSet<Pattern>,
+    scope_capture: Option<Capture>,
+    bracket_capture: Option<Capture>,
+}
+
+impl RainbowQuery {
+    fn new(grammar: Grammar, source: &str) -> Result<Self, tree_sitter::query::ParseError> {
+        let mut include_children_patterns = HashSet::default();
+
+        let query = Query::new(grammar, source, |pattern, predicate| match predicate {
+            UserPredicate::SetProperty {
+                key: "rainbow.include-children",
+                val,
+            } => {
+                if val.is_some() {
+                    return Err(
+                        "property 'rainbow.include-children' does not take an argument".into(),
+                    );
+                }
+                include_children_patterns.insert(pattern);
+                Ok(())
+            }
+            _ => Err(InvalidPredicateError::unknown(predicate)),
+        })?;
+
+        Ok(Self {
+            include_children_patterns,
+            scope_capture: query.get_capture("rainbow.scope"),
+            bracket_capture: query.get_capture("rainbow.bracket"),
+            query,
+        })
+    }
 }
 
 #[cfg(test)]

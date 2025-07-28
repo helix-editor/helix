@@ -1,6 +1,11 @@
 ; Most primitive nodes
 (shebang) @keyword.directive
 
+[
+  (symbol)
+  (symbol_binding)
+] @variable
+
 (comment) @comment
 
 (fn_form
@@ -186,8 +191,3 @@
   (string)
   (string_binding)
 ] @string
-
-[
-  (symbol)
-  (symbol_binding)
-] @variable

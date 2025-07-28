@@ -36,7 +36,8 @@ pub fn typable_commands() -> Result<String, DynError> {
         "Description".to_owned(),
     ]));
 
-    let cmdify = |s: &str| format!("`:{}`", s);
+    // escape | so it doesn't get rendered as a column separator
+    let cmdify = |s: &str| format!("`:{}`", s.replace('|', "\\|"));
 
     for cmd in TYPABLE_COMMAND_LIST {
         let names = std::iter::once(&cmd.name)
