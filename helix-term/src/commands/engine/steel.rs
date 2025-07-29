@@ -3688,6 +3688,15 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
         "Returns the cursor position within the current buffer as an integer",
     );
 
+    template_function_arity_0(
+        "mode-switch-old",
+        "Return the old mode from the event payload",
+    );
+    template_function_arity_0(
+        "mode-switch-new",
+        "Return the new mode from the event payload",
+    );
+
     let mut template_function_arity_1 = |name: &str, doc: &str| {
         let doc = format_docstring(doc);
         if generate_sources {
