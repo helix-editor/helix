@@ -909,6 +909,7 @@ fn start_client(
         id,
         name,
         ls_config.timeout,
+        ls_config.formatter_timeout,
     )?;
 
     let client = Arc::new(client);
