@@ -712,6 +712,8 @@ Set the URI of the buffer
 Check if a document exists.
 ### **editor-document-last-saved**
 Check when a document was last saved (returns a `SystemTime`)
+### **editor-document->language**
+Get the language for the document
 ### **editor-document-dirty?**
 Check if a document has unsaved changes
 ### **editor->text**

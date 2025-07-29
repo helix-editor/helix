@@ -1757,6 +1757,8 @@ Get the `Rect` associated with the currently focused buffer.
         },
     );
 
+    module.register_fn("editor-document->language", cx_get_document_language);
+
     module.register_fn(
         "editor-document-dirty?",
         |cx: &mut Context, doc: DocumentId| -> Option<bool> {
@@ -1848,6 +1850,11 @@ Get the `Rect` associated with the currently focused buffer.
         template_function_arity_1(
             "editor-document-last-saved",
             "Check when a document was last saved (returns a `SystemTime`)",
+        );
+
+        template_function_arity_1(
+            "editor-document->language",
+            "Get the language for the document",
         );
 
         template_function_arity_1(
@@ -4735,6 +4742,13 @@ fn document_path(cx: &mut Context, doc_id: DocumentId) -> Option<String> {
 
 fn cx_editor_all_documents(cx: &mut Context) -> Vec<DocumentId> {
     cx.editor.documents.keys().copied().collect()
+}
+
+fn cx_get_document_language(cx: &mut Context, doc_id: DocumentId) -> Option<String> {
+    cx.editor
+        .documents
+        .get(&doc_id)
+        .and_then(|d| Some(d.language_name()?.to_string()))
 }
 
 fn cx_switch(cx: &mut Context, doc_id: DocumentId) {
