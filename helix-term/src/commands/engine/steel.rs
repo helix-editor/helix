@@ -199,7 +199,12 @@ static BUFFER_EXTENSION_KEYMAP: Lazy<RwLock<BufferExtensionKeyMap>> = Lazy::new(
     })
 });
 
-pub static LSP_CALL_REGISTRY: Lazy<RwLock<HashMap<(String, String), RootedSteelVal>>> =
+enum LspKind {
+    Call(RootedSteelVal),
+    Notification(RootedSteelVal),
+}
+
+static LSP_CALL_REGISTRY: Lazy<RwLock<HashMap<(String, String), LspKind>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
 fn register_lsp_call_callback(lsp: String, kind: String, function: SteelVal) {
@@ -208,7 +213,7 @@ fn register_lsp_call_callback(lsp: String, kind: String, function: SteelVal) {
     LSP_CALL_REGISTRY
         .write()
         .unwrap()
-        .insert((lsp, kind), rooted);
+        .insert((lsp, kind), LspKind::Call(rooted));
 }
 
 fn register_lsp_notification_callback(lsp: String, kind: String, function: SteelVal) {
@@ -217,7 +222,7 @@ fn register_lsp_notification_callback(lsp: String, kind: String, function: Steel
     LSP_CALL_REGISTRY
         .write()
         .unwrap()
-        .insert((lsp, kind), rooted);
+        .insert((lsp, kind), LspKind::Notification(rooted));
 }
 
 pub struct BufferExtensionKeyMap {
@@ -987,7 +992,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 ;; ```
 ;; (register-lsp-notification-handler "dart"
 ;;                                    "dart/textDocument/publishClosingLabels"
-;;                                    (lambda (call-id args) (displayln args)))
+;;                                    (lambda (args) (displayln args)))
 ;; ```
 (define register-lsp-notification-handler helix.register-lsp-notification-handler)
 
@@ -2215,11 +2220,19 @@ impl super::PluginSystem for SteelScriptingEngine {
 
                 let language_server_name = language_server_name.unwrap();
 
+                let mut pass_call_id = false;
+
                 let function = LSP_CALL_REGISTRY
                     .read()
                     .unwrap()
                     .get(&(language_server_name, event_name))
-                    .map(|x| x.value())
+                    .map(|x| match x {
+                        LspKind::Call(rooted_steel_val) => {
+                            pass_call_id = true;
+                            rooted_steel_val.value()
+                        }
+                        LspKind::Notification(rooted_steel_val) => rooted_steel_val.value(),
+                    })
                     .cloned();
 
                 if let Some(function) = function {
@@ -2236,13 +2249,26 @@ impl super::PluginSystem for SteelScriptingEngine {
                                     .map_err(|e| SteelErr::new(ErrorKind::Generic, e.to_string()))
                                     .and_then(|x| x.into_steelval())?;
 
-                                let call_id = serde_json::to_value(&call_id)
-                                    .map_err(|e| SteelErr::new(ErrorKind::Generic, e.to_string()))
-                                    .and_then(|x| x.into_steelval())?;
+                                if pass_call_id {
+                                    let call_id = serde_json::to_value(&call_id)
+                                        .map_err(|e| {
+                                            SteelErr::new(ErrorKind::Generic, e.to_string())
+                                        })
+                                        .and_then(|x| x.into_steelval())?;
 
-                                let args = vec![call_id, params];
+                                    let mut arguments = [call_id, params];
 
-                                engine.call_function_with_args(function.clone(), args)
+                                    engine.call_function_with_args_from_mut_slice(
+                                        function.clone(),
+                                        &mut arguments,
+                                    )
+                                } else {
+                                    let mut arguments = [params];
+                                    engine.call_function_with_args_from_mut_slice(
+                                        function.clone(),
+                                        &mut arguments,
+                                    )
+                                }
                             })
                     })
                 } else {

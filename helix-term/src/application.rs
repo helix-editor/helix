@@ -18,7 +18,6 @@ use helix_view::{
     Align, Editor,
 };
 use serde_json::json;
-use steel::SteelVal;
 use tui::backend::Backend;
 
 use crate::{
@@ -1075,28 +1074,13 @@ impl Application {
                             jobs: &mut self.jobs,
                         };
 
-                        let result = ScriptingEngine::handle_lsp_call(
+                        let reply = ScriptingEngine::handle_lsp_call(
                             &mut cx,
                             server_id,
                             event_name,
                             id.clone(),
                             params,
                         );
-                        let reply = match result {
-                            Some(SteelVal::Void) => None,
-                            Some(value) => {
-                                let serde_value: Result<serde_json::Value, steel::SteelErr> =
-                                    value.try_into();
-                                match serde_value {
-                                    Ok(serialized_value) => Some(Ok(serialized_value)),
-                                    Err(error) => {
-                                        log::warn!("Failed to serialize a SteelVal: {}", error);
-                                        None
-                                    }
-                                }
-                            }
-                            _ => None,
-                        };
 
                         if let Some(reply) = reply {
                             let language_server = language_server!();

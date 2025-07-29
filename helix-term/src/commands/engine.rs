@@ -148,7 +148,7 @@ impl ScriptingEngine {
         event_name: String,
         call_id: jsonrpc::Id,
         params: jsonrpc::Params,
-    ) -> Option<SteelVal> {
+    ) -> Option<Result<serde_json::Value, jsonrpc::Error>> {
         for kind in PLUGIN_PRECEDENCE {
             if let Some(value) = manual_dispatch!(
                 kind,
@@ -161,7 +161,22 @@ impl ScriptingEngine {
                     params.clone()
                 )
             ) {
-                return Some(value);
+                let reply = match value {
+                    SteelVal::Void => None,
+                    value => {
+                        let serde_value: Result<serde_json::Value, ::steel::SteelErr> =
+                            value.try_into();
+                        match serde_value {
+                            Ok(serialized_value) => Some(Ok(serialized_value)),
+                            Err(error) => {
+                                log::warn!("Failed to serialize a SteelVal: {}", error);
+                                None
+                            }
+                        }
+                    }
+                };
+
+                return reply;
             }
         }
         return None;
