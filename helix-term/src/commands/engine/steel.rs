@@ -468,6 +468,11 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         "Returns the current line number"
     );
     function0!(
+        "get-current-column-number",
+        current_column_number,
+        "Returns the current column number"
+    );
+    function0!(
         "current-selection-object",
         current_selection,
         "Returns the current selection object"
@@ -4481,6 +4486,17 @@ fn current_line_number(cx: &mut Context) -> usize {
             .cursor(doc.text().slice(..)),
     )
     .row
+}
+
+fn current_column_number(cx: &mut Context) -> usize {
+    let (view, doc) = current_ref!(cx.editor);
+    helix_core::coords_at_pos(
+        doc.text().slice(..),
+        doc.selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..)),
+    )
+    .col
 }
 
 fn get_selection(cx: &mut Context) -> String {
