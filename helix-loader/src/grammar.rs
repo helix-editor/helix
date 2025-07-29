@@ -398,6 +398,7 @@ fn build_grammar(grammar: GrammarConfiguration, target: Option<&str>) -> Result<
     build_tree_sitter_library(&path, grammar, target)
 }
 
+#[allow(clippy::too_many_lines)]
 fn build_tree_sitter_library(
     src_path: &Path,
     grammar: GrammarConfiguration,
@@ -445,7 +446,6 @@ fn build_tree_sitter_library(
 
     let mut config = cc::Build::new();
     config
-        .cpp(true)
         .opt_level(3)
         .cargo_metadata(false)
         .host(BUILD_TARGET)
@@ -483,13 +483,12 @@ fn build_tree_sitter_library(
                     .args(["/nologo", "/LD", "/I"])
                     .arg(header_path)
                     .arg("/utf-8")
-                    .arg("/std:c++14")
                     .arg(format!("/Fo{}", object_file.display()))
                     .arg("/c")
                     .arg(scanner_path);
                 let output = cpp_command
                     .output()
-                    .context("Failed to execute C++ compiler")?;
+                    .context("Failed to execute C compiler")?;
 
                 if !output.status.success() {
                     return Err(anyhow!(
@@ -541,12 +540,11 @@ fn build_tree_sitter_library(
                     .arg(header_path)
                     .arg("-o")
                     .arg(&object_file)
-                    .arg("-std=c++14")
                     .arg("-c")
                     .arg(scanner_path);
                 let output = cpp_command
                     .output()
-                    .context("Failed to execute C++ compiler")?;
+                    .context("Failed to execute C compiler")?;
                 if !output.status.success() {
                     return Err(anyhow!(
                         "Parser compilation failed.\nStdout: {}\nStderr: {}",
@@ -568,9 +566,7 @@ fn build_tree_sitter_library(
         }
     }
 
-    let output = command
-        .output()
-        .context("Failed to execute C/C++ compiler")?;
+    let output = command.output().context("Failed to execute C compiler")?;
     if !output.status.success() {
         return Err(anyhow!(
             "Parser compilation failed.\nStdout: {}\nStderr: {}",
