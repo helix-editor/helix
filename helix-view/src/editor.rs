@@ -391,6 +391,8 @@ pub struct Config {
     pub max_panel_width_percent: f32,
     /// Maximum panel height as percentage of terminal height (0.0-1.0). Used when max_panel_height is 0. Defaults to 0.8.
     pub max_panel_height_percent: f32,
+    /// Whether to render rainbow colors for matching brackets. Defaults to `false`.
+    pub rainbow_brackets: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -672,6 +674,9 @@ pub enum StatusLineElement {
 
     /// Indicator for selected register
     Register,
+
+    /// The base of current working directory
+    CurrentWorkingDirectory,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -1085,13 +1090,14 @@ impl Default for Config {
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
             inline_diagnostics: InlineDiagnosticsConfig::default(),
-            end_of_line_diagnostics: DiagnosticFilter::Disable,
+            end_of_line_diagnostics: DiagnosticFilter::Enable(Severity::Hint),
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
             max_panel_width: 50,
             max_panel_height: 50,
             max_panel_width_percent: 0.8,
             max_panel_height_percent: 0.8,
+            rainbow_brackets: false,
         }
     }
 }

@@ -71,6 +71,16 @@ mod imp {
             perms.set_mode(new_perms);
         }
 
+        #[cfg(target_os = "macos")]
+        {
+            use std::fs::{File, FileTimes};
+            use std::os::macos::fs::FileTimesExt;
+
+            let to_file = File::options().write(true).open(to)?;
+            let times = FileTimes::new().set_created(from_meta.created()?);
+            to_file.set_times(times)?;
+        }
+
         std::fs::set_permissions(to, perms)?;
 
         Ok(())
@@ -109,7 +119,13 @@ mod imp {
 
     use std::ffi::c_void;
 
-    use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
+    use std::os::windows::{
+        ffi::OsStrExt,
+        fs::{FileTimesExt, OpenOptionsExt},
+        io::AsRawHandle,
+    };
+
+    use std::fs::{File, FileTimes};
 
     struct SecurityDescriptor {
         sd: PSECURITY_DESCRIPTOR,
@@ -412,6 +428,10 @@ mod imp {
 
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
+
+        let to_file = File::options().write(true).open(to)?;
+        let times = FileTimes::new().set_created(meta.created()?);
+        to_file.set_times(times)?;
 
         std::fs::set_permissions(to, perms)?;
 
