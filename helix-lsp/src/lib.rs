@@ -463,6 +463,8 @@ pub enum MethodCall {
     RegisterCapability(lsp::RegistrationParams),
     UnregisterCapability(lsp::UnregistrationParams),
     ShowDocument(lsp::ShowDocumentParams),
+    // Other kind specifically for extensions
+    Other(String, jsonrpc::Params),
 }
 
 impl MethodCall {
@@ -494,9 +496,7 @@ impl MethodCall {
                 let params: lsp::ShowDocumentParams = params.parse()?;
                 Self::ShowDocument(params)
             }
-            _ => {
-                return Err(Error::Unhandled);
-            }
+            _ => Self::Other(method.to_owned(), params),
         };
         Ok(request)
     }

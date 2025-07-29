@@ -16,6 +16,7 @@ use helix_core::{
     Range, Selection, Tendril, Transaction,
 };
 use helix_event::register_hook;
+use helix_lsp::jsonrpc;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
@@ -198,13 +199,22 @@ static BUFFER_EXTENSION_KEYMAP: Lazy<RwLock<BufferExtensionKeyMap>> = Lazy::new(
     })
 });
 
-pub static LSP_NOTIFICATION_REGISTRY: Lazy<RwLock<HashMap<(String, String), RootedSteelVal>>> =
+pub static LSP_CALL_REGISTRY: Lazy<RwLock<HashMap<(String, String), RootedSteelVal>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
+
+fn register_lsp_call_callback(lsp: String, kind: String, function: SteelVal) {
+    let rooted = function.as_rooted();
+
+    LSP_CALL_REGISTRY
+        .write()
+        .unwrap()
+        .insert((lsp, kind), rooted);
+}
 
 fn register_lsp_notification_callback(lsp: String, kind: String, function: SteelVal) {
     let rooted = function.as_rooted();
 
-    LSP_NOTIFICATION_REGISTRY
+    LSP_CALL_REGISTRY
         .write()
         .unwrap()
         .insert((lsp, kind), rooted);
@@ -781,6 +791,8 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         register_lsp_notification_callback,
     );
 
+    module.register_fn("register-lsp-call-handler", register_lsp_call_callback);
+
     module.register_fn("update-configuration!", |ctx: &mut Context| {
         ctx.editor
             .config_events
@@ -975,9 +987,31 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 ;; ```
 ;; (register-lsp-notification-handler "dart"
 ;;                                    "dart/textDocument/publishClosingLabels"
-;;                                    (lambda (args) (displayln args)))
+;;                                    (lambda (call-id args) (displayln args)))
 ;; ```
 (define register-lsp-notification-handler helix.register-lsp-notification-handler)
+
+(provide register-lsp-call-handler)
+
+;;@doc
+;; Register a callback to be called on LSP calls sent from the server -> client
+;; that aren't currently handled by Helix as a built in.
+;;
+;; ```scheme
+;; (register-lsp-call-handler lsp-name event-name handler)
+;; ```
+;;
+;; * lsp-name : string?
+;; * event-name : string?
+;; * function : (-> hash? any?) ;; Function where the first argument is the parameters
+;;
+;; # Examples
+;; ```
+;; (register-lsp-call-handler "dart"
+;;                                    "dart/textDocument/publishClosingLabels"
+;;                                    (lambda (call-id args) (displayln args)))
+;; ```
+(define register-lsp-call-handler helix.register-lsp-call-handler)
 
 (provide set-option!)
 (define (set-option! key value)
@@ -2150,14 +2184,15 @@ impl super::PluginSystem for SteelScriptingEngine {
 
     // TODO: Should this just be a hook / event instead of a function like this?
     // Handle an LSP notification, assuming its been sent through
-    fn handle_lsp_notification(
+    fn handle_lsp_call(
         &self,
         cx: &mut compositor::Context,
         server_id: helix_lsp::LanguageServerId,
         event_name: String,
+        call_id: jsonrpc::Id,
         params: helix_lsp::jsonrpc::Params,
-    ) -> bool {
-        if let Err(e) = enter_engine(|guard| {
+    ) -> Option<SteelVal> {
+        let result = enter_engine(|guard| {
             {
                 let mut ctx = Context {
                     register: None,
@@ -2180,7 +2215,7 @@ impl super::PluginSystem for SteelScriptingEngine {
 
                 let language_server_name = language_server_name.unwrap();
 
-                let function = LSP_NOTIFICATION_REGISTRY
+                let function = LSP_CALL_REGISTRY
                     .read()
                     .unwrap()
                     .get(&(language_server_name, event_name))
@@ -2201,7 +2236,11 @@ impl super::PluginSystem for SteelScriptingEngine {
                                     .map_err(|e| SteelErr::new(ErrorKind::Generic, e.to_string()))
                                     .and_then(|x| x.into_steelval())?;
 
-                                let args = vec![params];
+                                let call_id = serde_json::to_value(&call_id)
+                                    .map_err(|e| SteelErr::new(ErrorKind::Generic, e.to_string()))
+                                    .and_then(|x| x.into_steelval())?;
+
+                                let args = vec![call_id, params];
 
                                 engine.call_function_with_args(function.clone(), args)
                             })
@@ -2210,10 +2249,15 @@ impl super::PluginSystem for SteelScriptingEngine {
                     Ok(SteelVal::Void)
                 }
             }
-        }) {
-            cx.editor.set_error(format!("{}", e));
+        });
+
+        match result {
+            Err(e) => {
+                cx.editor.set_error(format!("{}", e));
+                Some(SteelVal::Void)
+            }
+            Ok(value) => Some(value),
         }
-        true
     }
 }
 
@@ -3762,6 +3806,33 @@ callback : (-> any?)
         );
     }
 
+    module.register_fn("lsp-reply-ok", lsp_reply_ok);
+    if generate_sources {
+        builtin_misc_module.push_str(
+            r#"
+    (provide lsp-reply-ok)
+    ;;@doc
+    ;; Send a successful reply to an LSP request with the given result.
+    ;;
+    ;; ```scheme
+    ;; (lsp-reply-ok lsp-name request-id result)
+    ;; ```
+    ;; 
+    ;; * lsp-name : string? - Name of the language server
+    ;; * request-id : string? - ID of the request to respond to  
+    ;; * result : any? - The result value to send back
+    ;;
+    ;; # Examples
+    ;; ```scheme
+    ;; ;; Reply to a request with id "123" from rust-analyzer
+    ;; (lsp-reply-ok "rust-analyzer" "123" (hash "result" "value"))
+    ;; ```
+    (define (lsp-reply-ok lsp-name request-id result)
+        (helix.lsp-reply-ok *helix.cx* lsp-name request-id result))    
+            "#,
+        );
+    }
+
     macro_rules! register_2_no_context {
         ($name:expr, $func:expr, $doc:expr) => {{
             module.register_fn($name, $func);
@@ -5172,6 +5243,39 @@ fn send_arbitrary_lsp_command(
     create_callback(cx, future, rooted)?;
 
     Ok(())
+}
+
+fn lsp_reply_ok(
+    cx: &mut Context,
+    name: SteelString,
+    id: SteelString,
+    result: SteelVal,
+) -> anyhow::Result<()> {
+    let serde_value: Result<serde_json::Value, steel::SteelErr> = result.try_into();
+    let value = match serde_value {
+        Ok(serialized_value) => serialized_value,
+        Err(error) => {
+            log::warn!("Failed to serialize a SteelVal: {}", error);
+            serde_json::Value::Null
+        }
+    };
+
+    let (_view, doc) = current!(cx.editor);
+
+    let language_server_id = anyhow::Context::context(
+        doc.language_servers().find(|x| x.name() == name.as_str()),
+        "Unable to find the language server specified!",
+    )?
+    .id();
+
+    cx.editor
+        .language_server_by_id(language_server_id)
+        .ok_or(anyhow::anyhow!("Failed to find a language server by id"))
+        .and_then(|language_server| {
+            language_server
+                .reply(jsonrpc::Id::Str(id.to_string()), Ok(value))
+                .map_err(Into::into)
+        })
 }
 
 fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(

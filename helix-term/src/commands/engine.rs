@@ -1,3 +1,4 @@
+use ::steel::SteelVal;
 use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::syntax;
 use helix_lsp::{jsonrpc, LanguageServerId};
@@ -141,21 +142,29 @@ impl ScriptingEngine {
             .collect()
     }
 
-    pub fn handle_lsp_notification(
+    pub fn handle_lsp_call(
         cx: &mut compositor::Context,
         server_id: LanguageServerId,
         event_name: String,
+        call_id: jsonrpc::Id,
         params: jsonrpc::Params,
-    ) {
+    ) -> Option<SteelVal> {
         for kind in PLUGIN_PRECEDENCE {
-            if manual_dispatch!(
+            if let Some(value) = manual_dispatch!(
                 kind,
                 // TODO: Get rid of these clones!
-                handle_lsp_notification(cx, server_id, event_name.clone(), params.clone())
+                handle_lsp_call(
+                    cx,
+                    server_id,
+                    event_name.clone(),
+                    call_id.clone(),
+                    params.clone()
+                )
             ) {
-                return;
+                return Some(value);
             }
         }
+        return None;
     }
 
     pub fn generate_sources() {
@@ -229,14 +238,15 @@ pub trait PluginSystem {
     /// Call into the scripting engine to handle an unhandled LSP notification, sent from the server
     /// to the client.
     #[inline(always)]
-    fn handle_lsp_notification(
+    fn handle_lsp_call(
         &self,
         _cx: &mut compositor::Context,
         _server_id: LanguageServerId,
         _event_name: String,
+        _call_id: jsonrpc::Id,
         _params: jsonrpc::Params,
-    ) -> bool {
-        false
+    ) -> Option<SteelVal> {
+        None
     }
 
     /// Given an identifier, extract the documentation from the engine.
