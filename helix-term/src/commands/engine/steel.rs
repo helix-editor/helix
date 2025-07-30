@@ -471,6 +471,11 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         get_selection,
         "Returns the current selection as a string"
     );
+    function0!(
+        "current-selection->string",
+        get_selection,
+        "Returns the current selection as a string"
+    );
     function0!("load-buffer!", load_buffer, "Evaluates the current buffer");
     function0!(
         "current-highlighted-text!",
