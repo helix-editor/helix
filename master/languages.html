@@ -260,7 +260,7 @@ config matches files like <code>Cargo.toml</code> or <code>languages.toml</code>
 <p><a href="./command-line.html#expansions">Command line expansions</a> are supported in the arguments
 of the formatter command. In particular, the <code>%{buffer_name}</code> variable can be passed as
 argument to the formatter:</p>
-<pre><code class="language-toml">formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename %{buffer_name}"] }
+<pre><code class="language-toml">formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename", "%{buffer_name}"] }
 </code></pre>
 <h2 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h2>
 <p>Language servers are configured separately in the table <code>language-server</code> in the same file as the languages <code>languages.toml</code></p>
