@@ -1905,7 +1905,7 @@ file-types = [
   { glob = "containerfile.*" },
 ]
 comment-token = "#"
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "  " }
 language-servers = [ "docker-langserver" ]
 
 [[grammar]]
