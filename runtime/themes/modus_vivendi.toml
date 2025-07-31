@@ -112,6 +112,8 @@ warning = "yellow-warmer"
 info = "cyan-cooler"
 hint = "blue-cooler"
 
+rainbow = ["red", "yellow-warmer", "green-intense", "cyan-cooler", "blue", "magenta-intense"]
+
 [palette]
 # Basic values
 bg-main = "#000000"
