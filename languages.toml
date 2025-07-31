@@ -4605,3 +4605,15 @@ comment-tokens = ["#"]
 [[grammar]]
 name = "properties"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-properties", rev = "579b62f5ad8d96c2bb331f07d1408c92767531d9" }
+
+[[language]]
+name = "robots.txt"
+scope = "source.robots.txt"
+file-types = [{ glob = "robots.txt" }]
+injection-regex = "robots[\\.-]txt"
+grammar = "robots"
+comment-token = "#"
+
+[[grammar]]
+name = "robots"
+source = { git = "https://github.com/opa-oz/tree-sitter-robots-txt", rev = "8e3a4205b76236bb6dbebdbee5afc262ce38bb62" }
