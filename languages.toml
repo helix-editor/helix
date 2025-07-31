@@ -3351,6 +3351,17 @@ name = "smithy"
 source = { git = "https://github.com/indoorvivants/tree-sitter-smithy", rev = "8327eb84d55639ffbe08c9dc82da7fff72a1ad07" }
 
 [[language]]
+name = "hdl"
+scope = "source.hdl"
+file-types = ["hdl"]
+indent = { tab-width = 4, unit = "    " }
+injection-regex = "hdl"
+
+[[grammar]]
+name = "hdl"
+source = { git = "https://github.com/quantonganh/tree-sitter-hdl", rev="743bb48f16fb9f5fba0146c90b163b86c98d8f5a" }
+
+[[language]]
 name = "vhdl"
 scope = "source.vhdl"
 file-types = ["vhd", "vhdl"]
