@@ -956,7 +956,7 @@ lines.
  2. Select the first "bat" and type * to set it to search.
  3. Type v to enter Select mode.
  4. Type n to select the other "bat".
- 5. Use c or r to change the "bat"s to "cat".
+ 5. Use c (or r after selecting the "b"s) to change the "bat"s to "cat".
 
  --> Everybody wants to be a bat,
  --> because a cat's the only bat
@@ -1170,21 +1170,24 @@ letters! that is not good grammar. you can fix this.
 
  Using the selections and multi-cursor functionality, you can
  comment multiple lines as long as they are under the selection or
- cursors.
+ cursors. To uncomment the lines, press Ctrl-c again.
 
  1. Move your cursor to the line marked with '-->' below.
  2. Now try to select or add more cursors to the other lines marked
     with '-->'.
  3. Comment those lines.
+ 4. Uncomment those lines.
 
  --> How many are you going to comment?
  --> Is this enough for a comment?
  --> What are you doing?!
  --> Stop commenting me!
  --> AAAAaargh!!!
+ --> Enough! Uncomment me now!
 
- Note: If there are already commented lines under selections or
- multiple cursors, they won't be uncommented but commented again.
+ Note: If there are only some commented lines under selections or
+ multiple cursors, the commented lines will be commented again
+ instead of being uncommented.
 
 =================================================================
 =                       CHAPTER 11 RECAP                        =
@@ -1192,10 +1195,8 @@ letters! that is not good grammar. you can fix this.
 
  * Use Ctrl-c to comment a line under your cursor. Press Ctrl-c
    again to uncomment.
- * To comment multiple lines, use the selections
-   and multi-cursors before typing Ctrl-c.
-   * Commented lines cannot be uncommented but commented again.
-
+ * To comment multiple lines, use the selections or multi-cursors
+   before typing Ctrl-c. Press Ctrl-c again to uncomment.
 
 
 
@@ -1454,7 +1455,7 @@ letters! that is not good grammar. you can fix this.
 =                  CHAPTER 13.5 SWAPPING SPLITS                 =
 =================================================================
 
- Open a split on the left with :vs hello1 and then a split below
+ Open a split on the right with :vs hello1 and then a split below
  with :hs hello2.
 
  From hello2, press Ctrl-w K to swap it with the split above. Now
@@ -1476,7 +1477,7 @@ letters! that is not good grammar. you can fix this.
 =                CHAPTER 13.6 TRANSPOSE SPLITS                  =
 =================================================================
 
- Open a split on the left with :vs hello1 and then a split below
+ Open a split on the right with :vs hello1 and then a split below
  with :hs hello2.
 
  Move to the tutor split, then press Ctrl-w t to transpose the
