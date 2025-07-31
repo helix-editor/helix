@@ -408,6 +408,8 @@ pub struct LanguageServerConfiguration {
     pub config: Option<serde_json::Value>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
+    #[serde(default = "default_formatter_timeout")]
+    pub formatter_timeout: u64,
     #[serde(
         default,
         skip_serializing,
@@ -626,4 +628,8 @@ where
 
 fn default_timeout() -> u64 {
     20
+}
+
+fn default_formatter_timeout() -> u64 {
+    1
 }
