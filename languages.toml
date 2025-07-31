@@ -3396,7 +3396,7 @@ injection-regex = "hdl"
 
 [[grammar]]
 name = "hdl"
-source = { git = "https://github.com/quantonganh/tree-sitter-hdl", rev = "7d0418fd71470b0430e6f914cc76c1a9d968491d" }
+source = { git = "https://github.com/quantonganh/tree-sitter-hdl", rev = "579ece64ddc72959d09a3d73be6320318514abce" }
 
 [[language]]
 name = "vhdl"
