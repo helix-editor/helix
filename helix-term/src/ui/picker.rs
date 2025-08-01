@@ -266,6 +266,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
     /// An event handler for syntax highlighting the currently previewed file.
+    refactor_fn: RefactorCallback<T>,
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
 }
@@ -382,6 +383,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             truncate_start: true,
             show_preview: true,
             callback_fn: Box::new(callback_fn),
+            refactor_fn: None,
             completion_height: 0,
             widths,
             preview_cache: HashMap::new(),
@@ -416,6 +418,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // assumption: if we have a preview we are matching paths... If this is ever
         // not true this could be a separate builder function
         self.matcher.update_config(Config::DEFAULT.match_paths());
+        self
+    }
+
+    pub fn with_refactor(mut self, quickfix_fn: impl Fn(&mut Context, Vec<&T>) + 'static) -> Self {
+        self.refactor_fn = Some(Box::new(quickfix_fn));
         self
     }
 
@@ -488,6 +495,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .snapshot()
             .get_matched_item(self.cursor)
             .map(|item| item.data)
+    }
+
+    pub fn get_list(&self) -> Vec<&T> {
+        let matcher = self.matcher.snapshot();
+        let total = matcher.matched_item_count();
+        matcher
+            .matched_items(0..total)
+            .map(|item| item.data)
+            .collect()
     }
 
     fn primary_query(&self) -> Arc<str> {
@@ -1124,6 +1140,15 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             ctrl!('t') => {
                 self.toggle_preview();
             }
+            ctrl!('q') => {
+                if self.selection().is_some() {
+                    if let Some(quickfix) = &self.refactor_fn {
+                        let items = self.get_list();
+                        (quickfix)(ctx, items);
+                    }
+                }
+                return close_fn(self);
+            }
             _ => {
                 self.prompt_handle_event(event, ctx);
             }
@@ -1168,3 +1193,4 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
+type RefactorCallback<T> = Option<Box<dyn Fn(&mut Context, Vec<&T>)>>;
