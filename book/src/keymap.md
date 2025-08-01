@@ -35,6 +35,8 @@ Normal mode is the default mode when you launch helix. You can return to it from
 
 > NOTE: Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
 
+> Hereafter, `<n>` represents an integer by typing a sequence of digits.
+
 | Key                   | Description                                        | Command                     |
 | -----                 | -----------                                        | -------                     |
 | `h`, `Left`           | Move left                                          | `move_char_left`            |
@@ -51,7 +53,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `f`                   | Find next char                                     | `find_next_char`            |
 | `T`                   | Find till previous char                            | `till_prev_char`            |
 | `F`                   | Find previous char                                 | `find_prev_char`            |
-| `G`                   | Go to line number `<n>`                            | `goto_line`                 |
+| `<n>G`, `<n>gg`       | Go to line number `<n>`                            | `goto_line`                 |
 | `Alt-.`               | Repeat last motion (`f`, `t`, `m`, `[` or `]`)     | `repeat_last_motion`        |
 | `Home`                | Move to the start of the line                      | `goto_line_start`           |
 | `End`                 | Move to the end of the line                        | `goto_line_end`             |
@@ -212,8 +214,10 @@ Jumps to various locations.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
-| `g`   | Go to line number `<n>` else start of file       | `goto_file_start`          |
-| <code>&#124;</code>  | Go to column number `<n>` else start of line     | `goto_column`              |
+| `<n>g`| Go to line number `<n>`                          | `goto_file_start`          |
+| `g`   | Go to the start of the file                      | `goto_file_start`          |
+| <code>&lt;n&gt;&#124;</code>  | Go to column number `<n>`      | `goto_column`              |
+| <code>&#124;</code>     | Go to the start of line        | `goto_column`              |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
 | `f`   | Go to files in the selections                    | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |

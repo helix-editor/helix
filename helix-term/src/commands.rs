@@ -1,6 +1,7 @@
 pub(crate) mod dap;
 pub(crate) mod engine;
 pub(crate) mod lsp;
+pub(crate) mod syntax;
 pub(crate) mod typed;
 
 pub use dap::*;
@@ -14,6 +15,7 @@ use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
 
 pub use engine::ScriptingEngine;
+pub use syntax::*;
 
 use tui::{
     text::{Span, Spans},
@@ -421,9 +423,13 @@ impl MappableCommand {
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
+        syntax_symbol_picker, "Open symbol picker from syntax information",
+        lsp_or_syntax_symbol_picker, "Open symbol picker from LSP or syntax information",
         changed_file_picker, "Open changed file picker",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
+        syntax_workspace_symbol_picker, "Open workspace symbol picker from syntax information",
+        lsp_or_syntax_workspace_symbol_picker, "Open workspace symbol picker from LSP or syntax information",
         diagnostics_picker, "Open diagnostic picker",
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
@@ -482,6 +488,8 @@ impl MappableCommand {
         smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",
+        insert_char_interactive, "Insert an interactively-chosen char",
+        append_char_interactive, "Append an interactively-chosen char",
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
@@ -4114,7 +4122,7 @@ fn hunk_range(hunk: Hunk, text: RopeSlice) -> Range {
 }
 
 pub mod insert {
-    use crate::events::PostInsertChar;
+    use crate::{events::PostInsertChar, key};
 
     use super::*;
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
@@ -4193,17 +4201,64 @@ pub mod insert {
     }
 
     pub fn insert_tab(cx: &mut Context) {
+        insert_tab_impl(cx, 1)
+    }
+
+    fn insert_tab_impl(cx: &mut Context, count: usize) {
         let (view, doc) = current!(cx.editor);
         // TODO: round out to nearest indentation level (for example a line with 3 spaces should
         // indent by one to reach 4 spaces).
 
-        let indent = Tendril::from(doc.indent_style.as_str());
+        let indent = Tendril::from(doc.indent_style.as_str().repeat(count));
         let transaction = Transaction::insert(
             doc.text(),
             &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
             indent,
         );
         doc.apply(&transaction, view.id);
+    }
+
+    pub fn append_char_interactive(cx: &mut Context) {
+        // Save the current mode, so we can restore it later.
+        let mode = cx.editor.mode;
+        append_mode(cx);
+        insert_selection_interactive(cx, mode);
+    }
+
+    pub fn insert_char_interactive(cx: &mut Context) {
+        let mode = cx.editor.mode;
+        insert_mode(cx);
+        insert_selection_interactive(cx, mode);
+    }
+
+    fn insert_selection_interactive(cx: &mut Context, old_mode: Mode) {
+        let count = cx.count();
+
+        // need to wait for next key
+        cx.on_next_key(move |cx, event| {
+            match event {
+                KeyEvent {
+                    code: KeyCode::Char(ch),
+                    ..
+                } => {
+                    for _ in 0..count {
+                        insert::insert_char(cx, ch)
+                    }
+                }
+                key!(Enter) => {
+                    if count != 1 {
+                        cx.editor
+                            .set_error("inserting multiple newlines not yet supported");
+                        return;
+                    }
+                    insert_newline(cx)
+                }
+                key!(Tab) => insert_tab_impl(cx, count),
+                _ => (),
+            };
+            // Restore the old mode.
+            cx.editor.mode = old_mode;
+        });
     }
 
     pub fn insert_newline(cx: &mut Context) {
@@ -6850,4 +6905,35 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
         }
     }
     jump_to_label(cx, words, behaviour)
+}
+
+fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
+        .next()
+        .is_some()
+    {
+        lsp::symbol_picker(cx);
+    } else if doc.syntax().is_some() {
+        syntax_symbol_picker(cx);
+    } else {
+        cx.editor
+            .set_error("No language server supporting document symbols or syntax info available");
+    }
+}
+
+fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
+        .next()
+        .is_some()
+    {
+        lsp::workspace_symbol_picker(cx);
+    } else {
+        syntax_workspace_symbol_picker(cx);
+    }
 }

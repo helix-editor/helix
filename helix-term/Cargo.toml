@@ -97,6 +97,7 @@ steel-core = { workspace = true, optional = true }
 steel-doc = { git = "https://github.com/mattwparas/steel.git", version = "0.7.0" }
 
 globset = "0.4.16"
+dashmap = "6.0"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
