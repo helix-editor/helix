@@ -677,7 +677,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "778e2ac28f6c47af28e4907f13ffd1e1ddbd400980a9abd7c8df189bf578a5ad"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2297,7 +2297,7 @@ dependencies = [
  "portable-atomic",
  "portable-atomic-util",
  "serde",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2991,7 +2991,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3004,7 +3004,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.9.4",
- "windows-sys 0.52.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3239,7 +3239,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3251,7 +3251,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#81197308e96eaab17786fd997c2f5e30d54f97ac"
+source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -3305,7 +3305,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#81197308e96eaab17786fd997c2f5e30d54f97ac"
+source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3315,7 +3315,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#81197308e96eaab17786fd997c2f5e30d54f97ac"
+source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
 dependencies = [
  "steel-core",
 ]
@@ -3323,7 +3323,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.3.0"
-source = "git+https://github.com/mattwparas/steel.git#81197308e96eaab17786fd997c2f5e30d54f97ac"
+source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
 dependencies = [
  "codegen",
  "serde",
@@ -3332,7 +3332,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#81197308e96eaab17786fd997c2f5e30d54f97ac"
+source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
 dependencies = [
  "compact_str",
  "fxhash",
@@ -3407,7 +3407,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix 1.0.8",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3898,7 +3898,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

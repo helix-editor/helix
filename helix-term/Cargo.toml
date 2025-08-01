@@ -35,7 +35,7 @@ default = ["git", "steel"] # Remove steel if you don't want it
 unicode-lines = ["helix-core/unicode-lines", "helix-view/unicode-lines"]
 integration = ["helix-event/integration_test"]
 git = ["helix-vcs/git"]
-steel = ["dep:steel-core", "helix-core/steel", "helix-view/steel", "tui/steel"]
+steel = ["dep:steel-core", "helix-core/steel", "helix-view/steel", "tui/steel", "helix-lsp/steel"]
 
 [[bin]]
 name = "hx"

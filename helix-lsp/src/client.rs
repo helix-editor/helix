@@ -1553,6 +1553,7 @@ impl Client {
     }
 
     // Everything below is explicitly extensions used for handling non standard lsp commands
+    #[cfg(feature = "steel")]
     pub fn non_standard_extension(
         &self,
         method_name: String,
@@ -1564,10 +1565,12 @@ impl Client {
         }))
     }
 
+    #[cfg(feature = "steel")]
     fn call_non_standard(&self, request: DynamicLspRequest) -> impl Future<Output = Result<Value>> {
         self.call_non_standard_with_timeout(request, self.req_timeout)
     }
 
+    #[cfg(feature = "steel")]
     fn call_non_standard_with_timeout(
         &self,
         request: DynamicLspRequest,
@@ -1610,6 +1613,7 @@ impl Client {
     }
 }
 
+#[cfg(feature = "steel")]
 #[derive(serde::Serialize, Deserialize)]
 pub struct DynamicLspRequest {
     method_name: String,
