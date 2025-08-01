@@ -13,7 +13,7 @@
 | bibtex | ✓ |  |  |  |  | `texlab` |
 | bicep | ✓ |  |  |  |  | `bicep-langserver` |
 | bitbake | ✓ |  |  |  |  | `bitbake-language-server` |
-| blade | ✓ |  |  |  |  |  |
+| blade | ✓ | ✓ |  |  | ✓ |  |
 | blueprint | ✓ |  |  |  |  | `blueprint-compiler` |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp` |
@@ -213,7 +213,7 @@
 | ruby | ✓ | ✓ | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
 | rust | ✓ | ✓ | ✓ | ✓ | ✓ | `rust-analyzer` |
 | rust-format-args | ✓ |  |  |  |  |  |
-| rust-format-args-macro | ✓ | ✓ | ✓ |  |  |  |
+| rust-format-args-macro | ✓ | ✓ | ✓ |  | ✓ |  |
 | sage | ✓ | ✓ |  |  |  |  |
 | scala | ✓ | ✓ | ✓ |  |  | `metals` |
 | scheme | ✓ |  | ✓ |  | ✓ |  |

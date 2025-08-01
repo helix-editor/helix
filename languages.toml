@@ -67,7 +67,7 @@ koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 koto-ls = { command = "koto-ls" }
 kotlin-lsp = { command = "kotlin-lsp", args = ["--stdio"] }
 kotlin-language-server = { command = "kotlin-language-server" }
-lean = { command = "lean", args = [ "--server", "--memory=1024" ] }
+lean = { command = "lean", args = ["--server"] }
 ltex-ls = { command = "ltex-ls" }
 ltex-ls-plus = { command = "ltex-ls-plus" }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
@@ -1185,7 +1185,7 @@ roots = ["composer.json", "index.php"]
 
 [[grammar]]
 name = "blade"
-source = { git = "https://github.com/EmranMR/tree-sitter-blade", rev = "4c66efe1e05c639c555ee70092021b8223d2f440" }
+source = { git = "https://github.com/EmranMR/tree-sitter-blade", rev = "59ce5b68e288002e3aee6cf5a379bbef21adbe6c" }
 
 [[language]]
 name = "twig"
@@ -1905,7 +1905,7 @@ file-types = [
   { glob = "containerfile.*" },
 ]
 comment-token = "#"
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "  " }
 language-servers = [ "docker-langserver" ]
 
 [[grammar]]
@@ -3322,7 +3322,7 @@ file-types = ["rst"]
 
 [[grammar]]
 name = "rst"
-source = { git = "https://github.com/stsewd/tree-sitter-rst", rev = "25e6328872ac3a764ba8b926aea12719741103f1" }
+source = { git = "https://github.com/stsewd/tree-sitter-rst", rev = "ab09cab886a947c62a8c6fa94d3ad375f3f6a73d" }
 
 [[language]]
 name = "capnp"
