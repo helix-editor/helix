@@ -967,7 +967,8 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "default-line-ending",
             HelixConfiguration::default_line_ending,
         )
-        .register_fn("smart-tab", HelixConfiguration::smart_tab);
+        .register_fn("smart-tab", HelixConfiguration::smart_tab)
+        .register_fn("rainbow-brackets", HelixConfiguration::rainbow_brackets);
 
     // Keybinding stuff
     module
@@ -1540,6 +1541,7 @@ are shown, set to 5 for instant. Defaults to 250ms.
             ("workspace-lsp-roots", "Workspace specific lsp ceiling dirs"),
             ("default-line-ending", "Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`."),
             ("smart-tab", "Enables smart tab"),
+            ("rainbow-brackets", "Enabled rainbow brackets"),
             ("keybindings", "Keybindings config"),
             ("inline-diagnostics-cursor-line-enable", "Inline diagnostics cursor line"),
             ("inline-diagnostics-end-of-line-enable", "Inline diagnostics end of line"),
@@ -2659,6 +2661,10 @@ impl HelixConfiguration {
             existing_config.workspace_lsp_roots = Some(workspace_lsp_roots);
         }
 
+        if let Some(rainbow) = new_config.rainbow_brackets {
+            existing_config.rainbow_brackets = Some(rainbow);
+        }
+
         if persistent_diagnostic_sources_present {
             existing_config.persistent_diagnostic_sources =
                 new_config.persistent_diagnostic_sources;
@@ -3096,6 +3102,12 @@ impl HelixConfiguration {
     fn smart_tab(&self, config: Option<SmartTabConfig>) {
         let mut app_config = self.load_config();
         app_config.editor.smart_tab = config;
+        self.store_config(app_config);
+    }
+
+    fn rainbow_brackets(&self, config: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.rainbow_brackets = config;
         self.store_config(app_config);
     }
 }
