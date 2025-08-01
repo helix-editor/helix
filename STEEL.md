@@ -225,7 +225,7 @@ off on to another thread to run some code. Consider the following example which 
 
 
 ```scheme
-(spawn-native-thread (lambda () (sleep/ms 1000) (theme "focus_nova"))) ;; Note, this won't work!
+(spawn-native-thread (lambda () (time/sleep-ms 1000) (theme "focus_nova"))) ;; Note, this won't work!
 ```
 
 This appears to spawn a thread, sleep for 1 second, and then change the theme. The issue here is that this thread does not
@@ -240,7 +240,7 @@ have control over the helix context. So what we'll have to do instead, is schedu
   (lambda ()
     (hx.block-on-task
       (lambda ()
-        (sleep/ms 1000)
+        (time/sleep-ms 1000)
         (theme "focus_nova")))))
 ```
 
