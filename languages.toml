@@ -4605,3 +4605,16 @@ comment-tokens = ["#"]
 [[grammar]]
 name = "properties"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-properties", rev = "579b62f5ad8d96c2bb331f07d1408c92767531d9" }
+
+[[language]]
+name = "cython"
+scope = "source.cython"
+file-types = ["pxd", "pxi", "pyx"]
+comment-token = "#"
+roots = ["pyproject.toml", "setup.py", "poetry.lock"]
+indent = { tab-width = 4, unit = "    " }
+grammar = "cython"
+
+[[grammar]]
+name = "cython"
+source = { git = "https://github.com/b0o/tree-sitter-cython", rev = "62f44f5e7e41dde03c5f0a05f035e293bcf2bcf8" }
