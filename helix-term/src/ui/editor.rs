@@ -898,17 +898,26 @@ impl EditorView {
             last_mode = current_mode;
         };
 
-        match &key_result {
+        match key_result {
             KeymapResult::Matched(command) => {
-                execute_command(command);
+                execute_command(&command);
             }
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
-                    execute_command(command);
+                    execute_command(&command);
                 }
             }
-            KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
+            KeymapResult::NotFound => return Some(key_result),
+            KeymapResult::Cancelled(mut pending) => {
+                if !matches!(
+                    self.handle_keymap_event(mode, cxt, event),
+                    Some(KeymapResult::NotFound)
+                ) {
+                    pending.pop();
+                }
+                return Some(KeymapResult::Cancelled(pending));
+            }
         }
         None
     }
