@@ -120,6 +120,11 @@ pub fn expand<'a>(editor: &Editor, token: Token<'a>) -> Result<Cow<'a, str>> {
                 ))
             }
         }
+        TokenKind::Expansion(ExpansionKind::Quote) => Ok(Cow::Owned({
+            let expanded = expand_inner(editor, token.content)?;
+            let escaped = escape(&expanded);
+            format!("\"{escaped}\"")
+        })),
         TokenKind::Expand => expand_inner(editor, token.content),
         TokenKind::Expansion(ExpansionKind::Shell) => expand_shell(editor, token.content),
         // Note: see the docs for this variant.
@@ -127,6 +132,24 @@ pub fn expand<'a>(editor: &Editor, token: Token<'a>) -> Result<Cow<'a, str>> {
             "expansion name tokens cannot be emitted when command line validation is enabled"
         ),
     }
+}
+
+fn escape(string: &str) -> Cow<'_, str> {
+    if !string.contains('"') && !string.contains('\\') {
+        return Cow::Borrowed(string);
+    }
+
+    let mut escaped = String::new();
+
+    for ch in string.chars() {
+        match ch {
+            '"' => escaped.push_str(r#"\""#),
+            '\\' => escaped.push_str(r"\\"),
+            _ => escaped.push(ch),
+        }
+    }
+
+    Cow::Owned(escaped)
 }
 
 /// Expand a shell command.
@@ -271,5 +294,25 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             let end_line = doc.selection(view.id).primary().line_range(text).1;
             Ok(Cow::Owned((end_line + 1).to_string()))
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn should_escape_only_double_quotes() {
+        assert_eq!(r#"\"'\"=\"foo\""#, escape(r#""'"="foo""#));
+    }
+
+    #[test]
+    fn should_escape_double_quotes_and_backslashes() {
+        assert_eq!(r#"\"'\"=\"f\\oo\""#, escape(r#""'"="f\oo""#));
+    }
+
+    #[test]
+    fn should_escape_double_quotes_and_backslashes_and_leave_spaces_alone() {
+        assert_eq!(r#"\"'\"=\"f\\o o\""#, escape(r#""'"="f\o o""#));
     }
 }

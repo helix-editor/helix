@@ -3928,7 +3928,8 @@ fn complete_command_args(
         TokenKind::Expansion(ExpansionKind::Variable) => {
             complete_variable_expansion(&token.content, offset + token.content_start)
         }
-        TokenKind::Expansion(ExpansionKind::Unicode) => Vec::new(),
+        TokenKind::Expansion(ExpansionKind::Unicode)
+        | TokenKind::Expansion(ExpansionKind::Quote) => Vec::new(),
         TokenKind::ExpansionKind => {
             complete_expansion_kind(&token.content, offset + token.content_start)
         }
