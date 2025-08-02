@@ -68,7 +68,7 @@
 (at_rule
   . (at_keyword) @keyword
   . (keyword_query) @constant
-  (#any-of? @keyword "@apply"))
+  (#match? @keyword "@apply"))
 
 [
   "#"
