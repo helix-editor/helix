@@ -100,6 +100,7 @@
 | haskell | ✓ | ✓ |  |  |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |  |  |
 | hcl | ✓ | ✓ | ✓ |  |  | `terraform-ls` |
+| hdl | ✓ |  |  |  |  |  |
 | heex | ✓ | ✓ |  |  |  | `elixir-ls` |
 | helm | ✓ |  |  |  |  | `helm_ls` |
 | hocon | ✓ | ✓ | ✓ |  |  |  |
