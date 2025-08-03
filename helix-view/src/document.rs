@@ -2274,6 +2274,14 @@ impl Document {
         self.jump_labels.remove(&view_id);
     }
 
+    pub fn has_jump_labels(&self, view_id: ViewId) -> bool {
+        !self
+            .jump_labels
+            .get(&view_id)
+            .unwrap_or(&Vec::new())
+            .is_empty()
+    }
+
     /// Get the inlay hints for this document and `view_id`.
     pub fn inlay_hints(&self, view_id: ViewId) -> Option<&DocumentInlayHints> {
         self.inlay_hints.get(&view_id)
