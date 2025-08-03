@@ -22,4 +22,5 @@ mod test {
     mod languages;
     mod movement;
     mod splits;
+    mod lsp;
 }
