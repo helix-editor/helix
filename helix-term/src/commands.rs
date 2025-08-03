@@ -6059,7 +6059,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("e", "Data structure entry (tree-sitter)"),
         ("m", "Closest surrounding pair (tree-sitter)"),
         ("g", "Change"),
-        ("x", "X(HTML) element (tree-sitter)"),
+        ("x", "(X)HTML element (tree-sitter)"),
         (" ", "... or any character acting as a pair"),
     ];
 
