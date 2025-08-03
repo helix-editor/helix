@@ -196,6 +196,7 @@
 | protobuf | ✓ | ✓ | ✓ |  |  | `buf`, `pb`, `protols` |
 | prql | ✓ |  |  |  |  |  |
 | pug | ✓ |  |  |  |  |  |
+| puppet | ✓ |  |  |  |  |  |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ | ✓ | ✓ |  |  | `qmlls` |

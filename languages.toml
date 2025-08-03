@@ -2757,7 +2757,7 @@ source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "df83acc
 name = "pascal"
 scope = "source.pascal"
 injection-regex = "pascal"
-file-types = ["pas", "pp", "inc", "lpr", "lfm"]
+file-types = ["pas", "inc", "lpr", "lfm"]
 comment-token = "//"
 block-comment-tokens = { start = "{", end = "}" }
 indent = { tab-width = 2, unit = "  " }
@@ -4605,3 +4605,15 @@ comment-tokens = ["#"]
 [[grammar]]
 name = "properties"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-properties", rev = "579b62f5ad8d96c2bb331f07d1408c92767531d9" }
+
+[[language]]
+name = "puppet"
+scope = "source.puppet"
+injection-regex = "puppet"
+file-types = ["pp"]
+indent = { tab-width = 2, unit = "  " }
+comment-token = "#"
+
+[[grammar]]
+name = "puppet"
+source = { git = "https://github.com/neovim-puppet/tree-sitter-puppet", rev = "bdedf4d5b13b4020745a678364e2f441cd3abf2a" }
