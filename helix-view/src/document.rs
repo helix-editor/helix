@@ -2399,6 +2399,12 @@ impl Document {
         self.document_highlight_controllers
             .entry(view_id)
             .or_default()
+    pub fn has_jump_labels(&self, view_id: ViewId) -> bool {
+        !self
+            .jump_labels
+            .get(&view_id)
+            .unwrap_or(&Vec::new())
+            .is_empty()
     }
 
     /// Get the inlay hints for this document and `view_id`.

@@ -9,9 +9,9 @@ use helix_core::{visual_offset_from_block, Position, RopeSlice};
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
-use helix_view::theme::Style;
+use helix_view::theme::{Modifier, Style};
 use helix_view::view::ViewPosition;
-use helix_view::{Document, Theme};
+use helix_view::{Document, Theme, ViewId};
 use tui::buffer::Buffer as Surface;
 
 use crate::ui::text_decorations::DecorationManager;
@@ -29,6 +29,7 @@ pub struct LinePos {
 
 #[allow(clippy::too_many_arguments)]
 pub fn render_document(
+    view_id: Option<ViewId>,
     surface: &mut Surface,
     viewport: Rect,
     doc: &Document,
@@ -38,6 +39,7 @@ pub fn render_document(
     overlay_highlights: Vec<syntax::OverlayHighlights>,
     theme: &Theme,
     decorations: DecorationManager,
+    is_focused: bool,
 ) {
     let mut renderer = TextRenderer::new(
         surface,
@@ -46,6 +48,11 @@ pub fn render_document(
         Position::new(offset.vertical_offset, offset.horizontal_offset),
         viewport,
     );
+    let has_labels = if let Some(view_id) = view_id {
+        doc.has_jump_labels(view_id)
+    } else {
+        false
+    };
     render_text(
         &mut renderer,
         doc.text().slice(..),
@@ -56,6 +63,7 @@ pub fn render_document(
         overlay_highlights,
         theme,
         decorations,
+        is_focused && !has_labels,
     )
 }
 
@@ -70,6 +78,7 @@ pub fn render_text(
     overlay_highlights: Vec<syntax::OverlayHighlights>,
     theme: &Theme,
     mut decorations: DecorationManager,
+    is_focused: bool,
 ) {
     let row_off = visual_offset_from_block(text, anchor, anchor, text_fmt, text_annotations)
         .0
@@ -148,10 +157,15 @@ pub fn render_text(
                 syntax_style: style,
                 overlay_style: Style::default(),
             }
-        } else {
+        } else if is_focused || !renderer.dimmer_enabled {
             GraphemeStyle {
                 syntax_style: syntax_highlighter.style,
                 overlay_style: overlay_highlighter.style,
+            }
+        } else {
+            GraphemeStyle {
+                syntax_style: syntax_highlighter.style.add_modifier(Modifier::DIM),
+                overlay_style: overlay_highlighter.style.add_modifier(Modifier::DIM),
             }
         };
         decorations.decorate_grapheme(renderer, &grapheme);
@@ -190,6 +204,7 @@ pub struct TextRenderer<'a> {
     pub draw_indent_guides: bool,
     pub viewport: Rect,
     pub offset: Position,
+    pub dimmer_enabled: bool,
 }
 
 pub struct GraphemeStyle {
@@ -269,6 +284,7 @@ impl<'a> TextRenderer<'a> {
             draw_indent_guides: editor_config.indent_guides.render,
             viewport,
             offset,
+            dimmer_enabled: editor_config.enable_focus_dimmer,
         }
     }
     /// Draws a single `grapheme` at the current render position with a specified `style`.
