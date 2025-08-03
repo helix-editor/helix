@@ -10,10 +10,10 @@
 (string) @string
 (char) @constant.character
 
-(escape) @string.escape
+(escape) @constant.character.escape
 
 (float) @constant.numeric.float
-(int) @constant.numeric.int
+(int) @constant.numeric.integer
 
 ; Delimiters
 
@@ -89,7 +89,7 @@
   "import"
   ;"include"
   "module"
-] @keyword.import
+] @keyword.control.import
 
 [
   "alias"
@@ -133,7 +133,7 @@
   (qidop)
 ] @operator
 
-(modulepath) @module
+(modulepath) @namespace
 
 ; Variables
 
@@ -202,7 +202,7 @@
 
 (opexpr
   (atom
-    (name) @function.call)
+    (name) @function)
   .
   [
     call: "(" (arguments)? ")"
@@ -211,17 +211,17 @@
 
 (opexpr
   (atom)
-  (name) @function.call)
+  (name) @function)
 
 (ntlexpr
   (atom
-    (name) @function.call)
+    (name) @function)
   .
   ("(" (arguments)? ")"))
 
 (ntlexpr
   (atom)
-  (name) @function.call)
+  (name) @function)
 
 [(conid) (qconid)] @constructor
 
