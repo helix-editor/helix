@@ -152,6 +152,7 @@ teal-language-server = { command = "teal-language-server" }
 wasm-language-tools = { command = "wat_server" }
 sourcepawn-studio = { command = "sourcepawn-studio" }
 luau = { command = "luau-lsp", args = ["lsp"] }
+uiua-lsp = { command = "uiua", args = ["lsp"] }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -4628,3 +4629,20 @@ comment-token = "#"
 [[grammar]]
 name = "robots"
 source = { git = "https://github.com/opa-oz/tree-sitter-robots-txt", rev = "8e3a4205b76236bb6dbebdbee5afc262ce38bb62" }
+
+[[language]]
+name = "uiua"
+scope = "source.uiua"
+language-servers = ["uiua-lsp"]
+injection-regex = "uiua"
+file-types = ["ua"]
+auto-format = true
+comment-token = "#"
+shebangs = ["uiua"]
+indent = { tab-width = 2, unit = "  " }
+auto-pairs = { "(" = ")", "[" = "]", "{" = "}" }
+formatter = { command = "uiua", args = ["fmt", "--io"] }
+
+[[grammar]]
+name = "uiua"
+source = { git = "https://github.com/magistau/tree-sitter-uiua", rev = "8abe2379c33d08fbf850629676a53ce50189acaa" }
