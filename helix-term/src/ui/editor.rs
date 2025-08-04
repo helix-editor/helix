@@ -17,7 +17,7 @@ use helix_core::{
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
-    syntax::{self, HighlightEvent},
+    syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
@@ -31,7 +31,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc};
+use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -87,6 +87,7 @@ impl EditorView {
         let area = view.area;
         let theme = &editor.theme;
         let config = editor.config();
+        let loader = editor.syn_loader.load();
 
         let view_offset = doc.view_offset(view.id);
 
@@ -115,51 +116,45 @@ impl EditorView {
             decorations.add_decoration(line_decoration);
         }
 
-        let syntax_highlights =
-            Self::doc_syntax_highlights(doc, view_offset.anchor, inner.height, theme);
+        let syntax_highlighter =
+            Self::doc_syntax_highlighter(doc, view_offset.anchor, inner.height, &loader);
+        let mut overlays = Vec::new();
 
-        let mut overlay_highlights =
-            Self::empty_highlight_iter(doc, view_offset.anchor, inner.height);
-        let overlay_syntax_highlights = Self::overlay_syntax_highlights(
+        overlays.push(Self::overlay_syntax_highlights(
             doc,
             view_offset.anchor,
             inner.height,
             &text_annotations,
-        );
-        if !overlay_syntax_highlights.is_empty() {
-            overlay_highlights =
-                Box::new(syntax::merge(overlay_highlights, overlay_syntax_highlights));
+        ));
+
+        if doc
+            .language_config()
+            .and_then(|config| config.rainbow_brackets)
+            .unwrap_or(config.rainbow_brackets)
+        {
+            if let Some(overlay) =
+                Self::doc_rainbow_highlights(doc, view_offset.anchor, inner.height, theme, &loader)
+            {
+                overlays.push(overlay);
+            }
         }
 
-        for diagnostic in Self::doc_diagnostics_highlights(doc, theme) {
-            // Most of the `diagnostic` Vecs are empty most of the time. Skipping
-            // a merge for any empty Vec saves a significant amount of work.
-            if diagnostic.is_empty() {
-                continue;
-            }
-            overlay_highlights = Box::new(syntax::merge(overlay_highlights, diagnostic));
-        }
+        Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
 
         if is_focused {
             if let Some(tabstops) = Self::tabstop_highlights(doc, theme) {
-                overlay_highlights = Box::new(syntax::merge(overlay_highlights, tabstops));
+                overlays.push(tabstops);
             }
-            let highlights = syntax::merge(
-                overlay_highlights,
-                Self::doc_selection_highlights(
-                    editor.mode(),
-                    doc,
-                    view,
-                    theme,
-                    &config.cursor_shape,
-                    self.terminal_focused,
-                ),
-            );
-            let focused_view_elements = Self::highlight_focused_view_elements(view, doc, theme);
-            if focused_view_elements.is_empty() {
-                overlay_highlights = Box::new(highlights)
-            } else {
-                overlay_highlights = Box::new(syntax::merge(highlights, focused_view_elements))
+            overlays.push(Self::doc_selection_highlights(
+                editor.mode(),
+                doc,
+                view,
+                theme,
+                &config.cursor_shape,
+                self.terminal_focused,
+            ));
+            if let Some(overlay) = Self::highlight_focused_view_elements(view, doc, theme) {
+                overlays.push(overlay);
             }
         }
 
@@ -207,8 +202,8 @@ impl EditorView {
             doc,
             view_offset,
             &text_annotations,
-            syntax_highlights,
-            overlay_highlights,
+            syntax_highlighter,
+            overlays,
             theme,
             decorations,
         );
@@ -287,57 +282,23 @@ impl EditorView {
         start..end
     }
 
-    pub fn empty_highlight_iter(
-        doc: &Document,
-        anchor: usize,
-        height: u16,
-    ) -> Box<dyn Iterator<Item = HighlightEvent>> {
-        let text = doc.text().slice(..);
-        let row = text.char_to_line(anchor.min(text.len_chars()));
-
-        // Calculate viewport byte ranges:
-        // Saturating subs to make it inclusive zero indexing.
-        let range = Self::viewport_byte_range(text, row, height);
-        Box::new(
-            [HighlightEvent::Source {
-                start: text.byte_to_char(range.start),
-                end: text.byte_to_char(range.end),
-            }]
-            .into_iter(),
-        )
-    }
-
-    /// Get syntax highlights for a document in a view represented by the first line
+    /// Get the syntax highlighter for a document in a view represented by the first line
     /// and column (`offset`) and the last line. This is done instead of using a view
     /// directly to enable rendering syntax highlighted docs anywhere (eg. picker preview)
-    pub fn doc_syntax_highlights<'doc>(
-        doc: &'doc Document,
+    pub fn doc_syntax_highlighter<'editor>(
+        doc: &'editor Document,
         anchor: usize,
         height: u16,
-        _theme: &Theme,
-    ) -> Box<dyn Iterator<Item = HighlightEvent> + 'doc> {
+        loader: &'editor syntax::Loader,
+    ) -> Option<syntax::Highlighter<'editor>> {
+        let syntax = doc.syntax()?;
         let text = doc.text().slice(..);
         let row = text.char_to_line(anchor.min(text.len_chars()));
-
         let range = Self::viewport_byte_range(text, row, height);
+        let range = range.start as u32..range.end as u32;
 
-        match doc.syntax() {
-            Some(syntax) => {
-                let iter = syntax
-                    // TODO: range doesn't actually restrict source, just highlight range
-                    .highlight_iter(text.slice(..), Some(range), None)
-                    .map(|event| event.unwrap());
-
-                Box::new(iter)
-            }
-            None => Box::new(
-                [HighlightEvent::Source {
-                    start: range.start,
-                    end: range.end,
-                }]
-                .into_iter(),
-            ),
-        }
+        let highlighter = syntax.highlighter(text, loader, range);
+        Some(highlighter)
     }
 
     pub fn overlay_syntax_highlights(
@@ -345,7 +306,7 @@ impl EditorView {
         anchor: usize,
         height: u16,
         text_annotations: &TextAnnotations,
-    ) -> Vec<(usize, std::ops::Range<usize>)> {
+    ) -> OverlayHighlights {
         let text = doc.text().slice(..);
         let row = text.char_to_line(anchor.min(text.len_chars()));
 
@@ -355,36 +316,51 @@ impl EditorView {
         text_annotations.collect_overlay_highlights(range)
     }
 
+    pub fn doc_rainbow_highlights(
+        doc: &Document,
+        anchor: usize,
+        height: u16,
+        theme: &Theme,
+        loader: &syntax::Loader,
+    ) -> Option<OverlayHighlights> {
+        let syntax = doc.syntax()?;
+        let text = doc.text().slice(..);
+        let row = text.char_to_line(anchor.min(text.len_chars()));
+        let visible_range = Self::viewport_byte_range(text, row, height);
+        let start = syntax::child_for_byte_range(
+            &syntax.tree().root_node(),
+            visible_range.start as u32..visible_range.end as u32,
+        )
+        .map_or(visible_range.start as u32, |node| node.start_byte());
+        let range = start..visible_range.end as u32;
+
+        Some(syntax.rainbow_highlights(text, theme.rainbow_length(), loader, range))
+    }
+
     /// Get highlight spans for document diagnostics
-    pub fn doc_diagnostics_highlights(
+    pub fn doc_diagnostics_highlights_into(
         doc: &Document,
         theme: &Theme,
-    ) -> [Vec<(usize, std::ops::Range<usize>)>; 7] {
+        overlay_highlights: &mut Vec<OverlayHighlights>,
+    ) {
         use helix_core::diagnostic::{DiagnosticTag, Range, Severity};
         let get_scope_of = |scope| {
             theme
-            .find_scope_index_exact(scope)
-            // get one of the themes below as fallback values
-            .or_else(|| theme.find_scope_index_exact("diagnostic"))
-            .or_else(|| theme.find_scope_index_exact("ui.cursor"))
-            .or_else(|| theme.find_scope_index_exact("ui.selection"))
-            .expect(
-                "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
-            )
+                .find_highlight_exact(scope)
+                // get one of the themes below as fallback values
+                .or_else(|| theme.find_highlight_exact("diagnostic"))
+                .or_else(|| theme.find_highlight_exact("ui.cursor"))
+                .or_else(|| theme.find_highlight_exact("ui.selection"))
+                .expect(
+                    "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
+                )
         };
 
-        // basically just queries the theme color defined in the config
-        let hint = get_scope_of("diagnostic.hint");
-        let info = get_scope_of("diagnostic.info");
-        let warning = get_scope_of("diagnostic.warning");
-        let error = get_scope_of("diagnostic.error");
-        let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
-
         // Diagnostic tags
-        let unnecessary = theme.find_scope_index_exact("diagnostic.unnecessary");
-        let deprecated = theme.find_scope_index_exact("diagnostic.deprecated");
+        let unnecessary = theme.find_highlight_exact("diagnostic.unnecessary");
+        let deprecated = theme.find_highlight_exact("diagnostic.deprecated");
 
-        let mut default_vec: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+        let mut default_vec = Vec::new();
         let mut info_vec = Vec::new();
         let mut hint_vec = Vec::new();
         let mut warning_vec = Vec::new();
@@ -392,31 +368,30 @@ impl EditorView {
         let mut unnecessary_vec = Vec::new();
         let mut deprecated_vec = Vec::new();
 
-        let push_diagnostic =
-            |vec: &mut Vec<(usize, std::ops::Range<usize>)>, scope, range: Range| {
-                // If any diagnostic overlaps ranges with the prior diagnostic,
-                // merge the two together. Otherwise push a new span.
-                match vec.last_mut() {
-                    Some((_, existing_range)) if range.start <= existing_range.end => {
-                        // This branch merges overlapping diagnostics, assuming that the current
-                        // diagnostic starts on range.start or later. If this assertion fails,
-                        // we will discard some part of `diagnostic`. This implies that
-                        // `doc.diagnostics()` is not sorted by `diagnostic.range`.
-                        debug_assert!(existing_range.start <= range.start);
-                        existing_range.end = range.end.max(existing_range.end)
-                    }
-                    _ => vec.push((scope, range.start..range.end)),
+        let push_diagnostic = |vec: &mut Vec<ops::Range<usize>>, range: Range| {
+            // If any diagnostic overlaps ranges with the prior diagnostic,
+            // merge the two together. Otherwise push a new span.
+            match vec.last_mut() {
+                Some(existing_range) if range.start <= existing_range.end => {
+                    // This branch merges overlapping diagnostics, assuming that the current
+                    // diagnostic starts on range.start or later. If this assertion fails,
+                    // we will discard some part of `diagnostic`. This implies that
+                    // `doc.diagnostics()` is not sorted by `diagnostic.range`.
+                    debug_assert!(existing_range.start <= range.start);
+                    existing_range.end = range.end.max(existing_range.end)
                 }
-            };
+                _ => vec.push(range.start..range.end),
+            }
+        };
 
         for diagnostic in doc.diagnostics() {
             // Separate diagnostics into different Vecs by severity.
-            let (vec, scope) = match diagnostic.severity {
-                Some(Severity::Info) => (&mut info_vec, info),
-                Some(Severity::Hint) => (&mut hint_vec, hint),
-                Some(Severity::Warning) => (&mut warning_vec, warning),
-                Some(Severity::Error) => (&mut error_vec, error),
-                _ => (&mut default_vec, r#default),
+            let vec = match diagnostic.severity {
+                Some(Severity::Info) => &mut info_vec,
+                Some(Severity::Hint) => &mut hint_vec,
+                Some(Severity::Warning) => &mut warning_vec,
+                Some(Severity::Error) => &mut error_vec,
+                _ => &mut default_vec,
             };
 
             // If the diagnostic has tags and a non-warning/error severity, skip rendering
@@ -429,34 +404,59 @@ impl EditorView {
                     Some(Severity::Warning | Severity::Error)
                 )
             {
-                push_diagnostic(vec, scope, diagnostic.range);
+                push_diagnostic(vec, diagnostic.range);
             }
 
             for tag in &diagnostic.tags {
                 match tag {
                     DiagnosticTag::Unnecessary => {
-                        if let Some(scope) = unnecessary {
-                            push_diagnostic(&mut unnecessary_vec, scope, diagnostic.range)
+                        if unnecessary.is_some() {
+                            push_diagnostic(&mut unnecessary_vec, diagnostic.range)
                         }
                     }
                     DiagnosticTag::Deprecated => {
-                        if let Some(scope) = deprecated {
-                            push_diagnostic(&mut deprecated_vec, scope, diagnostic.range)
+                        if deprecated.is_some() {
+                            push_diagnostic(&mut deprecated_vec, diagnostic.range)
                         }
                     }
                 }
             }
         }
 
-        [
-            default_vec,
-            unnecessary_vec,
-            deprecated_vec,
-            info_vec,
-            hint_vec,
-            warning_vec,
-            error_vec,
-        ]
+        overlay_highlights.push(OverlayHighlights::Homogeneous {
+            highlight: get_scope_of("diagnostic"),
+            ranges: default_vec,
+        });
+        if let Some(highlight) = unnecessary {
+            overlay_highlights.push(OverlayHighlights::Homogeneous {
+                highlight,
+                ranges: unnecessary_vec,
+            });
+        }
+        if let Some(highlight) = deprecated {
+            overlay_highlights.push(OverlayHighlights::Homogeneous {
+                highlight,
+                ranges: deprecated_vec,
+            });
+        }
+        overlay_highlights.extend([
+            OverlayHighlights::Homogeneous {
+                highlight: get_scope_of("diagnostic.info"),
+                ranges: info_vec,
+            },
+            OverlayHighlights::Homogeneous {
+                highlight: get_scope_of("diagnostic.hint"),
+                ranges: hint_vec,
+            },
+            OverlayHighlights::Homogeneous {
+                highlight: get_scope_of("diagnostic.warning"),
+                ranges: warning_vec,
+            },
+            OverlayHighlights::Homogeneous {
+                highlight: get_scope_of("diagnostic.error"),
+                ranges: error_vec,
+            },
+        ]);
     }
 
     /// Get highlight spans for selections in a document view.
@@ -467,7 +467,7 @@ impl EditorView {
         theme: &Theme,
         cursor_shape_config: &CursorShapeConfig,
         is_terminal_focused: bool,
-    ) -> Vec<(usize, std::ops::Range<usize>)> {
+    ) -> OverlayHighlights {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
@@ -476,34 +476,34 @@ impl EditorView {
         let cursor_is_block = cursorkind == CursorKind::Block;
 
         let selection_scope = theme
-            .find_scope_index_exact("ui.selection")
+            .find_highlight_exact("ui.selection")
             .expect("could not find `ui.selection` scope in the theme!");
         let primary_selection_scope = theme
-            .find_scope_index_exact("ui.selection.primary")
+            .find_highlight_exact("ui.selection.primary")
             .unwrap_or(selection_scope);
 
         let base_cursor_scope = theme
-            .find_scope_index_exact("ui.cursor")
+            .find_highlight_exact("ui.cursor")
             .unwrap_or(selection_scope);
         let base_primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
+            .find_highlight("ui.cursor.primary")
             .unwrap_or(base_cursor_scope);
 
         let cursor_scope = match mode {
-            Mode::Insert => theme.find_scope_index_exact("ui.cursor.insert"),
-            Mode::Select => theme.find_scope_index_exact("ui.cursor.select"),
-            Mode::Normal => theme.find_scope_index_exact("ui.cursor.normal"),
+            Mode::Insert => theme.find_highlight_exact("ui.cursor.insert"),
+            Mode::Select => theme.find_highlight_exact("ui.cursor.select"),
+            Mode::Normal => theme.find_highlight_exact("ui.cursor.normal"),
         }
         .unwrap_or(base_cursor_scope);
 
         let primary_cursor_scope = match mode {
-            Mode::Insert => theme.find_scope_index_exact("ui.cursor.primary.insert"),
-            Mode::Select => theme.find_scope_index_exact("ui.cursor.primary.select"),
-            Mode::Normal => theme.find_scope_index_exact("ui.cursor.primary.normal"),
+            Mode::Insert => theme.find_highlight_exact("ui.cursor.primary.insert"),
+            Mode::Select => theme.find_highlight_exact("ui.cursor.primary.select"),
+            Mode::Normal => theme.find_highlight_exact("ui.cursor.primary.normal"),
         }
         .unwrap_or(base_primary_cursor_scope);
 
-        let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+        let mut spans = Vec::new();
         for (i, range) in selection.iter().enumerate() {
             let selection_is_primary = i == primary_idx;
             let (cursor_scope, selection_scope) = if selection_is_primary {
@@ -563,7 +563,7 @@ impl EditorView {
             }
         }
 
-        spans
+        OverlayHighlights::Heterogenous { highlights: spans }
     }
 
     /// Render brace match, etc (meant for the focused view only)
@@ -571,41 +571,24 @@ impl EditorView {
         view: &View,
         doc: &Document,
         theme: &Theme,
-    ) -> Vec<(usize, std::ops::Range<usize>)> {
+    ) -> Option<OverlayHighlights> {
         // Highlight matching braces
-        if let Some(syntax) = doc.syntax() {
-            let text = doc.text().slice(..);
-            use helix_core::match_brackets;
-            let pos = doc.selection(view.id).primary().cursor(text);
-
-            if let Some(pos) =
-                match_brackets::find_matching_bracket(syntax, doc.text().slice(..), pos)
-            {
-                // ensure col is on screen
-                if let Some(highlight) = theme.find_scope_index_exact("ui.cursor.match") {
-                    return vec![(highlight, pos..pos + 1)];
-                }
-            }
-        }
-        Vec::new()
+        let syntax = doc.syntax()?;
+        let highlight = theme.find_highlight_exact("ui.cursor.match")?;
+        let text = doc.text().slice(..);
+        let pos = doc.selection(view.id).primary().cursor(text);
+        let pos = helix_core::match_brackets::find_matching_bracket(syntax, text, pos)?;
+        Some(OverlayHighlights::single(highlight, pos..pos + 1))
     }
 
-    pub fn tabstop_highlights(
-        doc: &Document,
-        theme: &Theme,
-    ) -> Option<Vec<(usize, std::ops::Range<usize>)>> {
+    pub fn tabstop_highlights(doc: &Document, theme: &Theme) -> Option<OverlayHighlights> {
         let snippet = doc.active_snippet.as_ref()?;
-        let highlight = theme.find_scope_index_exact("tabstop")?;
-        let mut highlights = Vec::new();
+        let highlight = theme.find_highlight_exact("tabstop")?;
+        let mut ranges = Vec::new();
         for tabstop in snippet.tabstops() {
-            highlights.extend(
-                tabstop
-                    .ranges
-                    .iter()
-                    .map(|range| (highlight, range.start..range.end)),
-            );
+            ranges.extend(tabstop.ranges.iter().map(|range| range.start..range.end));
         }
-        (!highlights.is_empty()).then_some(highlights)
+        Some(OverlayHighlights::Homogeneous { highlight, ranges })
     }
 
     /// Render bufferline at the top

@@ -5,11 +5,12 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
+use helix_core::command_line::Token;
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
-use helix_core::syntax::{Highlight, LanguageServerFeature};
+use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
@@ -38,13 +39,14 @@ use helix_core::{
     history::{History, State, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
-    syntax::{self, LanguageConfiguration},
+    syntax::{self, config::LanguageConfiguration},
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
+    expansion,
     view::ViewPosition,
     DocumentId, Editor, Theme, View, ViewId,
 };
@@ -207,12 +209,17 @@ pub struct Document {
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
+
+    // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
+    // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
+    // `ArcSwap` directly.
+    syn_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct DocumentColorSwatches {
     pub color_swatches: Vec<InlineAnnotation>,
-    pub colors: Vec<Highlight>,
+    pub colors: Vec<syntax::Highlight>,
     pub color_swatches_padding: Vec<InlineAnnotation>,
 }
 
@@ -677,6 +684,7 @@ impl Document {
         text: Rope,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
+        syn_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
         let line_ending = config.load().default_line_ending.into();
@@ -719,13 +727,17 @@ impl Document {
             jump_labels: HashMap::new(),
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
+            syn_loader,
         }
     }
 
-    pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
+    pub fn default(
+        config: Arc<dyn DynAccess<Config>>,
+        syn_loader: Arc<ArcSwap<syntax::Loader>>,
+    ) -> Self {
         let line_ending: LineEnding = config.load().default_line_ending.into();
         let text = Rope::from(line_ending.as_str());
-        Self::from(text, None, config)
+        Self::from(text, None, config, syn_loader)
     }
 
     // TODO: async fn?
@@ -734,8 +746,9 @@ impl Document {
     pub fn open(
         path: &Path,
         mut encoding: Option<&'static Encoding>,
-        config_loader: Option<Arc<ArcSwap<syntax::Loader>>>,
+        detect_language: bool,
         config: Arc<dyn DynAccess<Config>>,
+        syn_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> Result<Self, DocumentOpenError> {
         // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
         if path.metadata().is_ok_and(|metadata| !metadata.is_file()) {
@@ -761,12 +774,13 @@ impl Document {
             (Rope::from(line_ending.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
+        let loader = syn_loader.load();
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config, syn_loader);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
-        if let Some(loader) = config_loader {
-            doc.detect_language(loader);
+        if detect_language {
+            doc.detect_language(&loader);
         }
 
         doc.editor_config = editor_config;
@@ -777,9 +791,12 @@ impl Document {
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
-    pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn auto_format(
+        &self,
+        editor: &Editor,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if self.language_config()?.auto_format {
-            self.format()
+            self.format(editor)
         } else {
             None
         }
@@ -789,7 +806,10 @@ impl Document {
     /// to format it nicely.
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
-    pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn format(
+        &self,
+        editor: &Editor,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
             .and_then(|c| c.formatter.as_ref())
@@ -814,8 +834,20 @@ impl Document {
                 process.current_dir(doc_dir);
             }
 
+            let args = match fmt_args
+                .iter()
+                .map(|content| expansion::expand(editor, Token::expand(content)))
+                .collect::<Result<Vec<_>, _>>()
+            {
+                Ok(args) => args,
+                Err(err) => {
+                    log::error!("Failed to expand formatter arguments: {err}");
+                    return None;
+                }
+            };
+
             process
-                .args(fmt_args)
+                .args(args.iter().map(AsRef::as_ref))
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
@@ -948,6 +980,7 @@ impl Document {
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
         let doc_id = self.id();
+        let atomic_save = self.config.load().atomic_save;
 
         let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
@@ -997,7 +1030,7 @@ impl Document {
 
             // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
             let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
-            let backup = if path.exists() {
+            let backup = if path.exists() && atomic_save {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
                 // non clobbered temporary path for us we don't want
@@ -1102,22 +1135,20 @@ impl Document {
     }
 
     /// Detect the programming language based on the file type.
-    pub fn detect_language(&mut self, config_loader: Arc<ArcSwap<syntax::Loader>>) {
-        let loader = config_loader.load();
-        self.set_language(
-            self.detect_language_config(&loader),
-            Some(Arc::clone(&config_loader)),
-        );
+    pub fn detect_language(&mut self, loader: &syntax::Loader) {
+        self.set_language(self.detect_language_config(loader), loader);
     }
 
     /// Detect the programming language based on the file type.
     pub fn detect_language_config(
         &self,
-        config_loader: &syntax::Loader,
-    ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
-        config_loader
-            .language_config_for_file_name(self.path.as_ref()?)
-            .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
+        loader: &syntax::Loader,
+    ) -> Option<Arc<syntax::config::LanguageConfiguration>> {
+        let language = loader
+            .language_for_filename(self.path.as_ref()?)
+            .or_else(|| loader.language_for_shebang(self.text().slice(..)))?;
+
+        Some(loader.language(language).config().clone())
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
@@ -1142,7 +1173,7 @@ impl Document {
         }
     }
 
-    pub(crate) fn detect_editor_config(&mut self) {
+    pub fn detect_editor_config(&mut self) {
         if self.config.load().editor_config {
             if let Some(path) = self.path.as_ref() {
                 self.editor_config = EditorConfig::find(path);
@@ -1256,35 +1287,36 @@ impl Document {
     /// if it exists.
     pub fn set_language(
         &mut self,
-        language_config: Option<Arc<helix_core::syntax::LanguageConfiguration>>,
-        loader: Option<Arc<ArcSwap<helix_core::syntax::Loader>>>,
+        language_config: Option<Arc<syntax::config::LanguageConfiguration>>,
+        loader: &syntax::Loader,
     ) {
-        if let (Some(language_config), Some(loader)) = (language_config, loader) {
-            if let Some(highlight_config) =
-                language_config.highlight_config(&(*loader).load().scopes())
-            {
-                self.syntax = Syntax::new(self.text.slice(..), highlight_config, loader);
-            }
-
-            self.language = Some(language_config);
-        } else {
-            self.syntax = None;
-            self.language = None;
-        };
+        self.language = language_config;
+        self.syntax = self.language.as_ref().and_then(|config| {
+            Syntax::new(self.text.slice(..), config.language(), loader)
+                .map_err(|err| {
+                    // `NoRootConfig` means that there was an issue loading the language/syntax
+                    // config for the root language of the document. An error must have already
+                    // been logged by `LanguageData::syntax_config`.
+                    if err != syntax::HighlighterError::NoRootConfig {
+                        log::warn!("Error building syntax for '{}': {err}", self.display_name());
+                    }
+                })
+                .ok()
+        });
     }
 
     /// Set the programming language for the file if you know the language but don't have the
-    /// [`syntax::LanguageConfiguration`] for it.
+    /// [`syntax::config::LanguageConfiguration`] for it.
     pub fn set_language_by_language_id(
         &mut self,
         language_id: &str,
-        config_loader: Arc<ArcSwap<syntax::Loader>>,
+        loader: &syntax::Loader,
     ) -> anyhow::Result<()> {
-        let language_config = (*config_loader)
-            .load()
-            .language_config_for_language_id(language_id)
+        let language = loader
+            .language_for_name(language_id)
             .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
-        self.set_language(Some(language_config), Some(config_loader));
+        let config = loader.language(language).config().clone();
+        self.set_language(Some(config), loader);
         Ok(())
     }
 
@@ -1403,14 +1435,14 @@ impl Document {
 
         // update tree-sitter syntax tree
         if let Some(syntax) = &mut self.syntax {
-            // TODO: no unwrap
-            let res = syntax.update(
+            let loader = self.syn_loader.load();
+            if let Err(err) = syntax.update(
                 old_doc.slice(..),
                 self.text.slice(..),
                 transaction.changes(),
-            );
-            if res.is_err() {
-                log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
+                &loader,
+            ) {
+                log::error!("TS parser failed, disabling TS for the current buffer: {err}");
                 self.syntax = None;
             }
         }
@@ -1776,6 +1808,12 @@ impl Document {
     /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version
+    }
+
+    pub fn word_completion_enabled(&self) -> bool {
+        self.language_config()
+            .and_then(|lang_config| lang_config.word_completion.and_then(|c| c.enable))
+            .unwrap_or_else(|| self.config.load().word_completion.enable)
     }
 
     pub fn path_completion_enabled(&self) -> bool {
@@ -2218,8 +2256,7 @@ impl Document {
             viewport_width,
             wrap_indicator: wrap_indicator.into_boxed_str(),
             wrap_indicator_highlight: theme
-                .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
-                .map(Highlight),
+                .and_then(|theme| theme.find_highlight("ui.virtual.wrap")),
             soft_wrap_at_text_width,
         }
     }
@@ -2299,6 +2336,7 @@ mod test {
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
@@ -2337,6 +2375,7 @@ mod test {
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
@@ -2450,9 +2489,12 @@ mod test {
     #[test]
     fn test_line_ending() {
         assert_eq!(
-            Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
-                .text()
-                .to_string(),
+            Document::default(
+                Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+                Arc::new(ArcSwap::from_pointee(syntax::Loader::default()))
+            )
+            .text()
+            .to_string(),
             helix_core::NATIVE_LINE_ENDING.as_str()
         );
     }

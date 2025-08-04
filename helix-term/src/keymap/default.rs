@@ -38,6 +38,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "G" => goto_line,
         "g" => { "Goto"
             "g" => goto_file_start,
+            "|" => goto_column,
             "e" => goto_last_line,
             "f" => goto_file,
             "h" => goto_line_start,
@@ -119,6 +120,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "e" => goto_prev_entry,
             "T" => goto_prev_test,
             "p" => goto_prev_paragraph,
+            "x" => goto_prev_xml_element,
             "space" => add_newline_above,
         },
         "]" => { "Right bracket"
@@ -133,6 +135,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "e" => goto_next_entry,
             "T" => goto_next_test,
             "p" => goto_next_paragraph,
+            "x" => goto_next_xml_element,
             "space" => add_newline_below,
         },
 
@@ -226,8 +229,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "E" => file_explorer_in_current_buffer_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
-            "s" => symbol_picker,
-            "S" => workspace_symbol_picker,
+            "s" => lsp_or_syntax_symbol_picker,
+            "S" => lsp_or_syntax_workspace_symbol_picker,
             "d" => diagnostics_picker,
             "D" => workspace_diagnostics_picker,
             "g" => changed_file_picker,
@@ -368,6 +371,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "v" => normal_mode,
         "g" => { "Goto"
             "g" => extend_to_file_start,
+            "|" => extend_to_column,
             "e" => extend_to_last_line,
             "k" => extend_line_up,
             "j" => extend_line_down,

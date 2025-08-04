@@ -9,7 +9,7 @@ use std::{
     sync::mpsc::channel,
 };
 use tempfile::TempPath;
-use tree_sitter::Language;
+use tree_house::tree_sitter::Grammar;
 
 #[cfg(unix)]
 const DYLIB_EXTENSION: &str = "so";
@@ -61,28 +61,21 @@ const BUILD_TARGET: &str = env!("BUILD_TARGET");
 const REMOTE_NAME: &str = "origin";
 
 #[cfg(target_arch = "wasm32")]
-pub fn get_language(name: &str) -> Result<Language> {
+pub fn get_language(name: &str) -> Result<Option<Grammar>> {
     unimplemented!()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn get_language(name: &str) -> Result<Language> {
-    use libloading::{Library, Symbol};
+pub fn get_language(name: &str) -> Result<Option<Grammar>> {
     let mut rel_library_path = PathBuf::new().join("grammars").join(name);
     rel_library_path.set_extension(DYLIB_EXTENSION);
     let library_path = crate::runtime_file(&rel_library_path);
+    if !library_path.exists() {
+        return Ok(None);
+    }
 
-    let library = unsafe { Library::new(&library_path) }
-        .with_context(|| format!("Error opening dynamic library {:?}", library_path))?;
-    let language_fn_name = format!("tree_sitter_{}", name.replace('-', "_"));
-    let language = unsafe {
-        let language_fn: Symbol<unsafe extern "C" fn() -> Language> = library
-            .get(language_fn_name.as_bytes())
-            .with_context(|| format!("Failed to load symbol {}", language_fn_name))?;
-        language_fn()
-    };
-    std::mem::forget(library);
-    Ok(language)
+    let grammar = unsafe { Grammar::new(name, &library_path) }?;
+    Ok(Some(grammar))
 }
 
 fn ensure_git_is_available() -> Result<()> {
@@ -215,6 +208,27 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
             .filter(|grammar| !rejections.contains(&grammar.grammar_id))
             .collect(),
         None => config.grammar,
+    };
+
+    Ok(grammars)
+}
+
+pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
+    let config: Configuration = crate::config::user_lang_config()
+        .context("Could not parse languages.toml")?
+        .try_into()?;
+
+    let grammars = match config.grammar_selection {
+        Some(GrammarSelection::Only { only: selections }) => Some(selections),
+        Some(GrammarSelection::Except { except: rejections }) => Some(
+            config
+                .grammar
+                .into_iter()
+                .map(|grammar| grammar.grammar_id)
+                .filter(|id| !rejections.contains(id))
+                .collect(),
+        ),
+        None => None,
     };
 
     Ok(grammars)
@@ -451,7 +465,6 @@ fn build_tree_sitter_library(
         command
             .args(["/nologo", "/LD", "/I"])
             .arg(header_path)
-            .arg("/Od")
             .arg("/utf-8")
             .arg("/std:c11");
         if let Some(scanner_path) = scanner_path.as_ref() {
@@ -469,7 +482,6 @@ fn build_tree_sitter_library(
                 cpp_command
                     .args(["/nologo", "/LD", "/I"])
                     .arg(header_path)
-                    .arg("/Od")
                     .arg("/utf-8")
                     .arg("/std:c++14")
                     .arg(format!("/Fo{}", object_file.display()))

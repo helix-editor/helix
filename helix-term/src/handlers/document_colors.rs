@@ -1,7 +1,7 @@
 use std::{collections::HashSet, time::Duration};
 
 use futures_util::{stream::FuturesOrdered, StreamExt};
-use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation};
+use helix_core::{syntax::config::LanguageServerFeature, text_annotations::InlineAnnotation};
 use helix_event::{cancelable_future, register_hook};
 use helix_lsp::lsp;
 use helix_view::{
@@ -80,6 +80,10 @@ fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
             }
         })
         .collect();
+
+    if futures.is_empty() {
+        return;
+    }
 
     tokio::spawn(async move {
         let mut all_colors = Vec::new();

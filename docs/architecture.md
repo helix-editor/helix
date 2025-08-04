@@ -1,10 +1,12 @@
 
 | Crate           | Description                                                      |
 | -----------     | -----------                                                      |
+| helix-stdx      | Extensions to the standard library (similar to [`rust-analyzer`'s](https://github.com/rust-lang/rust-analyzer/blob/ea413f67a8f730b4211c09e103f8207c62e7dbc3/crates/stdx/Cargo.toml#L5)) |
 | helix-core      | Core editing primitives, functional.                             |
 | helix-lsp       | Language server client                                           |
 | helix-lsp-types | Language Server Protocol type definitions                        |
 | helix-dap       | Debug Adapter Protocol (DAP) client                              |
+| helix-event     | Primitives for defining and handling events within the editor    |
 | helix-loader    | Functions for building, fetching, and loading external resources |
 | helix-view      | UI abstractions for use in backends, imperative shell.           |
 | helix-term      | Terminal UI                                                      |
@@ -110,3 +112,17 @@ The `main` function sets up a new `Application` that runs the event loop.
 ## TUI / Term
 
 TODO: document Component and rendering related stuff
+
+## Event
+
+The `helix-event` crate defines primitives for defining and acting on events
+within the editor. "Events" cover things like opening, changing and closing of
+documents, starting and stopping of language servers and more.
+
+`helix-event` has tools for defining events and registering _hooks_ which run
+any time an event is emitted. `helix-event` also provides `AsyncHook` - a tool
+for running cancellable tasks which run after events with _debouncing_.
+
+See the `AsyncHook` type for more information. Events can be created within the
+`events!` macro. Synchronous hooks can be created with `register_hook!`. And
+editor-wide events can be sent to hooks with `helix_event::dispatch`.
