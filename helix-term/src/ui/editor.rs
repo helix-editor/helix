@@ -1135,119 +1135,100 @@ impl EditorView {
             ..
         } = *event;
 
-        let pos_and_view = |editor: &Editor, row, column, ignore_virtual_text| {
-            editor.tree.views().find_map(|(view, _focus)| {
-                view.pos_at_screen_coords(
-                    &editor.documents[&view.doc],
-                    row,
-                    column,
-                    ignore_virtual_text,
-                )
-                .map(|pos| (pos, view.id))
-            })
-        };
-
-        let gutter_coords_and_view = |editor: &Editor, row, column| {
-            editor.tree.views().find_map(|(view, _focus)| {
-                view.gutter_coords_at_screen_coords(row, column)
-                    .map(|coords| (coords, view.id))
-            })
+        let coords_info = |editor: &Editor, row, col, ignore_vtext| {
+            editor
+                .tree
+                .views()
+                .find_map(|(view, _)| {
+                    view.gutter_coords_at_screen_coords(row, col).map(|coords| {
+                        let (row, col) = (coords.row as u16, coords.col as u16);
+                        let doc = &editor.documents[&view.doc];
+                        let gutter_offset = view.gutter_offset(doc);
+                        let is_status = row == view.inner_area(doc).height;
+                        let is_gutter = col < gutter_offset;
+                        let col = if is_gutter { 0 } else { col - gutter_offset };
+                        view.pos_at_visual_coords(doc, row, col, ignore_vtext)
+                            .map(|pos| (view.id, pos, is_gutter, is_status))
+                    })
+                })
+                .flatten()
         };
 
         match kind {
             MouseEventKind::Down(MouseButton::Left) => {
-                let editor = &mut cxt.editor;
-
-                if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
-                    let prev_view_id = view!(editor).id;
-                    let doc = doc_mut!(editor, &view!(editor, view_id).doc);
-
-                    if modifiers == KeyModifiers::ALT {
-                        let selection = doc.selection(view_id).clone();
-                        doc.set_selection(view_id, selection.push(Range::point(pos)));
-                    } else if editor.mode == Mode::Select {
-                        // Discards non-primary selections for consistent UX with normal mode
+                if let Some((view_id, pos, is_gutter, is_status)) =
+                    coords_info(cxt.editor, row, column, true)
+                {
+                    let doc = doc_mut!(cxt.editor, &view!(cxt.editor, view_id).doc);
+                    if is_gutter && !is_status && modifiers == KeyModifiers::CONTROL {
+                        if let Some(path) = doc.path().cloned() {
+                            let line = doc.text().char_to_line(pos);
+                            commands::dap_toggle_breakpoint_impl(cxt, path, line);
+                        }
+                    } else if modifiers == KeyModifiers::ALT {
+                        doc.set_selection(
+                            view_id,
+                            doc.selection(view_id).clone().push(Range::point(pos)),
+                        );
+                    } else if cxt.editor.mode == Mode::Select {
                         let primary = doc.selection(view_id).primary().put_cursor(
                             doc.text().slice(..),
                             pos,
                             true,
                         );
-                        editor.mouse_down_range = Some(primary);
+                        cxt.editor.mouse_down_range = Some(primary);
                         doc.set_selection(view_id, Selection::single(primary.anchor, primary.head));
-                    } else {
+                    } else if !is_status {
                         doc.set_selection(view_id, Selection::point(pos));
                     }
 
-                    if view_id != prev_view_id {
-                        self.clear_completion(editor);
+                    let active_view = view!(cxt.editor);
+                    if view_id != active_view.id {
+                        self.clear_completion(cxt.editor);
                     }
 
-                    editor.focus(view_id);
-                    editor.ensure_cursor_in_view(view_id);
-
+                    cxt.editor.focus(view_id);
+                    cxt.editor.ensure_cursor_in_view(view_id);
                     return EventResult::Consumed(None);
                 }
-
-                if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
-                    editor.focus(view_id);
-
-                    let (view, doc) = current!(cxt.editor);
-
-                    let path = match doc.path() {
-                        Some(path) => path.clone(),
-                        None => return EventResult::Ignored(None),
-                    };
-
-                    if let Some(char_idx) =
-                        view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
-                    {
-                        let line = doc.text().char_to_line(char_idx);
-                        commands::dap_toggle_breakpoint_impl(cxt, path, line);
-                        return EventResult::Consumed(None);
-                    }
-                }
-
                 EventResult::Ignored(None)
             }
 
             MouseEventKind::Drag(MouseButton::Left) => {
-                let (view, doc) = current!(cxt.editor);
+                if let Some((view_id, pos, ..)) = coords_info(cxt.editor, row, column, true) {
+                    let (active_view, doc) = current!(cxt.editor);
+                    if view_id != active_view.id {
+                        return EventResult::Ignored(None);
+                    }
 
-                let pos = match view.pos_at_screen_coords(doc, row, column, true) {
-                    Some(pos) => pos,
-                    None => return EventResult::Ignored(None),
-                };
-
-                let mut selection = doc.selection(view.id).clone();
-                let primary = selection.primary_mut();
-                *primary = primary.put_cursor(doc.text().slice(..), pos, true);
-                doc.set_selection(view.id, selection);
-                let view_id = view.id;
-                cxt.editor.ensure_cursor_in_view(view_id);
-                EventResult::Consumed(None)
+                    let mut selection = doc.selection(active_view.id).clone();
+                    let primary = selection.primary_mut();
+                    *primary = primary.put_cursor(doc.text().slice(..), pos, true);
+                    doc.set_selection(active_view.id, selection.clone());
+                    let view_id = active_view.id;
+                    cxt.editor.ensure_cursor_in_view(view_id);
+                    return EventResult::Consumed(None);
+                }
+                EventResult::Ignored(None)
             }
 
             MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
                 let current_view = cxt.editor.tree.focus;
-
                 let direction = match event.kind {
                     MouseEventKind::ScrollUp => Direction::Backward,
                     MouseEventKind::ScrollDown => Direction::Forward,
                     _ => unreachable!(),
                 };
 
-                match pos_and_view(cxt.editor, row, column, false) {
-                    Some((_, view_id)) => cxt.editor.tree.focus = view_id,
-                    None => return EventResult::Ignored(None),
+                if let Some((view_id, ..)) = coords_info(cxt.editor, row, column, true) {
+                    cxt.editor.focus(view_id);
+                    let offset = config.scroll_lines.unsigned_abs();
+                    commands::scroll(cxt, offset, direction, false);
+                    cxt.editor.tree.focus = current_view;
+                    cxt.editor.ensure_cursor_in_view(current_view);
+                    return EventResult::Consumed(None);
                 }
-
-                let offset = config.scroll_lines.unsigned_abs();
-                commands::scroll(cxt, offset, direction, false);
-
-                cxt.editor.tree.focus = current_view;
-                cxt.editor.ensure_cursor_in_view(current_view);
-
-                EventResult::Consumed(None)
+                EventResult::Ignored(None)
             }
 
             MouseEventKind::Up(MouseButton::Left) => {
@@ -1256,6 +1237,9 @@ impl EditorView {
                 }
 
                 let (view, doc) = current!(cxt.editor);
+                if modifiers == KeyModifiers::CONTROL {
+                    return EventResult::Ignored(None);
+                }
 
                 let should_yank = match cxt.editor.mouse_down_range.take() {
                     Some(down_range) => doc.selection(view.id).primary() != down_range,
@@ -1273,60 +1257,52 @@ impl EditorView {
                 if should_yank {
                     commands::MappableCommand::yank_main_selection_to_primary_clipboard
                         .execute(cxt);
-                    EventResult::Consumed(None)
-                } else {
-                    EventResult::Ignored(None)
+                    return EventResult::Consumed(None);
                 }
+                EventResult::Ignored(None)
             }
 
             MouseEventKind::Up(MouseButton::Right) => {
-                if let Some((pos, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
+                if let Some((view_id, pos, is_gutter, false)) =
+                    coords_info(cxt.editor, row, column, true)
+                {
                     cxt.editor.focus(view_id);
+                    doc_mut!(cxt.editor).set_selection(view_id, Selection::point(pos));
+                    cxt.editor.ensure_cursor_in_view(view_id);
 
-                    if let Some((pos, _)) = pos_and_view(cxt.editor, row, column, true) {
-                        doc_mut!(cxt.editor).set_selection(view_id, Selection::point(pos));
-                    } else {
-                        let (view, doc) = current!(cxt.editor);
-
-                        if let Some(pos) = view.pos_at_visual_coords(doc, pos.row as u16, 0, true) {
-                            doc.set_selection(view_id, Selection::point(pos));
-                            match modifiers {
-                                KeyModifiers::ALT => {
-                                    commands::MappableCommand::dap_edit_log.execute(cxt)
-                                }
-                                _ => commands::MappableCommand::dap_edit_condition.execute(cxt),
-                            };
+                    if is_gutter {
+                        if modifiers == KeyModifiers::ALT {
+                            commands::MappableCommand::dap_edit_log.execute(cxt)
+                        } else {
+                            commands::MappableCommand::dap_edit_condition.execute(cxt)
                         }
                     }
 
-                    cxt.editor.ensure_cursor_in_view(view_id);
                     return EventResult::Consumed(None);
                 }
                 EventResult::Ignored(None)
             }
 
             MouseEventKind::Up(MouseButton::Middle) => {
-                let editor = &mut cxt.editor;
                 if !config.middle_click_paste {
                     return EventResult::Ignored(None);
                 }
 
-                if modifiers == KeyModifiers::ALT {
-                    commands::MappableCommand::replace_selections_with_primary_clipboard
-                        .execute(cxt);
-
-                    return EventResult::Consumed(None);
-                }
-
-                if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
-                    let doc = doc_mut!(editor, &view!(editor, view_id).doc);
-                    doc.set_selection(view_id, Selection::point(pos));
+                if let Some((view_id, pos, false, false)) =
+                    coords_info(cxt.editor, row, column, true)
+                {
                     cxt.editor.focus(view_id);
-                    commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
+                    doc_mut!(cxt.editor).set_selection(view_id, Selection::point(pos));
+                    cxt.editor.ensure_cursor_in_view(view_id);
 
+                    if modifiers == KeyModifiers::ALT {
+                        commands::MappableCommand::replace_selections_with_primary_clipboard
+                            .execute(cxt);
+                    } else {
+                        commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
+                    }
                     return EventResult::Consumed(None);
                 }
-
                 EventResult::Ignored(None)
             }
 
