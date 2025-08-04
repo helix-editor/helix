@@ -259,7 +259,7 @@
 | typescript | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | typespec | ✓ | ✓ | ✓ |  |  | `tsp-server` |
 | typst | ✓ |  |  | ✓ |  | `tinymist` |
-| uiua |  |  |  |  |  |  |
+| uiua | ✓ |  |  |  |  | `uiua` |
 | ungrammar | ✓ |  |  |  |  |  |
 | unison | ✓ | ✓ | ✓ |  |  |  |
 | uxntal | ✓ |  |  |  |  |  |
