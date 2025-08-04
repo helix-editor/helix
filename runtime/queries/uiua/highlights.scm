@@ -4,10 +4,6 @@
 
 (identifier) @variable
 
-(binding
-  (identifier) @variable.definition
-)
-
 (builtin_func0) @constant
 (builtin_func1) @function.builtin
 (builtin_func2) @operator
