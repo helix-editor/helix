@@ -31,10 +31,11 @@ assets = [
 ]
 
 [features]
-default = ["git"]
+default = ["git"] # Add steel here for development
 unicode-lines = ["helix-core/unicode-lines", "helix-view/unicode-lines"]
 integration = ["helix-event/integration_test"]
 git = ["helix-vcs/git"]
+steel = ["dep:steel-core", "dep:steel-doc", "helix-core/steel", "helix-view/steel", "tui/steel", "helix-lsp/steel"]
 
 [[bin]]
 name = "hx"
@@ -91,6 +92,11 @@ serde = { version = "1.0", features = ["derive"] }
 grep-regex = "0.1.13"
 grep-searcher = "0.1.14"
 
+# plugin support
+steel-core = { workspace = true, optional = true }
+steel-doc = { git = "https://github.com/mattwparas/steel.git", version = "0.7.0", optional = true }
+
+globset = "0.4.16"
 dashmap = "6.0"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100

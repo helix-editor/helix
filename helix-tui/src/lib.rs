@@ -130,6 +130,7 @@
 
 pub mod backend;
 pub mod buffer;
+pub mod extension;
 pub mod layout;
 pub mod symbols;
 pub mod terminal;

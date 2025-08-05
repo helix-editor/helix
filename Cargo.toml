@@ -40,6 +40,7 @@ package.helix-term.opt-level = 2
 tree-house = { version = "0.3.0", default-features = false }
 nucleo = "0.5.0"
 slotmap = "1.0.7"
+steel-core = { git = "https://github.com/mattwparas/steel.git", version = "0.7.0", features = ["anyhow", "dylibs", "sync", "triomphe", "imbl"] }
 thiserror = "2.0"
 tempfile = "3.20.0"
 bitflags = "2.9"
