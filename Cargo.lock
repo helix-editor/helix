@@ -120,6 +120,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
 
 [[package]]
+name = "archery"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eae2ed21cd55021f05707a807a5fc85695dafb98832921f6cfa06db67ca5b869"
+dependencies = [
+ "triomphe",
+]
+
+[[package]]
 name = "arrayvec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -203,6 +212,12 @@ checksum = "031043d04099746d8db04daf1fa424b2bc8bd69d92b25962dcde24da39ab64a2"
 dependencies = [
  "typenum",
 ]
+
+[[package]]
+name = "bitmaps"
+version = "3.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1d084b0137aaa901caf9f1e8b21daa6aa24d41cd806e111335541eff9683bd6"
 
 [[package]]
 name = "block-buffer"
@@ -2173,9 +2188,9 @@ version = "15.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0acd33ff0285af998aaf9b57342af478078f53492322fafc47450e09397e0e9"
 dependencies = [
- "bitmaps",
+ "bitmaps 2.1.0",
  "rand_core 0.6.4",
- "rand_xoshiro",
+ "rand_xoshiro 0.6.0",
  "serde",
  "sized-chunks",
  "typenum",
@@ -2184,9 +2199,9 @@ dependencies = [
 
 [[package]]
 name = "im-lists"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b971d2652e5700514cc92ca020dba64c790352af0ff2b9acb7514868a32d6aa"
+checksum = "442c94fa6c19a6cb6f987f7aec67b6f74bcfa08c6bc3a65e4fd07f50f7679223"
 dependencies = [
  "smallvec",
 ]
@@ -2197,9 +2212,9 @@ version = "15.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af1955a75fa080c677d3972822ec4bad316169ab1cfc6c257a942c2265dbe5fe"
 dependencies = [
- "bitmaps",
+ "bitmaps 2.1.0",
  "rand_core 0.6.4",
- "rand_xoshiro",
+ "rand_xoshiro 0.6.0",
  "serde",
  "sized-chunks",
  "typenum",
@@ -2223,6 +2238,30 @@ checksum = "2f01d462f766df78ab820dd06f5eb700233c51f0f4c2e846520eaf4ba6aa5c5c"
 dependencies = [
  "hashbrown 0.15.4",
  "memchr",
+]
+
+[[package]]
+name = "imbl"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33afdc5d333c1a43f1f640bfc6ad3788729e5b2f18472e5d33a9187315257f8e"
+dependencies = [
+ "archery",
+ "bitmaps 3.2.1",
+ "imbl-sized-chunks",
+ "rand_core 0.9.3",
+ "rand_xoshiro 0.7.0",
+ "serde",
+ "version_check",
+]
+
+[[package]]
+name = "imbl-sized-chunks"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f4241005618a62f8d57b2febd02510fb96e0137304728543dfc5fd6f052c22d"
+dependencies = [
+ "bitmaps 3.2.1",
 ]
 
 [[package]]
@@ -2877,6 +2916,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_xoshiro"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f703f4665700daf5512dcca5f43afa6af89f09db47fb56be587f80636bda2d41"
+dependencies = [
+ "rand_core 0.9.3",
+]
+
+[[package]]
 name = "rayon"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3171,7 +3219,7 @@ version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "16d69225bde7a69b235da73377861095455d298f2b970996eec25ddbb42b3d1e"
 dependencies = [
- "bitmaps",
+ "bitmaps 2.1.0",
  "typenum",
 ]
 
@@ -3251,7 +3299,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
+source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -3275,6 +3323,7 @@ dependencies = [
  "im",
  "im-lists",
  "im-rc",
+ "imbl",
  "lasso",
  "log",
  "md-5",
@@ -3297,6 +3346,7 @@ dependencies = [
  "steel-parser",
  "strsim",
  "termimad",
+ "triomphe",
  "weak-table",
  "which 7.0.3",
  "xdg",
@@ -3305,7 +3355,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
+source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3315,7 +3365,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
+source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
 dependencies = [
  "steel-core",
 ]
@@ -3323,7 +3373,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.3.0"
-source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
+source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
 dependencies = [
  "codegen",
  "serde",
@@ -3332,7 +3382,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#27864d2f6ee4464817f297e18cf34a9dee9549e8"
+source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
 dependencies = [
  "compact_str",
  "fxhash",
@@ -3638,6 +3688,16 @@ dependencies = [
  "regex-cursor",
  "ropey",
  "thiserror 2.0.12",
+]
+
+[[package]]
+name = "triomphe"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef8f7726da4807b58ea5c96fdc122f80702030edc33b35aff9190a51148ccc85"
+dependencies = [
+ "serde",
+ "stable_deref_trait",
 ]
 
 [[package]]

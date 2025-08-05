@@ -1613,6 +1613,7 @@ impl Client {
     }
 
     /// Send a custom RPC notification with arbitrary method and params to the language server.
+    #[cfg(feature = "steel")]
     pub fn send_custom_notification(&self, method: String, params: Option<Value>) -> Result<()> {
         let server_tx = self.server_tx.clone();
 
