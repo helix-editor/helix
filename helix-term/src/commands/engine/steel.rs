@@ -2228,7 +2228,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         event_name: String,
         call_id: jsonrpc::Id,
         params: helix_lsp::jsonrpc::Params,
-    ) -> Option<SteelVal> {
+    ) -> Option<Result<serde_json::Value, jsonrpc::Error>> {
         let result = enter_engine(|guard| {
             {
                 let mut ctx = Context {
@@ -2309,12 +2309,26 @@ impl super::PluginSystem for SteelScriptingEngine {
             }
         });
 
-        match result {
+        let value = match result {
             Err(e) => {
                 cx.editor.set_error(format!("{}", e));
                 Some(SteelVal::Void)
             }
             Ok(value) => Some(value),
+        }?;
+
+        match value {
+            SteelVal::Void => None,
+            value => {
+                let serde_value: Result<serde_json::Value, ::steel::SteelErr> = value.try_into();
+                match serde_value {
+                    Ok(serialized_value) => Some(Ok(serialized_value)),
+                    Err(error) => {
+                        log::warn!("Failed to serialize a SteelVal: {}", error);
+                        None
+                    }
+                }
+            }
         }
     }
 }

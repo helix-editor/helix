@@ -1,4 +1,3 @@
-use ::steel::SteelVal;
 use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::syntax;
 use helix_lsp::{jsonrpc, LanguageServerId};
@@ -149,7 +148,6 @@ impl ScriptingEngine {
         for kind in PLUGIN_PRECEDENCE {
             if let Some(value) = manual_dispatch!(
                 kind,
-                // TODO: Get rid of these clones!
                 handle_lsp_call(
                     cx,
                     server_id,
@@ -158,22 +156,7 @@ impl ScriptingEngine {
                     params.clone()
                 )
             ) {
-                let reply = match value {
-                    SteelVal::Void => None,
-                    value => {
-                        let serde_value: Result<serde_json::Value, ::steel::SteelErr> =
-                            value.try_into();
-                        match serde_value {
-                            Ok(serialized_value) => Some(Ok(serialized_value)),
-                            Err(error) => {
-                                log::warn!("Failed to serialize a SteelVal: {}", error);
-                                None
-                            }
-                        }
-                    }
-                };
-
-                return reply;
+                return Some(value);
             }
         }
         return None;
@@ -257,7 +240,7 @@ pub trait PluginSystem {
         _event_name: String,
         _call_id: jsonrpc::Id,
         _params: jsonrpc::Params,
-    ) -> Option<SteelVal> {
+    ) -> Option<Result<serde_json::Value, jsonrpc::Error>> {
         None
     }
 
