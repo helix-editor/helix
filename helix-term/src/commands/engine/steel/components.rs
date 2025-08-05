@@ -29,7 +29,7 @@ use crate::{
     ui::overlay::overlaid,
 };
 
-use super::steel::{
+use super::{
     enter_engine, format_docstring, present_error_inside_engine_context, WrappedDynComponent,
 };
 
@@ -1868,7 +1868,7 @@ impl Component for SteelDynamicComponent {
                 })
             {
                 let name = self.name.clone();
-                super::steel::present_error_inside_engine_context_with_callback(
+                super::present_error_inside_engine_context_with_callback(
                     &mut ctx,
                     guard,
                     e,

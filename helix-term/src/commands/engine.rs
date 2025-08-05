@@ -16,9 +16,6 @@ use crate::{
 use super::{Context, MappableCommand, TYPABLE_COMMAND_LIST};
 
 #[cfg(feature = "steel")]
-mod components;
-
-#[cfg(feature = "steel")]
 pub mod steel;
 
 pub enum PluginSystemKind {

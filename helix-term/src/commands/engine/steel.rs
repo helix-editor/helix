@@ -1,3 +1,5 @@
+mod components;
+
 use arc_swap::{ArcSwap, ArcSwapAny};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use helix_core::{
@@ -70,10 +72,9 @@ use crate::{
 
 use components::SteelDynamicComponent;
 
-use super::{
-    components::{self, helix_component_module},
-    Context, MappableCommand, TYPABLE_COMMAND_LIST,
-};
+use components::helix_component_module;
+
+use super::{Context, MappableCommand, TYPABLE_COMMAND_LIST};
 use insert::insert_char;
 
 pub static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
@@ -85,9 +86,6 @@ pub static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
 
 fn setup() -> Engine {
     let engine = steel::steel_vm::engine::Engine::new();
-
-    // Any function after this point can be used for looking at "new" functions
-    // GLOBAL_OFFSET.set(engine.readable_globals(0).len()).unwrap();
 
     let controller = engine.get_thread_state_controller();
     let running = Arc::new(AtomicBool::new(false));
@@ -1633,7 +1631,7 @@ fn load_theme_api(engine: &mut Engine, generate_sources: bool) {
 }
 
 fn load_high_level_theme_api(engine: &mut Engine, generate_sources: bool) {
-    let theme = include_str!("themes.scm");
+    let theme = include_str!("steel/themes.scm");
 
     if generate_sources {
         if let Some(mut target_directory) = alternative_runtime_search_path() {
