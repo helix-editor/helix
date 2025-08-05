@@ -19,13 +19,14 @@
 - [`[editor.soft-wrap]` Section](#editorsoft-wrap-section)
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
+- [`[editor.scrolloff]`]
 - [`[editor.word-completion]` Section](#editorword-completion-section)
+
 
 ### `[editor]` Section
 
 | Key | Description | Default |
 |--|--|---------|
-| `scrolloff` | Number of lines of padding around the edge of the screen when scrolling | `5` |
 | `mouse` | Enable mouse mode | `true` |
 | `default-yank-register` | Default register used for yank/paste | `"` |
 | `middle-click-paste` | Middle click paste support | `true` |
@@ -488,3 +489,15 @@ enable = true
 # Set the trigger length lower so that words are completed more often
 trigger-length = 4
 ```
+
+### `[editor.scrolloff]` Section
+
+Options for setting scrolloff shown below
+
+
+| Key        | Description | Default |
+|------------|-------------|---------|
+| `vertical` | Number of lines of padding around the top and bottom of the screen when scrolling | `5` |
+| `horizontal` | Number of lines of padding around the left and right of the screen when scrolling | `5` |
+
+Settings the scrolloff to `999` for `vertical` will center the line with the cursor.
