@@ -55,7 +55,11 @@ use helix_dap::{self as dap, registry::DebugAdapterId};
 use helix_lsp::lsp;
 use helix_stdx::path::canonicalize;
 
-use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::{self, IntoDeserializer},
+    ser::SerializeMap,
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 
 use arc_swap::{
     access::{DynAccess, DynGuard},
@@ -159,6 +163,40 @@ where
     }
 
     deserializer.deserialize_any(GutterVisitor)
+}
+
+fn deserialize_bufferline_show_or_struct<'de, D>(deserializer: D) -> Result<BufferLine, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct BufferLineVisitor;
+
+    impl<'de> serde::de::Visitor<'de> for BufferLineVisitor {
+        type Value = BufferLine;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(
+                formatter,
+                "a bufferline render mode or a detailed bufferline configuration"
+            )
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(BufferLineRenderMode::deserialize(v.into_deserializer())?.into())
+        }
+
+        fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            BufferLine::deserialize(de::value::MapAccessDeserializer::new(map))
+        }
+    }
+
+    deserializer.deserialize_any(BufferLineVisitor)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -336,6 +374,7 @@ pub struct Config {
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
     /// Persistently display open buffers along the top
+    #[serde(deserialize_with = "deserialize_bufferline_show_or_struct")]
     pub bufferline: BufferLine,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
@@ -689,10 +728,27 @@ impl Default for CursorShapeConfig {
     }
 }
 
+/// Bufferline configuration
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct BufferLine {
+    pub show: BufferLineRenderMode,
+    pub context: BufferLineContextMode,
+}
+
+impl From<BufferLineRenderMode> for BufferLine {
+    fn from(show: BufferLineRenderMode) -> Self {
+        Self {
+            show,
+            ..Default::default()
+        }
+    }
+}
+
 /// bufferline render modes
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum BufferLine {
+pub enum BufferLineRenderMode {
     /// Don't render bufferline
     #[default]
     Never,
@@ -700,6 +756,18 @@ pub enum BufferLine {
     Always,
     /// Only if multiple buffers are open
     Multiple,
+}
+
+/// Bufferline filename context modes
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BufferLineContextMode {
+    /// Only show the filename
+    None,
+
+    /// Expand filenames to the smallest unique path
+    #[default]
+    Minimal,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
