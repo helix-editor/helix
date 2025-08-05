@@ -15,12 +15,16 @@ pub mod steel_implementations {
 
     use helix_stdx::rope::RopeSliceExt;
 
-    use crate::syntax::config::{AutoPairConfig, SoftWrap};
+    use crate::{
+        syntax::config::{AutoPairConfig, SoftWrap},
+        Range,
+    };
 
     impl steel::rvals::Custom for crate::Position {}
     impl steel::rvals::Custom for crate::Selection {}
     impl steel::rvals::Custom for AutoPairConfig {}
     impl steel::rvals::Custom for SoftWrap {}
+    impl steel::rvals::Custom for Range {}
 
     #[allow(unused)]
     pub struct RopeyError(ropey::Error);

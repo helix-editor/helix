@@ -306,6 +306,7 @@ impl MappableCommand {
         }
     }
 
+    #[cfg(feature = "steel")]
     pub(crate) fn doc_mut(&mut self) -> Option<&mut String> {
         if let Self::Typable { doc, .. } = self {
             Some(doc)

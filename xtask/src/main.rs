@@ -96,7 +96,15 @@ pub mod tasks {
         code_gen();
 
         std::process::Command::new("cargo")
-            .args(["install", "--path", "helix-term", "--locked", "--force"])
+            .args([
+                "install",
+                "--path",
+                "helix-term",
+                "--features",
+                "steel,git",
+                "--locked",
+                "--force",
+            ])
             .spawn()
             .unwrap()
             .wait()
@@ -147,7 +155,8 @@ pub mod tasks {
 Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
 
     Tasks:
-        steel                     Install steel
+        steel                      Install steel and helix with steel enabled
+        code-gen                   Generate any code used for steel
         docgen                     Generate files to be included in the mdbook output.
         query-check [languages]    Check that tree-sitter queries are valid for the given
                                    languages, or all languages if none are specified.

@@ -12,7 +12,7 @@ use crate::{
     ui::{self, PromptEvent},
 };
 
-use super::{Context, MappableCommand, TYPABLE_COMMAND_LIST};
+use super::Context;
 
 #[cfg(feature = "steel")]
 pub mod steel;
