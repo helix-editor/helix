@@ -25,13 +25,13 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{BufferLineDirectories, CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
+use std::{collections::HashMap, mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -615,14 +615,121 @@ impl EditorView {
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
+        let mut documents: HashMap<_, _>;
+        let mut fnames: HashMap<_, _> = match &editor.config().bufferline_directories {
+            BufferLineDirectories::Smart => {
+                documents = editor
+                    .documents()
+                    .map(|doc| {
+                        (
+                            doc.id(),
+                            doc.path().map(|p| {
+                                let mut p = p.clone();
+                                let f = PathBuf::from(p.file_name().unwrap_or_default());
+                                p.pop();
+                                (f, p)
+                            }),
+                        )
+                    })
+                    .collect();
+                let mut ids: Vec<_> = documents.keys().copied().collect();
+                let mut to_remove: Vec<usize> = Vec::with_capacity(ids.len());
+                while !ids.is_empty() {
+                    for (idx, id) in ids.iter().enumerate() {
+                        let Some((current, full)) = &documents[id] else {
+                            to_remove.push(idx);
+                            continue;
+                        };
+                        if documents
+                            .iter()
+                            .filter_map(|(id, o)| o.as_ref().map(|(p, _)| (id, p)))
+                            .all(|(i, p)| p != current || i == id)
+                            || full.as_os_str().is_empty()
+                        {
+                            to_remove.push(idx);
+                        }
+                    }
+
+                    for idx in to_remove.iter().rev() {
+                        ids.remove(*idx);
+                    }
+                    to_remove.clear();
+
+                    for id in &ids {
+                        let Some((current, mut full)) = documents.remove(id).flatten() else {
+                            documents.insert(*id, None);
+                            continue;
+                        };
+                        let mut new = PathBuf::from(full.file_name().unwrap_or_default());
+                        new.push(current);
+                        full.pop();
+                        documents.insert(*id, Some((new, full)));
+                    }
+                }
+                documents
+                    .iter()
+                    .map(|(id, op)| {
+                        (
+                            *id,
+                            format!(
+                                " {}{} ",
+                                op.as_ref()
+                                    .map(|(p, _)| p.to_str().unwrap_or_default())
+                                    .unwrap_or(SCRATCH_BUFFER_NAME),
+                                if editor.document(*id).map_or(false, |d| d.is_modified()) {
+                                    "[+]"
+                                } else {
+                                    ""
+                                }
+                            ),
+                        )
+                    })
+                    .collect()
+            }
+            BufferLineDirectories::Never => editor
+                .documents()
+                .map(|doc| {
+                    (
+                        doc.id(),
+                        format!(
+                            " {}{} ",
+                            doc.path()
+                                .unwrap_or(&scratch)
+                                .file_name()
+                                .unwrap_or_default()
+                                .to_str()
+                                .unwrap_or_default(),
+                            if doc.is_modified() { "[+]" } else { "" }
+                        ),
+                    )
+                })
+                .collect(),
+            BufferLineDirectories::Always => editor
+                .documents()
+                .map(|doc| {
+                    let iter = doc.path().unwrap_or(&scratch);
+                    (
+                        doc.id(),
+                        format!(
+                            " {parent}/{fname}{modified} ",
+                            parent = iter
+                                .parent()
+                                .and_then(|p| p.file_name().unwrap_or_default().to_str())
+                                .unwrap_or_default(),
+                            fname = iter
+                                .file_name()
+                                .unwrap_or_default()
+                                .to_str()
+                                .unwrap_or_default(),
+                            modified = if doc.is_modified() { "[+]" } else { "" }
+                        ),
+                    )
+                })
+                .collect(),
+        };
+
         for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+            let text = fnames.remove(&doc.id()).unwrap_or_default();
 
             let style = if current_doc == doc.id() {
                 bufferline_active
@@ -630,7 +737,6 @@ impl EditorView {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
