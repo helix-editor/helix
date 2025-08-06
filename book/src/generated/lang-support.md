@@ -86,7 +86,7 @@
 | glsl | ✓ | ✓ | ✓ |  |  | `glsl_analyzer` |
 | gn | ✓ |  |  |  |  |  |
 | go | ✓ | ✓ | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
-| go-format-string | ✓ |  |  |  |  |  |
+| go-format-string | ✓ |  |  |  | ✓ |  |
 | godot-resource | ✓ | ✓ |  |  |  |  |
 | gomod | ✓ |  |  |  |  | `gopls` |
 | gotmpl | ✓ |  |  |  |  | `gopls` |
@@ -100,6 +100,7 @@
 | haskell | ✓ | ✓ |  |  |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |  |  |
 | hcl | ✓ | ✓ | ✓ |  |  | `terraform-ls` |
+| hdl | ✓ |  |  |  |  |  |
 | heex | ✓ | ✓ |  |  |  | `elixir-ls` |
 | helm | ✓ |  |  |  |  | `helm_ls` |
 | hocon | ✓ | ✓ | ✓ |  |  |  |
@@ -208,6 +209,7 @@
 | rescript | ✓ | ✓ |  |  |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
 | robot | ✓ |  |  |  |  | `robotframework_ls` |
+| robots.txt | ✓ | ✓ |  | ✓ |  |  |
 | ron | ✓ |  | ✓ |  |  |  |
 | rst | ✓ |  |  |  |  |  |
 | ruby | ✓ | ✓ | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |

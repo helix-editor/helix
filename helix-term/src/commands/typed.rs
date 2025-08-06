@@ -1469,7 +1469,14 @@ fn update(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
 
     let (_view, doc) = current!(cx.editor);
     if doc.is_modified() {
-        write(cx, args, event)
+        write_impl(
+            cx,
+            None,
+            WriteOptions {
+                force: false,
+                auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            },
+        )
     } else {
         Ok(())
     }
@@ -3347,6 +3354,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
+            flags: &[WRITE_NO_FORMAT_FLAG],
             ..Signature::DEFAULT
         },
     },

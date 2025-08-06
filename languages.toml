@@ -831,7 +831,7 @@ injection-regex = "go-format-string"
 
 [[grammar]]
 name = "go-format-string"
-source = { git = "https://codeberg.org/kpbaks/tree-sitter-go-format-string", rev = "45b559b74be97535abfc77ade4405343a43e5ca4" }
+source = { git = "https://codeberg.org/kpbaks/tree-sitter-go-format-string", rev = "06587ea641155db638f46a32c959d68796cd36bb" }
 
 [[language]]
 name = "javascript"
@@ -3351,6 +3351,17 @@ name = "smithy"
 source = { git = "https://github.com/indoorvivants/tree-sitter-smithy", rev = "8327eb84d55639ffbe08c9dc82da7fff72a1ad07" }
 
 [[language]]
+name = "hdl"
+scope = "source.hdl"
+file-types = ["hdl"]
+indent = { tab-width = 4, unit = "    " }
+injection-regex = "hdl"
+
+[[grammar]]
+name = "hdl"
+source = { git = "https://github.com/quantonganh/tree-sitter-hdl", rev = "7d0418fd71470b0430e6f914cc76c1a9d968491d" }
+
+[[language]]
 name = "vhdl"
 scope = "source.vhdl"
 file-types = ["vhd", "vhdl"]
@@ -3806,7 +3817,7 @@ language-servers = ["koka"]
 
 [[grammar]]
 name = "koka"
-source = { git = "https://github.com/mtoohey31/tree-sitter-koka", rev = "96d070c3700692858035f3524cc0ad944cef2594" }
+source = { git = "https://github.com/koka-community/tree-sitter-koka", rev = "fd3b482274d6988349ba810ea5740e29153b1baf" }
 
 [[language]]
 name = "tact"
@@ -4605,3 +4616,15 @@ comment-tokens = ["#"]
 [[grammar]]
 name = "properties"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-properties", rev = "579b62f5ad8d96c2bb331f07d1408c92767531d9" }
+
+[[language]]
+name = "robots.txt"
+scope = "source.robots.txt"
+file-types = [{ glob = "robots.txt" }]
+injection-regex = "robots[\\.-]txt"
+grammar = "robots"
+comment-token = "#"
+
+[[grammar]]
+name = "robots"
+source = { git = "https://github.com/opa-oz/tree-sitter-robots-txt", rev = "8e3a4205b76236bb6dbebdbee5afc262ce38bb62" }
