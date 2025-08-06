@@ -379,6 +379,12 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" => extend_line_down,
             "w" => extend_to_word,
         },
+        "[" => { "Left bracket"
+            "i" => extend_to_indent_start,
+        },
+        "]" => { "Right bracket"
+            "i" => extend_to_indent_end,
+        },
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
