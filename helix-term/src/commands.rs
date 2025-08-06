@@ -3912,7 +3912,7 @@ fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) 
             let target_first_char_pos = target_line.first_non_whitespace_char();
 
             // Skip empty lines
-            if target_line.chars().all(|c| c.is_whitespace()) || target_first_char_pos == None {
+            if target_line.chars().all(|c| c.is_whitespace()) || target_first_char_pos.is_none() {
                 continue;
             }
 
