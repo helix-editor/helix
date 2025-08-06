@@ -32,6 +32,7 @@ pub use text::Text;
 use helix_view::Editor;
 use tui::text::{Span, Spans};
 
+use std::fs::{DirEntry, ReadDir};
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
@@ -354,6 +355,18 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
     let mut content: Vec<_> = std::fs::read_dir(path)?
         .flatten()
         .map(|entry| {
+            let mut entry = entry;
+            // TODO add a config condition to make this behavior optional
+            while is_single_child_dir(&entry) {
+                if let Some(child_directory) = get_first_child_if_dir(&entry) {
+                    entry = child_directory;
+                } else {
+                    break;
+                }
+            }
+            entry
+        })
+        .map(|entry| {
             (
                 entry.path(),
                 std::fs::metadata(entry.path()).is_ok_and(|metadata| metadata.is_dir()),
@@ -366,6 +379,24 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
         content.insert(0, (path.join(".."), true));
     }
     Ok(content)
+}
+
+fn is_single_child_dir(entry: &DirEntry) -> bool {
+    let path = entry.path();
+    path.is_dir() && path.read_dir().map(ReadDir::count).unwrap_or_default() == 1
+}
+
+fn get_first_child_if_dir(entry: &DirEntry) -> Option<DirEntry> {
+    entry
+        .path()
+        .read_dir()
+        .and_then(|mut entries| {
+            entries.next().unwrap_or(Err(std::io::Error::other(
+                "No entry in directory, this should not append.",
+            )))
+        })
+        .ok()
+        .filter(|e| e.path().is_dir())
 }
 
 pub mod completers {
