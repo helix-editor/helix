@@ -157,7 +157,7 @@ pub fn render_text(
                 syntax_style: style,
                 overlay_style: Style::default(),
             }
-        } else if is_focused || !renderer.dimmer_enabled {
+        } else if is_focused || grapheme.source.is_annotation() || !renderer.dimmer_enabled {
             GraphemeStyle {
                 syntax_style: syntax_highlighter.style,
                 overlay_style: overlay_highlighter.style,
