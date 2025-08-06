@@ -2535,6 +2535,19 @@ name = "verilog"
 source = { git = "https://github.com/tree-sitter/tree-sitter-verilog", rev = "4457145e795b363f072463e697dfe2f6973c9a52" }
 
 [[language]]
+name = "systemverilog"
+scope = "source.systemverilog"
+file-types = ["sv", "svh"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["verible-verilog-ls"]
+
+[[grammar]]
+name = "systemverilog"
+source = { git = "https://github.com/gmlarumbe/tree-sitter-systemverilog", rev = "3bd2c5d2f60ed7b07c2177b34e2976ad9a87c659" }
+
+[[language]]
 name = "edoc"
 scope = "source.edoc"
 file-types = ["edoc", "edoc.in"]
