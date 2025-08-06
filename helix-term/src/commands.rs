@@ -3930,7 +3930,8 @@ fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) 
 
         let indents: Vec<u64> = (line_idx.min(target_idx)..=line_idx.max(target_idx))
             .map(|i| text.line(i))
-            .map(|l| l.chars().map_while(count_indent).sum()).collect();
+            .map(|l| l.chars().map_while(count_indent).sum())
+            .collect();
 
         // If there are no indents, or all indents are 0, return the original range.
         if indents.is_empty() || indents.into_iter().all(|n| n == 0) {
