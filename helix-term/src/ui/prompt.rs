@@ -46,7 +46,7 @@ pub struct Prompt {
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
     next_char_handler: Option<PromptCharHandler>,
-    language: Option<(&'static str, Arc<ArcSwap<syntax::Loader>>)>,
+    pub language: Option<(&'static str, Arc<ArcSwap<syntax::Loader>>)>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
