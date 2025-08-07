@@ -1,6 +1,6 @@
 This fork adds a collection of various other forks & small features to helix:
 - inline git blame ([PR](https://github.com/helix-editor/helix/pull/13133))
-- fixing a bug on that one ☝️ where scrolling horizontally doesn't affect the blame positioning ([comment](https://github.com/helix-editor/helix/pull/13133#discussion_r2217857351))
+- determine comment tokens from injection layers ([PR](https://github.com/helix-editor/helix/pull/12759))
 - icon support ([PR](https://github.com/helix-editor/helix/pull/12369))
 - `:buffer-reopen` - ability to re-open recently closed buffers ([PR](https://github.com/helix-editor/helix/pull/13568))
 - keep active bufferline tab in view at all times
