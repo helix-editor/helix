@@ -30,7 +30,12 @@
 
 (connection
   part_pin: (identifier) @variable.other.member
-  chip_pin: (identifier) @variable.parameter)
+  chip_pin: [
+    (identifier) @variable.parameter
+    (bus_identifier
+      (identifier) @variable.parameter
+      (number) @constant.number)
+  ])
 
 (bus_identifier
   (number) @constant.number)

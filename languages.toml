@@ -55,6 +55,7 @@ glsl_analyzer = { command = "glsl_analyzer" }
 graphql-language-service = { command = "graphql-lsp", args = ["server", "-m", "stream"] }
 harper-ls = { command = "harper-ls", args = ["--stdio"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
+hdls = { command = "hdls" }
 hyprls = { command = "hyprls" }
 idris2-lsp = { command = "idris2-lsp" }
 intelephense = { command = "intelephense", args = ["--stdio"] }
@@ -3393,10 +3394,11 @@ scope = "source.hdl"
 file-types = ["hdl"]
 indent = { tab-width = 4, unit = "    " }
 injection-regex = "hdl"
+language-servers = [ "hdls" ]
 
 [[grammar]]
 name = "hdl"
-source = { git = "https://github.com/quantonganh/tree-sitter-hdl", rev = "579ece64ddc72959d09a3d73be6320318514abce" }
+source = { git = "https://github.com/quantonganh/tree-sitter-hdl", rev="293902330423b2cd36ab1ec4b6b967163a4ed57b" }
 
 [[language]]
 name = "vhdl"
