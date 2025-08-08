@@ -496,6 +496,8 @@ impl MappableCommand {
         replace_with_yanked, "Replace with yanked text",
         replace_selections_with_clipboard, "Replace selections by clipboard content",
         replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
+        paste_all_selections_after, "Paste all after selection",
+        paste_all_selections_before, "Paste all before selection",
         paste_after, "Paste after selection",
         paste_before, "Paste before selection",
         paste_clipboard_after, "Paste clipboard after selections",
@@ -4685,6 +4687,15 @@ enum Paste {
 
 static LINE_ENDING_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
 
+/// Enumerates the possible ways to paste
+#[derive(Copy, Clone)]
+enum PasteType {
+    /// Paste one value in the register per selection
+    Default,
+    /// Paste every value in the register for every selection
+    All,
+}
+
 fn paste_impl(
     values: &[String],
     doc: &mut Document,
@@ -4692,6 +4703,7 @@ fn paste_impl(
     action: Paste,
     count: usize,
     mode: Mode,
+    paste_type: PasteType,
 ) {
     if values.is_empty() {
         return;
@@ -4720,13 +4732,19 @@ fn paste_impl(
         map_value(values.last().unwrap()),
     );
 
-    let mut values = values.iter().map(|value| map_value(value)).chain(repeat);
+    let mut values_iter = values.iter().map(|value| map_value(value)).chain(repeat);
 
     let text = doc.text();
     let selection = doc.selection(view.id);
 
     let mut offset = 0;
     let mut ranges = SmallVec::with_capacity(selection.len());
+
+    // Precompute the combined tendril value if we will be doing a PasteType::All
+    let combined_tendril_value = match paste_type {
+        PasteType::All => Some(values.iter().collect::<Tendril>()),
+        PasteType::Default => None,
+    };
 
     let mut transaction = Transaction::change_by_selection(text, selection, |range| {
         let pos = match (action, linewise) {
@@ -4745,23 +4763,53 @@ fn paste_impl(
             (Paste::Cursor, _) => range.cursor(text.slice(..)),
         };
 
-        let value = values.next();
+        let value = match paste_type {
+            PasteType::All => {
+                // Iterate over every value and add its range
+                for value in values {
+                    let value_len = value.chars().count();
+                    let anchor = offset + pos;
 
-        let value_len = value
-            .as_ref()
-            .map(|content| content.chars().count())
-            .unwrap_or_default();
-        let anchor = offset + pos;
+                    let new_range =
+                        Range::new(anchor, anchor + value_len).with_direction(range.direction());
+                    ranges.push(new_range);
+                    offset += value_len;
+                }
 
-        let new_range = Range::new(anchor, anchor + value_len).with_direction(range.direction());
-        ranges.push(new_range);
-        offset += value_len;
+                // Return the precomputed tendril value
+                combined_tendril_value.clone()
+            }
+            PasteType::Default => {
+                let value: Option<Tendril> = values_iter.next();
+
+                let value_len = value
+                    .as_ref()
+                    .map(|content| content.chars().count())
+                    .unwrap_or_default();
+                let anchor = offset + pos;
+
+                let new_range =
+                    Range::new(anchor, anchor + value_len).with_direction(range.direction());
+                ranges.push(new_range);
+                offset += value_len;
+                value
+            }
+        };
 
         (pos, pos, value)
     });
 
     if mode == Mode::Normal {
-        transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+        transaction = transaction.with_selection(Selection::new(
+            ranges,
+            match paste_type {
+                PasteType::All => {
+                    // Last selection pasted for the previous primary selection
+                    (selection.primary_index() * values.len()) + (values.len() - 1)
+                }
+                PasteType::Default => selection.primary_index(),
+            },
+        ));
     }
 
     doc.apply(&transaction, view.id);
@@ -4775,27 +4823,47 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
         Mode::Normal => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
-    paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
+    paste_impl(
+        &[contents],
+        doc,
+        view,
+        paste,
+        count,
+        cx.editor.mode,
+        PasteType::Default,
+    );
     exit_select_mode(cx);
 }
 
 fn paste_clipboard_after(cx: &mut Context) {
-    paste(cx.editor, '+', Paste::After, cx.count());
+    paste(cx.editor, '+', Paste::After, cx.count(), PasteType::Default);
     exit_select_mode(cx);
 }
 
 fn paste_clipboard_before(cx: &mut Context) {
-    paste(cx.editor, '+', Paste::Before, cx.count());
+    paste(
+        cx.editor,
+        '+',
+        Paste::Before,
+        cx.count(),
+        PasteType::Default,
+    );
     exit_select_mode(cx);
 }
 
 fn paste_primary_clipboard_after(cx: &mut Context) {
-    paste(cx.editor, '*', Paste::After, cx.count());
+    paste(cx.editor, '*', Paste::After, cx.count(), PasteType::Default);
     exit_select_mode(cx);
 }
 
 fn paste_primary_clipboard_before(cx: &mut Context) {
-    paste(cx.editor, '*', Paste::Before, cx.count());
+    paste(
+        cx.editor,
+        '*',
+        Paste::Before,
+        cx.count(),
+        PasteType::Default,
+    );
     exit_select_mode(cx);
 }
 
@@ -4862,14 +4930,38 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
-fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
+fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize, paste_type: PasteType) {
     let Some(values) = editor.registers.read(register, editor) else {
         return;
     };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
-    paste_impl(&values, doc, view, pos, count, editor.mode);
+    paste_impl(&values, doc, view, pos, count, editor.mode, paste_type);
+}
+
+fn paste_all_selections_after(cx: &mut Context) {
+    paste(
+        cx.editor,
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
+        Paste::After,
+        cx.count(),
+        PasteType::All,
+    );
+    exit_select_mode(cx);
+}
+
+fn paste_all_selections_before(cx: &mut Context) {
+    paste(
+        cx.editor,
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
+        Paste::Before,
+        cx.count(),
+        PasteType::All,
+    );
+    exit_select_mode(cx);
 }
 
 fn paste_after(cx: &mut Context) {
@@ -4879,6 +4971,7 @@ fn paste_after(cx: &mut Context) {
             .unwrap_or(cx.editor.config().default_yank_register),
         Paste::After,
         cx.count(),
+        PasteType::Default,
     );
     exit_select_mode(cx);
 }
@@ -4890,6 +4983,7 @@ fn paste_before(cx: &mut Context) {
             .unwrap_or(cx.editor.config().default_yank_register),
         Paste::Before,
         cx.count(),
+        PasteType::Default,
     );
     exit_select_mode(cx);
 }
@@ -5769,6 +5863,7 @@ fn insert_register(cx: &mut Context) {
                     .unwrap_or(cx.editor.config().default_yank_register),
                 Paste::Cursor,
                 cx.count(),
+                PasteType::Default,
             );
         }
     })

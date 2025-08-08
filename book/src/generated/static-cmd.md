@@ -198,6 +198,8 @@
 | `replace_selections_with_primary_clipboard` | Replace selections by primary clipboard |  |
 | `paste_after` | Paste after selection | normal: `` p ``, select: `` p `` |
 | `paste_before` | Paste before selection | normal: `` P ``, select: `` P `` |
+| `paste_all_selections_after` | Paste all selections after each selection, presering selections |  |
+| `paste_all_selections_before` | Paste all selections before each selection, presering selections |  |
 | `paste_clipboard_after` | Paste clipboard after selections | normal: `` <space>p ``, select: `` <space>p `` |
 | `paste_clipboard_before` | Paste clipboard before selections | normal: `` <space>P ``, select: `` <space>P `` |
 | `paste_primary_clipboard_after` | Paste primary clipboard after selections |  |
