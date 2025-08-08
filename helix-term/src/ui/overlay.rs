@@ -7,6 +7,8 @@ use tui::buffer::Buffer;
 
 use crate::compositor::{Component, Context, Event, EventResult};
 
+pub const FULL_OVERLAID_MAX_WIDTH: u16 = 240;
+
 /// Contains a component placed in the center of the parent component
 pub struct Overlay<T> {
     /// Child component
@@ -19,7 +21,14 @@ pub struct Overlay<T> {
 pub fn overlaid<T>(content: T) -> Overlay<T> {
     Overlay {
         content,
-        calc_child_size: Box::new(|rect: Rect| clip_rect_relative(rect.clip_bottom(2), 90, 90)),
+        calc_child_size: Box::new(|rect: Rect| {
+            let percentage = if rect.width < FULL_OVERLAID_MAX_WIDTH {
+                100
+            } else {
+                90
+            };
+            clip_rect_relative(rect.clip_bottom(2), percentage, percentage)
+        }),
     }
 }
 
