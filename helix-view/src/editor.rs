@@ -1365,6 +1365,14 @@ impl Editor {
     }
 
     #[inline]
+    pub fn set_result<T: Into<Cow<'static, str>>>(&mut self, result: Result<T, T>) {
+        match result {
+            Ok(ok) => self.set_status(ok),
+            Err(err) => self.set_error(err),
+        }
+    }
+
+    #[inline]
     pub fn set_warning<T: Into<Cow<'static, str>>>(&mut self, warning: T) {
         let warning = warning.into();
         log::warn!("editor warning: {}", warning);
