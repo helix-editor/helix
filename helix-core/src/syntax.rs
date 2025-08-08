@@ -304,6 +304,16 @@ impl Loader {
                     }
                 };
             }
+            for file_type_append in &config.file_types_append {
+                match file_type_append {
+                    FileType::Extension(extension) => {
+                        languages_by_extension.insert(extension.clone(), language);
+                    }
+                    FileType::Glob(glob) => {
+                        file_type_globs.push(FileTypeGlob::new(glob.to_owned(), language));
+                    }
+                };
+            }
             for shebang in &config.shebangs {
                 languages_by_shebang.insert(shebang.clone(), language);
             }

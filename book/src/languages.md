@@ -57,6 +57,7 @@ These configuration keys are available:
 | `scope`               | A string like `source.js` that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually `source.<name>` or `text.<name>` in case of markup languages |
 | `injection-regex`     | regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential [language injection][treesitter-language-injection] site. |
 | `file-types`          | The filetypes of the language, for example `["yml", "yaml"]`. See the file-type detection section below. |
+| `file-types-append`   | Extra filetypes to add without overriding `file-types` |
 | `shebangs`            | The interpreters from the shebang line, for example `["sh", "bash"]` |
 | `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
 | `auto-format`         | Whether to autoformat this language when saving               |
@@ -103,6 +104,8 @@ with the following priorities:
 2. Extension: if there are no glob matches, any `file-types` string that matches
    the file extension of a given file wins. In the example above, the `"toml"`
    config matches files like `Cargo.toml` or `languages.toml`.
+
+There's also the `file-types-append` key which is intended as a way to add extra filetypes to an existing language definition without overriding its `file-types`.
 
 ### Configuring the formatter command
 
