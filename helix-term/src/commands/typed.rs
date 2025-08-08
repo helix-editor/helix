@@ -530,6 +530,155 @@ fn new_file(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> an
     Ok(())
 }
 
+fn register_mark(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    };
+    let register_name: char = args
+        .first()
+        .map_or_else(|| cx.editor.selected_register, |s| s.chars().next())
+        .unwrap_or('^');
+
+    let (view, doc) = current!(cx.editor);
+
+    let ranges_str = doc
+        .selection(view.id)
+        .ranges()
+        .iter()
+        .map(|r| r.to_string())
+        .collect::<Vec<String>>();
+
+    // we have to take because of cell
+    let history = doc.history.take();
+    let current_history_point = history.current_revision();
+    doc.history.replace(history);
+
+    // doc_id so we know which doc to switch to
+    // current_history_point so we can apply changes
+    // to our selection when we restore it.
+    // the rest of the elements are just the stringified ranges
+    let mut register_val = vec![
+        format!("{}", doc.id()),
+        format!("{}", current_history_point),
+    ];
+    register_val.extend(ranges_str);
+
+    cx.editor.registers.write(register_name, register_val)?;
+
+    cx.editor
+        .set_status(format!("Saved selection bookmark to [{}]", register_name));
+    Ok(())
+}
+
+fn parse_mark_register_contents(
+    registers_vals: Option<RegisterValues>,
+) -> anyhow::Result<(DocumentId, usize, Selection)> {
+    match registers_vals {
+        Some(rv) => {
+            let mut rv_iter = rv.into_iter();
+
+            let Some(doc_id) = rv_iter
+                .next()
+                .map(|c| c.into_owned())
+                .and_then(|s| s.try_into().ok())
+            else {
+                return Err(anyhow!("Register did not contain valid document id"));
+            };
+            let Some(history_rev) = rv_iter
+                .next()
+                .map(|c| c.into_owned())
+                .and_then(|s| s.parse().ok())
+            else {
+                return Err(anyhow!("Register did not contain valid revision number"));
+            };
+
+            let Ok(ranges) = rv_iter
+                .map(|tup| {
+                    let s = tup.into_owned();
+                    let range_parser = seq!(
+                        "(",
+                        take_until(|c| c == ','),
+                        ",",
+                        take_until(|c| c == ')'),
+                        ")"
+                    );
+                    let Ok((_tail, (_lparen, anchor_str, _comma, head_str, _rparen))) =
+                        range_parser.parse(&s)
+                    else {
+                        return Err(format!("Could not parse range from string: {}", s));
+                    };
+
+                    let Ok(anchor) = <usize as FromStr>::from_str(anchor_str) else {
+                        return Err(format!("Could not parse range from string: {}", s));
+                    };
+                    let Ok(head) = <usize as FromStr>::from_str(head_str) else {
+                        return Err(format!("Could not parse range from string: {}", s));
+                    };
+
+                    Ok(Range {
+                        anchor,
+                        head,
+                        old_visual_position: None,
+                    })
+                })
+                // reverse the iterators so the first range will end up as the primary when we push them
+                .rev()
+                .collect::<Result<Vec<Range>, String>>()
+            else {
+                return Err(anyhow!("Some ranges in the register failed to parse!"));
+            };
+
+            let mut ranges_iter = ranges.into_iter();
+
+            let last_range = ranges_iter.next().unwrap(); // safe since there is always at least one range
+            let mut selection = Selection::from(last_range);
+            for r in ranges_iter {
+                selection = selection.push(r);
+            }
+
+            Ok((doc_id, history_rev, selection))
+        }
+        None => Err(anyhow!("Register was empty")),
+    }
+}
+
+fn goto_mark(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    };
+    let register_name: char = args
+        .first()
+        .map_or_else(|| cx.editor.selected_register, |s| s.chars().next())
+        .unwrap_or('^');
+
+    let scrolloff = cx.editor.config().scrolloff;
+    // use some helper functions to avoid making the borrow checker angry
+    let registers_vals = read_from_register(cx.editor, register_name);
+    let (doc_id, history_rev, mut selection) = parse_mark_register_contents(registers_vals)?;
+
+    cx.editor.switch(doc_id, Action::Replace);
+
+    let (view, doc) = current!(cx.editor);
+    let history = doc.history.take();
+    let revisions_to_apply = history.changes_since(history_rev);
+    doc.history.replace(history);
+
+    selection = match revisions_to_apply {
+        Some(t) => selection.map(t.changes()),
+        None => selection,
+    };
+
+    doc.set_selection(view.id, selection);
+
+    view.ensure_cursor_in_view(doc, scrolloff);
+
+    Ok(())
+}
+
 fn format(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -2850,6 +2999,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "goto-mark",
+        aliases: &[],
+        doc: "Go to the selection saved in a register. Register can be provided as argument or selected register else ^ will be used",
+        fun: goto_mark,
+        completer: CommandCompleter::positional(&[completers::register]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "register-mark",
+        aliases: &[],
+        doc: "Save current selection into a register. Register can be provided as argument or selected register else ^ will be used",
+        fun: register_mark,
+        completer: CommandCompleter::positional(&[completers::register]),
+        signature: Signature {
+            positionals: (0, Some(1)),
             ..Signature::DEFAULT
         },
     },
