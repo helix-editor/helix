@@ -17,6 +17,7 @@ This fork of Helix implements the following pull requests. Future pull requests 
 13. https://github.com/helix-editor/helix/pull/13113 (add file path to the file names for similar file names)
 17. https://github.com/helix-editor/helix/pull/12574 (remove code column from diagnotics buffer)
 18. https://github.com/helix-editor/helix/pull/9875 (add code file picker)
+19. https://github.com/helix-editor/helix/pull/14121 (move lines - no more macros to move lines)
 
 ## Building
 ```bash
@@ -135,5 +136,20 @@ color-swatches-string = "■"
 ```
 
 Color swatches appear next to color values in your code (CSS, configuration files, etc.) when LSP support is available, making it easier to visualize colors at a glance.
+
+## Line Movement Commands
+
+**Move Lines Up/Down:**
+- `Ctrl+k` - Move current line or selected lines up
+- `Ctrl+j` - Move current line or selected lines down
+
+The line movement feature allows you to easily move the current line or multiple selected lines up and down in your document. This works with:
+- Single line: When cursor is on a line, moves that entire line
+- Multiple selections: Moves all selected lines while preserving their relative positions
+- Discontinuous selections: Handles multiple separate line selections correctly
+- Unicode content: Properly handles files with Unicode characters
+- File boundaries: Prevents moving lines beyond the start or end of the file
+
+This feature eliminates the need for complex macros to achieve line movement and provides a smooth, predictable editing experience.
 
 
