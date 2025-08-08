@@ -8,7 +8,7 @@
 ; Definitions
 
 (alias
-  name: (identifier) @local.definition.variable)
+  alias_name: (identifier) @local.definition.variable)
 
 (assignment
   name: (identifier) @local.definition.variable)
