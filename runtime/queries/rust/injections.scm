@@ -103,8 +103,6 @@
 ; the `format_args!` syntax.
 ;
 ; This language is injected into a hard-coded set of macros.
-
-; 1st argument is `format_args!`
 (
   (macro_invocation
     macro:
@@ -113,13 +111,11 @@
           name: (_) @_macro_name)
         (identifier) @_macro_name
       ]
-    (token_tree . [
-        (string_literal (string_content) @injection.content)
-        (raw_string_literal (string_content) @injection.content)
-      ]
-    )
+    (token_tree) @injection.content
   )
   (#any-of? @_macro_name
+    ; 1st argument is `format_args!`
+
     ; std
     "print" "println" "eprint" "eprintln"
     "format" "format_args" "todo" "panic"
@@ -140,63 +136,22 @@
     "eyre"
     ; miette
     "miette"
-  )
-  (#set! injection.language "rust-format-args")
-  (#set! injection.include-children)
-)
 
-; 2nd argument is `format_args!`
-(
-  (macro_invocation
-    macro:
-      [
-        (scoped_identifier
-          name: (_) @_macro_name)
-        (identifier) @_macro_name
-      ]
-    (token_tree
-      . (_)
-      . [
-        (string_literal (string_content) @injection.content)
-        (raw_string_literal (string_content) @injection.content)
-      ]
-    )
-  )
-  (#any-of? @_macro_name
+    ; 2nd argument is `format_args!`
+
     ; std
     "write" "writeln" "assert" "debug_assert"
     ; defmt
     "expect" "unwrap"
     ; ratatui
     "span"
-  )
-  (#set! injection.language "rust-format-args")
-  (#set! injection.include-children)
-)
 
-; 3rd argument is `format_args!`
-(
-  (macro_invocation
-    macro:
-      [
-        (scoped_identifier
-          name: (_) @_macro_name)
-        (identifier) @_macro_name
-      ]
-    (token_tree
-      . (_)
-      . (_)
-      . [
-        (string_literal (string_content) @injection.content)
-        (raw_string_literal (string_content) @injection.content)
-      ]
-    )
-  )
-  (#any-of? @_macro_name
+    ; 3rd argument is `format_args!`
+
     ; std
     "assert_eq" "debug_assert_eq" "assert_ne" "debug_assert_ne"
   )
-  (#set! injection.language "rust-format-args")
+  (#set! injection.language "rust-format-args-macro")
   (#set! injection.include-children)
 )
 

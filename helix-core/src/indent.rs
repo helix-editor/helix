@@ -153,6 +153,12 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
         // Give more weight to tabs, because their presence is a very
         // strong indicator.
         histogram[0] *= 2;
+        // Gives less weight to single indent, as single spaces are
+        // often used in certain languages' comment systems and rarely
+        // used as the actual document indentation.
+        if histogram[1] > 1 {
+            histogram[1] /= 2;
+        }
 
         histogram
     };
