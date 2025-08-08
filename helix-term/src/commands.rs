@@ -3199,9 +3199,11 @@ fn buffer_picker(cx: &mut Context) {
                 .into()
         }),
     ];
+    let initial_cursor = items.len().saturating_sub(1).min(1) as u32;
     let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
         cx.editor.switch(meta.id, action);
     })
+    .with_initial_cursor(initial_cursor)
     .with_preview(|editor, meta| {
         let doc = &editor.documents.get(&meta.id)?;
         let lines = doc.selections().values().next().map(|selection| {
