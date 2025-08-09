@@ -6253,6 +6253,36 @@ enum ShellBehavior {
     Append,
 }
 
+enum StderrMode {
+    OverrideStdout, // redirect to stdout
+    Popup,          // show in popup
+}
+
+struct ShellOutput {
+    stdout: Tendril,
+    stderr: Tendril,
+    success: bool,
+}
+
+impl ShellOutput {
+    pub fn is_empty(&self) -> bool {
+        self.stdout.trim().is_empty() && self.stderr.trim().is_empty()
+    }
+}
+
+impl fmt::Display for ShellOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let out = self.stdout.trim();
+        let err = self.stderr.trim();
+        match (err.is_empty(), out.is_empty()) {
+            (true, true) => Ok(()),
+            (false, true) => write!(f, "```sh\n{}\n```", err),
+            (true, false) => write!(f, "```sh\n{}\n```", out),
+            (false, false) => write!(f, "```sh\n{}\n```\n---\n```sh\n{}\n```", err, out),
+        }
+    }
+}
+
 fn shell_pipe(cx: &mut Context) {
     shell_prompt(cx, "pipe:".into(), ShellBehavior::Replace);
 }
@@ -6314,7 +6344,7 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
-fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<Tendril> {
+fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<ShellOutput> {
     tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
 }
 
@@ -6322,7 +6352,7 @@ async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
     input: Option<Rope>,
-) -> anyhow::Result<Tendril> {
+) -> anyhow::Result<ShellOutput> {
     use std::process::Stdio;
     use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
@@ -6365,24 +6395,18 @@ async fn shell_impl_async(
         process.wait_with_output().await?
     };
 
-    let output = if !output.status.success() {
-        if output.stderr.is_empty() {
-            match output.status.code() {
-                Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
-                None => bail!("Shell command failed"),
-            }
+    if !output.status.success() && output.stderr.is_empty() {
+        match output.status.code() {
+            Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
+            None => bail!("Shell command failed"),
         }
-        String::from_utf8_lossy(&output.stderr)
-        // Prioritize `stderr` output over `stdout`
-    } else if !output.stderr.is_empty() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        log::debug!("Command printed to stderr: {stderr}");
-        stderr
-    } else {
-        String::from_utf8_lossy(&output.stdout)
-    };
+    }
 
-    Ok(Tendril::from(output))
+    Ok(ShellOutput {
+        stdout: Tendril::from(String::from_utf8_lossy(&output.stdout)),
+        stderr: Tendril::from(String::from_utf8_lossy(&output.stderr)),
+        success: output.status.success(),
+    })
 }
 
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
@@ -6408,18 +6432,24 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
         } else {
             let input = range.slice(text);
             match shell_impl(shell, cmd, pipe.then(|| input.into())) {
-                Ok(mut output) => {
-                    if !input.ends_with("\n") && output.ends_with('\n') {
-                        output.pop();
-                        if output.ends_with('\r') {
-                            output.pop();
+                Ok(ShellOutput {
+                    stdout,
+                    stderr,
+                    success: _,
+                }) => {
+                    // Prioritize `stderr` output over `stdout`
+                    let mut display_output = if stderr.is_empty() { stdout } else { stderr };
+                    if !input.ends_with("\n") && display_output.ends_with('\n') {
+                        display_output.pop();
+                        if display_output.ends_with('\r') {
+                            display_output.pop();
                         }
                     }
 
                     if !pipe {
-                        shell_output = Some(output.clone());
+                        shell_output = Some(display_output.clone());
                     }
-                    output
+                    display_output
                 }
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
