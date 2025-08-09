@@ -3709,8 +3709,8 @@ fn execute_command_line(
                 // Engine handles the other cases
                 if event == PromptEvent::Validate {
                     let mappable_command = MappableCommand::Typable {
-                        name: input.to_string(),
-                        args: String::default(),
+                        name: command.to_string(),
+                        args: parts.join(" "),
                         doc: "".to_string(),
                     };
 
@@ -3723,7 +3723,6 @@ fn execute_command_line(
                         jobs: cx.jobs,
                     };
 
-                    // // TODO: Figure this out?
                     helix_event::dispatch(crate::events::PostCommand {
                         command: &mappable_command,
                         cx: &mut ctx,
