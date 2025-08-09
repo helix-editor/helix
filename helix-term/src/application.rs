@@ -31,7 +31,8 @@ use crate::{
 
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
-use std::io::stdout;
+use std::io::{stdout, Write};
+use std::{fs::File, path::PathBuf};
 use std::{io::stdin, path::Path, sync::Arc};
 
 #[cfg(not(windows))]
@@ -68,6 +69,44 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+
+    keystroke_recorder: Option<KeystrokeRecorder>,
+}
+
+struct KeystrokeRecorder {
+    path: PathBuf,
+    keystrokes: Vec<helix_view::input::KeyEvent>,
+}
+
+impl KeystrokeRecorder {
+    fn new(path: PathBuf) -> Self {
+        Self {
+            path,
+            keystrokes: Vec::new(),
+        }
+    }
+
+    fn record_keystroke(&mut self, event: &CrosstermEvent) {
+        if let CrosstermEvent::Key(key) = event {
+            if key.kind == crossterm::event::KeyEventKind::Press {
+                // Convert crossterm KeyEvent to our KeyEvent
+                let key_event: helix_view::input::KeyEvent = (*key).into();
+                self.keystrokes.push(key_event);
+            }
+        }
+    }
+
+    fn write_to_file(&self) -> std::io::Result<()> {
+        let mut file = File::create(&self.path)?;
+        let macro_string = self
+            .keystrokes
+            .iter()
+            .map(|key| key.key_sequence_format())
+            .collect::<String>();
+
+        writeln!(file, "{}", macro_string)?;
+        Ok(())
+    }
 }
 
 #[cfg(feature = "integration")]
@@ -234,6 +273,9 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        // Initialize the keystroke recorder if --record-keys was specified
+        let keystroke_recorder = args.record_keys.map(KeystrokeRecorder::new);
+
         let app = Self {
             compositor,
             terminal,
@@ -242,6 +284,7 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
+            keystroke_recorder,
         };
 
         Ok(app)
@@ -636,6 +679,13 @@ impl Application {
     }
 
     pub async fn handle_terminal_events(&mut self, event: std::io::Result<CrosstermEvent>) {
+        // Record the keystroke if recording is enabled
+        if let Ok(event_ref) = &event {
+            if let Some(recorder) = &mut self.keystroke_recorder {
+                recorder.record_keystroke(event_ref);
+            }
+        }
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -1149,6 +1199,19 @@ impl Application {
         //        want to try to run as much cleanup as we can, regardless of
         //        errors along the way
         let mut errs = Vec::new();
+
+        // Write recorded keystrokes to file if recording was enabled
+        if let Some(recorder) = self.keystroke_recorder.take() {
+            if let Err(err) = recorder.write_to_file() {
+                log::error!("Error writing keystroke recording: {}", err);
+                errs.push(anyhow::format_err!(
+                    "Failed to write keystroke recording: {}",
+                    err
+                ));
+            } else {
+                log::info!("Keystroke recording saved to {:?}", recorder.path);
+            }
+        }
 
         if let Err(err) = self
             .jobs
