@@ -10,7 +10,7 @@
 (const_spec
   name: (identifier) @constant)
 
-(type_spec 
+(type_spec
   name: (type_identifier) @constructor)
 
 (keyed_element . (literal_element (identifier) @variable.other.member))
@@ -36,14 +36,14 @@
 
 (call_expression
   function: (identifier) @function.builtin
-  (#match? @function.builtin "^(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)$"))
+  (#match? @function.builtin "^(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover|min|max|clear)$"))
 
 ; Types
 
 (type_identifier) @type
 
 (type_parameter_list
-  (parameter_declaration
+  (type_parameter_declaration
     name: (identifier) @type.parameter))
 
 ((type_identifier) @type.builtin
@@ -57,9 +57,8 @@
 (method_declaration
   name: (field_identifier) @function.method)
 
-(method_spec 
-  name: (field_identifier) @function.method) 
-
+(method_elem
+  name: (field_identifier) @function.method)
 
 ; Operators
 
@@ -100,6 +99,8 @@
   "|"
   "|="
   "||"
+  "&^"
+  "&^="
   "~"
 ] @operator
 
@@ -117,7 +118,7 @@
 ] @keyword.control
 
 [
-  "if"  
+  "if"
   "else"
   "switch"
   "select"
