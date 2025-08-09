@@ -3155,7 +3155,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "matlab"
-source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "b0a0198b182574cd3ca0447264c83331901b9338" }
+source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "585b52b9b16d8e626299a76360ef6ab4f9731aed" }
 
 [[language]]
 name = "ponylang"
