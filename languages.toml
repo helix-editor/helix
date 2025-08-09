@@ -3606,7 +3606,7 @@ name = "jjdescription"
 scope = "jj.description"
 file-types = [{ glob = "*.jjdescription" }]
 comment-token = "JJ:"
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "    " }
 rulers = [51, 73]
 text-width = 72
 
