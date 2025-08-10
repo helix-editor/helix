@@ -133,6 +133,7 @@
 | jsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ |  |  | `julia` |
 | just | ✓ | ✓ | ✓ | ✓ |  | `just-lsp` |
+| kconfig | ✓ |  | ✓ |  |  |  |
 | kdl | ✓ | ✓ | ✓ |  |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ |  |  | `kotlin-language-server` |
