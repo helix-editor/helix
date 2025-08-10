@@ -4628,3 +4628,14 @@ comment-token = "#"
 [[grammar]]
 name = "robots"
 source = { git = "https://github.com/opa-oz/tree-sitter-robots-txt", rev = "8e3a4205b76236bb6dbebdbee5afc262ce38bb62" }
+
+[[language]]
+name = "pip-requirements"
+scope = "source.pip-requirements"
+injection-regex = "(pip-)?requirements(\\.txt)?"
+grammar = "requirements"
+file-types = [{ glob = "requirements.txt" }, { glob = "constraints.txt" }]
+
+[[grammar]]
+name = "requirements"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-requirements", rev = "caeb2ba854dea55931f76034978de1fd79362939" }
