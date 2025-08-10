@@ -6253,11 +6253,6 @@ enum ShellBehavior {
     Append,
 }
 
-enum StderrMode {
-    OverrideStdout, // redirect to stdout
-    Popup,          // show in popup
-}
-
 struct ShellOutput {
     stdout: Tendril,
     stderr: Tendril,
@@ -6409,7 +6404,13 @@ async fn shell_impl_async(
     })
 }
 
-fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
+fn shell(
+    cx: &mut compositor::Context,
+    cmd: &str,
+    behavior: &ShellBehavior,
+    on_success: bool,
+    popup_stderr: bool,
+) {
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
@@ -6418,6 +6419,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let config = cx.editor.config();
     let shell = &config.shell;
     let (view, doc) = current!(cx.editor);
+
     let selection = doc.selection(view.id);
 
     let mut changes = Vec::with_capacity(selection.len());
@@ -6435,21 +6437,47 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
                 Ok(ShellOutput {
                     stdout,
                     stderr,
-                    success: _,
+                    success,
                 }) => {
+                    if popup_stderr && !stderr.is_empty() {
+                        let popup_str = stderr.to_string();
+                        let callback = async move {
+                            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                                move |editor: &mut Editor, compositor: &mut Compositor| {
+                                    let contents =
+                                        ui::Markdown::new(popup_str, editor.syn_loader.clone());
+                                    let popup = Popup::new("shell", contents).position(Some(
+                                        helix_core::Position::new(
+                                            editor.cursor().0.unwrap_or_default().row,
+                                            2,
+                                        ),
+                                    ));
+                                    compositor.replace_or_push("shell", popup);
+                                },
+                            ));
+                            Ok(call)
+                        };
+                        cx.jobs.callback(callback);
+                    }
+
+                    if on_success && !success {
+                        return;
+                    }
+
                     // Prioritize `stderr` output over `stdout`
-                    let mut display_output = if stderr.is_empty() { stdout } else { stderr };
-                    if !input.ends_with("\n") && display_output.ends_with('\n') {
-                        display_output.pop();
-                        if display_output.ends_with('\r') {
-                            display_output.pop();
+                    let mut used_output = if !stderr.is_empty() { stderr } else { stdout };
+
+                    if !input.ends_with("\n") && used_output.ends_with('\n') {
+                        used_output.pop();
+                        if used_output.ends_with('\r') {
+                            used_output.pop();
                         }
                     }
 
                     if !pipe {
-                        shell_output = Some(display_output.clone());
+                        shell_output = Some(used_output.clone());
                     }
-                    display_output
+                    used_output
                 }
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
@@ -6510,7 +6538,7 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
                 return;
             }
 
-            shell(cx, input, &behavior);
+            shell(cx, input, &behavior, false, false);
         },
     );
 }

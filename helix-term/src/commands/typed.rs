@@ -2348,7 +2348,7 @@ fn append_output(
         return Ok(());
     }
 
-    shell(cx, &args.join(" "), &ShellBehavior::Append);
+    shell(cx, &args.join(" "), &ShellBehavior::Append, false, false);
     Ok(())
 }
 
@@ -2361,16 +2361,24 @@ fn insert_output(
         return Ok(());
     }
 
-    shell(cx, &args.join(" "), &ShellBehavior::Insert);
+    shell(cx, &args.join(" "), &ShellBehavior::Insert, false, false);
     Ok(())
 }
 
 fn pipe_to(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
-    pipe_impl(cx, args, event, &ShellBehavior::Ignore)
+    pipe_impl(cx, args, event, &ShellBehavior::Ignore, false, true)
 }
 
 fn pipe(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
-    pipe_impl(cx, args, event, &ShellBehavior::Replace)
+    pipe_impl(cx, args, event, &ShellBehavior::Replace, false, false)
+}
+
+fn pipe_on_success(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Replace, true, true)
 }
 
 fn pipe_impl(
@@ -2378,12 +2386,14 @@ fn pipe_impl(
     args: Args,
     event: PromptEvent,
     behavior: &ShellBehavior,
+    on_success: bool,
+    popup_stderr: bool,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    shell(cx, &args.join(" "), behavior);
+    shell(cx, &args.join(" "), behavior, on_success, popup_stderr);
     Ok(())
 }
 
@@ -3558,6 +3568,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["|"],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
+        completer: SHELL_COMPLETER,
+        signature: SHELL_SIGNATURE,
+    },
+    TypableCommand {
+        name: "pipe-on-success",
+        aliases: &[],
+        doc: "Pipe each selection to the shell command.",
+        fun: pipe_on_success,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
     },
