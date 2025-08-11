@@ -1,12 +1,11 @@
 [
   (list)
-  (vector)
-  (byte_vector)
+  (predicate)
+  (grouping)
+  (named_node)
 ] @rainbow.scope
 
 [
-  "#(" "#vu8("
   "(" ")"
   "[" "]"
-  "{" "}"
 ] @rainbow.bracket
