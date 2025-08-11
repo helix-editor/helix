@@ -453,6 +453,13 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RelativePosition {
+    Above,
+    Below,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     /// Enables LSP
@@ -463,6 +470,8 @@ pub struct LspConfig {
     pub display_messages: bool,
     /// Enable automatic pop up of signature help (parameter hints)
     pub auto_signature_help: bool,
+    /// Position of the automatic pop up of signature help
+    pub signature_help_position: RelativePosition,
     /// Display docs under signature help popup
     pub display_signature_help_docs: bool,
     /// Display inlay hints
@@ -485,6 +494,7 @@ impl Default for LspConfig {
             display_progress_messages: false,
             display_messages: true,
             auto_signature_help: true,
+            signature_help_position: RelativePosition::Above,
             display_signature_help_docs: true,
             display_inlay_hints: false,
             inlay_hints_length_limit: None,
