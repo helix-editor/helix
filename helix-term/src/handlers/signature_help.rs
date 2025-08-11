@@ -266,9 +266,11 @@ pub fn show_signature_help(
         signatures,
     );
 
+    let position_bias = Open::from_relative_position(&config.lsp.signature_help_position);
+
     let mut popup = Popup::new(SignatureHelp::ID, contents)
         .position(old_popup.and_then(|p| p.get_position()))
-        .position_bias(Open::Above)
+        .position_bias(position_bias)
         .ignore_escape_key(true);
 
     // Don't create a popup if it intersects the auto-complete menu.
