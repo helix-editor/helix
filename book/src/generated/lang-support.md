@@ -86,7 +86,7 @@
 | glsl | ✓ | ✓ | ✓ |  |  | `glsl_analyzer` |
 | gn | ✓ |  |  |  |  |  |
 | go | ✓ | ✓ | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
-| go-format-string | ✓ |  |  |  |  |  |
+| go-format-string | ✓ |  |  |  | ✓ |  |
 | godot-resource | ✓ | ✓ |  |  |  |  |
 | gomod | ✓ |  |  |  |  | `gopls` |
 | gotmpl | ✓ |  |  |  |  | `gopls` |
@@ -100,6 +100,7 @@
 | haskell | ✓ | ✓ |  |  |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |  |  |
 | hcl | ✓ | ✓ | ✓ |  |  | `terraform-ls` |
+| hdl | ✓ |  |  |  |  |  |
 | heex | ✓ | ✓ |  |  |  | `elixir-ls` |
 | helm | ✓ |  |  |  |  | `helm_ls` |
 | hocon | ✓ | ✓ | ✓ |  |  |  |
@@ -114,7 +115,7 @@
 | ini | ✓ |  |  |  |  |  |
 | ink | ✓ |  |  |  |  |  |
 | inko | ✓ | ✓ | ✓ | ✓ |  |  |
-| janet | ✓ |  | ✓ |  |  |  |
+| janet | ✓ |  | ✓ |  | ✓ |  |
 | java | ✓ | ✓ | ✓ |  | ✓ | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jinja | ✓ |  |  |  |  |  |
@@ -131,7 +132,7 @@
 | jsonnet | ✓ |  |  |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ |  |  | `julia` |
-| just | ✓ | ✓ | ✓ |  |  | `just-lsp` |
+| just | ✓ | ✓ | ✓ | ✓ |  | `just-lsp` |
 | kdl | ✓ | ✓ | ✓ |  |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ |  |  | `kotlin-language-server` |
@@ -184,6 +185,7 @@
 | pest | ✓ | ✓ | ✓ |  |  | `pest-language-server` |
 | php | ✓ | ✓ | ✓ | ✓ |  | `intelephense` |
 | php-only | ✓ |  |  | ✓ |  |  |
+| pip-requirements | ✓ |  |  |  |  |  |
 | pkgbuild | ✓ | ✓ | ✓ |  |  | `termux-language-server`, `bash-language-server` |
 | pkl | ✓ |  | ✓ |  |  | `pkl-lsp` |
 | po | ✓ | ✓ |  |  |  |  |
@@ -208,6 +210,7 @@
 | rescript | ✓ | ✓ |  |  |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
 | robot | ✓ |  |  |  |  | `robotframework_ls` |
+| robots.txt | ✓ | ✓ |  | ✓ |  |  |
 | ron | ✓ |  | ✓ |  |  |  |
 | rst | ✓ |  |  |  |  |  |
 | ruby | ✓ | ✓ | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
@@ -235,7 +238,7 @@
 | supercollider | ✓ |  |  |  |  |  |
 | svelte | ✓ |  | ✓ |  |  | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
-| swift | ✓ | ✓ |  |  |  | `sourcekit-lsp` |
+| swift | ✓ | ✓ |  |  | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  |  |  | `systemd-lsp` |
 | t32 | ✓ |  |  |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |  |  |
