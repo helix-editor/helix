@@ -2,15 +2,12 @@
 
 [
   (function_declaration)
+  (method_declaration)
   (type_declaration)
   (block)
 ] @local.scope
 
 ; Definitions
-
-(type_parameter_list
-  (parameter_declaration
-    name: (identifier) @local.definition.variable.parameter))
 
 (parameter_declaration (identifier) @local.definition.variable.parameter)
 (variadic_parameter_declaration (identifier) @local.definition.variable.parameter)
@@ -22,5 +19,7 @@
 ; References
 
 (identifier) @local.reference
-(field_identifier) @local.reference
-(type_identifier) @local.reference
+
+; Field names in struct literals are identifier rather than field_identifier,
+; these cannot be locals.
+(keyed_element . (literal_element (identifier) @variable.other.member))

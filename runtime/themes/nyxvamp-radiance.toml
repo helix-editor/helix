@@ -4,6 +4,9 @@
 # UI Elements
 "ui.background"               = { bg = "background", fg = "foreground" }
 "ui.text"                     = { fg = "foreground" }
+"ui.text.focus"               = { fg = "menu_sel_fg", bg = "menu_sel_bg" }
+"ui.text.inactive"            = { fg = "comment_fg" }
+"ui.text.info"                = { fg = "menu_fg", bg = "menu_bg" }
 "ui.cursor"                   = { fg = "cursor_fg", bg = "cursor_bg" }
 "ui.cursorline.primary"       = { bg = "cursorline" }
 "ui.selection"                = { bg = "selection" }
@@ -15,9 +18,18 @@
 "ui.menu.selected"            = { fg = "menu_sel_fg", bg = "menu_sel_bg" }
 "ui.menu.scroll"              = { fg = "menu_scroll_fg", bg = "menu_scroll_bg" }
 "ui.popup"                    = { fg = "popup_fg", bg = "popup_bg" }
+"ui.popup.info"               = { fg = "menu_fg", bg = "menu_bg" }
 "ui.match_paren"              = { fg = "match_paren_fg", bg = "match_paren_bg", modifiers = ["bold"] }
 "ui.virtual"                  = { fg = "comment_fg" }
 "ui.virtual.ruler"            = { bg = "virtual_ruler_bg" }
+"ui.highlight"                = { fg = "menu_sel_fg", bg = "menu_sel_bg" }
+"ui.picker.header"            = { fg = "menu_fg", bg = "menu_bg" }
+"ui.picker.header.column"     = { fg = "menu_fg", bg = "menu_bg" }
+"ui.picker.header.column.active" = { fg = "menu_sel_fg", bg = "menu_sel_bg" }
+"ui.window"                   = { fg = "foreground" }
+"ui.help"                     = { fg = "menu_fg", bg = "menu_bg" }
+"ui.text.directory"           = { fg = "function_fg", modifiers = ["bold"] }
+"ui.selection.primary"          = { bg = "selection" }
 
 # Syntax Highlighting
 "comment"                     = { fg = "comment_fg", modifiers = ["italic"] }
@@ -42,6 +54,11 @@
 "symbol"                      = { fg = "symbol_fg", modifiers = ["italic"] }
 
 # Diagnostics
+"warning"                     = { fg = "warning_fg" }
+"error"                       = { fg = "error_fg" }
+"info"                        = { fg = "info_fg" }
+"hint"                        = { fg = "hint_fg" }
+"diagnostic"                  = { fg = "error_fg" }
 "diagnostic.error"            = { fg = "error_fg", modifiers = ["bold"] }
 "diagnostic.warning"          = { fg = "warning_fg", modifiers = ["bold"] }
 "diagnostic.info"             = { fg = "info_fg", modifiers = ["bold"] }
@@ -67,45 +84,45 @@ foreground                    = "#1E1E2E"  # Deep navy foreground (from your vis
 cursor_fg                     = "#F7F7FF"  # Off-white cursor text
 cursor_bg                     = "#9655FF"  # Deep purple cursor (from your visual identity)
 cursorline                    = "#E8E8F0"  # Slightly darker than background
-selection                     = "#FEF5BC"  # Soft yellow selection (from your visual identity)
-line_nr                       = "#6E6A86"  # Medium gray for line numbers
+selection                     = "#E8D5FF"  # Light purple selection that matches theme palette
+line_nr                       = "#5A5570"  # Darker gray for line numbers
 line_nr_selected              = "#1E1E2E"  # Deep navy for selected line number
 status_fg                     = "#1E1E2E"  # Deep navy
 status_bg                     = "#E8E8F0"  # Light gray
-status_inactive_fg            = "#6E6A86"  # Medium gray
+status_inactive_fg            = "#5A5570"  # Darker gray
 status_inactive_bg            = "#F7F7FF"  # Off-white
 menu_fg                       = "#1E1E2E"  # Deep navy
 menu_bg                       = "#E8E8F0"  # Light gray
-menu_sel_fg                   = "#F7F7FF"  # Off-white
-menu_sel_bg                   = "#FEF5BC"  # Soft yellow selection
-menu_scroll_fg                = "#6E6A86"  # Medium gray
+menu_sel_fg                   = "#1E1E2E"  # Dark navy text for better contrast
+menu_sel_bg                   = "#E8D5FF"  # Light purple selection
+menu_scroll_fg                = "#5A5570"  # Darker gray
 menu_scroll_bg                = "#E8E8F0"  # Light gray
 popup_fg                      = "#1E1E2E"  # Deep navy
 popup_bg                      = "#E8E8F0"  # Light gray
 match_paren_fg                = "#1E1E2E"  # Deep navy
-match_paren_bg                = "#FEF5BC"  # Soft yellow
+match_paren_bg                = "#E8D5FF"  # Light purple matching selection
 virtual_ruler_bg              = "#EAEAF0"  # Slightly lighter than comment color background
 
-comment_fg                    = "#6E6A86"  # Medium gray comments
-string_fg                     = "#FEF5BC"  # Soft yellow strings (from your visual identity)
-string_special_fg             = "#F28FAD"  # Pink special strings
-constant_fg                   = "#F28FAD"  # Pink constants
-constant_builtin_fg           = "#F28FAD"  # Pink built-in constants
-number_fg                     = "#F8BD96"  # Peach numbers
-boolean_fg                    = "#F28FAD"  # Pink booleans
+comment_fg                    = "#5A5570"  # Darker gray comments for better contrast
+string_fg                     = "#B8860B"  # Dark golden rod - much better contrast on light background
+string_special_fg             = "#9F1239"  # Even darker pink special strings
+constant_fg                   = "#9F1239"  # Even darker pink constants for maximum contrast
+constant_builtin_fg           = "#9F1239"  # Even darker pink built-in constants
+number_fg                     = "#C2410C"  # Darker orange numbers for better contrast
+boolean_fg                    = "#9F1239"  # Even darker pink booleans
 function_fg                   = "#005F87"  # Dark blue functions (more distinguishable)
 function_builtin_fg           = "#005F87"  # Dark blue built-in functions
 keyword_fg                    = "#9655FF"  # Deep purple keywords
 keyword_control_fg            = "#9655FF"  # Deep purple control keywords
-operator_fg                   = "#6E6A86"  # Medium gray operators (adjusted for better contrast)
+operator_fg                   = "#4A4560"  # Darker purple-gray operators for better contrast
 variable_fg                   = "#1E1E2E"  # Deep navy variables
-variable_builtin_fg           = "#F28FAD"  # Pink built-in variables
-type_fg                       = "#C9CBFF"  # Lavender types
-type_builtin_fg               = "#C9CBFF"  # Lavender built-in types
+variable_builtin_fg           = "#9F1239"  # Even darker pink built-in variables
+type_fg                       = "#6B46C1"  # Darker purple types for better contrast
+type_builtin_fg               = "#6B46C1"  # Darker purple built-in types for better contrast
 attribute_fg                  = "#9655FF"  # Deep purple attributes
 namespace_fg                  = "#9655FF"  # Deep purple namespaces
 punctuation_fg                = "#1E1E2E"  # Deep navy punctuation
-symbol_fg                     = "#F28FAD"  # Pink symbols (e.g., Elixir atoms)
+symbol_fg                     = "#9F1239"  # Even darker pink symbols (atoms) for maximum contrast
 
 error_fg                      = "#E78284"  # Soft red errors
 warning_fg                    = "#E5C890"  # Soft yellow warnings
@@ -121,4 +138,4 @@ markup_bold_fg                = "#1E1E2E"  # Deep navy bold text
 markup_italic_fg              = "#1E1E2E"  # Deep navy italic text
 markup_link_url_fg            = "#005F87"  # Dark blue links
 markup_link_text_fg           = "#9655FF"  # Deep purple link text
-markup_quote_fg               = "#6E6A86"  # Gray quotes
+markup_quote_fg               = "#5A5570"  # Darker gray quotes
