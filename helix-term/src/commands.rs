@@ -1366,19 +1366,27 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     };
 
     for sel in paths {
-        if let Ok(url) = Url::parse(&sel) {
+        let (path, pos) = crate::args::parse_file(&sel);
+        if let Ok(url) = Url::parse(&path.to_str().unwrap()) {
             open_url(cx, url, action);
             continue;
         }
 
-        let path = path::expand(&sel);
-        let path = &rel_path.join(path);
+        let rel_path = rel_path.join(path::expand(&path));
+        let cwd_path = path::canonicalize(&path);
+        let path = if !rel_path.exists() && cwd_path.exists() { cwd_path } else { rel_path };
         if path.is_dir() {
             let picker = ui::file_picker(cx.editor, path.into());
             cx.push_layer(Box::new(overlaid(picker)));
-        } else if let Err(e) = cx.editor.open(path, action) {
+        } else if let Err(e) = cx.editor.open(path.as_path(), action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
         }
+
+        let (view, doc) = current!(cx.editor);
+        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+        doc.set_selection(view.id, pos);
+        // does not affect opening a buffer without pos
+        align_view(doc, view, Align::Center);
     }
 }
 
