@@ -6267,6 +6267,22 @@ impl ShellOutput {
     pub fn is_empty(&self) -> bool {
         self.stdout.trim().is_empty() && self.stderr.trim().is_empty()
     }
+
+    pub fn shell_popup(cx: &mut compositor::Context, msg: String) {
+        let callback = async move {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
+                    let contents = ui::Markdown::new(msg, editor.syn_loader.clone());
+                    let popup = Popup::new("shell", contents).position(Some(
+                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                    ));
+                    compositor.replace_or_push("shell", popup);
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+    }
 }
 
 impl fmt::Display for ShellOutput {
@@ -6420,6 +6436,7 @@ fn shell(
 
     let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
+    let mut popup_str = Vec::new();
     for range in selection.ranges() {
         let output = if let Some(output) = shell_output.as_ref() {
             output.clone()
@@ -6432,27 +6449,12 @@ fn shell(
                     success,
                 }) => {
                     if popup_stderr && !stderr.is_empty() {
-                        let popup_str = stderr.to_string();
-                        let callback = async move {
-                            let call: job::Callback = Callback::EditorCompositor(Box::new(
-                                move |editor: &mut Editor, compositor: &mut Compositor| {
-                                    let contents =
-                                        ui::Markdown::new(popup_str, editor.syn_loader.clone());
-                                    let popup = Popup::new("shell", contents).position(Some(
-                                        helix_core::Position::new(
-                                            editor.cursor().0.unwrap_or_default().row,
-                                            2,
-                                        ),
-                                    ));
-                                    compositor.replace_or_push("shell", popup);
-                                },
-                            ));
-                            Ok(call)
-                        };
-                        cx.jobs.callback(callback);
+                        popup_str.push(format!("```sh\n{}\n```", stderr));
                     }
 
                     if on_success && !success {
+                        ShellOutput::shell_popup(cx, popup_str.join("\n"));
+                        cx.editor.set_status("Shell process failed");
                         return;
                     }
 
@@ -6514,6 +6516,9 @@ fn shell(
     // after replace cursor may be out of bounds, do this to
     // make sure cursor is in view and update scroll as well
     view.ensure_cursor_in_view(doc, config.scrolloff);
+    if !popup_str.is_empty() {
+        ShellOutput::shell_popup(cx, popup_str.join("\n"));
+    }
 }
 
 fn shell_prompt<F>(cx: &mut Context, prompt: Cow<'static, str>, mut callback_fn: F)
