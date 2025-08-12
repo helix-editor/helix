@@ -53,7 +53,7 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { .. }) => None,
         };
 
-        let kind = match self {
+        let mut kind = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
                 Some(lsp::CompletionItemKind::TEXT) => "text".into(),
                 Some(lsp::CompletionItemKind::METHOD) => "method".into(),
@@ -145,11 +145,19 @@ impl menu::Item for CompletionItem {
             style.remove_modifier(Modifier::ITALIC)
         });
 
+        let is_folder = kind.0[0].content == "folder";
+
+        kind.0[0].style = if is_folder {
+            dir_style
+        } else {
+            theme.try_get("special").unwrap_or(Style::default())
+        };
+
         let label = Span::styled(
             label,
             if deprecated {
                 style.add_modifier(Modifier::CROSSED_OUT)
-            } else if kind.0[0].content == "folder" {
+            } else if is_folder {
                 dir_style
             } else {
                 style
