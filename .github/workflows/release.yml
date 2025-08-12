@@ -107,13 +107,13 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download grammars
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
 
       - name: Move grammars under runtime
         if: "!startsWith(matrix.os, 'windows')"
         run: |
           mkdir -p runtime/grammars/sources
-          tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
+          tar xJf grammars.tar.xz -C runtime/grammars/sources
 
       # The rust-toolchain action ignores rust-toolchain.toml files.
       # Removing this before building with cargo ensures that the rust-toolchain
@@ -237,7 +237,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
 
       - name: Build archive
         shell: bash
