@@ -186,7 +186,7 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
                 .doc
                 .diagnostics
                 .get(self.idx)
-                .map_or(true, |diag| diag.range.start != grapheme.char_idx)
+                .is_none_or(|diag| diag.range.start != grapheme.char_idx)
             {
                 return false;
             }
