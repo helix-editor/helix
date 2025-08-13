@@ -63,6 +63,9 @@ jobs:
       run: |
         mkdir -p dist
         cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} dist/
+        
+        # Clean up runtime directory and copy
+        rm -rf runtime/grammars/sources
         cp -r runtime dist/
         
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
