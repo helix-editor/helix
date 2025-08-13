@@ -155,4 +155,7 @@ The line movement feature allows you to easily move the current line or multiple
 
 This feature eliminates the need for complex macros to achieve line movement and provides a smooth, predictable editing experience.
 
-
+## Running app locally on MacOS systems
+run the following command on the terminal
+xattr -d com.apple.quarantine /path/to/your/app
+(this removes the quarantine attribute)
