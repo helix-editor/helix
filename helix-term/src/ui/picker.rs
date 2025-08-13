@@ -309,7 +309,10 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         F: Fn(&mut Context, &T, Action) + 'static,
     {
         let columns: Arc<[_]> = columns.into_iter().collect();
-        let matcher_columns = columns.iter().filter(|col| col.filter).count() as u32;
+        let matcher_columns = columns
+            .iter()
+            .filter(|col: &&Column<T, D>| col.filter)
+            .count() as u32;
         assert!(matcher_columns > 0);
         let matcher = Nucleo::new(
             Config::DEFAULT,
