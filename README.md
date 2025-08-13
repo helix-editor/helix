@@ -19,6 +19,7 @@ This fork of Helix implements the following pull requests. Future pull requests 
 18. https://github.com/helix-editor/helix/pull/9875 (add code file picker)
 19. https://github.com/helix-editor/helix/pull/14121 (move lines - no more macros to move lines)
 20. https://github.com/helix-editor/helix/pull/14072 (auto-scrolling bufferline)
+21. https://github.com/helix-editor/helix/pull/13821 (fix block cursor in terminal)
 
 ## Building
 ```bash
