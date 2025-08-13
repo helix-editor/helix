@@ -86,6 +86,8 @@ jobs:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout repository
@@ -104,15 +106,13 @@ jobs:
         echo "release_name=Build $TAG_NAME" >> $GITHUB_OUTPUT
 
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.create_tag.outputs.tag_name }}
-        release_name: ${{ steps.create_tag.outputs.release_name }}
+        name: ${{ steps.create_tag.outputs.release_name }}
         draft: false
         prerelease: false
+        files: artifacts/**/*
         body: |
           Automated build of Helix editor binaries from master branch.
           
@@ -122,22 +122,3 @@ jobs:
           - **Windows x86_64**: helix-windows-x86_64.zip
           - **macOS x86_64**: helix-macos-x86_64.tar.gz
           - **macOS Apple Silicon**: helix-macos-aarch64.tar.gz
-
-    - name: Upload Release Assets
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        upload_url="${{ steps.create_release.outputs.upload_url }}"
-        for asset_dir in artifacts/*/; do
-          for file in "$asset_dir"*; do
-            if [ -f "$file" ]; then
-              filename=$(basename "$file")
-              echo "Uploading $filename..."
-              curl -H "Authorization: token $GITHUB_TOKEN" \
-                   -H "Content-Type: application/octet-stream" \
-                   --data-binary @"$file" \
-                   "${upload_url%{?name,label\}*}?name=$filename"
-            fi
-          done
-        done
