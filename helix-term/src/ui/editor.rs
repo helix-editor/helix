@@ -897,128 +897,118 @@ impl EditorView {
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
-        let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        for doc in editor.documents() {
-            let text = format!(
-                " {}{} ",
-                doc.path()
-                    .unwrap_or(&scratch)
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap_or_default(),
-                if doc.is_modified() { "[+]" } else { "" }
-            );
+        self.bufferline_info.clear();
 
-            self.bufferline_positions.push(x);
+        // First pass: calculate all buffer positions and determine if scrolling is needed
+        let mut total_width = 0u16;
+        let mut buffer_texts = Vec::new();
+        let mut buffer_widths = Vec::new();
 
-            if x < viewport.width {
-                surface.set_stringn(
-                    x,
-                    viewport.y,
-                    &text,
-                    viewport.width.saturating_sub(x) as usize,
-                    if current_doc == doc.id() {
-                        bufferline_active
-                    } else {
-                        bufferline_inactive
-                    },
-                );
+        for (idx, doc) in editor.documents().enumerate() {
+            let fname = Self::make_document_name(doc, editor);
+
+            // Add separator width if not the first document
+            if idx > 0 {
+                let sep = &editor.config().bufferline.separator;
+                total_width += sep.len() as u16;
             }
 
-            x += text.len() as u16;
-        }
+            let icons = ICONS.load();
 
-        if let Some(current_idx) = editor.documents().position(|d| d.id() == current_doc) {
-            if let Some(&target_x) = self.bufferline_positions.get(current_idx) {
-                if target_x >= viewport.width / 2 {
-                    let scroll_offset = target_x
-                        .saturating_sub(viewport.width / 2)
-                        .min(x.saturating_sub(viewport.width));
-                    self.render_bufferline_offset(editor, viewport, surface, scroll_offset);
-                }
-            }
-        }
-    }
-
-    /// Render bufferline with horizontal offset
-    pub fn render_bufferline_offset(
-        &mut self,
-        editor: &Editor,
-        viewport: Rect,
-        surface: &mut Surface,
-        scroll_offset: u16,
-    ) {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
-
-        surface.clear_with(
-            viewport,
-            editor
-                .theme
-                .try_get("ui.bufferline.background")
-                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
-        );
-
-        let bufferline_active = editor
-            .theme
-            .try_get("ui.bufferline.active")
-            .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
-
-        let bufferline_inactive = editor
-            .theme
-            .try_get("ui.bufferline")
-            .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
-        let current_doc = view!(editor).doc;
-
-        let visible_end = scroll_offset + viewport.width;
-
-        for (i, doc) in editor.documents().enumerate() {
-            let Some(&buffer_x) = self.bufferline_positions.get(i) else {
-                continue;
+            let text = if let Some(icon) = icons.mime().get(doc.path(), doc.language_name()) {
+                format!(
+                    " {}  {} {}",
+                    icon.glyph(),
+                    fname,
+                    if doc.is_modified() { "[+] " } else { "" }
+                )
+            } else {
+                format!(" {} {}", fname, if doc.is_modified() { "[+] " } else { "" })
             };
 
-            if buffer_x > visible_end {
+            self.bufferline_positions.push(total_width);
+            let text_width = text.len() as u16;
+            buffer_texts.push(text);
+            buffer_widths.push(text_width);
+            total_width += text_width;
+        }
+
+        // Determine scroll offset
+        let scroll_offset = if let Some(current_idx) = editor.documents().position(|d| d.id() == current_doc) {
+            if let Some(&target_x) = self.bufferline_positions.get(current_idx) {
+                if target_x >= viewport.width / 2 {
+                    target_x
+                        .saturating_sub(viewport.width / 2)
+                        .min(total_width.saturating_sub(viewport.width))
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        // Second pass: render with the calculated offset
+        for (idx, doc) in editor.documents().enumerate() {
+            let buffer_x = self.bufferline_positions[idx];
+            let text = &buffer_texts[idx];
+
+            // Render separator if not first document
+            if idx > 0 {
+                let sep = &editor.config().bufferline.separator;
+                let sep_x = buffer_x.saturating_sub(sep.len() as u16).saturating_sub(scroll_offset);
+                if sep_x < viewport.width {
+                    let render_x = viewport.x + sep_x;
+                    surface.set_stringn(render_x, viewport.y, sep, (viewport.width - sep_x) as usize, bufferline_inactive);
+                }
+            }
+
+            // Skip buffers that are completely outside the visible area
+            let render_x = buffer_x.saturating_sub(scroll_offset);
+            if render_x >= viewport.width {
                 break;
             }
 
-            let render_x = buffer_x.saturating_sub(scroll_offset);
-
-            let mut text = format!(
-                " {}{} ",
-                doc.path()
-                    .unwrap_or(&scratch)
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap_or_default(),
-                if doc.is_modified() { "[+]" } else { "" }
-            );
-
-            // skip invisible buffers
-            if buffer_x + (text.len() as u16) < scroll_offset {
+            // Skip buffers that end before the visible area
+            if buffer_x + buffer_widths[idx] < scroll_offset {
                 continue;
             }
 
+            let style = if current_doc == doc.id() {
+                bufferline_active
+            } else {
+                bufferline_inactive
+            };
+
+            let mut visible_text = text.clone();
+            let mut text_start_x = render_x;
+
+            // Clip text if it starts before the visible area
             if buffer_x < scroll_offset {
-                text = text
-                    .chars()
-                    .skip((scroll_offset - buffer_x) as usize)
-                    .collect::<String>();
+                let chars_to_skip = (scroll_offset - buffer_x) as usize;
+                visible_text = text.chars().skip(chars_to_skip).collect();
+                text_start_x = viewport.x;
             }
 
+            let actual_render_x = viewport.x + text_start_x;
+            let available_width = viewport.width.saturating_sub(text_start_x);
+
             surface.set_stringn(
-                render_x,
+                actual_render_x,
                 viewport.y,
-                &text,
-                viewport.width.saturating_sub(render_x) as usize,
-                if current_doc == doc.id() {
-                    bufferline_active
-                } else {
-                    bufferline_inactive
-                },
+                &visible_text,
+                available_width as usize,
+                style,
             );
+
+            // Track buffer info for mouse clicks (adjust for scroll offset)
+            let start_x = actual_render_x;
+            let end_x = (actual_render_x + visible_text.len() as u16).min(viewport.x + viewport.width);
+            self.bufferline_info.add_buffer_info(doc.id(), start_x..end_x);
         }
     }
 
