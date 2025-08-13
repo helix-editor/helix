@@ -19,7 +19,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             binary_name: hx.exe
             asset_name: helix-windows-x86_64
-          - os: macos-latest
+          - os: macos-13
             target: x86_64-apple-darwin
             binary_name: hx
             asset_name: helix-macos-x86_64
