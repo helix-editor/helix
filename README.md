@@ -157,5 +157,5 @@ This feature eliminates the need for complex macros to achieve line movement and
 
 ## Running app locally on MacOS systems
 run the following command on the terminal
-xattr -d com.apple.quarantine /path/to/your/app
+`xattr -d com.apple.quarantine /path/to/your/app`
 (this removes the quarantine attribute)
