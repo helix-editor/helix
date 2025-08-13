@@ -77,12 +77,13 @@ use components::helix_component_module;
 use super::Context;
 use insert::insert_char;
 
-pub static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
+static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
+static SAFEPOINT_HANDLER: OnceCell<SafepointHandler> = OnceCell::new();
 
 // TODO: Use this for the available commands.
 // We just have to look at functions that have been defined at
 // the top level, _after_ they
-pub static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
+static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
 
 fn setup() -> Engine {
     let engine = steel::steel_vm::engine::Engine::new();
@@ -125,6 +126,38 @@ fn setup() -> Engine {
         }
     });
 
+    let running_command = Arc::new(AtomicBool::new(true));
+    let running_command_clone = running_command.clone();
+
+    // Put the engine in a place where we can make substantive progress.
+    let safepoint_wakeup = std::thread::spawn(move || {
+        let running_command = running_command_clone;
+
+        loop {
+            // If this is running, don't acquire the lock. Park until we're back.
+            if running_command.load(std::sync::atomic::Ordering::Relaxed) {
+                std::thread::park();
+                continue;
+            }
+
+            GLOBAL_ENGINE.lock().unwrap().enter_safepoint(|| {
+                // Set the thread to running, and then park it.
+                // Eventually it will be awoken once the engine
+                // exits the engine context
+                while !running_command.load(std::sync::atomic::Ordering::Relaxed) {
+                    std::thread::park();
+                }
+            });
+        }
+    });
+
+    SAFEPOINT_HANDLER
+        .set(SafepointHandler {
+            running_command,
+            handle: safepoint_wakeup,
+        })
+        .ok();
+
     INTERRUPT_HANDLER
         .set(InterruptHandler {
             controller: controller.clone(),
@@ -150,17 +183,66 @@ pub fn enter_engine<F, R>(f: F) -> R
 where
     F: FnOnce(&mut Engine) -> R,
 {
-    (f)(&mut acquire_engine_lock())
+    // Unpark the other thread, get it ready
+    let handler = SAFEPOINT_HANDLER.get();
+    handler.as_ref().map(|x| {
+        x.running_command
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        x.handle.thread().unpark();
+    });
+
+    let res = (f)(&mut acquire_engine_lock());
+
+    handler.as_ref().map(|x| {
+        x.running_command
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        x.handle.thread().unpark();
+    });
+
+    res
 }
 
 pub fn try_enter_engine<F, R>(f: F) -> Option<R>
 where
     F: FnOnce(&mut Engine) -> R,
 {
-    match GLOBAL_ENGINE.try_lock() {
-        Ok(mut v) => Some((f)(&mut v)),
-        Err(_) => None,
+    let handler = SAFEPOINT_HANDLER.get().unwrap();
+
+    // If we're currently running a command, we need to try lock against
+    // the lock since we don't want to lock up the engine explicitly.
+    if handler
+        .running_command
+        .load(std::sync::atomic::Ordering::Relaxed)
+    {
+        let res = match GLOBAL_ENGINE.try_lock() {
+            Ok(mut v) => Some((f)(&mut v)),
+            Err(_) => None,
+        };
+
+        res
+    } else {
+        handler
+            .running_command
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        handler.handle.thread().unpark();
+
+        let res = match GLOBAL_ENGINE.lock() {
+            Ok(mut v) => Some((f)(&mut v)),
+            Err(_) => None,
+        };
+
+        handler
+            .running_command
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        handler.handle.thread().unpark();
+
+        res
     }
+}
+
+pub struct SafepointHandler {
+    running_command: Arc<AtomicBool>,
+    handle: std::thread::JoinHandle<()>,
 }
 
 pub struct InterruptHandler {
@@ -2229,85 +2311,81 @@ impl super::PluginSystem for SteelScriptingEngine {
         call_id: jsonrpc::Id,
         params: helix_lsp::jsonrpc::Params,
     ) -> Option<Result<serde_json::Value, jsonrpc::Error>> {
-        let result = enter_engine(|guard| {
-            {
-                let mut ctx = Context {
-                    register: None,
-                    count: None,
-                    editor: &mut cx.editor,
-                    callback: Vec::new(),
-                    on_next_key_callback: None,
-                    jobs: &mut cx.jobs,
-                };
+        let mut ctx = Context {
+            register: None,
+            count: None,
+            editor: &mut cx.editor,
+            callback: Vec::new(),
+            on_next_key_callback: None,
+            jobs: &mut cx.jobs,
+        };
 
-                let language_server_name = ctx
-                    .editor
-                    .language_servers
-                    .get_by_id(server_id)
-                    .map(|x| x.name().to_owned());
+        let language_server_name = ctx
+            .editor
+            .language_servers
+            .get_by_id(server_id)
+            .map(|x| x.name().to_owned());
 
-                if language_server_name.is_none() {
-                    ctx.editor.set_error("Unable to find language server");
+        if language_server_name.is_none() {
+            ctx.editor.set_error("Unable to find language server");
+        }
+
+        let language_server_name = language_server_name.unwrap();
+
+        let mut pass_call_id = false;
+
+        let function = LSP_CALL_REGISTRY
+            .read()
+            .unwrap()
+            .get(&(language_server_name, event_name))
+            .map(|x| match x {
+                LspKind::Call(rooted_steel_val) => {
+                    pass_call_id = true;
+                    rooted_steel_val.value()
                 }
+                LspKind::Notification(rooted_steel_val) => rooted_steel_val.value(),
+            })
+            .cloned();
 
-                let language_server_name = language_server_name.unwrap();
+        let result = if let Some(function) = function {
+            enter_engine(|guard| {
+                // Install the interrupt handler, in the event this thing
+                // is blocking for too long.
+                with_interrupt_handler(|| {
+                    guard
+                        .with_mut_reference::<Context, Context>(&mut ctx)
+                        .consume(move |engine, arguments| {
+                            let context = arguments[0].clone();
+                            engine.update_value("*helix.cx*", context);
 
-                let mut pass_call_id = false;
+                            let params = serde_json::to_value(&params)
+                                .map_err(|e| SteelErr::new(ErrorKind::Generic, e.to_string()))
+                                .and_then(|x| x.into_steelval())?;
 
-                let function = LSP_CALL_REGISTRY
-                    .read()
-                    .unwrap()
-                    .get(&(language_server_name, event_name))
-                    .map(|x| match x {
-                        LspKind::Call(rooted_steel_val) => {
-                            pass_call_id = true;
-                            rooted_steel_val.value()
-                        }
-                        LspKind::Notification(rooted_steel_val) => rooted_steel_val.value(),
-                    })
-                    .cloned();
-
-                if let Some(function) = function {
-                    // Install the interrupt handler, in the event this thing
-                    // is blocking for too long.
-                    with_interrupt_handler(|| {
-                        guard
-                            .with_mut_reference::<Context, Context>(&mut ctx)
-                            .consume(move |engine, arguments| {
-                                let context = arguments[0].clone();
-                                engine.update_value("*helix.cx*", context);
-
-                                let params = serde_json::to_value(&params)
+                            if pass_call_id {
+                                let call_id = serde_json::to_value(&call_id)
                                     .map_err(|e| SteelErr::new(ErrorKind::Generic, e.to_string()))
                                     .and_then(|x| x.into_steelval())?;
 
-                                if pass_call_id {
-                                    let call_id = serde_json::to_value(&call_id)
-                                        .map_err(|e| {
-                                            SteelErr::new(ErrorKind::Generic, e.to_string())
-                                        })
-                                        .and_then(|x| x.into_steelval())?;
+                                let mut arguments = [call_id, params];
 
-                                    let mut arguments = [call_id, params];
-
-                                    engine.call_function_with_args_from_mut_slice(
-                                        function.clone(),
-                                        &mut arguments,
-                                    )
-                                } else {
-                                    let mut arguments = [params];
-                                    engine.call_function_with_args_from_mut_slice(
-                                        function.clone(),
-                                        &mut arguments,
-                                    )
-                                }
-                            })
-                    })
-                } else {
-                    Ok(SteelVal::Void)
-                }
-            }
-        });
+                                engine.call_function_with_args_from_mut_slice(
+                                    function.clone(),
+                                    &mut arguments,
+                                )
+                            } else {
+                                let mut arguments = [params];
+                                engine.call_function_with_args_from_mut_slice(
+                                    function.clone(),
+                                    &mut arguments,
+                                )
+                            }
+                        })
+                })
+            })
+        } else {
+            Ok(SteelVal::Void)
+        };
 
         let value = match result {
             Err(e) => {
