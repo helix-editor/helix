@@ -15,12 +15,12 @@ This fork of Helix implements the following pull requests. Future pull requests 
 11. https://github.com/helix-editor/helix/pull/8546 (flex resize, focus mode) - updated with some of my code.
 12. https://github.com/helix-editor/helix/pull/12208 (goto hover command)
 13. https://github.com/helix-editor/helix/pull/13113 (add file path to the file names for similar file names)
-17. https://github.com/helix-editor/helix/pull/12574 (remove code column from diagnotics buffer)
-18. https://github.com/helix-editor/helix/pull/9875 (add code file picker)
-19. https://github.com/helix-editor/helix/pull/14121 (move lines - no more macros to move lines)
-20. https://github.com/helix-editor/helix/pull/14072 (auto-scrolling bufferline)
-21. https://github.com/helix-editor/helix/pull/13821 (fix block cursor in terminal)
-22. https://github.com/helix-editor/helix/pull/13760 (support workspace commands)
+14. https://github.com/helix-editor/helix/pull/12574 (remove code column from diagnotics buffer)
+15. https://github.com/helix-editor/helix/pull/9875 (add code file picker)
+16. https://github.com/helix-editor/helix/pull/14121 (move lines - no more macros to move lines)
+17. https://github.com/helix-editor/helix/pull/14072 (auto-scrolling bufferline)
+18. https://github.com/helix-editor/helix/pull/13821 (fix block cursor in terminal)
+19. https://github.com/helix-editor/helix/pull/13760 (support workspace commands)
 
 ## Building
 ```bash
