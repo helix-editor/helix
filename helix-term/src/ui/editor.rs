@@ -57,6 +57,7 @@ pub struct EditorView {
     bufferline_info: BufferLineInfo,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
     terminal_focused: bool,
+    bufferline_positions: Vec<u16>,
 }
 
 #[derive(Debug, Clone)]
@@ -81,6 +82,7 @@ impl EditorView {
             spinners: ProgressSpinners::default(),
             bufferline_info: BufferLineInfo::default(),
             terminal_focused: true,
+            bufferline_positions: Vec::new(),
         }
     }
 
@@ -875,6 +877,8 @@ impl EditorView {
 
     /// Render bufferline at the top
     pub fn render_bufferline(&mut self, editor: &Editor, viewport: Rect, surface: &mut Surface) {
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+        self.bufferline_positions.clear();
         surface.clear_with(
             viewport,
             editor
@@ -896,54 +900,125 @@ impl EditorView {
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        self.bufferline_info.clear();
+        for doc in editor.documents() {
+            let text = format!(
+                " {}{} ",
+                doc.path()
+                    .unwrap_or(&scratch)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default(),
+                if doc.is_modified() { "[+]" } else { "" }
+            );
 
-        for (idx, doc) in editor.documents().enumerate() {
-            let fname = Self::make_document_name(doc, editor);
+            self.bufferline_positions.push(x);
 
-            let style = if current_doc == doc.id() {
-                bufferline_active
-            } else {
-                bufferline_inactive
-            };
-
-            // Render the separator before the text if the current document is not first.
-            if idx > 0 {
-                let used_width = viewport.x.saturating_sub(x);
-                let rem_width = surface.area.width.saturating_sub(used_width);
-                let sep = &editor.config().bufferline.separator;
-                x = surface
-                    .set_stringn(x, viewport.y, sep, rem_width as usize, bufferline_inactive)
-                    .0;
+            if x < viewport.width {
+                surface.set_stringn(
+                    x,
+                    viewport.y,
+                    &text,
+                    viewport.width.saturating_sub(x) as usize,
+                    if current_doc == doc.id() {
+                        bufferline_active
+                    } else {
+                        bufferline_inactive
+                    },
+                );
             }
 
-            let icons = ICONS.load();
+            x += text.len() as u16;
+        }
 
-            let text = if let Some(icon) = icons.mime().get(doc.path(), doc.language_name()) {
-                format!(
-                    " {}  {} {}",
-                    icon.glyph(),
-                    fname,
-                    if doc.is_modified() { "[+] " } else { "" }
-                )
-            } else {
-                format!(" {} {}", fname, if doc.is_modified() { "[+] " } else { "" })
+        if let Some(current_idx) = editor.documents().position(|d| d.id() == current_doc) {
+            if let Some(&target_x) = self.bufferline_positions.get(current_idx) {
+                if target_x >= viewport.width / 2 {
+                    let scroll_offset = target_x
+                        .saturating_sub(viewport.width / 2)
+                        .min(x.saturating_sub(viewport.width));
+                    self.render_bufferline_offset(editor, viewport, surface, scroll_offset);
+                }
+            }
+        }
+    }
+
+    /// Render bufferline with horizontal offset
+    pub fn render_bufferline_offset(
+        &mut self,
+        editor: &Editor,
+        viewport: Rect,
+        surface: &mut Surface,
+        scroll_offset: u16,
+    ) {
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+
+        surface.clear_with(
+            viewport,
+            editor
+                .theme
+                .try_get("ui.bufferline.background")
+                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
+        );
+
+        let bufferline_active = editor
+            .theme
+            .try_get("ui.bufferline.active")
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
+
+        let bufferline_inactive = editor
+            .theme
+            .try_get("ui.bufferline")
+            .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
+        let current_doc = view!(editor).doc;
+
+        let visible_end = scroll_offset + viewport.width;
+
+        for (i, doc) in editor.documents().enumerate() {
+            let Some(&buffer_x) = self.bufferline_positions.get(i) else {
+                continue;
             };
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
 
-            let start_x = x;
-            x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
-                .0;
-            let end_x = x.min(surface.area.right());
-
-            self.bufferline_info
-                .add_buffer_info(doc.id(), start_x..end_x);
-
-            if x >= surface.area.right() {
+            if buffer_x > visible_end {
                 break;
             }
+
+            let render_x = buffer_x.saturating_sub(scroll_offset);
+
+            let mut text = format!(
+                " {}{} ",
+                doc.path()
+                    .unwrap_or(&scratch)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default(),
+                if doc.is_modified() { "[+]" } else { "" }
+            );
+
+            // skip invisible buffers
+            if buffer_x + (text.len() as u16) < scroll_offset {
+                continue;
+            }
+
+            if buffer_x < scroll_offset {
+                text = text
+                    .chars()
+                    .skip((scroll_offset - buffer_x) as usize)
+                    .collect::<String>();
+            }
+
+            surface.set_stringn(
+                render_x,
+                viewport.y,
+                &text,
+                viewport.width.saturating_sub(render_x) as usize,
+                if current_doc == doc.id() {
+                    bufferline_active
+                } else {
+                    bufferline_inactive
+                },
+            );
         }
     }
 
