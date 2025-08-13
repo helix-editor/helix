@@ -779,7 +779,7 @@ args = { mode = "core", program = "{0}", coreFilePath = "{1}" }
 
 [[grammar]]
 name = "go"
-source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "64457ea6b73ef5422ed1687178d4545c3e91334a" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "12fe553fdaaa7449f764bc876fd777704d4fb752" }
 
 [[language]]
 name = "gomod"
@@ -3155,7 +3155,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "matlab"
-source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "b0a0198b182574cd3ca0447264c83331901b9338" }
+source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "585b52b9b16d8e626299a76360ef6ab4f9731aed" }
 
 [[language]]
 name = "ponylang"
@@ -3468,7 +3468,7 @@ language-servers = ["just-lsp"]
 
 [[grammar]]
 name = "just"
-source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "0f84211c637813bcf1eb32c9e35847cdaea8760d" }
+source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "b75dace757e5d122d25c1a1a7772cb87b560f829" }
 
 [[language]]
 name = "gn"
@@ -3606,7 +3606,7 @@ name = "jjdescription"
 scope = "jj.description"
 file-types = [{ glob = "*.jjdescription" }]
 comment-token = "JJ:"
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 4, unit = "    " }
 rulers = [51, 73]
 text-width = 72
 
@@ -3744,7 +3744,7 @@ language-servers = [ "templ" ]
 
 [[grammar]]
 name = "templ"
-source = { git = "https://github.com/vrischmann/tree-sitter-templ", rev = "db662414ccd6f7c78b1e834e7abe11c224b04759" }
+source = { git = "https://github.com/vrischmann/tree-sitter-templ", rev = "47594c5cbef941e6a3ccf4ddb934a68cf4c68075" }
 
 [[language]]
 name = "dbml"
@@ -4628,3 +4628,14 @@ comment-token = "#"
 [[grammar]]
 name = "robots"
 source = { git = "https://github.com/opa-oz/tree-sitter-robots-txt", rev = "8e3a4205b76236bb6dbebdbee5afc262ce38bb62" }
+
+[[language]]
+name = "pip-requirements"
+scope = "source.pip-requirements"
+injection-regex = "(pip-)?requirements(\\.txt)?"
+grammar = "requirements"
+file-types = [{ glob = "requirements.txt" }, { glob = "constraints.txt" }]
+
+[[grammar]]
+name = "requirements"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-requirements", rev = "caeb2ba854dea55931f76034978de1fd79362939" }

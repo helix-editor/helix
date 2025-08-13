@@ -5852,6 +5852,7 @@ fn rotate_selections_last(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[derive(Debug)]
 enum ReorderStrategy {
     RotateForward,
     RotateBackward,
@@ -5864,34 +5865,50 @@ fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id);
-    let mut fragments: Vec<_> = selection
+
+    let mut ranges: Vec<_> = selection
         .slices(text)
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
-    let group = count
-        .map(|count| count.get())
-        .unwrap_or(fragments.len()) // default to rotating everything as one group
-        .min(fragments.len());
+    let rotate_by = count.map_or(1, |count| count.get().min(ranges.len()));
 
-    for chunk in fragments.chunks_mut(group) {
-        // TODO: also modify main index
-        match strategy {
-            ReorderStrategy::RotateForward => chunk.rotate_right(1),
-            ReorderStrategy::RotateBackward => chunk.rotate_left(1),
-            ReorderStrategy::Reverse => chunk.reverse(),
-        };
-    }
+    let primary_index = match strategy {
+        ReorderStrategy::RotateForward => {
+            ranges.rotate_right(rotate_by);
+            // Like `usize::wrapping_add`, but provide a custom range from `0` to `ranges.len()`
+            (selection.primary_index() + ranges.len() + rotate_by) % ranges.len()
+        }
+        ReorderStrategy::RotateBackward => {
+            ranges.rotate_left(rotate_by);
+            // Like `usize::wrapping_sub`, but provide a custom range from `0` to `ranges.len()`
+            (selection.primary_index() + ranges.len() - rotate_by) % ranges.len()
+        }
+        ReorderStrategy::Reverse => {
+            if rotate_by % 2 == 0 {
+                // nothing changed, if we reverse something an even
+                // amount of times, the output will be the same
+                return;
+            }
+            ranges.reverse();
+            // -1 to turn 1-based len into 0-based index
+            (ranges.len() - 1) - selection.primary_index()
+        }
+    };
 
     let transaction = Transaction::change(
         doc.text(),
         selection
             .ranges()
             .iter()
-            .zip(fragments)
+            .zip(ranges)
             .map(|(range, fragment)| (range.from(), range.to(), Some(fragment))),
     );
 
+    doc.set_selection(
+        view.id,
+        Selection::new(selection.ranges().into(), primary_index),
+    );
     doc.apply(&transaction, view.id);
 }
 

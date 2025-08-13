@@ -4,6 +4,8 @@ use super::*;
 
 mod insert;
 mod movement;
+mod reverse_selection_contents;
+mod rotate_selection_contents;
 mod write;
 
 #[tokio::test(flavor = "multi_thread")]
