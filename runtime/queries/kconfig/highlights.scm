@@ -84,5 +84,3 @@
 (source (string) @string.special.url @string.special)
 
 (comment) @comment
-
-(ERROR) @error
