@@ -47,6 +47,7 @@
 | docker-compose | ✓ | ✓ | ✓ |  |  | `docker-compose-langserver`, `yaml-language-server` |
 | dockerfile | ✓ | ✓ |  |  |  | `docker-langserver` |
 | dot | ✓ |  |  |  |  | `dot-language-server` |
+| doxyfile | ✓ | ✓ | ✓ | ✓ |  |  |
 | dtd | ✓ |  |  |  |  |  |
 | dune | ✓ |  |  |  |  |  |
 | dunstrc | ✓ |  |  |  |  |  |
@@ -184,7 +185,7 @@
 | pem | ✓ |  |  |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |  | `perlnavigator` |
 | pest | ✓ | ✓ | ✓ |  |  | `pest-language-server` |
-| php | ✓ | ✓ | ✓ | ✓ |  | `intelephense` |
+| php | ✓ | ✓ | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  | ✓ |  |  |
 | pip-requirements | ✓ |  |  |  |  |  |
 | pkgbuild | ✓ | ✓ | ✓ |  |  | `termux-language-server`, `bash-language-server` |
@@ -241,6 +242,7 @@
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
 | swift | ✓ | ✓ |  |  | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  |  |  | `systemd-lsp` |
+| systemverilog | ✓ |  |  |  |  |  |
 | t32 | ✓ |  |  |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |  |  |
 | tact | ✓ | ✓ | ✓ |  |  |  |
@@ -255,7 +257,7 @@
 | tlaplus | ✓ |  |  |  |  |  |
 | todotxt | ✓ |  |  |  |  |  |
 | toml | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
-| tsq | ✓ |  |  |  |  | `ts_query_ls` |
+| tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |  |  |
 | typescript | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
