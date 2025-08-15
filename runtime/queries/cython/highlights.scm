@@ -80,16 +80,14 @@
 [
   (true)
   (false)
-] @boolean
+] @constant.builtin.boolean
 
-[
-  (integer)
-  (float)
-] @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 
 (comment) @comment
 (string) @string
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 (interpolation
   "{" @punctuation.special
