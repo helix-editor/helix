@@ -370,6 +370,8 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
 
 pub mod completers {
     use super::Utf8PathBuf;
+    use crate::commands::TYPABLE_COMMAND_MAP;
+    use crate::keymap::MappableCommand;
     use crate::ui::prompt::Completion;
     use helix_core::command_line::{self, Tokenizer};
     use helix_core::fuzzy::fuzzy_match;
@@ -704,7 +706,7 @@ pub mod completers {
 
         fuzzy_match(input, PROGRAMS_IN_PATH.iter(), false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.clone().into()))
+            .map(|(name, _)| ((0..), name.as_str().into()))
             .collect()
     }
 
@@ -738,5 +740,27 @@ pub mod completers {
         }
 
         completions
+    }
+
+    pub fn command(_editor: &Editor, input: &str) -> Vec<Completion> {
+        /// The names of all typable and static commands.
+        static COMMAND_NAMES: Lazy<BTreeSet<String>> = Lazy::new(|| {
+            let mut commands = BTreeSet::new();
+
+            commands.extend(TYPABLE_COMMAND_MAP.keys().map(|name| format!(":{name}")));
+            commands.extend(
+                MappableCommand::STATIC_COMMAND_LIST
+                    .into_iter()
+                    .map(MappableCommand::name)
+                    .map(ToOwned::to_owned),
+            );
+
+            commands
+        });
+
+        fuzzy_match(input, COMMAND_NAMES.iter(), false)
+            .into_iter()
+            .map(|(name, _)| ((0..), name.as_str().into()))
+            .collect()
     }
 }
