@@ -3,7 +3,7 @@
 (identifier) @variable
 
 (boolean) @constant.builtin.boolean
-(number) @constant.integer
+(number) @constant.numeric.integer
 [
   (unquoted_string)
   (quoted_string)
