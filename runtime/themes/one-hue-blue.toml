@@ -1,0 +1,44 @@
+#! /usr/bin/env nix-shell
+#! nix-shell -p nushell pastel --run "nu -c \"{hue_delta: (((input 'Enter hue in deg: ' -d '220' | into int) - 220) mod 360), highlight_color: (input 'Enter highlight color: ' -d '#ffff00'), out_path: (input 'Enter out path: ' -d 'one-hue-foo.toml'), palette: (open one-hue-blue.toml | get palette | reject white black)} | (do {|ctx| {inherits: 'one-hue-blue', palette: ((\\$ctx.palette | update cells {|color| pastel color \\$color | pastel rotate \\$ctx.hue_delta | pastel format hex}) | update highlight \\$ctx.highlight_color)} | save \\$ctx.out_path} \\$in)\""
+
+# Author: Calamario (@mariocala)
+# Theme colors inspired by https://github.com/kristopherjohnson/MonochromeSublimeText/blob/master/Blueprint.tmTheme
+
+# If your favorite hue is not available and you have Nix installed, you can simply generate your
+# own variant by executing this file: chmod +x ./one-hue-blue.toml && ./one-hue-blue.toml
+
+"ui.background" = { bg = "bg", fg = "fg" }
+"ui.help" = { bg = "bg", fg = "fg" }
+"ui.popup" = { bg = "bg", fg = "fg" }
+"ui.menu" = { bg = "bg", fg = "fg" }
+"ui.menu.selected" = { bg = "selection", fg = "black" }
+"ui.cursor.primary" = { bg = "white", fg = "black" }
+"ui.linenr.selected" = "fg"
+"ui.linenr" = "fg_dim"
+"ui.selection" = { bg = "selection", fg = "black" }
+"ui.statusline.inactive" = "fg_dim"
+"ui.statusline" = "fg"
+"ui.text" = "fg"
+"ui.text.directory" = "white"
+"ui.virtual.jump-label" = { fg = "highlight", modifiers = ["bold"] }
+"ui.window" = "dark"
+
+"comment" ="comment"
+"keyword" = "keyword"
+"constant" ="value"
+"string" = "value"
+"markup.heading" = "value"
+"markup.link" = "value"
+
+[palette]
+white = "#ffffff"
+black = "#000000"
+dark = "#101724"
+bg = "#1d283c"
+fg = "#e0ebff"
+fg_dim = "#4e5d79"
+selection = "#c2d6ff"
+highlight = "#ffff00"
+comment = "#9096a3"
+keyword = "#9eaac1"
+value = "#f9fbff"
