@@ -4642,7 +4642,7 @@ source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-requiremen
 
 [[language]]
 name = "kconfig"
-file-types = ["kconfig", "kconfig.*"]
+file-types = ["kconfig", { glob = "kconfig.*" }]
 scope = "source.kconfig"
 
 [[grammar]]
