@@ -4654,6 +4654,15 @@ name = "requirements"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-requirements", rev = "caeb2ba854dea55931f76034978de1fd79362939" }
 
 [[language]]
+name = "kconfig"
+file-types = ["kconfig", { glob = "kconfig.*" }]
+scope = "source.kconfig"
+
+[[grammar]]
+name = "kconfig"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-kconfig" , rev = "9ac99fe4c0c27a35dc6f757cef534c646e944881" }
+
+[[language]] 
 name = "doxyfile"
 scope = "source.doxyfile"
 injection-regex = "[Dd]oxyfile"
