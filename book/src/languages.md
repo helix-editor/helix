@@ -111,7 +111,7 @@ of the formatter command. In particular, the `%{buffer_name}` variable can be pa
 argument to the formatter:
 
 ```toml
-formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename %{buffer_name}"] }
+formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename", "%{buffer_name}"] }
 ```
 
 ## Language Server configuration
