@@ -378,7 +378,24 @@ min-width = 1
 
 #### `[editor.gutters.diagnostics]` Section
 
-Currently unused
+Options for the diagnostics gutter
+
+| Key                              | Description                              | Default |
+| ---                              | ---                                      | ---     |
+| `symbol`                         | Symbol for diagnostic indicators         | `"●"`   |
+| `breakpoint-symbol`              | Symbol for verified breakpoints         | `"●"`   |
+| `unverified-breakpoint-symbol`   | Symbol for unverified breakpoints       | `"◯"`   |
+| `execution-pause-symbol`         | Symbol for execution pause indicator    | `"▶"`   |
+
+Example:
+
+```toml
+[editor.gutters.diagnostics]
+symbol = "!"
+breakpoint-symbol = "🔴"
+unverified-breakpoint-symbol = "⭕"
+execution-pause-symbol = "⏸"
+```
 
 #### `[editor.gutters.diff]` Section
 
@@ -387,7 +404,20 @@ These colors are controlled by the theme attributes `diff.plus`, `diff.minus` an
 
 Other diff providers will eventually be supported by a future plugin system.
 
-There are currently no options for this section.
+| Key             | Description                      | Default |
+| ---             | ---                              | ---     |
+| `plus-symbol`   | Symbol for added lines           | `"▍"`   |
+| `minus-symbol`  | Symbol for removed lines         | `"▔"`   |
+| `delta-symbol`  | Symbol for modified lines        | `"▍"`   |
+
+Example:
+
+```toml
+[editor.gutters.diff]
+plus-symbol = "+"
+minus-symbol = "-"
+delta-symbol = "~"
+```
 
 #### `[editor.gutters.spacer]` Section
 

@@ -48,7 +48,7 @@ impl GutterType {
 pub fn diagnostic<'doc>(
     _editor: &'doc Editor,
     doc: &'doc Document,
-    _view: &View,
+    view: &View,
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
@@ -57,6 +57,7 @@ pub fn diagnostic<'doc>(
     let info = theme.get("info");
     let hint = theme.get("hint");
     let diagnostics = &doc.diagnostics;
+    let symbol = view.gutters.diagnostics.symbol.clone();
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
@@ -75,7 +76,7 @@ pub fn diagnostic<'doc>(
                         })
                 });
             diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
-                write!(out, "●").ok();
+                write!(out, "{}", symbol).ok();
                 match d.severity {
                     Some(Severity::Error) => error,
                     Some(Severity::Warning) | None => warning,
@@ -90,13 +91,17 @@ pub fn diagnostic<'doc>(
 pub fn diff<'doc>(
     _editor: &'doc Editor,
     doc: &'doc Document,
-    _view: &View,
+    view: &View,
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
     let added = theme.get("diff.plus.gutter");
     let deleted = theme.get("diff.minus.gutter");
     let modified = theme.get("diff.delta.gutter");
+    let plus_symbol = view.gutters.diff.plus_symbol.clone();
+    let minus_symbol = view.gutters.diff.minus_symbol.clone();
+    let delta_symbol = view.gutters.diff.delta_symbol.clone();
+    
     if let Some(diff_handle) = doc.diff_handle() {
         let hunks = diff_handle.load();
         let mut hunk_i = 0;
@@ -120,14 +125,14 @@ pub fn diff<'doc>(
                 }
 
                 let (icon, style) = if hunk.is_pure_insertion() {
-                    ("▍", added)
+                    (&plus_symbol, added)
                 } else if hunk.is_pure_removal() {
                     if !first_visual_line {
                         return None;
                     }
-                    ("▔", deleted)
+                    (&minus_symbol, deleted)
                 } else {
-                    ("▍", modified)
+                    (&delta_symbol, modified)
                 };
 
                 write!(out, "{}", icon).unwrap();
@@ -230,13 +235,15 @@ pub fn padding<'doc>(
 pub fn breakpoints<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
-    _view: &View,
+    view: &View,
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
     let error = theme.get("error");
     let info = theme.get("info");
     let breakpoint_style = theme.get("ui.debug.breakpoint");
+    let verified_symbol = view.gutters.diagnostics.breakpoint_symbol.clone();
+    let unverified_symbol = view.gutters.diagnostics.unverified_breakpoint_symbol.clone();
 
     let breakpoints = doc.path().and_then(|path| editor.breakpoints.get(path));
 
@@ -264,7 +271,7 @@ pub fn breakpoints<'doc>(
                 breakpoint_style
             };
 
-            let sym = if breakpoint.verified { "●" } else { "◯" };
+            let sym = if breakpoint.verified { &verified_symbol } else { &unverified_symbol };
             write!(out, "{}", sym).unwrap();
             Some(style)
         },
@@ -274,6 +281,7 @@ pub fn breakpoints<'doc>(
 fn execution_pause_indicator<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
+    view: &View,
     theme: &Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
@@ -288,6 +296,7 @@ fn execution_pause_indicator<'doc>(
     });
     let should_display_for_current_doc =
         doc.path().is_some() && frame_source_path.unwrap_or(None) == doc.path();
+    let symbol = view.gutters.diagnostics.execution_pause_symbol.clone();
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
@@ -299,8 +308,7 @@ fn execution_pause_indicator<'doc>(
                 return None;
             }
 
-            let sym = "▶";
-            write!(out, "{}", sym).unwrap();
+            write!(out, "{}", symbol).unwrap();
             Some(style)
         },
     )
@@ -315,7 +323,7 @@ pub fn diagnostics_or_breakpoints<'doc>(
 ) -> GutterFn<'doc> {
     let mut diagnostics = diagnostic(editor, doc, view, theme, is_focused);
     let mut breakpoints = breakpoints(editor, doc, view, theme, is_focused);
-    let mut execution_pause_indicator = execution_pause_indicator(editor, doc, theme, is_focused);
+    let mut execution_pause_indicator = execution_pause_indicator(editor, doc, view, theme, is_focused);
 
     Box::new(move |line, selected, first_visual_line: bool, out| {
         execution_pause_indicator(line, selected, first_visual_line, out)

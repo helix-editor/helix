@@ -91,6 +91,10 @@ pub struct GutterConfig {
     pub layout: Vec<GutterType>,
     /// Options specific to the "line-numbers" gutter
     pub line_numbers: GutterLineNumbersConfig,
+    /// Options specific to the "diagnostics" gutter
+    pub diagnostics: GutterDiagnosticsConfig,
+    /// Options specific to the "diff" gutter
+    pub diff: GutterDiffConfig,
 }
 
 impl Default for GutterConfig {
@@ -104,6 +108,8 @@ impl Default for GutterConfig {
                 GutterType::Diff,
             ],
             line_numbers: GutterLineNumbersConfig::default(),
+            diagnostics: GutterDiagnosticsConfig::default(),
+            diff: GutterDiffConfig::default(),
         }
     }
 }
@@ -171,6 +177,51 @@ pub struct GutterLineNumbersConfig {
 impl Default for GutterLineNumbersConfig {
     fn default() -> Self {
         Self { min_width: 3 }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GutterDiagnosticsConfig {
+    /// Symbol for diagnostic indicators. Defaults to "●".
+    pub symbol: String,
+    /// Symbol for verified breakpoints. Defaults to "●".
+    pub breakpoint_symbol: String,
+    /// Symbol for unverified breakpoints. Defaults to "◯".
+    pub unverified_breakpoint_symbol: String,
+    /// Symbol for execution pause indicator. Defaults to "▶".
+    pub execution_pause_symbol: String,
+}
+
+impl Default for GutterDiagnosticsConfig {
+    fn default() -> Self {
+        Self {
+            symbol: "●".to_string(),
+            breakpoint_symbol: "●".to_string(),
+            unverified_breakpoint_symbol: "◯".to_string(),
+            execution_pause_symbol: "▶".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GutterDiffConfig {
+    /// Symbol for added lines. Defaults to "▍".
+    pub plus_symbol: String,
+    /// Symbol for modified lines. Defaults to "▍".
+    pub delta_symbol: String,
+    /// Symbol for removed lines. Defaults to "▔".
+    pub minus_symbol: String,
+}
+
+impl Default for GutterDiffConfig {
+    fn default() -> Self {
+        Self {
+            plus_symbol: "▍".to_string(),
+            delta_symbol: "▍".to_string(),
+            minus_symbol: "▔".to_string(),
+        }
     }
 }
 
