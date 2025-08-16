@@ -476,6 +476,7 @@ impl MappableCommand {
         append_char_interactive, "Append an interactively-chosen char",
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
+        delete_sub_word_backward, "Delete previous sub word",
         delete_word_backward, "Delete previous word",
         delete_word_forward, "Delete next word",
         kill_to_line_start, "Delete till start of line",
@@ -4483,6 +4484,20 @@ pub mod insert {
             },
             Direction::Forward,
         )
+    }
+
+    pub fn delete_sub_word_backward(cx: &mut Context) {
+        let count = cx.count();
+        delete_by_selection_insert_mode(
+            cx,
+            |text, range| {
+                let anchor = movement::move_prev_sub_word_start(text, *range, count).from();
+                let next = Range::new(anchor, range.cursor(text));
+                let range = exclude_cursor(text, next, *range);
+                (range.from(), range.to())
+            },
+            Direction::Backward,
+        );
     }
 
     pub fn delete_word_backward(cx: &mut Context) {
