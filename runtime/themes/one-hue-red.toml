@@ -1,0 +1,12 @@
+inherits = "one-hue-blue"
+
+[palette]
+dark = "#241010"
+bg = "#3c1d1e"
+fg = "#ffe0e0"
+fg_dim = "#794e4f"
+selection = "#ffc2c2"
+highlight = "#fdfd96"
+comment = "#a39090"
+keyword = "#c19e9f"
+value = "#fff9f9"
