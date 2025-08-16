@@ -981,6 +981,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             }
 
             render_document(
+                None,
                 surface,
                 inner,
                 doc,
@@ -991,6 +992,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 overlay_highlights,
                 &cx.editor.theme,
                 decorations,
+                true,
             );
         }
     }
