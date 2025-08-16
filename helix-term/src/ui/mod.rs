@@ -381,7 +381,7 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
                         .file_type()
                         .is_some_and(|file_type| file_type.is_dir());
                     let mut path = entry.path().to_path_buf();
-                    if is_dir && path != root {
+                    if is_dir && path != root && config.file_explorer.flatten_dirs {
                         while let Some(single_child_directory) = get_child_if_single_dir(&path) {
                             path = single_child_directory;
                         }
