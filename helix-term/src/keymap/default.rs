@@ -338,6 +338,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "C-a" => increment,
         "C-x" => decrement,
+        "ins" => insert_mode,
+        "C-r" => overtype_mode,
     });
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
@@ -404,9 +406,31 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "home" => goto_line_start,
         "end" => goto_line_end_newline,
     });
+    let overtype = keymap!({ "Overtype mode"
+        "ins" => insert_mode,
+        "esc" => normal_mode,
+
+        "C-s" => commit_undo_checkpoint,
+
+        "C-w" | "A-backspace" => delete_word_backward,
+        "A-d" | "A-del" => delete_word_forward,
+        "C-h" | "backspace" | "S-backspace" => delete_char_backward,
+        "C-d" | "del" => delete_char_forward,
+        "C-j" | "ret" => insert_newline,
+
+        "up" => move_visual_line_up,
+        "down" => move_visual_line_down,
+        "left" => move_char_left,
+        "right" => move_char_right,
+        "pageup" => page_up,
+        "pagedown" => page_down,
+        "home" => goto_line_start,
+        "end" => goto_line_end_newline,
+    });
     hashmap!(
         Mode::Normal => normal,
         Mode::Select => select,
         Mode::Insert => insert,
+        Mode::Overtype => overtype,
     )
 }
