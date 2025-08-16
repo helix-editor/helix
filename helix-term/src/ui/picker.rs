@@ -29,14 +29,10 @@ use tui::{
 use tui::widgets::Widget;
 
 use std::{
-    borrow::Cow,
-    collections::HashMap,
-    io::Read,
-    path::Path,
-    sync::{
+    borrow::Cow, collections::HashMap, io::Read, path::Path, sync::{
         atomic::{self, AtomicUsize},
         Arc,
-    },
+    }
 };
 
 use crate::ui::{Prompt, PromptEvent};
@@ -238,6 +234,11 @@ impl<T, D> Column<T, D> {
 type DynQueryCallback<T, D> =
     fn(&str, &mut Editor, Arc<D>, &Injector<T, D>) -> BoxFuture<'static, anyhow::Result<()>>;
 
+pub enum PickerSideEffect {
+    Close,
+    None,
+}
+
 pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     columns: Arc<[Column<T, D>]>,
     primary_column: usize,
@@ -250,6 +251,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
 
     cursor: u32,
     prompt: Prompt,
+    custom_handle_event: Option<Box<dyn FnMut(&Event, &mut Context) -> (PickerSideEffect, EventResult)>>,
     query: PickerQuery,
 
     /// Whether to show the preview panel (default true)
@@ -379,6 +381,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             version,
             cursor: 0,
             prompt,
+            custom_handle_event: None,
             query,
             truncate_start: true,
             show_preview: true,
@@ -407,6 +410,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
         self.truncate_start = truncate_start;
+        self
+    }
+
+    pub fn with_text_typing_handler<C>(mut self, handle_event: C) -> Self
+    where 
+        C: FnMut(&Event, &mut Context) -> (PickerSideEffect, EventResult) + 'static,
+    {
+        self.custom_handle_event = Some(Box::new(handle_event));
         self
     }
 
@@ -521,6 +532,17 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             self.handle_prompt_change(matches!(event, Event::Paste(_)));
         }
         EventResult::Consumed(None)
+    }
+
+    fn typing_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        self
+            .custom_handle_event.as_mut()
+            .map(|handler| (handler)(event, cx))
+            .map(|(se, ev)| match se {
+                PickerSideEffect::Close => self.close_from_event(),
+                PickerSideEffect::None => ev,
+            })
+            .unwrap_or_else(|| self.prompt_handle_event(event, cx))
     }
 
     fn handle_prompt_change(&mut self, is_paste: bool) {
@@ -711,28 +733,33 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let line_area = area.clip_right(count.len() as u16 + 1);
 
         // render the prompt first since it will clear its background
-        self.prompt.render(line_area, surface, cx);
+        if self.custom_handle_event.is_none() {
+            self.prompt.render(line_area, surface, cx);
 
-        surface.set_stringn(
-            (area.x + area.width).saturating_sub(count.len() as u16 + 1),
-            area.y,
-            &count,
-            (count.len()).min(area.width as usize),
-            text_style,
-        );
+            surface.set_stringn(
+                (area.x + area.width).saturating_sub(count.len() as u16 + 1),
+                area.y,
+                &count,
+                (count.len()).min(area.width as usize),
+                text_style,
+            );
 
-        // -- Separator
-        let sep_style = cx.editor.theme.get("ui.background.separator");
-        let borders = BorderType::line_symbols(BorderType::Plain);
-        for x in inner.left()..inner.right() {
-            if let Some(cell) = surface.get_mut(x, inner.y + 1) {
-                cell.set_symbol(borders.horizontal).set_style(sep_style);
+            // -- Separator
+            let sep_style = cx.editor.theme.get("ui.background.separator");
+            let borders = BorderType::line_symbols(BorderType::Plain);
+            for x in inner.left()..inner.right() {
+                if let Some(cell) = surface.get_mut(x, inner.y + 1) {
+                    cell.set_symbol(borders.horizontal).set_style(sep_style);
+                }
             }
         }
 
+        // We only reserve space if prompt is drawn
+        let clip = if self.custom_handle_event.is_some() { 0 } else { 2 };
+
         // -- Render the contents:
         // subtract area of prompt from top
-        let inner = inner.clip_top(2);
+        let inner = inner.clip_top(clip);
         let rows = inner.height.saturating_sub(self.header_height()) as u32;
         let offset = self.cursor - (self.cursor % std::cmp::max(1, rows));
         let cursor = self.cursor.saturating_sub(offset);
@@ -994,6 +1021,29 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             );
         }
     }
+
+    pub fn close_from_event(&mut self) -> EventResult {
+        // if the picker is very large don't store it as last_picker to avoid
+        // excessive memory consumption
+        let callback: compositor::Callback = if self.matcher.snapshot().item_count() > 100_000
+        {
+            Box::new(|compositor: &mut Compositor, _ctx| {
+                // remove the layer
+                compositor.pop();
+            })
+        } else {
+            // stop streaming in new items in the background, really we should
+            // be restarting the stream somehow once the picker gets
+            // reopened instead (like for an FS crawl) that would also remove the
+            // need for the special case above but that is pretty tricky
+            self.version.fetch_add(1, atomic::Ordering::Relaxed);
+            Box::new(|compositor: &mut Compositor, _ctx| {
+                // remove the layer
+                compositor.last_picker = compositor.pop();
+            })
+        };
+        EventResult::Consumed(Some(callback))
+    }
 }
 
 impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I, D> {
@@ -1028,32 +1078,9 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
 
         let key_event = match event {
             Event::Key(event) => *event,
-            Event::Paste(..) => return self.prompt_handle_event(event, ctx),
+            Event::Paste(..) => return self.typing_handle_event(event, ctx),
             Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
-        };
-
-        let close_fn = |picker: &mut Self| {
-            // if the picker is very large don't store it as last_picker to avoid
-            // excessive memory consumption
-            let callback: compositor::Callback = if picker.matcher.snapshot().item_count() > 100_000
-            {
-                Box::new(|compositor: &mut Compositor, _ctx| {
-                    // remove the layer
-                    compositor.pop();
-                })
-            } else {
-                // stop streaming in new items in the background, really we should
-                // be restarting the stream somehow once the picker gets
-                // reopened instead (like for an FS crawl) that would also remove the
-                // need for the special case above but that is pretty tricky
-                picker.version.fetch_add(1, atomic::Ordering::Relaxed);
-                Box::new(|compositor: &mut Compositor, _ctx| {
-                    // remove the layer
-                    compositor.last_picker = compositor.pop();
-                })
-            };
-            EventResult::Consumed(Some(callback))
         };
 
         match key_event {
@@ -1075,7 +1102,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             key!(End) => {
                 self.to_end();
             }
-            key!(Esc) | ctrl!('c') => return close_fn(self),
+            key!(Esc) | ctrl!('c') => return self.close_from_event(),
             alt!(Enter) => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, self.default_action);
@@ -1113,26 +1140,26 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                             ctx.editor.set_error(err.to_string());
                         }
                     }
-                    return close_fn(self);
+                    return self.close_from_event();
                 }
             }
             ctrl!('s') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::HorizontalSplit);
                 }
-                return close_fn(self);
+                return self.close_from_event();
             }
             ctrl!('v') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::VerticalSplit);
                 }
-                return close_fn(self);
+                return self.close_from_event();
             }
             ctrl!('t') => {
                 self.toggle_preview();
             }
             _ => {
-                self.prompt_handle_event(event, ctx);
+                return self.typing_handle_event(event, ctx);
             }
         }
 
