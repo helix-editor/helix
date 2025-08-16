@@ -4673,3 +4673,15 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "doxyfile"
 source = { git = "https://github.com/tingerrr/tree-sitter-doxyfile/", rev = "18e44c6da639632a4e42264c7193df34be915f34" }
+
+[[language]]
+name = "cython"
+scope = "source.cython"
+file-types = ["pxd", "pxi", "pyx"]
+comment-token = "#"
+roots = ["pyproject.toml", "setup.py", "poetry.lock"]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cython"
+source = { git = "https://github.com/b0o/tree-sitter-cython", rev = "62f44f5e7e41dde03c5f0a05f035e293bcf2bcf8" }
