@@ -92,6 +92,21 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Merge master to master_backup
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        if git show-ref --verify --quiet refs/remotes/origin/master_backup; then
+          git checkout -B master_backup origin/master_backup
+        else
+          git checkout --orphan master_backup
+          git reset --hard master
+        fi
+        git merge master --no-edit || true
+        git push origin master_backup
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
