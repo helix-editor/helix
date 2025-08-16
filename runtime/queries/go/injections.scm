@@ -13,6 +13,7 @@
   (comment) @injection.content . (comment)* . [
     (package_clause) ; `package`
     (type_declaration) ; `type`
+    (function_declaration) ; `func`
     (method_declaration) ; `func`
     (var_declaration) ; `var`
     (const_declaration) ; `const`
