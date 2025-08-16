@@ -132,7 +132,7 @@ berry = "#2A2A4D"
 
 ### Rainbow
 
-The `rainbow` key is used for rainbow highlight for matching brackets.
+The `rainbow` key is used for rainbow highlight for matching brackets and indentation.
 The key is a list of styles.
 
 ```toml
