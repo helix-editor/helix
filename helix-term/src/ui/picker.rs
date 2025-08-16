@@ -573,6 +573,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     ) -> Option<(Preview<'picker, 'editor>, Option<(usize, usize)>)> {
         let current = self.selection()?;
         let (path_or_id, range) = (self.file_fn.as_ref()?)(editor, current)?;
+        let config = editor.config();
 
         match path_or_id {
             PathOrId::Path(path) => {
@@ -595,7 +596,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 let preview = std::fs::metadata(&path)
                     .and_then(|metadata| {
                         if metadata.is_dir() {
-                            let files = super::directory_content(&path)?;
+                            let files =
+                                super::directory_content(&path, config.file_explorer_flatten_dirs)?;
                             let file_names: Vec<_> = files
                                 .iter()
                                 .filter_map(|(file_path, is_dir)| {
