@@ -2371,6 +2371,14 @@ fn pipe(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
     pipe_impl(cx, args, event, &ShellBehavior::Replace, false, false)
 }
 
+fn pipe_on_success(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Replace, true, true)
+}
+
 fn pipe_impl(
     cx: &mut compositor::Context,
     args: Args,
@@ -3558,6 +3566,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["|"],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
+        completer: SHELL_COMPLETER,
+        signature: SHELL_SIGNATURE,
+    },
+    TypableCommand {
+        name: "pipe-on-success",
+        aliases: &[],
+        doc: "Pipe each selection to the shell command if all exit successfully.",
+        fun: pipe_on_success,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
     },
