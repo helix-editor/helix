@@ -6427,7 +6427,6 @@ fn shell(
     let config = cx.editor.config();
     let shell = &config.shell;
     let (view, doc) = current!(cx.editor);
-
     let selection = doc.selection(view.id);
 
     let mut changes = Vec::with_capacity(selection.len());
@@ -6436,7 +6435,7 @@ fn shell(
 
     let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
-    let mut popup_str = Vec::new();
+    let mut popup_contents = Vec::new();
     for range in selection.ranges() {
         let output = if let Some(output) = shell_output.as_ref() {
             output.clone()
@@ -6449,12 +6448,12 @@ fn shell(
                     success,
                 }) => {
                     if popup_stderr && !stderr.is_empty() {
-                        popup_str.push(format!("```sh\n{}\n```", stderr));
+                        popup_contents.push(format!("```sh\n{}\n```", stderr));
                     }
 
                     if on_success && !success {
                         if popup_stderr {
-                            ShellOutput::shell_popup(cx, popup_str.join("\n"));
+                            ShellOutput::shell_popup(cx, popup_contents.join("\n"));
                         }
                         cx.editor.set_status("Shell command had errors");
                         return;
@@ -6518,8 +6517,9 @@ fn shell(
     // after replace cursor may be out of bounds, do this to
     // make sure cursor is in view and update scroll as well
     view.ensure_cursor_in_view(doc, config.scrolloff);
-    if !popup_str.is_empty() {
-        ShellOutput::shell_popup(cx, popup_str.join("\n"));
+
+    if !popup_contents.is_empty() {
+        ShellOutput::shell_popup(cx, popup_contents.join("\n"));
     }
 }
 
