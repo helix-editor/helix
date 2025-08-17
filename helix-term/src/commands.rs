@@ -6453,8 +6453,10 @@ fn shell(
                     }
 
                     if on_success && !success {
-                        ShellOutput::shell_popup(cx, popup_str.join("\n"));
-                        cx.editor.set_status("Shell process failed");
+                        if popup_stderr {
+                            ShellOutput::shell_popup(cx, popup_str.join("\n"));
+                        }
+                        cx.editor.set_status("Shell command had errors");
                         return;
                     }
 
