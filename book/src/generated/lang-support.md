@@ -149,7 +149,7 @@
 | llvm-mir-yaml | ✓ |  | ✓ |  |  |  |
 | log | ✓ |  |  |  |  |  |
 | lpf | ✓ |  |  |  |  |  |
-| lua | ✓ | ✓ | ✓ |  |  | `lua-language-server` |
+| lua | ✓ | ✓ | ✓ |  | ✓ | `lua-language-server` |
 | luap | ✓ |  |  |  |  |  |
 | luau | ✓ | ✓ | ✓ |  |  | `luau-lsp` |
 | mail | ✓ | ✓ |  |  |  |  |
