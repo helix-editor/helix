@@ -6455,7 +6455,7 @@ fn shell(
                         if popup_stderr {
                             ShellOutput::shell_popup(cx, popup_contents.join("\n"));
                         }
-                        cx.editor.set_status("Shell command had errors");
+                        cx.editor.set_error("Shell command had errors");
                         return;
                     }
 
