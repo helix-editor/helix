@@ -3572,7 +3572,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "pipe-on-success",
         aliases: &[],
-        doc: "Pipe each selection to the shell command if all exit successfully.",
+        doc: "Pipe each selection to the shell command only if all exit successfully",
         fun: pipe_on_success,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
