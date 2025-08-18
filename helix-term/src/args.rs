@@ -19,6 +19,7 @@ pub struct Args {
     pub config_file: Option<PathBuf>,
     pub files: IndexMap<PathBuf, Vec<Position>>,
     pub working_directory: Option<PathBuf>,
+    pub record_keys: Option<PathBuf>,
 }
 
 impl Args {
@@ -59,6 +60,10 @@ impl Args {
                     args.health = true;
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
                 }
+                "--record-keys" => match argv.next().as_deref() {
+                    Some(path) => args.record_keys = Some(path.into()),
+                    None => anyhow::bail!("--record-keys must specify a path to write"),
+                },
                 "-g" | "--grammar" => match argv.next().as_deref() {
                     Some("fetch") => args.fetch_grammars = true,
                     Some("build") => args.build_grammars = true,

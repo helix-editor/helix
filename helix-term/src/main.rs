@@ -76,6 +76,7 @@ FLAGS:
     --vsplit                       Splits all given files vertically into different windows
     --hsplit                       Splits all given files horizontally into different windows
     -w, --working-dir <path>       Specify an initial working directory
+    --record-keys <file>           Records all keystrokes to the specified file
     +N                             Open the first given file at line number N
 ",
             env!("CARGO_PKG_NAME"),
