@@ -279,7 +279,7 @@
 | webc | ✓ |  |  |  |  |  |
 | werk | ✓ |  |  |  |  |  |
 | wesl | ✓ | ✓ |  |  |  |  |
-| wgsl | ✓ |  |  |  |  | `wgsl-analyzer` |
+| wgsl | ✓ | ✓ | ✓ | ✓ | ✓ | `wgsl-analyzer` |
 | wit | ✓ |  | ✓ |  |  |  |
 | wren | ✓ | ✓ | ✓ |  |  |  |
 | xit | ✓ |  |  |  |  |  |
