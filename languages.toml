@@ -4662,7 +4662,7 @@ scope = "source.kconfig"
 name = "kconfig"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-kconfig" , rev = "9ac99fe4c0c27a35dc6f757cef534c646e944881" }
 
-[[language]] 
+[[language]]
 name = "doxyfile"
 scope = "source.doxyfile"
 injection-regex = "[Dd]oxyfile"
@@ -4673,3 +4673,13 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "doxyfile"
 source = { git = "https://github.com/tingerrr/tree-sitter-doxyfile/", rev = "18e44c6da639632a4e42264c7193df34be915f34" }
+
+[[language]]
+name = "cross-config"
+scope = "source.cross-config"
+injection-regex = "cross(-config)"
+grammar = "toml"
+comment-token = "#"
+file-types = [{glob = "Cross.toml"}]
+language-servers = [ "taplo", "tombi" ]
+indent = { tab-width = 2, unit = "  " }
