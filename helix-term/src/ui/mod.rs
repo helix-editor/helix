@@ -473,7 +473,7 @@ pub mod completers {
     }
 
     pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
-        filename_with_git_ignore(editor, input, true)
+        filename_with_git_ignore(editor, input, editor.config().command_git_ignore)
     }
 
     pub fn filename_with_git_ignore(
@@ -524,7 +524,7 @@ pub mod completers {
     }
 
     pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
-        directory_with_git_ignore(editor, input, true)
+        directory_with_git_ignore(editor, input, editor.config().command_git_ignore)
     }
 
     pub fn directory_with_git_ignore(
@@ -604,6 +604,8 @@ pub mod completers {
             .hidden(false)
             .follow_links(false) // We're scanning over depth 1
             .git_ignore(git_ignore)
+            .git_global(git_ignore)
+            .git_exclude(git_ignore)
             .max_depth(Some(1))
             .build()
             .filter_map(|file| {
