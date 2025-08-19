@@ -79,6 +79,7 @@
 (property_signature "?" @punctuation.special)
 
 (conditional_type ["?" ":"] @operator)
+(ternary_expression ["?" ":"] @operator)
 
 ; Keywords
 ; --------
