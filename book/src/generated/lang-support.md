@@ -36,6 +36,7 @@
 | csv | ✓ |  |  |  |  |  |
 | cue | ✓ |  |  |  |  | `cuelsp` |
 | cylc | ✓ | ✓ | ✓ |  |  |  |
+| cython | ✓ |  | ✓ | ✓ |  |  |
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
 | dart | ✓ | ✓ | ✓ |  |  | `dart` |
 | dbml | ✓ |  |  |  |  |  |
