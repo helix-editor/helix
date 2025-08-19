@@ -56,7 +56,10 @@ use self::handlers::{DynamicQueryChange, DynamicQueryHandler, PreviewHighlightHa
 
 pub const ID: &str = "picker";
 
-pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
+pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 40;
+pub const MIN_AREA_HEIGHT_FOR_PREVIEW: u16 = 9;
+pub const MAX_AREA_WIDTH_FOR_PREVIEW: u16 = 80;
+pub const MAX_AREA_HEIGHT_FOR_PREVIEW: u16 = 24;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
@@ -998,28 +1001,57 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
 impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I, D> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // +---------+ +---------+
-        // |prompt   | |preview  |
-        // +---------+ |         |
-        // |picker   | |         |
-        // |         | |         |
-        // +---------+ +---------+
-
-        let render_preview =
-            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
-
-        let picker_width = if render_preview {
-            area.width / 2
+        let (show_preview, vertical) = if area.width / 2 >= MIN_AREA_WIDTH_FOR_PREVIEW
+            && area.height / 2 >= MIN_AREA_HEIGHT_FOR_PREVIEW
+        {
+            if area.width < area.height {
+                (self.show_preview, true)
+            } else {
+                (self.show_preview, false)
+            }
+        } else if area.width >= MIN_AREA_WIDTH_FOR_PREVIEW
+            && area.height / 2 >= MIN_AREA_HEIGHT_FOR_PREVIEW
+        {
+            (self.show_preview, true)
+        } else if area.width / 2 >= MIN_AREA_WIDTH_FOR_PREVIEW
+            && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW
+        {
+            (self.show_preview, false)
         } else {
-            area.width
+            (false, false)
         };
 
-        let picker_area = area.with_width(picker_width);
-        self.render_picker(picker_area, surface, cx);
+        if show_preview && self.file_fn.is_some() {
+            if vertical {
+                // +---------------------+
+                // |prompt               |
+                // +---------------------+
+                // |picker               |
+                // |                     |
+                // +---------------------+
+                // |preview              |
+                // |                     |
+                // +---------------------+
+                let preview_height = (area.height / 2).min(MAX_AREA_HEIGHT_FOR_PREVIEW);
+                let picker_height = area.height - preview_height;
 
-        if render_preview {
-            let preview_area = area.clip_left(picker_width);
-            self.render_preview(preview_area, surface, cx);
+                self.render_picker(area.with_height(picker_height), surface, cx);
+                self.render_preview(area.clip_top(picker_height), surface, cx);
+            } else {
+                // +---------+ +---------+
+                // |prompt   | |preview  |
+                // +---------+ |         |
+                // |picker   | |         |
+                // |         | |         |
+                // +---------+ +---------+
+                let preview_width = (area.width / 2).min(MAX_AREA_WIDTH_FOR_PREVIEW);
+                let picker_width = area.width - preview_width;
+
+                self.render_picker(area.with_width(picker_width), surface, cx);
+                self.render_preview(area.clip_left(picker_width), surface, cx);
+            }
+        } else {
+            self.render_picker(area, surface, cx);
         }
     }
 
