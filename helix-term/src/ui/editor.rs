@@ -95,7 +95,7 @@ impl EditorView {
         let mut decorations = DecorationManager::default();
 
         if is_focused && config.cursorline {
-            decorations.add_decoration(Self::cursorline(doc, view, theme));
+            decorations.add_decoration(Self::cursorline(doc, view, inner, theme));
         }
 
         if is_focused && config.cursorcolumn {
@@ -773,7 +773,12 @@ impl EditorView {
     }
 
     /// Apply the highlighting on the lines where a cursor is active
-    pub fn cursorline(doc: &Document, view: &View, theme: &Theme) -> impl Decoration {
+    pub fn cursorline(
+        doc: &Document,
+        view: &View,
+        inner_area: Rect,
+        theme: &Theme,
+    ) -> impl Decoration {
         let text = doc.text().slice(..);
         // TODO only highlight the visual line that contains the cursor instead of the full visual line
         let primary_line = doc.selection(view.id).primary().cursor_line(text);
@@ -792,10 +797,9 @@ impl EditorView {
 
         let primary_style = theme.get("ui.cursorline.primary");
         let secondary_style = theme.get("ui.cursorline.secondary");
-        let viewport = view.area;
 
         move |renderer: &mut TextRenderer, pos: LinePos| {
-            let area = Rect::new(viewport.x, pos.visual_line, viewport.width, 1);
+            let area = Rect::new(inner_area.x, pos.visual_line, inner_area.width, 1);
             if primary_line == pos.doc_line {
                 renderer.set_style(area, primary_style);
             } else if secondary_lines.binary_search(&pos.doc_line).is_ok() {
