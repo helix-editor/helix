@@ -21,8 +21,9 @@
 | `:line-ending` | Set the document's default line ending. Options: crlf, lf. |
 | `:earlier`, `:ear` | Jump back to an earlier point in edit history. Accepts a number of steps or a time span. |
 | `:later`, `:lat` | Jump to a later point in edit history. Accepts a number of steps or a time span. |
-| `:write-quit`, `:wq`, `:x` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
-| `:write-quit!`, `:wq!`, `:x!` | Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt) |
+| `:write-quit`, `:wq` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
+| `:write-quit!`, `:wq!` | Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt) |
+| `:exit`, `:xit`, `:x`, `:x!` | Save the current view if named and modified (but not externally), then quit. |
 | `:write-all`, `:wa` | Write changes from all buffers to disk. |
 | `:write-all!`, `:wa!` | Forcefully write changes from all buffers to disk creating necessary subdirectories. |
 | `:write-quit-all`, `:wqa`, `:xa` | Write changes from all buffers to disk and close all views. |
