@@ -562,7 +562,19 @@ impl MappableCommand {
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
+        select_textobject_around_function, "Select around function",
+        select_textobject_around_class, "Select around class",
+        select_textobject_around_parameter, "Select around parameter",
+        select_textobject_around_comment, "Select around comment",
+        select_textobject_around_test, "Select around test",
+        select_textobject_around_paragraph, "Select around paragraph",
         select_textobject_inner, "Select inside object",
+        select_textobject_inner_function, "Select inside function",
+        select_textobject_inner_class, "Select inside class",
+        select_textobject_inner_parameter, "Select inside parameter",
+        select_textobject_inner_comment, "Select inside comment",
+        select_textobject_inner_test, "Select inside test",
+        select_textobject_inner_paragraph, "Select inside paragraph",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
         goto_next_class, "Goto next type definition",
@@ -5973,114 +5985,171 @@ fn goto_prev_entry(cx: &mut Context) {
 }
 
 fn select_textobject_around(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Around);
+    select_textobject(cx, textobject::TextObject::Around, None);
+}
+
+fn select_textobject_around_class(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Around, Some('t'));
+}
+
+fn select_textobject_around_function(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Around, Some('f'));
+}
+
+fn select_textobject_around_parameter(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Around, Some('a'));
+}
+
+fn select_textobject_around_comment(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Around, Some('c'));
+}
+
+fn select_textobject_around_test(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Around, Some('T'));
+}
+
+fn select_textobject_around_paragraph(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Around, Some('p'));
 }
 
 fn select_textobject_inner(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Inside);
+    select_textobject(cx, textobject::TextObject::Inside, None);
 }
 
-fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
+fn select_textobject_inner_class(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Inside, Some('t'));
+}
+
+fn select_textobject_inner_function(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Inside, Some('f'));
+}
+
+fn select_textobject_inner_parameter(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Inside, Some('a'));
+}
+
+fn select_textobject_inner_comment(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Inside, Some('c'));
+}
+
+fn select_textobject_inner_test(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Inside, Some('T'));
+}
+
+fn select_textobject_inner_paragraph(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Inside, Some('p'));
+}
+
+fn select_textobject(cx: &mut Context, objtype: textobject::TextObject, ch: Option<char>) {
     let count = cx.count();
 
-    cx.on_next_key(move |cx, event| {
-        cx.editor.autoinfo = None;
-        if let Some(ch) = event.char() {
-            let textobject = move |editor: &mut Editor| {
-                let (view, doc) = current!(editor);
-                let loader = editor.syn_loader.load();
-                let text = doc.text().slice(..);
+    let textobject_gen = move |ch: char| {
+        move |editor: &mut Editor| {
+            let (view, doc) = current!(editor);
+            let loader = editor.syn_loader.load();
+            let text = doc.text().slice(..);
 
-                let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
-                    let Some(syntax) = doc.syntax() else {
-                        return range;
-                    };
-                    textobject::textobject_treesitter(
-                        text, range, objtype, obj_name, syntax, &loader, count,
-                    )
+            let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
+                let Some(syntax) = doc.syntax() else {
+                    return range;
                 };
-
-                if ch == 'g' && doc.diff_handle().is_none() {
-                    editor.set_status("Diff is not available in current buffer");
-                    return;
-                }
-
-                let textobject_change = |range: Range| -> Range {
-                    let diff_handle = doc.diff_handle().unwrap();
-                    let diff = diff_handle.load();
-                    let line = range.cursor_line(text);
-                    let hunk_idx = if let Some(hunk_idx) = diff.hunk_at(line as u32, false) {
-                        hunk_idx
-                    } else {
-                        return range;
-                    };
-                    let hunk = diff.nth_hunk(hunk_idx).after;
-
-                    let start = text.line_to_char(hunk.start as usize);
-                    let end = text.line_to_char(hunk.end as usize);
-                    Range::new(start, end).with_direction(range.direction())
-                };
-
-                let selection = doc.selection(view.id).clone().transform(|range| {
-                    match ch {
-                        'w' => textobject::textobject_word(text, range, objtype, count, false),
-                        'W' => textobject::textobject_word(text, range, objtype, count, true),
-                        't' => textobject_treesitter("class", range),
-                        'f' => textobject_treesitter("function", range),
-                        'a' => textobject_treesitter("parameter", range),
-                        'c' => textobject_treesitter("comment", range),
-                        'T' => textobject_treesitter("test", range),
-                        'e' => textobject_treesitter("entry", range),
-                        'x' => textobject_treesitter("xml-element", range),
-                        'p' => textobject::textobject_paragraph(text, range, objtype, count),
-                        'm' => textobject::textobject_pair_surround_closest(
-                            doc.syntax(),
-                            text,
-                            range,
-                            objtype,
-                            count,
-                        ),
-                        'g' => textobject_change(range),
-                        // TODO: cancel new ranges if inconsistent surround matches across lines
-                        ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
-                            doc.syntax(),
-                            text,
-                            range,
-                            objtype,
-                            ch,
-                            count,
-                        ),
-                        _ => range,
-                    }
-                });
-                doc.set_selection(view.id, selection);
+                textobject::textobject_treesitter(
+                    text, range, objtype, obj_name, syntax, &loader, count,
+                )
             };
-            cx.editor.apply_motion(textobject);
+
+            let textobject_change = |range: Range| -> Range {
+                let diff_handle = doc.diff_handle().unwrap();
+                let diff = diff_handle.load();
+                let line = range.cursor_line(text);
+                let hunk_idx = if let Some(hunk_idx) = diff.hunk_at(line as u32, false) {
+                    hunk_idx
+                } else {
+                    return range;
+                };
+                let hunk = diff.nth_hunk(hunk_idx).after;
+
+                let start = text.line_to_char(hunk.start as usize);
+                let end = text.line_to_char(hunk.end as usize);
+                Range::new(start, end).with_direction(range.direction())
+            };
+
+            if ch == 'g' && doc.diff_handle().is_none() {
+                editor.set_status("Diff is not available in current buffer");
+                return;
+            }
+
+            let selection = doc.selection(view.id).clone().transform(|range| {
+                match ch {
+                    'w' => textobject::textobject_word(text, range, objtype, count, false),
+                    'W' => textobject::textobject_word(text, range, objtype, count, true),
+                    't' => textobject_treesitter("class", range),
+                    'f' => textobject_treesitter("function", range),
+                    'a' => textobject_treesitter("parameter", range),
+                    'c' => textobject_treesitter("comment", range),
+                    'T' => textobject_treesitter("test", range),
+                    'e' => textobject_treesitter("entry", range),
+                    'x' => textobject_treesitter("xml-element", range),
+                    'p' => textobject::textobject_paragraph(text, range, objtype, count),
+                    'm' => textobject::textobject_pair_surround_closest(
+                        doc.syntax(),
+                        text,
+                        range,
+                        objtype,
+                        count,
+                    ),
+                    'g' => textobject_change(range),
+                    // TODO: cancel new ranges if inconsistent surround matches across lines
+                    ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
+                        doc.syntax(),
+                        text,
+                        range,
+                        objtype,
+                        ch,
+                        count,
+                    ),
+                    _ => range,
+                }
+            });
+            doc.set_selection(view.id, selection);
         }
-    });
-
-    let title = match objtype {
-        textobject::TextObject::Inside => "Match inside",
-        textobject::TextObject::Around => "Match around",
-        _ => return,
     };
-    let help_text = [
-        ("w", "Word"),
-        ("W", "WORD"),
-        ("p", "Paragraph"),
-        ("t", "Type definition (tree-sitter)"),
-        ("f", "Function (tree-sitter)"),
-        ("a", "Argument/parameter (tree-sitter)"),
-        ("c", "Comment (tree-sitter)"),
-        ("T", "Test (tree-sitter)"),
-        ("e", "Data structure entry (tree-sitter)"),
-        ("m", "Closest surrounding pair (tree-sitter)"),
-        ("g", "Change"),
-        ("x", "(X)HTML element (tree-sitter)"),
-        (" ", "... or any character acting as a pair"),
-    ];
 
-    cx.editor.autoinfo = Some(Info::new(title, &help_text));
+    if let Some(ch) = ch {
+        let textobject = textobject_gen(ch);
+        cx.editor.apply_motion(textobject);
+    } else {
+        cx.on_next_key(move |cx, event| {
+            cx.editor.autoinfo = None;
+            if let Some(ch) = event.char() {
+                let textobject = textobject_gen(ch);
+                cx.editor.apply_motion(textobject);
+            }
+        });
+
+        let title = match objtype {
+            textobject::TextObject::Inside => "Match inside",
+            textobject::TextObject::Around => "Match around",
+            _ => return,
+        };
+        let help_text = [
+            ("w", "Word"),
+            ("W", "WORD"),
+            ("p", "Paragraph"),
+            ("t", "Type definition (tree-sitter)"),
+            ("f", "Function (tree-sitter)"),
+            ("a", "Argument/parameter (tree-sitter)"),
+            ("c", "Comment (tree-sitter)"),
+            ("T", "Test (tree-sitter)"),
+            ("e", "Data structure entry (tree-sitter)"),
+            ("m", "Closest surrounding pair (tree-sitter)"),
+            ("g", "Change"),
+            ("x", "(X)HTML element (tree-sitter)"),
+            (" ", "... or any character acting as a pair"),
+        ];
+
+        cx.editor.autoinfo = Some(Info::new(title, &help_text));
+    }
 }
 
 static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
