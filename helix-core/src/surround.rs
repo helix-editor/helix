@@ -3,7 +3,7 @@ use std::fmt::Display;
 use crate::{
     graphemes::next_grapheme_boundary,
     match_brackets::{
-        find_matching_bracket, find_matching_bracket_fuzzy, get_pair, is_close_bracket,
+        self, find_matching_bracket, find_matching_bracket_fuzzy, get_pair, is_close_bracket,
         is_open_bracket,
     },
     movement::Direction,
@@ -162,6 +162,7 @@ pub fn find_nth_pairs_pos(
     ch: char,
     range: Range,
     n: usize,
+    syntax: Option<&Syntax>,
 ) -> Result<(usize, usize)> {
     if text.len_chars() < 2 {
         return Err(Error::PairNotFound);
@@ -175,15 +176,30 @@ pub fn find_nth_pairs_pos(
 
     let (open, close) = if open == close {
         if Some(open) == text.get_char(pos) {
-            // Cursor is directly on match char. We return no match
-            // because there's no way to know which side of the char
-            // we should be searching on.
-            return Err(Error::CursorOnAmbiguousPair);
+            // Cursor is directly on match character for which the opening and closing pairs are the same. For instance: ", ', `
+            //
+            // This is potentially ambiguous, because there's no way to know which side of the char we should be searching on.
+            syntax
+                .map_or_else(
+                    || match_brackets::find_matching_bracket_plaintext(text.slice(..), pos),
+                    |syntax| {
+                        match_brackets::find_matching_bracket_fuzzy(syntax, text.slice(..), pos)
+                    },
+                )
+                .map(|matching_pair_pos| {
+                    if matching_pair_pos > pos {
+                        (Some(pos), Some(matching_pair_pos))
+                    } else {
+                        (Some(matching_pair_pos), Some(pos))
+                    }
+                })
+                .ok_or(Error::CursorOnAmbiguousPair)?
+        } else {
+            (
+                search::find_nth_prev(text, open, pos, n),
+                search::find_nth_next(text, close, pos, n),
+            )
         }
-        (
-            search::find_nth_prev(text, open, pos, n),
-            search::find_nth_next(text, close, pos, n),
-        )
     } else {
         (
             find_nth_open_pair(text, open, close, pos, n),
@@ -298,7 +314,7 @@ pub fn get_surround_pos(
     for &range in selection {
         let (open_pos, close_pos) = {
             let range_raw = match ch {
-                Some(ch) => find_nth_pairs_pos(text, ch, range, skip)?,
+                Some(ch) => find_nth_pairs_pos(text, ch, range, skip, syntax)?,
                 None => find_nth_closest_pairs_pos(syntax, text, range, skip)?,
             };
             let range = Range::new(range_raw.0, range_raw.1);
@@ -392,7 +408,7 @@ mod test {
 
         assert_eq!(2, expectations.len());
         assert_eq!(
-            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1)
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1, None)
                 .expect("find should succeed"),
             (expectations[0], expectations[1])
         )
@@ -409,7 +425,7 @@ mod test {
 
         assert_eq!(2, expectations.len());
         assert_eq!(
-            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 2)
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 2, None)
                 .expect("find should succeed"),
             (expectations[0], expectations[1])
         )
@@ -425,7 +441,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1),
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1, None),
             Err(Error::CursorOnAmbiguousPair)
         )
     }
