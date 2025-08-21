@@ -1,5 +1,4 @@
 [
-    "include"
     "namespace"
     "attribute"
     "table"
@@ -11,6 +10,8 @@
     "file_extension"
     "file_identifier"
 ] @keyword
+
+"include" @keyword.control.import
 
 [
   ";"
@@ -24,22 +25,26 @@
 [
     (true)
     (false)
+] @constant.builtin.boolean
+
+[
     (inf_token)
     (nan_token)
 ] @constant.builtin
 
 [
-    (float_constant)
+    (int_lit)
     (int_constant)
-] @number
-
-(int_lit) @constant.numeric.integer
-(float_lit) @constant.numeric.float
+] @constant.numeric.integer
 
 [
-    (comment)
-    (documentation)
-] @comment
+    (float_lit)
+    (float_constant)
+] @constant.numeric.float
+
+
+(comment) @comment
+(documentation) @comment.line.documentation
 
 [
   "("
