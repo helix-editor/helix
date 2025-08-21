@@ -5384,11 +5384,14 @@ fn rotate_selections_last(cx: &mut Context) {
 
 fn make_cmd_picker(cx: &mut Context) {
     let root = find_workspace().0;
-    if !root.exists() {
-        cx.editor.set_error("Workspace directory does not exist");
-        return;
+
+    let picker;
+    if root.exists() {
+        picker = make_picker(cx, root);
+    } else {
+        picker = make_picker(cx, PathBuf::new());
     }
-    let picker = make_picker(cx, root);
+
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

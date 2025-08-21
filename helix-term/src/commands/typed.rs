@@ -2646,11 +2646,10 @@ fn make(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
-    let make_format_type;
-    match args.get_flag("format") {
-        Some(flag) => make_format_type = MakeFormatType::from(flag),
-        None => make_format_type = MakeFormatType::Default,
-    }
+    let make_format_type = match args.get_flag("format") {
+        Some(flag) => MakeFormatType::from(flag),
+        None => MakeFormatType::Default,
+    };
 
     let shell = cx.editor.config().shell.clone();
     let args = args.join(" ");
