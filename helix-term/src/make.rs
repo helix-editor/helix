@@ -1,19 +1,16 @@
 use crate::commands::{goto_location, Context};
 use crate::ui::{Picker, PickerColumn};
-use helix_core::Selection;
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
-    align_view,
     make::{Entry, Location},
     theme::Style,
-    Align,
 };
 use std::path::{Path, PathBuf};
 use tui::text::Span;
 
 // TODO(szulf): check the not closing error after opening logs on a non modified version of helix
 // TODO(szulf): figure out how to display messages from the make_list the same way as diagnostics
-// and make it togglable in the config i think
+// and make it togglable in the config i think(off by default i think)
 
 #[derive(Debug, Clone)]
 pub struct MakePickerData {
@@ -69,6 +66,7 @@ pub fn make_picker(cx: &Context, root: PathBuf) -> MakePicker {
 }
 
 // TODO(szulf): dont really see the point of this enum honestly
+#[derive(Debug)]
 pub enum MakeFormatType {
     Default,
     Rust,
@@ -81,7 +79,7 @@ impl From<&str> for MakeFormatType {
     fn from(value: &str) -> Self {
         match value {
             "rust" => MakeFormatType::Rust,
-            "gcc" => MakeFormatType::Rust,
+            "gcc" => MakeFormatType::Gcc,
             "clang" => MakeFormatType::Clang,
             "msvc" => MakeFormatType::Msvc,
             _ => MakeFormatType::Default,
@@ -103,117 +101,102 @@ where
     todo!();
 }
 
-fn parse_gcc<'a, T>(lines: T) -> Vec<Entry>
-where
-    T: IntoIterator<Item = &'a str>,
-{
-    // NOTE(szulf): they SHOULD always be the same
-    return parse_clang(lines);
-}
-
-// TODO(szulf): better naming
 // TODO(szulf): make an error type?
-fn check(s: &str) -> Result<Location, ()> {
-    let mut loc = s.split(':').collect::<Vec<&str>>();
-    loc.retain(|&s| s != "");
+fn get_location_from_token(token: &str, col_amount: usize) -> Result<Location, ()> {
+    let mut loc = token
+        .split(':')
+        .map(|s| (*s).to_string())
+        .collect::<Vec<String>>();
+    loc.retain(|token| token != "");
 
-    if loc.len() < 3 {
+    if loc.len() < col_amount {
         return Err(());
     }
 
-    let mut loc_fixed: Vec<String> = loc.iter().map(|s| (*s).to_string()).collect();
     // NOTE(szulf): handle paths that contain ':'
-    while loc_fixed.len() > 3 {
-        let second = loc_fixed.remove(1);
-        loc_fixed[0].push_str(second.as_str());
+    while loc.len() > col_amount {
+        let second = loc.remove(1);
+        loc[0].push_str(second.as_str());
     }
 
-    let path = Path::new(loc_fixed[0].as_str());
+    let path = PathBuf::from(loc.remove(0));
     if !path.exists() {
         return Err(());
     }
 
-    let line = match loc_fixed[1].parse::<usize>() {
+    let line = match loc[0].parse::<usize>() {
         Ok(l) => l - 1,
         Err(_) => {
-            log::debug!("couldnt parse splits[1]: {:?}", loc_fixed[1]);
             return Err(());
         }
     };
 
     return Ok(Location {
-        path: PathBuf::from(loc_fixed.remove(0)),
+        path: path,
         line: line,
     });
 }
 
-fn parse_clang<'a, T>(lines: T) -> Vec<Entry>
+fn parse_gcc<'a, T>(lines: T) -> Vec<Entry>
 where
     T: IntoIterator<Item = &'a str>,
 {
-    // TODO(szulf): better naming
-    let e = lines
+    let tokenized_lines = lines
         .into_iter()
         .map(|s| s.split_whitespace().collect::<Vec<&str>>())
         .collect::<Vec<Vec<&str>>>();
 
     let mut entries = Vec::new();
 
-    let mut message: String = String::default();
-    let mut location = None;
-    let mut severity = DiagnosticSeverity::ERROR;
+    for line_tokens in tokenized_lines {
+        let mut message = String::new();
+        let mut location = None;
+        let mut severity = DiagnosticSeverity::ERROR;
 
-    for s in e {
-        let mut iter = s.into_iter().peekable();
+        let mut token_iter = line_tokens.into_iter().peekable();
 
-        // TODO(szulf): the naming man
-        // l loc locat location
-        // beautiful
-        while let Some(l) = iter.next() {
-            let loc = check(l);
-            match loc {
-                Ok(locat) => {
-                    location = Some(locat);
+        while let Some(token) = token_iter.next() {
+            let location_result = get_location_from_token(token, 3);
+            match location_result {
+                Ok(loc) => {
+                    location = Some(loc);
 
-                    if let Some(sever) = iter.peek() {
+                    if let Some(sever) = token_iter.peek() {
                         match *sever {
                             "warning:" => {
                                 severity = DiagnosticSeverity::WARNING;
-                                iter.next();
+                                token_iter.next();
                             }
                             "note:" => {
                                 severity = DiagnosticSeverity::HINT;
-                                iter.next();
+                                token_iter.next();
                             }
                             "error:" => {
                                 severity = DiagnosticSeverity::ERROR;
-                                iter.next();
+                                token_iter.next();
                             }
                             _ => severity = DiagnosticSeverity::ERROR,
                         }
                     }
 
+                    // NOTE(szulf): discard any messages before the file location
                     message.clear();
                 }
                 Err(_) => {
                     if message.len() != 0 {
                         message.push_str(" ");
                     }
-                    message.push_str(l);
+                    message.push_str(token);
                 }
             }
         }
 
         match location {
             Some(loc) => {
-                entries.push(Entry::new(loc, message.as_str(), severity));
+                entries.push(Entry::new(loc, message, severity));
             }
             None => {}
         }
-
-        message.clear();
-        severity = DiagnosticSeverity::ERROR;
-        location = None;
     }
 
     entries
@@ -232,8 +215,7 @@ pub fn parse(format_type: MakeFormatType, source: &str) -> Vec<Entry> {
     match format_type {
         MakeFormatType::Default => parse_default(lines),
         MakeFormatType::Rust => parse_rust(lines),
-        MakeFormatType::Gcc => parse_gcc(lines),
-        MakeFormatType::Clang => parse_clang(lines),
+        MakeFormatType::Gcc | MakeFormatType::Clang => parse_gcc(lines),
         MakeFormatType::Msvc => parse_msvc(lines),
     }
 }

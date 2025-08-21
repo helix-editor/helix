@@ -17,10 +17,10 @@ pub struct Entry {
 }
 
 impl Entry {
-    pub fn new(location: Location, msg: &str, severity: DiagnosticSeverity) -> Self {
+    pub fn new(location: Location, msg: String, severity: DiagnosticSeverity) -> Self {
         Self {
             location: location,
-            msg: msg.to_string(),
+            msg: msg,
             severity: severity,
         }
     }
