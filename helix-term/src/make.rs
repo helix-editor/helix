@@ -96,6 +96,7 @@ pub fn make_picker(cx: &Context, root: PathBuf) -> MakePicker {
     })
 }
 
+// TODO(szulf): dont really see the point of this enum honestly
 pub enum MakeFormatType {
     Default,
     Rust,
@@ -116,31 +117,31 @@ impl From<&str> for MakeFormatType {
     }
 }
 
-pub fn parse_default<'a, T>(_lines: T) -> Vec<Entry>
+fn parse_default<'a, T>(_lines: T) -> Vec<Entry>
 where
     T: IntoIterator<Item = &'a str>,
 {
     todo!();
 }
 
-pub fn parse_rust<'a, T>(_lines: T) -> Vec<Entry>
+fn parse_rust<'a, T>(_lines: T) -> Vec<Entry>
 where
     T: IntoIterator<Item = &'a str>,
 {
     todo!();
 }
 
-pub fn parse_gcc<'a, T>(lines: T) -> Vec<Entry>
+fn parse_gcc<'a, T>(lines: T) -> Vec<Entry>
 where
     T: IntoIterator<Item = &'a str>,
 {
-    // NOTE(szulf): they should always be the same
+    // NOTE(szulf): they SHOULD always be the same
     return parse_clang(lines);
 }
 
 // TODO(szulf): better naming
 // TODO(szulf): make an error type?
-pub fn check(s: &str) -> Result<Location, ()> {
+fn check(s: &str) -> Result<Location, ()> {
     let mut loc = s.split(':').collect::<Vec<&str>>();
     loc.retain(|&s| s != "");
 
@@ -150,7 +151,7 @@ pub fn check(s: &str) -> Result<Location, ()> {
 
     let mut loc_fixed: Vec<String> = loc.iter().map(|s| (*s).to_string()).collect();
     // NOTE(szulf): handle paths that contain ':'
-    while loc_fixed.len() != 3 {
+    while loc_fixed.len() > 3 {
         let second = loc_fixed.remove(1);
         loc_fixed[0].push_str(second.as_str());
     }
@@ -174,7 +175,7 @@ pub fn check(s: &str) -> Result<Location, ()> {
     });
 }
 
-pub fn parse_clang<'a, T>(lines: T) -> Vec<Entry>
+fn parse_clang<'a, T>(lines: T) -> Vec<Entry>
 where
     T: IntoIterator<Item = &'a str>,
 {
@@ -246,7 +247,7 @@ where
     entries
 }
 
-pub fn parse_msvc<'a, T>(_lines: T) -> Vec<Entry>
+fn parse_msvc<'a, T>(_lines: T) -> Vec<Entry>
 where
     T: IntoIterator<Item = &'a str>,
 {

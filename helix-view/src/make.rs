@@ -40,12 +40,17 @@ impl List {
         self.entries.push(entry);
     }
 
-    // TODO(szulf): change this to implementing the IntoIterator trait instead
-    pub fn into_iter(self) -> impl Iterator<Item = Entry> {
-        self.entries.into_iter()
-    }
-
     pub fn set(&mut self, entries: Vec<Entry>) {
         self.entries = entries;
+    }
+}
+
+impl IntoIterator for List {
+    type Item = Entry;
+
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.into_iter()
     }
 }
