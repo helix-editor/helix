@@ -2452,6 +2452,40 @@ fn make_search_word_bounded(cx: &mut Context) {
     }
 }
 
+// TODO(szulf): is there some more global function like this that doesnt depend on lsp stuff?
+pub fn goto_location(
+    cx: &mut compositor::Context,
+    path: &PathBuf,
+    line_num: &usize,
+    action: Action,
+) {
+    let doc = match cx.editor.open(path, action) {
+        Ok(id) => doc_mut!(cx.editor, &id),
+        Err(e) => {
+            cx.editor
+                .set_error(format!("Failed to open file '{}': {}", path.display(), e));
+            return;
+        }
+    };
+
+    let line_num = *line_num;
+    let view = view_mut!(cx.editor);
+    let text = doc.text();
+    if line_num >= text.len_lines() {
+        cx.editor.set_error(
+            "The line you jumped to does not exist anymore because the file has changed.",
+        );
+        return;
+    }
+    let start = text.line_to_char(line_num);
+    let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+
+    doc.set_selection(view.id, Selection::single(start, end));
+    if action.align_view(view, doc.id()) {
+        align_view(doc, view, Align::Center);
+    }
+}
+
 fn global_search(cx: &mut Context) {
     #[derive(Debug)]
     struct FileResult {
@@ -2646,31 +2680,7 @@ fn global_search(cx: &mut Context) {
         [],
         config,
         move |cx, FileResult { path, line_num, .. }, action| {
-            let doc = match cx.editor.open(path, action) {
-                Ok(id) => doc_mut!(cx.editor, &id),
-                Err(e) => {
-                    cx.editor
-                        .set_error(format!("Failed to open file '{}': {}", path.display(), e));
-                    return;
-                }
-            };
-
-            let line_num = *line_num;
-            let view = view_mut!(cx.editor);
-            let text = doc.text();
-            if line_num >= text.len_lines() {
-                cx.editor.set_error(
-                    "The line you jumped to does not exist anymore because the file has changed.",
-                );
-                return;
-            }
-            let start = text.line_to_char(line_num);
-            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
-
-            doc.set_selection(view.id, Selection::single(start, end));
-            if action.align_view(view, doc.id()) {
-                align_view(doc, view, Align::Center);
-            }
+            goto_location(cx, path, line_num, action);
         },
     )
     .with_preview(|_editor, FileResult { path, line_num, .. }| {
