@@ -1,4 +1,4 @@
-use crate::commands::Context;
+use crate::commands::{goto_location, Context};
 use crate::ui::{Picker, PickerColumn};
 use helix_core::Selection;
 use helix_lsp::lsp::DiagnosticSeverity;
@@ -64,35 +64,7 @@ pub fn make_picker(cx: &Context, root: PathBuf) -> MakePicker {
     ];
 
     Picker::new(columns, 0, options, data, move |cx, item, action| {
-        // TODO(szulf): this is copied from the global_search function should i maybe pull it out?
-        let doc = match cx.editor.open(&item.location.path, action) {
-            Ok(id) => doc_mut!(cx.editor, &id),
-            Err(e) => {
-                cx.editor.set_error(format!(
-                    "Failed to open file '{}': {}",
-                    item.location.path.display(),
-                    e
-                ));
-                return;
-            }
-        };
-
-        let line_num = item.location.line;
-        let view = view_mut!(cx.editor);
-        let text = doc.text();
-        if line_num >= text.len_lines() {
-            cx.editor.set_error(
-                "The line you jumped to does not exist anymore because the file has changed.",
-            );
-            return;
-        }
-        let start = text.line_to_char(line_num);
-        let end = text.line_to_char((line_num + 1).min(text.len_lines()));
-
-        doc.set_selection(view.id, Selection::single(start, end));
-        if action.align_view(view, doc.id()) {
-            align_view(doc, view, Align::Center);
-        }
+        goto_location(cx, &item.location.path, &item.location.line, action);
     })
 }
 
