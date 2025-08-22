@@ -31,6 +31,7 @@
 | common-lisp | ✓ |  | ✓ |  | ✓ | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
+| cross-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
 | crystal | ✓ | ✓ | ✓ | ✓ |  | `crystalline`, `ameba-ls` |
 | css | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
 | csv | ✓ |  |  |  |  |  |
@@ -67,6 +68,7 @@
 | fga | ✓ | ✓ | ✓ |  |  |  |
 | fidl | ✓ |  |  |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |  | `fish-lsp` |
+| flatbuffers | ✓ |  |  |  |  |  |
 | forth | ✓ |  |  |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ |  |  | `fortls` |
 | fsharp | ✓ |  |  |  |  | `fsautocomplete` |

@@ -447,6 +447,18 @@ name = "fish"
 source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "a78aef9abc395c600c38a037ac779afc7e3cc9e0" }
 
 [[language]]
+name = "flatbuffers"
+scope = "source.flatbuffers"
+injection-regex = "(flatbuffers?|fbs)"
+file-types = ["fbs"]
+comment-token = "//"
+indent = { tab-width = 2, unit = " " }
+
+[[grammar]]
+name = "flatbuffers"
+source = { git = "https://github.com/yuanchenxi95/tree-sitter-flatbuffers", rev = "95e6f9ef101ea97e870bf6eebc0bd1fdfbaf5490" }
+
+[[language]]
 name = "mint"
 scope = "source.mint"
 injection-regex = "mint"
@@ -4662,7 +4674,7 @@ scope = "source.kconfig"
 name = "kconfig"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-kconfig" , rev = "9ac99fe4c0c27a35dc6f757cef534c646e944881" }
 
-[[language]] 
+[[language]]
 name = "doxyfile"
 scope = "source.doxyfile"
 injection-regex = "[Dd]oxyfile"
@@ -4673,3 +4685,13 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "doxyfile"
 source = { git = "https://github.com/tingerrr/tree-sitter-doxyfile/", rev = "18e44c6da639632a4e42264c7193df34be915f34" }
+
+[[language]]
+name = "cross-config"
+scope = "source.cross-config"
+injection-regex = "cross(-config)"
+grammar = "toml"
+comment-token = "#"
+file-types = [{glob = "Cross.toml"}]
+language-servers = [ "taplo", "tombi" ]
+indent = { tab-width = 2, unit = "  " }
