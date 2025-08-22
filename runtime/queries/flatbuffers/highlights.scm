@@ -63,7 +63,7 @@
   attribute_name: (identifier) @string)
 
 (namespace_decl
-    namespace_ident: (full_ident) @module)
+    namespace_ident: (full_ident) @namespace)
 
 (type_decl
     table_or_struct_name: (identifier) @type)
