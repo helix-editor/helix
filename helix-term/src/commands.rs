@@ -1367,7 +1367,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
     for sel in paths {
         let (path, pos) = crate::args::parse_file(&sel);
-        if let Ok(url) = Url::parse(&path.to_str().unwrap()) {
+        if let Ok(url) = Url::parse(path.to_str().unwrap()) {
             open_url(cx, url, action);
             continue;
         }
@@ -1380,7 +1380,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             rel_path
         };
         if path.is_dir() {
-            let picker = ui::file_picker(cx.editor, path.into());
+            let picker = ui::file_picker(cx.editor, path);
             cx.push_layer(Box::new(overlaid(picker)));
         } else if let Err(e) = cx.editor.open(path.as_path(), action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
