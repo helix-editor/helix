@@ -4695,3 +4695,14 @@ comment-token = "#"
 file-types = [{glob = "Cross.toml"}]
 language-servers = [ "taplo", "tombi" ]
 indent = { tab-width = 2, unit = "  " }
+
+# https://git-cliff.org/docs/configuration/
+[[language]]
+name = "git-cliff-config"
+scope = "source.git-cliff-config"
+injection-regex = "git-cliff(-config)"
+grammar = "toml"
+comment-token = "#"
+file-types = [{ glob = "cliff.toml" }]
+language-servers = ["taplo", "tombi"]
+indent = { tab-width = 2, unit = "  " }
