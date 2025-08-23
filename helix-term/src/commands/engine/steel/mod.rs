@@ -1927,6 +1927,18 @@ Get the `Rect` associated with the currently focused buffer.
         },
     );
 
+    module.register_fn(
+        "editor-document-reload",
+        |cx: &mut Context, doc: DocumentId| -> anyhow::Result<()> {
+            for (view, _) in cx.editor.tree.views_mut() {
+                if let Some(x) = cx.editor.documents.get_mut(&doc) {
+                    x.reload(view, &cx.editor.diff_providers)?;
+                }
+            }
+            Ok(())
+        },
+    );
+
     module.register_fn("set-buffer-uri!", set_buffer_uri);
 
     module.register_fn("editor-doc-exists?", cx_document_exists);
@@ -2022,6 +2034,8 @@ Get the `Rect` associated with the currently focused buffer.
             "editor-document-dirty?",
             "Check if a document has unsaved changes",
         );
+
+        template_function_arity_1("editor-document-reload", "Reload a document.");
 
         template_function_arity_1("editor->text", "Get the document as a rope.");
         template_function_arity_1("editor-document->path", "Get the path to a document.");

@@ -716,6 +716,8 @@ Check when a document was last saved (returns a `SystemTime`)
 Get the language for the document
 ### **editor-document-dirty?**
 Check if a document has unsaved changes
+### **editor-document-reload**
+Reload a document.
 ### **editor->text**
 Get the document as a rope.
 ### **editor-document->path**
