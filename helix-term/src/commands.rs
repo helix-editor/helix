@@ -1374,7 +1374,11 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
         let rel_path = rel_path.join(path::expand(&path));
         let cwd_path = path::canonicalize(&path);
-        let path = if !rel_path.exists() && cwd_path.exists() { cwd_path } else { rel_path };
+        let path = if !rel_path.exists() && cwd_path.exists() {
+            cwd_path
+        } else {
+            rel_path
+        };
         if path.is_dir() {
             let picker = ui::file_picker(cx.editor, path.into());
             cx.push_layer(Box::new(overlaid(picker)));
