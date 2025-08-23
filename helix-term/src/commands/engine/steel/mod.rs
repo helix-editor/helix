@@ -543,6 +543,12 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         after the existing function context has exited."
     );
 
+    function1!(
+        "get-current-line-character",
+        current_line_character,
+        "Returns the current column number with the given position encoding"
+    );
+
     let mut template_function_arity_0 = |name: &str, doc: &str| {
         if generate_sources {
             let docstring = format_docstring(doc);
@@ -597,7 +603,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     function0!(
         "get-current-column-number",
         current_column_number,
-        "Returns the current column number"
+        "Returns the visual current column number of unicode graphemes"
     );
     function0!(
         "current-selection-object",
@@ -4791,13 +4797,11 @@ fn remove_selection_range(cx: &mut Context, index: usize) {
 
 fn current_line_number(cx: &mut Context) -> usize {
     let (view, doc) = current_ref!(cx.editor);
-    helix_core::coords_at_pos(
-        doc.text().slice(..),
+    doc.text().char_to_line(
         doc.selection(view.id)
             .primary()
             .cursor(doc.text().slice(..)),
     )
-    .row
 }
 
 fn current_column_number(cx: &mut Context) -> usize {
@@ -4809,6 +4813,19 @@ fn current_column_number(cx: &mut Context) -> usize {
             .cursor(doc.text().slice(..)),
     )
     .col
+}
+
+fn current_line_character(cx: &mut Context, encoding: SteelString) -> anyhow::Result<usize> {
+    let (view, doc) = current_ref!(cx.editor);
+
+    let encoding = match &***encoding {
+        "utf-8" => helix_lsp::OffsetEncoding::Utf8,
+        "utf-16" => helix_lsp::OffsetEncoding::Utf16,
+        "utf-32" => helix_lsp::OffsetEncoding::Utf32,
+        _ => anyhow::bail!("invalid encoding {encoding:?}"),
+    };
+
+    Ok(doc.position(view.id, encoding).character as usize)
 }
 
 fn get_selection(cx: &mut Context) -> String {
