@@ -17,6 +17,14 @@ pub enum BorderType {
 }
 
 impl BorderType {
+    pub fn new(rounded: bool) -> Self {
+        if rounded {
+            Self::Rounded
+        } else {
+            Self::default()
+        }
+    }
+
     pub fn line_symbols(border_type: Self) -> line::Set {
         match border_type {
             Self::Plain => line::NORMAL,
