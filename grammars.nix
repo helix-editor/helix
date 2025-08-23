@@ -12,13 +12,6 @@
     builtins.hasAttr "source" grammar
     && builtins.hasAttr "git" grammar.source
     && builtins.hasAttr "rev" grammar.source;
-  isGitHubGrammar = grammar: lib.hasPrefix "https://github.com" grammar.source.git;
-  toGitHubFetcher = url: let
-    match = builtins.match "https://github\.com/([^/]*)/([^/]*)/?" url;
-  in {
-    owner = builtins.elemAt match 0;
-    repo = builtins.elemAt match 1;
-  };
   # If `use-grammars.only` is set, use only those grammars.
   # If `use-grammars.except` is set, use all other grammars.
   # Otherwise use all grammars.
@@ -31,24 +24,13 @@
   grammarsToUse = builtins.filter useGrammar languagesConfig.grammar;
   gitGrammars = builtins.filter isGitGrammar grammarsToUse;
   buildGrammar = grammar: let
-    gh = toGitHubFetcher grammar.source.git;
-    sourceGit = builtins.fetchTree {
+    source = builtins.fetchTree {
       type = "git";
       url = grammar.source.git;
       rev = grammar.source.rev;
       ref = grammar.source.ref or "HEAD";
       shallow = true;
     };
-    sourceGitHub = builtins.fetchTree {
-      type = "github";
-      owner = gh.owner;
-      repo = gh.repo;
-      inherit (grammar.source) rev;
-    };
-    source =
-      if isGitHubGrammar grammar
-      then sourceGitHub
-      else sourceGit;
   in
     stdenv.mkDerivation {
       # see https://github.com/NixOS/nixpkgs/blob/fbdd1a7c0bc29af5325e0d7dd70e804a972eb465/pkgs/development/tools/parsing/tree-sitter/grammar.nix
