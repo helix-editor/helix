@@ -5,7 +5,8 @@ use helix_view::{
     make::{Entry, Location},
     theme::Style,
 };
-use std::path::{Path, PathBuf};
+use regex::Regex;
+use std::path::PathBuf;
 use tui::text::Span;
 
 // TODO(szulf): check the not closing error after opening logs on a non modified version of helix
@@ -141,65 +142,46 @@ fn parse_gcc<'a, T>(lines: T) -> Vec<Entry>
 where
     T: IntoIterator<Item = &'a str>,
 {
-    let tokenized_lines = lines
-        .into_iter()
-        .map(|s| s.split_whitespace().collect::<Vec<&str>>())
-        .collect::<Vec<Vec<&str>>>();
+    let regex = Regex::new(
+        r"^(?P<path>[^:\n\s]+)(?::(?P<line>\d+))?(?::\d+)?(?::\([^)]+\))?:\s(?P<severity>error|warning|note)?:?\s?(?P<message>.+)$",
+    )
+    .unwrap();
 
-    let mut entries = Vec::new();
+    let mut results = Vec::new();
 
-    for line_tokens in tokenized_lines {
-        let mut message = String::new();
-        let mut location = None;
-        let mut severity = DiagnosticSeverity::ERROR;
+    for line in lines {
+        let capture = regex.captures(line);
+        match capture {
+            Some(cap) => {
+                let Some(path) = cap.name("path") else {
+                    continue;
+                };
+                let Some(line) = cap.name("line") else {
+                    continue;
+                };
 
-        let mut token_iter = line_tokens.into_iter().peekable();
+                let location = Location {
+                    path: path.as_str().into(),
+                    line: line.as_str().parse::<usize>().unwrap() - 1,
+                };
 
-        while let Some(token) = token_iter.next() {
-            let location_result = get_location_from_token(token, 3);
-            match location_result {
-                Ok(loc) => {
-                    location = Some(loc);
+                let severity = match cap.name("severity").map(|c| c.as_str()).unwrap_or_default() {
+                    "warning" => DiagnosticSeverity::WARNING,
+                    "note" => DiagnosticSeverity::HINT,
+                    "error" | _ => DiagnosticSeverity::ERROR,
+                };
 
-                    if let Some(sever) = token_iter.peek() {
-                        match *sever {
-                            "warning:" => {
-                                severity = DiagnosticSeverity::WARNING;
-                                token_iter.next();
-                            }
-                            "note:" => {
-                                severity = DiagnosticSeverity::HINT;
-                                token_iter.next();
-                            }
-                            "error:" => {
-                                severity = DiagnosticSeverity::ERROR;
-                                token_iter.next();
-                            }
-                            _ => severity = DiagnosticSeverity::ERROR,
-                        }
-                    }
+                let Some(message) = cap.name("message") else {
+                    continue;
+                };
 
-                    // NOTE(szulf): discard any messages before the file location
-                    message.clear();
-                }
-                Err(_) => {
-                    if message.len() != 0 {
-                        message.push_str(" ");
-                    }
-                    message.push_str(token);
-                }
-            }
-        }
-
-        match location {
-            Some(loc) => {
-                entries.push(Entry::new(loc, message, severity));
+                results.push(Entry::new(location, message.as_str().to_owned(), severity));
             }
             None => {}
         }
     }
 
-    entries
+    results
 }
 
 fn parse_msvc<'a, T>(_lines: T) -> Vec<Entry>
