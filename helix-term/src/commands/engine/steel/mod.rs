@@ -747,15 +747,23 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 
     // Register everything in the typable command list. Now these are all available
     for command in TYPABLE_COMMAND_LIST {
-        // TODO: This needs to get updated
-        let func = |cx: &mut Context, args: &[Cow<str>]| {
+        let func = move |cx: &mut Context, args: Vec<Cow<'static, str>>| {
             let mut cx = compositor::Context {
                 editor: cx.editor,
                 scroll: None,
                 jobs: cx.jobs,
             };
 
-            (command.fun)(&mut cx, Args::raw(args.to_vec()), PromptEvent::Validate)
+            let mut verified_args = Args::new(command.signature, true);
+            for arg in args {
+                verified_args.push(arg)?;
+            }
+
+            verified_args
+                .finish()
+                .map_err(|e| anyhow::Error::msg(e.to_string()))?;
+
+            (command.fun)(&mut cx, verified_args, PromptEvent::Validate)
         };
 
         module.register_fn(command.name, func);

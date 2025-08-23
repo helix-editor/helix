@@ -879,7 +879,7 @@ impl<'a> Args<'a> {
 
     /// Performs any validations that must be done after the input args are finished being pushed
     /// with `Self::push`.
-    fn finish(&self) -> Result<(), ParseArgsError<'a>> {
+    pub fn finish(&self) -> Result<(), ParseArgsError<'a>> {
         if !self.validate {
             return Ok(());
         };
