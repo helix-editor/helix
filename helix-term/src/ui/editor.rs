@@ -196,7 +196,9 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+        let view_id = view.id;
         render_document(
+            Some(view_id),
             surface,
             inner,
             doc,
@@ -206,6 +208,7 @@ impl EditorView {
             overlays,
             theme,
             decorations,
+            is_focused,
         );
 
         // if we're not at the edge of the screen, draw a right border
