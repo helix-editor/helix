@@ -68,6 +68,7 @@
 | fga | ✓ | ✓ | ✓ |  |  |  |
 | fidl | ✓ |  |  |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |  | `fish-lsp` |
+| flatbuffers | ✓ |  |  |  |  |  |
 | forth | ✓ |  |  |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ |  |  | `fortls` |
 | fsharp | ✓ |  |  |  |  | `fsautocomplete` |
