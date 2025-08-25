@@ -986,6 +986,7 @@ scope = "source.htmldjango"
 injection-regex = "htmldjango"
 language-servers = ["djlsp", "vscode-html-language-server", "superhtml"]
 file-types = []
+roots = ["manage.py"]
 
 [language.auto-pairs]
 '"' = '"'
