@@ -562,15 +562,15 @@ impl Syntax {
         self.inner.tree_for_byte_range(start, end)
     }
 
-    pub fn named_descendant_for_byte_range(&self, start: u32, end: u32) -> Option<Node> {
+    pub fn named_descendant_for_byte_range(&self, start: u32, end: u32) -> Option<Node<'_>> {
         self.inner.named_descendant_for_byte_range(start, end)
     }
 
-    pub fn descendant_for_byte_range(&self, start: u32, end: u32) -> Option<Node> {
+    pub fn descendant_for_byte_range(&self, start: u32, end: u32) -> Option<Node<'_>> {
         self.inner.descendant_for_byte_range(start, end)
     }
 
-    pub fn walk(&self) -> TreeCursor {
+    pub fn walk(&self) -> TreeCursor<'_> {
         self.inner.walk()
     }
 
@@ -1073,7 +1073,7 @@ fn node_is_visible(node: &Node) -> bool {
     node.is_missing() || (node.is_named() && node.grammar().node_kind_is_visible(node.kind_id()))
 }
 
-fn format_anonymous_node_kind(kind: &str) -> Cow<str> {
+fn format_anonymous_node_kind(kind: &str) -> Cow<'_, str> {
     if kind.contains('"') {
         Cow::Owned(kind.replace('"', "\\\""))
     } else {
@@ -1130,7 +1130,6 @@ fn pretty_print_tree_impl<W: fmt::Write>(
 }
 
 /// Finds the child of `node` which contains the given byte range.
-
 pub fn child_for_byte_range<'a>(node: &Node<'a>, range: ops::Range<u32>) -> Option<Node<'a>> {
     for child in node.children() {
         let child_range = child.byte_range();

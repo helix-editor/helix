@@ -69,7 +69,7 @@ pub fn diagnostic<'doc>(
                 .iter()
                 .take_while(|d| {
                     d.line == line
-                        && d.provider.language_server_id().map_or(true, |id| {
+                        && d.provider.language_server_id().is_none_or(|id| {
                             doc.language_servers_with_feature(LanguageServerFeature::Diagnostics)
                                 .any(|ls| ls.id() == id)
                         })

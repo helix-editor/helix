@@ -67,6 +67,7 @@ impl LspCompletionItem {
     }
 }
 
+#[allow(clippy::large_enum_variant)] // TODO: In a separate PR attempt the `Box<LspCompletionItem>` pattern.
 #[derive(Debug, PartialEq, Clone)]
 pub enum CompletionItem {
     Lsp(LspCompletionItem),
