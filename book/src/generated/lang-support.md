@@ -78,6 +78,7 @@
 | gherkin | ✓ |  |  |  |  |  |
 | ghostty | ✓ |  |  |  |  |  |
 | git-attributes | ✓ |  |  |  |  |  |
+| git-cliff-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
 | git-commit | ✓ | ✓ |  |  |  |  |
 | git-config | ✓ | ✓ |  |  |  |  |
 | git-ignore | ✓ |  |  |  |  |  |
