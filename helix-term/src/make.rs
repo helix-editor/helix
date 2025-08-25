@@ -12,6 +12,7 @@ use tui::text::Span;
 // TODO(szulf): check the not closing error after opening logs on a non modified version of helix
 // TODO(szulf): figure out how to display messages from the make_list the same way as diagnostics
 // and make it togglable in the config i think(off by default i think)
+// TODO(szulf): write the return code(success/fail) while writing 'filled make list with ? entries'
 
 #[derive(Debug, Clone)]
 pub struct MakePickerData {
@@ -94,8 +95,6 @@ fn parse_with_regex(source: &str, regex: &str) -> Vec<Entry> {
     let mut results = Vec::new();
 
     for cap in regex.captures_iter(source) {
-        log::debug!("capture: {:?}", cap);
-
         let Some(path) = cap.name("path") else {
             continue;
         };
@@ -110,7 +109,7 @@ fn parse_with_regex(source: &str, regex: &str) -> Vec<Entry> {
 
         let severity = match cap.name("severity").map(|c| c.as_str()).unwrap_or_default() {
             "warning" => DiagnosticSeverity::WARNING,
-            "note" => DiagnosticSeverity::HINT,
+            "note" | "help" => DiagnosticSeverity::HINT,
             "error" | _ => DiagnosticSeverity::ERROR,
         };
 
@@ -142,8 +141,12 @@ fn parse_gcc(source: &str) -> Vec<Entry> {
     )
 }
 
-fn parse_msvc(_source: &str) -> Vec<Entry> {
-    todo!();
+// TODO(szulf): test this
+fn parse_msvc(source: &str) -> Vec<Entry> {
+    parse_with_regex(
+        source,
+        r"^<(?P<path>.+)>\((?P<line>\d+)\):\s(?P<severity>error|warning|note)(?:[^:]+)?:\s(?P<message>.+)$",
+    )
 }
 
 pub fn parse(format_type: MakeFormatType, source: &str) -> Vec<Entry> {
