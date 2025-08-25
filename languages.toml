@@ -2995,7 +2995,8 @@ file-types = [
   "sublime-snippet",
   "xsl",
   "mpd",
-  "smil"
+  "smil",
+  "gpx",
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
