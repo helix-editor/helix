@@ -2661,7 +2661,10 @@ fn make(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
                 let entries = make::parse(make_format_type, output.as_str());
                 let entries_count = entries.len();
                 editor.make_list.set(entries);
-                editor.set_status(format!("Filled make list with {} entries.", entries_count));
+                editor.set_status(format!(
+                    "Command run. Filled make list with {} entries.",
+                    entries_count
+                ));
             },
         ));
         Ok(call)
