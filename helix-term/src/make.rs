@@ -128,8 +128,11 @@ fn parse_default(_source: &str) -> Vec<Entry> {
     todo!();
 }
 
-fn parse_rust(_source: &str) -> Vec<Entry> {
-    todo!();
+fn parse_rust(source: &str) -> Vec<Entry> {
+    parse_with_regex(
+        source,
+        r"^(?P<severity>help|warning|error)(?:\[.+\])?:?\s(?P<message>.+)\n\s+-->\s(?P<path>[^:\n\s]+):(?P<line>\d+):(\d+)$",
+    )
 }
 
 fn parse_gcc(source: &str) -> Vec<Entry> {
