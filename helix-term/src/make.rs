@@ -123,10 +123,6 @@ fn parse_with_regex(source: &str, regex: &str) -> Vec<Entry> {
     results
 }
 
-fn parse_default(_source: &str) -> Vec<Entry> {
-    todo!();
-}
-
 fn parse_rust(source: &str) -> Vec<Entry> {
     parse_with_regex(
         source,
@@ -147,6 +143,16 @@ fn parse_msvc(source: &str) -> Vec<Entry> {
         source,
         r"^<(?P<path>.+)>\((?P<line>\d+)\):\s(?P<severity>error|warning|note)(?:[^:]+)?:\s(?P<message>.+)$",
     )
+}
+
+fn parse_default(source: &str) -> Vec<Entry> {
+    let mut entries = Vec::new();
+
+    entries.append(&mut parse_rust(source));
+    entries.append(&mut parse_gcc(source));
+    entries.append(&mut parse_msvc(source));
+
+    entries
 }
 
 pub fn parse(format_type: MakeFormatType, source: &str) -> Vec<Entry> {
