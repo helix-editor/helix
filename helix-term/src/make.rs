@@ -5,7 +5,7 @@ use helix_view::{
     make::{Entry, Location},
     theme::Style,
 };
-use regex::Regex;
+use regex::RegexBuilder;
 use std::path::PathBuf;
 use tui::text::Span;
 
@@ -88,116 +88,66 @@ impl From<&str> for MakeFormatType {
     }
 }
 
-fn parse_default<'a, T>(_lines: T) -> Vec<Entry>
-where
-    T: IntoIterator<Item = &'a str>,
-{
-    todo!();
-}
-
-fn parse_rust<'a, T>(_lines: T) -> Vec<Entry>
-where
-    T: IntoIterator<Item = &'a str>,
-{
-    todo!();
-}
-
-// TODO(szulf): make an error type?
-fn get_location_from_token(token: &str, col_amount: usize) -> Result<Location, ()> {
-    let mut loc = token
-        .split(':')
-        .map(|s| (*s).to_string())
-        .collect::<Vec<String>>();
-    loc.retain(|token| token != "");
-
-    if loc.len() < col_amount {
-        return Err(());
-    }
-
-    // NOTE(szulf): handle paths that contain ':'
-    while loc.len() > col_amount {
-        let second = loc.remove(1);
-        loc[0].push_str(second.as_str());
-    }
-
-    let path = PathBuf::from(loc.remove(0));
-    if !path.exists() {
-        return Err(());
-    }
-
-    let line = match loc[0].parse::<usize>() {
-        Ok(l) => l - 1,
-        Err(_) => {
-            return Err(());
-        }
-    };
-
-    return Ok(Location {
-        path: path,
-        line: line,
-    });
-}
-
-fn parse_gcc<'a, T>(lines: T) -> Vec<Entry>
-where
-    T: IntoIterator<Item = &'a str>,
-{
-    let regex = Regex::new(
-        r"^(?P<path>[^:\n\s]+)(?::(?P<line>\d+))?(?::\d+)?(?::\([^)]+\))?:\s(?P<severity>error|warning|note)?:?\s?(?P<message>.+)$",
-    )
-    .unwrap();
+fn parse_with_regex(source: &str, regex: &str) -> Vec<Entry> {
+    let regex = RegexBuilder::new(regex).multi_line(true).build().unwrap();
 
     let mut results = Vec::new();
 
-    for line in lines {
-        let capture = regex.captures(line);
-        match capture {
-            Some(cap) => {
-                let Some(path) = cap.name("path") else {
-                    continue;
-                };
-                let Some(line) = cap.name("line") else {
-                    continue;
-                };
+    for cap in regex.captures_iter(source) {
+        log::debug!("capture: {:?}", cap);
 
-                let location = Location {
-                    path: path.as_str().into(),
-                    line: line.as_str().parse::<usize>().unwrap() - 1,
-                };
+        let Some(path) = cap.name("path") else {
+            continue;
+        };
+        let Some(line) = cap.name("line") else {
+            continue;
+        };
 
-                let severity = match cap.name("severity").map(|c| c.as_str()).unwrap_or_default() {
-                    "warning" => DiagnosticSeverity::WARNING,
-                    "note" => DiagnosticSeverity::HINT,
-                    "error" | _ => DiagnosticSeverity::ERROR,
-                };
+        let location = Location {
+            path: path.as_str().into(),
+            line: line.as_str().parse::<usize>().unwrap() - 1,
+        };
 
-                let Some(message) = cap.name("message") else {
-                    continue;
-                };
+        let severity = match cap.name("severity").map(|c| c.as_str()).unwrap_or_default() {
+            "warning" => DiagnosticSeverity::WARNING,
+            "note" => DiagnosticSeverity::HINT,
+            "error" | _ => DiagnosticSeverity::ERROR,
+        };
 
-                results.push(Entry::new(location, message.as_str().to_owned(), severity));
-            }
-            None => {}
-        }
+        let Some(message) = cap.name("message") else {
+            continue;
+        };
+
+        results.push(Entry::new(location, message.as_str().to_owned(), severity));
     }
 
     results
 }
 
-fn parse_msvc<'a, T>(_lines: T) -> Vec<Entry>
-where
-    T: IntoIterator<Item = &'a str>,
-{
+fn parse_default(_source: &str) -> Vec<Entry> {
+    todo!();
+}
+
+fn parse_rust(_source: &str) -> Vec<Entry> {
+    todo!();
+}
+
+fn parse_gcc(source: &str) -> Vec<Entry> {
+    parse_with_regex(
+        source,
+        r"^(?P<path>[^:\n\s]+)(?::(?P<line>\d+))?(?::\d+)?(?::\([^)]+\))?:\s(?P<severity>error|warning|note)?:?\s?(?P<message>.+)$",
+    )
+}
+
+fn parse_msvc(_source: &str) -> Vec<Entry> {
     todo!();
 }
 
 pub fn parse(format_type: MakeFormatType, source: &str) -> Vec<Entry> {
-    let lines = source.lines();
-
     match format_type {
-        MakeFormatType::Default => parse_default(lines),
-        MakeFormatType::Rust => parse_rust(lines),
-        MakeFormatType::Gcc | MakeFormatType::Clang => parse_gcc(lines),
-        MakeFormatType::Msvc => parse_msvc(lines),
+        MakeFormatType::Default => parse_default(source),
+        MakeFormatType::Rust => parse_rust(source),
+        MakeFormatType::Gcc | MakeFormatType::Clang => parse_gcc(source),
+        MakeFormatType::Msvc => parse_msvc(source),
     }
 }
