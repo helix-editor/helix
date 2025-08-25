@@ -1,6 +1,6 @@
 use crate::commands::{goto_location, Context};
 use crate::ui::{Picker, PickerColumn};
-use helix_lsp::lsp::DiagnosticSeverity;
+use helix_core::diagnostic::Severity;
 use helix_view::{
     make::{Entry, Location},
     theme::Style,
@@ -13,6 +13,7 @@ use tui::text::Span;
 // TODO(szulf): figure out how to display messages from the make_list the same way as diagnostics
 // and make it togglable in the config i think(off by default i think)
 // TODO(szulf): write the return code(success/fail) while writing 'filled make list with ? entries'
+// TODO(szulf): add keybindings for going to next/prev item in make list
 
 #[derive(Debug, Clone)]
 pub struct MakePickerData {
@@ -39,11 +40,10 @@ pub fn make_picker(cx: &Context, root: PathBuf) -> MakePicker {
     let columns = vec![
         PickerColumn::new("severity", |entry: &Entry, data: &MakePickerData| {
             match entry.severity {
-                DiagnosticSeverity::HINT => Span::styled("HINT", data.hint),
-                DiagnosticSeverity::INFORMATION => Span::styled("INFO", data.info),
-                DiagnosticSeverity::WARNING => Span::styled("WARN", data.warning),
-                DiagnosticSeverity::ERROR => Span::styled("ERROR", data.error),
-                _ => Span::raw(""),
+                Severity::Hint => Span::styled("HINT", data.hint),
+                Severity::Info => Span::styled("INFO", data.info),
+                Severity::Warning => Span::styled("WARN", data.warning),
+                Severity::Error => Span::styled("ERROR", data.error),
             }
             .into()
         }),
@@ -108,9 +108,9 @@ fn parse_with_regex(source: &str, regex: &str) -> Vec<Entry> {
         };
 
         let severity = match cap.name("severity").map(|c| c.as_str()).unwrap_or_default() {
-            "warning" => DiagnosticSeverity::WARNING,
-            "note" | "help" => DiagnosticSeverity::HINT,
-            "error" | _ => DiagnosticSeverity::ERROR,
+            "warning" => Severity::Warning,
+            "note" | "help" => Severity::Hint,
+            "error" | _ => Severity::Error,
         };
 
         let Some(message) = cap.name("message") else {
