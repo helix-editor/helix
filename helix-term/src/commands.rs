@@ -22,7 +22,8 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    command_line, comment,
+    command_line::{self, Args},
+    comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary},
@@ -252,9 +253,13 @@ impl MappableCommand {
                         jobs: cx.jobs,
                         scroll: None,
                     };
-                    if let Err(e) =
-                        typed::execute_command(&mut cx, command, args, PromptEvent::Validate)
-                    {
+                    if let Err(e) = typed::execute_command(
+                        &mut cx,
+                        command,
+                        args,
+                        &Args::empty(),
+                        PromptEvent::Validate,
+                    ) {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {
