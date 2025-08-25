@@ -6443,14 +6443,11 @@ fn shell_prompt<F>(cx: &mut Context, prompt: Cow<'static, str>, mut callback_fn:
 where
     F: FnMut(&mut compositor::Context, Args) + 'static,
 {
-    let offset = prompt.len();
     ui::prompt(
         cx,
         prompt,
         Some('|'),
-        move |editor, input| {
-            complete_command_args(editor, SHELL_SIGNATURE, &SHELL_COMPLETER, input, offset)
-        },
+        |editor, input| complete_command_args(editor, SHELL_SIGNATURE, &SHELL_COMPLETER, input, 0),
         move |cx, input, event| {
             if event != PromptEvent::Validate || input.is_empty() {
                 return;
