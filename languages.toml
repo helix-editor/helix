@@ -2996,7 +2996,7 @@ file-types = [
   "xsl",
   "mpd",
   "smil",
-  "gpx"
+  "gpx",
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
