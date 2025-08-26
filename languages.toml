@@ -4707,3 +4707,14 @@ comment-token = "#"
 file-types = [{ glob = "cliff.toml" }]
 language-servers = ["taplo", "tombi"]
 indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "strictdoc"
+source = { git = "https://github.com/manueldiagostino/tree-sitter-strictdoc", rev = "1fadb5ab41602e77c1da0cf78917c58bd9bdd26f" }
+
+[[language]]
+name = "strictdoc"
+scope = "source.strictdoc"
+injection-regex = "strictdoc"
+file-types = ["sdoc", "sgra"]
+comment-token = ".."
