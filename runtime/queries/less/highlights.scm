@@ -6,7 +6,7 @@
   "@charset"
 ] @keyword
 
-(js_comment) @comment @spell
+(js_comment) @comment
 
 (function_name) @function
 
