@@ -447,6 +447,18 @@ name = "fish"
 source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "a78aef9abc395c600c38a037ac779afc7e3cc9e0" }
 
 [[language]]
+name = "flatbuffers"
+scope = "source.flatbuffers"
+injection-regex = "(flatbuffers?|fbs)"
+file-types = ["fbs"]
+comment-token = "//"
+indent = { tab-width = 2, unit = " " }
+
+[[grammar]]
+name = "flatbuffers"
+source = { git = "https://github.com/yuanchenxi95/tree-sitter-flatbuffers", rev = "95e6f9ef101ea97e870bf6eebc0bd1fdfbaf5490" }
+
+[[language]]
 name = "mint"
 scope = "source.mint"
 injection-regex = "mint"
@@ -2983,7 +2995,8 @@ file-types = [
   "sublime-snippet",
   "xsl",
   "mpd",
-  "smil"
+  "smil",
+  "gpx",
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
@@ -4682,4 +4695,15 @@ grammar = "toml"
 comment-token = "#"
 file-types = [{glob = "Cross.toml"}]
 language-servers = [ "taplo", "tombi" ]
+indent = { tab-width = 2, unit = "  " }
+
+# https://git-cliff.org/docs/configuration/
+[[language]]
+name = "git-cliff-config"
+scope = "source.git-cliff-config"
+injection-regex = "git-cliff(-config)"
+grammar = "toml"
+comment-token = "#"
+file-types = [{ glob = "cliff.toml" }]
+language-servers = ["taplo", "tombi"]
 indent = { tab-width = 2, unit = "  " }

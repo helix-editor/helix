@@ -435,6 +435,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
+    pub fn with_initial_cursor(mut self, cursor: u32) -> Self {
+        self.cursor = cursor;
+        self
+    }
+
     pub fn with_dynamic_query(
         mut self,
         callback: DynQueryCallback<T, D>,

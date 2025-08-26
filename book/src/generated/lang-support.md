@@ -68,6 +68,7 @@
 | fga | ✓ | ✓ | ✓ |  |  |  |
 | fidl | ✓ |  |  |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |  | `fish-lsp` |
+| flatbuffers | ✓ |  |  |  |  |  |
 | forth | ✓ |  |  |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ |  |  | `fortls` |
 | fsharp | ✓ |  |  |  |  | `fsautocomplete` |
@@ -77,6 +78,7 @@
 | gherkin | ✓ |  |  |  |  |  |
 | ghostty | ✓ |  |  |  |  |  |
 | git-attributes | ✓ |  |  |  |  |  |
+| git-cliff-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
 | git-commit | ✓ | ✓ |  |  |  |  |
 | git-config | ✓ | ✓ |  |  |  |  |
 | git-ignore | ✓ |  |  |  |  |  |

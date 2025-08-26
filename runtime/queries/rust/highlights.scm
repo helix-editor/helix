@@ -210,10 +210,6 @@
 ; Keywords
 ; -------
 
-(for_expression
-  "for" @keyword.control.repeat)
-(gen_block "gen" @keyword.control)
-
 "in" @keyword.control
 
 [
@@ -262,6 +258,10 @@
   "default"
   "async"
 ] @keyword
+
+(for_expression
+  "for" @keyword.control.repeat)
+(gen_block "gen" @keyword.control)
 
 [
   "struct"
