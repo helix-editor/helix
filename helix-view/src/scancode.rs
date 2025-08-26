@@ -712,7 +712,7 @@ mod defaults {
                 entry!(50, "m", "M"),
                 entry!(51, ",", "<"),
                 entry!(52, ".", ">"),
-                entry!(53, "/", "|"),
+                entry!(53, "/", "?"),
                 entry!(54, "rightshift"),
                 entry!(55, "printscreen"),
                 entry!(56, "leftalt"),
