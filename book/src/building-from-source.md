@@ -28,7 +28,7 @@ RUSTFLAGS="-C target-feature=-crt-static"
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/helix-editor/helix
+   git clone https://github.com/helix-editor/helix.git
    cd helix
    ```
 
