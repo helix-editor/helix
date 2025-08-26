@@ -1491,6 +1491,7 @@ file-types = [
   { glob = ".clang-format" },
   { glob = ".clang-tidy" },
   { glob = ".gem/credentials" },
+  { glob = ".kube/config" },
   "sublime-syntax"
 ]
 comment-token = "#"
@@ -3104,6 +3105,7 @@ file-types = [
   { glob = "hgrc" },
   { glob = "npmrc" },
   { glob = "rclone.conf" },
+  { glob = ".aws/config" },
   "properties",
   "cfg",
   "directory"
