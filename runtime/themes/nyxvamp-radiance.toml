@@ -1,6 +1,9 @@
 # nyxvamp - radiance variant
 # author: <zoey.spessanha@zeetech.io>
 
+# Rainbow parentheses colors
+rainbow = ["keyword_fg", "function_fg", "constant_fg", "string_fg"]
+
 # UI Elements
 "ui.background"               = { bg = "background", fg = "foreground" }
 "ui.text"                     = { fg = "foreground" }
@@ -120,14 +123,14 @@ variable_builtin_fg           = "#9F1239"  # Even darker pink built-in variables
 type_fg                       = "#6B46C1"  # Darker purple types for better contrast
 type_builtin_fg               = "#6B46C1"  # Darker purple built-in types for better contrast
 attribute_fg                  = "#9655FF"  # Deep purple attributes
-namespace_fg                  = "#9655FF"  # Deep purple namespaces
+namespace_fg                  = "#6B46C1"  # Darker purple namespaces (Base16 base0E)
 punctuation_fg                = "#1E1E2E"  # Deep navy punctuation
 symbol_fg                     = "#9F1239"  # Even darker pink symbols (atoms) for maximum contrast
 
-error_fg                      = "#E78284"  # Soft red errors
-warning_fg                    = "#E5C890"  # Soft yellow warnings
-info_fg                       = "#8CAAEE"  # Soft blue info
-hint_fg                       = "#8BD5CA"  # Soft cyan hints
+error_fg                      = "#9F1239"  # Base16 base08 - red errors
+warning_fg                    = "#C2410C"  # Base16 base09 - orange warnings
+info_fg                       = "#005F87"  # Base16 base0B - blue info
+hint_fg                       = "#8BD5CA"  # Base16 base0C - cyan hints
 
 diff_add_fg                   = "#A6DA95"  # Soft green additions
 diff_delete_fg                = "#E78284"  # Soft red deletions
