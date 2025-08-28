@@ -9,10 +9,8 @@ use regex::RegexBuilder;
 use std::path::PathBuf;
 use tui::text::Span;
 
-// TODO(szulf): check the not closing error after opening logs on a non modified version of helix
 // TODO(szulf): figure out how to display messages from the make_list the same way as diagnostics
 // and make it togglable in the config i think(off by default i think)
-// TODO(szulf): write the return code(success/fail) while writing 'filled make list with ? entries'
 // TODO(szulf): add keybindings for going to next/prev item in make list
 
 #[derive(Debug, Clone)]
@@ -67,7 +65,6 @@ pub fn make_picker(cx: &Context, root: PathBuf) -> MakePicker {
     })
 }
 
-// TODO(szulf): dont really see the point of this enum honestly
 #[derive(Debug)]
 pub enum MakeFormatType {
     Default,
@@ -137,7 +134,6 @@ fn parse_gcc(source: &str) -> Vec<Entry> {
     )
 }
 
-// TODO(szulf): test this
 fn parse_msvc(source: &str) -> Vec<Entry> {
     parse_with_regex(
         source,
