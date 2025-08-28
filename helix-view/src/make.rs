@@ -8,8 +8,6 @@ pub struct Location {
     pub line: usize,
 }
 
-// TODO(szulf): maybe add a way for entries to reference other entries
-// so that things like note: can actually be linked back to the original error
 #[derive(Debug, Clone)]
 pub struct Entry {
     pub location: Location,

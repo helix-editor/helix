@@ -160,7 +160,6 @@ impl EditorView {
             }
         }
 
-        // NOTE(szulf): gutter diagnostics HERE
         let gutter_overflow = view.gutter_offset(doc) == 0;
         if !gutter_overflow {
             Self::render_gutter(
@@ -189,7 +188,6 @@ impl EditorView {
         let width = view.inner_width(doc);
         let config = doc.config.load();
 
-        // NOTE(szulf): text for diagnostics HERE
         let enable_cursor_line = view
             .diagnostics_handler
             .show_cursorline_diagnostics(doc, view.id);
@@ -498,7 +496,6 @@ impl EditorView {
                 Severity::Info => &mut info_vec,
             };
 
-            // TODO(szulf): have to check here if im in the right file
             let current_path = match doc.path() {
                 Some(path) => match path.strip_prefix(find_workspace().0) {
                     Ok(path) => path,
