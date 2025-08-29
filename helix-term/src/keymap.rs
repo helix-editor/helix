@@ -319,11 +319,7 @@ impl Keymaps {
 
     pub fn contains_key(&self, mode: Mode, key: KeyEvent) -> bool {
         let keymaps = &*self.map();
-        let keymap = match keymaps.get(&mode) {
-            Some(k) => k,
-            None => return false,
-        };
-
+        let keymap = &keymaps[&mode];
         keymap
             .search(self.pending())
             .and_then(KeyTrie::node)
@@ -336,10 +332,7 @@ impl Keymaps {
     pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
         // TODO: remove the sticky part and look up manually
         let keymaps = &*self.map();
-        let keymap = match keymaps.get(&mode) {
-            Some(k) => k,
-            None => return KeymapResult::NotFound,
-        };
+        let keymap = &keymaps[&mode];
 
         if key!(Esc) == key {
             if !self.state.is_empty() {
