@@ -7,9 +7,9 @@ use helix_core::syntax::{self, HighlightEvent, Highlighter, OverlayHighlights};
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{visual_offset_from_block, Position, RopeSlice};
 use helix_stdx::rope::RopeSliceExt;
-use helix_view::editor::{RainbowIndent, WhitespaceConfig, WhitespaceRenderValue};
+use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
-use helix_view::theme::{Modifier, Style};
+use helix_view::theme::Style;
 use helix_view::view::ViewPosition;
 use helix_view::{Document, Theme};
 use tui::buffer::Buffer as Surface;
@@ -179,7 +179,7 @@ pub struct TextRenderer<'a> {
     pub whitespace_style: Style,
     pub indent_guide_char: String,
     pub indent_guide_style: Style,
-    pub indent_guide_rainbow: RainbowIndent,
+    pub indent_guide_rainbow: bool,
     pub theme: &'a Theme,
     pub newline: String,
     pub nbsp: String,
@@ -245,7 +245,7 @@ impl<'a> TextRenderer<'a> {
         };
 
         let text_style = theme.get("ui.text");
-        let basic_style = text_style.patch(
+        let indent_guide_style = text_style.patch(
             theme
                 .try_get("ui.virtual.indent-guide")
                 .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
@@ -256,7 +256,7 @@ impl<'a> TextRenderer<'a> {
         TextRenderer {
             surface,
             indent_guide_char: editor_config.indent_guides.character.into(),
-            indent_guide_rainbow: editor_config.indent_guides.rainbow_indent.clone(),
+            indent_guide_rainbow: editor_config.indent_guides.rainbow,
             theme,
             newline,
             nbsp,
@@ -269,7 +269,7 @@ impl<'a> TextRenderer<'a> {
             starting_indent: offset.col / indent_width as usize
                 + (offset.col % indent_width as usize != 0) as usize
                 + editor_config.indent_guides.skip_levels as usize,
-            indent_guide_style: basic_style,
+            indent_guide_style,
             text_style,
             draw_indent_guides: editor_config.indent_guides.render,
             viewport,
@@ -414,16 +414,14 @@ impl<'a> TextRenderer<'a> {
                 as u16;
             let y = self.viewport.y + row;
             debug_assert!(self.surface.in_bounds(x, y));
-            let style = match self.indent_guide_rainbow {
-                RainbowIndent::None => self.indent_guide_style,
-                RainbowIndent::Dim => self
-                    .indent_guide_style
-                    .patch(self.theme.get_rainbow(i))
-                    .add_modifier(Modifier::DIM),
-                RainbowIndent::Normal => self.indent_guide_style.patch(self.theme.get_rainbow(i)),
+            let indent_guide_style = if self.indent_guide_rainbow {
+                self.indent_guide_style
+                    .patch(self.theme.get_indent_rainbow(i))
+            } else {
+                self.indent_guide_style
             };
             self.surface
-                .set_string(x, y, &self.indent_guide_char, style)
+                .set_string(x, y, &self.indent_guide_char, indent_guide_style)
         }
     }
 
