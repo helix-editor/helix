@@ -38,12 +38,19 @@ pub enum GraphemeSource {
     VirtualText {
         highlight: Option<Highlight>,
     },
+    Annotation {
+        codepoints: u32,
+    },
 }
 
 impl GraphemeSource {
     /// Returns whether this grapheme is virtual inline text
     pub fn is_virtual(self) -> bool {
         matches!(self, GraphemeSource::VirtualText { .. })
+    }
+
+    pub fn is_annotation(self) -> bool {
+        matches!(self, GraphemeSource::Annotation { .. })
     }
 
     pub fn is_eof(self) -> bool {
@@ -54,6 +61,7 @@ impl GraphemeSource {
     pub fn doc_chars(self) -> usize {
         match self {
             GraphemeSource::Document { codepoints } => codepoints as usize,
+            GraphemeSource::Annotation { codepoints } => codepoints as usize,
             GraphemeSource::VirtualText { .. } => 0,
         }
     }
@@ -267,12 +275,16 @@ impl<'t> DocumentFormatter<'t> {
                 let codepoints = grapheme.len_chars() as u32;
 
                 let overlay = self.annotations.overlay_at(char_pos);
-                let grapheme = match overlay {
-                    Some((overlay, _)) => overlay.grapheme.as_str().into(),
-                    None => Cow::from(grapheme).into(),
-                };
-
-                (grapheme, GraphemeSource::Document { codepoints })
+                match overlay {
+                    Some((overlay, _)) => (
+                        overlay.grapheme.as_str().into(),
+                        GraphemeSource::Annotation { codepoints },
+                    ),
+                    None => (
+                        Cow::from(grapheme).into(),
+                        GraphemeSource::Document { codepoints },
+                    ),
+                }
             } else {
                 if self.exhausted {
                     return None;
