@@ -29,9 +29,11 @@ use helix_view::{
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
+    Document, DocumentId, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
+use std::{
+    collections::HashMap, ffi::OsString, mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc,
+};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -593,7 +595,6 @@ impl EditorView {
 
     /// Render bufferline at the top
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
             viewport,
             editor
@@ -615,14 +616,31 @@ impl EditorView {
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
+        use helix_view::editor::BufferLineContextMode;
+        let fnames = match editor.config().bufferline.context.clone() {
+            BufferLineContextMode::None => {
+                let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+                HashMap::<DocumentId, String>::from_iter(editor.documents().map(|doc| {
+                    (
+                        doc.id(),
+                        doc.path()
+                            .unwrap_or(&scratch)
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_str()
+                            .unwrap_or_default()
+                            .to_owned(),
+                    )
+                }))
+            }
+            BufferLineContextMode::Minimal => expand_fname_contexts(
+                editor.documents().collect::<Vec<&Document>>(),
+                SCRATCH_BUFFER_NAME,
+            ),
+        };
+
         for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+            let fname = fnames.get(&doc.id()).unwrap();
 
             let style = if current_doc == doc.id() {
                 bufferline_active
@@ -1527,10 +1545,10 @@ impl Component for EditorView {
         let config = cx.editor.config();
 
         // check if bufferline should be rendered
-        use helix_view::editor::BufferLine;
-        let use_bufferline = match config.bufferline {
-            BufferLine::Always => true,
-            BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
+        use helix_view::editor::BufferLineRenderMode;
+        let use_bufferline = match config.bufferline.show {
+            BufferLineRenderMode::Always => true,
+            BufferLineRenderMode::Multiple => 1 < cx.editor.documents.len(),
             _ => false,
         };
 
@@ -1647,4 +1665,76 @@ fn canonicalize_key(key: &mut KeyEvent) {
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
     }
+}
+
+#[derive(Default)]
+struct PathTrie {
+    parents: HashMap<OsString, PathTrie>,
+    visits: u32,
+}
+
+/// Returns a unique path ending for the current set of documents in the
+/// editor. For example, documents `a/b` and `c/d` would resolve to `b` and `d`
+/// respectively, while `a/b/c` and `a/d/c` would resolve to `b/c` and `d/c`
+/// respectively.
+fn expand_fname_contexts<'a>(
+    documents: Vec<&'a Document>,
+    scratch: &'a str,
+) -> HashMap<DocumentId, String> {
+    let mut trie = HashMap::new();
+
+    // Build out a reverse prefix trie for all documents
+    for doc in documents.iter() {
+        let Some(path) = doc.path() else {
+            continue;
+        };
+
+        let mut current_subtrie = &mut trie;
+
+        for component in path.components().rev() {
+            let segment = component.as_os_str().to_os_string();
+            let subtrie = current_subtrie
+                .entry(segment)
+                .or_insert_with(PathTrie::default);
+
+            subtrie.visits += 1;
+            current_subtrie = &mut subtrie.parents;
+        }
+    }
+
+    let mut fnames = HashMap::new();
+
+    // Navigate the built reverse prefix trie to find the smallest unique path
+    for doc in documents.iter() {
+        let Some(path) = doc.path() else {
+            fnames.insert(doc.id(), scratch.to_owned());
+            continue;
+        };
+
+        let mut current_subtrie = &trie;
+        let mut built_path = vec![];
+
+        for component in path.components().rev() {
+            let segment = component.as_os_str().to_os_string();
+            let subtrie = current_subtrie
+                .get(&segment)
+                .expect("should have contained segment");
+
+            built_path.insert(0, segment);
+
+            if subtrie.visits == 1 {
+                fnames.insert(
+                    doc.id(),
+                    PathBuf::from_iter(built_path.iter())
+                        .to_string_lossy()
+                        .into_owned(),
+                );
+                break;
+            }
+
+            current_subtrie = &subtrie.parents;
+        }
+    }
+
+    fnames
 }
