@@ -410,3 +410,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         Mode::Insert => insert,
     )
 }
+
+// MARK RRAKEA
+pub fn empty() -> HashMap<Mode, KeyTrie> {
+    hashmap!()
+}

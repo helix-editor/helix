@@ -19,6 +19,7 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
+    // MARK RRAKEA
     pub theme: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
@@ -66,14 +67,6 @@ impl Config {
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let res = match (global_config, local_config) {
             (Ok(global), Ok(local)) => {
-                let mut keys = keymap::default();
-                if let Some(global_keys) = global.keys {
-                    merge_keys(&mut keys, global_keys)
-                }
-                if let Some(local_keys) = local.keys {
-                    merge_keys(&mut keys, local_keys)
-                }
-
                 let editor = match (global.editor, local.editor) {
                     (None, None) => helix_view::editor::Config::default(),
                     (None, Some(val)) | (Some(val), None) => {
@@ -83,6 +76,20 @@ impl Config {
                         .try_into()
                         .map_err(ConfigLoadError::BadConfig)?,
                 };
+
+                let mut keys = if editor.load_default_keymap {
+                    keymap::default()
+                } else {
+                    keymap::empty()
+                };
+
+                // MARK RRAKEA
+                if let Some(global_keys) = global.keys {
+                    merge_keys(&mut keys, global_keys)
+                }
+                if let Some(local_keys) = local.keys {
+                    merge_keys(&mut keys, local_keys)
+                }
 
                 Config {
                     theme: local.theme.or(global.theme),

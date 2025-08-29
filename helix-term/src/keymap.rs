@@ -15,7 +15,7 @@ use std::{
     sync::Arc,
 };
 
-pub use default::default;
+pub use default::{default, empty};
 use macros::key;
 
 #[derive(Debug, Clone, Default)]
@@ -43,6 +43,7 @@ impl<'de> Deserialize<'de> for KeyTrieNode {
 }
 
 impl KeyTrieNode {
+    // MARK RRAKEA
     pub fn new(name: &str, map: HashMap<KeyEvent, KeyTrie>, order: Vec<KeyEvent>) -> Self {
         Self {
             name: name.to_string(),
@@ -130,6 +131,7 @@ impl DerefMut for KeyTrieNode {
     }
 }
 
+// MARK RRAKEA
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
     MappableCommand(MappableCommand),
@@ -208,6 +210,7 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
 }
 
 impl KeyTrie {
+    // MARK RRAKEA
     pub fn reverse_map(&self) -> ReverseKeymap {
         // recursively visit all nodes in keymap
         fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
