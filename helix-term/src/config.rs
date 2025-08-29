@@ -103,17 +103,25 @@ impl Config {
                 return Err(ConfigLoadError::BadConfig(err))
             }
             (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
-                let mut keys = keymap::default();
+                let editor = config.editor.map_or_else(
+                    || Ok(helix_view::editor::Config::default()),
+                    |val| val.try_into().map_err(ConfigLoadError::BadConfig),
+                )?;
+
+                let mut keys = if editor.load_default_keymap {
+                    keymap::default()
+                } else {
+                    keymap::empty()
+                };
+
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
+
                 Config {
                     theme: config.theme,
                     keys,
-                    editor: config.editor.map_or_else(
-                        || Ok(helix_view::editor::Config::default()),
-                        |val| val.try_into().map_err(ConfigLoadError::BadConfig),
-                    )?,
+                    editor,
                 }
             }
 
