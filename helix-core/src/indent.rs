@@ -1010,7 +1010,11 @@ pub fn indent_for_newline(
 ) -> String {
     if *indent_heuristic == IndentationHeuristic::Verbatim {
         let line = text.line(current_line);
-        return match line.first_non_whitespace_char() {
+        // We consider all whitespace as part of indentation, except for newlines and carriage returns.
+        return match line
+            .chars()
+            .position(|ch| !ch.is_whitespace() || ch == '\n' || ch == '\r')
+        {
             Some(i) => line.slice(0..i).to_string(),
             None => line.to_string(),
         };
