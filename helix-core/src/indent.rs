@@ -1008,6 +1008,14 @@ pub fn indent_for_newline(
     line_before_end_pos: usize,
     current_line: usize,
 ) -> String {
+    if *indent_heuristic == IndentationHeuristic::Verbatim {
+        let line = text.line(current_line);
+        return match line.first_non_whitespace_char() {
+            Some(i) => line.slice(0..i).to_string(),
+            None => line.to_string(),
+        };
+    }
+
     let indent_width = indent_style.indent_width(tab_width);
     if let (
         IndentationHeuristic::TreeSitter | IndentationHeuristic::Hybrid,
