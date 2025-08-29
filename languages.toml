@@ -1593,7 +1593,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "zig"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev = "eb7d58c2dc4fbeea4745019dee8df013034ae66b" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev = "b71affffdb4222ff2d2dea6e164f76603b0be6bc" }
 
 [[language]]
 name = "prolog"
