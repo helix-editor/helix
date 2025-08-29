@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::keymap::KeyTrieNode;
+
 use super::macros::keymap;
 use super::{KeyTrie, Mode};
 use helix_core::hashmap;
@@ -413,5 +415,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
 // MARK RRAKEA
 pub fn empty() -> HashMap<Mode, KeyTrie> {
-    hashmap!()
+    hashmap!(
+        Mode::Normal => KeyTrie::Node(KeyTrieNode::new("", HashMap::new(), Vec::new())),
+        Mode::Select => KeyTrie::Node(KeyTrieNode::new("", HashMap::new(), Vec::new())),
+        Mode::Insert => KeyTrie::Node(KeyTrieNode::new("", HashMap::new(), Vec::new())),
+    )
 }

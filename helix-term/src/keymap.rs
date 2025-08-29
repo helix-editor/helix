@@ -66,6 +66,7 @@ impl KeyTrieNode {
             }
             self.map.insert(key, trie);
         }
+        // MARK RRAKEA
         for &key in self.map.keys() {
             if !self.order.contains(&key) {
                 self.order.push(key);
@@ -397,6 +398,7 @@ impl Default for Keymaps {
     }
 }
 
+// MARK RRAKEA
 /// Merge default config keys with user overwritten keys for custom user config.
 pub fn merge_keys(dst: &mut HashMap<Mode, KeyTrie>, mut delta: HashMap<Mode, KeyTrie>) {
     for (mode, keys) in dst {
