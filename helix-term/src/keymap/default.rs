@@ -413,7 +413,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
     )
 }
 
-// MARK RRAKEA
 pub fn empty() -> HashMap<Mode, KeyTrie> {
     hashmap!(
         Mode::Normal => KeyTrie::Node(KeyTrieNode::new("", HashMap::new(), Vec::new())),

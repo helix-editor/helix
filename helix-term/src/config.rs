@@ -19,7 +19,6 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
-    // MARK RRAKEA
     pub theme: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
@@ -83,7 +82,6 @@ impl Config {
                     keymap::empty()
                 };
 
-                // MARK RRAKEA
                 if let Some(global_keys) = global.keys {
                     merge_keys(&mut keys, global_keys)
                 }

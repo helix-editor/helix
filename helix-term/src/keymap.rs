@@ -43,7 +43,6 @@ impl<'de> Deserialize<'de> for KeyTrieNode {
 }
 
 impl KeyTrieNode {
-    // MARK RRAKEA
     pub fn new(name: &str, map: HashMap<KeyEvent, KeyTrie>, order: Vec<KeyEvent>) -> Self {
         Self {
             name: name.to_string(),
@@ -66,7 +65,6 @@ impl KeyTrieNode {
             }
             self.map.insert(key, trie);
         }
-        // MARK RRAKEA
         for &key in self.map.keys() {
             if !self.order.contains(&key) {
                 self.order.push(key);
@@ -132,7 +130,6 @@ impl DerefMut for KeyTrieNode {
     }
 }
 
-// MARK RRAKEA
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
     MappableCommand(MappableCommand),
@@ -211,7 +208,6 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
 }
 
 impl KeyTrie {
-    // MARK RRAKEA
     pub fn reverse_map(&self) -> ReverseKeymap {
         // recursively visit all nodes in keymap
         fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
@@ -398,7 +394,6 @@ impl Default for Keymaps {
     }
 }
 
-// MARK RRAKEA
 /// Merge default config keys with user overwritten keys for custom user config.
 pub fn merge_keys(dst: &mut HashMap<Mode, KeyTrie>, mut delta: HashMap<Mode, KeyTrie>) {
     for (mode, keys) in dst {
