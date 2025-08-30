@@ -177,7 +177,14 @@ impl Compositor {
     }
 
     pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // Check if there are prompt layers active and update EditorView
+        let has_prompt = self.has_component("helix_term::ui::prompt::Prompt");
+
         for layer in &mut self.layers {
+            // Update prompt state for EditorView
+            if let Some(editor_view) = layer.as_any_mut().downcast_mut::<crate::ui::EditorView>() {
+                editor_view.prompt_active = has_prompt;
+            }
             layer.render(area, surface, cx);
         }
     }
