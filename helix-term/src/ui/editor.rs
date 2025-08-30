@@ -15,6 +15,7 @@ use crate::{
 
 use helix_core::{
     diagnostic::NumberOrString,
+    find_workspace,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, OverlayHighlights},
@@ -140,6 +141,7 @@ impl EditorView {
         }
 
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
+        Self::doc_makelist_highlights_into(doc, editor, theme, &mut overlays);
 
         if is_focused {
             if let Some(tabstops) = Self::tabstop_highlights(doc, theme) {
@@ -185,6 +187,7 @@ impl EditorView {
         }
         let width = view.inner_width(doc);
         let config = doc.config.load();
+
         let enable_cursor_line = view
             .diagnostics_handler
             .show_cursorline_diagnostics(doc, view.id);
@@ -196,6 +199,7 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+
         render_document(
             surface,
             inner,
@@ -439,6 +443,75 @@ impl EditorView {
                 ranges: deprecated_vec,
             });
         }
+        overlay_highlights.extend([
+            OverlayHighlights::Homogeneous {
+                highlight: get_scope_of("diagnostic.info"),
+                ranges: info_vec,
+            },
+            OverlayHighlights::Homogeneous {
+                highlight: get_scope_of("diagnostic.hint"),
+                ranges: hint_vec,
+            },
+            OverlayHighlights::Homogeneous {
+                highlight: get_scope_of("diagnostic.warning"),
+                ranges: warning_vec,
+            },
+            OverlayHighlights::Homogeneous {
+                highlight: get_scope_of("diagnostic.error"),
+                ranges: error_vec,
+            },
+        ]);
+    }
+
+    pub fn doc_makelist_highlights_into(
+        doc: &Document,
+        editor: &Editor,
+        theme: &Theme,
+        overlay_highlights: &mut Vec<OverlayHighlights>,
+    ) {
+        use helix_core::diagnostic::Severity;
+
+        let get_scope_of = |scope| {
+            theme
+                .find_highlight_exact(scope)
+                // get one of the themes below as fallback values
+                .or_else(|| theme.find_highlight_exact("diagnostic"))
+                .or_else(|| theme.find_highlight_exact("ui.cursor"))
+                .or_else(|| theme.find_highlight_exact("ui.selection"))
+                .expect(
+                    "at least one of the following scopes must be defined in the theme: `diagnostic`, `ui.cursor`, or `ui.selection`",
+                )
+        };
+
+        let mut info_vec = Vec::new();
+        let mut hint_vec = Vec::new();
+        let mut warning_vec = Vec::new();
+        let mut error_vec = Vec::new();
+
+        for entry in &editor.make_list {
+            let vec = match entry.severity {
+                Severity::Hint => &mut hint_vec,
+                Severity::Warning => &mut warning_vec,
+                Severity::Error => &mut error_vec,
+                Severity::Info => &mut info_vec,
+            };
+
+            let current_path = match doc.path() {
+                Some(path) => match path.strip_prefix(find_workspace().0) {
+                    Ok(path) => path,
+                    Err(_) => continue,
+                },
+                None => continue,
+            };
+
+            if current_path == entry.location.path {
+                let text = doc.text().slice(..);
+                let range_start = text.line_to_byte(entry.location.line);
+                let range_end = text.line_to_byte(entry.location.line + 1) - 1;
+                vec.push(range_start..range_end);
+            }
+        }
+
         overlay_highlights.extend([
             OverlayHighlights::Homogeneous {
                 highlight: get_scope_of("diagnostic.info"),
