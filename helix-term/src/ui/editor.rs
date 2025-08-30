@@ -334,7 +334,7 @@ impl EditorView {
         .map_or(visible_range.start as u32, |node| node.start_byte());
         let range = start..visible_range.end as u32;
 
-        Some(syntax.rainbow_highlights(text, theme.rainbow_length(), loader, range))
+        Some(syntax.rainbow_highlights(text, theme.rainbow_bracket_length(), loader, range))
     }
 
     /// Get highlight spans for document diagnostics
