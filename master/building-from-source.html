@@ -201,7 +201,7 @@ cargo install --path helix-term --locked
 <pre><code class="language-sh"># Optimized
 cargo install \
    --profile opt \
-   --config 'build.rustflags="-C target-cpu=native"' \
+   --config 'build.rustflags=["-C", "target-cpu=native"]' \
    --path helix-term \
    --locked
 </code></pre>
