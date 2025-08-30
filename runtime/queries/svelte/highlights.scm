@@ -6,29 +6,24 @@
   "as"
   "key"
   "html"
+  "debug"
   "snippet"
   "render"
 ] @keyword
 
-"const" @keyword.modifier
+"const" @keyword.storage.modifier
 
 [
   "if"
   "else if"
   "else"
   "then"
-] @keyword.conditional
-
-"each" @keyword.repeat
-
-[
   "await"
-  "then"
-] @keyword.coroutine
+] @keyword.control.conditional
 
-"catch" @keyword.exception
+"each" @keyword.control.repeat
 
-"debug" @keyword.debug
+"catch" @keyword.control.exception
 
 [
   "{"
@@ -40,4 +35,4 @@
   ":"
   "/"
   "@"
-] @tag.delimiter
+] @punctuation.delimiter
