@@ -986,6 +986,7 @@ scope = "source.htmldjango"
 injection-regex = "htmldjango"
 language-servers = ["djlsp", "vscode-html-language-server", "superhtml"]
 file-types = []
+roots = ["manage.py"]
 
 [language.auto-pairs]
 '"' = '"'
@@ -1594,7 +1595,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "zig"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev = "eb7d58c2dc4fbeea4745019dee8df013034ae66b" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev = "b71affffdb4222ff2d2dea6e164f76603b0be6bc" }
 
 [[language]]
 name = "prolog"
@@ -2184,7 +2185,7 @@ auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "ee93c639dc82148d716919df336ad612fd33538e" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "dae1551a9911b24f41d876c23f2ab05ece0a9d4c" }
 
 [[language]]
 name = "quarto"
@@ -2628,7 +2629,7 @@ source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569
 name = "starlark"
 scope = "source.starlark"
 injection-regex = "(starlark|bzl|bazel|buck)"
-file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUCK" }, { glob = "BUILD.*" }, { glob = "Tiltfile" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }]
+file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUCK" }, { glob = "BUILD.*" }, { glob = "Tiltfile" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }, { glob = "PACKAGE" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = [ "starpls" ]
