@@ -222,11 +222,14 @@
 (super) @variable.builtin
 
 [
-  (true)
-  (false)
   (null)
   (undefined)
 ] @constant.builtin
+
+[
+  (true)
+  (false)
+] @constant.builtin.boolean
 
 (comment) @comment
 
