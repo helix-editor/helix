@@ -305,6 +305,23 @@
 ; Functions
 ; -------
 
+; highlight `baz` in `any_function(foo::bar::baz)` as function
+; This generically works for an unlimited number of path segments:
+;
+; - `f(foo::bar)`
+; - `f(foo::bar::baz)`
+; - `f(foo::bar::baz::quux)`
+;
+; We know that in the above examples, the last component of each path is a function
+; as the only other valid thing (following Rust naming conventions) would be a module at
+; that position, however you cannot pass modules as arguments
+(call_expression
+  function: _
+  arguments: (arguments
+    (scoped_identifier
+      path: _
+      name: (identifier) @function)))
+
 (call_expression
   function: [
     ((identifier) @function)
