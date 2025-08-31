@@ -26,13 +26,13 @@
 [
   (let_declaration
     (mutable_specifier)
-    pattern: (identifier) @local.definition.variable.mutable @variable.mutable)
+    pattern: (identifier) @local.definition.variable.mutable)
   (parameter
     (mutable_specifier)
-    pattern: (identifier) @local.definition.variable.mutable @variable.mutable)
+    pattern: (identifier) @local.definition.variable.mutable)
   (mut_pattern
     (mutable_specifier)
-    (identifier) @local.definition.variable.mutable @variable.mutable)
+    (identifier) @local.definition.variable.mutable)
 ]
 
 ; References

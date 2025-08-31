@@ -206,6 +206,20 @@
 (closure_parameters
 	(identifier) @variable.parameter)
 
+; mutable variables
+
+[
+  (let_declaration
+    (mutable_specifier)
+    pattern: (identifier) @variable.mutable)
+  (parameter
+    (mutable_specifier)
+    pattern: (identifier) @variable.mutable)
+  (mut_pattern
+    (mutable_specifier)
+    (identifier) @variable.mutable)
+]
+
 ; -------
 ; Keywords
 ; -------
