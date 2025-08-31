@@ -12,8 +12,7 @@ use tokio_stream::StreamExt;
 use tui::{text::Span, widgets::Row};
 
 use super::{
-    align_view, push_jump, search_selection_impl, syntax_workspace_symbol_picker, Align, Context,
-    Editor,
+    align_view, push_jump, search_selection_impl, syntax_workspace_symbol_picker, syntax_workspace_symbol_reference_picker, Align, Context, Editor
 };
 
 use helix_core::{
@@ -1030,6 +1029,21 @@ pub fn goto_implementation(cx: &mut Context) {
 }
 
 pub fn goto_reference(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::GotoReference)
+        .next()
+        .is_some() {
+        goto_reference_picker(cx)
+
+    } else {
+        search_selection_impl(cx, false);
+        syntax_workspace_symbol_reference_picker(cx);
+    }
+}
+
+pub fn goto_reference_picker(cx: &mut Context) {
     let config = cx.editor.config();
     let (view, doc) = current_ref!(cx.editor);
 
