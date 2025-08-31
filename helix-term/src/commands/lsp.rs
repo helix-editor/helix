@@ -11,7 +11,10 @@ use helix_lsp::{
 use tokio_stream::StreamExt;
 use tui::{text::Span, widgets::Row};
 
-use super::{align_view, push_jump, Align, Context, Editor};
+use super::{
+    align_view, push_jump, search_selection_impl, syntax_workspace_symbol_picker, Align, Context,
+    Editor,
+};
 
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
@@ -951,35 +954,79 @@ where
 }
 
 pub fn goto_declaration(cx: &mut Context) {
-    goto_single_impl(
-        cx,
-        LanguageServerFeature::GotoDeclaration,
-        |ls, pos, doc_id| ls.goto_declaration(doc_id, pos, None),
-    );
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::GotoDeclaration)
+        .next()
+        .is_some()
+    {
+        goto_single_impl(
+            cx,
+            LanguageServerFeature::GotoDeclaration,
+            |ls, pos, doc_id| ls.goto_declaration(doc_id, pos, None),
+        );
+    } else {
+        search_selection_impl(cx, false);
+        syntax_workspace_symbol_picker(cx);
+    }
 }
 
 pub fn goto_definition(cx: &mut Context) {
-    goto_single_impl(
-        cx,
-        LanguageServerFeature::GotoDefinition,
-        |ls, pos, doc_id| ls.goto_definition(doc_id, pos, None),
-    );
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::GotoDefinition)
+        .next()
+        .is_some()
+    {
+        goto_single_impl(
+            cx,
+            LanguageServerFeature::GotoDefinition,
+            |ls, pos, doc_id| ls.goto_definition(doc_id, pos, None),
+        );
+    } else {
+        search_selection_impl(cx, false);
+        syntax_workspace_symbol_picker(cx);
+    }
 }
 
 pub fn goto_type_definition(cx: &mut Context) {
-    goto_single_impl(
-        cx,
-        LanguageServerFeature::GotoTypeDefinition,
-        |ls, pos, doc_id| ls.goto_type_definition(doc_id, pos, None),
-    );
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::GotoTypeDefinition)
+        .next()
+        .is_some()
+    {
+        goto_single_impl(
+            cx,
+            LanguageServerFeature::GotoTypeDefinition,
+            |ls, pos, doc_id| ls.goto_type_definition(doc_id, pos, None),
+        );
+    } else {
+        search_selection_impl(cx, false);
+        syntax_workspace_symbol_picker(cx);
+    }
 }
 
 pub fn goto_implementation(cx: &mut Context) {
-    goto_single_impl(
-        cx,
-        LanguageServerFeature::GotoImplementation,
-        |ls, pos, doc_id| ls.goto_implementation(doc_id, pos, None),
-    );
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::GotoImplementation)
+        .next()
+        .is_some()
+    {
+        goto_single_impl(
+            cx,
+            LanguageServerFeature::GotoImplementation,
+            |ls, pos, doc_id| ls.goto_implementation(doc_id, pos, None),
+        );
+    } else {
+        search_selection_impl(cx, false);
+        syntax_workspace_symbol_picker(cx);
+    }
 }
 
 pub fn goto_reference(cx: &mut Context) {

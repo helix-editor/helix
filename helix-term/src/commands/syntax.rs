@@ -391,6 +391,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
         }
         .boxed()
     };
+    let reg = cx.register.unwrap_or('/');
     let picker = Picker::new(
         columns,
         1, // name
@@ -428,7 +429,8 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
             Some((tag.start_line, tag.end_line)),
         ))
     })
-    .truncate_start(false);
+    .truncate_start(false)
+    .with_history_register(Some(reg));
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
