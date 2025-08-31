@@ -822,17 +822,17 @@ impl EditorView {
                         cursor_start
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
-                // add cursors
-                // skip primary cursor if terminal is focused and no prompt is active - terminal cursor is used in that case
-                if !selection_is_primary || !is_terminal_focused || self.prompt_active {
+                // add block cursors
+                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
+                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                // add cursors
-                // skip primary cursor if terminal is focused and no prompt is active - terminal cursor is used in that case
-                if !selection_is_primary || !is_terminal_focused || self.prompt_active {
+                // add block cursors
+                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
+                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 // non block cursors look like they exclude the cursor
@@ -1599,6 +1599,8 @@ impl EditorView {
                 }
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
+                    editor.focus(view_id);
+
                     let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
@@ -1622,7 +1624,6 @@ impl EditorView {
                         self.clear_completion(editor);
                     }
 
-                    editor.focus(view_id);
                     editor.ensure_cursor_in_view(view_id);
 
                     return EventResult::Consumed(None);
@@ -2064,12 +2065,17 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        let (pos, kind) = editor.cursor();
-        if self.terminal_focused {
-            (pos, kind)
-        } else {
-            // use underline cursor when terminal loses focus for visibility
-            (pos, CursorKind::Underline)
+        match editor.cursor() {
+            // all block cursors are drawn manually
+            (pos, CursorKind::Block) => {
+                if self.terminal_focused {
+                    (pos, CursorKind::Hidden)
+                } else {
+                    // use terminal cursor when terminal loses focus
+                    (pos, CursorKind::Underline)
+                }
+            }
+            cursor => cursor,
         }
     }
 }

@@ -4710,3 +4710,26 @@ comment-token = "#"
 file-types = [{ glob = "cliff.toml" }]
 language-servers = ["taplo", "tombi"]
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "cython"
+scope = "source.cython"
+file-types = ["pxd", "pxi", "pyx"]
+comment-token = "#"
+roots = ["pyproject.toml", "setup.py", "poetry.lock"]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cython"
+source = { git = "https://github.com/b0o/tree-sitter-cython", rev = "62f44f5e7e41dde03c5f0a05f035e293bcf2bcf8" }
+
+[[language]]
+name = "shellcheckrc"
+scope = "source.shellcheckrc"
+injection-regex = "shellcheck(rc)?"
+file-types = [{glob = "shellcheckrc"}, {glob = ".shellcheckrc"}]
+comment-token = "#"
+
+[[grammar]]
+name = "shellcheckrc"
+source = {git = "https://codeberg.org/kpbaks/tree-sitter-shellcheckrc", rev = "ad3da4e8f7fd72dcc5e93a6b89822c59a7cd10ff"}
