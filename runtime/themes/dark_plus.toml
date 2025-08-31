@@ -94,6 +94,8 @@
 "diagnostic.unnecessary"     = { modifiers = ["dim"] }
 "diagnostic.deprecated"      = { modifiers = ["crossed_out"] }
 
+rainbow = ["#FFD700", "#DA70D6", "#179FFF"]
+
 [palette]
 white = "#ffffff"
 orange = "#ce9178"

@@ -46,7 +46,7 @@ macro_rules! language_server_with_feature {
         match language_server {
             Some(language_server) => language_server,
             None => {
-                $editor.set_status(format!(
+                $editor.set_error(format!(
                     "No configured language server supports {}",
                     $feature
                 ));
@@ -231,6 +231,13 @@ fn diag_picker(
         }
     }
 
+    flat_diag.sort_by(|a, b| {
+        a.diag
+            .severity
+            .unwrap_or(lsp::DiagnosticSeverity::HINT)
+            .cmp(&b.diag.severity.unwrap_or(lsp::DiagnosticSeverity::HINT))
+    });
+
     let styles = DiagnosticStyles {
         hint: cx.editor.theme.get("hint"),
         info: cx.editor.theme.get("info"),
@@ -252,6 +259,9 @@ fn diag_picker(
                 .into()
             },
         ),
+        ui::PickerColumn::new("source", |item: &PickerDiagnostic, _| {
+            item.diag.source.as_deref().unwrap_or("").into()
+        }),
         ui::PickerColumn::new("code", |item: &PickerDiagnostic, _| {
             match item.diag.code.as_ref() {
                 Some(NumberOrString::Number(n)) => n.to_string().into(),
@@ -263,12 +273,12 @@ fn diag_picker(
             item.diag.message.as_str().into()
         }),
     ];
-    let mut primary_column = 2; // message
+    let mut primary_column = 3; // message
 
     if format == DiagnosticsFormat::ShowSourcePath {
         columns.insert(
             // between message code and message
-            2,
+            3,
             ui::PickerColumn::new("path", |item: &PickerDiagnostic, _| {
                 if let Some(path) = item.location.uri.as_path() {
                     path::get_truncated_path(path)
@@ -804,7 +814,9 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).with_scrollbar(false);
+            let popup = Popup::new("code-action", picker)
+                .with_scrollbar(false)
+                .auto_close(true);
 
             compositor.replace_or_push("code-action", popup);
         };
@@ -923,7 +935,13 @@ where
         }
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if locations.is_empty() {
-                editor.set_error("No definition found.");
+                editor.set_error(match feature {
+                    LanguageServerFeature::GotoDeclaration => "No declaration found.",
+                    LanguageServerFeature::GotoDefinition => "No definition found.",
+                    LanguageServerFeature::GotoTypeDefinition => "No type definition found.",
+                    LanguageServerFeature::GotoImplementation => "No implementation found.",
+                    _ => "No location found.",
+                });
             } else {
                 goto_impl(editor, compositor, locations);
             }

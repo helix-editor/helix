@@ -213,6 +213,27 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
     Ok(grammars)
 }
 
+pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
+    let config: Configuration = crate::config::user_lang_config()
+        .context("Could not parse languages.toml")?
+        .try_into()?;
+
+    let grammars = match config.grammar_selection {
+        Some(GrammarSelection::Only { only: selections }) => Some(selections),
+        Some(GrammarSelection::Except { except: rejections }) => Some(
+            config
+                .grammar
+                .into_iter()
+                .map(|grammar| grammar.grammar_id)
+                .filter(|id| !rejections.contains(id))
+                .collect(),
+        ),
+        None => None,
+    };
+
+    Ok(grammars)
+}
+
 fn run_parallel<F, Res>(grammars: Vec<GrammarConfiguration>, job: F) -> Vec<(String, Result<Res>)>
 where
     F: Fn(GrammarConfiguration) -> Result<Res> + Send + 'static + Clone,

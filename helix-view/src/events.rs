@@ -38,4 +38,12 @@ events! {
         editor: &'a mut Editor,
         server_id: LanguageServerId
     }
+
+    // NOTE: this event is simple for now and is expected to change as the config system evolves.
+    // Ideally it would say what changed.
+    ConfigDidChange<'a> {
+        editor: &'a mut Editor,
+        old: &'a Config,
+        new: &'a Config
+    }
 }

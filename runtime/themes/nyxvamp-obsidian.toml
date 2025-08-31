@@ -3,6 +3,9 @@
 
 inherits = "nyxvamp-radiance"
 
+# Rainbow parentheses colors
+rainbow = ["keyword_fg", "function_fg", "string_fg", "type_fg"]
+
 # Override specific styles for obsidian variant
 "function" = { fg = "function_fg", modifiers = ["bold"] }
 "function.builtin" = { fg = "function_builtin_fg", modifiers = ["bold"] }
@@ -28,13 +31,13 @@ status_inactive_bg = "#0E0E10"
 
 # Menu colors
 menu_fg = "#C0C0CE"
-menu_bg = "#0E0E10"
-menu_sel_fg = "#0E0E10"
-menu_sel_bg = "#F28FAD"
+menu_bg = "#1E1E20"
+menu_sel_fg = "#C0C0CE"
+menu_sel_bg = "#2E2E30"
 menu_scroll_fg = "#5E5A76"
-menu_scroll_bg = "#0E0E10"
+menu_scroll_bg = "#1E1E20"
 popup_fg = "#C0C0CE"
-popup_bg = "#0E0E10"
+popup_bg = "#1E1E20"
 
 # UI virtual
 virtual_ruler_bg = "#191921"  # Slightly lighter than background, close to comment color
@@ -59,15 +62,15 @@ variable_builtin_fg = "#F28FAD"
 type_fg = "#A0A0D0"  # Muted lavender types
 type_builtin_fg = "#A0A0D0"
 attribute_fg = "#F5C2E7"
-namespace_fg = "#A090C0"  # Muted purple namespaces
+namespace_fg = "#A0A0D0"  # Muted lavender namespaces (Base16 base0E)
 punctuation_fg = "#C0C0CE"
 symbol_fg = "#F28FAD"
 
 # Diagnostics
-error_fg = "#D78284"  # Muted red errors
-warning_fg = "#D5B880"  # Muted yellow warnings
-info_fg = "#7A9CCC"  # Muted blue info
-hint_fg = "#7BB5A8"  # Muted cyan hints
+error_fg = "#F28FAD"  # Base16 base08 - red errors
+warning_fg = "#D8A080"  # Base16 base09 - orange warnings
+info_fg = "#7FAFD7"  # Base16 base0B - blue info
+hint_fg = "#7BB5A8"  # Base16 base0C - cyan hints
 
 # Diff colors
 diff_add_fg = "#86BA75"  # Muted green additions
