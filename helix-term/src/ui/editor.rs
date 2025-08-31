@@ -822,17 +822,17 @@ impl EditorView {
                         cursor_start
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
+                // add cursors
+                // skip primary cursor if terminal is focused and no prompt is active - terminal cursor is used in that case
+                if !selection_is_primary || !is_terminal_focused || self.prompt_active {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
+                // add cursors
+                // skip primary cursor if terminal is focused and no prompt is active - terminal cursor is used in that case
+                if !selection_is_primary || !is_terminal_focused || self.prompt_active {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 // non block cursors look like they exclude the cursor
@@ -2066,16 +2066,14 @@ impl Component for EditorView {
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         match editor.cursor() {
-            // all block cursors are drawn manually
-            (pos, CursorKind::Block) => {
+            (pos, kind) => {
                 if self.terminal_focused {
-                    (pos, CursorKind::Hidden)
+                    (pos, kind)
                 } else {
-                    // use terminal cursor when terminal loses focus
+                    // use underline cursor when terminal loses focus for visibility
                     (pos, CursorKind::Underline)
                 }
             }
-            cursor => cursor,
         }
     }
 }
