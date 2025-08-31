@@ -129,6 +129,7 @@ pub struct CodeActionParams {
 /// response for CodeActionRequest
 pub type CodeActionResponse = Vec<CodeActionOrCommand>;
 
+#[allow(clippy::large_enum_variant)] // TODO: In a separate PR attempt the `Box<CodeAction>` pattern.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum CodeActionOrCommand {

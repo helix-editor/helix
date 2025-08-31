@@ -85,7 +85,7 @@ fn find_brace_end(src: &[u8]) -> Option<usize> {
     None
 }
 
-fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>) -> Cow<OsStr> {
+fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>) -> Cow<'_, OsStr> {
     use regex_automata::meta::Regex;
 
     static REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -157,7 +157,7 @@ fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>)
 /// * `${<var>:-<default>}`, `${<var>-<default>}`
 /// * `${<var>:=<default>}`, `${<var>=default}`
 ///
-pub fn expand<S: AsRef<OsStr> + ?Sized>(src: &S) -> Cow<OsStr> {
+pub fn expand<S: AsRef<OsStr> + ?Sized>(src: &S) -> Cow<'_, OsStr> {
     expand_impl(src.as_ref(), |var| std::env::var_os(var))
 }
 

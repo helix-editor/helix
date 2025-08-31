@@ -355,7 +355,7 @@ impl Editor {
                         && diagnostic
                             .source
                             .as_ref()
-                            .map_or(true, |source| !unchanged_diag_sources.contains(source))
+                            .is_none_or(|source| !unchanged_diag_sources.contains(source))
                 };
             let diagnostics = Self::doc_diagnostics_with_filter(
                 &self.language_servers,
