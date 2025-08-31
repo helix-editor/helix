@@ -199,6 +199,7 @@ We use a similar set of scopes as
   - `unused` - Unused variables and patterns, e.g. `_` and `_foo`
 
 - `variable` - Variables
+  - `mutable` - Mutable variables (e.g. marked with `mut` in Rust)
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
   - `parameter` - Function parameters
   - `other`
