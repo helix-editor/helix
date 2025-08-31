@@ -88,8 +88,13 @@
 ((type_arguments (type_identifier) @constant)
  (#match? @constant "^[A-Z_]+$"))
 (type_arguments (type_identifier) @type)
+; `_` in `(_, _)`
 (tuple_struct_pattern "_" @comment.unused)
+; `_` in `Vec<_>`
 ((type_arguments (type_identifier) @comment.unused)
+ (#eq? @comment.unused "_"))
+; `_` in `Rc<[_]>`
+((array_type (type_identifier) @comment.unused)
  (#eq? @comment.unused "_"))
 
 ; ---
