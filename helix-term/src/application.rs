@@ -8,16 +8,16 @@ use helix_lsp::{
 };
 use helix_stdx::path::get_relative_path;
 use helix_view::{
-    align_view,
-    document::{DocumentOpenError, DocumentSavedEventResult},
-    editor::{ConfigEvent, EditorEvent},
-    graphics::Rect,
-    theme,
-    tree::Layout,
-    Align, Editor,
+    align_view, document::{DocumentOpenError, DocumentSavedEventResult}, editor::{ConfigEvent, EditorEvent}, graphics::Rect, theme, tree::Layout, Align, Editor
 };
 use serde_json::json;
 use tui::backend::Backend;
+#[cfg(unix)]
+use tokio::net::UnixListener;
+#[cfg(unix)]
+use tokio::io::AsyncReadExt;
+#[cfg(unix)]
+use tokio::sync::mpsc;
 
 use crate::{
     args::Args,
@@ -25,14 +25,14 @@ use crate::{
     config::Config,
     handlers,
     job::Jobs,
-    keymap::Keymaps,
+    keymap::{Keymaps, MappableCommand},
     ui::{self, overlay::overlaid},
 };
 
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use std::{io::stdin, path::Path, sync::Arc};
+use std::{borrow::Cow, io::stdin, path::Path, sync::Arc};
 
 #[cfg(not(windows))]
 use anyhow::Context;
@@ -68,6 +68,8 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+    #[cfg(unix)]
+    socket_rx: mpsc::Receiver<String>
 }
 
 #[cfg(feature = "integration")]
@@ -90,6 +92,65 @@ fn setup_integration_logging() {
         .level(level)
         .chain(std::io::stdout())
         .apply();
+}
+
+#[cfg(unix)]
+async fn start_unix_socket_listener(tx: mpsc::Sender<String>) {
+    use std::fs::{create_dir, set_permissions, Permissions};
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = if let Ok(path) = std::env::var("HELIX_SOCKET_PATH") {
+        let path = std::path::PathBuf::from(path);
+        // Check if parent folder exists
+        if !path.parent().is_some_and(|parent| parent.exists()) {
+            eprintln!("Folder for socket {} does not exists!", path.parent().unwrap().display())
+        }
+        path
+    } else {
+        let path = std::env::var("XDG_RUNTIME_DIR")
+                .unwrap_or("/tmp".to_string());
+        let path = std::path::PathBuf::from(path)
+            .join("helix")
+            .join("helix.sock");
+        // We unwrap, as any of variants will have parent folder
+        let parent_folder = path.parent().unwrap();
+        if !parent_folder.exists() {
+            if let Err(e) = create_dir(parent_folder.to_path_buf()) {
+                eprintln!("Failed to create socket directory: {}", e);
+                return
+            }
+        }
+        path
+    };
+
+    let listener = match UnixListener::bind(&path) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("Failed to bind listener to socket: {}", e);
+            return
+        }
+    };
+
+    if let Err(e) = set_permissions(&path, Permissions::from_mode(0o600)) {
+        eprintln!("Failed to set permissions for file: {e}")
+    }
+
+    loop {
+        match listener.accept().await {
+            Ok((mut socket, _)) => {
+                let mut buf = vec![0; 1024];
+                match socket.read(&mut buf).await {
+                    Ok(n) if n > 0 => {
+                        let msg = String::from_utf8_lossy(&buf[..n]).to_string();
+                        let _ = tx.send(msg).await;
+                    },
+                    Ok(_) => {},
+                    Err(e) => eprintln!("Socket read error: {}", e),
+                }
+            },
+            Err(e) => eprintln!("Socket accept error: {}", e),
+        }
+    }
 }
 
 impl Application {
@@ -234,7 +295,13 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        #[cfg(unix)]
+        let (socket_tx, socket_rx) = mpsc::channel::<String>(10);
+        #[cfg(unix)]
+        tokio::spawn(start_unix_socket_listener(socket_tx));
+
         let app = Self {
+            socket_rx,
             compositor,
             terminal,
             editor,
@@ -329,6 +396,9 @@ impl Application {
                     // TODO: show multiple status messages at once to avoid clobbering
                     self.editor.status_msg = Some((msg.message, severity));
                     helix_event::request_redraw();
+                }
+                Some(msg) = self.socket_rx.recv() => {
+                    self.handle_socket_command(msg.parse::<MappableCommand>()).await
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
@@ -665,6 +735,50 @@ impl Application {
 
         if should_redraw && !self.editor.should_close() {
             self.render().await;
+        }
+    }
+
+    pub async fn handle_socket_command(&mut self, command: anyhow::Result<MappableCommand>) {
+        if let Err(msg) = &command {
+            let severity = Severity::Error;
+            let err_string = Cow::from(msg.to_string());
+            self.editor.status_msg = Some((err_string, severity));
+            helix_event::request_redraw();
+            return;
+        }
+
+        if let Ok(command) = command {
+            // command.execute(&mut cx);
+            if let MappableCommand::Typable {name, ..} = &command {
+                if [
+                    "run-shell-command", 
+                    "write", 
+                    "write!", 
+                    "write-buffet-close", 
+                    "write-buffer-close!", 
+                    "write-quit", 
+                    "write-quit!", 
+                    "write-all", 
+                    "write-all!", 
+                    "write-quit-all", 
+                    "write-quit-all!"
+                    ].contains(&name.as_str()) {
+                        let severity = Severity::Error;
+                        let err_string = Cow::from(format!("Running command {name} is forbidden from socket"));
+                        self.editor.status_msg = Some((err_string, severity));
+                        helix_event::request_redraw();
+                        return;
+                    }
+            }
+            let mut cx = crate::commands::Context {
+                editor: &mut self.editor,
+                count: None,
+                register: None,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs: &mut self.jobs
+            };
+            command.execute(&mut cx);
         }
     }
 
