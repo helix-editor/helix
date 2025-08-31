@@ -203,8 +203,64 @@
 
 (parameter
 	pattern: (identifier) @variable.parameter)
-(closure_parameters
-	(identifier) @variable.parameter)
+
+(parameter
+  (mutable_specifier)?
+  pattern: [
+    ; `foo` in `fn x(foo: !) {}`
+    (identifier) @variable.parameter
+    ; `foo` and `bar` in `fn x((foo, bar): !) {}`
+    (tuple_pattern
+      [
+        (mut_pattern
+          (_)
+          (identifier))
+        (identifier)
+      ]*
+      [
+        (mut_pattern
+          (_)
+          (identifier) @variable.parameter)
+        (identifier) @variable.parameter
+      ])
+    ; `foo` and `bar` in `fn x(Struct { foo, bar }: !) {}`
+    (struct_pattern
+      (field_pattern)*
+      (field_pattern
+        name: (shorthand_field_identifier) @variable.parameter)
+    )
+    ; `foo` and `bar` in `fn x(TupleStruct(foo, bar): !) {}`
+    (tuple_struct_pattern
+      type: _
+      [
+        (mut_pattern
+          (_)
+          (identifier))
+        (identifier)
+      ]*
+      [
+        (mut_pattern
+          (_)
+          (identifier) @variable.parameter)
+        (identifier) @variable.parameter
+      ]
+    )
+    ; `foo` and `bar` in `fn x([foo, bar]: !) {}`
+    (slice_pattern
+      [
+        (mut_pattern
+          (_)
+          (identifier))
+        (identifier)
+      ]*
+      [
+        (mut_pattern
+          (_)
+          (identifier) @variable.parameter)
+        (identifier) @variable.parameter
+      ]
+    )
+  ])
 
 ; -------
 ; Keywords
