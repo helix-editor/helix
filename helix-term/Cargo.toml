@@ -61,7 +61,7 @@ tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 arc-swap = { version = "1.7.1" }
 termini = "1"
-indexmap = "2.10"
+indexmap = "2.11"
 
 # Logging
 fern = "0.7"
@@ -95,7 +95,7 @@ dashmap = "6.0"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.174"
+libc = "0.2.175"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc"] }
