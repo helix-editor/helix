@@ -158,22 +158,3 @@
   (#set! injection.language "rust-format-args-macro")
   (#set! injection.include-children)
 )
-
-; Dioxus' "rsx!" macro relies heavily on string interpolation as well. The strings can be nested very deeply
-(
-  (macro_invocation
-    macro: [
-        (scoped_identifier
-          name: (_) @_macro_name)
-        (identifier) @_macro_name
-    ]
-    ; TODO: This only captures 1 level of string literals. But in dioxus you can have
-    ; nested string literals. For instance:
-    ; 
-    ; -> (token_tree (token_tree (token_tree (string_literal))))
-    (token_tree (string_literal) @injection.content)
-  )
-  (#eq? @_macro_name "rsx")
-  (#set! injection.language "rust-format-args")
-  (#set! injection.include-children)
-)
