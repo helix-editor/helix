@@ -69,7 +69,7 @@
     ((identifier) @function))
   (c_function_definition))
 
-(attribute attribute: (identifier) @property)
+(attribute attribute: (identifier) @variable.other.member)
 
 ; Literals
 
@@ -197,4 +197,3 @@
 
 (aliased_import
   alias: (identifier) @namespace)
-  
