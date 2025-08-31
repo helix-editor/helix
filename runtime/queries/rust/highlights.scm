@@ -322,6 +322,21 @@
       field: (field_identifier) @function.method)
   ])
 
+; Special-case some methods who commonly accept a closure and also
+; where this closure can be specified by a single identifier
+; 
+; For example, highlights `foo` in `a.map(foo)` is a @function
+(call_expression
+  function: (field_expression
+    value: _
+    field: (field_identifier) @_method_name @function)
+  arguments:
+    ; first argument is `@function`
+    (arguments
+      .
+      (identifier) @function)
+  (#any-of? @_method_name "map" "flat_map"))
+
 (function_item
   name: (identifier) @function)
 
