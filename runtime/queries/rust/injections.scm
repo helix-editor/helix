@@ -150,6 +150,10 @@
 
     ; std
     "assert_eq" "debug_assert_eq" "assert_ne" "debug_assert_ne"
+
+    ; Dioxus's rsx! macro accepts string interpolation in all
+    ; strings, across the entire token tree
+    "rsx"
   )
   (#set! injection.language "rust-format-args-macro")
   (#set! injection.include-children)
@@ -166,11 +170,6 @@
     ; TODO: This only captures 1 level of string literals. But in dioxus you can have
     ; nested string literals. For instance:
     ; 
-    ; rsx! { "{hello} world" }:
-    ; -> (token_tree (string_literal))
-    ; rsx! { div { "{hello} world" } }
-    ; -> (token_tree (token_tree (string_literal)))
-    ; rsx! { div { div { "{hello} world" } } }
     ; -> (token_tree (token_tree (token_tree (string_literal))))
     (token_tree (string_literal) @injection.content)
   )
