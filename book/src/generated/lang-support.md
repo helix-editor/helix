@@ -227,6 +227,7 @@
 | scala | ✓ | ✓ | ✓ |  |  | `metals` |
 | scheme | ✓ |  | ✓ |  | ✓ |  |
 | scss | ✓ |  |  |  | ✓ | `vscode-css-language-server` |
+| shellcheckrc | ✓ | ✓ |  |  |  |  |
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
 | slint | ✓ | ✓ | ✓ |  |  | `slint-lsp` |
 | smali | ✓ |  | ✓ |  |  |  |
