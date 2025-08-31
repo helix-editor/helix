@@ -425,7 +425,7 @@ pub fn reload_file(file: &mut NamedTempFile) -> anyhow::Result<()> {
     let f = std::fs::OpenOptions::new()
         .write(true)
         .read(true)
-        .open(&path)?;
+        .open(path)?;
     *file.as_file_mut() = f;
     Ok(())
 }
