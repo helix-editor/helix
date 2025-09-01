@@ -1122,8 +1122,10 @@ pub fn get_breadcrumbs(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> 
             None => return vec![],
         };
 
+        let width = 4;
         while let Some(parent) = node.parent() {
             if node.is_extra() {
+                node = parent;
                 continue;
             }
             if node.is_named() {
@@ -1132,7 +1134,7 @@ pub fn get_breadcrumbs(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> 
                 breadcrumb_set.insert(
                     line_idx,
                     format!(
-                        "{}({}): {}",
+                        "{:>width$}({:>width$}): {}",
                         line_idx + 1,
                         ((line_idx + 1).abs_diff(cursor_line)),
                         line.trim_end()
