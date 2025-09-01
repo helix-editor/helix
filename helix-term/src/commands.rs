@@ -6299,19 +6299,31 @@ impl fmt::Display for ShellOutput {
 }
 
 fn shell_pipe(cx: &mut Context) {
-    shell_prompt_for_behavior(cx, "pipe:".into(), ShellBehavior::Replace);
+    shell_prompt_for_behavior(cx, "pipe:".into(), ShellBehavior::Replace, false, false);
 }
 
 fn shell_pipe_to(cx: &mut Context) {
-    shell_prompt_for_behavior(cx, "pipe-to:".into(), ShellBehavior::Ignore);
+    shell_prompt_for_behavior(cx, "pipe-to:".into(), ShellBehavior::Ignore, false, true);
 }
 
 fn shell_insert_output(cx: &mut Context) {
-    shell_prompt_for_behavior(cx, "insert-output:".into(), ShellBehavior::Insert);
+    shell_prompt_for_behavior(
+        cx,
+        "insert-output:".into(),
+        ShellBehavior::Insert,
+        false,
+        false,
+    );
 }
 
 fn shell_append_output(cx: &mut Context) {
-    shell_prompt_for_behavior(cx, "append-output:".into(), ShellBehavior::Append);
+    shell_prompt_for_behavior(
+        cx,
+        "append-output:".into(),
+        ShellBehavior::Append,
+        false,
+        false,
+    );
 }
 
 fn shell_keep_pipe(cx: &mut Context) {
@@ -6546,9 +6558,21 @@ where
     );
 }
 
-fn shell_prompt_for_behavior(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
+fn shell_prompt_for_behavior(
+    cx: &mut Context,
+    prompt: Cow<'static, str>,
+    behavior: ShellBehavior,
+    on_success: bool,
+    popup_stderr: bool,
+) {
     shell_prompt(cx, prompt, move |cx, args| {
-        shell(cx, args.join(" ").as_str(), &behavior, false, false)
+        shell(
+            cx,
+            args.join(" ").as_str(),
+            &behavior,
+            on_success,
+            popup_stderr,
+        )
     })
 }
 
