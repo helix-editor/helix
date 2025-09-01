@@ -6287,8 +6287,8 @@ impl ShellOutput {
 
 impl fmt::Display for ShellOutput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let out = self.stdout.trim();
-        let err = self.stderr.trim();
+        let out = self.stdout.trim_end();
+        let err = self.stderr.trim_end();
         match (err.is_empty(), out.is_empty()) {
             (true, true) => Ok(()),
             (false, true) => write!(f, "```sh\n{}\n```", err),
