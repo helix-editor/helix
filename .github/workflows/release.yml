@@ -116,9 +116,42 @@ jobs:
     - name: Create release tag
       id: create_tag
       run: |
-        TAG_NAME="build-$(date +'%Y%m%d-%H%M%S')"
+        # Create base tag name with yy.mm.dd format
+        BASE_DATE=$(date +'%y.%m.%d')
+        
+        # Check for existing tags with same date to determine increment
+        EXISTING_TAGS=$(git tag -l "${BASE_DATE}*" | sort -V)
+        
+        if [ -z "$EXISTING_TAGS" ]; then
+          # No existing tags for today, use base date
+          TAG_NAME="$BASE_DATE"
+        else
+          # Find the highest increment number
+          MAX_INCREMENT=0
+          while IFS= read -r tag; do
+            if [ "$tag" = "$BASE_DATE" ]; then
+              # Base tag exists, we need at least .01
+              continue
+            else
+              # Extract increment from tag like 25.09.01.02
+              INCREMENT_PART=$(echo "$tag" | sed "s/^${BASE_DATE}\.//")
+              if [ "$INCREMENT_PART" != "$tag" ] && echo "$INCREMENT_PART" | grep -q '^[0-9]*$'; then
+                # Remove leading zeros for arithmetic
+                INCREMENT=$((10#$INCREMENT_PART))
+                if [ $INCREMENT -gt $MAX_INCREMENT ]; then
+                  MAX_INCREMENT=$INCREMENT
+                fi
+              fi
+            fi
+          done <<< "$EXISTING_TAGS"
+          
+          # Create next increment
+          NEXT_INCREMENT=$((MAX_INCREMENT + 1))
+          TAG_NAME="${BASE_DATE}.$(printf "%02d" $NEXT_INCREMENT)"
+        fi
+        
         echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-        echo "release_name=Build $TAG_NAME" >> $GITHUB_OUTPUT
+        echo "release_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
