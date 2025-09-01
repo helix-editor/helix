@@ -4700,7 +4700,6 @@ file-types = [{glob = "Cross.toml"}]
 language-servers = [ "taplo", "tombi" ]
 indent = { tab-width = 2, unit = "  " }
 
-# https://git-cliff.org/docs/configuration/
 [[language]]
 name = "git-cliff-config"
 scope = "source.git-cliff-config"
@@ -4733,3 +4732,15 @@ comment-token = "#"
 [[grammar]]
 name = "shellcheckrc"
 source = {git = "https://codeberg.org/kpbaks/tree-sitter-shellcheckrc", rev = "ad3da4e8f7fd72dcc5e93a6b89822c59a7cd10ff"}
+
+[[language]] 
+name = "slisp"
+scope = "source.sl"
+injection-regex = "sl"
+file-types = ["sl"]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "slisp"
+source = { git = "https://github.com/xenogenics/tree-sitter-slisp", rev = "d610cb0ac2c63bcf44986ac456c179979cfa931f" }
