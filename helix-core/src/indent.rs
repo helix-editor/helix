@@ -1124,6 +1124,7 @@ pub fn get_breadcrumbs(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> 
 
         while let Some(parent) = node.parent() {
             if node.is_extra() {
+                node = parent;
                 continue;
             }
             if node.is_named() {
