@@ -6450,7 +6450,7 @@ fn shell(
     let mut popup_contents = Vec::new();
     for range in selection.ranges() {
         let output = if let Some(output) = shell_output.as_ref() {
-            output.clone()
+            Some(output.clone())
         } else {
             let input = range.slice(text);
             match shell_impl(shell, cmd, pipe.then(|| input.into())) {
@@ -6464,33 +6464,35 @@ fn shell(
                     }
 
                     if on_success && !success {
-                        if popup_stderr {
-                            ShellOutput::shell_popup(cx, popup_contents.join("\n"));
-                        }
-                        cx.editor.set_error("Shell command had errors");
-                        return;
-                    }
+                        None
+                    } else {
+                        // Prioritize `stderr` output over `stdout`
+                        let mut used_output = if !stderr.is_empty() { stderr } else { stdout };
 
-                    // Prioritize `stderr` output over `stdout`
-                    let mut used_output = if !stderr.is_empty() { stderr } else { stdout };
-
-                    if !input.ends_with("\n") && used_output.ends_with('\n') {
-                        used_output.pop();
-                        if used_output.ends_with('\r') {
+                        if !input.ends_with("\n") && used_output.ends_with('\n') {
                             used_output.pop();
+                            if used_output.ends_with('\r') {
+                                used_output.pop();
+                            }
                         }
-                    }
 
-                    if !pipe {
-                        shell_output = Some(used_output.clone());
+                        if !pipe {
+                            shell_output = Some(used_output.clone());
+                        }
+                        Some(used_output)
                     }
-                    used_output
                 }
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
                     return;
                 }
             }
+        };
+
+        let output = if let Some(output) = output {
+            output
+        } else {
+            Tendril::from(range.slice(text).to_string())
         };
 
         let output_len = output.chars().count();
