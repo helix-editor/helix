@@ -289,30 +289,28 @@ impl Color {
 }
 
 #[cfg(feature = "term")]
-impl From<Color> for crossterm::style::Color {
+impl From<Color> for termina::style::ColorSpec {
     fn from(color: Color) -> Self {
-        use crossterm::style::Color as CColor;
-
         match color {
-            Color::Reset => CColor::Reset,
-            Color::Black => CColor::Black,
-            Color::Red => CColor::DarkRed,
-            Color::Green => CColor::DarkGreen,
-            Color::Yellow => CColor::DarkYellow,
-            Color::Blue => CColor::DarkBlue,
-            Color::Magenta => CColor::DarkMagenta,
-            Color::Cyan => CColor::DarkCyan,
-            Color::Gray => CColor::DarkGrey,
-            Color::LightRed => CColor::Red,
-            Color::LightGreen => CColor::Green,
-            Color::LightBlue => CColor::Blue,
-            Color::LightYellow => CColor::Yellow,
-            Color::LightMagenta => CColor::Magenta,
-            Color::LightCyan => CColor::Cyan,
-            Color::LightGray => CColor::Grey,
-            Color::White => CColor::White,
-            Color::Indexed(i) => CColor::AnsiValue(i),
-            Color::Rgb(r, g, b) => CColor::Rgb { r, g, b },
+            Color::Reset => Self::Reset,
+            Color::Black => Self::BLACK,
+            Color::Red => Self::RED,
+            Color::Green => Self::GREEN,
+            Color::Yellow => Self::YELLOW,
+            Color::Blue => Self::BLUE,
+            Color::Magenta => Self::MAGENTA,
+            Color::Cyan => Self::CYAN,
+            Color::Gray => Self::BRIGHT_BLACK,
+            Color::White => Self::WHITE,
+            Color::LightRed => Self::BRIGHT_RED,
+            Color::LightGreen => Self::BRIGHT_GREEN,
+            Color::LightBlue => Self::BRIGHT_BLUE,
+            Color::LightYellow => Self::BRIGHT_YELLOW,
+            Color::LightMagenta => Self::BRIGHT_MAGENTA,
+            Color::LightCyan => Self::BRIGHT_CYAN,
+            Color::LightGray => Self::BRIGHT_WHITE,
+            Color::Indexed(i) => Self::PaletteIndex(i),
+            Color::Rgb(r, g, b) => termina::style::RgbColor::new(r, g, b).into(),
         }
     }
 }
@@ -343,15 +341,15 @@ impl FromStr for UnderlineStyle {
 }
 
 #[cfg(feature = "term")]
-impl From<UnderlineStyle> for crossterm::style::Attribute {
+impl From<UnderlineStyle> for termina::style::Underline {
     fn from(style: UnderlineStyle) -> Self {
         match style {
-            UnderlineStyle::Line => crossterm::style::Attribute::Underlined,
-            UnderlineStyle::Curl => crossterm::style::Attribute::Undercurled,
-            UnderlineStyle::Dotted => crossterm::style::Attribute::Underdotted,
-            UnderlineStyle::Dashed => crossterm::style::Attribute::Underdashed,
-            UnderlineStyle::DoubleLine => crossterm::style::Attribute::DoubleUnderlined,
-            UnderlineStyle::Reset => crossterm::style::Attribute::NoUnderline,
+            UnderlineStyle::Reset => Self::None,
+            UnderlineStyle::Line => Self::Single,
+            UnderlineStyle::Curl => Self::Curly,
+            UnderlineStyle::Dotted => Self::Dotted,
+            UnderlineStyle::Dashed => Self::Dashed,
+            UnderlineStyle::DoubleLine => Self::Double,
         }
     }
 }
