@@ -102,7 +102,7 @@
 
 # Popups for documentation or file picker
 "ui.popup" = { fg = "fg", bg = "bg" } 
-"ui.popup.info" = { fg = "fg", bg = "bg" } 
+"ui.popup.info" = { fg = "fg", bg = "bg_alt" } 
 "ui.menu" = { fg = "fg", bg = "bg" } 
 "ui.menu.selected" = { fg = "cyan", bg = "bg_highlight" }
 
