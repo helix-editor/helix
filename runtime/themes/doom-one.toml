@@ -11,6 +11,7 @@
 "ui.selection" = { bg = "bg_highlight" } 
 "ui.selection.primary" = { bg = "bg_highlight" }  
 "ui.virtual.ruler" = { bg = "bg_highlight" }
+"ui.virtual.jump-label" = { fg = "cyan", modifiers = ["bold"] }
 
 # Markdown Highlighting
 "markup.raw" = { fg = "blue", bg = "bg" } 
