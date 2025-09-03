@@ -2368,7 +2368,7 @@ language-servers = [ "nu-lsp" ]
 
 [[grammar]]
 name = "nu"
-source = { git = "https://github.com/nushell/tree-sitter-nu", rev = "358c4f509eb97f0148bbd25ad36acc729819b9c1" }
+source = { git = "https://github.com/nushell/tree-sitter-nu", rev = "cc4624fbc6ec3563d98fbe8f215a8b8e10b16f32" }
 
 [[language]]
 name = "vala"
