@@ -46,7 +46,7 @@
 
 ; ---
 ; literals
-(val_number) @number
+(val_number) @constant.numeric
 
 (val_duration
   unit: _ @variable.parameter)
@@ -59,13 +59,13 @@
     "0b"
     "0o"
     "0x"
-  ] @number
+  ] @constant.numeric
   "[" @punctuation.bracket
   digit: [
     "," @punctuation.delimiter
-    (hex_digit) @number
+    (hex_digit) @constant.numeric
   ]
-  "]" @punctuation.bracket) @number
+  "]" @punctuation.bracket) @constant.numeric
 
 (val_bool) @constant.builtin
 
@@ -77,7 +77,7 @@ arg_str: (val_string) @variable.parameter
 
 file_path: (val_string) @variable.parameter
 
-(val_date) @number
+(val_date) @constant.numeric
 
 (inter_escape_sequence) @constant.character.escape
 
@@ -376,9 +376,7 @@ key: (identifier) @property
     ">"
   ] @punctuation.bracket)
 
-(shebang) @keyword.directive
-
-(comment) @comment
+[(comment) (shebang)] @comment
 
 ((comment)+ @comment.documentation @spell
   .
