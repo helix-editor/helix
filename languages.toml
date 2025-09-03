@@ -1091,6 +1091,7 @@ file-types = [
   { glob = "Scanfile" },
   { glob = "Snapfile" },
   { glob = "Gymfile" },
+  { glob = ".irbrc" },
 ]
 shebangs = ["ruby"]
 comment-token = "#"
