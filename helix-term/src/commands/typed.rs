@@ -1742,6 +1742,40 @@ fn tree_sitter_scopes(
     Ok(())
 }
 
+fn tree_sitter_breadcrumbs(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let pos = doc.selection(view.id).primary().cursor(text);
+    let breadcrumbs = indent::get_breadcrumbs(doc.syntax(), text, pos);
+    let language = doc.language_config().map_or("txt", |l| &l.language_id);
+
+    let contents = format!("```{}\n{}\n```\n", language, breadcrumbs.join("\n"));
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let popup = Popup::new("hover", contents).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn tree_sitter_highlight_name(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3284,6 +3318,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Display tree sitter scopes, primarily for theming and development.",
         fun: tree_sitter_scopes,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "tree-sitter-breadcrumbs",
+        aliases: &["breadcrumbs", "bread"],
+        doc: "Display lines of parents to reach the token under the cursor. Useful to know where you are in the program.",
+        fun: tree_sitter_breadcrumbs,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
