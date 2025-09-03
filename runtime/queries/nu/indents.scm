@@ -5,5 +5,5 @@
 ] @indent
 
 [
-  (block "}")
+  "}"
 ] @outdent
