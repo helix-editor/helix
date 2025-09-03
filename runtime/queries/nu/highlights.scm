@@ -46,7 +46,7 @@
 
 ; ---
 ; literals
-(val_number) @constant.numeric
+(val_number) @number
 
 (val_duration
   unit: _ @variable.parameter)
@@ -59,13 +59,13 @@
     "0b"
     "0o"
     "0x"
-  ] @constant.numeric
+  ] @number
   "[" @punctuation.bracket
   digit: [
     "," @punctuation.delimiter
-    (hex_digit) @constant.numeric
+    (hex_digit) @number
   ]
-  "]" @punctuation.bracket) @constant.numeric
+  "]" @punctuation.bracket) @number
 
 (val_bool) @constant.builtin
 
@@ -77,7 +77,7 @@ arg_str: (val_string) @variable.parameter
 
 file_path: (val_string) @variable.parameter
 
-(val_date) @constant.numeric
+(val_date) @number
 
 (inter_escape_sequence) @constant.character.escape
 
