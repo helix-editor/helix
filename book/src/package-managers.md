@@ -2,7 +2,6 @@
 
 - [Linux](#linux)
   - [Ubuntu/Debian](#ubuntudebian)
-  - [Ubuntu (PPA)](#ubuntu-ppa)
   - [Fedora/RHEL](#fedorarhel)
   - [Arch Linux extra](#arch-linux-extra)
   - [NixOS](#nixos)
@@ -26,20 +25,10 @@ The following third party repositories are available:
 
 ### Ubuntu/Debian
 
-Install the Debian package from the release page.
+Install the Debian package [from the release page](https://github.com/helix-editor/helix/releases/latest).
 
 If you are running a system older than Ubuntu 22.04, Mint 21, or Debian 12, you can build the `.deb` file locally
 [from source](./building-from-source.md#building-the-debian-package).
-
-### Ubuntu (PPA)
-
-Add the `PPA` for Helix:
-
-```sh
-sudo add-apt-repository ppa:maveonair/helix-editor
-sudo apt update
-sudo apt install helix
-```
 
 ### Fedora/RHEL
 

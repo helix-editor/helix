@@ -13,7 +13,7 @@
 use std::mem::transmute;
 
 use helix_core::{Rope, RopeSlice};
-use imara_diff::intern::{InternedInput, Interner};
+use imara_diff::{InternedInput, Interner};
 
 use super::{MAX_DIFF_BYTES, MAX_DIFF_LINES};
 

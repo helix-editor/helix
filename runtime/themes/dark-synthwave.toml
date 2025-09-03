@@ -1,0 +1,114 @@
+# Dark Synthwave
+# Based on Dark SynthWave '84 for VS Code (https://github.com/brainomite/dark-synthwave-vscode/tree/main)
+# 
+# Author : Peter Retzlaff <pe.retzlaff@gmail.com>
+# License: MIT License
+
+# UI Colors
+"ui.background" = { bg = "black", fg = "blood-red" }
+"ui.cursor" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.match" = { bg = "selection-blue" }
+"ui.text" = "white"
+"ui.text.focus" = { fg = "dark-grey", bg = "synth-red" }
+"ui.text.inactive" = "grey"
+"ui.linenr" = "grey"
+"ui.linenr.selected" = "white"
+"ui.statusline" = { fg = "white", bg = "black" }
+"ui.statusline.inactive" = { fg = "grey", bg = "black"}
+"ui.statusline.separator" = "synth-red"
+"ui.popup" = { fg = "#f8f8f0", bg = "#1E1E1E" }
+"ui.popup.info" = { fg = "synth-red", bg = "black" }
+"ui.window" = "synth-red"
+"ui.help" = { fg = "#f8f8f0", bg = "#1E1E1E" }
+"ui.virtual.jump-label" = {fg = "synth-red", modifiers = ["bold"]}
+"ui.selection" = { bg = "selection-blue" }
+"ui.selection.primary" = { bg = "selection-blue" }
+"ui.menu" = { fg = "white", bg = "black" }
+"ui.menu.selected" = { fg = "dark-grey", bg = "synth-red" }
+"ui.picker" = { fg = "neon-yellow" }
+"ui.picker.header.column.active" = { modifiers = ["bold"] }
+"ui.background.separator" = "synth-red"
+
+# Diagnostic colors
+"warning" = "warning"
+"error" = "error"
+"info" = "info"
+"hint" = "info"
+"diagnostic.warning" = { underline = { color = "warning", style = "curl" } }
+"diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.info" = { underline = { color = "info", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "info", style = "curl" } }
+
+# Syntax highlighting
+"comment" = { fg = "mauve", modifiers = ["italic"] }
+"constant" = "salmon"
+"constant.numeric" = "salmon"
+"constant.character.escape" = "beaming-blue"
+"constant.builtin" = "synthetic-green"
+"constant.builtin.boolean" = "synthetic-green"
+"string" = "orange"
+"string.regexp" = "salmon"
+"variable" = "pelati-red"
+"variable.builtin" = { fg = "blood-red", modifiers = ["bold"] }
+"variable.parameter" = { fg = "jess-green", modifiers = ["italic"] }
+"type" = "blood-red"
+"constructor" = "blood-red"
+"function" = "beaming-blue"
+"keyword" = "neon-yellow"
+"keyword.control" = "neon-yellow"
+"keyword.control.import" = "jade"
+"keyword.operator" = "neon-yellow"
+"keyword.directive" = "jade"
+"keyword.storage.type" = "neon-yellow"
+"keyword.storage.modifier" = "neon-yellow"
+
+# "label" = "neon-yellow"
+"namespace" = "blood-red"
+"operator" = "neon-yellow"
+# "special" = "beaming-blue"
+
+"punctuation.bracket" = "neon-yellow"
+"tag" = "jade"
+"attribute" = { fg = "neon-yellow", modifiers = ["italic"] }
+
+"markup.heading" = { fg = "#ff7edb", modifiers = ["bold"] }
+"markup.bold" = { fg = "#2ee2fa", modifiers = ["bold"] }
+"markup.italic" = { fg = "#2ee2fa", modifiers = ["italic"] }
+"markup.link.url" = { fg = "jade", modifiers = ["italic"] }
+"markup.link.text" = "neon-yellow"
+"markup.quote" = { fg = "jade", modifiers = ["italic"] }
+"markup.raw" = "pelati-red"
+"markup.raw.inline" = "pelati-red"
+"markup.raw.block" = "pelati-red"
+
+# Git gutter
+"diff.plus.gutter" = "#47ffa0"
+"diff.minus.gutter" = "error"
+"diff.delta.gutter" = "info"
+
+# bufferline
+"ui.bufferline" = { fg = "grey", bg = "#000000"}
+"ui.bufferline.active" = { fg = "dark-grey", bg = "synth-red" }
+
+[palette]
+black = "#000000"
+white = "#ffffff"
+neon-yellow = "#fede5d"
+blood-red = "#fe4450"
+pelati-red = "#f73232"
+synth-red = "#ff3366"
+salmon = "#f97e72"
+beaming-blue = "#36f9f6"
+selection-blue = "#001069"
+synthetic-green = "#1afc65"
+jess-green = "#28b881"
+orange = "#ff8b39"
+jade = "#72f1b8"
+mauve = "#848bbd"
+grey = "#808080"
+dark-grey = "#141414"
+error = "#ff5252"
+warning = "#ffab40"
+info = "#40c4ff"
+

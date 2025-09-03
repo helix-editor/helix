@@ -173,6 +173,18 @@ async fn insert_newline_trim_trailing_whitespace() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn insert_newline_trim_whitespace_to_previous_selection() -> anyhow::Result<()> {
+    test((
+        indoc! {"\"#[a|]# #(a|)# #(a|)#\""},
+        "c<ret>",
+        indoc! {"\"\n#[\n|]##(\n|)##(\"|)#"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn insert_newline_continue_line_comment() -> anyhow::Result<()> {
     // `insert_newline` continues a single line comment
     test((
@@ -510,5 +522,64 @@ async fn test_open_above_with_comments() -> anyhow::Result<()> {
     ))
     .await?;
 
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn try_restore_indent() -> anyhow::Result<()> {
+    // Assert that `helix_view::editor::try_restore_indent` handles line endings correctly
+    // endings.
+    test((
+        indoc! {"\
+        if true #[|{]#
+        }
+        "},
+        // `try_restore_indent` should remove the indentation when adding a blank line.
+        ":lang rust<ret>o<esc>",
+        indoc! {"\
+        if true {
+        #[
+        |]#}
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+// Tests being able to jump in insert mode, then undo the write performed by the jump
+// https://github.com/helix-editor/helix/issues/13480
+#[tokio::test(flavor = "multi_thread")]
+async fn test_jump_undo_redo() -> anyhow::Result<()> {
+    use helix_core::hashmap;
+    use helix_term::keymap;
+    use helix_view::document::Mode;
+
+    let mut config = Config::default();
+    config.keys.insert(
+        Mode::Insert,
+        keymap!({"Insert Mode"
+            "C-i" => goto_file_start,
+            "C-o" => goto_file_end,
+        }),
+    );
+
+    // Undo
+    test_with_config(
+        AppBuilder::new().with_config(config.clone()),
+        ("#[|]#", "iworld<C-i>Hello, <esc>u", "#[w|]#orld"),
+    )
+    .await?;
+
+    // Redo
+    test_with_config(
+        AppBuilder::new().with_config(config),
+        (
+            "#[|]#",
+            "iworld<C-i>Hello, <esc>ui<C-o><esc>U",
+            "Hello, #[w|]#orld",
+        ),
+    )
+    .await?;
     Ok(())
 }

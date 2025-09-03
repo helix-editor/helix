@@ -222,11 +222,14 @@
 (super) @variable.builtin
 
 [
-  (true)
-  (false)
   (null)
   (undefined)
 ] @constant.builtin
+
+[
+  (true)
+  (false)
+] @constant.builtin.boolean
 
 (comment) @comment
 
@@ -234,6 +237,8 @@
   (string)
   (template_string)
 ] @string
+
+(escape_sequence) @constant.character.escape
 
 (regex) @string.regexp
 (number) @constant.numeric.integer

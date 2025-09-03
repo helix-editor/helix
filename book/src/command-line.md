@@ -47,8 +47,12 @@ The following variables are supported:
 | `cursor_column` | The column number of the primary cursor in the currently focused document, starting at 1. This is counted as the number of grapheme clusters from the start of the line rather than bytes or codepoints. |
 | `buffer_name` | The relative path of the currently focused document. `[scratch]` is expanded instead for scratch buffers. |
 | `line_ending` | A string containing the line ending of the currently focused document. For example on Unix systems this is usually a line-feed character (`\n`) but on Windows systems this may be a carriage-return plus a line-feed (`\r\n`). The line ending kind of the currently focused document can be inspected with the `:line-ending` command. |
+| `current_working_directory` | Current working directory |
+| `workspace_directory` | Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix` |
 | `language` | A string containing the language name of the currently focused document.|
 | `selection` | A string containing the contents of the primary selection of the currently focused document. |
+| `selection_line_start` | The line number of the start of the primary selection in the currently focused document, starting at 1. |
+| `selection_line_end` | The line number of the end of the primary selection in the currently focused document, starting at 1. |
 
 Aside from editor variables, the following expansions may be used:
 

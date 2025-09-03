@@ -22,7 +22,7 @@ pub mod tasks {
         use helix_core::syntax::LanguageData;
 
         let languages_to_check: HashSet<_> = languages.collect();
-        let loader = crate::helpers::syn_loader();
+        let loader = helix_core::config::default_lang_loader();
         for (_language, lang_data) in loader.languages() {
             if !languages_to_check.is_empty()
                 && !languages_to_check.contains(&lang_data.config().language_id)
@@ -36,6 +36,8 @@ pub mod tasks {
             let grammar = syntax_config.grammar;
             LanguageData::compile_indent_query(grammar, config)?;
             LanguageData::compile_textobject_query(grammar, config)?;
+            LanguageData::compile_tag_query(grammar, config)?;
+            LanguageData::compile_rainbow_query(grammar, config)?;
         }
 
         println!("Query check succeeded");

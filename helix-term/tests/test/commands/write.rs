@@ -772,3 +772,70 @@ async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_file_when_given_dir_and_filename() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let source_file = tempfile::NamedTempFile::new_in(&dir)?;
+    let target_file = dir.path().join("new_name.ext");
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(source_file.path(), None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some(format!(":move {}<ret>", target_file.to_string_lossy()).as_ref()),
+        None,
+        false,
+    )
+    .await?;
+
+    assert!(
+        target_file.is_file(),
+        "target file '{}' should have been created",
+        target_file.display()
+    );
+    assert!(
+        !source_file.path().exists(),
+        "Source file '{}' should have been removed",
+        source_file.path().display()
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_file_when_given_dir_only() -> anyhow::Result<()> {
+    let source_dir = tempfile::tempdir()?;
+    let target_dir = tempfile::tempdir()?;
+    let source_file = source_dir.path().join("file.ext");
+    std::fs::File::create(&source_file)?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(&source_file, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some(format!(":move {}<ret>", target_dir.path().to_string_lossy()).as_ref()),
+        None,
+        false,
+    )
+    .await?;
+
+    let target_file = target_dir.path().join("file.ext");
+
+    assert!(
+        target_file.is_file(),
+        "target file '{}' should have been created",
+        target_file.display()
+    );
+    assert!(
+        !source_file.exists(),
+        "Source file '{}' should have been removed",
+        source_file.display()
+    );
+
+    Ok(())
+}

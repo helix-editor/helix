@@ -88,8 +88,13 @@
 ((type_arguments (type_identifier) @constant)
  (#match? @constant "^[A-Z_]+$"))
 (type_arguments (type_identifier) @type)
+; `_` in `(_, _)`
 (tuple_struct_pattern "_" @comment.unused)
+; `_` in `Vec<_>`
 ((type_arguments (type_identifier) @comment.unused)
+ (#eq? @comment.unused "_"))
+; `_` in `Rc<[_]>`
+((array_type (type_identifier) @comment.unused)
  (#eq? @comment.unused "_"))
 
 ; ---
@@ -106,12 +111,28 @@
   (string_literal)
   (raw_string_literal)
 ] @string
-(outer_doc_comment_marker "/" @comment)
-(inner_doc_comment_marker "!" @comment)
-[
-  (line_comment)
-  (block_comment)
-] @comment
+
+; -------
+; Comments
+; -------
+
+(line_comment) @comment.line
+(block_comment) @comment.block
+
+; Doc Comments
+(line_comment
+  (outer_doc_comment_marker "/" @comment.line.documentation)
+  (doc_comment)) @comment.line.documentation
+(line_comment
+  (inner_doc_comment_marker "!" @comment.line.documentation)
+  (doc_comment)) @comment.line.documentation
+
+(block_comment
+  (outer_doc_comment_marker) @comment.block.documentation
+  (doc_comment) "*/" @comment.block.documentation) @comment.block.documentation
+(block_comment
+  (inner_doc_comment_marker) @comment.block.documentation
+  (doc_comment) "*/" @comment.block.documentation) @comment.block.documentation
 
 ; ---
 ; Extraneous
@@ -194,10 +215,6 @@
 ; Keywords
 ; -------
 
-(for_expression
-  "for" @keyword.control.repeat)
-(gen_block "gen" @keyword.control)
-
 "in" @keyword.control
 
 [
@@ -247,6 +264,10 @@
   "async"
 ] @keyword
 
+(for_expression
+  "for" @keyword.control.repeat)
+(gen_block "gen" @keyword.control)
+
 [
   "struct"
   "enum"
@@ -288,6 +309,23 @@
 ; -------
 ; Functions
 ; -------
+
+; highlight `baz` in `any_function(foo::bar::baz)` as function
+; This generically works for an unlimited number of path segments:
+;
+; - `f(foo::bar)`
+; - `f(foo::bar::baz)`
+; - `f(foo::bar::baz::quux)`
+;
+; We know that in the above examples, the last component of each path is a function
+; as the only other valid thing (following Rust naming conventions) would be a module at
+; that position, however you cannot pass modules as arguments
+(call_expression
+  function: _
+  arguments: (arguments
+    (scoped_identifier
+      path: _
+      name: (identifier) @function)))
 
 (call_expression
   function: [
@@ -421,6 +459,7 @@
   (#eq? @special "derive")
 )
 
+(token_repetition_pattern) @punctuation.delimiter
 (token_repetition_pattern [")" "(" "$"] @punctuation.special)
 (token_repetition_pattern "?" @operator)
 

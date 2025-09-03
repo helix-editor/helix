@@ -1,0 +1,14 @@
+# Gruvbox Material Light Hard for Helix
+# Original Author: @sainnhe (https://github.com/sainnhe/gruvbox-material)
+# Base theme ported by: @satoqz
+# Palette ported by: @ivan-shymkiv
+# License: MIT
+
+inherits = "gruvbox_material_light_medium"
+
+[palette]
+bg0 = "#f9f5d7"
+bg1 = "#f5edca"
+bg2 = "#f2e5bc"
+bg3 = "#ebdbb2"
+bg4 = "#eee0b7"

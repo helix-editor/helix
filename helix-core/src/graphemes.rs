@@ -242,34 +242,6 @@ pub fn ensure_grapheme_boundary_prev(slice: RopeSlice, char_idx: usize) -> usize
     }
 }
 
-/// Returns whether the given char position is a grapheme boundary.
-#[must_use]
-pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
-    // Bounds check
-    debug_assert!(char_idx <= slice.len_chars());
-
-    // We work with bytes for this, so convert.
-    let byte_idx = slice.char_to_byte(char_idx);
-
-    // Get the chunk with our byte index in it.
-    let (chunk, chunk_byte_idx, _, _) = slice.chunk_at_byte(byte_idx);
-
-    // Set up the grapheme cursor.
-    let mut gc = GraphemeCursor::new(byte_idx, slice.len_bytes(), true);
-
-    // Determine if the given position is a grapheme cluster boundary.
-    loop {
-        match gc.is_boundary(chunk, chunk_byte_idx) {
-            Ok(n) => return n,
-            Err(GraphemeIncomplete::PreContext(n)) => {
-                let (ctx_chunk, ctx_byte_start, _, _) = slice.chunk_at_byte(n - 1);
-                gc.provide_context(ctx_chunk, ctx_byte_start);
-            }
-            Err(_) => unreachable!(),
-        }
-    }
-}
-
 /// A highly compressed Cow<'a, str> that holds
 /// atmost u31::MAX bytes and is readonly
 pub struct GraphemeStr<'a> {

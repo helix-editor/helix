@@ -7,6 +7,7 @@ use serde::{ser::SerializeSeq as _, Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     fmt::{self, Display},
+    num::NonZeroU8,
     path::PathBuf,
     str::FromStr,
 };
@@ -60,6 +61,8 @@ pub struct LanguageConfiguration {
 
     /// If set, overrides `editor.path-completion`.
     pub path_completion: Option<bool>,
+    /// If set, overrides `editor.word-completion`.
+    pub word_completion: Option<WordCompletion>,
 
     #[serde(default)]
     pub diagnostic_severity: Severity,
@@ -98,6 +101,8 @@ pub struct LanguageConfiguration {
     pub workspace_lsp_roots: Option<Vec<PathBuf>>,
     #[serde(default)]
     pub persistent_diagnostic_sources: Vec<String>,
+    /// Overrides the `editor.rainbow-brackets` config key for the language.
+    pub rainbow_brackets: Option<bool>,
 }
 
 impl LanguageConfiguration {
@@ -570,6 +575,13 @@ pub struct SoftWrap {
     pub wrap_indicator: Option<String>,
     /// Softwrap at `text_width` instead of viewport width if it is shorter
     pub wrap_at_text_width: Option<bool>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct WordCompletion {
+    pub enable: Option<bool>,
+    pub trigger_length: Option<NonZeroU8>,
 }
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<rope::Regex>, D::Error>

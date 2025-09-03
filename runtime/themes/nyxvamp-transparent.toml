@@ -1,0 +1,54 @@
+# nyxvamp: override variant (fully transparent)
+# author: zoedsoupe <zoey.spessanha@zeetech.io>
+
+inherits = "nyxvamp-veil"
+
+# Override UI elements for transparency while maintaining readability
+"ui.background" = {}
+"ui.statusline" = { fg = "status_fg" }
+"ui.statusline.inactive" = { fg = "status_inactive_fg" }
+"ui.cursorline.primary" = {}
+"ui.virtual.ruler" = {}
+
+# Keep menus fully transparent but improve text contrast
+"ui.menu" = { fg = "bright_text" }
+"ui.menu.selected" = { fg = "selected_bright", bg = "selection_subtle", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "menu_scroll_fg" }
+
+# Popups remain transparent with better text
+"ui.popup" = { fg = "bright_text" }
+"ui.popup.info" = { fg = "bright_text" }
+
+# Improve picker visibility while keeping transparency
+"ui.picker.header" = { fg = "header_bright", modifiers = ["bold", "underlined"] }
+"ui.picker.header.column" = { fg = "header_bright" }
+"ui.picker.header.column.active" = { fg = "active_column_fg", bg = "active_column_bg", modifiers = ["bold", "underlined"] }
+
+# Focus and selection improvements
+"ui.text.focus" = { fg = "selected_bright", bg = "selection_subtle", modifiers = ["bold"] }
+"ui.text.inactive" = { fg = "text_inactive_fg" }
+"ui.text.directory" = { fg = "directory_fg", modifiers = ["italic"] }
+
+# Improve other UI elements
+"ui.match_paren" = { fg = "match_paren_fg", bg = "match_paren_highlight_bg", modifiers = ["bold"] }
+"ui.selection" = { bg = "selection_transparent" }
+"ui.selection.primary" = { bg = "selection_primary_transparent" }
+
+# Add palette for transparent-specific colors
+[palette]
+# Much brighter colors for transparent backgrounds - maximum readability
+bright_text = "#FFFFFF"  # Pure white for maximum contrast on any background
+selected_bright = "#FF6B9D"  # Bright pink that's still muted but very visible
+header_bright = "#5DADE2"  # Bright blue but not harsh
+directory_fg = "#E8D5FF"  # Very bright lavender for directories
+text_inactive_fg = "#A0A0A0"  # Bright gray for inactive text
+
+# Stronger selection backgrounds for transparent theme
+selection_subtle = "#DDA0DD50"  # 31% muted plum selection
+match_paren_highlight_bg = "#DDA0DD40"  # 25% muted plum highlight
+selection_transparent = "#483D8B40"  # 25% dark slate blue selection
+selection_primary_transparent = "#483D8B50"  # 31% dark slate blue primary
+
+# Active column highlighting for better visibility
+active_column_fg = "#1E1E2E"  # Dark text for contrast
+active_column_bg = "#87CEEB80"  # 50% sky blue background - matches header color

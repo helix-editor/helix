@@ -1,0 +1,234 @@
+# License: MIT License
+# Sidra Theme for the Helix Editor
+# Author: Md Atiquz Zaman <atiquzz42@gmail.com>
+# Repo: https://github.com/atiquz/sidra
+# Inspired by: One Monokai, Dracula, One Dark Pro
+# Description: A customizable, balanced dark theme built for readability and flexibility.
+
+
+# ===========================
+# UI Element Styling
+# ===========================
+
+
+# USER INTERFACE
+"ui.background"               = {  fg = "foreground",           bg = "background"                                            }
+"ui.background.separator"     = {  fg = "white"                                                                              }
+
+"ui.linenr"                   = {  fg = "fg_linenr"                                                                          }
+"ui.linenr.selected"          = {  fg = "fg_linenr_sld"                                                                      }
+
+"ui.help"                     = {  fg = "fg_help",              bg = "bg_help"                                               }
+"ui.popup"                    = {                               bg = "bg_popup"                                              }
+"ui.window"                   = {  fg = "fg_window"                                                                          }
+
+"ui.text"                     = {  fg = "fg_text"                                                                            }
+"ui.text.focus"               = {  fg = "fg_text_focus"                                                                      }
+"ui.text.inactive"            = {  fg = "fg_text_inactive"                                                                   }
+
+"ui.virtual"                  = {  fg = "fg_virtual"                                                                         }
+"ui.virtual.ruler"            = {                               bg = "bg_virtual_ruler"                                      }
+"ui.virtual.indent-guide"     = {  fg = "fg_virtual_indent"                                                                  }
+
+"ui.debug"                    = {  fg = "fg_debug",                                      modifiers = ["bold"]                }
+"ui.debug.active"             = {  fg = "fg_debug_active",                               modifiers = ["bold"]                }
+"ui.debug.breakpoint"         = {  fg = "fg_debug_breakpoint",                           modifiers = ["bold"]                }
+
+"ui.menu"                     = {  fg = "gray",                 bg = "black"                                                 }
+"ui.menu.selected"            = {  fg = "black",                bg = "gray"                                                  }
+
+# CURSOR
+"ui.cursor"                   = {  fg = "foreground",           bg = "bg_normal",        modifiers = ["dim"]                 }
+"ui.cursor.match"             = {  fg = "foreground",           bg = "bg_match",         modifiers = ["dim"]                 }
+"ui.cursor.normal"            = {  fg = "background",           bg = "bg_normal",        modifiers = ["dim"]                 }
+"ui.cursor.insert"            = {  fg = "background",           bg = "bg_insert",        modifiers = ["dim"]                 }
+"ui.cursor.select"            = {  fg = "background",           bg = "bg_select",        modifiers = ["dim"]                 }
+"ui.cursor.primary.normal"    = {  fg = "background",           bg = "bg_normal"                                             }
+"ui.cursor.primary.insert"    = {  fg = "background",           bg = "bg_insert"                                             }
+"ui.cursor.primary.select"    = {  fg = "background",           bg = "bg_select"                                             }
+"ui.cursorline"               = {                               bg = "bg_cursorline"                                         }
+"ui.cursorline.primary"       = {                               bg = "bg_cursorline"                                         }
+
+
+# SELECTION
+"ui.selection"                = {  fg = "white",                bg = "bg_selection"                                          }
+"ui.selection.primary"        = {  fg = "white",                bg = "bg_selection"                                          }
+
+
+# STATUS LINE
+"ui.statusline"               = {  fg = "fg_statusline",        bg = "bg_statusline"                                         }
+"ui.statusline.inactive"      = {  fg = "fg_inactive",          bg = "bg_inactive"                                           }
+"ui.statusline.normal"        = {  fg = "black",                bg = "bg_normal",        modifiers = ["bold"]                }
+"ui.statusline.insert"        = {  fg = "black",                bg = "bg_insert",        modifiers = ["bold"]                }
+"ui.statusline.select"        = {  fg = "black",                bg = "bg_select",        modifiers = ["bold"]                }
+
+# MARKUP
+"markup.heading"              = {  fg = "markup_heading"    }
+"markup.bold"                 = {  fg = "markup_bold",                                   modifiers = ["bold"]                }
+"markup.italic"               = {  fg = "markup_italic",                                 modifiers = ["italic"]              }
+"markup.strikethrough"        = {  fg = "markup_strikethrough",                          modifiers = ["crossed_out", "bold"] }
+"markup.link.url"             = {  fg = "markup_link_url",                               modifiers = ["underlined"]          }
+"markup.link.text"            = {  fg = "markup_link_text"                                                                   }
+"markup.raw"                  = {  fg = "markup_raw"                                                                         }
+
+
+# GIT
+"diff.plus"                   = {  fg = "plus",                                          modifiers = ["bold"] }
+"diff.minus"                  = {  fg = "minus",                                         modifiers = ["bold"] }
+"diff.delta"                  = {  fg = "delta",                                         modifiers = ["bold"] }
+
+
+# HINT INFO ERROR & WARNING
+"diagnostic.hint"             = {  underline   = {   color = "cl_hint",                  style = "curl" }       }
+"diagnostic.info"             = {  underline   = {   color = "cl_info",                  style = "curl" }       }
+"diagnostic.error"            = {  underline   = {   color = "cl_error",                 style = "curl" }       }
+"diagnostic.warning"          = {  underline   = {   color = "cl_warning",               style = "curl" }       }
+
+hint                          =    "cl_hint"
+info                          =    "cl_info"
+error                         =    "cl_error"
+warning                       =    "cl_warning"
+
+
+# ===========================
+# SYNTAX COLORS
+# ===========================
+
+
+# === ATTRIBUTES & KEYWORDS ===
+attribute                     = "#a7bf67"  # Olive green
+namespace                     = "#7095bf"  # Steel blue
+
+"keyword"                     = { fg = "#d37a78",               modifiers = ["bold"]           }
+"keyword.control"             = { fg = "#d37a78",               modifiers = ["bold"]           }
+"keyword.control.conditional" = { fg = "#82AAFF",               modifiers = ["bold"]           }
+"keyword.control.repeat"      = { fg = "#d37a78",               modifiers = ["bold"]           }
+"keyword.control.import"      = { fg = "#C678DD",               modifiers = ["bold"]           }
+"keyword.control.return"      = { fg = "#88aece",               modifiers = ["bold"]           }
+"keyword.control.exception"   = { fg = "#FF79C6",               modifiers = ["bold"]           }
+"keyword.operator"            = { fg = "#528BFF"                                               }
+"keyword.function"            = { fg = "#d37a78",               modifiers = ["bold"]           }
+"keyword.storage"             = { fg = "#C678DD",               modifiers = ["bold"]           }
+"keyword.storage.type"        = { fg = "#56B6C2",               modifiers = ["bold"]           }
+"keyword.storage.modifier"    = { fg = "#56B6C2",               modifiers = ["bold"]           }
+
+
+# === SYMBOLS & OPERATORS ===
+"punctuation"                = "#FFFFFF"  # White
+"punctuation.delimiter"      = "#F3F2CC"  # White (delimiter punctuation)
+"punctuation.bracket"        = "#FFFFFF"  # Yellow
+"punctuation.special"        = "#ffd700"  # Yello
+operator                     = "#F3F2CC"  # Dusty brown (used to be "muddy")
+special                      = "#c90076"  # Pink Color
+
+# === VARIABLES ===
+"variable"                   = "#F3F2CC"  # Soft green
+"variable.other"             = "#cfba8b"  # Pale mint green (special language svars)
+"variable.other.member"      = "#AB9DF2"  # Pale mint green (special language svars)
+"variable.builtin"           = "#FC9867"  # Blue
+"variable.parameter"         = "#F3F2CC"  # Pale mint green
+
+# === TYPES ===
+type                         = "#efbe4c"  # Golden yellow
+"type.builtin"               = "#efbe4c"  # Golden yellow (built-in types)
+constructor                  = "#c19ef7"  # Light lilac
+
+# === FUNCTIONS ===
+"function"                   = "#FAD566"  # Green
+"function.macro"             = "#FAD566"  # Green
+"function.method"            = "#FAD566"  # Green
+"function.builtin"           = "#db985e"  # Orange tan
+"function.special"           = "#db985e"  # Orange tan
+
+# === TAGS ===
+tag                          = "#d37a78"  # Soft salmon pink
+
+# === COMMENTS ===
+comment                      = "#646f69"  # Light gray
+
+# === CONSTANTS ===
+constant                     = "#A5C4D4"  # Pale blue
+"constant.builtin"           = "#76c490"  # Bright yellow
+"constant.numeric"           = "#86c1b9"  # Muted violet
+"constant.character.escape"  = "#c95c56"  # Coral red (escape characters)
+
+# === STRINGS ===
+string                       = "#A9DC76"  # Sandy yellow-orange
+
+# === LABELS ===
+label                        = "#abcc8a"  # Pale green
+
+# ===========================
+# Color Palette
+# ===========================
+
+[palette]
+
+# ===== MODES COLORS =====
+
+bg_normal               = "#BD93F9"        # Light purple
+bg_insert               = "#50fa7b"        # Neon green
+bg_select               = "#8be9fd"        # Cyan blue
+bg_match                = "#D3D3D3"        # Light gray
+
+# ===== GIT COLORS =====
+
+plus                    = "#4F6F52"        # Forest green
+minus                   = "#B80000"        # Vivid red
+delta                   = "#3876BF"        # Steel blue
+
+# ===== MARKUP COLORS =====
+
+markup_heading          = "#ff69b4"        # Hot pink
+markup_bold             = "#e7c547"        # Bright yellow
+markup_italic           = "#b294bb"        # Lavender
+markup_strikethrough    = "#d7005f"        # Deep pink-red
+markup_link_url         = "#3876BF"        # Steel blue
+markup_link_text        = "#FFA500"        # Orange
+markup_raw              = "#808080"        # Medium gray
+
+# ===== PRIMARY UI COLORS =====
+
+foreground              = "#D3D3D3"        # Light gray (default text)
+background              = "#232323"        # Very dark gray (background)
+
+# ===== UI INTERFACE COLORS =====
+
+fg_linenr               = "#747575"        # Dull silver (line numbers)
+fg_linenr_sld           = "#c7dddd"        # Light cyan (selected line number)
+fg_help                 = "#D3D3D3"        # Light gray (help text)
+bg_help                 = "#35353a"        # Charcoal (help background)
+bg_popup                = "#3b3b3d"        # Dark gray (popup background)
+fg_window               = "#F1DCA7"        # Soft cream (window border/title)
+
+fg_text                 = "#D3D3D3"        # Light gray (main text)
+fg_text_focus           = "#83c679"        # Light green (focused text)
+fg_text_inactive        = "#93a56f"        # Olive green (inactive text)
+
+# ===== VIRTUAL COLORS =====
+
+fg_virtual              = "#F1DCA7"        # Cream (virtual text)
+bg_virtual_ruler        = "#363638"        # Deep gray (ruler background)
+fg_virtual_indent       = "#5B5B5A"        # Medium-dark gray (indent guides)
+
+# ===== DEBUGGING COLORS =====
+
+fg_debug                = "#634450"        # Plum (debug info)
+fg_debug_active         = "#3876BF"        # Blue (active debug line)
+fg_debug_breakpoint     = "#B80000"        # Red (breakpoint marker)
+
+# ===== CURSOR, SELECTION, STATUSLINE =====
+
+bg_cursorline           = "#2d303e"        # Slate blue-gray (cursor line)
+bg_selection            = "#71797E"        # Cool gray (selected text background)
+fg_statusline           = "#D3D3D3"        # Light gray (statusline text)
+bg_statusline           = "#303030"        # Dark gray (statusline background)
+fg_inactive             = "#4b5059"        # Dim gray (inactive statusline text)
+bg_inactive             = "#303030"        # Dark gray (inactive statusline bg)
+
+# ===== HINT INFO ERROR & WARNING COLORS =====
+
+cl_hint                 = "#f1fa8c"        # Bright yellow
+cl_info                 = "#f1fa8c"        # Same as hint
+cl_error                = "#ff69b4"        # Bright pink
+cl_warning              = "#f1fa8c"        # Same as hint
