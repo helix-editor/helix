@@ -956,12 +956,12 @@ lines.
  2. Select the first "bat" and type * to set it to search.
  3. Type v to enter Select mode.
  4. Type n to select the other "bat".
- 5. Use c (or r after selecting the "b"s) to change the "bat"s to "cat".
+ 5. Use c (or r after selecting the "b"s) to change the "bat"s to
+    "cat".
 
  --> Everybody wants to be a bat,
  --> because a cat's the only bat
  --> who knows where it's at.
-
 
 
 
@@ -1178,16 +1178,13 @@ letters! that is not good grammar. you can fix this.
  3. Comment those lines.
  4. Uncomment those lines.
 
- --> How many are you going to comment?
- --> Is this enough for a comment?
  --> What are you doing?!
  --> Stop commenting me!
  --> AAAAaargh!!!
  --> Enough! Uncomment me now!
 
  Note: If there are only some commented lines under selections or
- multiple cursors, the commented lines will be commented again
- instead of being uncommented.
+ multiple cursors, they won't be uncommented but commented again.
 
 =================================================================
 =                       CHAPTER 11 RECAP                        =
