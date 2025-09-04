@@ -4746,3 +4746,16 @@ scope = "source.strictdoc"
 injection-regex = "strictdoc"
 file-types = ["sdoc", "sgra"]
 comment-token = ".."
+
+[[language]]
+name = "docker-bake"
+scope = "source.docker-bake"
+injection-regex = "docker-bake"
+grammar = "hcl"
+file-types = [
+  { glob = "docker-bake.hcl" },
+  { glob = "docker-bake.override.hcl" },
+]
+comment-token = "#"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
