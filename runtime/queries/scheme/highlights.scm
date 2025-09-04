@@ -65,7 +65,7 @@
     (list
       (symbol) @variable.parameter))
   (#any-of? @_f
-    "let" "let*" "let-syntax" "let-values" "let*-values" "letrec" "letrec*" "letrec-syntax"))
+    "let" "let*" "let-syntax" "let-values" "let*-values" "letrec" "letrec*" "letrec-syntax" "do"))
 
 ; operators
 
