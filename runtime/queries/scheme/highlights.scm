@@ -64,8 +64,8 @@
   (list
     (list
       (symbol) @variable.parameter))
-  (#match? @_f
-    "^(let|let\\*|let-syntax|let-values|let\\*-values|letrec|letrec\\*|letrec-syntax)$"))
+  (#any-of? @_f
+    "let" "let*" "let-syntax" "let-values" "let*-values" "letrec" "letrec*" "letrec-syntax"))
 
 ; operators
 
