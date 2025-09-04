@@ -1522,6 +1522,7 @@ scope = "source.haskell"
 injection-regex = "hs|haskell"
 file-types = ["hs", "hs-boot", "hsc"]
 roots = ["Setup.hs", "stack.yaml", "cabal.project"]
+shebangs = ["runhaskell", "stack"]
 comment-token = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
 language-servers = [ "haskell-language-server" ]
