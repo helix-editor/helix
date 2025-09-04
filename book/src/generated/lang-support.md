@@ -46,10 +46,10 @@
 | dhall | ✓ | ✓ |  |  |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |  |  |
 | djot | ✓ |  |  |  |  |  |
-| docker-compose | ✓ | ✓ | ✓ |  |  | `docker-compose-langserver`, `yaml-language-server` |
-| dockerfile | ✓ | ✓ |  |  |  | `docker-langserver` |
+| docker-bake | ✓ | ✓ | ✓ | ✓ | ✓ | `docker-language-server` |
+| docker-compose | ✓ | ✓ | ✓ |  |  | `docker-compose-langserver`, `yaml-language-server`, `docker-language-server` |
+| dockerfile | ✓ | ✓ |  |  |  | `docker-langserver`, `docker-language-server` |
 | dot | ✓ |  |  |  |  | `dot-language-server` |
-| docker-bake | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | doxyfile | ✓ | ✓ | ✓ | ✓ |  |  |
 | dtd | ✓ |  |  |  |  |  |
 | dune | ✓ |  |  |  |  |  |

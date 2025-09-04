@@ -275,6 +275,10 @@ mode = "location"
 command = "clarinet"
 args = ["lsp"]
 
+[language-server.docker-language-server]
+command = "docker-language-server"
+args = ["start", "--stdio"]
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -1920,7 +1924,7 @@ file-types = [
 ]
 comment-token = "#"
 indent = { tab-width = 4, unit = "  " }
-language-servers = [ "docker-langserver" ]
+language-servers = [ "docker-langserver", "docker-language-server" ]
 
 [[grammar]]
 name = "dockerfile"
@@ -1930,7 +1934,7 @@ source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = 
 name = "docker-compose"
 scope = "source.yaml.docker-compose"
 roots = ["docker-compose.yaml", "docker-compose.yml", "compose.yaml", "compose.yml"]
-language-servers = [ "docker-compose-langserver", "yaml-language-server" ]
+language-servers = [ "docker-compose-langserver", "yaml-language-server", "docker-language-server" ]
 file-types = [{ glob = "docker-compose.yaml" }, { glob = "docker-compose.yml" }, { glob = "compose.yaml" }, { glob = "compose.yml" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -4759,3 +4763,4 @@ file-types = [
 comment-token = "#"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
+language-servers = ["docker-language-server"]
