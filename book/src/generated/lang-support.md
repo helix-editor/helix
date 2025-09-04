@@ -49,6 +49,7 @@
 | docker-compose | ✓ | ✓ | ✓ |  |  | `docker-compose-langserver`, `yaml-language-server` |
 | dockerfile | ✓ | ✓ |  |  |  | `docker-langserver` |
 | dot | ✓ |  |  |  |  | `dot-language-server` |
+| docker-bake | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | doxyfile | ✓ | ✓ | ✓ | ✓ |  |  |
 | dtd | ✓ |  |  |  |  |  |
 | dune | ✓ |  |  |  |  |  |
