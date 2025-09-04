@@ -78,6 +78,7 @@ pub fn regex_prompt(
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, PromptEvent) + 'static,
+    literal_search: bool,
 ) {
     raw_regex_prompt(
         cx,
@@ -85,6 +86,7 @@ pub fn regex_prompt(
         history_register,
         completion_fn,
         move |cx, regex, _, event| fun(cx, regex, event),
+        literal_search,
     );
 }
 pub fn raw_regex_prompt(
@@ -93,6 +95,7 @@ pub fn raw_regex_prompt(
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
+    literal_search: bool,
 ) {
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
@@ -105,6 +108,11 @@ pub fn raw_regex_prompt(
         history_register,
         completion_fn,
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+            let input = if literal_search {
+                &helix_core::regex::escape(input)
+            } else {
+                input
+            };
             match event {
                 PromptEvent::Abort => {
                     let (view, doc) = current!(cx.editor);
