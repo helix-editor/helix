@@ -3110,7 +3110,8 @@ file-types = [
   { glob = ".aws/config" },
   "properties",
   "cfg",
-  "directory"
+  "directory",
+  { glob = ".wslconfig" },
 ]
 injection-regex = "ini"
 comment-token = "#"
