@@ -149,6 +149,7 @@
 | ldif | ✓ |  |  |  |  |  |
 | lean | ✓ |  |  |  |  | `lean` |
 | ledger | ✓ |  |  |  |  |  |
+| less | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
 | llvm | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |  |  |
