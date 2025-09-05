@@ -253,16 +253,22 @@ pub enum ExpansionKind {
     ///
     /// For example `%sh{echo hello}`.
     Shell,
+    /// Quotes token's contents with double quotes, and escapes according to standard escaping conventions.
+    ///
+    /// For example, `%quote{ "'"="foo" }` -> `"\"'\"=foo\""`.
+    Quote,
 }
 
 impl ExpansionKind {
-    pub const VARIANTS: &'static [Self] = &[Self::Variable, Self::Unicode, Self::Shell];
+    pub const VARIANTS: &'static [Self] =
+        &[Self::Variable, Self::Unicode, Self::Shell, Self::Quote];
 
     pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Variable => "",
             Self::Unicode => "u",
             Self::Shell => "sh",
+            Self::Quote => "quote",
         }
     }
 
@@ -271,6 +277,7 @@ impl ExpansionKind {
             "" => Some(Self::Variable),
             "u" => Some(Self::Unicode),
             "sh" => Some(Self::Shell),
+            "quote" => Some(Self::Quote),
             _ => None,
         }
     }
