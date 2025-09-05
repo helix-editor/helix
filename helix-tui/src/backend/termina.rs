@@ -1,6 +1,7 @@
 use std::io::{self, Write as _};
 
 use helix_view::{
+    editor::KittyKeyboardProtocolConfig,
     graphics::{CursorKind, Rect, UnderlineStyle},
     theme::{Color, Modifier},
 };
@@ -269,16 +270,24 @@ impl TerminaBackend {
             csi::KittyKeyboardFlags::DISAMBIGUATE_ESCAPE_CODES
                 .union(csi::KittyKeyboardFlags::REPORT_ALTERNATE_KEYS);
 
-        match self.capabilities.kitty_keyboard {
-            KittyKeyboardSupport::None | KittyKeyboardSupport::Partial => (),
-            KittyKeyboardSupport::Full => {
+        match (
+            self.config.kitty_keyboard_protocol,
+            self.capabilities.kitty_keyboard,
+        ) {
+            (KittyKeyboardProtocolConfig::Disabled, _)
+            | (
+                KittyKeyboardProtocolConfig::Auto,
+                KittyKeyboardSupport::None | KittyKeyboardSupport::Partial,
+            ) => (),
+            (KittyKeyboardProtocolConfig::Enabled, _)
+            | (KittyKeyboardProtocolConfig::Auto, KittyKeyboardSupport::Full) => {
                 write!(
                     self.terminal,
                     "{}",
                     Csi::Keyboard(csi::Keyboard::PushFlags(KEYBOARD_FLAGS))
                 )?;
             }
-            KittyKeyboardSupport::Some => {
+            (KittyKeyboardProtocolConfig::Auto, KittyKeyboardSupport::Some) => {
                 write!(
                     self.terminal,
                     "{}{}",
