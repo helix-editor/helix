@@ -132,7 +132,7 @@ berry = "#2A2A4D"
 
 ### Rainbow
 
-The `rainbow` key is used for rainbow highlight for matching brackets.
+The `rainbow` key is used for rainbow highlighting for matching brackets and indentation guides.
 The key is a list of styles.
 
 ```toml
@@ -140,6 +140,20 @@ rainbow = ["#ff0000", "#ffa500", "#fff000", { fg = "#00ff00", modifiers = ["bold
 ```
 
 Colors from the palette and modifiers may be used.
+
+The `rainbow-brackets` and `rainbow-indents` keys are used for rainbow highlights for matching brackets and indentation guides, respectively.
+They inherit their default value from the `rainbow` key, but may be specified to provide different highlighting patterns for brackets and indentation.
+For example, it may be desirable for indentation markers to be dimmer than brackets. (This is the default, when these are left unspecified.)
+
+```toml
+rainbow-brackets = ["#ff0000", "#ffa500", "#fff000", "#00ff00"]
+rainbow-indents = [
+  { fg = "#ff0000", modifiers = ["dim"] },
+  { fg = "#ffa500", modifiers = ["dim"] },
+  { fg = "#fff000", modifiers = ["dim"] },
+  { fg = "#00ff00", modifiers = ["dim"] }
+]
+```
 
 ### Scopes
 
