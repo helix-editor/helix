@@ -50,6 +50,7 @@ forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
 fsharp-ls = { command = "fsautocomplete", config = { AutomaticWorkspaceInit = true } }
+gitlab-ci-ls = { command = "gitlab-ci-ls" }
 gleam = { command = "gleam", args = ["lsp"] }
 glsl_analyzer = { command = "glsl_analyzer" }
 graphql-language-service = { command = "graphql-lsp", args = ["server", "-m", "stream"] }
@@ -4768,3 +4769,13 @@ comment-token = "#"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
 language-servers = ["docker-language-server"]
+
+[[language]]
+name = "gitlab-ci"
+scope = "source.gitlab-ci"
+injection-regex = "^gitlab-ci$"
+file-types = [{ glob = ".gitlab-ci.yml" }]
+grammar = "yaml"
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["yaml-language-server", "gitlab-ci-ls"]
+comment-token = "#"
