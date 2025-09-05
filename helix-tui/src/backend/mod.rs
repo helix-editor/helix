@@ -39,4 +39,5 @@ pub trait Backend {
     /// Flushes the terminal buffer
     fn flush(&mut self) -> Result<(), io::Error>;
     fn supports_true_color(&self) -> bool;
+    fn get_theme_mode(&self) -> Option<helix_view::theme::Mode>;
 }

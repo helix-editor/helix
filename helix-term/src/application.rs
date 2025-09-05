@@ -67,6 +67,8 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+
+    theme_mode: Option<theme::Mode>,
 }
 
 #[cfg(feature = "integration")]
@@ -109,6 +111,7 @@ impl Application {
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
 
+        let theme_mode = backend.get_theme_mode();
         let terminal = Terminal::new(backend)?;
         let area = terminal.size().expect("couldn't get terminal size");
         let mut compositor = Compositor::new(area);
@@ -127,6 +130,7 @@ impl Application {
             &mut editor,
             &config.load(),
             terminal.backend().supports_true_color(),
+            theme_mode,
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -246,6 +250,7 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
+            theme_mode,
         };
 
         Ok(app)
@@ -404,6 +409,7 @@ impl Application {
                 &mut self.editor,
                 &default_config,
                 self.terminal.backend().supports_true_color(),
+                self.theme_mode,
             );
 
             // Re-parse any open documents with the new language config.
@@ -437,12 +443,18 @@ impl Application {
     }
 
     /// Load the theme set in configuration
-    fn load_configured_theme(editor: &mut Editor, config: &Config, terminal_true_color: bool) {
+    fn load_configured_theme(
+        editor: &mut Editor,
+        config: &Config,
+        terminal_true_color: bool,
+        mode: Option<theme::Mode>,
+    ) {
         let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
         let theme = config
             .theme
             .as_ref()
-            .and_then(|theme| {
+            .and_then(|theme_config| {
+                let theme = theme_config.choose(mode);
                 editor
                     .theme_loader
                     .load(theme)
@@ -660,6 +672,8 @@ impl Application {
     }
 
     pub async fn handle_terminal_events(&mut self, event: std::io::Result<termina::Event>) {
+        use termina::escape::csi;
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -684,6 +698,15 @@ impl Application {
                 kind: termina::event::KeyEventKind::Release,
                 ..
             }) => false,
+            termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
+                Self::load_configured_theme(
+                    &mut self.editor,
+                    &self.config.load(),
+                    self.terminal.backend().supports_true_color(),
+                    Some(mode.into()),
+                );
+                true
+            }
             event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
@@ -1134,9 +1157,16 @@ impl Application {
 
     #[cfg(not(feature = "integration"))]
     pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<termina::Event>> + Unpin {
-        use termina::Terminal as _;
+        use termina::{escape::csi, Terminal as _};
         let reader = self.terminal.backend().terminal().event_reader();
-        termina::EventStream::new(reader, |event| !event.is_escape())
+        termina::EventStream::new(reader, |event| {
+            // Accept either non-escape sequences or theme mode updates.
+            !event.is_escape()
+                || matches!(
+                    event,
+                    termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(_)))
+                )
+        })
     }
 
     #[cfg(feature = "integration")]

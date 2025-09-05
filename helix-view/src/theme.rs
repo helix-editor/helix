@@ -35,6 +35,75 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
     ..Theme::from(BASE16_DEFAULT_THEME_DATA.clone())
 });
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Mode {
+    Dark,
+    Light,
+}
+
+#[cfg(feature = "term")]
+impl From<termina::escape::csi::ThemeMode> for Mode {
+    fn from(mode: termina::escape::csi::ThemeMode) -> Self {
+        match mode {
+            termina::escape::csi::ThemeMode::Dark => Self::Dark,
+            termina::escape::csi::ThemeMode::Light => Self::Light,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Config {
+    pub light: String,
+    pub dark: String,
+    /// A theme to choose when the terminal did not declare either light or dark mode.
+    /// When not specified the dark theme is preferred.
+    pub no_preference: Option<String>,
+}
+
+impl Config {
+    pub fn choose(&self, preference: Option<Mode>) -> &str {
+        match preference {
+            Some(Mode::Light) => &self.light,
+            Some(Mode::Dark) => &self.dark,
+            None => self.no_preference.as_ref().unwrap_or(&self.dark),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Config {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
+        enum InnerConfig {
+            Constant(String),
+            Adaptive {
+                dark: String,
+                light: String,
+                no_preference: Option<String>,
+            },
+        }
+
+        let inner = InnerConfig::deserialize(deserializer)?;
+
+        let (light, dark, no_preference) = match inner {
+            InnerConfig::Constant(theme) => (theme.clone(), theme.clone(), None),
+            InnerConfig::Adaptive {
+                light,
+                dark,
+                no_preference,
+            } => (light, dark, no_preference),
+        };
+
+        Ok(Self {
+            light,
+            dark,
+            no_preference,
+        })
+    }
+}
 #[derive(Clone, Debug)]
 pub struct Loader {
     /// Theme directories to search from highest to lowest priority
