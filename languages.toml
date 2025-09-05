@@ -987,6 +987,7 @@ scope = "source.htmldjango"
 injection-regex = "htmldjango"
 language-servers = ["djlsp", "vscode-html-language-server", "superhtml"]
 file-types = []
+roots = ["manage.py"]
 
 [language.auto-pairs]
 '"' = '"'
@@ -1091,6 +1092,7 @@ file-types = [
   { glob = "Scanfile" },
   { glob = "Snapfile" },
   { glob = "Gymfile" },
+  { glob = ".irbrc" },
 ]
 shebangs = ["ruby"]
 comment-token = "#"
@@ -1521,6 +1523,7 @@ scope = "source.haskell"
 injection-regex = "hs|haskell"
 file-types = ["hs", "hs-boot", "hsc"]
 roots = ["Setup.hs", "stack.yaml", "cabal.project"]
+shebangs = ["runhaskell", "stack"]
 comment-token = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
 language-servers = [ "haskell-language-server" ]
@@ -2185,7 +2188,7 @@ auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "ee93c639dc82148d716919df336ad612fd33538e" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "dae1551a9911b24f41d876c23f2ab05ece0a9d4c" }
 
 [[language]]
 name = "quarto"
@@ -3109,7 +3112,8 @@ file-types = [
   { glob = ".aws/config" },
   "properties",
   "cfg",
-  "directory"
+  "directory",
+  { glob = ".wslconfig" },
 ]
 injection-regex = "ini"
 comment-token = "#"
@@ -4496,6 +4500,8 @@ indent = { tab-width = 4, unit = "\t" }
 file-types = [
   "vim",
   { glob = ".vimrc" },
+  { glob = ".nvimrc" },
+  { glob = ".exrc" }
 ]
 
 [[language]]
@@ -4710,3 +4716,37 @@ comment-token = "#"
 file-types = [{ glob = "cliff.toml" }]
 language-servers = ["taplo", "tombi"]
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "cython"
+scope = "source.cython"
+file-types = ["pxd", "pxi", "pyx"]
+comment-token = "#"
+roots = ["pyproject.toml", "setup.py", "poetry.lock"]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cython"
+source = { git = "https://github.com/b0o/tree-sitter-cython", rev = "62f44f5e7e41dde03c5f0a05f035e293bcf2bcf8" }
+
+[[language]]
+name = "shellcheckrc"
+scope = "source.shellcheckrc"
+injection-regex = "shellcheck(rc)?"
+file-types = [{glob = "shellcheckrc"}, {glob = ".shellcheckrc"}]
+comment-token = "#"
+
+[[grammar]]
+name = "shellcheckrc"
+source = {git = "https://codeberg.org/kpbaks/tree-sitter-shellcheckrc", rev = "ad3da4e8f7fd72dcc5e93a6b89822c59a7cd10ff"}
+
+[[grammar]]
+name = "strictdoc"
+source = { git = "https://github.com/manueldiagostino/tree-sitter-strictdoc", rev = "070edcf23f7c85af355437706048f73833e0ea10" }
+
+[[language]]
+name = "strictdoc"
+scope = "source.strictdoc"
+injection-regex = "strictdoc"
+file-types = ["sdoc", "sgra"]
+comment-token = ".."
