@@ -1157,6 +1157,10 @@ file-types = [
   { glob = ".yashrc" },
   { glob = ".yash_profile" },
   { glob = ".hushlogin" },
+  { glob = ".xinitrc" }, # ~/.xinitrc
+  { glob = "xinitrc" }, # /etc/X11/xinit/xinitrc
+  { glob = ".xserverrc" }, # ~/.xserverrc
+  { glob = "xserverrc" }, # /etc/X11/xinit/xserverrc
 ]
 shebangs = ["sh", "bash", "dash", "zsh"]
 comment-token = "#"
