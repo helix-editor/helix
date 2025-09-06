@@ -35,7 +35,7 @@ use helix_core::{
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    search::{self, CharMatcher},
+    search::{self},
     selection, surround,
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
@@ -1564,13 +1564,40 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
             KeyCode::Char(ch) => Some(ch),
             _ => None,
         } {
-            Box::new(move |editor: &mut Editor| match direction {
-                Direction::Forward => {
-                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
-                }
-                Direction::Backward => {
-                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
-                }
+            Box::new(move |editor: &mut Editor| {
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
+
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    let cursor_anchor = range.cursor(text);
+                    let cursor_head = next_grapheme_boundary(text, cursor_anchor);
+
+                    // Exclusive search skips the next char after cursor to enable repeated application
+                    let search_start_pos = match (inclusive, direction) {
+                        (true, Direction::Forward) => cursor_head,
+                        (true, Direction::Backward) => cursor_anchor,
+                        (false, Direction::Forward) => cursor_head + 1,
+                        (false, Direction::Backward) => cursor_anchor - 1,
+                    };
+
+                    search::find_nth_char(count, text, ch, search_start_pos, direction)
+                        // Exclusive search should stop on previous character
+                        .map(|pos| match (inclusive, direction) {
+                            (true, Direction::Forward) => pos,
+                            (true, Direction::Backward) => pos,
+                            (false, Direction::Forward) => pos - 1,
+                            (false, Direction::Backward) => pos + 1,
+                        })
+                        .map_or(range, |pos| {
+                            if extend {
+                                range.put_cursor(text, pos, true)
+                            } else {
+                                Range::point(range.cursor(text)).put_cursor(text, pos, true)
+                            }
+                        })
+                });
+
+                doc.set_selection(view.id, selection);
             })
         } else {
             return;
@@ -1578,81 +1605,6 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
 
         cx.editor.apply_motion(motion);
     })
-}
-
-//
-
-#[inline]
-fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
-    editor: &mut Editor,
-    search_fn: &F,
-    inclusive: bool,
-    extend: bool,
-    char_matcher: M,
-    count: usize,
-) where
-    F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
-{
-    let (view, doc) = current!(editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-        // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-        // here, but just in terms of chars instead.
-        let search_start_pos = if range.anchor < range.head {
-            range.head - 1
-        } else {
-            range.head
-        };
-
-        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
-            if extend {
-                range.put_cursor(text, pos, true)
-            } else {
-                Range::point(range.cursor(text)).put_cursor(text, pos, true)
-            }
-        })
-    });
-    doc.set_selection(view.id, selection);
-}
-
-fn find_next_char_impl(
-    text: RopeSlice,
-    ch: char,
-    pos: usize,
-    n: usize,
-    inclusive: bool,
-) -> Option<usize> {
-    let pos = (pos + 1).min(text.len_chars());
-    if inclusive {
-        search::find_nth_char(n, text, ch, pos, Direction::Forward)
-    } else {
-        let n = match text.get_char(pos) {
-            Some(next_ch) if next_ch == ch => n + 1,
-            _ => n,
-        };
-        search::find_nth_char(n, text, ch, pos, Direction::Forward).map(|n| n.saturating_sub(1))
-    }
-}
-
-fn find_prev_char_impl(
-    text: RopeSlice,
-    ch: char,
-    pos: usize,
-    n: usize,
-    inclusive: bool,
-) -> Option<usize> {
-    if inclusive {
-        search::find_nth_char(n, text, ch, pos, Direction::Backward)
-    } else {
-        let n = match text.get_char(pos.saturating_sub(1)) {
-            Some(next_ch) if next_ch == ch => n + 1,
-            _ => n,
-        };
-        search::find_nth_char(n, text, ch, pos, Direction::Backward)
-            .map(|n| (n + 1).min(text.len_chars()))
-    }
 }
 
 fn find_till_char(cx: &mut Context) {
