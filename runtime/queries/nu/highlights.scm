@@ -378,12 +378,12 @@ key: (identifier) @property
 
 [(comment) (shebang)] @comment
 
-((comment)+ @comment.documentation @spell
+((comment)+ @comment.documentation
   .
   (decl_def))
 
 (parameter
-  (comment) @comment.documentation @spell)
+  (comment) @comment.documentation)
 
 (command
   head: ((cmd_identifier) @_cmd
