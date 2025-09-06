@@ -46,7 +46,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::Action,
+    editor::{Action, Motion},
     expansion,
     info::Info,
     input::KeyEvent,
@@ -1492,14 +1492,14 @@ fn extend_next_sub_word_end(cx: &mut Context) {
 // This is necessary because the one document can have different line endings inside. And we
 // cannot predict what character to find when <ret> is pressed. On the current line it can be `lf`
 // but on the next line it can be `crlf`. That's why [`find_char_impl`] cannot be applied here.
-fn find_char_line_ending(
-    cx: &mut Context,
+fn find_char_line_ending_motion(
+    editor: &mut Editor,
     count: usize,
     direction: Direction,
     inclusive: bool,
     extend: bool,
 ) {
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -1555,34 +1555,25 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
     // TODO: should this be done by grapheme rather than char?  For example,
     // we can't properly handle the line-ending CRLF case here in terms of char.
     cx.on_next_key(move |cx, event| {
-        let ch = match event {
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
-                find_char_line_ending(cx, count, direction, inclusive, extend);
-                return;
-            }
-
-            KeyEvent {
-                code: KeyCode::Tab, ..
-            } => '\t',
-
-            KeyEvent {
-                code: KeyCode::Char(ch),
-                ..
-            } => ch,
-            _ => return,
-        };
-        let motion = move |editor: &mut Editor| {
-            match direction {
+        let motion: Motion = if event.code == KeyCode::Enter {
+            Box::new(move |editor: &mut Editor| {
+                find_char_line_ending_motion(editor, count, direction, inclusive, extend);
+            })
+        } else if let Some(ch) = match event.code {
+            KeyCode::Tab => Some('\t'),
+            KeyCode::Char(ch) => Some(ch),
+            _ => None,
+        } {
+            Box::new(move |editor: &mut Editor| match direction {
                 Direction::Forward => {
                     find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
                 }
                 Direction::Backward => {
                     find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
                 }
-            };
+            })
+        } else {
+            return;
         };
 
         cx.editor.apply_motion(motion);
