@@ -1626,13 +1626,13 @@ fn find_next_char_impl(
 ) -> Option<usize> {
     let pos = (pos + 1).min(text.len_chars());
     if inclusive {
-        search::find_nth_next(text, ch, pos, n)
+        search::find_nth_char(n, text, ch, pos, Direction::Forward)
     } else {
         let n = match text.get_char(pos) {
             Some(next_ch) if next_ch == ch => n + 1,
             _ => n,
         };
-        search::find_nth_next(text, ch, pos, n).map(|n| n.saturating_sub(1))
+        search::find_nth_char(n, text, ch, pos, Direction::Forward).map(|n| n.saturating_sub(1))
     }
 }
 
@@ -1644,13 +1644,14 @@ fn find_prev_char_impl(
     inclusive: bool,
 ) -> Option<usize> {
     if inclusive {
-        search::find_nth_prev(text, ch, pos, n)
+        search::find_nth_char(n, text, ch, pos, Direction::Backward)
     } else {
         let n = match text.get_char(pos.saturating_sub(1)) {
             Some(next_ch) if next_ch == ch => n + 1,
             _ => n,
         };
-        search::find_nth_prev(text, ch, pos, n).map(|n| (n + 1).min(text.len_chars()))
+        search::find_nth_char(n, text, ch, pos, Direction::Backward)
+            .map(|n| (n + 1).min(text.len_chars()))
     }
 }
 
