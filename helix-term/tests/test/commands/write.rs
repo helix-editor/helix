@@ -24,7 +24,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(file.path())), doc.path());
+            assert_eq!(Some(path::normalize(file.path())), doc.pathbuf());
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,
@@ -265,7 +265,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(file.path())), doc.path());
+            assert_eq!(Some(path::normalize(file.path())), doc.pathbuf());
         }),
         false,
     )
@@ -651,7 +651,7 @@ async fn test_symlink_write_fail() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(&symlink_path)), doc.path());
+            assert_eq!(Some(path::normalize(&symlink_path)), doc.pathbuf());
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,
