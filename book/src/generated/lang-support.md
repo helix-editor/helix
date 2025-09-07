@@ -140,7 +140,7 @@
 | julia | ✓ | ✓ | ✓ |  |  | `julia` |
 | just | ✓ | ✓ | ✓ | ✓ |  | `just-lsp` |
 | kconfig | ✓ |  | ✓ |  |  |  |
-| kdl | ✓ | ✓ | ✓ |  |  |  |
+| kdl | ✓ | ✓ | ✓ | ✓ |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ | ✓ |  | `kotlin-language-server` |
 | koto | ✓ | ✓ | ✓ |  |  | `koto-ls` |
