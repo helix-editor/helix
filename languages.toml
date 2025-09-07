@@ -43,6 +43,7 @@ elm-language-server = { command = "elm-language-server" }
 elp = { command = "elp", args = ["server"] }
 elvish = { command = "elvish", args = ["-lsp"] }
 erlang-ls = { command = "erlang_ls" }
+expert = { command = "expert" }
 fennel-ls = { command = "fennel-ls" }
 fish-lsp = { command = "fish-lsp", args = ["start"], environment = { fish_lsp_show_client_popups = "false" } }
 forc = { command = "forc", args = ["lsp"] }
@@ -275,6 +276,10 @@ mode = "location"
 command = "clarinet"
 args = ["lsp"]
 
+[language-server.docker-language-server]
+command = "docker-language-server"
+args = ["start", "--stdio"]
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -409,7 +414,7 @@ file-types = ["ex", "exs", { glob = "mix.lock" }]
 shebangs = ["elixir"]
 roots = ["mix.exs", "mix.lock"]
 comment-token = "#"
-language-servers = [ "elixir-ls" ]
+language-servers = [ "elixir-ls", "expert" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1922,7 +1927,7 @@ file-types = [
 ]
 comment-token = "#"
 indent = { tab-width = 4, unit = "  " }
-language-servers = [ "docker-langserver" ]
+language-servers = [ "docker-langserver", "docker-language-server" ]
 
 [[grammar]]
 name = "dockerfile"
@@ -1932,7 +1937,7 @@ source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = 
 name = "docker-compose"
 scope = "source.yaml.docker-compose"
 roots = ["docker-compose.yaml", "docker-compose.yml", "compose.yaml", "compose.yml"]
-language-servers = [ "docker-compose-langserver", "yaml-language-server" ]
+language-servers = [ "docker-compose-langserver", "yaml-language-server", "docker-language-server" ]
 file-types = [{ glob = "docker-compose.yaml" }, { glob = "docker-compose.yml" }, { glob = "compose.yaml" }, { glob = "compose.yml" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -2308,7 +2313,7 @@ file-types = ["heex"]
 roots = ["mix.exs", "mix.lock"]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
-language-servers = [ "elixir-ls" ]
+language-servers = [ "elixir-ls", "expert" ]
 
 [[grammar]]
 name = "heex"
@@ -4749,3 +4754,17 @@ scope = "source.strictdoc"
 injection-regex = "strictdoc"
 file-types = ["sdoc", "sgra"]
 comment-token = ".."
+
+[[language]]
+name = "docker-bake"
+scope = "source.docker-bake"
+injection-regex = "docker-bake"
+grammar = "hcl"
+file-types = [
+  { glob = "docker-bake.hcl" },
+  { glob = "docker-bake.override.hcl" },
+]
+comment-token = "#"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["docker-language-server"]

@@ -13,10 +13,10 @@
 ; variables
 
 ((symbol) @variable.builtin
- (#eq? @variable.builtin "..."))
+  (#eq? @variable.builtin "..."))
 
 ((symbol) @variable.builtin
- (#eq? @variable.builtin "."))
+  (#eq? @variable.builtin "."))
 
 (symbol) @variable
 
@@ -36,58 +36,58 @@
 ; special forms
 
 (list
- "["
- (symbol)+ @variable
- "]")
+  "["
+  (symbol)+ @variable
+  "]")
 
 (list
- .
- (symbol) @_f
- .
- (list
-   (symbol) @variable)
- (#any-of? @_f "lambda" "λ"))
-
-(list
- .
- (symbol) @_f
- (list
+  .
+  (symbol) @_f
   .
   (list
-   (symbol) @variable))
- (#eq? @_f "case-lambda"))
+    (symbol) @variable)
+  (#any-of? @_f "lambda" "λ"))
 
 (list
- .
- (symbol) @_f
- .
- (list
-   (list
-     (symbol) @variable.parameter))
- (#match? @_f
-  "^(let|let\\*|let-syntax|let-values|let\\*-values|letrec|letrec\\*|letrec-syntax)$"))
+  .
+  (symbol) @_f
+  (list
+    .
+    (list
+      (symbol) @variable))
+  (#eq? @_f "case-lambda"))
+
+(list
+  .
+  (symbol) @_f
+  .
+  (list
+    (list
+      (symbol) @variable.parameter))
+  (#any-of? @_f
+    "let" "let*" "let-syntax" "let-values" "let*-values" "letrec" "letrec*" "letrec-syntax" "do"))
 
 ; operators
 
 ((symbol) @operator
- (#match? @operator "^(\\+|-|\\*|/|=|>|<|>=|<=)$"))
+  (#match? @operator "^(\\+|-|\\*|/|=|>|<|>=|<=)$"))
 
 ; library
 
 (list
- .
- (symbol) @_lib
- .
- (symbol) @namespace
+  .
+  (symbol) @_lib
+  .
+  (symbol) @namespace
 
- (#eq? @_lib "library"))
+  (#eq? @_lib "library"))
 
 ; quote
 
 (list
- .
- (symbol) @_f
- (#eq? @_f "quote")) @string.symbol
+  .
+  (symbol) @_f
+  (#eq? @_f "quote")) @string.symbol
 
 ; keywords
 
@@ -96,7 +96,7 @@
   ((symbol) @keyword.conditional
    (#match? @keyword.conditional "^(if|cond|case|when|unless)$"
   )))
- 
+
 (list
   .
   (symbol) @keyword
