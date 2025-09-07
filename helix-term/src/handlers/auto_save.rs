@@ -10,6 +10,7 @@ use anyhow::Ok;
 use arc_swap::access::Access;
 
 use helix_event::{register_hook, send_blocking};
+use helix_lsp::lsp::TextDocumentSaveReason;
 use helix_view::{
     document::Mode,
     events::DocumentDidChange,
@@ -91,6 +92,7 @@ fn request_auto_save(editor: &mut Editor) {
         force: false,
         write_scratch: false,
         auto_format: false,
+        reason: TextDocumentSaveReason::AFTER_DELAY,
     };
 
     if let Err(e) = commands::typed::write_all_impl(context, options) {

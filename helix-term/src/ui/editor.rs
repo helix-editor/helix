@@ -22,6 +22,7 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
+use helix_lsp::lsp::TextDocumentSaveReason;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -1511,6 +1512,7 @@ impl Component for EditorView {
                         force: false,
                         write_scratch: false,
                         auto_format: false,
+                        reason: TextDocumentSaveReason::FOCUS_OUT,
                     };
                     if let Err(e) = commands::typed::write_all_impl(context, options) {
                         context.editor.set_error(format!("{}", e));

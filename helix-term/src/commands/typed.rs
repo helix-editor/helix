@@ -10,6 +10,7 @@ use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
+use helix_lsp::lsp::TextDocumentSaveReason;
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
@@ -368,6 +369,7 @@ fn write_impl(
                 view.id,
                 fmt,
                 Some((path.map(Into::into), options.force)),
+                options.reason
             );
 
             jobs.add(Job::with_callback(callback).wait_before_exiting());
@@ -378,7 +380,7 @@ fn write_impl(
 
     if fmt.is_none() {
         let id = doc.id();
-        cx.editor.save(id, path, options.force)?;
+        cx.editor.save(id, path, options.force, options.reason)?;
     }
 
     Ok(())
@@ -447,6 +449,7 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
 pub struct WriteOptions {
     pub force: bool,
     pub auto_format: bool,
+    pub reason: TextDocumentSaveReason
 }
 
 fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -460,6 +463,7 @@ fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
         WriteOptions {
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL,
         },
     )
 }
@@ -475,6 +479,7 @@ fn force_write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         WriteOptions {
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL,
         },
     )
 }
@@ -494,6 +499,7 @@ fn write_buffer_close(
         WriteOptions {
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL,
         },
     )?;
 
@@ -516,6 +522,7 @@ fn force_write_buffer_close(
         WriteOptions {
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL,
         },
     )?;
 
@@ -542,7 +549,7 @@ fn format(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     let format = doc.format(cx.editor).context(
         "A formatter isn't available, and no language server provides formatting capabilities",
     )?;
-    let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
+    let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None, TextDocumentSaveReason::MANUAL);
     cx.jobs.callback(callback);
 
     Ok(())
@@ -704,6 +711,7 @@ fn write_quit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         WriteOptions {
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL,
         },
     )?;
     cx.block_try_flush_writes()?;
@@ -725,6 +733,7 @@ fn force_write_quit(
         WriteOptions {
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL,
         },
     )?;
     cx.block_try_flush_writes()?;
@@ -769,6 +778,7 @@ pub struct WriteAllOptions {
     pub force: bool,
     pub write_scratch: bool,
     pub auto_format: bool,
+    pub reason: TextDocumentSaveReason,
 }
 
 pub fn write_all_impl(
@@ -829,6 +839,7 @@ pub fn write_all_impl(
                     target_view,
                     fmt,
                     Some((None, options.force)),
+                    options.reason
                 );
                 jobs.add(Job::with_callback(callback).wait_before_exiting());
             })
@@ -837,7 +848,7 @@ pub fn write_all_impl(
         };
 
         if fmt.is_none() {
-            cx.editor.save::<PathBuf>(doc_id, None, options.force)?;
+            cx.editor.save::<PathBuf>(doc_id, None, options.force, options.reason)?;
         }
     }
 
@@ -859,6 +870,7 @@ fn write_all(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> an
             force: false,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL,
         },
     )
 }
@@ -878,6 +890,7 @@ fn force_write_all(
             force: true,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL
         },
     )
 }
@@ -896,6 +909,7 @@ fn write_all_quit(
             force: false,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL
         },
     )?;
     quit_all_impl(cx, false)
@@ -915,6 +929,7 @@ fn force_write_all_quit(
             force: true,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            reason: TextDocumentSaveReason::MANUAL
         },
     );
     quit_all_impl(cx, true)
@@ -1478,6 +1493,7 @@ fn update(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
             WriteOptions {
                 force: false,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+                reason: TextDocumentSaveReason::MANUAL,
             },
         )
     } else {
