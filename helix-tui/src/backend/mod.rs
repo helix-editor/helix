@@ -6,10 +6,15 @@ use crate::{buffer::Cell, terminal::Config};
 
 use helix_view::graphics::{CursorKind, Rect};
 
-#[cfg(feature = "termina")]
+#[cfg(all(feature = "termina", not(windows)))]
 mod termina;
-#[cfg(feature = "termina")]
+#[cfg(all(feature = "termina", not(windows)))]
 pub use self::termina::TerminaBackend;
+
+#[cfg(all(feature = "termina", windows))]
+mod crossterm;
+#[cfg(all(feature = "termina", windows))]
+pub use self::crossterm::CrosstermBackend;
 
 mod test;
 pub use self::test::TestBackend;
