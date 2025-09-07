@@ -274,7 +274,7 @@ key: (identifier) @property
   head: (cmd_identifier) @function.builtin
   (#any-of? @function.builtin
     "all" "ansi" "any" "append" "ast" "bits" "bytes" "cal" "cd" "char" "clear" "collect" "columns"
-    "compact" "complete" "config" "cp" "date" "debug" "decode" "default" "detect" "dfr" "drop" "du"
+    "compact" "complete" "config" "cp" "date" "debug" "decode" "default" "describe" "detect" "dfr" "drop" "du"
     "each" "encode" "enumerate" "every" "exec" "exit" "explain" "explore" "export-env" "fill"
     "filter" "find" "first" "flatten" "fmt" "format" "from" "generate" "get" "glob" "grid" "group"
     "group-by" "hash" "headers" "histogram" "history" "http" "input" "insert" "inspect" "interleave"
