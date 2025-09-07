@@ -1974,7 +1974,8 @@ impl Editor {
                 continue;
             };
             let edits = match helix_lsp::block_on(request) {
-                Ok(edits) => edits.unwrap_or_default(),
+                Ok(Some(edits)) => edits,
+                Ok(None) => continue,
                 Err(err) => {
                     log::error!("invalid willSaveWaitUntil response: {err:?}");
                     continue;
