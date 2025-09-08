@@ -264,6 +264,12 @@ key: (identifier) @property
 
 (cmd_identifier) @function
 
+(decl_def . "def"
+  (val_string
+    (string_content) @function
+  )
+)
+
 ; generated with Nu 0.93.0
 ; > help commands
 ;   | filter { $in.command_type == builtin and $in.category != core }
