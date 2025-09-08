@@ -1948,46 +1948,51 @@ impl Editor {
         doc_id: DocumentId,
         path: Option<P>,
         force: bool,
-        reason: TextDocumentSaveReason
+        reason: TextDocumentSaveReason,
     ) -> anyhow::Result<()> {
         // convert a channel of futures to pipe into main queue one by one
         // via stream.then() ? then push into main future
 
         let path = path.map(|path| path.into());
-        let doc = self.documents.get(&doc_id).unwrap();
-        let identifier = doc.identifier().clone();
-        let url = doc.url();
+        let doc = doc!(self, &doc_id);
+        let url = match &path {
+            Some(path) => url::Url::from_file_path(path).ok(),
+            None => doc.url(),
+        };
+        if let Some(url) = url {
+            let identifier = lsp::TextDocumentIdentifier::new(url.clone());
+            let language_servers: Vec<_> = self
+                .language_servers
+                .iter_clients()
+                .filter(|client| client.is_initialized())
+                .cloned()
+                .collect();
+            for language_server in language_servers {
+                language_server.text_document_will_save(identifier.clone(), reason);
 
-        let language_servers: Vec<_> = self
-            .language_servers
-            .iter_clients()
-            .filter(|client| client.is_initialized())
-            .cloned()
-            .collect();
-        for language_server in language_servers {
-            language_server.text_document_will_save(identifier.clone(), reason);
-
-            let Some(url) = url.clone() else {
-                continue;
-            };
-            let Some(request) = language_server.text_document_will_save_wait_until(identifier.clone(), reason) else {
-                continue;
-            };
-            let edits = match helix_lsp::block_on(request) {
-                Ok(Some(edits)) => edits,
-                Ok(None) => continue,
-                Err(err) => {
-                    log::error!("invalid willSaveWaitUntil response: {err:?}");
+                let Some(request) =
+                    language_server.text_document_will_save_wait_until(identifier.clone(), reason)
+                else {
                     continue;
+                };
+                let edits = match helix_lsp::block_on(request) {
+                    Ok(Some(edits)) => edits,
+                    Ok(None) => continue,
+                    Err(err) => {
+                        log::error!("invalid willSaveWaitUntil response: {err:?}");
+                        continue;
+                    }
+                };
+                let edit = lsp::WorkspaceEdit {
+                    changes: Some(HashMap::from([(url.clone(), edits)])),
+                    document_changes: None,
+                    change_annotations: None,
+                };
+                if let Err(err) =
+                    self.apply_workspace_edit(language_server.offset_encoding(), &edit)
+                {
+                    log::error!("failed to apply workspace edit: {err:?}")
                 }
-            };
-            let edit = lsp::WorkspaceEdit {
-                changes: Some(HashMap::from([(url, edits)])),
-                document_changes: None,
-                change_annotations: None,
-            };
-            if let Err(err) = self.apply_workspace_edit(language_server.offset_encoding(), &edit) {
-                log::error!("failed to apply workspace edit: {err:?}")
             }
         }
 

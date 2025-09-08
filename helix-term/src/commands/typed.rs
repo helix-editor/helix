@@ -369,7 +369,7 @@ fn write_impl(
                 view.id,
                 fmt,
                 Some((path.map(Into::into), options.force)),
-                options.reason
+                options.reason,
             );
 
             jobs.add(Job::with_callback(callback).wait_before_exiting());
@@ -449,7 +449,7 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
 pub struct WriteOptions {
     pub force: bool,
     pub auto_format: bool,
-    pub reason: TextDocumentSaveReason
+    pub reason: TextDocumentSaveReason,
 }
 
 fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -549,7 +549,14 @@ fn format(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     let format = doc.format(cx.editor).context(
         "A formatter isn't available, and no language server provides formatting capabilities",
     )?;
-    let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None, TextDocumentSaveReason::MANUAL);
+    let callback = make_format_callback(
+        doc.id(),
+        doc.version(),
+        view.id,
+        format,
+        None,
+        TextDocumentSaveReason::MANUAL,
+    );
     cx.jobs.callback(callback);
 
     Ok(())
@@ -839,7 +846,7 @@ pub fn write_all_impl(
                     target_view,
                     fmt,
                     Some((None, options.force)),
-                    options.reason
+                    options.reason,
                 );
                 jobs.add(Job::with_callback(callback).wait_before_exiting());
             })
@@ -848,7 +855,8 @@ pub fn write_all_impl(
         };
 
         if fmt.is_none() {
-            cx.editor.save::<PathBuf>(doc_id, None, options.force, options.reason)?;
+            cx.editor
+                .save::<PathBuf>(doc_id, None, options.force, options.reason)?;
         }
     }
 
@@ -890,7 +898,7 @@ fn force_write_all(
             force: true,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
-            reason: TextDocumentSaveReason::MANUAL
+            reason: TextDocumentSaveReason::MANUAL,
         },
     )
 }
@@ -909,7 +917,7 @@ fn write_all_quit(
             force: false,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
-            reason: TextDocumentSaveReason::MANUAL
+            reason: TextDocumentSaveReason::MANUAL,
         },
     )?;
     quit_all_impl(cx, false)
@@ -929,7 +937,7 @@ fn force_write_all_quit(
             force: true,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
-            reason: TextDocumentSaveReason::MANUAL
+            reason: TextDocumentSaveReason::MANUAL,
         },
     );
     quit_all_impl(cx, true)

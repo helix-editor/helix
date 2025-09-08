@@ -997,7 +997,7 @@ impl Client {
     pub fn text_document_will_save(
         &self,
         text_document: lsp::TextDocumentIdentifier,
-        reason: lsp::TextDocumentSaveReason
+        reason: lsp::TextDocumentSaveReason,
     ) -> Option<()> {
         let capabilities = self.capabilities.get().unwrap();
 
@@ -1005,13 +1005,15 @@ impl Client {
             lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
                 will_save: enabled,
                 ..
-            }) => if !*enabled.as_ref()? {
-                return None
-            },
-            _ => return None
+            }) => {
+                if !*enabled.as_ref()? {
+                    return None;
+                }
+            }
+            _ => return None,
         };
 
-        self.notify::<lsp::notification::WillSaveTextDocument>(lsp::WillSaveTextDocumentParams{
+        self.notify::<lsp::notification::WillSaveTextDocument>(lsp::WillSaveTextDocumentParams {
             text_document,
             reason,
         });
@@ -1021,7 +1023,7 @@ impl Client {
     pub fn text_document_will_save_wait_until(
         &self,
         text_document: lsp::TextDocumentIdentifier,
-        reason: lsp::TextDocumentSaveReason
+        reason: lsp::TextDocumentSaveReason,
     ) -> Option<impl Future<Output = Result<Option<Vec<lsp::TextEdit>>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
@@ -1029,16 +1031,21 @@ impl Client {
             lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
                 will_save_wait_until: enabled,
                 ..
-            }) => if !*enabled.as_ref()? {
-                return None
-            },
-            _ => return None
+            }) => {
+                if !*enabled.as_ref()? {
+                    return None;
+                }
+            }
+            _ => return None,
         };
 
-        Some(self.call_with_timeout::<lsp::request::WillSaveWaitUntil>(&lsp::WillSaveTextDocumentParams{
-            text_document,
-            reason,
-        }, 5))
+        Some(self.call_with_timeout::<lsp::request::WillSaveWaitUntil>(
+            &lsp::WillSaveTextDocumentParams {
+                text_document,
+                reason,
+            },
+            5,
+        ))
     }
 
     pub fn text_document_did_save(
