@@ -270,28 +270,16 @@ key: (identifier) @property
   )
 )
 
-; generated with Nu 0.93.0
-; > help commands
-;   | filter { $in.command_type == builtin and $in.category != core }
-;   | each {$'"($in.name | split row " " | $in.0)"'}
-;   | uniq
-;   | str join ' '
+; generated with Nu 0.107.0
+; help commands
+; | where $it.command_type == built-in and $it.category != core
+; | each {$'"($in.name | split row " " | $in.0)"'}
+; | uniq
+; | str join ' '
 (command
   head: (cmd_identifier) @function.builtin
   (#any-of? @function.builtin
-    "all" "ansi" "any" "append" "ast" "bits" "bytes" "cal" "cd" "char" "clear" "collect" "columns"
-    "compact" "complete" "config" "cp" "date" "debug" "decode" "default" "describe" "detect" "dfr" "drop" "du"
-    "each" "encode" "enumerate" "every" "exec" "exit" "explain" "explore" "export-env" "fill"
-    "filter" "find" "first" "flatten" "fmt" "format" "from" "generate" "get" "glob" "grid" "group"
-    "group-by" "hash" "headers" "histogram" "history" "http" "input" "insert" "inspect" "interleave"
-    "into" "is-empty" "is-not-empty" "is-terminal" "items" "join" "keybindings" "kill" "last"
-    "length" "let-env" "lines" "load-env" "ls" "math" "merge" "metadata" "mkdir" "mktemp" "move"
-    "mv" "nu-check" "nu-highlight" "open" "panic" "par-each" "parse" "path" "plugin" "port"
-    "prepend" "print" "ps" "query" "random" "range" "reduce" "reject" "rename" "reverse" "rm" "roll"
-    "rotate" "run-external" "save" "schema" "select" "seq" "shuffle" "skip" "sleep" "sort" "sort-by"
-    "split" "split-by" "start" "stor" "str" "sys" "table" "take" "tee" "term" "timeit" "to" "touch"
-    "transpose" "tutor" "ulimit" "uname" "uniq" "uniq-by" "update" "upsert" "url" "values" "view"
-    "watch" "where" "which" "whoami" "window" "with-env" "wrap" "zip"))
+    "all" "ansi" "any" "append" "ast" "bits" "bytes" "cal" "cd" "char" "chunk-by" "chunks" "clear" "collect" "columns" "compact" "complete" "config" "cp" "date" "debug" "decode" "default" "detect" "drop" "du" "each" "encode" "enumerate" "every" "exec" "exit" "explain" "explore" "fill" "filter" "find" "first" "flatten" "format" "from" "generate" "get" "glob" "grid" "group-by" "hash" "headers" "histogram" "history" "http" "input" "insert" "inspect" "interleave" "into" "is-empty" "is-not-empty" "is-terminal" "items" "job" "join" "keybindings" "kill" "last" "length" "let-env" "lines" "load-env" "ls" "math" "merge" "metadata" "mkdir" "mktemp" "move" "mv" "nu-check" "nu-highlight" "open" "panic" "par-each" "parse" "path" "plugin" "port" "prepend" "print" "ps" "query" "random" "reduce" "reject" "rename" "reverse" "rm" "roll" "rotate" "run-external" "save" "schema" "select" "seq" "shuffle" "skip" "sleep" "slice" "sort" "sort-by" "split" "start" "stor" "str" "sys" "table" "take" "tee" "term" "timeit" "to" "touch" "transpose" "tutor" "ulimit" "uname" "uniq" "uniq-by" "update" "upsert" "url" "values" "version" "view" "watch" "which" "whoami" "window" "with-env" "wrap" "zip"))
 
 (command
   head: (cmd_identifier) @keyword.repeat
