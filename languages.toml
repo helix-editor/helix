@@ -2513,6 +2513,7 @@ injection-regex = "scheme"
 file-types = ["ss", "scm", "sld"]
 shebangs = ["scheme", "guile", "chicken"]
 comment-token = ";"
+block-comment-tokens = { start = "#|", end = "|#" }
 indent = { tab-width = 2, unit = "  " }
 
 [language.auto-pairs]
