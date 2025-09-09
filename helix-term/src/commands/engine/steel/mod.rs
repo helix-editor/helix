@@ -53,7 +53,7 @@ use std::{
     error::Error,
     io::Write,
     path::PathBuf,
-    sync::{atomic::AtomicBool, Mutex, MutexGuard, RwLock, RwLockReadGuard},
+    sync::{atomic::AtomicBool, Mutex, MutexGuard, RwLock, RwLockReadGuard, Weak},
     time::{Duration, SystemTime},
 };
 use std::{str::FromStr as _, sync::Arc};
@@ -4095,6 +4095,12 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
         "Returns the cursor position within the current buffer as an integer",
     );
 
+    module.register_fn("get-active-lsp-clients", get_active_lsp_clients);
+    template_function_arity_0(
+        "get-active-lsp-clients",
+        "Get all language servers, that are attached to the current buffer",
+    );
+
     let mut template_function_no_context = |name: &str, doc: &str| {
         if generate_sources {
             let docstring = format_docstring(doc);
@@ -4118,6 +4124,14 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     template_function_no_context(
         "mode-switch-new",
         "Return the new mode from the event payload",
+    );
+
+    module.register_fn("lsp-client-name", lsp_client_name);
+    template_function_no_context("lsp-client-name", "Get the name of the lsp client");
+    module.register_fn("lsp-client-offset-encoding", lsp_client_offset_encoding);
+    template_function_no_context(
+        "lsp-client-offset-encoding",
+        "Get the offset encoding of the lsp client",
     );
 
     let mut template_function_arity_1 = |name: &str, doc: &str| {
@@ -5687,6 +5701,40 @@ fn move_window_to_the_right(cx: &mut Context) {
         .swap_split_in_direction(helix_view::tree::Direction::Right)
         .is_some()
     {}
+}
+
+#[derive(Debug, Clone)]
+struct LspClient(Weak<helix_lsp::Client>);
+
+impl LspClient {
+    fn new(client: Arc<helix_lsp::Client>) -> Self {
+        LspClient(Arc::downgrade(&client))
+    }
+}
+
+impl Custom for LspClient {}
+
+fn get_active_lsp_clients(cx: &mut Context) -> SteelVal {
+    let (_, doc) = current!(cx.editor);
+    SteelVal::ListV(
+        doc.arc_language_servers()
+            .map(|client| LspClient::new(client).into_steelval().unwrap())
+            .collect(),
+    )
+}
+
+fn lsp_client_name(client: LspClient) -> Option<String> {
+    let client = client.0.upgrade();
+    client.map(|client| client.name().to_owned())
+}
+
+fn lsp_client_offset_encoding(client: LspClient) -> Option<&'static str> {
+    let client = client.0.upgrade();
+    client.map(|client| match client.offset_encoding() {
+        helix_lsp::OffsetEncoding::Utf8 => "utf-8",
+        helix_lsp::OffsetEncoding::Utf16 => "utf-16",
+        helix_lsp::OffsetEncoding::Utf32 => "utf-32",
+    })
 }
 
 fn send_arbitrary_lsp_command(

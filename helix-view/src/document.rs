@@ -1831,6 +1831,20 @@ impl Document {
             .unwrap_or_else(|| self.config.load().path_completion)
     }
 
+    #[cfg(feature = "steel")]
+    pub fn arc_language_servers(&self) -> impl Iterator<Item = Arc<helix_lsp::Client>> + use<'_> {
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = self.language_servers.get(&features.name)?.clone();
+                if ls.is_initialized() {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
     /// maintains the order as configured in the language_servers TOML array
     pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
         self.language_config().into_iter().flat_map(move |config| {
