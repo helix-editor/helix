@@ -25,7 +25,8 @@ use helix_view::{
     editor::{
         Action, AutoSave, BufferLine, ConfigEvent, CursorShapeConfig, FilePickerConfig,
         GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig,
-        SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
+        SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig, WhitespaceRender,
+        WhitespaceRenderValue,
     },
     events::{DocumentDidOpen, DocumentFocusLost, DocumentSaved, SelectionDidChange},
     extension::document_id_to_usize,
@@ -827,6 +828,102 @@ fn get_option_value(cx: &mut Context, option: String) -> anyhow::Result<SteelVal
     Ok(value.to_owned().into_steelval().unwrap())
 }
 
+// Indent guides configurations
+fn ig_render(config: &mut IndentGuidesConfig, option: bool) {
+    config.render = option;
+}
+
+fn ig_character(config: &mut IndentGuidesConfig, option: char) {
+    config.character = option;
+}
+
+fn ig_skip_levels(config: &mut IndentGuidesConfig, option: u8) {
+    config.skip_levels = option;
+}
+
+// Whitespace configurations
+fn ws_visible(config: &mut WhitespaceConfig, option: bool) {
+    let value = if option {
+        WhitespaceRenderValue::All
+    } else {
+        WhitespaceRenderValue::None
+    };
+    config.render = WhitespaceRender::Basic(value);
+}
+
+fn ws_chars(config: &mut WhitespaceConfig, option: HashMap<SteelVal, char>) -> anyhow::Result<()> {
+    for (k, v) in option {
+        match k {
+            SteelVal::StringV(s) | SteelVal::SymbolV(s) => match s.as_str() {
+                "space" => config.characters.space = v,
+                "tab" => config.characters.tab = v,
+                "nbsp" => config.characters.nbsp = v,
+                "nnbsp" => config.characters.nnbsp = v,
+                "newline" => config.characters.newline = v,
+                "tabpad" => config.characters.tabpad = v,
+                unknown => anyhow::bail!("Unrecognized key: {}", unknown),
+            },
+            other => anyhow::bail!("Unrecognized key option: {}", other),
+        }
+    }
+    Ok(())
+}
+
+fn ws_render(config: &mut WhitespaceConfig, option: HashMap<SteelVal, bool>) -> anyhow::Result<()> {
+    #[derive(Default)]
+    struct RenderFlags {
+        space: Option<WhitespaceRenderValue>,
+        tab: Option<WhitespaceRenderValue>,
+        nbsp: Option<WhitespaceRenderValue>,
+        nnbsp: Option<WhitespaceRenderValue>,
+        newline: Option<WhitespaceRenderValue>,
+        default: Option<WhitespaceRenderValue>,
+    }
+
+    let mut base = match config.render {
+        WhitespaceRender::Basic(v) => RenderFlags {
+            default: Some(v.clone()),
+            space: Some(v.clone()),
+            nbsp: Some(v.clone()),
+            nnbsp: Some(v.clone()),
+            tab: Some(v.clone()),
+            newline: Some(v.clone()),
+        },
+        WhitespaceRender::Specific { .. } => RenderFlags::default(),
+    };
+
+    for (k, v) in option {
+        let value = if v {
+            WhitespaceRenderValue::All
+        } else {
+            WhitespaceRenderValue::None
+        };
+        match k {
+            SteelVal::StringV(s) | SteelVal::SymbolV(s) => match s.as_str() {
+                "space" => base.space = Some(value),
+                "tab" => base.tab = Some(value),
+                "nbsp" => base.nbsp = Some(value),
+                "nnbsp" => base.nnbsp = Some(value),
+                "newline" => base.newline = Some(value),
+                "default" => base.default = Some(value),
+                unknown => anyhow::bail!("Unrecognized key: {}", unknown),
+            },
+            unknown => anyhow::bail!("Unrecognized key: {}", unknown),
+        }
+    }
+
+    config.render = WhitespaceRender::Specific {
+        default: base.default,
+        space: base.space,
+        nbsp: base.nbsp,
+        nnbsp: base.nnbsp,
+        tab: base.tab,
+        newline: base.newline,
+    };
+
+    Ok(())
+}
+
 // File picker configurations
 fn fp_hidden(config: &mut FilePickerConfig, option: bool) {
     config.hidden = option;
@@ -1016,10 +1113,28 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn("sw-wrap-at-text-width", wrap_at_text_width);
 
     module
+        .register_fn("raw-whitespace", || WhitespaceConfig::default())
+        .register_fn("register-whitespace", HelixConfiguration::whitespace)
+        .register_fn("ws-visible", ws_visible)
+        .register_fn("ws-chars", ws_chars)
+        .register_fn("ws-render", ws_render);
+
+    module
+        .register_fn("raw-indent-guides", || IndentGuidesConfig::default())
+        .register_fn("register-indent-guides", HelixConfiguration::indent_guides)
+        .register_fn("ig-render", ig_render)
+        .register_fn("ig-character", ig_character)
+        .register_fn("ig-skip-levels", ig_skip_levels);
+
+    module
         .register_fn("scrolloff", HelixConfiguration::scrolloff)
         .register_fn("scroll_lines", HelixConfiguration::scroll_lines)
         .register_fn("mouse", HelixConfiguration::mouse)
         .register_fn("shell", HelixConfiguration::shell)
+        .register_fn(
+            "jump-label-alphabet",
+            HelixConfiguration::jump_label_alphabet,
+        )
         .register_fn("line-number", HelixConfiguration::line_number)
         .register_fn("cursorline", HelixConfiguration::cursorline)
         .register_fn("cursorcolumn", HelixConfiguration::cursorcolumn)
@@ -1077,9 +1192,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn("lsp", HelixConfiguration::lsp)
         .register_fn("terminal", HelixConfiguration::terminal)
         .register_fn("rulers", HelixConfiguration::rulers)
-        .register_fn("whitespace", HelixConfiguration::whitespace)
         .register_fn("bufferline", HelixConfiguration::bufferline)
-        .register_fn("indent-guides", HelixConfiguration::indent_guides)
         .register_fn(
             "workspace-lsp-roots",
             HelixConfiguration::workspace_lsp_roots,
@@ -1339,6 +1452,42 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 "#,
         ));
 
+        let mut template_whitespace = |name: &str| {
+            builtin_configuration_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({} arg)
+    (lambda (picker) 
+            (helix.{} picker arg)
+            picker))
+"#,
+                name, name, name
+            ))
+        };
+        let whitespace_functions = &["ws-visible", "ws-chars", "ws-render"];
+
+        for name in whitespace_functions {
+            template_whitespace(name);
+        }
+
+        let mut template_indent_guides = |name: &str| {
+            builtin_configuration_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({} arg)
+    (lambda (picker) 
+            (helix.{} picker arg)
+            picker))
+"#,
+                name, name, name
+            ))
+        };
+        let indent_guides_functions = &["ig-render", "ig-character", "ig-skip-levels"];
+
+        for name in indent_guides_functions {
+            template_indent_guides(name);
+        }
+
         let mut template_soft_wrap = |name: &str| {
             builtin_configuration_module.push_str(&format!(
                 r#"
@@ -1597,6 +1746,95 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 "#,
         ));
 
+        builtin_configuration_module.push_str(&format!(
+            r#"
+
+(provide whitespace)
+;;@doc
+;; Sets the configuration for whitespace using var args.
+;;
+;; ```scheme
+;; (whitespace . args)
+;; ```
+;;
+;; The args are expected to be something of the value:
+;; ```scheme
+;; (-> WhitespaceConfiguration? bool?)    
+;; ```
+;; The options are as follows:
+;;
+;; * ws-visible:
+;;   Show all visible whitespace, defaults to false
+;; * ws-render:
+;;   manually disable or enable characters
+;;   render options (specified in hashmap):
+;;```scheme
+;;   (hash
+;;     'space #f
+;;     'nbsp #f
+;;     'nnbsp #f
+;;     'tab #f
+;;     'newline #f)
+;;```
+;; * ws-chars:
+;;   manually set visible whitespace characters with a hashmap
+;;   character options (specified in hashmap):
+;;```scheme
+;;   (hash
+;;     'space #\·
+;;     'nbsp #\⍽
+;;     'nnbsp #\␣
+;;     'tab #\→
+;;     'newline #\⏎
+;;     ; Tabs will look like "→···" (depending on tab width)
+;;     'tabpad #\·)
+;;```
+;; # Examples
+;; ```scheme
+;; (whitespace (ws-visible #t) (ws-chars (hash 'space #\·)) (ws-render (hash 'tab #f)))
+;; ```
+(define (whitespace . args)
+    (helix.register-whitespace
+        *helix.config*
+        (foldl (lambda (func config) (func config)) (helix.raw-whitespace) args)))
+"#,
+        ));
+
+        builtin_configuration_module.push_str(&format!(
+            r#"
+
+(provide indent-guides)
+;;@doc
+;; Sets the configuration for indent-guides using args
+;;
+;; ```scheme
+;; (indent-guides . args)
+;; ```
+;;
+;; The args are expected to be something of the value:
+;; ```scheme
+;; (-> IndentGuidesConfig? bool?)
+;; ```
+;; The options are as follows:
+;;
+;; * ig-render:
+;;   Show indent guides, defaults to false
+;; * ig-character:
+;;   character used for indent guides, defaults to "╎"
+;; * ig-skip-levels:
+;;   amount of levels to skip, defaults to 1
+;;
+;; # Examples
+;; ```scheme
+;; (indent-guides (ig-render #t) (ig-character #\|) (ig-skip-levels 1))
+;; ```
+(define (indent-guides . args)
+    (helix.register-indent-guides
+        *helix.config*
+        (foldl (lambda (func config) (func config)) (helix.raw-indent-guides) args)))
+"#,
+        ));
+
         let mut template_function_arity_1 = |name: &str, doc: &str| {
             let doc = format_docstring(doc);
             builtin_configuration_module.push_str(&format!(
@@ -1617,7 +1855,8 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 "),
             ("mouse", "Mouse support. Defaults to true."),
             ("shell", r#"Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise."#),
-            ("line-number", "Line number mode."),
+            ("jump-label-alphabet", r#"The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. Defaults to "abcdefghijklmnopqrstuvwxyz""#),
+            ("line-number", "Line number mode. Defaults to 'absolute, set to 'relative for relative line numbers"),
             ("cursorline", "Highlight the lines cursors are currently on. Defaults to false"),
             ("cursorcolumn", "Highlight the columns cursors are currently on. Defaults to false"),
             ("middle-click-paste", "Middle click paste support. Defaults to true"),
@@ -1656,9 +1895,7 @@ are shown, set to 5 for instant. Defaults to 250ms.
             ("lsp", "Lsp config"),
             ("terminal", "Terminal config"),
             ("rulers", "Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers"),
-            ("whitespace", "Whitespace config"),
             ("bufferline", "Persistently display open buffers along the top"),
-            ("indent-guides", "Vertical indent width guides"),
             ("workspace-lsp-roots", "Workspace specific lsp ceiling dirs"),
             ("default-line-ending", "Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`."),
             ("smart-tab", "Enables smart tab"),
@@ -2998,11 +3235,26 @@ impl HelixConfiguration {
         self.store_config(app_config);
     }
 
-    // TODO: Make this a symbol, probably!
-    fn line_number(&self, mode: LineNumber) {
+    fn jump_label_alphabet(&self, alphabet: String) {
         let mut app_config = self.load_config();
-        app_config.editor.line_number = mode;
+        app_config.editor.jump_label_alphabet = alphabet.chars().collect();
         self.store_config(app_config);
+    }
+
+    fn line_number(&self, mode_config: SteelVal) -> anyhow::Result<()> {
+        let config = match mode_config {
+            SteelVal::StringV(s) | SteelVal::SymbolV(s) => match s.as_str() {
+                "relative" => LineNumber::Relative,
+                "absolute" => LineNumber::Absolute,
+                other => anyhow::bail!("Unrecognized line-number option: {}", other),
+            },
+            other => anyhow::bail!("Unrecognized line-number option: {}", other),
+        };
+
+        let mut app_config = self.load_config();
+        app_config.editor.line_number = config;
+        self.store_config(app_config);
+        Ok(())
     }
 
     fn cursorline(&self, option: bool) {
