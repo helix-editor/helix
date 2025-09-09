@@ -114,6 +114,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
+name = "anymap3"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "170433209e817da6aae2c51aa0dd443009a613425dd041ebfb2492d1c4c11a25"
+
+[[package]]
 name = "arc-swap"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -866,6 +872,17 @@ checksum = "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
 dependencies = [
  "typenum",
  "version_check",
+]
+
+[[package]]
+name = "generic_singleton"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2d5de0fc83987dac514f3b910c5d08392b220efe8cf72086c660029a197bf73"
+dependencies = [
+ "anymap3",
+ "lazy_static",
+ "parking_lot",
 ]
 
 [[package]]
@@ -1891,7 +1908,7 @@ dependencies = [
  "rustix 1.0.8",
  "tempfile",
  "unicode-segmentation",
- "which 8.0.0",
+ "which",
  "windows-sys 0.60.2",
 ]
 
@@ -2199,10 +2216,11 @@ dependencies = [
 
 [[package]]
 name = "im-lists"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "442c94fa6c19a6cb6f987f7aec67b6f74bcfa08c6bc3a65e4fd07f50f7679223"
+checksum = "952b35313cb20214b270aa12e6d144270cc1c44d29caf207565f2cbeb926db9d"
 dependencies = [
+ "generic_singleton",
  "smallvec",
 ]
 
@@ -2420,6 +2438,12 @@ dependencies = [
  "regex",
  "syn 2.0.104",
 ]
+
+[[package]]
+name = "lazy_static"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
@@ -2731,9 +2755,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "polling"
-version = "3.9.0"
+version = "3.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ee9b2fa7a4517d2c91ff5bc6c297a427a96749d15f98fcdbb22c05571a4d4b7"
+checksum = "b5bd19146350fe804f7cb2669c851c03d69da628803dab0d98018142aaa5d829"
 dependencies = [
  "cfg-if",
  "concurrent-queue",
@@ -3299,7 +3323,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
+source = "git+https://github.com/mattwparas/steel.git#ee5fe5a69902c941428ef66429bb556970ae102d"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -3311,6 +3335,7 @@ dependencies = [
  "codespan-reporting",
  "compact_str",
  "crossbeam-channel",
+ "crossbeam-queue",
  "crossbeam-utils",
  "env_home",
  "futures-executor",
@@ -3348,14 +3373,14 @@ dependencies = [
  "termimad",
  "triomphe",
  "weak-table",
- "which 7.0.3",
+ "which",
  "xdg",
 ]
 
 [[package]]
 name = "steel-derive"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
+source = "git+https://github.com/mattwparas/steel.git#ee5fe5a69902c941428ef66429bb556970ae102d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3365,7 +3390,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
+source = "git+https://github.com/mattwparas/steel.git#ee5fe5a69902c941428ef66429bb556970ae102d"
 dependencies = [
  "steel-core",
 ]
@@ -3373,7 +3398,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.3.0"
-source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
+source = "git+https://github.com/mattwparas/steel.git#ee5fe5a69902c941428ef66429bb556970ae102d"
 dependencies = [
  "codegen",
  "serde",
@@ -3382,7 +3407,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#68ea2261aa34ec5dd8465a2d9b4673777ebfe8da"
+source = "git+https://github.com/mattwparas/steel.git#ee5fe5a69902c941428ef66429bb556970ae102d"
 dependencies = [
  "compact_str",
  "fxhash",
@@ -3896,18 +3921,6 @@ name = "weak-table"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "323f4da9523e9a669e1eaf9c6e763892769b1d38c623913647bfdc1532fe4549"
-
-[[package]]
-name = "which"
-version = "7.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24d643ce3fd3e5b54854602a080f34fb10ab75e0b813ee32d00ca2b44fa74762"
-dependencies = [
- "either",
- "env_home",
- "rustix 1.0.8",
- "winsafe",
-]
 
 [[package]]
 name = "which"
