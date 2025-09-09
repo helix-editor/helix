@@ -38,7 +38,7 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
-    let head = repo.head_commit()?;
+    let head = get_head_or_override(&repo)?;
     let file_oid = find_file_in_commit(&repo, &head, &file)?;
 
     let file_object = repo.find_object(file_oid)?;
@@ -59,6 +59,14 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     }
 }
 
+fn get_head_or_override(repo: &Repository) -> Result<Commit<'_>, anyhow::Error> {
+    let head_commit = match std::env::var("HELIX_GIT_HEAD") {
+        Ok(id) => repo.find_commit(id.parse::<ObjectId>()?)?,
+        Err(_) => repo.head_commit()?,
+    };
+    Ok(head_commit)
+}
+
 pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
@@ -69,7 +77,7 @@ pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         .context("failed to open git repo")?
         .to_thread_local();
     let head_ref = repo.head_ref()?;
-    let head_commit = repo.head_commit()?;
+    let head_commit = get_head_or_override(&repo)?;
 
     let name = match head_ref {
         Some(reference) => reference.name().shorten().to_string(),
@@ -132,8 +140,15 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
         .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
         .to_path_buf();
 
-    let status_platform = repo
-        .status(gix::progress::Discard)?
+    let mut status_platform = repo.status(gix::progress::Discard)?;
+    if let Ok(diff_id) = std::env::var("HELIX_GIT_HEAD") {
+        let diff_commit = repo.find_commit(diff_id.parse::<ObjectId>()?)?;
+        let diff_tree = diff_commit.tree_id()?;
+        status_platform = status_platform.index(gix::worktree::IndexPersistedOrInMemory::InMemory(
+            repo.index_from_tree(gix::hash::oid::from_bytes_unchecked(diff_tree.as_bytes()))?,
+        ));
+    };
+    status_platform = status_platform
         // Here we discard the `status.showUntrackedFiles` config, as it makes little sense in
         // our case to not list new (untracked) files. We could have respected this config
         // if the default value weren't `Collapsed` though, as this default value would render
