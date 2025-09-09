@@ -1954,7 +1954,9 @@ impl Editor {
         // via stream.then() ? then push into main future
 
         let path = path.map(|path| path.into());
-        let doc = doc!(self, &doc_id);
+        let view_id = self.get_synced_view_id(doc_id);
+        let doc = doc_mut!(self, &doc_id);
+        let view = view_mut!(self, view_id);
         let url = match &path {
             Some(path) => url::Url::from_file_path(path).ok(),
             None => doc.url(),
@@ -1983,21 +1985,19 @@ impl Editor {
                         continue;
                     }
                 };
-                let edit = lsp::WorkspaceEdit {
-                    changes: Some(HashMap::from([(url.clone(), edits)])),
-                    document_changes: None,
-                    change_annotations: None,
-                };
-                if let Err(err) =
-                    self.apply_workspace_edit(language_server.offset_encoding(), &edit)
-                {
-                    log::error!("failed to apply workspace edit: {err:?}")
-                }
+                let transaction = helix_lsp::util::generate_transaction_from_edits(
+                    doc.text(),
+                    edits,
+                    language_server.offset_encoding(),
+                );
+
+                doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view);
             }
         }
 
-        let doc = doc_mut!(self, &doc_id);
         let doc_save_future = doc.save(path, force)?;
+
         // When a file is written to, notify the file event handler.
         // Note: This can be removed once proper file watching is implemented.
         let handler = self.language_servers.file_event_handler.clone();
