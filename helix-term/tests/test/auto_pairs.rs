@@ -4,11 +4,11 @@ use super::*;
 
 const LINE_END: &str = helix_core::NATIVE_LINE_ENDING.as_str();
 
-fn differing_pairs() -> impl Iterator<Item = &'static (char, char)> {
+fn differing_pairs() -> impl Iterator<Item = &'static (&'static str, &'static str)> {
     DEFAULT_PAIRS.iter().filter(|(open, close)| open != close)
 }
 
-fn matching_pairs() -> impl Iterator<Item = &'static (char, char)> {
+fn matching_pairs() -> impl Iterator<Item = &'static (&'static str, &'static str)> {
     DEFAULT_PAIRS.iter().filter(|(open, close)| open == close)
 }
 
@@ -30,7 +30,8 @@ async fn insert_basic() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_configured_multi_byte_chars() -> anyhow::Result<()> {
     // NOTE: these are multi-byte Unicode characters
-    let pairs = hashmap!('„' => '“', '‚' => '‘', '「' => '」');
+    let pairs =
+        hashmap!("„".into() => "“".into(), "‚".into() => "‘".into(), "「".into() => "」".into());
 
     let config = Config {
         editor: helix_view::editor::Config {
