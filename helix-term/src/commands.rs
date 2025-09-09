@@ -3355,6 +3355,7 @@ fn changed_file_picker(cx: &mut Context) {
     let columns = [
         PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
             match change {
+                FileChange::Added { .. } => Span::styled("+ added", data.style_untracked),
                 FileChange::Untracked { .. } => Span::styled("+ untracked", data.style_untracked),
                 FileChange::Modified { .. } => Span::styled("~ modified", data.style_modified),
                 FileChange::Conflict { .. } => Span::styled("x conflict", data.style_conflict),
@@ -3371,6 +3372,7 @@ fn changed_file_picker(cx: &mut Context) {
                     .to_string()
             };
             match change {
+                FileChange::Added { path } => display_path(path),
                 FileChange::Untracked { path } => display_path(path),
                 FileChange::Modified { path } => display_path(path),
                 FileChange::Conflict { path } => display_path(path),

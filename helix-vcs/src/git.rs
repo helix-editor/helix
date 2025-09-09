@@ -39,6 +39,7 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
         .context("failed to open git repo")?
         .to_thread_local();
     let head = get_head_or_override(&repo)?;
+    log::debug!("git got head {:?}", head);
     let file_oid = find_file_in_commit(&repo, &head, &file)?;
 
     let file_object = repo.find_object(file_oid)?;
@@ -141,12 +142,16 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
         .to_path_buf();
 
     let mut status_platform = repo.status(gix::progress::Discard)?;
-    if let Ok(diff_id) = std::env::var("HELIX_GIT_HEAD") {
-        let diff_commit = repo.find_commit(diff_id.parse::<ObjectId>()?)?;
-        let diff_tree = diff_commit.tree_id()?;
-        status_platform = status_platform.index(gix::worktree::IndexPersistedOrInMemory::InMemory(
-            repo.index_from_tree(gix::hash::oid::from_bytes_unchecked(diff_tree.as_bytes()))?,
-        ));
+    let head_commit = get_head_or_override(repo)?;
+    let is_override = std::env::var("HELIX_GIT_HEAD").is_ok();
+    if is_override {
+        // repo.head_tree_id_or_empty()
+        let diff_tree = head_commit.tree_id()?;
+        status_platform = status_platform
+            .index(gix::worktree::IndexPersistedOrInMemory::InMemory(
+                repo.index_from_tree(gix::hash::oid::from_bytes_unchecked(diff_tree.as_bytes()))?,
+            ))
+            .head_tree(repo.head_tree_id_or_empty()?);
     };
     status_platform = status_platform
         // Here we discard the `status.showUntrackedFiles` config, as it makes little sense in
@@ -166,6 +171,7 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
     let empty_patterns = vec![];
 
     let status_iter = status_platform.into_index_worktree_iter(empty_patterns)?;
+    let head_tree = repo.head_tree()?;
 
     for item in status_iter {
         let Ok(item) = item.map_err(|err| f(Err(err.into()))) else {
@@ -193,8 +199,22 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
                 }
             }
             Item::DirectoryContents { entry, .. } if entry.status == Status::Untracked => {
-                FileChange::Untracked {
-                    path: work_dir.join(entry.rela_path.to_path()?),
+                let rela_path = entry.rela_path.to_path()?;
+                let path = work_dir.join(rela_path);
+                // if is_override {
+                //     // let found = head_tree.find_entry(entry.rela_path);
+                //     let found2 = head_tree.lookup_entry_by_path(path.clone());
+                //     log::debug!(
+                //         "git find entry {:?} {:?}",
+                //         entry.rela_path,
+                //         // found.is_some(),
+                //         found2
+                //     );
+                // }
+                if is_override && head_tree.lookup_entry_by_path(rela_path)?.is_some() {
+                    FileChange::Added { path }
+                } else {
+                    FileChange::Untracked { path }
                 }
             }
             Item::Rewrite {
