@@ -6,7 +6,6 @@ pub fn document_id_to_usize(doc_id: &DocumentId) -> usize {
 
 #[cfg(feature = "steel")]
 mod steel_implementations {
-
     use steel::{
         gc::unsafe_erased_pointers::CustomReference,
         rvals::{as_underlying_type, Custom},
@@ -39,12 +38,12 @@ mod steel_implementations {
         fn equality_hint_general(&self, other: &steel::SteelVal) -> bool {
             match other {
                 steel::SteelVal::StringV(steel_string) | steel::SteelVal::SymbolV(steel_string) => {
-                    match (self, steel_string.as_str()) {
-                        (Self::Normal, "normal") => true,
-                        (Self::Insert, "insert") => true,
-                        (Self::Select, "select") => true,
-                        _ => false,
-                    }
+                    matches!(
+                        (self, steel_string.as_str()),
+                        (Self::Normal, "normal")
+                            | (Self::Insert, "insert")
+                            | (Self::Select, "select")
+                    )
                 }
                 _ => false,
             }

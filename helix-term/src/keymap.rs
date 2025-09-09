@@ -240,7 +240,7 @@ impl KeyTrie {
             KeyTrie::MappableCommand(MappableCommand::Macro { .. }) => {}
             KeyTrie::MappableCommand(cmd) => (func)(cmd),
             KeyTrie::Node(next) => {
-                for (_, trie) in &mut next.map {
+                for trie in next.map.values_mut() {
                     trie.apply(func);
                 }
             }
@@ -403,7 +403,7 @@ impl Keymaps {
     /// key cancels pending keystrokes. If there are no pending keystrokes but a
     /// sticky node is in use, it will be cleared.
     pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
-        self.get_with_map(&*self.map(), mode, key)
+        self.get_with_map(&self.map(), mode, key)
     }
 }
 

@@ -1585,7 +1585,7 @@ impl Client {
                 let request = jsonrpc::MethodCall {
                     jsonrpc: Some(jsonrpc::Version::V2),
                     id: id.clone(),
-                    method: (&request.method_name).to_string(),
+                    method: request.method_name,
                     params: Self::value_into_params(params),
                 };
 

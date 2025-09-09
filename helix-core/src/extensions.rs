@@ -161,7 +161,7 @@ pub mod steel_implementations {
         fn equality_hint_general(&self, other: &steel::SteelVal) -> bool {
             match other {
                 SteelVal::StringV(s) => self.to_slice() == s.as_str(),
-                SteelVal::Custom(c) => Self::equality_hint(&self, c.read().as_ref()),
+                SteelVal::Custom(c) => Self::equality_hint(self, c.read().as_ref()),
 
                 _ => false,
             }
@@ -232,9 +232,9 @@ pub mod steel_implementations {
         pub fn line(mut self, cursor: usize) -> Result<Self, RopeyError> {
             match self.kind {
                 RangeKind::Char => {
-                    let slice = self.text.get_slice(self.start..self.end).ok_or_else(|| {
-                        RopeyError(ropey::Error::CharIndexOutOfBounds(self.start, self.end))
-                    })?;
+                    let slice = self.text.get_slice(self.start..self.end).ok_or(RopeyError(
+                        ropey::Error::CharIndexOutOfBounds(self.start, self.end),
+                    ))?;
 
                     // Move the start range, to wherever this lines up
                     let index = slice.try_line_to_char(cursor)?;
@@ -250,9 +250,9 @@ pub mod steel_implementations {
                     let slice =
                         self.text
                             .get_byte_slice(self.start..self.end)
-                            .ok_or_else(|| {
-                                RopeyError(ropey::Error::ByteIndexOutOfBounds(self.start, self.end))
-                            })?;
+                            .ok_or(RopeyError(ropey::Error::ByteIndexOutOfBounds(
+                                self.start, self.end,
+                            )))?;
 
                     // Move the start range, to wherever this lines up
                     let index = slice.try_line_to_byte(cursor)?;
@@ -273,9 +273,9 @@ pub mod steel_implementations {
                     self.start += lower;
 
                     // Just check that this is legal
-                    self.text.get_slice(self.start..self.end).ok_or_else(|| {
-                        RopeyError(ropey::Error::CharIndexOutOfBounds(self.start, self.end))
-                    })?;
+                    self.text.get_slice(self.start..self.end).ok_or(RopeyError(
+                        ropey::Error::CharIndexOutOfBounds(self.start, self.end),
+                    ))?;
 
                     Ok(self)
                 }
@@ -285,9 +285,9 @@ pub mod steel_implementations {
 
                     self.text
                         .get_byte_slice(self.start..self.end)
-                        .ok_or_else(|| {
-                            RopeyError(ropey::Error::ByteIndexOutOfBounds(self.start, self.end))
-                        })?;
+                        .ok_or(RopeyError(ropey::Error::ByteIndexOutOfBounds(
+                            self.start, self.end,
+                        )))?;
 
                     self.kind = RangeKind::Char;
                     Ok(self)
@@ -303,9 +303,9 @@ pub mod steel_implementations {
                     self.kind = RangeKind::Byte;
 
                     // Just check that this is legal
-                    self.text.get_slice(self.start..self.end).ok_or_else(|| {
-                        RopeyError(ropey::Error::CharIndexOutOfBounds(self.start, self.end))
-                    })?;
+                    self.text.get_slice(self.start..self.end).ok_or(RopeyError(
+                        ropey::Error::CharIndexOutOfBounds(self.start, self.end),
+                    ))?;
 
                     Ok(self)
                 }
@@ -315,9 +315,9 @@ pub mod steel_implementations {
 
                     self.text
                         .get_byte_slice(self.start..self.end)
-                        .ok_or_else(|| {
-                            RopeyError(ropey::Error::ByteIndexOutOfBounds(self.start, self.end))
-                        })?;
+                        .ok_or(RopeyError(ropey::Error::ByteIndexOutOfBounds(
+                            self.start, self.end,
+                        )))?;
 
                     Ok(self)
                 }

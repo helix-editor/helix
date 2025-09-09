@@ -186,19 +186,19 @@ where
 {
     // Unpark the other thread, get it ready
     let handler = SAFEPOINT_HANDLER.get();
-    handler.as_ref().map(|x| {
+    if let Some(x) = handler {
         x.running_command
             .store(true, std::sync::atomic::Ordering::Relaxed);
         x.handle.thread().unpark();
-    });
+    };
 
-    let res = (f)(&mut acquire_engine_lock());
+    let res = f(&mut acquire_engine_lock());
 
-    handler.as_ref().map(|x| {
+    if let Some(x) = handler {
         x.running_command
             .store(false, std::sync::atomic::Ordering::Relaxed);
         x.handle.thread().unpark();
-    });
+    };
 
     res
 }
@@ -411,7 +411,7 @@ pub fn format_docstring(doc: &str) -> String {
         .map(|x| {
             let mut line = ";;".to_string();
             line.push_str(x);
-            line.push_str("\n");
+            line.push('\n');
             line
         })
         .collect::<String>();
@@ -1063,7 +1063,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     );
 
     module
-        .register_fn("raw-cursor-shape", || CursorShapeConfig::default())
+        .register_fn("raw-cursor-shape", CursorShapeConfig::default)
         .register_fn(
             "raw-cursor-shape-set!",
             |value: SteelVal, mode: String, shape: String| -> anyhow::Result<SteelVal> {
@@ -1091,7 +1091,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         );
 
     module
-        .register_fn("raw-file-picker", || FilePickerConfig::default())
+        .register_fn("raw-file-picker", FilePickerConfig::default)
         .register_fn("register-file-picker", HelixConfiguration::file_picker)
         .register_fn("fp-hidden", fp_hidden)
         .register_fn("fp-follow-symlinks", fp_follow_symlinks)
@@ -1104,7 +1104,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn("fp-max-depth", fp_max_depth);
 
     module
-        .register_fn("raw-soft-wrap", || SoftWrap::default())
+        .register_fn("raw-soft-wrap", SoftWrap::default)
         .register_fn("register-soft-wrap", HelixConfiguration::soft_wrap)
         .register_fn("sw-enable", sw_enable)
         .register_fn("sw-max-wrap", sw_max_wrap)
@@ -1148,7 +1148,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             AutoPairConfig::Pairs(map)
         })
         // TODO: Finish this up
-        .register_fn("auto-save-default", || AutoSave::default())
+        .register_fn("auto-save-default", AutoSave::default)
         .register_fn(
             "auto-save-after-delay-enable",
             HelixConfiguration::auto_save_after_delay_enable,
@@ -1374,29 +1374,29 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "#,
         );
 
-        builtin_configuration_module.push_str(&format!(
+        builtin_configuration_module.push_str(
             r#"
 (provide update-configuration!)
 (define (update-configuration!)
     (helix.update-configuration! *helix.config*))
 "#,
-        ));
+        );
 
-        builtin_configuration_module.push_str(&format!(
+        builtin_configuration_module.push_str(
             r#"
 (provide get-config-option-value)
 (define (get-config-option-value arg)
     (helix.get-config-option-value *helix.cx* arg))
 "#,
-        ));
+        );
 
-        builtin_configuration_module.push_str(&format!(
+        builtin_configuration_module.push_str(
             r#"
 (provide set-configuration-for-file!)
 (define (set-configuration-for-file! path config)
     (helix.set-configuration-for-file! *helix.cx* path config))
 "#,
-        ));
+        );
 
         builtin_configuration_module.push_str(
             r#"
@@ -1444,13 +1444,13 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         );
 
         // Register the get keybindings function
-        builtin_configuration_module.push_str(&format!(
+        builtin_configuration_module.push_str(
             r#"
 (provide get-keybindings)
 (define (get-keybindings)
     (helix.get-keybindings *helix.config*))
 "#,
-        ));
+        );
 
         let mut template_whitespace = |name: &str| {
             builtin_configuration_module.push_str(&format!(
@@ -1592,7 +1592,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "#,
         );
 
-        builtin_configuration_module.push_str(&format!(
+        builtin_configuration_module.push_str(
             r#"
 (provide file-picker)
 ;;@doc
@@ -1633,9 +1633,9 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         *helix.config*
         (foldl (lambda (func config) (func config)) (helix.raw-file-picker) args)))
 "#,
-        ));
+        );
 
-        builtin_configuration_module.push_str(&format!(
+        builtin_configuration_module.push_str(
             r#"
 (provide soft-wrap-kw)
 ;;@doc
@@ -1692,9 +1692,9 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     (helix.sw-wrap-at-text-width sw wrap-at-text-width)
     (helix.register-soft-wrap *helix.config* sw))
 "#,
-        ));
+        );
 
-        builtin_configuration_module.push_str(&format!(
+        builtin_configuration_module.push_str(
             r#"
 
 (provide soft-wrap)
@@ -1744,7 +1744,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         *helix.config*
         (foldl (lambda (func config) (func config)) (helix.raw-soft-wrap) args)))
 "#,
-        ));
+        );
 
         builtin_configuration_module.push_str(&format!(
             r#"
@@ -2002,7 +2002,7 @@ fn add_theme(cx: &mut Context, theme: SteelTheme) {
 }
 
 fn get_style(theme: &SteelTheme, name: SteelString) -> helix_view::theme::Style {
-    theme.0.get(name.as_str()).clone()
+    theme.0.get(name.as_str())
 }
 
 fn set_style(theme: &mut SteelTheme, name: String, style: helix_view::theme::Style) {
@@ -2371,7 +2371,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         cxt: &mut Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        SteelScriptingEngine::handle_keymap_event_impl(&self, editor, mode, cxt, event)
+        SteelScriptingEngine::handle_keymap_event_impl(self, editor, mode, cxt, event)
     }
 
     fn call_function_by_name(&self, cx: &mut Context, name: &str, args: &[Cow<str>]) -> bool {
@@ -2467,10 +2467,10 @@ impl super::PluginSystem for SteelScriptingEngine {
                     let mut ctx = Context {
                         register: None,
                         count: None,
-                        editor: &mut cx.editor,
+                        editor: cx.editor,
                         callback: Vec::new(),
                         on_next_key_callback: None,
-                        jobs: &mut cx.jobs,
+                        jobs: cx.jobs,
                     };
 
                     enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e));
@@ -2546,14 +2546,11 @@ impl super::PluginSystem for SteelScriptingEngine {
                 if let Some(value) = module.documentation().get(name) {
                     found_definitions.insert(name.to_string());
 
-                    match value {
-                        steel::steel_vm::builtin::Documentation::Markdown(m) => {
-                            let escaped = name.replace("*", "\\*");
-                            writeln!(&mut writer, "### **{}**", escaped).unwrap();
+                    if let steel::steel_vm::builtin::Documentation::Markdown(m) = value {
+                        let escaped = name.replace("*", "\\*");
+                        writeln!(&mut writer, "### **{}**", escaped).unwrap();
 
-                            format_markdown_doc(&mut writer, &m.0);
-                        }
-                        _ => {}
+                        format_markdown_doc(&mut writer, &m.0);
                     }
                 }
             }
@@ -2579,10 +2576,10 @@ impl super::PluginSystem for SteelScriptingEngine {
         let mut ctx = Context {
             register: None,
             count: None,
-            editor: &mut cx.editor,
+            editor: cx.editor,
             callback: Vec::new(),
             on_next_key_callback: None,
-            jobs: &mut cx.jobs,
+            jobs: cx.jobs,
         };
 
         let language_server_name = ctx
@@ -2699,9 +2696,7 @@ impl SteelScriptingEngine {
         let doc_id = {
             let current_focus = cx.editor.tree.focus;
             let view = cx.editor.tree.get(current_focus);
-            let doc = &view.doc;
-
-            doc
+            &view.doc
         };
 
         if let Some(extension) = extension {
@@ -3179,7 +3174,7 @@ impl HelixConfiguration {
         let config = config.config;
 
         for lconfig in loader.language_configs_mut() {
-            if &lconfig.language_id == &config.language_id {
+            if lconfig.language_id == config.language_id {
                 if let Some(inner) = Arc::get_mut(lconfig) {
                     *inner = config;
                 } else {
@@ -3955,8 +3950,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
 
 fn configure_lsp_globals() {
     use std::fmt::Write;
-    let steel_lsp_home = steel_lsp_home_dir();
-    let mut path = PathBuf::from(steel_lsp_home);
+    let mut path = steel_lsp_home_dir();
     path.push("_helix-global-builtins.scm");
 
     let mut output = String::new();
@@ -3985,7 +3979,7 @@ fn configure_lsp_globals() {
         writeln!(&mut output, "(#%register-global '{})", value).unwrap();
     }
 
-    writeln!(&mut output, "").unwrap();
+    writeln!(&mut output).unwrap();
     let search_path = helix_loader::config_dir();
     let search_path_str = search_path.to_str().unwrap();
 
@@ -4018,9 +4012,8 @@ fn configure_lsp_globals() {
 
 fn configure_lsp_builtins(name: &str, module: &BuiltInModule) {
     use std::fmt::Write;
-    let steel_lsp_home = steel_lsp_home_dir();
-    let mut path = PathBuf::from(steel_lsp_home);
-    path.push(&format!("_helix-{}-builtins.scm", name));
+    let mut path = steel_lsp_home_dir();
+    path.push(format!("_helix-{}-builtins.scm", name));
 
     let mut output = String::new();
 
@@ -4519,11 +4512,7 @@ last-line : int?
 // LSP can go find it. When it comes to loading though, it'll look
 // up internally.
 pub fn alternative_runtime_search_path() -> Option<PathBuf> {
-    if let Some(path) = steel_home() {
-        Some(PathBuf::from(path).join("cogs").join("helix"))
-    } else {
-        None
-    }
+    steel_home().map(|path| PathBuf::from(path).join("cogs").join("helix"))
 }
 
 pub fn generate_cog_file() {
@@ -4629,7 +4618,7 @@ pub fn load_ext_api(engine: &mut Engine, generate_sources: bool) {
 
             target_directory.push("ext.scm");
 
-            std::fs::write(target_directory, &ext_api).unwrap();
+            std::fs::write(target_directory, ext_api).unwrap();
         }
     }
 
@@ -4807,7 +4796,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                 .collect::<Vec<SteelVal>>();
         }
 
-        return Vec::new();
+        Vec::new()
     });
 
     // Find the workspace
@@ -5521,11 +5510,8 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
 }
 // Check that we successfully created a directory?
 fn create_directory(path: String) {
-    let path = helix_stdx::path::canonicalize(&PathBuf::from(path));
-
-    if path.exists() {
-        return;
-    } else {
+    let path = helix_stdx::path::canonicalize(&path);
+    if !path.exists() {
         std::fs::create_dir(path).unwrap();
     }
 }
@@ -5537,9 +5523,7 @@ pub fn cx_pos_within_text(cx: &mut Context) -> usize {
 
     let selection = doc.selection(view.id).clone();
 
-    let pos = selection.primary().cursor(text);
-
-    pos
+    selection.primary().cursor(text)
 }
 
 pub fn get_helix_cwd(_cx: &mut Context) -> Option<String> {
@@ -5846,28 +5830,25 @@ pub fn add_inlay_hint(
     let view = cx.editor.tree.get(view_id);
     let doc_id = cx.editor.tree.get(view_id).doc;
     let doc = cx.editor.documents.get_mut(&doc_id)?;
-    let mut new_inlay_hints = doc
-        .inlay_hints(view_id)
-        .map(|x| x.clone())
-        .unwrap_or_else(|| {
-            let doc_text = doc.text();
-            let len_lines = doc_text.len_lines();
+    let mut new_inlay_hints = doc.inlay_hints(view_id).cloned().unwrap_or_else(|| {
+        let doc_text = doc.text();
+        let len_lines = doc_text.len_lines();
 
-            let view_height = view.inner_height();
-            let first_visible_line =
-                doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
-            let first_line = first_visible_line.saturating_sub(view_height);
-            let last_line = first_visible_line
-                .saturating_add(view_height.saturating_mul(2))
-                .min(len_lines);
+        let view_height = view.inner_height();
+        let first_visible_line =
+            doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
+        let first_line = first_visible_line.saturating_sub(view_height);
+        let last_line = first_visible_line
+            .saturating_add(view_height.saturating_mul(2))
+            .min(len_lines);
 
-            let new_doc_inlay_hints_id = DocumentInlayHintsId {
-                first_line,
-                last_line,
-            };
+        let new_doc_inlay_hints_id = DocumentInlayHintsId {
+            first_line,
+            last_line,
+        };
 
-            DocumentInlayHints::empty_with_id(new_doc_inlay_hints_id)
-        });
+        DocumentInlayHints::empty_with_id(new_doc_inlay_hints_id)
+    });
 
     // TODO: The inlay hints should actually instead return the id?
     new_inlay_hints
@@ -5926,7 +5907,7 @@ pub fn remove_inlay_hint_by_id(
         return Some(());
     }
 
-    return None;
+    None
 }
 
 // "remove-inlay-hint",

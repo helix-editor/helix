@@ -666,21 +666,19 @@ impl std::str::FromStr for MappableCommand {
         if let Some(suffix) = s.strip_prefix(':') {
             let (name, args, _) = command_line::split(suffix);
             ensure!(!name.is_empty(), "Expected typable command name");
-            typed::TYPABLE_COMMAND_MAP
+            let typable = typed::TYPABLE_COMMAND_MAP
                 .get(name)
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
                     doc: format!(":{} {:?}", cmd.name, args),
                     args: args.to_owned(),
                 })
-                .or_else(|| {
-                    Some(MappableCommand::Typable {
-                        name: name.to_owned(),
-                        args: args.to_owned(),
-                        doc: "Undocumented plugin command".to_string(),
-                    })
-                })
-                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+                .unwrap_or_else(|| MappableCommand::Typable {
+                    name: name.to_owned(),
+                    args: args.to_owned(),
+                    doc: "Undocumented plugin command".to_string(),
+                });
+            Ok(typable)
         } else if let Some(suffix) = s.strip_prefix('@') {
             helix_view::input::parse_macro(suffix).map(|keys| Self::Macro {
                 name: s.to_string(),

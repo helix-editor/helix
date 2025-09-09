@@ -92,7 +92,11 @@ struct AsyncWriter {
 
 impl std::io::Write for AsyncWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        if let Err(_) = self.channel.send(String::from_utf8_lossy(buf).to_string()) {
+        if self
+            .channel
+            .send(String::from_utf8_lossy(buf).into_owned())
+            .is_err()
+        {
             Ok(0)
         } else {
             Ok(buf.len())
@@ -108,7 +112,7 @@ pub fn helix_component_module(generate_sources: bool) -> BuiltInModule {
     let mut module = BuiltInModule::new("helix/components");
 
     let mut builtin_components_module = if generate_sources {
-        "(require-builtin helix/components as helix.components.)".to_string()
+        "(require-builtin helix/components as helix.components.)".to_owned()
     } else {
         String::new()
     };
@@ -1344,7 +1348,7 @@ be popped off of the stack and removed.
 
     register!(
         "style",
-        || Style::default(),
+        Style::default,
         r#"
 Constructs a new default style.
 
@@ -1490,7 +1494,7 @@ The key modifier bits associated with the super key modifier.
             Event::Key(KeyEvent {
                 code: KeyCode::F(x),
                 ..
-            }) if number == x => true,
+            }) => number == x,
             _ => false,
         },
         r#"Check if this key event is associated with an `F<x>` key, e.g. F1, F2, etc.
@@ -2017,7 +2021,7 @@ impl Component for SteelDynamicComponent {
                 )
             };
 
-            let cursor_call_result = enter_engine(|x| thunk(x));
+            let cursor_call_result = enter_engine(thunk);
 
             match cursor_call_result {
                 Ok(c) => match c {
@@ -2095,18 +2099,15 @@ impl Component for SteelDynamicComponent {
             // re-entrant attempting to grab the ENGINE instead mutably, since we have to break the recursion
             // somehow. By putting it at the edge, we then say - hey for these functions on this interface,
             // call the engine instance. Otherwise, all computation happens inside the engine.
-            match enter_engine(|x| {
+            enter_engine(|x| {
                 x.call_function_with_args_from_mut_slice(
                     required_size.clone(),
                     &mut [self.state.clone(), viewport.into_steelval().unwrap()],
                 )
             })
             .and_then(|x| Option::<(u16, u16)>::from_steelval(&x))
-            {
-                Ok(v) => v,
-                // TODO: Figure out how to present an error
-                Err(_e) => None,
-            }
+            .ok()
+            .flatten()
         } else {
             None
         }

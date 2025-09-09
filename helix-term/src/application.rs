@@ -896,8 +896,6 @@ impl Application {
                         self.editor.language_servers.remove_by_id(server_id);
                     }
                     Notification::Other(event_name, params) => {
-                        let server_id = server_id;
-
                         let mut cx = crate::compositor::Context {
                             editor: &mut self.editor,
                             scroll: None,
@@ -1066,8 +1064,6 @@ impl Application {
                         Ok(json!(result))
                     }
                     Ok(MethodCall::Other(event_name, params)) => {
-                        let server_id = server_id;
-
                         let mut cx = crate::compositor::Context {
                             editor: &mut self.editor,
                             scroll: None,

@@ -20,7 +20,7 @@ pub struct Configuration {
     pub language_server: HashMap<String, LanguageServerConfiguration>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(skip)]
@@ -626,37 +626,4 @@ where
 
 pub fn default_timeout() -> u64 {
     20
-}
-
-impl Clone for LanguageConfiguration {
-    fn clone(&self) -> Self {
-        LanguageConfiguration {
-            language: self.language.clone(),
-            language_id: self.language_id.clone(),
-            language_server_language_id: self.language_server_language_id.clone(),
-            scope: self.scope.clone(),
-            file_types: self.file_types.clone(),
-            shebangs: self.shebangs.clone(),
-            roots: self.roots.clone(),
-            comment_tokens: self.comment_tokens.clone(),
-            block_comment_tokens: self.block_comment_tokens.clone(),
-            text_width: self.text_width.clone(),
-            soft_wrap: self.soft_wrap.clone(),
-            auto_format: self.auto_format.clone(),
-            formatter: self.formatter.clone(),
-            diagnostic_severity: self.diagnostic_severity.clone(),
-            grammar: self.grammar.clone(),
-            injection_regex: self.injection_regex.clone(),
-            language_servers: self.language_servers.clone(),
-            indent: self.indent.clone(),
-            debugger: self.debugger.clone(),
-            auto_pairs: self.auto_pairs.clone(),
-            rulers: self.rulers.clone(),
-            workspace_lsp_roots: self.workspace_lsp_roots.clone(),
-            persistent_diagnostic_sources: self.persistent_diagnostic_sources.clone(),
-            path_completion: self.path_completion,
-            word_completion: self.word_completion.clone(),
-            rainbow_brackets: self.rainbow_brackets.clone(),
-        }
-    }
 }

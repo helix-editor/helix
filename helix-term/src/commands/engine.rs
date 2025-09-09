@@ -159,7 +159,8 @@ impl ScriptingEngine {
                 return Some(value);
             }
         }
-        return None;
+
+        None
     }
 
     pub fn generate_sources() {
