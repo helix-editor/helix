@@ -381,6 +381,8 @@ pub struct Config {
     pub editor_config: bool,
     /// Whether to render rainbow colors for matching brackets. Defaults to `false`.
     pub rainbow_brackets: bool,
+    /// Whether to flatten single-child directories in file explorer.
+    pub file_explorer_flatten_dirs: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1061,6 +1063,7 @@ impl Default for Config {
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
             rainbow_brackets: false,
+            file_explorer_flatten_dirs: false,
         }
     }
 }
