@@ -343,21 +343,24 @@ fn write_impl(
     options: WriteOptions,
 ) -> anyhow::Result<()> {
     let config = cx.editor.config();
-    let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
+    let doc_id = doc.id();
+    let view_id = view.id;
 
     if doc.trim_trailing_whitespace() {
-        trim_trailing_whitespace(doc, view.id);
+        trim_trailing_whitespace(doc, view_id);
     }
     if config.trim_final_newlines {
-        trim_final_newlines(doc, view.id);
+        trim_final_newlines(doc, view_id);
     }
     if doc.insert_final_newline() {
-        insert_final_newline(doc, view.id);
+        insert_final_newline(doc, view_id);
     }
 
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
+
+    code_actions_on_save(cx, &doc_id);
 
     let (view, doc) = current_ref!(cx.editor);
     let fmt = if config.auto_format && options.auto_format {
@@ -370,7 +373,8 @@ fn write_impl(
                 Some((path.map(Into::into), options.force)),
             );
 
-            jobs.add(Job::with_callback(callback).wait_before_exiting());
+            cx.jobs
+                .add(Job::with_callback(callback).wait_before_exiting());
         })
     } else {
         None
@@ -777,7 +781,6 @@ pub fn write_all_impl(
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
-    let jobs = &mut cx.jobs;
     let saves: Vec<_> = cx
         .editor
         .documents
@@ -820,6 +823,8 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
+        code_actions_on_save(cx, &doc_id);
+
         let fmt = if options.auto_format && config.auto_format {
             let doc = doc!(cx.editor, &doc_id);
             doc.auto_format(cx.editor).map(|fmt| {
@@ -830,7 +835,8 @@ pub fn write_all_impl(
                     fmt,
                     Some((None, options.force)),
                 );
-                jobs.add(Job::with_callback(callback).wait_before_exiting());
+                cx.jobs
+                    .add(Job::with_callback(callback).wait_before_exiting());
             })
         } else {
             None
