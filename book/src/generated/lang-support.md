@@ -86,6 +86,7 @@
 | git-ignore | ✓ |  |  |  |  |  |
 | git-notes | ✓ |  |  |  |  |  |
 | git-rebase | ✓ |  |  |  |  |  |
+| gitlab-ci | ✓ | ✓ | ✓ | ✓ | ✓ | `yaml-language-server`, `gitlab-ci-ls` |
 | gjs | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | gleam | ✓ | ✓ |  |  | ✓ | `gleam` |
 | glimmer | ✓ |  |  |  |  | `ember-language-server` |
