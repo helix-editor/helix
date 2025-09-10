@@ -70,7 +70,7 @@ koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 koto-ls = { command = "koto-ls" }
 kotlin-lsp = { command = "kotlin-lsp", args = ["--stdio"] }
 kotlin-language-server = { command = "kotlin-language-server" }
-lean = { command = "lean", args = ["--server"] }
+lean = { command = "lake", args = ["serve"] }
 ltex-ls = { command = "ltex-ls" }
 ltex-ls-plus = { command = "ltex-ls-plus" }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }

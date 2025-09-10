@@ -148,7 +148,7 @@
 | latex | ✓ | ✓ |  |  |  | `texlab` |
 | ld | ✓ |  | ✓ |  |  |  |
 | ldif | ✓ |  |  |  |  |  |
-| lean | ✓ |  |  |  |  | `lean` |
+| lean | ✓ |  |  |  |  | `lake` |
 | ledger | ✓ |  |  |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |  |  |
