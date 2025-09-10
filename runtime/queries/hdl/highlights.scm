@@ -34,11 +34,11 @@
     (identifier) @variable.parameter
     (bus_identifier
       (identifier) @variable.parameter
-      (number) @constant.number)
+      (number) @constant.numeric)
   ])
 
 (bus_identifier
-  (number) @constant.number)
+  (number) @constant.numeric)
 
 ;; Comments
 (comment) @comment
