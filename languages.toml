@@ -3011,6 +3011,8 @@ file-types = [
   "mpd",
   "smil",
   "gpx",
+  "fodt",
+  "fods",
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
