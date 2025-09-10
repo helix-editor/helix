@@ -45,7 +45,7 @@ tempfile = "3.21.0"
 bitflags = "2.9"
 unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
-foldhash = "0.1"
+foldhash = "0.2"
 parking_lot = "0.12"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
