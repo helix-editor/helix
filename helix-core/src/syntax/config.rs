@@ -56,6 +56,9 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub auto_format: bool,
 
+    #[serde(default)]
+    pub code_actions_on_save: Option<Vec<String>>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub formatter: Option<FormatterConfiguration>,
 
