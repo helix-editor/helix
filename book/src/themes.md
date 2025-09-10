@@ -282,6 +282,7 @@ These scopes are used for theming the editor interface:
 | Key                               | Notes                                                                                          |
 | ---                               | ---                                                                                            |
 | `ui.background`                   |                                                                                                |
+| `ui.background.inactive`          | Background of unfocused document                                                               |
 | `ui.background.separator`         | Picker separator below input line                                                              |
 | `ui.cursor`                       |                                                                                                |
 | `ui.cursor.normal`                |                                                                                                |
