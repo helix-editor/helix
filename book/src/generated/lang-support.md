@@ -7,7 +7,7 @@
 | amber | ✓ |  |  |  |  | `amber-lsp` |
 | astro | ✓ |  |  |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  |  |  | `awk-language-server` |
-| bash | ✓ | ✓ | ✓ |  | ✓ | `bash-language-server` |
+| bash | ✓ | ✓ | ✓ | ✓ | ✓ | `bash-language-server` |
 | bass | ✓ |  |  |  |  | `bass` |
 | beancount | ✓ |  |  |  |  | `beancount-language-server` |
 | bibtex | ✓ |  |  |  |  | `texlab` |
@@ -37,6 +37,7 @@
 | csv | ✓ |  |  |  |  |  |
 | cue | ✓ |  |  |  |  | `cuelsp` |
 | cylc | ✓ | ✓ | ✓ |  |  |  |
+| cython | ✓ |  | ✓ | ✓ |  |  |
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
 | dart | ✓ | ✓ | ✓ |  |  | `dart` |
 | dbml | ✓ |  |  |  |  |  |
@@ -45,8 +46,9 @@
 | dhall | ✓ | ✓ |  |  |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |  |  |
 | djot | ✓ |  |  |  |  |  |
-| docker-compose | ✓ | ✓ | ✓ |  |  | `docker-compose-langserver`, `yaml-language-server` |
-| dockerfile | ✓ | ✓ |  |  |  | `docker-langserver` |
+| docker-bake | ✓ | ✓ | ✓ | ✓ | ✓ | `docker-language-server` |
+| docker-compose | ✓ | ✓ | ✓ |  |  | `docker-compose-langserver`, `yaml-language-server`, `docker-language-server` |
+| dockerfile | ✓ | ✓ |  |  |  | `docker-langserver`, `docker-language-server` |
 | dot | ✓ |  |  |  |  | `dot-language-server` |
 | doxyfile | ✓ | ✓ | ✓ | ✓ |  |  |
 | dtd | ✓ |  |  |  |  |  |
@@ -57,7 +59,7 @@
 | eex | ✓ |  |  |  |  |  |
 | ejs | ✓ |  |  |  |  |  |
 | elisp | ✓ |  |  | ✓ |  |  |
-| elixir | ✓ | ✓ | ✓ | ✓ | ✓ | `elixir-ls` |
+| elixir | ✓ | ✓ | ✓ | ✓ | ✓ | `elixir-ls`, `expert` |
 | elm | ✓ | ✓ |  | ✓ |  | `elm-language-server` |
 | elvish | ✓ |  |  |  |  | `elvish` |
 | env | ✓ | ✓ |  |  |  |  |
@@ -105,7 +107,7 @@
 | haskell-persistent | ✓ |  |  |  |  |  |
 | hcl | ✓ | ✓ | ✓ |  |  | `terraform-ls` |
 | hdl | ✓ |  |  |  |  |  |
-| heex | ✓ | ✓ |  |  |  | `elixir-ls` |
+| heex | ✓ | ✓ |  |  |  | `elixir-ls`, `expert` |
 | helm | ✓ |  |  |  |  | `helm_ls` |
 | hocon | ✓ | ✓ | ✓ |  |  |  |
 | hoon | ✓ |  |  |  |  |  |
@@ -120,7 +122,7 @@
 | ink | ✓ |  |  |  |  |  |
 | inko | ✓ | ✓ | ✓ | ✓ |  |  |
 | janet | ✓ |  | ✓ |  | ✓ |  |
-| java | ✓ | ✓ | ✓ |  | ✓ | `jdtls` |
+| java | ✓ | ✓ | ✓ | ✓ | ✓ | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jinja | ✓ |  |  |  |  |  |
 | jjconfig | ✓ | ✓ | ✓ |  |  | `taplo`, `tombi` |
@@ -140,7 +142,7 @@
 | kconfig | ✓ |  | ✓ |  |  |  |
 | kdl | ✓ | ✓ | ✓ |  |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
-| kotlin | ✓ | ✓ | ✓ |  |  | `kotlin-language-server` |
+| kotlin | ✓ | ✓ | ✓ | ✓ |  | `kotlin-language-server` |
 | koto | ✓ | ✓ | ✓ |  |  | `koto-ls` |
 | latex | ✓ | ✓ |  |  |  | `texlab` |
 | ld | ✓ |  | ✓ |  |  |  |
@@ -200,7 +202,7 @@
 | prisma | ✓ | ✓ |  |  |  | `prisma-language-server` |
 | prolog | ✓ |  | ✓ |  |  | `swipl` |
 | properties | ✓ | ✓ |  |  |  |  |
-| protobuf | ✓ | ✓ | ✓ |  |  | `buf`, `pb`, `protols` |
+| protobuf | ✓ | ✓ | ✓ | ✓ |  | `buf`, `pb`, `protols` |
 | prql | ✓ |  |  |  |  |  |
 | pug | ✓ |  |  |  |  |  |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
@@ -226,6 +228,7 @@
 | scala | ✓ | ✓ | ✓ |  |  | `metals` |
 | scheme | ✓ |  | ✓ |  | ✓ |  |
 | scss | ✓ |  |  |  | ✓ | `vscode-css-language-server` |
+| shellcheckrc | ✓ | ✓ |  |  |  |  |
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
 | slint | ✓ | ✓ | ✓ |  |  | `slint-lsp` |
 | smali | ✓ |  | ✓ |  |  |  |
@@ -240,6 +243,7 @@
 | sshclientconfig | ✓ |  |  |  |  |  |
 | starlark | ✓ | ✓ | ✓ |  | ✓ | `starpls` |
 | strace | ✓ |  |  |  |  |  |
+| strictdoc | ✓ |  |  | ✓ |  |  |
 | supercollider | ✓ |  |  |  |  |  |
 | svelte | ✓ |  | ✓ |  |  | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |

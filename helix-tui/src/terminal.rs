@@ -24,12 +24,14 @@ pub struct Viewport {
 #[derive(Debug)]
 pub struct Config {
     pub enable_mouse_capture: bool,
+    pub force_enable_extended_underlines: bool,
 }
 
-impl From<EditorConfig> for Config {
-    fn from(config: EditorConfig) -> Self {
+impl From<&EditorConfig> for Config {
+    fn from(config: &EditorConfig) -> Self {
         Self {
             enable_mouse_capture: config.mouse,
+            force_enable_extended_underlines: config.undercurl,
         }
     }
 }
@@ -102,16 +104,16 @@ where
         })
     }
 
-    pub fn claim(&mut self, config: Config) -> io::Result<()> {
-        self.backend.claim(config)
+    pub fn claim(&mut self) -> io::Result<()> {
+        self.backend.claim()
     }
 
     pub fn reconfigure(&mut self, config: Config) -> io::Result<()> {
         self.backend.reconfigure(config)
     }
 
-    pub fn restore(&mut self, config: Config) -> io::Result<()> {
-        self.backend.restore(config)
+    pub fn restore(&mut self) -> io::Result<()> {
+        self.backend.restore()
     }
 
     // /// Get a Frame object which provides a consistent view into the terminal state for rendering.
@@ -216,10 +218,6 @@ where
         self.backend.show_cursor(kind)?;
         self.cursor_kind = kind;
         Ok(())
-    }
-
-    pub fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
-        self.backend.get_cursor()
     }
 
     pub fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {

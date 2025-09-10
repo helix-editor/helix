@@ -1,4 +1,4 @@
-//! Input event handling, currently backed by crossterm.
+//! Input event handling, currently backed by termina.
 use anyhow::{anyhow, Error};
 use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::de::{self, Deserialize, Deserializer};
@@ -65,7 +65,7 @@ pub enum MouseButton {
 pub struct KeyEvent {
     pub code: KeyCode,
     pub modifiers: KeyModifiers,
-    // TODO: crossterm now supports kind & state if terminal supports kitty's extended protocol
+    // TODO: termina now supports kind & state if terminal supports kitty's extended protocol
 }
 
 impl KeyEvent {
@@ -459,28 +459,31 @@ impl<'de> Deserialize<'de> for KeyEvent {
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::Event> for Event {
-    fn from(event: crossterm::event::Event) -> Self {
+impl From<termina::event::Event> for Event {
+    fn from(event: termina::event::Event) -> Self {
         match event {
-            crossterm::event::Event::Key(key) => Self::Key(key.into()),
-            crossterm::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
-            crossterm::event::Event::Resize(w, h) => Self::Resize(w, h),
-            crossterm::event::Event::FocusGained => Self::FocusGained,
-            crossterm::event::Event::FocusLost => Self::FocusLost,
-            crossterm::event::Event::Paste(s) => Self::Paste(s),
+            termina::event::Event::Key(key) => Self::Key(key.into()),
+            termina::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
+            termina::event::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
+                Self::Resize(cols, rows)
+            }
+            termina::event::Event::FocusIn => Self::FocusGained,
+            termina::event::Event::FocusOut => Self::FocusLost,
+            termina::event::Event::Paste(s) => Self::Paste(s),
+            _ => unreachable!(),
         }
     }
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::MouseEvent> for MouseEvent {
+impl From<termina::event::MouseEvent> for MouseEvent {
     fn from(
-        crossterm::event::MouseEvent {
+        termina::event::MouseEvent {
             kind,
             column,
             row,
             modifiers,
-        }: crossterm::event::MouseEvent,
+        }: termina::event::MouseEvent,
     ) -> Self {
         Self {
             kind: kind.into(),
@@ -492,40 +495,40 @@ impl From<crossterm::event::MouseEvent> for MouseEvent {
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::MouseEventKind> for MouseEventKind {
-    fn from(kind: crossterm::event::MouseEventKind) -> Self {
+impl From<termina::event::MouseEventKind> for MouseEventKind {
+    fn from(kind: termina::event::MouseEventKind) -> Self {
         match kind {
-            crossterm::event::MouseEventKind::Down(button) => Self::Down(button.into()),
-            crossterm::event::MouseEventKind::Up(button) => Self::Up(button.into()),
-            crossterm::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
-            crossterm::event::MouseEventKind::Moved => Self::Moved,
-            crossterm::event::MouseEventKind::ScrollDown => Self::ScrollDown,
-            crossterm::event::MouseEventKind::ScrollUp => Self::ScrollUp,
-            crossterm::event::MouseEventKind::ScrollLeft => Self::ScrollLeft,
-            crossterm::event::MouseEventKind::ScrollRight => Self::ScrollRight,
+            termina::event::MouseEventKind::Down(button) => Self::Down(button.into()),
+            termina::event::MouseEventKind::Up(button) => Self::Up(button.into()),
+            termina::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
+            termina::event::MouseEventKind::Moved => Self::Moved,
+            termina::event::MouseEventKind::ScrollDown => Self::ScrollDown,
+            termina::event::MouseEventKind::ScrollUp => Self::ScrollUp,
+            termina::event::MouseEventKind::ScrollLeft => Self::ScrollLeft,
+            termina::event::MouseEventKind::ScrollRight => Self::ScrollRight,
         }
     }
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::MouseButton> for MouseButton {
-    fn from(button: crossterm::event::MouseButton) -> Self {
+impl From<termina::event::MouseButton> for MouseButton {
+    fn from(button: termina::event::MouseButton) -> Self {
         match button {
-            crossterm::event::MouseButton::Left => MouseButton::Left,
-            crossterm::event::MouseButton::Right => MouseButton::Right,
-            crossterm::event::MouseButton::Middle => MouseButton::Middle,
+            termina::event::MouseButton::Left => MouseButton::Left,
+            termina::event::MouseButton::Right => MouseButton::Right,
+            termina::event::MouseButton::Middle => MouseButton::Middle,
         }
     }
 }
 
 #[cfg(feature = "term")]
-impl From<crossterm::event::KeyEvent> for KeyEvent {
+impl From<termina::event::KeyEvent> for KeyEvent {
     fn from(
-        crossterm::event::KeyEvent {
+        termina::event::KeyEvent {
             code, modifiers, ..
-        }: crossterm::event::KeyEvent,
+        }: termina::event::KeyEvent,
     ) -> Self {
-        if code == crossterm::event::KeyCode::BackTab {
+        if code == termina::event::KeyCode::BackTab {
             // special case for BackTab -> Shift-Tab
             let mut modifiers: KeyModifiers = modifiers.into();
             modifiers.insert(KeyModifiers::SHIFT);
@@ -543,24 +546,24 @@ impl From<crossterm::event::KeyEvent> for KeyEvent {
 }
 
 #[cfg(feature = "term")]
-impl From<KeyEvent> for crossterm::event::KeyEvent {
+impl From<KeyEvent> for termina::event::KeyEvent {
     fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
         if code == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
             // special case for Shift-Tab -> BackTab
             let mut modifiers = modifiers;
             modifiers.remove(KeyModifiers::SHIFT);
-            crossterm::event::KeyEvent {
-                code: crossterm::event::KeyCode::BackTab,
+            termina::event::KeyEvent {
+                code: termina::event::KeyCode::BackTab,
                 modifiers: modifiers.into(),
-                kind: crossterm::event::KeyEventKind::Press,
-                state: crossterm::event::KeyEventState::NONE,
+                kind: termina::event::KeyEventKind::Press,
+                state: termina::event::KeyEventState::NONE,
             }
         } else {
-            crossterm::event::KeyEvent {
+            termina::event::KeyEvent {
                 code: code.into(),
                 modifiers: modifiers.into(),
-                kind: crossterm::event::KeyEventKind::Press,
-                state: crossterm::event::KeyEventState::NONE,
+                kind: termina::event::KeyEventKind::Press,
+                state: termina::event::KeyEventState::NONE,
             }
         }
     }
