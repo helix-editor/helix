@@ -148,6 +148,15 @@ impl TerminaBackend {
         let mut capabilities = Capabilities::default();
         let start = Instant::now();
 
+        capabilities.kitty_keyboard = match config.kitty_keyboard_protocol {
+            KittyKeyboardProtocolConfig::Disabled => KittyKeyboardSupport::None,
+            KittyKeyboardProtocolConfig::Enabled => KittyKeyboardSupport::Full,
+            KittyKeyboardProtocolConfig::Auto => {
+                write!(terminal, "{}", Csi::Keyboard(csi::Keyboard::QueryFlags))?;
+                KittyKeyboardSupport::None
+            }
+        };
+
         // Many terminal extensions can be detected by querying the terminal for the state of the
         // extension and then sending a request for the primary device attributes (which is
         // consistently supported by all terminals). If we receive the status of the feature (for
@@ -155,9 +164,7 @@ impl TerminaBackend {
         // If we only receive the device attributes then we know it is not.
         write!(
             terminal,
-            "{}{}{}{}{}{}{}",
-            // Kitty keyboard
-            Csi::Keyboard(csi::Keyboard::QueryFlags),
+            "{}{}{}{}{}{}",
             // Synchronized output
             Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
                 csi::DecPrivateModeCode::SynchronizedOutput
@@ -270,24 +277,16 @@ impl TerminaBackend {
             csi::KittyKeyboardFlags::DISAMBIGUATE_ESCAPE_CODES
                 .union(csi::KittyKeyboardFlags::REPORT_ALTERNATE_KEYS);
 
-        match (
-            self.config.kitty_keyboard_protocol,
-            self.capabilities.kitty_keyboard,
-        ) {
-            (KittyKeyboardProtocolConfig::Disabled, _)
-            | (
-                KittyKeyboardProtocolConfig::Auto,
-                KittyKeyboardSupport::None | KittyKeyboardSupport::Partial,
-            ) => (),
-            (KittyKeyboardProtocolConfig::Enabled, _)
-            | (KittyKeyboardProtocolConfig::Auto, KittyKeyboardSupport::Full) => {
+        match self.capabilities.kitty_keyboard {
+            KittyKeyboardSupport::None | KittyKeyboardSupport::Partial => (),
+            KittyKeyboardSupport::Full => {
                 write!(
                     self.terminal,
                     "{}",
                     Csi::Keyboard(csi::Keyboard::PushFlags(KEYBOARD_FLAGS))
                 )?;
             }
-            (KittyKeyboardProtocolConfig::Auto, KittyKeyboardSupport::Some) => {
+            KittyKeyboardSupport::Some => {
                 write!(
                     self.terminal,
                     "{}{}",
