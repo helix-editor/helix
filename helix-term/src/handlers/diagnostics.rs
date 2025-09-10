@@ -44,7 +44,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         if event
             .doc
             .has_language_server_with_feature(LanguageServerFeature::PullDiagnostics)
-            && !event.ghost_transaction
+            && event.emit_lsp_notification.is_some()
         {
             // Cancel the ongoing request, if present.
             event.doc.pull_diagnostic_controller.cancel();

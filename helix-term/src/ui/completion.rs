@@ -178,7 +178,7 @@ impl Completion {
                     let item = item.unwrap();
                     let context = &editor.handlers.completions.active_completions[&item.provider()];
                     // if more text was entered, remove it
-                    doc.restore(view, &context.savepoint, false);
+                    doc.restore(view, &context.savepoint, None);
                     // always present here
 
                     match item {
@@ -203,13 +203,17 @@ impl Completion {
                     if let Some(CompleteAction::Selected { savepoint }) =
                         editor.last_completion.take()
                     {
-                        doc.restore(view, &savepoint, false);
+                        doc.restore(view, &savepoint, None);
                     }
 
                     let item = item.unwrap();
                     let context = &editor.handlers.completions.active_completions[&item.provider()];
                     // if more text was entered, remove it
-                    doc.restore(view, &context.savepoint, true);
+                    doc.restore(
+                        view,
+                        &context.savepoint,
+                        Some(helix_view::document::EmitLspNotification::Async),
+                    );
                     // save an undo checkpoint before the completion
                     doc.append_changes_to_history(view);
 
