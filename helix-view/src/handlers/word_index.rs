@@ -386,7 +386,11 @@ pub(crate) fn register_hooks(handlers: &Handlers) {
 
     let tx = handlers.word_index.hook.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
-        if !event.ghost_transaction && event.doc.word_completion_enabled() {
+        if matches!(
+            event.emit_lsp_notification,
+            Some(crate::document::EmitLspNotification::Sync)
+        ) && event.doc.word_completion_enabled()
+        {
             helix_event::send_blocking(
                 &tx,
                 Event::Update(
