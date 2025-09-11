@@ -80,6 +80,7 @@ fn exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
             WriteOptions {
                 force: false,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+                code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             },
         )?;
     }
@@ -99,6 +100,7 @@ fn force_exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
             WriteOptions {
                 force: true,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+                code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             },
         )?;
     }
@@ -420,7 +422,11 @@ fn write_impl(
         None
     };
 
-    let job = code_actions_on_save(cx, doc_id, fmt);
+    let job = if options.code_actions {
+        code_actions_on_save(cx, doc_id, fmt)
+    } else {
+        fmt
+    };
 
     if let Some(job) = job {
         cx.jobs.add(job);
@@ -496,6 +502,7 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
 pub struct WriteOptions {
     pub force: bool,
     pub auto_format: bool,
+    pub code_actions: bool,
 }
 
 fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -509,6 +516,7 @@ fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
         WriteOptions {
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )
 }
@@ -524,6 +532,7 @@ fn force_write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         WriteOptions {
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )
 }
@@ -543,6 +552,7 @@ fn write_buffer_close(
         WriteOptions {
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
 
@@ -565,6 +575,7 @@ fn force_write_buffer_close(
         WriteOptions {
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
 
@@ -753,6 +764,7 @@ fn write_quit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         WriteOptions {
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
     cx.block_try_flush_writes()?;
@@ -774,6 +786,7 @@ fn force_write_quit(
         WriteOptions {
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
     cx.block_try_flush_writes()?;
@@ -818,6 +831,7 @@ pub struct WriteAllOptions {
     pub force: bool,
     pub write_scratch: bool,
     pub auto_format: bool,
+    pub code_actions: bool,
 }
 
 pub fn write_all_impl(
@@ -891,7 +905,11 @@ pub fn write_all_impl(
             None
         };
 
-        let job = code_actions_on_save(cx, doc_id, fmt);
+        let job = if options.code_actions {
+            code_actions_on_save(cx, doc_id, fmt)
+        } else {
+            fmt
+        };
 
         if let Some(job) = job {
             cx.jobs.add(job);
@@ -918,6 +936,7 @@ fn write_all(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> an
             force: false,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )
 }
@@ -937,6 +956,7 @@ fn force_write_all(
             force: true,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )
 }
@@ -955,6 +975,7 @@ fn write_all_quit(
             force: false,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
     quit_all_impl(cx, false)
@@ -974,6 +995,7 @@ fn force_write_all_quit(
             force: true,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     );
     quit_all_impl(cx, true)
@@ -1537,6 +1559,7 @@ fn update(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
             WriteOptions {
                 force: false,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+                code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             },
         )
     } else {
