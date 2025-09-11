@@ -4309,8 +4309,7 @@ pub mod insert {
                     .and_then(|pairs| {
                         contents
                             .get_char(pos - 1)
-                            .map(|ch| pairs.get(contents, pos - 1, ch))
-                            .flatten()
+                            .and_then(|ch| pairs.get(contents, pos - 1, ch))
                     })
                     .is_some_and(|pair| {
                         contents
