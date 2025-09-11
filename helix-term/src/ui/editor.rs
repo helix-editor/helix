@@ -1585,6 +1585,7 @@ impl Component for EditorView {
                         force: false,
                         write_scratch: false,
                         auto_format: false,
+                        code_actions: false,
                     };
                     if let Err(e) = commands::typed::write_all_impl(context, options) {
                         context.editor.set_error(format!("{}", e));
