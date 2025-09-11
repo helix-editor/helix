@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use smallvec::SmallVec;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
-pub const DEFAULT_PAIRS: &[(&'static str, &'static str)] = &[
+pub const DEFAULT_PAIRS: &[(&str, &str)] = &[
     ("(", ")"),
     ("{", "}"),
     ("[", "]"),
@@ -39,10 +39,10 @@ impl Pair {
 
     /// true if all of the pair's conditions hold for the given document and range
     pub fn should_close(&self, doc: &Rope, range: &Range) -> bool {
-        let mut should_close = Self::next_is_not_alpha(&self, doc, range);
+        let mut should_close = Self::next_is_not_alpha(self, doc, range);
 
         if self.same() {
-            should_close &= Self::prev_is_not_alpha(&self, doc, range);
+            should_close &= Self::prev_is_not_alpha(self, doc, range);
         }
 
         should_close
@@ -98,7 +98,7 @@ impl Pair {
     }
 
     fn last_char_of_open(&self) -> char {
-        self.open.chars().rev().next().unwrap()
+        self.open.chars().next_back().unwrap()
     }
 
     fn after_char_matches_source<S: IntoIterator<Item = char>, G: IntoIterator<Item = char>>(
@@ -112,7 +112,7 @@ impl Pair {
             return false;
         }
 
-        Self::matches_source(ground.into_iter(), chars)
+        Self::matches_source(ground, chars)
     }
 
     fn matches_source<S: IntoIterator<Item = char>, G: IntoIterator<Item = char>>(
@@ -130,7 +130,7 @@ impl Pair {
                 return false;
             }
         }
-        return true;
+        true
     }
 }
 
@@ -139,7 +139,7 @@ where
     O: ToString,
     C: ToString,
 {
-    fn from(&(ref open, ref close): &(O, C)) -> Self {
+    fn from((open, close): &(O, C)) -> Self {
         Self {
             open: open.to_string(),
             close: close.to_string(),
@@ -177,7 +177,7 @@ impl AutoPairs {
         V: IntoIterator<Item = A> + 'a,
         A: Into<Pair>,
     {
-        fn step<'ap, I: Iterator<Item = char>>(
+        fn step<I: Iterator<Item = char>>(
             pair: Pair,
             key: &mut I,
             autopairs: AutoPairs,
@@ -261,9 +261,7 @@ impl AutoPairs {
                 },
             }
         }
-        let match_terminating_at_cursor = autopairs
-            .get_none_or_unwrap_leaf()
-            .or_else(|| feasible_pair);
+        let match_terminating_at_cursor = autopairs.get_none_or_unwrap_leaf().or(feasible_pair);
         if match_terminating_at_cursor.is_some() {
             return match_terminating_at_cursor;
         }
@@ -289,10 +287,7 @@ impl AutoPairs {
                 },
             }
         }
-        let match_starting_at_cursor = autopairs
-            .get_none_or_unwrap_leaf()
-            .or_else(|| feasible_pair);
-        return match_starting_at_cursor;
+        autopairs.get_none_or_unwrap_leaf().or(feasible_pair)
     }
 }
 
@@ -331,17 +326,11 @@ pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> O
     None
 }
 
-fn iterate_backwards_from_index<'doc_text>(
-    doc: &'doc_text Rope,
-    index: usize,
-) -> impl Iterator<Item = char> + use<'doc_text> {
+fn iterate_backwards_from_index(doc: &Rope, index: usize) -> impl Iterator<Item = char> + use<'_> {
     doc.chars_at(index).reversed()
 }
 
-fn iterate_forward_from_index<'doc_text>(
-    doc: &'doc_text Rope,
-    index: usize,
-) -> impl Iterator<Item = char> + use<'doc_text> {
+fn iterate_forward_from_index(doc: &Rope, index: usize) -> impl Iterator<Item = char> + use<'_> {
     doc.chars_at(index)
 }
 
