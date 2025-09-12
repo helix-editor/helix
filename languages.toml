@@ -4720,7 +4720,6 @@ file-types = [{glob = "Cross.toml"}]
 language-servers = [ "taplo", "tombi" ]
 indent = { tab-width = 2, unit = "  " }
 
-# https://git-cliff.org/docs/configuration/
 [[language]]
 name = "git-cliff-config"
 scope = "source.git-cliff-config"
@@ -4788,3 +4787,15 @@ grammar = "yaml"
 indent = { tab-width = 2, unit = "  " }
 language-servers = ["yaml-language-server", "gitlab-ci-ls"]
 comment-token = "#"
+
+[[language]] 
+name = "slisp"
+scope = "source.sl"
+injection-regex = "sl"
+file-types = ["sl"]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "slisp"
+source = { git = "https://github.com/xenogenics/tree-sitter-slisp", rev = "d610cb0ac2c63bcf44986ac456c179979cfa931f" }
