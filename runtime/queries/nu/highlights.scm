@@ -10,12 +10,12 @@
   "if"
   "else"
   "match"
-] @keyword.conditional
+] @keyword.control.conditional
 
 [
   "loop"
   "while"
-] @keyword.repeat
+] @keyword.control.repeat
 
 "def" @keyword.function
 
@@ -23,30 +23,30 @@
   "try"
   "catch"
   "error"
-] @keyword.exception
+] @keyword.control.exception
 
 [
   "module"
   "use"
-] @keyword.import
+] @keyword.control.import
 
 [
   "alias"
   "export-env"
   "export"
   "extern"
-] @keyword.modifier
+] @keyword.storage.modifier
 
 (decl_use
-  "use" @keyword)
+  "use" @keyword.control.import)
 
 (ctrl_for
-  "for" @keyword
-  "in" @keyword)
+  "for" @keyword.control.repeat
+  "in" @keyword.control.repeat)
 
 ; ---
 ; literals
-(val_number) @number
+(val_number) @constant.numeric
 
 (val_duration
   unit: _ @variable.parameter)
@@ -59,15 +59,15 @@
     "0b"
     "0o"
     "0x"
-  ] @number
+  ] @constant.numeric
   "[" @punctuation.bracket
   digit: [
     "," @punctuation.delimiter
-    (hex_digit) @number
+    (hex_digit) @constant.numeric
   ]
-  "]" @punctuation.bracket) @number
+  "]" @punctuation.bracket) @constant.numeric
 
-(val_bool) @constant.builtin
+(val_bool) @constant.builtin.boolean
 
 (val_nothing) @constant.builtin
 
@@ -77,7 +77,7 @@ arg_str: (val_string) @variable.parameter
 
 file_path: (val_string) @variable.parameter
 
-(val_date) @number
+(val_date) @constant.numeric
 
 (inter_escape_sequence) @constant.character.escape
 
@@ -282,8 +282,8 @@ key: (identifier) @property
     "all" "ansi" "any" "append" "ast" "bits" "bytes" "cal" "cd" "char" "chunk-by" "chunks" "clear" "collect" "columns" "compact" "complete" "config" "cp" "date" "debug" "decode" "default" "detect" "drop" "du" "each" "encode" "enumerate" "every" "exec" "exit" "explain" "explore" "fill" "filter" "find" "first" "flatten" "format" "from" "generate" "get" "glob" "grid" "group-by" "hash" "headers" "histogram" "history" "http" "input" "insert" "inspect" "interleave" "into" "is-empty" "is-not-empty" "is-terminal" "items" "job" "join" "keybindings" "kill" "last" "length" "let-env" "lines" "load-env" "ls" "math" "merge" "metadata" "mkdir" "mktemp" "move" "mv" "nu-check" "nu-highlight" "open" "panic" "par-each" "parse" "path" "plugin" "port" "prepend" "print" "ps" "query" "random" "reduce" "reject" "rename" "reverse" "rm" "roll" "rotate" "run-external" "save" "schema" "select" "seq" "shuffle" "skip" "sleep" "slice" "sort" "sort-by" "split" "start" "stor" "str" "sys" "table" "take" "tee" "term" "timeit" "to" "touch" "transpose" "tutor" "ulimit" "uname" "uniq" "uniq-by" "update" "upsert" "url" "values" "version" "view" "watch" "which" "whoami" "window" "with-env" "wrap" "zip"))
 
 (command
-  head: (cmd_identifier) @keyword.repeat
-  (#any-of? @keyword.repeat "break" "continue" "return"))
+  head: (cmd_identifier) @keyword.control.repeat
+  (#any-of? @keyword.control.repeat "break" "continue" "return"))
 
 (command
   head: (cmd_identifier) @keyword
@@ -292,7 +292,7 @@ key: (identifier) @property
 (command
   head: (cmd_identifier) @keyword
   .
-  arg_str: (val_string) @keyword.import
+  arg_str: (val_string) @keyword.control.import
   (#any-of? @keyword "overlay" "error"))
 
 (command
