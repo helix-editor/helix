@@ -207,6 +207,84 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
     document_ids
 }
 
+fn align_text_impl(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+    format: fn(usize, &str) -> String,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let editor_text_width = cx.editor.config().text_width;
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let custom_text_width = args.first().map(|arg| {
+        arg.parse::<usize>()
+            .map_err(|_| anyhow!("Could not parse argument as a number: {arg}"))
+    });
+
+    let text_width = custom_text_width.unwrap_or(Ok(doc
+        .language_config()
+        .and_then(|c| c.text_width)
+        .unwrap_or(editor_text_width)))?;
+
+    let lines = get_lines(doc, view.id);
+    let mut changes = Vec::with_capacity(lines.len());
+
+    for line_idx in lines {
+        let line = doc.text().line(line_idx);
+        let old_line = line.to_string();
+
+        let aligned_line = format(text_width, old_line.trim());
+        let aligned_line = aligned_line.trim_end();
+        let tendril = Tendril::from(aligned_line);
+
+        changes.push((
+            text.line_to_char(line_idx),
+            text.line_to_char(line_idx + 1) - doc.line_ending.len_chars(),
+            Some(tendril),
+        ))
+    }
+
+    let transaction = Transaction::change(doc.text(), changes.into_iter());
+
+    doc.apply(&transaction, view.id);
+
+    Ok(())
+}
+
+fn align_text_left(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    align_text_impl(cx, args, event, |text_width, text| {
+        format!("{:<text_width$}", text)
+    })
+}
+
+fn align_text_center(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    align_text_impl(cx, args, event, |text_width, text| {
+        format!("{:^text_width$}", text)
+    })
+}
+
+fn align_text_right(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    align_text_impl(cx, args, event, |text_width, text| {
+        format!("{:>text_width$}", text)
+    })
+}
+
 fn buffer_close(
     cx: &mut compositor::Context,
     args: Args,
@@ -3663,6 +3741,39 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "align-text-left",
+        aliases: &["atl"],
+        doc: "Align text to the left",
+        fun: align_text_left,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "align-text-center",
+        aliases: &["atc"],
+        doc: "Center-align text, optionally pass a number overriding the current document's text width",
+        fun: align_text_center,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "align-text-right",
+        aliases: &["atr"],
+        doc: "Align text to the right, optionally pass a number overriding the current document's text width",
+        fun: align_text_right,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(1)),
             ..Signature::DEFAULT
         },
     },
