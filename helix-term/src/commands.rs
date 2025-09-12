@@ -1503,38 +1503,40 @@ fn find_char_line_ending_motion(
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let cursor = range.cursor(text);
+        let cursor_anchor = range.cursor(text);
+        let cursor_head = next_grapheme_boundary(text, cursor_anchor);
         let cursor_line = range.cursor_line(text);
 
-        // Finding the line where we're going to find <ret>. Depends mostly on
-        // `count`, but also takes into account edge cases where we're already at the end
-        // of a line or the beginning of a line
-        let find_on_line = match direction {
+        let pos = match direction {
             Direction::Forward => {
-                let on_edge = line_end_char_index(&text, cursor_line) == cursor;
-                let line = cursor_line + count - 1 + (on_edge as usize);
+                let line_end = line_end_char_index(&text, cursor_line);
+                let on_edge = if inclusive {
+                    line_end == cursor_anchor
+                } else {
+                    line_end == cursor_head || line_end == cursor_anchor
+                };
+                let line = cursor_line + count - 1 + on_edge as usize;
                 if line >= text.len_lines() - 1 {
                     return range;
-                } else {
-                    line
                 }
+                line_end_char_index(&text, line) - !inclusive as usize
             }
             Direction::Backward => {
-                let on_edge = text.line_to_char(cursor_line) == cursor && !inclusive;
-                let line = cursor_line as isize - (count as isize - 1 + on_edge as isize);
-                if line <= 0 {
-                    return range;
+                if inclusive {
+                    let line = cursor_line as isize - count as isize;
+                    if line < 0 {
+                        return range;
+                    }
+                    line_end_char_index(&text, line as usize)
                 } else {
-                    line as usize
+                    let on_edge = text.line_to_char(cursor_line) == cursor_anchor;
+                    let line = cursor_line as isize - count as isize + 1 - on_edge as isize;
+                    if line <= 0 {
+                        return range;
+                    }
+                    text.line_to_char(line as usize)
                 }
             }
-        };
-
-        let pos = match (direction, inclusive) {
-            (Direction::Forward, true) => line_end_char_index(&text, find_on_line),
-            (Direction::Forward, false) => line_end_char_index(&text, find_on_line) - 1,
-            (Direction::Backward, true) => line_end_char_index(&text, find_on_line - 1),
-            (Direction::Backward, false) => text.line_to_char(find_on_line),
         };
 
         if extend {
