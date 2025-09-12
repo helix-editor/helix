@@ -78,6 +78,10 @@
   (content) @markup.bold
 )
 
+(html_tag_name) @tag
+(html_attribute
+  (html_attribute_name) @attribute
+)
 (html_attribute
   (html_attribute_name) @attribute
   (html_attribute_value) @string
