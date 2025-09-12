@@ -228,7 +228,17 @@ mod external {
             }
 
             match self {
-                Self::Pasteboard => yank_from_builtin(PASTEBOARD, clipboard_type),
+                Self::Pasteboard => {
+                    let output = std::process::Command::new("pbpaste").output()?;
+
+                    if !output.status.success() {
+                        log::error!("pbpaste failed with output {:?}", output);
+                        return Err(ClipboardError::CommandFailed);
+                    }
+
+                    let output = String::from_utf8(output.stdout)?;
+                    Ok(output)
+                }
                 Self::Wayland => yank_from_builtin(WL_CLIPBOARD, clipboard_type),
                 Self::XClip => yank_from_builtin(XCLIP, clipboard_type),
                 Self::XSel => yank_from_builtin(XSEL, clipboard_type),
