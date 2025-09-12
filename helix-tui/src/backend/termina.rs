@@ -3,7 +3,7 @@ use std::io::{self, Write as _};
 use helix_view::{
     editor::KittyKeyboardProtocolConfig,
     graphics::{CursorKind, Rect, UnderlineStyle},
-    theme::{Color, Modifier},
+    theme::{self, Color, Modifier},
 };
 use termina::{
     escape::{
@@ -52,6 +52,7 @@ struct Capabilities {
     synchronized_output: bool,
     true_color: bool,
     extended_underlines: bool,
+    theme_mode: Option<theme::Mode>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -148,11 +149,13 @@ impl TerminaBackend {
         // If we only receive the device attributes then we know it is not.
         write!(
             terminal,
-            "{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}",
             // Synchronized output
             Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
                 csi::DecPrivateModeCode::SynchronizedOutput
             ))),
+            // Mode 2031 theme updates. Query the current theme.
+            Csi::Mode(csi::Mode::QueryTheme),
             // True color and while we're at it, extended underlines:
             // <https://github.com/termstandard/colors?tab=readme-ov-file#querying-the-terminal>
             Csi::Sgr(csi::Sgr::Background(TEST_COLOR.into())),
@@ -183,6 +186,9 @@ impl TerminaBackend {
                         setting: csi::DecModeSetting::Set | csi::DecModeSetting::Reset,
                     })) => {
                         capabilities.synchronized_output = true;
+                    }
+                    Event::Csi(Csi::Mode(csi::Mode::ReportTheme(mode))) => {
+                        capabilities.theme_mode = Some(mode.into());
                     }
                     Event::Dcs(dcs::Dcs::Response {
                         value: dcs::DcsResponse::GraphicRendition(sgrs),
@@ -320,6 +326,11 @@ impl TerminaBackend {
             }
         }
 
+        if self.capabilities.theme_mode.is_some() {
+            // Enable mode 2031 theme mode notifications:
+            write!(self.terminal, "{}", decset!(Theme))?;
+        }
+
         Ok(())
     }
 
@@ -330,6 +341,11 @@ impl TerminaBackend {
                 "{}",
                 Csi::Keyboard(csi::Keyboard::PopFlags(1))
             )?;
+        }
+
+        if self.capabilities.theme_mode.is_some() {
+            // Mode 2031 theme notifications.
+            write!(self.terminal, "{}", decreset!(Theme))?;
         }
 
         Ok(())
@@ -549,6 +565,10 @@ impl Backend for TerminaBackend {
 
     fn supports_true_color(&self) -> bool {
         self.capabilities.true_color
+    }
+
+    fn get_theme_mode(&self) -> Option<theme::Mode> {
+        self.capabilities.theme_mode
     }
 }
 
