@@ -13,7 +13,6 @@ use termina::{
     style::{CursorStyle, RgbColor},
     Event, OneBased, PlatformTerminal, Terminal as _, WindowSize,
 };
-use termini::TermInfo;
 
 use crate::{buffer::Cell, terminal::Config};
 
@@ -45,21 +44,6 @@ fn term_program() -> Option<String> {
 }
 fn vte_version() -> Option<usize> {
     std::env::var("VTE_VERSION").ok()?.parse().ok()
-}
-fn reset_cursor_approach(terminfo: TermInfo) -> String {
-    let mut reset_str = Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string();
-
-    if let Some(termini::Value::Utf8String(se_str)) = terminfo.extended_cap("Se") {
-        reset_str.push_str(se_str);
-    };
-
-    reset_str.push_str(
-        terminfo
-            .utf8_string_cap(termini::StringCapability::CursorNormal)
-            .unwrap_or(""),
-    );
-
-    reset_str
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -224,7 +208,9 @@ impl TerminaBackend {
 
         capabilities.extended_underlines |= config.force_enable_extended_underlines;
 
-        let reset_cursor_approach = if let Ok(t) = termini::TermInfo::from_env() {
+        let mut reset_cursor_command =
+            Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string();
+        if let Ok(t) = termini::TermInfo::from_env() {
             capabilities.extended_underlines |= t.extended_cap("Smulx").is_some()
                 || t.extended_cap("Su").is_some()
                 || vte_version() >= Some(5102)
@@ -232,14 +218,23 @@ impl TerminaBackend {
                 // <https://github.com/wezterm/wezterm/pull/6856>
                 || matches!(term_program().as_deref(), Some("WezTerm"));
 
-            reset_cursor_approach(t)
+            if let Some(termini::Value::Utf8String(se_str)) = t.extended_cap("Se") {
+                reset_cursor_command.push_str(se_str);
+            };
+            reset_cursor_command.push_str(
+                t.utf8_string_cap(termini::StringCapability::CursorNormal)
+                    .unwrap_or(""),
+            );
+            log::debug!(
+                "Cursor reset escape sequence detected from terminfo: {reset_cursor_command:?}"
+            );
         } else {
-            Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string()
-        };
+            log::debug!("terminfo could not be read, using default cursor reset escape sequence: {reset_cursor_command:?}");
+        }
 
         terminal.enter_cooked_mode()?;
 
-        Ok((capabilities, reset_cursor_approach))
+        Ok((capabilities, reset_cursor_command))
     }
 
     fn enable_mouse_capture(&mut self) -> io::Result<()> {
