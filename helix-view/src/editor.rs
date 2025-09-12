@@ -9,6 +9,7 @@ use crate::{
     handlers::Handlers,
     info::Info,
     input::KeyEvent,
+    make,
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
@@ -1174,6 +1175,8 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    pub make_list: make::List,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1295,6 +1298,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            make_list: make::List::new(),
         }
     }
 
