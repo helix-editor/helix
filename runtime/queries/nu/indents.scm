@@ -9,18 +9,10 @@
   (val_table)
 
   (block)
-] @indent.begin
+] @indent
 
 [
   "}"
   "]"
   ")"
-] @indent.end
-
-[
-  "}"
-  "]"
-  ")"
-] @indent.branch
-
-(comment) @indent.auto
+] @outdent
