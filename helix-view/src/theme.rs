@@ -227,7 +227,8 @@ pub struct Theme {
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
-    rainbow_length: usize,
+    rainbow_bracket_length: usize,
+    rainbow_indent_length: usize,
 }
 
 impl From<Value> for Theme {
@@ -262,12 +263,14 @@ fn build_theme_values(
     Vec<String>,
     Vec<Style>,
     usize,
+    usize,
     Vec<String>,
 ) {
     let mut styles = HashMap::new();
     let mut scopes = Vec::new();
     let mut highlights = Vec::new();
-    let mut rainbow_length = 0;
+    let mut rainbow_bracket_length = 0;
+    let mut rainbow_indent_length = 0;
 
     let mut warnings = Vec::new();
 
@@ -287,8 +290,10 @@ fn build_theme_values(
     scopes.reserve(values.len());
     highlights.reserve(values.len());
 
+    let rainbow = values.remove("rainbow");
     for (i, style) in values
-        .remove("rainbow")
+        .remove("rainbow-brackets")
+        .or(rainbow.clone())
         .and_then(|value| match palette.parse_style_array(value) {
             Ok(styles) => Some(styles),
             Err(err) => {
@@ -300,11 +305,32 @@ fn build_theme_values(
         .into_iter()
         .enumerate()
     {
-        let name = format!("rainbow.{i}");
+        let name = format!("rainbow-bracket.{i}");
         styles.insert(name.clone(), style);
         scopes.push(name);
         highlights.push(style);
-        rainbow_length += 1;
+        rainbow_bracket_length += 1;
+    }
+    for (i, style) in values
+        .remove("rainbow-indents")
+        .or(rainbow.clone())
+        .and_then(|value| match palette.parse_style_array(value) {
+            Ok(styles) => Some(styles),
+            Err(err) => {
+                warnings.push(err);
+                None
+            }
+        })
+        // indent guides should be dimmer than brackets, by default.
+        .unwrap_or_else(|| dim(default_rainbow()))
+        .into_iter()
+        .enumerate()
+    {
+        let name = format!("rainbow-indent.{i}");
+        styles.insert(name.clone(), style);
+        scopes.push(name);
+        highlights.push(style);
+        rainbow_indent_length += 1;
     }
 
     for (name, style_value) in values {
@@ -319,7 +345,14 @@ fn build_theme_values(
         highlights.push(style);
     }
 
-    (styles, scopes, highlights, rainbow_length, warnings)
+    (
+        styles,
+        scopes,
+        highlights,
+        rainbow_bracket_length,
+        rainbow_indent_length,
+        warnings,
+    )
 }
 
 fn default_rainbow() -> Vec<Style> {
@@ -332,6 +365,14 @@ fn default_rainbow() -> Vec<Style> {
         Style::default().fg(Color::Magenta),
     ]
 }
+
+fn dim(styles: Vec<Style>) -> Vec<Style> {
+    styles
+        .into_iter()
+        .map(|s| s.add_modifier(Modifier::DIM))
+        .collect()
+}
+
 impl Theme {
     /// To allow `Highlight` to represent arbitrary RGB colors without turning it into an enum,
     /// we interpret the last 256^3 numbers as RGB.
@@ -422,8 +463,16 @@ impl Theme {
         })
     }
 
-    pub fn rainbow_length(&self) -> usize {
-        self.rainbow_length
+    pub fn rainbow_bracket_length(&self) -> usize {
+        self.rainbow_bracket_length
+    }
+
+    pub fn get_bracket_rainbow(&self, index: usize) -> Style {
+        self.highlights[index % self.rainbow_bracket_length]
+    }
+
+    pub fn get_indent_rainbow(&self, index: usize) -> Style {
+        self.highlights[(index % self.rainbow_indent_length) + self.rainbow_bracket_length]
     }
 
     fn from_toml(value: Value) -> (Self, Vec<String>) {
@@ -436,14 +485,21 @@ impl Theme {
     }
 
     fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
-        let (styles, scopes, highlights, rainbow_length, load_errors) =
-            build_theme_values(toml_keys);
+        let (
+            styles,
+            scopes,
+            highlights,
+            rainbow_bracket_length,
+            rainbow_indent_length,
+            load_errors,
+        ) = build_theme_values(toml_keys);
 
         let theme = Self {
             styles,
             scopes,
             highlights,
-            rainbow_length,
+            rainbow_bracket_length,
+            rainbow_indent_length,
             ..Default::default()
         };
         (theme, load_errors)
