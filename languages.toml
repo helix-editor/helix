@@ -1518,6 +1518,7 @@ file-types = [
   { glob = ".clang-tidy" },
   { glob = ".gem/credentials" },
   { glob = ".kube/config" },
+  { glob = ".kube/kuberc" },
   "sublime-syntax"
 ]
 comment-token = "#"
