@@ -393,6 +393,17 @@ pub struct Config {
     pub max_panel_height_percent: f32,
     /// Whether to render rainbow colors for matching brackets. Defaults to `false`.
     pub rainbow_brackets: bool,
+    /// Whether to enable Kitty Keyboard Protocol
+    pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum KittyKeyboardProtocolConfig {
+    #[default]
+    Auto,
+    Disabled,
+    Enabled,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1098,6 +1109,7 @@ impl Default for Config {
             max_panel_width_percent: 0.8,
             max_panel_height_percent: 0.8,
             rainbow_brackets: false,
+            kitty_keyboard_protocol: Default::default(),
         }
     }
 }

@@ -2582,16 +2582,16 @@ dependencies = [
 
 [[package]]
 name = "termina"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f58aa978d5fc10a8f839e51150a41308f3bb05a6c0bf3fcc59ca079312f83d4"
+checksum = "6b9a48a479fe84f486d932a2e0c549b4d48ed3d57a20f18a3e61199c75a05ecf"
 dependencies = [
  "bitflags",
  "futures-core",
  "parking_lot",
  "rustix",
  "signal-hook",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
