@@ -180,7 +180,13 @@ where
         ))
     } else {
         // If not focused, explicitly leave an empty space instead of returning None.
-        Cow::Borrowed("     ")
+        let mode_str = match context.editor.mode() {
+            Mode::Insert => &modenames.insert,
+            Mode::Select => &modenames.select,
+            Mode::Normal => &modenames.normal,
+        };
+        let width = mode_str.chars().count() + 2;
+        Cow::Owned(" ".repeat(width))
     };
     let style = if visible && config.color_modes {
         match context.editor.mode() {
