@@ -2678,7 +2678,7 @@ language-servers = [ "idris2-lsp" ]
 name = "fortran"
 scope = "source.fortran"
 injection-regex = "fortran"
-file-types = ["f", "for", "f90", "f95", "f03"]
+file-types = ["f", "for", "f90", "f95", "f03", "F", "F90", "F95", "F03"]
 roots = ["fpm.toml"]
 comment-token = "!"
 indent = { tab-width = 4, unit = "    "}
