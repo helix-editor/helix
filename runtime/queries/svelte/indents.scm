@@ -1,18 +1,24 @@
 [
   (element)
+  (start_tag)
   (if_statement)
+  (else_if_block)
+  (else_block)
+  (then_block)
   (each_statement)
+  (key_statement)
+  (snippet_statement)
   (await_statement)
-  (script_element)
   (style_element)
+  (script_element)
+  (expression)
 ] @indent
 
 [
   (end_tag)
-  (else_statement)
-  (if_end_expr)
-  (each_end_expr)
-  (await_end_expr)
-  ">"
-  "/>"
+  (if_end)
+  (each_end)
+  (await_end)
+  (key_end)
+  (snippet_end)
 ] @outdent
