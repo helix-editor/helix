@@ -337,6 +337,31 @@ fn buffer_previous(
     Ok(())
 }
 
+fn goto_buffer_number(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let buffer_num = args[0].parse::<usize>()?;
+
+    if buffer_num == 0 {
+        bail!("Buffer numbers start from 1");
+    }
+
+    let docs: Vec<_> = cx.editor.documents.keys().collect();
+    if buffer_num > docs.len() {
+        bail!("Buffer {} does not exist", buffer_num);
+    }
+
+    let doc_id = *docs[buffer_num - 1];
+    cx.editor.switch(doc_id, Action::Replace);
+    Ok(())
+}
+
 fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&str>,
@@ -2788,6 +2813,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "goto-buffer",
+        aliases: &["gb"],
+        doc: "Goto buffer by number.",
+        fun: goto_buffer_number,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (1, Some(1)),
             ..Signature::DEFAULT
         },
     },
