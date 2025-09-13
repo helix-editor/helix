@@ -217,6 +217,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -750,12 +759,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a92748623c201568785ee69a561f4eec06f745b4fac67dab1d44ca9891a57ee"
 dependencies = [
  "crc32fast",
+ "crossbeam-channel",
  "flate2",
  "gix-path",
  "gix-trace",
  "gix-utils",
  "libc",
  "once_cell",
+ "parking_lot",
  "prodash",
  "thiserror",
  "walkdir",
@@ -1573,6 +1584,7 @@ dependencies = [
  "helix-event",
  "imara-diff 0.2.0",
  "log",
+ "memchr",
  "parking_lot",
  "tempfile",
  "tokio",
