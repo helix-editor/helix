@@ -149,6 +149,19 @@
  "%"
  ] @punctuation.delimiter
 
+[
+  "defined"
+  "#define"
+  "#elif"
+  "#else"
+  "#endif"
+  "#if"
+  "#ifdef"
+  "#ifndef"
+  "#include"
+ (preproc_directive)
+] @keyword.directive
+
 (parameters
   (identifier) @variable.parameter)
 
