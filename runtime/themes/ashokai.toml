@@ -1,4 +1,4 @@
-name = "Ashokai"
+# name = "Ashokai"
 author = "TeriyakiBomb"
 version = "1.0.0"
 
@@ -108,6 +108,7 @@ bg2 = "#2C4A7A"
 bg3 = "#2A3A54"
 fg0 = "#FEFEFF"
 helptext = "#8599B9"
+helpbg = "#2A3A54"
 grey = "#70697D"
 grey1 = "#667E99"
 red = "#FF5D5D"

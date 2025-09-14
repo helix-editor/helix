@@ -1,4 +1,4 @@
-name = "Ashokai Evermoor"
+# name = "Ashokai Evermoor"
 author = "TeriyakiBomb"
 version = "1.0.0"
 
@@ -34,3 +34,4 @@ comment = "#6C9286"
 
 cursor = "#5E8F81"
 cursorline = "#1E302A"
+selection = "#214037"
