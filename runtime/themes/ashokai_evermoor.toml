@@ -1,6 +1,6 @@
 # name = "Ashokai Evermoor"
-author = "TeriyakiBomb"
-version = "1.0.0"
+# author = "TeriyakiBomb"
+# version = "1.0.0"
 
 inherits = "ashokai"
 
