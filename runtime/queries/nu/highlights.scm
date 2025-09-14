@@ -380,11 +380,11 @@ key: (identifier) @property
   (comment) @comment.documentation)
 
 (command
-  head: ((cmd_identifier) @_cmd
-    (#match? @_cmd "^\\s*(find|parse|split|str)$"))
+  head: ((cmd_identifier) @function.builtin
+    (#match? @function.builtin "^\\s*(find|parse|split|str)$"))
   flag: (_
-    name: (_) @_flag
-    (#any-of? @_flag "r" "regex"))
+    name: (_) @attribute
+    (#any-of? @attribute "r" "regex"))
   .
   arg: (_
     (string_content) @string.regexp))
