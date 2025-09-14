@@ -73,7 +73,7 @@
 "ui.menu" = { fg = "fg1", bg = "bg2" }
 "ui.menu.selected" = { fg = "base", bg = "bg2", modifiers = ["bold"] }
 "ui.virtual" = "base-dim"
-"ui.virtual.ruler" = { bg = "bg1" }
+"ui.virtual.ruler" = { fg = "bg1" }
 
 "diagnostic.warning" = { underline = { style = "curl", color = "meta" } }
 "diagnostic.error" = { underline = { style = "curl", color = "#e0211d" } }

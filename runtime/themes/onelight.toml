@@ -138,7 +138,7 @@
 "ui.text.directory" = { fg = "blue", underline = { style = "line" } }
 
 "ui.virtual" = { fg = "grey-500" }
-"ui.virtual.ruler" = { bg = "grey-200" }
+"ui.virtual.ruler" = { fg = "grey-200" }
 "ui.virtual.wrap" = { fg = "grey-500" }
 "ui.virtual.whitespace" = { fg = "grey-400" }
 "ui.virtual.indent-guide" = { fg = "grey-500" }

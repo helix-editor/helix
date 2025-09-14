@@ -120,7 +120,7 @@ special = "wine"
 "ui.text.directory" = "sky"
 
 "ui.virtual" = { fg = "block" }
-"ui.virtual.ruler"        = { bg = "block" }
+"ui.virtual.ruler"        = { fg = "block" }
 "ui.virtual.jump-label"   = { fg = "attn", modifiers = ["bold"] }
 
 "ui.menu" = { fg = "text", bg = "base" }

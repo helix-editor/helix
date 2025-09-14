@@ -23,7 +23,7 @@
 "ui.text.inactive" = { fg = "gray" }
 
 "ui.virtual.indent-guide" = "accent13"
-"ui.virtual.ruler" = { bg = "accent13" }
+"ui.virtual.ruler" = { fg = "accent13" }
 "ui.virtual.whitespace" = { fg = "accent13" }
 "ui.virtual.inlay-hint" = { fg = "accent9", bg = "accent33" }
 "ui.virtual.jump-label" = { fg = "pink" , modifiers = ["bold"] }

@@ -65,7 +65,7 @@
 
 "ui.virtual.whitespace" = "bg8"
 "ui.virtual.indent-guide" = "bg8"
-"ui.virtual.ruler" = { bg = "bg1" }
+"ui.virtual.ruler" = { fg = "bg1" }
 "ui.virtual.inlay-hint" = { fg = "bg7" }
 "ui.virtual.wrap" = { fg = "bg2" }
 "ui.virtual.jump-label" = { fg = "red3", modifiers = ["bold"] }

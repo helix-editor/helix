@@ -56,7 +56,7 @@
 "ui.text" = { fg = "#7B91B3" }
 "ui.text.focus" = { fg = "#250E07", modifiers= ["bold"] }
 "ui.virtual.whitespace" = "#A6B6CE"
-"ui.virtual.ruler" = { bg = "#F3EAE9" }
+"ui.virtual.ruler" = { fg = "#F3EAE9" }
 
 "ui.selection" = { bg = "#F3EAE9" }
 "ui.cursor.primary" = { bg = "#ED5466", fg = "#FFFCFD", modifiers = ["bold"] }

@@ -38,7 +38,7 @@ error = { fg = 'redE', modifiers = ['bold'] }
 'ui.help' = { fg = 'greyT', bg = 'brownD' }
 'ui.highlight' = { bg = 'brownH' }
 'ui.virtual' = { fg = 'brownV' }
-'ui.virtual.ruler' = { bg = 'brownR' }
+'ui.virtual.ruler' = { fg = 'brownR' }
 'ui.virtual.whitespace' = { fg = 'brownV' }
 'ui.virtual.indent-guide' = { fg = 'brownR' }
 'ui.virtual.inlay-hint' = {fg = 'brownD', bg = 'brownU'}

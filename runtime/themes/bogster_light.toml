@@ -58,7 +58,7 @@
 "ui.text" = { fg = "bogster-fg1" }
 "ui.text.focus" = { fg = "bogster-fg1", modifiers= ["bold"] }
 "ui.virtual.whitespace" = "bogster-base5"
-"ui.virtual.ruler" = { bg = "bogster-base00" }
+"ui.virtual.ruler" = { fg = "bogster-base00" }
 
 "ui.selection" = { bg = "bogster-base1" }
 "ui.cursor.match" = { fg = "bogster-base2", bg = "bogster-orange" }

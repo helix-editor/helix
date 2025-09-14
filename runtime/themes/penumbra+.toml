@@ -83,7 +83,7 @@ error = "red"
 "ui.text.focus" = "blue"
 "ui.text.info" = "sky"
 
-"ui.virtual.ruler" = { bg = "shade-" }
+"ui.virtual.ruler" = { fg = "shade-" }
 "ui.virtual.whitespace" = "sky-"
 "ui.virtual.indent-guide" = "shade+"
 

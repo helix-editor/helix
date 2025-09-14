@@ -74,7 +74,7 @@
 "ui.menu" = { fg = "fg", bg = "bg2" }
 "ui.menu.selected" = { fg = "bg0", bg = "green" }
 "ui.virtual.whitespace" = "bg4" 
-"ui.virtual.ruler" = { bg = "bg3" }
+"ui.virtual.ruler" = { fg = "bg3" }
 "ui.virtual.inlay-hint" = { fg = "grey_dim" }
 
 info = { fg = 'green', bg = 'bg2' }

@@ -61,7 +61,7 @@ label = "scale.red.3"
 "ui.text.inactive" = "fg.subtle"
 "ui.text.directory" = { fg = "scale.blue.2" }
 "ui.virtual" = { fg = "scale.gray.6" }
-"ui.virtual.ruler" = { bg = "canvas.subtle" }
+"ui.virtual.ruler" = { fg = "canvas.subtle" }
 "ui.virtual.jump-label" = { fg = "scale.red.2", modifiers = ["bold"] }
 
 "ui.selection" = { bg = "scale.blue.8" }

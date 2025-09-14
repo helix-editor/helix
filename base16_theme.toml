@@ -32,7 +32,7 @@
 "ui.statusline.select" = { fg = "black", bg = "blue" }
 "ui.virtual" = { fg = "gray", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
-"ui.virtual.ruler" = { bg = "black" }
+"ui.virtual.ruler" = { fg = "black" }
 
 "markup.heading" = "blue"
 "markup.list" = "red"

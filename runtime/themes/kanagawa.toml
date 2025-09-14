@@ -16,7 +16,7 @@
 "ui.gutter" = { fg = "sumiInk6", bg = "sumiInk4" }
 
 "ui.virtual" = "sumiInk6"
-"ui.virtual.ruler" = { bg = "sumiInk4" }
+"ui.virtual.ruler" = { fg = "sumiInk4" }
 "ui.virtual.inlay-hint" = "sumiInk6"
 "ui.virtual.jump-label" = { fg = "peachRed", modifiers = ["bold"] }
 

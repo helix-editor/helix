@@ -36,7 +36,7 @@
 'ui.popup' = { fg = 'foreground', bg = 'background2' }
 'ui.popup.info' = { fg = 'gold', bg = 'background2'}
 'ui.help' = { fg = 'gold', bg = 'background2'}
-'ui.virtual.ruler' = { bg = 'grey4' }
+'ui.virtual.ruler' = { fg = 'grey4' }
 'ui.virtual.whitespace' = { fg = 'grey4' }
 'ui.cursorline.primary' = { bg = 'background2' }
 

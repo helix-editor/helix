@@ -79,7 +79,7 @@ punctuation = "fg-dim"
 "ui.text.focus" = { fg = "fg-main", bg = "bg-completion", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "fg-dim" }
 "ui.virtual" = "bg-active"
-"ui.virtual.ruler" = { bg = "bg-dim" }
+"ui.virtual.ruler" = { fg = "bg-dim" }
 "ui.virtual.inlay-hint" = { fg = "fg-dim", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "yellow-cooler", modifiers = ["bold"] }
 

@@ -49,7 +49,7 @@
 "ui.text.directory" = { fg = "fg_secondary" }
 
 "ui.virtual" = { fg = "fg_4" }
-"ui.virtual.ruler" = { bg = "bg_1" }
+"ui.virtual.ruler" = { fg = "bg_1" }
 "ui.virtual.indent-guide" = { fg = "bg_4" }
 "ui.virtual.inlay-hint" = { fg = "fg_2", modifiers = [ "dim" ] }
 "ui.virtual.wrap" = { fg = "fg_4" }

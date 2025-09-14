@@ -19,7 +19,7 @@
 "ui.text.focus" = { bg = "bg-2", fg = "tx" }
 "ui.text.info" = "tx"
 "ui.virtual.whitespace" = "bg-2"
-"ui.virtual.ruler" = { bg = "bg-2" }
+"ui.virtual.ruler" = { fg = "bg-2" }
 "ui.virtual.inlay-hint" = { fg = "tx-3", bg = "bg" }
 "ui.virtual.jump-label" = { bg = "bg-2", modifiers = ["bold"]}
 "ui.menu" = { fg = "tx", bg = "bg" }

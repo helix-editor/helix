@@ -110,7 +110,7 @@
 "ui.text.directory" = { fg = "blue1" }
 "ui.virtual.inlay-hint" = { fg = "gray" }
 "ui.virtual.jump-label" = { fg = "purple0", modifiers = ["bold"] }
-"ui.virtual.ruler" = { bg = "bg1" }
+"ui.virtual.ruler" = { fg = "bg1" }
 "ui.virtual.whitespace" = "bg2"
 "ui.virtual.wrap" = { fg = "bg2" }
 "ui.window" = { bg = "bg1" }
