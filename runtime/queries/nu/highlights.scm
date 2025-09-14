@@ -400,11 +400,11 @@ key: (identifier) @property
     (string_content) @string.regexp))
 
 (command
-  head: ((_) @_cmd
-    (#any-of? @_cmd "nu" "$nu.current-exe"))
+  head: ((_) @function
+    (#any-of? @function "nu" "$nu.current-exe"))
   flag: (_
-    name: (_) @_flag
-    (#any-of? @_flag "c" "e" "commands" "execute"))
+    name: (_) @attribute
+    (#any-of? @attribute "c" "e" "commands" "execute"))
   .
   arg: (_
     (string_content) @string.code))
