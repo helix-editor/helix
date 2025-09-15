@@ -3,6 +3,7 @@ This fork adds a collection of various other forks & small features to helix:
 - determine comment tokens from injection layers ([PR](https://github.com/helix-editor/helix/pull/12759))
 - icon support ([PR](https://github.com/helix-editor/helix/pull/12369))
 - `:buffer-reopen` - ability to re-open recently closed buffers ([PR](https://github.com/helix-editor/helix/pull/13568))
+- `:lang-config-open` - open the user's `languages.toml` just like `:config-open` opens the user's `config.toml`
 - keep active bufferline tab in view at all times
 
 ---
