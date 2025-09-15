@@ -315,6 +315,34 @@ impl From<Color> for termina::style::ColorSpec {
     }
 }
 
+#[cfg(all(feature = "term", windows))]
+impl From<Color> for crossterm::style::Color {
+    fn from(color: Color) -> Self {
+        use crossterm::style::Color as CColor;
+
+        match color {
+            Color::Reset => CColor::Reset,
+            Color::Black => CColor::Black,
+            Color::Red => CColor::DarkRed,
+            Color::Green => CColor::DarkGreen,
+            Color::Yellow => CColor::DarkYellow,
+            Color::Blue => CColor::DarkBlue,
+            Color::Magenta => CColor::DarkMagenta,
+            Color::Cyan => CColor::DarkCyan,
+            Color::Gray => CColor::DarkGrey,
+            Color::LightRed => CColor::Red,
+            Color::LightGreen => CColor::Green,
+            Color::LightBlue => CColor::Blue,
+            Color::LightYellow => CColor::Yellow,
+            Color::LightMagenta => CColor::Magenta,
+            Color::LightCyan => CColor::Cyan,
+            Color::LightGray => CColor::Grey,
+            Color::White => CColor::White,
+            Color::Indexed(i) => CColor::AnsiValue(i),
+            Color::Rgb(r, g, b) => CColor::Rgb { r, g, b },
+        }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnderlineStyle {
     Reset,
@@ -350,6 +378,20 @@ impl From<UnderlineStyle> for termina::style::Underline {
             UnderlineStyle::Dotted => Self::Dotted,
             UnderlineStyle::Dashed => Self::Dashed,
             UnderlineStyle::DoubleLine => Self::Double,
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<UnderlineStyle> for crossterm::style::Attribute {
+    fn from(style: UnderlineStyle) -> Self {
+        match style {
+            UnderlineStyle::Line => crossterm::style::Attribute::Underlined,
+            UnderlineStyle::Curl => crossterm::style::Attribute::Undercurled,
+            UnderlineStyle::Dotted => crossterm::style::Attribute::Underdotted,
+            UnderlineStyle::Dashed => crossterm::style::Attribute::Underdashed,
+            UnderlineStyle::DoubleLine => crossterm::style::Attribute::DoubleUnderlined,
+            UnderlineStyle::Reset => crossterm::style::Attribute::NoUnderline,
         }
     }
 }

@@ -12,7 +12,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = ["termina"]
+default = ["termina", "crossterm"]
 
 [dependencies]
 helix-view = { path = "../helix-view", features = ["term"] }
@@ -25,3 +25,6 @@ termina = { workspace = true, optional = true }
 termini = "1.0"
 once_cell = "1.21"
 log = "~0.4"
+
+[target.'cfg(windows)'.dependencies]
+crossterm = { version = "0.28", optional = true }
