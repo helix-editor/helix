@@ -2369,6 +2369,20 @@ fn open_log(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> an
     Ok(())
 }
 
+fn open_lang_config(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor
+        .open(&helix_loader::lang_config_file(), Action::Replace)?;
+    Ok(())
+}
+
 fn refresh_config(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3587,6 +3601,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Open the helix log file.",
         fun: open_log,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "lang-config-open",
+        aliases: &[],
+        doc: "Open the user languages.toml file.",
+        fun: open_lang_config,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
