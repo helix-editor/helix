@@ -152,26 +152,60 @@ pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
+pub struct MergeStrategy {
+    pub array: MergeMode,
+    pub table: MergeMode,
+}
+
+pub enum MergeMode {
+    Never,
+    Always,
+    MaxDepth(usize),
+}
+
+impl MergeMode {
+    pub fn should_merge(&self, depth: usize) -> bool {
+        match self {
+            MergeMode::Always => true,
+            MergeMode::MaxDepth(max_depth) => depth < *max_depth,
+            MergeMode::Never => false,
+        }
+    }
+}
+
 /// Merge two TOML documents, merging values from `right` onto `left`
 ///
-/// `merge_depth` sets the nesting depth up to which values are merged instead
-/// of overridden.
+/// `max_merge_depth` sets the nesting depth up to which values are merged
+/// instead of overridden.
+///
+/// When an array exists in both `left` and `right`, the merged array is formed
+/// by concatenating `left`'s elements with `right`'s. But if any elements share
+/// the same `name` field, they are merged recursively and included only once.
 ///
 /// When a table exists in both `left` and `right`, the merged table consists of
 /// all keys in `left`'s table unioned with all keys in `right` with the values
 /// of `right` being merged recursively onto values of `left`.
 ///
+/// Setting `max_merge_depth` is useful for TOML documents that use a
+/// top-level array of values, where the top-level arrays should be merged
+/// but nested arrays should act as overrides. For the `languages.toml`
+/// config for example, this means that you can specify a sub-set of
+/// languages in an overriding `languages.toml` but that nested arrays
+/// like Language Server arguments are replaced instead of merged.
+///
 /// `crate::merge_toml_values(a, b, 3)` combines, for example:
 ///
+/// a:
+/// ```toml
+/// [[language]]
+/// name = "toml"
+/// scope = "source.toml"
+/// language-server = { command = "taplo", args = ["lsp", "stdio"] }
+/// ```
 /// b:
 /// ```toml
 /// [[language]]
 /// name = "toml"
-/// language-server = { command = "taplo", args = ["lsp", "stdio"] }
-/// ```
-/// a:
-/// ```toml
-/// [[language]]
 /// language-server = { command = "/usr/bin/taplo" }
 /// ```
 ///
@@ -179,12 +213,41 @@ pub fn default_log_file() -> PathBuf {
 /// ```toml
 /// [[language]]
 /// name = "toml"
+/// scope = "source.toml"
 /// language-server = { command = "/usr/bin/taplo" }
 /// ```
 ///
-/// thus it overrides the third depth-level of b with values of a if they exist,
+/// thus it overrides the third depth-level of a with values of b if they exist,
 /// but otherwise merges their values
-pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usize) -> toml::Value {
+pub fn merge_toml_values(
+    left: toml::Value,
+    right: toml::Value,
+    max_merge_depth: usize,
+) -> toml::Value {
+    merge_toml_values_with_strategy(
+        left,
+        right,
+        &MergeStrategy {
+            array: MergeMode::MaxDepth(max_merge_depth),
+            table: MergeMode::MaxDepth(max_merge_depth),
+        },
+    )
+}
+
+pub fn merge_toml_values_with_strategy(
+    left: toml::Value,
+    right: toml::Value,
+    strategy: &MergeStrategy,
+) -> toml::Value {
+    merge_toml_values_recursive(left, right, strategy, 0)
+}
+
+fn merge_toml_values_recursive(
+    left: toml::Value,
+    right: toml::Value,
+    strategy: &MergeStrategy,
+    depth: usize,
+) -> toml::Value {
     use toml::Value;
 
     fn get_name(v: &Value) -> Option<&str> {
@@ -193,7 +256,7 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
 
     match (left, right) {
         (Value::Array(mut left_items), Value::Array(right_items)) => {
-            if merge_depth > 0 {
+            if strategy.array.should_merge(depth) {
                 left_items.reserve(right_items.len());
                 for rvalue in right_items {
                     let lvalue = get_name(&rvalue)
@@ -202,7 +265,9 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
                         })
                         .map(|lpos| left_items.remove(lpos));
                     let mvalue = match lvalue {
-                        Some(lvalue) => merge_toml_values(lvalue, rvalue, merge_depth - 1),
+                        Some(lvalue) => {
+                            merge_toml_values_recursive(lvalue, rvalue, strategy, depth + 1)
+                        }
                         None => rvalue,
                     };
                     left_items.push(mvalue);
@@ -213,11 +278,12 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
             }
         }
         (Value::Table(mut left_map), Value::Table(right_map)) => {
-            if merge_depth > 0 {
+            if strategy.table.should_merge(depth) {
                 for (rname, rvalue) in right_map {
                     match left_map.remove(&rname) {
                         Some(lvalue) => {
-                            let merged_value = merge_toml_values(lvalue, rvalue, merge_depth - 1);
+                            let merged_value =
+                                merge_toml_values_recursive(lvalue, rvalue, strategy, depth + 1);
                             left_map.insert(rname, merged_value);
                         }
                         None => {
