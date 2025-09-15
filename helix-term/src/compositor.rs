@@ -136,6 +136,11 @@ impl Compositor {
         Some(self.layers.remove(idx))
     }
 
+    pub fn remove_type<T: 'static>(&mut self) {
+        let type_name = std::any::type_name::<T>();
+        self.layers
+            .retain(|component| component.type_name() != type_name);
+    }
     pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
         // If it is a key event, a macro is being recorded, and a macro isn't being replayed,
         // push the key event to the recording.
