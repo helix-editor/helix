@@ -4312,13 +4312,12 @@ pub mod insert {
                             .and_then(|ch| pairs.get(contents, pos - 1, ch))
                     })
                     .is_some_and(|pair| {
-                        contents
-                            .get_char(pos - 1)
-                            .zip(contents.get_char(pos))
-                            .is_some_and(|(prev, curr)| {
-                                pair.is_open_match_extending_with_char(contents, pos - 1, prev)
-                                    && pair.is_close_match_extending_with_char(contents, pos, curr)
-                            })
+                        contents.get_char(pos - 1).is_some_and(|prev| {
+                            let open_match =
+                                pair.is_open_match_extending_with_char(contents, pos - 1, prev);
+                            let close_match = pair.is_close_next_match(contents, pos);
+                            open_match && close_match
+                        })
                     });
 
                 let local_offs = if let Some(token) = continue_comment_token {
@@ -4462,9 +4461,7 @@ pub mod insert {
                                 let pair = ap.get(doc, _x_pos, _x);
                                 pair.is_some_and(|pair| {
                                     pair.is_open_match_extending_with_char(doc, _x_pos, _x)
-                                }) && pair.is_some_and(|pair| {
-                                    pair.is_close_match_extending_with_char(doc, _y_pos, _y)
-                                })
+                                }) && pair.is_some_and(|pair| pair.is_close_next_match(doc, _y_pos))
                             } =>
                         // delete both autopaired characters
                         {

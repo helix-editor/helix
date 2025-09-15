@@ -90,11 +90,11 @@ impl Pair {
         Self::after_char_matches_source(document_slice, ch, chars_open)
     }
 
-    pub fn is_close_match_extending_with_char(&self, doc: &Rope, cursor: usize, ch: char) -> bool {
+    pub fn is_close_next_match(&self, doc: &Rope, cursor: usize) -> bool {
         let close_chars = self.close.chars();
         let document_slice = iterate_forward_from_index(doc, cursor);
 
-        Self::after_char_matches_source(document_slice, ch, close_chars)
+        Self::matches_source(document_slice, close_chars)
     }
 
     fn last_char_of_open(&self) -> char {
@@ -319,7 +319,7 @@ pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> O
             return Some(handle_same(doc, selection, pair));
         } else if pair.is_open_match_extending_with_char(doc, primary_cursor, ch) {
             return Some(handle_open(doc, selection, pair));
-        } else if pair.is_close_match_extending_with_char(doc, primary_cursor, ch) {
+        } else if pair.is_close_next_match(doc, primary_cursor) {
             return Some(handle_close(doc, selection, pair));
         }
     }
@@ -499,10 +499,7 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
         let cursor = start_range.cursor(doc.slice(..));
         let len_inserted;
 
-        let change = if doc
-            .get_char(cursor)
-            .is_some_and(|ch| pair.is_close_match_extending_with_char(doc, cursor, ch))
-        {
+        let change = if pair.is_close_next_match(doc, cursor) {
             len_inserted = 0;
             // return transaction that moves past close
             (cursor, cursor, None) // no-op
@@ -534,10 +531,7 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
         let cursor = start_range.cursor(doc.slice(..));
         let len_inserted;
 
-        let change = if doc
-            .get_char(cursor)
-            .is_some_and(|ch| pair.is_close_match_extending_with_char(doc, cursor, ch))
-        {
+        let change = if pair.is_close_next_match(doc, cursor) {
             //  return transaction that moves past close
             len_inserted = 0;
             (cursor, cursor, None) // no-op
@@ -580,7 +574,7 @@ mod tests {
     }
 
     fn mock_rope1() -> Rope {
-        Rope::from_str("a\\a)")
+        Rope::from_str("a\\a\\)")
     }
 
     fn mock_rope2() -> Rope {
@@ -600,7 +594,7 @@ mod tests {
 
         let cursor: usize = 3;
         assert!(
-            pair.is_close_match_extending_with_char(&doc, cursor, '\\'),
+            pair.is_close_next_match(&doc, cursor),
             "pair: {pair:#?}\tdoc:{doc:#?}\tcursor: {cursor}"
         );
     }
