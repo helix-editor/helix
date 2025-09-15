@@ -9,10 +9,7 @@ use helix_view::{
     Editor,
 };
 use steel::{
-    rvals::{
-        as_underlying_type, AsRefSteelVal, AsRefSteelValFromRef, Custom, FromSteelVal,
-        IntoSteelVal, SteelString,
-    },
+    rvals::{as_underlying_type, AsRefSteelVal, Custom, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{builtin::BuiltInModule, engine::Engine, register_fn::RegisterFn},
     RootedSteelVal, SteelVal,
 };
@@ -261,7 +258,7 @@ value : any?
 
     register!(
         "Buffer?",
-        |value: SteelVal| { Buffer::as_ref_from_ref(&value).is_ok() },
+        |value: SteelVal| steel::gc::is_reference_type::<Buffer>(&value),
         r#"
 Checks if the given value is a `Buffer`
 
