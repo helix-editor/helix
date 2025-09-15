@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use helix_core::indent::IndentStyle;
-use helix_core::{coords_at_pos, encoding, Position};
+use helix_core::{coords_at_pos, encoding, unicode::width::UnicodeWidthStr, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
@@ -185,7 +185,7 @@ where
             Mode::Select => &modenames.select,
             Mode::Normal => &modenames.normal,
         };
-        let width = mode_str.chars().count() + 2;
+        let width = mode_str.width() + 2;
         Cow::Owned(" ".repeat(width))
     };
     let style = if visible && config.color_modes {
