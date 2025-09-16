@@ -53,9 +53,13 @@
 
 "ui.background" = { bg = "bg0" }
 "ui.cursor" = { modifiers = ['reversed'] }
+"ui.cursor.primary" = { modifiers = ['reversed'] }
 "ui.cursor.match" = { bg = "bg4" }
+"ui.cursor.primary.match" = { bg = "bg4" }
 "ui.cursor.insert" = { fg = "black", bg = "grey" }
+"ui.cursor.primary.insert" = { fg = "black", bg = "grey" }
 "ui.cursor.select" = { fg = "bg0", bg = "blue" }
+"ui.cursor.primary.select" = { fg = "bg0", bg = "blue" }
 "ui.selection" = { bg = "bg5" }
 "ui.selection.primary" = { bg = "bg4" }
 "ui.linenr" = "grey"
