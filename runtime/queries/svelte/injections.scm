@@ -1,7 +1,4 @@
-((style_element
-  (raw_text) @injection.content)
-  (#set! injection.language "css"))
-
+; inherits html
 ((style_element
   (start_tag
     (attribute
@@ -14,7 +11,7 @@
   (#set! injection.language "scss"))
 
 ((svelte_raw_text) @injection.content
-  (#set! injection.language "javascript"))
+  (#set! injection.language "typescript"))
 
 ((script_element
   (start_tag
