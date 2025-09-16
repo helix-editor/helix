@@ -37,15 +37,14 @@ pub struct Cell<'a> {
 impl Cell<'_> {
     /// Set the `Style` of this cell.
     pub fn style(mut self, style: Style) -> Self {
-        self.style = style;
-        self.content.set_style(style);
+        self.set_style(style);
         self
     }
 
     /// Set the `Style` of this cell.
     pub fn set_style(&mut self, style: Style) {
         self.style = style;
-        self.content.set_style(style);
+        self.content.patch_style(style);
     }
 }
 
