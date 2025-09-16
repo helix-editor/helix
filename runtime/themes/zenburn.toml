@@ -27,7 +27,7 @@
 # "comment.line"
 # "comment.block"
 "comment.block.documentation" = { fg = "zb-specialcomment-fg", modifiers = ["bold"] }
-"variable" = "zb-identifiers-fg"
+"variable" = "zb-identifier-fg"
 "variable.builtin" = { modifiers = ["bold"] }
 # "variable.parameter"
 # "variable.other"
