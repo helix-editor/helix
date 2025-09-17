@@ -9,7 +9,10 @@ use helix_lsp::{
     Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
-use tui::{text::Span, widgets::Row};
+use tui::{
+    text::{Span, ToSpan},
+    widgets::Row,
+};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
@@ -22,6 +25,7 @@ use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
     handlers::lsp::SignatureHelpInvoked,
+    icons::ICONS,
     theme::Style,
     Document, View,
 };
@@ -182,7 +186,7 @@ fn display_symbol_kind(kind: lsp::SymbolKind) -> &'static str {
         lsp::SymbolKind::OBJECT => "object",
         lsp::SymbolKind::KEY => "key",
         lsp::SymbolKind::NULL => "null",
-        lsp::SymbolKind::ENUM_MEMBER => "enummem",
+        lsp::SymbolKind::ENUM_MEMBER => "enum_member",
         lsp::SymbolKind::STRUCT => "struct",
         lsp::SymbolKind::EVENT => "event",
         lsp::SymbolKind::OPERATOR => "operator",
@@ -249,11 +253,23 @@ fn diag_picker(
         ui::PickerColumn::new(
             "severity",
             |item: &PickerDiagnostic, styles: &DiagnosticStyles| {
+                let icons = ICONS.load();
+
                 match item.diag.severity {
-                    Some(DiagnosticSeverity::HINT) => Span::styled("HINT", styles.hint),
-                    Some(DiagnosticSeverity::INFORMATION) => Span::styled("INFO", styles.info),
-                    Some(DiagnosticSeverity::WARNING) => Span::styled("WARN", styles.warning),
-                    Some(DiagnosticSeverity::ERROR) => Span::styled("ERROR", styles.error),
+                    Some(DiagnosticSeverity::HINT) => {
+                        Span::styled(format!("{} HINT", icons.diagnostic().hint()), styles.hint)
+                    }
+                    Some(DiagnosticSeverity::INFORMATION) => {
+                        Span::styled(format!("{} INFO", icons.diagnostic().info()), styles.info)
+                    }
+                    Some(DiagnosticSeverity::WARNING) => Span::styled(
+                        format!("{} WARN", icons.diagnostic().warning()),
+                        styles.warning,
+                    ),
+                    Some(DiagnosticSeverity::ERROR) => Span::styled(
+                        format!("{} ERROR", icons.diagnostic().error()),
+                        styles.error,
+                    ),
                     _ => Span::raw(""),
                 }
                 .into()
@@ -407,7 +423,15 @@ pub fn symbol_picker(cx: &mut Context) {
         let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
             let columns = [
                 ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
-                    display_symbol_kind(item.symbol.kind).into()
+                    let name = display_symbol_kind(item.symbol.kind);
+
+                    let icons = ICONS.load();
+
+                    if let Some(icon) = icons.kind().get(name) {
+                        icon.to_span_with(|icon| format!("{icon} {name}")).into()
+                    } else {
+                        name.into()
+                    }
                 }),
                 // Some symbols in the document symbol picker may have a URI that isn't
                 // the current file. It should be rare though, so we concatenate that
@@ -525,7 +549,15 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     };
     let columns = [
         ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
-            display_symbol_kind(item.symbol.kind).into()
+            let name = display_symbol_kind(item.symbol.kind);
+
+            let icons = ICONS.load();
+
+            if let Some(icon) = icons.kind().get(name) {
+                icon.to_span_with(|icon| format!("{icon} {name}")).into()
+            } else {
+                name.into()
+            }
         }),
         ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
             item.symbol.name.as_str().into()

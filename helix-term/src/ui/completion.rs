@@ -9,6 +9,7 @@ use crate::{
 use helix_core::snippets::{ActiveSnippet, RenderedSnippet, Snippet};
 use helix_core::{self as core, chars, fuzzy::MATCHER, Change, Transaction};
 use helix_lsp::{lsp, util, OffsetEncoding};
+use helix_view::icons::ICONS;
 use helix_view::{
     editor::CompleteAction,
     handlers::lsp::SignatureHelpInvoked,
@@ -48,7 +49,7 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { label, .. }) => label,
         };
 
-        let kind = match self {
+        let mut kind = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
                 Some(lsp::CompletionItemKind::TEXT) => "text".into(),
                 Some(lsp::CompletionItemKind::METHOD) => "method".into(),
@@ -81,9 +82,13 @@ impl menu::Item for CompletionItem {
                     })
                     .and_then(Color::from_hex)
                     .map_or("color".into(), |color| {
+                        let icons = ICONS.load();
                         Spans::from(vec![
                             Span::raw("color "),
-                            Span::styled("■", Style::default().fg(color)),
+                            Span::styled(
+                                icons.kind().color().glyph().to_string(),
+                                Style::default().fg(color),
+                            ),
                         ])
                     }),
                 Some(lsp::CompletionItemKind::FILE) => "file".into(),
@@ -104,11 +109,28 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { kind, .. }) => kind.as_ref().into(),
         };
 
+        let icons = ICONS.load();
+
+        let name = &kind.0[0].content;
+        let is_folder = kind.0[0].content == "folder";
+
+        if let Some(icon) = icons.kind().get(name) {
+            kind.0[0].content = format!("{icon} {name}").into();
+
+            if let Some(style) = icon.color().map(|color| Style::default().fg(color)) {
+                kind.0[0].style = style;
+            } else if is_folder {
+                kind.0[0].style = *dir_style;
+            }
+        } else {
+            kind.0[0].content = format!("{name}").into();
+        }
+
         let label = Span::styled(
             label,
             if deprecated {
                 Style::default().add_modifier(Modifier::CROSSED_OUT)
-            } else if kind.0[0].content == "folder" {
+            } else if is_folder {
                 *dir_style
             } else {
                 Style::default()
