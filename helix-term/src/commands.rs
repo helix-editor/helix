@@ -48,6 +48,7 @@ use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, RelativePosition},
     icons::ICONS,
+    expansion,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
