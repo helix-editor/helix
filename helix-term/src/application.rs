@@ -219,7 +219,7 @@ impl Application {
                 editor.new_file(Action::VerticalSplit);
             }
         } else if stdin().is_terminal() || cfg!(feature = "integration") {
-            editor.new_file(Action::VerticalSplit);
+            editor.new_file_welcome();
         } else {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
