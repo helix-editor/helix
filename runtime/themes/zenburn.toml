@@ -5,7 +5,7 @@
 
 # "attribute"
 "type" = "zb-type-fg"
-# "type.builtin"
+"type.builtin" = { fg = "zb-type-fg", modifiers = ["bold"] }
 "type.parameter" = { fg = "zb-typedef-fg", modifiers = ["bold"] }
 "type.enum" = { fg = "zb-structure-fg", modifiers = ["bold"] }
 # "type.enum.variant"
@@ -25,6 +25,7 @@
 # "string.special.symbol"
 "comment" = "zb-comment-fg"
 # "comment.line"
+"comment.line.documentation" = { fg = "zb-specialcomment-fg", modifiers = ["bold"] }
 # "comment.block"
 "comment.block.documentation" = { fg = "zb-specialcomment-fg", modifiers = ["bold"] }
 "variable" = "zb-identifier-fg"
@@ -60,7 +61,7 @@
 # "function.special"
 "tag" = { fg = "zb-tag-fg", modifiers = ["bold"] }
 # "tag.builtin"
-"namespace" = "zb-preproc-fg"
+"namespace" = { fg = "zb-preproc-fg", modifiers = ["bold"] }
 "special" = "zb-special-fg"
 # "markup"
 "markup.heading" = { fg = "zb-constant-fg", modifiers = ["bold"] }
@@ -136,7 +137,7 @@
 "ui.text.info" = { fg = "zb-pmenu-fg", bg = "zb-pmenu-bg" }
 "ui.virtual.ruler" = { bg = "zb-colorcolumn-bg" }
 "ui.virtual.whitespace" = { fg = "zb-nontext-fg", modifiers = ["bold"] }
-"ui.virtual.indent-guide" = { bg = "zb-colorcolumn-bg" }
+"ui.virtual.indent-guide" = { fg = "zb-colorcolumn-bg" }
 # "ui.virtual.inlay-hint"
 # "ui.virtual.inlay-hint.parameter"
 # "ui.virtual.inlay-hint.type"
