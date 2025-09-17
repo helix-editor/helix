@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 use tui::text::Span;
-use tui::widgets::{Block, Widget};
+use tui::widgets::{Block, BorderType, Widget};
 
 use helix_core::{
     unicode::segmentation::{GraphemeCursor, UnicodeSegmentation},
@@ -496,9 +496,11 @@ impl Prompt {
             let background = theme.get("ui.help");
             surface.clear_with(area, background);
 
+            let border_type = BorderType::new(cx.editor.config().rounded_corners);
             let block = Block::bordered()
                 // .title(self.title.as_str())
-                .border_style(background);
+                .border_style(background)
+                .border_type(border_type);
 
             let inner = block.inner(area).inner(Margin::horizontal(1));
 
