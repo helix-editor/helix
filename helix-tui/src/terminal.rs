@@ -80,7 +80,7 @@ where
     /// Wrapper around Terminal initialization. Each buffer is initialized with a blank string and
     /// default colors for the foreground and the background
     pub fn new(backend: B) -> io::Result<Terminal<B>> {
-        let size = backend.size()?;
+        let size = nonempty_terminal_size(backend.size());
         Terminal::with_options(
             backend,
             TerminalOptions {
@@ -236,6 +236,13 @@ where
 
     /// Queries the real size of the backend.
     pub fn size(&self) -> io::Result<Rect> {
-        self.backend.size()
+        Ok(nonempty_terminal_size(self.backend.size()))
     }
+}
+
+fn nonempty_terminal_size(size: io::Result<Rect>) -> Rect {
+    size.unwrap_or_else(|e| {
+        log::warn!("{}. Using default terminal size", e);
+        Rect::new(0, 0, 80, 24)
+    })
 }
