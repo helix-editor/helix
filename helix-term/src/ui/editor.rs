@@ -491,6 +491,7 @@ impl EditorView {
 
         let cursor_scope = match mode {
             Mode::Insert => theme.find_highlight_exact("ui.cursor.insert"),
+            Mode::Overtype => theme.find_highlight_exact("ui.cursor.overtype"),
             Mode::Select => theme.find_highlight_exact("ui.cursor.select"),
             Mode::Normal => theme.find_highlight_exact("ui.cursor.normal"),
         }
@@ -498,6 +499,7 @@ impl EditorView {
 
         let primary_cursor_scope = match mode {
             Mode::Insert => theme.find_highlight_exact("ui.cursor.primary.insert"),
+            Mode::Overtype => theme.find_highlight_exact("ui.cursor.overtype"),
             Mode::Select => theme.find_highlight_exact("ui.cursor.primary.select"),
             Mode::Normal => theme.find_highlight_exact("ui.cursor.primary.normal"),
         }
@@ -911,6 +913,33 @@ impl EditorView {
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
         }
         None
+    }
+
+    fn overtype_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
+        if let Some(keyresult) = self.handle_keymap_event(Mode::Overtype, cx, event) {
+            match keyresult {
+                KeymapResult::NotFound => {
+                    if let Some(ch) = event.char() {
+                        commands::insert::replace_char(cx, ch)
+                    }
+                }
+                KeymapResult::Cancelled(pending) => {
+                    for ev in pending {
+                        match ev.char() {
+                            Some(ch) => commands::insert::replace_char(cx, ch),
+                            None => {
+                                if let KeymapResult::Matched(command) =
+                                    self.keymaps.get(Mode::Overtype, ev)
+                                {
+                                    command.execute(cx);
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
@@ -1454,6 +1483,9 @@ impl Component for EditorView {
                                 // record last_insert key
                                 self.last_insert.1.push(InsertEvent::Key(key));
                             }
+                        }
+                        Mode::Overtype => {
+                            self.overtype_mode(&mut cx, key);
                         }
                         mode => self.command_mode(mode, &mut cx, key),
                     }
