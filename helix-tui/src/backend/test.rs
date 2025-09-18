@@ -160,4 +160,8 @@ impl Backend for TestBackend {
     fn supports_true_color(&self) -> bool {
         false
     }
+
+    fn get_theme_mode(&self) -> Option<helix_view::theme::Mode> {
+        None
+    }
 }
