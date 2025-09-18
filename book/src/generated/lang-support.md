@@ -144,7 +144,7 @@
 | kdl | ✓ | ✓ | ✓ | ✓ |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ | ✓ |  | `kotlin-language-server` |
-| koto | ✓ | ✓ | ✓ |  |  | `koto-ls` |
+| koto | ✓ | ✓ | ✓ |  | ✓ | `koto-ls` |
 | latex | ✓ | ✓ |  |  |  | `texlab` |
 | ld | ✓ |  | ✓ |  |  |  |
 | ldif | ✓ |  |  |  |  |  |
