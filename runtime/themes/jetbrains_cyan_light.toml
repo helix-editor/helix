@@ -101,7 +101,7 @@
 "ui.text.directory" = "blue"
 
 "ui.virtual" = "shade03"
-"ui.virtual.ruler" = { bg = "shade01" }
+"ui.virtual.ruler" = { fg = "shade01" }
 "ui.virtual.inlay-hint" = { fg = "shade03_darker" }
 "ui.virtual.jump-label" = { fg = "shade07", bg = "shade01", modifiers = ["bold" ] }
 

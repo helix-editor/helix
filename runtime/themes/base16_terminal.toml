@@ -15,7 +15,7 @@
 "ui.cursor.primary" = { fg = "light-gray", modifiers = ["reversed"] }
 "ui.virtual.whitespace" = "light-gray"
 "ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
-"ui.virtual.ruler" = { bg = "black" }
+"ui.virtual.ruler" = { fg = "black" }
 "variable" = "light-red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"

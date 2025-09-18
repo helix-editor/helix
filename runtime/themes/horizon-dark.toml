@@ -33,7 +33,7 @@ tag = "red"
 "ui.selection" = { bg = "selection" }
 "ui.virtual.indent-guide" = { fg = "gray" }
 "ui.virtual.whitespace" = { fg = "light-gray" }
-"ui.virtual.ruler" = { bg = "dark-bg" }
+"ui.virtual.ruler" = { fg = "dark-bg" }
 "ui.statusline" = { bg = "dark-bg", fg = "light-gray" }
 "ui.popup" = { bg = "dark-bg", fg = "orange" }
 "ui.help" = { bg = "dark-bg", fg = "orange" }

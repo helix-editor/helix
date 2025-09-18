@@ -114,7 +114,7 @@
 "ui.text.directory" = { fg = "red_ember" }
 
 "ui.virtual" = "g_5"
-"ui.virtual.ruler" = { bg = "cursorline" }
+"ui.virtual.ruler" = { fg = "cursorline" }
 "ui.virtual.whitespace" = "g_7"
 "ui.virtual.indent-guide" = "g_7"
 "ui.virtual.wrap" = "g_7"

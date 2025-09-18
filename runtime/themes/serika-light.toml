@@ -66,7 +66,7 @@
 "ui.selection.prime" = { underline.style = "line" }
 "ui.virtual.inlay-hint" = { fg = "grey2", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "nasty-red", modifiers = ["bold"] }
-"ui.virtual.ruler" = { bg = "bg0", modifiers = ["dim"] }
+"ui.virtual.ruler" = { fg = "bg0", modifiers = ["dim"] }
 "ui.virtual.whitespace" = { fg = "grey2", modifiers = [ "italic" ] }
 "ui.virtual.wrap" = { fg = "grey2", modifiers = [ "italic" ] }
 

@@ -85,7 +85,7 @@
 "ui.text" = "light_yellow"
 "ui.text.focus" = { fg = "white", bg = "dark_blue" }
 "ui.virtual" = "dark"
-"ui.virtual.ruler" = { bg = "darker" }
+"ui.virtual.ruler" = { fg = "darker" }
 "ui.menu" = { fg = "light_purple", bg = "darkest" }
 "ui.menu.selected" = { fg = "white", bg = "dark_blue" }
 "ui.selection" = { bg = "darker" }

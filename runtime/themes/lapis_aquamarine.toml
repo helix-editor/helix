@@ -9,7 +9,7 @@
 "ui.statusline" = { fg = "fg" }
 "ui.selection" = "green"
 "ui.selection.primary" = { bg = "bg_highlight" } 
-"ui.virtual.ruler" = { bg = "bg_highlight" }
+"ui.virtual.ruler" = { fg = "bg_highlight" }
 
 # Syntax Highlighting for Markdown 
 "markup.raw" = { fg = "purple", bg = "bg" } 

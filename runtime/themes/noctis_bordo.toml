@@ -25,7 +25,7 @@
 
 "ui.background" = { bg = "base00" }
 "ui.virtual" = "base03"
-"ui.virtual.ruler" = { bg = "base01" }
+"ui.virtual.ruler" = { fg = "base01" }
 "ui.menu" = { fg = "base05", bg = "base01" }
 "ui.menu.selected" = { fg = "base0B", bg = "base01" }
 "ui.popup" = { bg = "base01" }

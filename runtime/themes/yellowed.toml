@@ -84,7 +84,7 @@
 "ui.text.focus"                   = { bg = "gray" }
 "ui.text.inactive"                = { fg = "text" }
 "ui.text.info"                    = { fg = "text" }
-"ui.virtual.ruler"                = { bg = "light_gray" }
+"ui.virtual.ruler"                = { fg = "light_gray" }
 "ui.virtual.whitespace"           = { fg = "light_gray" }
 "ui.virtual.indent-guide"         = { fg = "light_gray" }
 "ui.virtual.inlay-hint"           = { fg = "light_gray" }

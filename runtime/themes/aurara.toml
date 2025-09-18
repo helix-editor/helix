@@ -127,7 +127,7 @@
 'ui.linenr.selected' = { modifiers = [ "bold" ] } # Current line number.
 
 'ui.virtual' = { fg = "gray-stone" } # Namespace for additions to the editing area.
-'ui.virtual.ruler' = { bg = "selection-ui"} # Vertical rulers (colored columns in editing area).
+'ui.virtual.ruler' = { fg = "selection-ui"} # Vertical rulers (colored columns in editing area).
   # TODO: TEST: haven't seen these two yet..error
 # 'ui.virtual.whitespace' = { fg = "gray-stone"} # Whitespace markers in editing area: newline..
 # 'ui.virtual.wrap'

@@ -59,7 +59,7 @@
 "ui.virtual" = { fg = "gray6" }
 "ui.virtual.indent-guide" = { fg = "gray6" }
 "ui.virtual.whitespace" = { fg = "gray6" }
-"ui.virtual.ruler" = { bg = "gray5" }
+"ui.virtual.ruler" = { fg = "gray5" }
 "ui.virtual.inlay-hint" = { fg = "gray9", modifiers = ["bold"] }
 "ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 

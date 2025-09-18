@@ -90,7 +90,7 @@
 "ui.selection.primary" = { bg = "base015" }
 
 "ui.virtual.indent-guide" = { fg = "base02" }
-"ui.virtual.ruler" = { bg = "base02" }
+"ui.virtual.ruler" = { fg = "base02" }
 
 # normal模式的光标
 "ui.cursor" = {fg = "base02", bg = "cyan"}

@@ -58,7 +58,7 @@ label = "#abcc8a"
 "ui.text.inactive" = "#93a56f" 
 "ui.virtual" = { fg = "yellow" } 
 "ui.virtual.indent-guide" = { fg = "#5b5b5a" } 
-"ui.virtual.ruler" = { bg = "#363638" }
+"ui.virtual.ruler" = { fg = "#363638" }
 
 "ui.selection" = { fg = "white", bg = "gray" } 
 "ui.selection.primary" = { fg = "white", bg = "gray" } 

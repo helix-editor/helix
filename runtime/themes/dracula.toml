@@ -125,7 +125,7 @@
 "ui.virtual.inlay-hint.parameter" = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
 "ui.virtual.inlay-hint.type"      = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
 "ui.virtual.jump-label"           = { fg    = "pink",            modifiers = ["bold"]                       }
-"ui.virtual.ruler"                = { bg    = "black"                                                       }
+"ui.virtual.ruler"                = { fg    = "black"                                                       }
 "ui.virtual.whitespace"           = { fg    = "whitespace"                                                  }
 "ui.virtual.wrap"                 = { fg    = "current_line"                                                }
 "ui.window"                       = { fg    = "foreground"                                                  }

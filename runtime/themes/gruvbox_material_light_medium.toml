@@ -103,7 +103,7 @@ warning = "yellow"
 "ui.virtual.indent-guide" = "bg3"
 "ui.virtual.inlay-hint" = "grey0"
 "ui.virtual.jump-label" = "grey2"
-"ui.virtual.ruler" = { bg = "bg1" }
+"ui.virtual.ruler" = { fg = "bg1" }
 "ui.window" = { fg = "bg3" }
 
 [palette]

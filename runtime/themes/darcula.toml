@@ -21,7 +21,7 @@
 "ui.cursorline.secondary" = { bg = "grey02" }
 "ui.text" = "white"
 "ui.text.focus" = "grey05"
-"ui.virtual.ruler" = { bg = "grey02" }
+"ui.virtual.ruler" = { fg = "grey02" }
 "ui.virtual.indent-guide" = "grey02"
 "ui.virtual.whitespace" = "grey03"
 "ui.virtual.inlay-hint" = { fg = "grey03", modifiers = ["italic"] }

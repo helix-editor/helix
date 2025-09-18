@@ -48,6 +48,7 @@
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative | `false` |
 | `undercurl` | Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative | `false` |
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file | `[]` |
+| `ruler-char` | Character used to draw rulers | `¦` |
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `never` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 | `text-width` | Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap-at-text-width` is set | `80` |

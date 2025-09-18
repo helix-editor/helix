@@ -18,7 +18,7 @@ inherits = "kanagawa"
 "ui.linenr.selected" = { fg = "roninYellow", modifiers = ["bold"] }
 
 "ui.virtual" = "dragonBlack4"
-"ui.virtual.ruler" = { bg = "dragonBlack5" }
+"ui.virtual.ruler" = { fg = "dragonBlack5" }
 "ui.virtual.inlay-hint" = "dragonGray2"
 "ui.virtual.inlay-hint.parameter" = { fg = "dragonYellow", modifiers = ["dim"] }
 "ui.virtual.inlay-hint.type" = { fg = "dragonAqua", modifiers = ["dim"] }

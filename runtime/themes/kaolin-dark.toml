@@ -73,7 +73,7 @@
 "ui.virtual.wrap" = "bg2"
 "ui.virtual.whitespace" = "fg1"
 "ui.virtual.indent-guide" = "bg2"
-"ui.virtual.ruler" = { bg = "bg1" }
+"ui.virtual.ruler" = { fg = "bg1" }
 "ui.virtual.inlay-hint" = "gray1"
 "ui.virtual.inlay-hint.parameter" = { fg = "gray1", modifiers = ["dim"] }
 "ui.virtual.inlay-hint.type" = { fg = "gray1", modifiers = ["dim"] }

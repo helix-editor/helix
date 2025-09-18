@@ -333,6 +333,8 @@ pub struct Config {
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
+    /// Character used to draw rulers. Defaults to `¦`.
+    pub ruler_char: String,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
     /// Persistently display open buffers along the top
@@ -1046,6 +1048,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
+            ruler_char: "¦".to_owned(),
             whitespace: WhitespaceConfig::default(),
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),

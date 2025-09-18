@@ -72,7 +72,7 @@
 "ui.text"                 = { fg = "foreground" }
 "ui.text.focus"           = { fg = "cyan" }
 "ui.virtual.indent-guide" = { fg = "opal" }
-"ui.virtual.ruler"        = { bg = "background_dark" }
+"ui.virtual.ruler"        = { fg = "background_dark" }
 "ui.virtual.inlay-hint" =   { bg = "background_dark", fg = "comment" }
 "ui.virtual.whitespace"   = { fg = "comment" }
 "ui.window"               = { fg = "foreground" }

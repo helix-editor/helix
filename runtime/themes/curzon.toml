@@ -44,7 +44,7 @@ label = "label"
 "ui.linenr.selected" = { fg = "light_blue" }
 "ui.statusline" = { fg = "statusline_foreground_color", bg = "black" }
 "ui.statusline.inactive" = { fg = "statusline_inactive_foreground_color", bg = "black" }
-"ui.virtual.ruler" = { bg = "dark"}
+"ui.virtual.ruler" = { fg = "dark"}
 
 "ui.popup" = {  fg = "menu_normal_text_color", bg = "menu_background_color"  }
 "ui.window" = { fg = "dark"}

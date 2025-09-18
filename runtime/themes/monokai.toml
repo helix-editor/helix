@@ -35,7 +35,7 @@
 
 "comment" = { fg = "#88846F" }
 "ui.virtual.whitespace" = "#88846F"
-"ui.virtual.ruler" = { bg = "#24241e" }
+"ui.virtual.ruler" = { fg = "#24241e" }
 "ui.virtual.jump-label" = { fg = "special", modifiers = ["bold"] }
 
 "string" = { fg = "#e6db74" }

@@ -30,7 +30,7 @@ inherits = "term16_dark"
 "ui.statusline.select" = { fg = "white", bg = "magenta" }
 "ui.virtual" = { fg = "light-gray" }
 "ui.virtual.indent-guide" = { fg = "light-gray", modifiers = ["dim"] }
-"ui.virtual.ruler" = { bg = "white" }
+"ui.virtual.ruler" = { fg = "white" }
 "ui.virtual.wrap" = { fg = "light-gray" }
 "ui.window" = { fg = "gray", modifiers = ["dim"] }
 

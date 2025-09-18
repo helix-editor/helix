@@ -67,7 +67,7 @@
 "ui.statusline.select" = { bg = "blue", fg = "bg2" }
 "ui.virtual.wrap" = { fg = "grey0" }
 "ui.virtual.inlay-hint" = { fg = "grey1" }
-"ui.virtual.ruler" = { bg = "bg2"}
+"ui.virtual.ruler" = { fg = "bg2"}
 
 "hint" = "blue"
 "info" = "aqua"

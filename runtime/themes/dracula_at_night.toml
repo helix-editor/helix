@@ -45,7 +45,7 @@
 "ui.text.directory" = { fg = "cyan" }
 "ui.window" = { fg = "foreground" }
 "ui.virtual.jump-label" = { fg = "pink", modifiers = ["bold"] }
-"ui.virtual.ruler" = { bg = "background_dark" }
+"ui.virtual.ruler" = { fg = "background_dark" }
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }

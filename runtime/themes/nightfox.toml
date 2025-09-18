@@ -31,7 +31,7 @@
 "ui.linenr.selected" = { fg = "yellow", modifiers = ["bold"] } # Current line number.
 
 # "ui.virtual" = { } # Namespace for additions to the editing area.
-"ui.virtual.ruler" = { bg = "bg3" } # Vertical rulers (colored columns in editing area).
+"ui.virtual.ruler" = { fg = "bg3" } # Vertical rulers (colored columns in editing area).
 "ui.virtual.whitespace" = { fg = "bg3" } # Whitespace markers in editing area.
 "ui.virtual.indent-guide" = { fg = "black" } # Vertical indent width guides
 "ui.virtual.inlay-hint" = { fg = "comment", bg = "bg2" } # Default style for inlay hints of all kinds

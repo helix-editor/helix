@@ -67,7 +67,7 @@
 "ui.text"                   = "light-fg"
 "ui.text.focus"             = { fg = "white", bg = "light-bg", modifiers = ["bold"] }
 "ui.virtual"                = "dark-fg"
-"ui.virtual.ruler"          = { bg = "medium-bg" }
+"ui.virtual.ruler"          = "medium-bg"
 "ui.virtual.indent-guide"   = "indent"
 "ui.virtual.whitespace"     = "indent"
 "ui.menu"                   = { fg = "light-fg", bg = "light-bg" }

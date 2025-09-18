@@ -24,7 +24,7 @@ rainbow = ["keyword_fg", "function_fg", "constant_fg", "string_fg"]
 "ui.popup.info"               = { fg = "menu_fg", bg = "menu_bg" }
 "ui.match_paren"              = { fg = "match_paren_fg", bg = "match_paren_bg", modifiers = ["bold"] }
 "ui.virtual"                  = { fg = "comment_fg" }
-"ui.virtual.ruler"            = { bg = "virtual_ruler_bg" }
+"ui.virtual.ruler"            = { fg = "virtual_ruler_bg" }
 "ui.highlight"                = { fg = "menu_sel_fg", bg = "menu_sel_bg" }
 "ui.picker.header"            = { fg = "menu_fg", bg = "menu_bg" }
 "ui.picker.header.column"     = { fg = "menu_fg", bg = "menu_bg" }

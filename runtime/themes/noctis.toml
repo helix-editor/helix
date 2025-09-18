@@ -46,7 +46,7 @@
 'ui.linenr.selected' = { fg = "light-green", modifiers = [ "bold" ] } # Current line number.
 
 'ui.virtual' = { fg = "autocomp-green" } # Namespace for additions to the editing area.
-'ui.virtual.ruler' = { bg = "mid-green" } # Vertical rulers (colored columns in editing area).
+'ui.virtual.ruler' = { fg = "mid-green" } # Vertical rulers (colored columns in editing area).
 'ui.virtual.whitespace' = { fg = "mid-green"} # Whitespace markers in editing area.
 'ui.virtual.inlay-hint' = { fg = "autocomp-green" } # LSP inlay hints
 'ui.virtual.indent-guide' = { fg = "mid-green" } # Indentation guides.

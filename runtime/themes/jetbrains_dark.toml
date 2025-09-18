@@ -40,7 +40,7 @@ tag = "red213"
 "ui.popup" = { bg = "blue48" }
 "ui.text.focus" = "blue247"
 "ui.virtual" = "blue122"
-"ui.virtual.ruler" = { bg = "blue64" }
+"ui.virtual.ruler" = { fg = "blue64" }
 "ui.virtual.whitespace" = "blue122"
 "ui.virtual.indent-guide" = "blue56"
 "ui.virtual.inlay-hint" = { fg = "blue145", bg = "blue50" }

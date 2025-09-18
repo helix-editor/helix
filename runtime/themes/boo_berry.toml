@@ -50,7 +50,7 @@
 "ui.menu.selected" = { fg = "mint", bg = "berry_saturated" }
 "ui.selection" = { bg = "berry_saturated" }
 "ui.virtual.whitespace" = { fg = "berry_desaturated" }
-"ui.virtual.ruler" = { bg = "berry_dim" }
+"ui.virtual.ruler" = { fg = "berry_dim" }
 "ui.virtual.indent-guide" = { fg = "berry_fade" }
 "ui.virtual.inlay-hint" = { fg = "berry_desaturated" }
 

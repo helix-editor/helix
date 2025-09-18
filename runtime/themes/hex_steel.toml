@@ -60,7 +60,7 @@
 "ui.text" = { fg = "t4" }
 "ui.text.focus" = { fg = "highlight_three", modifiers = ["bold"] }
 
-"ui.virtual.ruler" = { bg = "ruler" }
+"ui.virtual.ruler" = { fg = "ruler" }
 "ui.virtual.indent-guide" = { fg = "t3" }
 "ui.virtual.whitespace" = { fg = "t3" }
 "ui.virtual.jump-label" = { fg = "t11", modifiers = ["bold"] }

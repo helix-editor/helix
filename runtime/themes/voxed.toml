@@ -60,7 +60,7 @@ label = "yellow"
 "ui.text.focus" = { fg = "maize", bg = "bgrey" }
 "ui.text.inactive" = "bgrey"
 "ui.virtual" = { fg = "blue" }
-"ui.virtual.ruler" = { bg = "bgrey-two" }
+"ui.virtual.ruler" = { fg = "bgrey-two" }
 "ui.virtual.indent-guide" = { fg = "gray" }
 
 

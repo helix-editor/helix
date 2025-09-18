@@ -74,7 +74,7 @@
 "ui.virtual.inlay-hint.parameter" = "my_gray4"
 "ui.virtual.inlay-hint.type" = { fg = "my_gray4", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "my_yellow2", modifiers = ["bold"] }
-"ui.virtual.ruler" = { bg = "my_gray1" }
+"ui.virtual.ruler" = { fg = "my_gray1" }
 "ui.virtual.whitespace" = { fg = "my_gray6" }
 "ui.virtual.wrap" = "my_gray4"
 "ui.window" = { fg = "my_gray3", bg = "my_gray2" }

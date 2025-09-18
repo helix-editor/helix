@@ -58,7 +58,6 @@ tabstop = { modifiers = ["italic"], bg = "bossanova" }
 "ui.text.inactive" = "sirocco"
 "ui.text.directory" = { fg = "lilac" }
 "ui.virtual" = { fg = "comet" }
-"ui.virtual.ruler" = { bg = "bossanova" }
 "ui.virtual.jump-label" = { fg = "apricot", modifiers = ["bold"] }
 
 "ui.virtual.indent-guide" = { fg = "comet" }

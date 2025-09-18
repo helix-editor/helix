@@ -51,7 +51,7 @@ diff = { fg = "p8" }
 
 # virtual
 "ui.virtual" = { fg = "p6" }
-"ui.virtual.ruler" = { bg = "p3" }
+"ui.virtual.ruler" = { fg = "p3" }
 "ui.virtual.inlay-hint" = { fg = "p7", underline.style = "dotted" }
 "ui.virtual.jump-label" = { fg = "p12", modifiers = [
   "bold",

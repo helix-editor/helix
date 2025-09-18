@@ -92,7 +92,7 @@
 "ui.virtual.inlay-hint" = { fg = "#586e75", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 "ui.virtual.indent-guide" = { fg = "base02" }
-"ui.virtual.ruler" = { bg = "base02" }
+"ui.virtual.ruler" = { fg = "base02" }
 
 "ui.linenr" = { fg = "base01", bg = "base03" }
 "ui.linenr.selected" = { fg = "base1", bg = "base03" }

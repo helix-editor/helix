@@ -85,7 +85,7 @@
 "ui.text.focus" = { fg = "lightest" }
 
 "ui.virtual.whitespace" = { fg = "dark_gray_virtual" }
-"ui.virtual.ruler" = { bg = "borders" }
+"ui.virtual.ruler" = { fg = "borders" }
 "ui.virtual.indent-guide" = { fg = "dark_gray_virtual" }
 "ui.virtual.inlay-hint" = { fg = "dark_gray_virtual"}
 

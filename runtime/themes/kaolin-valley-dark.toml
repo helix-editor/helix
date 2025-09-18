@@ -40,7 +40,7 @@ inherits = "kaolin-dark"
 "ui.virtual.wrap" = "gray1"
 "ui.virtual.whitespace" = "gray1"
 "ui.virtual.indent-guide" = "gray1"
-"ui.virtual.ruler" = { bg = "bg2" }
+"ui.virtual.ruler" = { fg = "bg2" }
 "ui.virtual.inlay-hint" = "gray0"
 "ui.virtual.inlay-hint.parameter" = { fg = "gray0", modifiers = ["italic"] }
 "ui.virtual.inlay-hint.type" = { fg = "gray0", modifiers = ["italic"] }

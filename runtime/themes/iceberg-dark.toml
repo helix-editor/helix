@@ -85,7 +85,7 @@
 "ui.virtual" = { fg = "linenr_fg" }
 "ui.virtual.indent-guide" = { fg = "linenr_fg" }
 "ui.virtual.jump-label" = {  fg = "orange", modifiers = ["bold"] }
-"ui.virtual.ruler" = { bg = "linenr_bg" }
+"ui.virtual.ruler" = { fg = "linenr_bg" }
 "ui.virtual.whitespace" = { fg = "sel_bg" }
 "ui.window" = { fg = "comment_fg", modifiers = ["bold"] }
 "variable" = { fg = "background_fg" }

@@ -60,7 +60,7 @@ tabstop = { modifiers = ["italic"], bg = "panel"}
 "ui.text.inactive" = "stone"
 "ui.text.directory" = { fg = "sky" }
 "ui.virtual" = { fg = "slate" }
-"ui.virtual.ruler" = { bg = "panel" }
+"ui.virtual.ruler" = { fg = "panel" }
 "ui.virtual.jump-label" = { fg = "sun", modifiers = ["bold"] }
 
 "ui.virtual.indent-guide" = { fg = "slate" }

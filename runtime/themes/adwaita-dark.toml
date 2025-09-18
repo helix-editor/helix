@@ -82,7 +82,7 @@
 "ui.help" = { bg = "libadwaita_dark_alt" }
 "ui.text" = "light_4"
 "ui.virtual" = "dark_1"
-"ui.virtual.ruler" = { bg = "libadwaita_popup"}
+"ui.virtual.ruler" = { fg = "libadwaita_popup"}
 "ui.menu" = { fg = "light_4", bg = "libadwaita_popup" }
 "ui.menu.selected" = { fg = "light_4", bg = "blue_5" }
 "ui.menu.scroll" = { fg = "light_7", bg = "dark_3" }

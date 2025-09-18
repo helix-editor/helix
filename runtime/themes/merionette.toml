@@ -55,7 +55,7 @@
 "ui.virtual" = { fg = "pink1" }
 "ui.virtual.indent-guide" = { fg = "dark_red4" }
 "ui.virtual.inlay-hint" = { fg = "blue0" }
-"ui.virtual.ruler" = { bg = "dark_red2" }
+"ui.virtual.ruler" = { fg = "dark_red2" }
 "ui.virtual.whitespace" = "dark_red4"
 "ui.window" = { bg = "dark_red2" }
 

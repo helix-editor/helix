@@ -33,7 +33,7 @@
 "keyword.storage-class" = { fg = "#c3bf9f", modifiers = ["bold"]}
 "label" = { fg = "#dfcfaf", modifiers = ["underlined"] }
 "ui.help" = { fg = "white", bg = "black" }
-"ui.virtual.ruler" = { bg = "#484848" }
+"ui.virtual.ruler" = { fg = "#484848" }
 "ui.virtual.whitespace" = { fg = "#5b605e", modifiers = ["bold"]}
 
 "punctuation.delimiter" = "#8f8f8f"
