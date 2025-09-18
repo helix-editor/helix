@@ -412,6 +412,7 @@ impl MappableCommand {
         syntax_symbol_picker, "Open symbol picker from syntax information",
         lsp_or_syntax_symbol_picker, "Open symbol picker from LSP or syntax information",
         changed_file_picker, "Open changed file picker",
+        diff_hunk_picker, "Diff hunk picker for current file",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
         syntax_workspace_symbol_picker, "Open workspace symbol picker from syntax information",
@@ -3399,6 +3400,100 @@ fn changed_file_picker(cx: &mut Context) {
                 true
             }
         });
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn diff_hunk_picker(cx: &mut Context) {
+    struct Diff {
+        doc_id: DocumentId,
+        hunk: Hunk,
+    }
+
+    struct DiffStyles {
+        insertion: Style,
+        removal: Style,
+        modified: Style,
+    }
+    let data = DiffStyles {
+        insertion: cx.editor.theme.get("diff.plus"),
+        removal: cx.editor.theme.get("diff.minus"),
+        modified: cx.editor.theme.get("diff.delta"),
+    };
+
+    let columns = [
+        PickerColumn::new("length", |change: &Diff, _| {
+            let num_lines = if change.hunk.is_pure_insertion() {
+                change.hunk.after.len()
+            } else {
+                change.hunk.before.len()
+            };
+            let lines = if num_lines == 1 { "line" } else { "lines" };
+            format!("{num_lines} {lines}").into()
+        }),
+        PickerColumn::new("type", |change, styles: &DiffStyles| {
+            if change.hunk.is_pure_insertion() {
+                Span::styled("inserted", styles.insertion).into()
+            } else if change.hunk.is_pure_removal() {
+                Span::styled("removed", styles.removal).into()
+            } else {
+                Span::styled("modified", styles.modified).into()
+            }
+        }),
+        PickerColumn::new("position", |change, _| {
+            if change.hunk.after.len() <= 1 {
+                format!("at line {}", change.hunk.after.start).into()
+            } else {
+                format!(
+                    "at lines {}-{}",
+                    change.hunk.after.start, change.hunk.after.end
+                )
+                .into()
+            }
+        }),
+    ];
+
+    let doc = doc!(cx.editor);
+    let Some(handle) = doc.diff_handle() else {
+        log::info!("No diff to pick hunks from!");
+        return;
+    };
+
+    let picker = Picker::new(columns, 2, [], data, move |cx, meta, action| {
+        let config = cx.editor.config();
+        let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.doc_id));
+        let selection = Selection::single(
+            doc.text().line_to_char(meta.hunk.after.start as usize),
+            doc.text().line_to_char(meta.hunk.after.end as usize),
+        );
+        doc.set_selection(view.id, selection);
+        if action.align_view(view, meta.doc_id) {
+            view.ensure_cursor_in_view_center(doc, config.scrolloff);
+        }
+    })
+    .with_preview(move |_, diff| {
+        // TODO it would be really nice to have the diff gutter also in the preview
+
+        let start = diff.hunk.after.start as usize;
+        let end = diff.hunk.after.end as usize - 1; // hunk range end is exclusive
+        let range = (start, if end >= start { end } else { start });
+        Some((diff.doc_id.into(), Some(range)))
+    });
+
+    // TODO investigate whether spawning a task makes any sense or is unnecessary overhead
+    let injector = picker.injector();
+    let handle = handle.clone();
+    let doc_id = doc.id();
+    tokio::task::spawn_blocking(move || {
+        let diff = handle.load();
+        for hunk_idx in 0..diff.len() {
+            let hunk = diff.nth_hunk(hunk_idx);
+            debug_assert_ne!(hunk, Hunk::NONE);
+            let _ = injector
+                .push(Diff { doc_id, hunk })
+                .inspect_err(|e| log::error!("Error showing diff hunk in picker: {e}"));
+        }
+    });
+
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
