@@ -61,7 +61,7 @@
 # "function.special"
 "tag" = { fg = "zb-tag-fg", modifiers = ["bold"] }
 # "tag.builtin"
-"namespace" = { fg = "zb-preproc-fg", modifiers = ["bold"] }
+"namespace" = { fg = "zb-include-fg", modifiers = ["bold"] }
 "special" = "zb-special-fg"
 # "markup"
 "markup.heading" = { fg = "zb-constant-fg", modifiers = ["bold"] }
@@ -111,12 +111,12 @@
 # "ui.cursor.primary.select"
 # "ui.debug.breakpoint"
 # "ui.debug.active"
-"ui.gutter" = { bg = "zb-normal-bg" }
+"ui.gutter" = { bg = "zb-linenr-bg" }
 # ui.gutter.selected	Gutter for the line the cursor is on
-"ui.linenr" = { fg = "zb-linenr-fg" }
-"ui.linenr.selected" = { fg = "zb-cursorlinenr-fg", modifiers = ["bold"] }
-"ui.statusline" = { fg = "zb-statusline-fg", bg = "zb-statusline-bg" }
-"ui.statusline.inactive" = { fg = "zb-statuslinenc-fg", bg = "zb-statuslinenc-bg" }
+"ui.linenr" = { fg = "zb-linenr-fg", bg = "zb-linenr-bg" }
+"ui.linenr.selected" = { fg = "zb-cursorlinenr-fg", bg = "zb-cursorlinenr-bg", modifiers = ["bold"] }
+"ui.statusline" = { fg = "zb-statusline-fg", bg = "zb-statusline-bg", modifiers = ["reversed", "bold"] }
+"ui.statusline.inactive" = { fg = "zb-statuslinenc-fg", bg = "zb-statuslinenc-bg", modifiers = ["reversed"] }
 # "ui.statusline.normal"
 # "ui.statusline.insert"
 # "ui.statusline.select"
