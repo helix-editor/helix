@@ -61,6 +61,7 @@ pub struct TestCase {
     pub out_text: String,
     pub out_selection: Selection,
 
+    #[allow(dead_code)]
     pub line_feed_handling: LineFeedHandling,
 }
 
@@ -425,7 +426,7 @@ pub fn reload_file(file: &mut NamedTempFile) -> anyhow::Result<()> {
     let f = std::fs::OpenOptions::new()
         .write(true)
         .read(true)
-        .open(&path)?;
+        .open(path)?;
     *file.as_file_mut() = f;
     Ok(())
 }
