@@ -3,6 +3,7 @@
 [Helix](./title-page.md)
 
 - [Installation](./install.md)
+  - [Pre-built binaries](./prebuilt-binaries.md)
   - [Package Managers](./package-managers.md)
   - [Building from source](./building-from-source.md)
 - [Usage](./usage.md)
