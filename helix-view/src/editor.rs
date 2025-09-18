@@ -261,6 +261,8 @@ pub struct Config {
     pub shell: Vec<String>,
     /// Line number mode.
     pub line_number: LineNumber,
+    /// Symbol to use for the picker. Defaults to ">".
+    pub picker_symbol: String,
     /// Highlight the lines cursors are currently on. Defaults to false.
     pub cursorline: bool,
     /// Highlight the columns cursors are currently on. Defaults to false.
@@ -1053,6 +1055,7 @@ impl Default for Config {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
             line_number: LineNumber::Absolute,
+            picker_symbol: ">".to_string(),
             cursorline: false,
             cursorcolumn: false,
             gutters: GutterConfig::default(),
