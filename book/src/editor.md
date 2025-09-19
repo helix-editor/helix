@@ -327,6 +327,7 @@ Options for rendering vertical indent guides.
 | `render`      | Whether to render indent guides                         | `false` |
 | `character`   | Literal character to use for rendering the indent guide | `│`     |
 | `skip-levels` | Number of indent levels to skip                         | `0`     |
+| `rainbow`     | Whether to render indent guides in rainbow colors       | `false` |
 
 Example:
 
@@ -335,6 +336,7 @@ Example:
 render = true
 character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
 skip-levels = 1
+rainbow = true
 ```
 
 ### `[editor.gutters]` Section
