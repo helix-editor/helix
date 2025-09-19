@@ -259,7 +259,11 @@ impl CmdlinePopup {
                 completion_bg.patch(completion.style)
             };
 
-            let prefix = if is_selected { "▶ " } else { "  " };
+            let prefix = if is_selected {
+                format!("{} ", cx.editor.config().picker_symbol)
+            } else {
+                "  ".to_string()
+            };
             let text = format!("{}{}", prefix, completion.content);
 
             surface.set_stringn(
