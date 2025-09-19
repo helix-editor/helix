@@ -142,6 +142,7 @@ vscode-html-language-server = { command = "vscode-html-language-server", args = 
 vscode-json-language-server = { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true, json = { validate = { enable = true } } } }
 vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
 wgsl-analyzer = { command = "wgsl-analyzer" }
+wikitext-lsp = { command = "wikitext-lsp", args = ["--stdio"]}
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
@@ -358,7 +359,20 @@ source = { git = "https://github.com/FuelLabs/tree-sitter-sway", rev = "e491a005
 name = "toml"
 scope = "source.toml"
 injection-regex = "toml"
-file-types = ["toml", { glob = "pdm.lock" }, { glob = "poetry.lock" }, { glob = "Cargo.lock" }, { glob = "uv.lock" }]
+file-types = [
+  "toml",
+  { glob = "pdm.lock" },
+  { glob = "poetry.lock" },
+  { glob = "Cargo.lock" },
+  { glob = "uv.lock" },
+  { glob = "containers.conf" },
+  { glob = "containers.conf.d/*.conf" },
+  { glob = "containers.conf.modules/*.conf" },
+  { glob = "mounts.conf" },
+  { glob = "policy.conf" },
+  { glob = "registries.conf" },
+  { glob = "storage.conf" },
+]
 comment-token = "#"
 language-servers = [ "taplo", "tombi" ]
 indent = { tab-width = 2, unit = "  " }
@@ -1137,6 +1151,7 @@ file-types = [
   "zshrc_Apple_Terminal",
   { glob = "i3/config" },
   { glob = "sway/config" },
+  { glob = ".tmux.conf" },
   { glob = "tmux.conf" },
   { glob = ".bash_history" },
   { glob = ".bash_login" },
@@ -1477,7 +1492,7 @@ language-servers = [ "svelteserver" ]
 
 [[grammar]]
 name = "svelte"
-source = { git = "https://github.com/Himujjal/tree-sitter-svelte", rev = "60ea1d673a1a3eeeb597e098d9ada9ed0c79ef4b" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-svelte", rev = "ae5199db47757f785e43a14b332118a5474de1a2" }
 
 [[language]]
 name = "vue"
@@ -1505,6 +1520,7 @@ file-types = [
   { glob = ".clang-tidy" },
   { glob = ".gem/credentials" },
   { glob = ".kube/config" },
+  { glob = ".kube/kuberc" },
   "sublime-syntax"
 ]
 comment-token = "#"
@@ -1608,7 +1624,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "zig"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev = "b71affffdb4222ff2d2dea6e164f76603b0be6bc" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev = "6479aa13f32f701c383083d8b28360ebd682fb7d" }
 
 [[language]]
 name = "prolog"
@@ -1686,7 +1702,22 @@ source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "88408ff
 [[language]]
 name = "perl"
 scope = "source.perl"
-file-types = ["pl", "pm", "t", "psgi", "raku", "rakumod", "rakutest", "rakudoc", "nqp", "p6", "pl6", "pm6"]
+file-types =[
+  "pl",
+  "pm",
+  "t",
+  "psgi",
+  "raku",
+  "rakumod",
+  "rakutest",
+  "rakudoc",
+  "nqp",
+  "p6",
+  "pl6",
+  "pm6",
+  {glob = "latexmkrc"},
+  {glob = ".latexmkrc"},
+]
 shebangs = ["perl"]
 comment-token = "#"
 language-servers = [ "perlnavigator" ]
@@ -2678,7 +2709,7 @@ language-servers = [ "idris2-lsp" ]
 name = "fortran"
 scope = "source.fortran"
 injection-regex = "fortran"
-file-types = ["f", "for", "f90", "f95", "f03"]
+file-types = ["f", "for", "f90", "f95", "f03", "F", "F90", "F95", "F03"]
 roots = ["fpm.toml"]
 comment-token = "!"
 indent = { tab-width = 4, unit = "    "}
@@ -2686,7 +2717,7 @@ language-servers = [ "fortls" ]
 
 [[grammar]]
 name = "fortran"
-source = { git = "https://github.com/stadelmanma/tree-sitter-fortran", rev = "f0f2f100952a353e64e26b0fa710b4c296d7af13" }
+source = { git = "https://github.com/stadelmanma/tree-sitter-fortran", rev = "8334abca785db3a041292e3b3b818a82a55b238f" }
 
 [[language]]
 name = "ungrammar"
@@ -4339,7 +4370,7 @@ formatter = {command = "koto", args = ["--format"]}
 
 [[grammar]]
 name = "koto"
-source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "2ffc77c14f0ac1674384ff629bfc207b9c57ed89" }
+source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "633744bca404ae4edb961a3c2d7bc947a987afa4" }
 
 [[language]]
 name = "gpr"
@@ -4720,7 +4751,6 @@ file-types = [{glob = "Cross.toml"}]
 language-servers = [ "taplo", "tombi" ]
 indent = { tab-width = 2, unit = "  " }
 
-# https://git-cliff.org/docs/configuration/
 [[language]]
 name = "git-cliff-config"
 scope = "source.git-cliff-config"
@@ -4788,3 +4818,28 @@ grammar = "yaml"
 indent = { tab-width = 2, unit = "  " }
 language-servers = ["yaml-language-server", "gitlab-ci-ls"]
 comment-token = "#"
+
+[[grammar]]
+name = "wikitext"
+source = { git = "https://github.com/santhoshtr/tree-sitter-wikitext", rev = "444214b31695e9dd4d32fb06247397fb8778a9d2"}
+
+[[language]]
+name = "wikitext"
+scope = "source.wikitext"
+file-types = ["wikimedia", "mediawiki", "wikitext"]
+language-servers = ["wikitext-lsp"]
+indent = { tab-width = 2, unit = "  " }
+block-comment-tokens = { start = "<!--", end = "-->" }
+word-completion.trigger-length = 4
+
+[[language]] 
+name = "slisp"
+scope = "source.sl"
+injection-regex = "sl"
+file-types = ["sl"]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "slisp"
+source = { git = "https://github.com/xenogenics/tree-sitter-slisp", rev = "29f9c6707ce9dfc2fc915d175ec720b207f179f3" }

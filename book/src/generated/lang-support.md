@@ -144,7 +144,7 @@
 | kdl | ✓ | ✓ | ✓ | ✓ |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ | ✓ |  | `kotlin-language-server` |
-| koto | ✓ | ✓ | ✓ |  |  | `koto-ls` |
+| koto | ✓ | ✓ | ✓ |  | ✓ | `koto-ls` |
 | latex | ✓ | ✓ |  |  |  | `texlab` |
 | ld | ✓ |  | ✓ |  |  |  |
 | ldif | ✓ |  |  |  |  |  |
@@ -232,6 +232,7 @@
 | shellcheckrc | ✓ | ✓ |  |  |  |  |
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
 | slint | ✓ | ✓ | ✓ |  |  | `slint-lsp` |
+| slisp | ✓ |  |  | ✓ |  |  |
 | smali | ✓ |  | ✓ |  |  |  |
 | smithy | ✓ |  |  |  |  | `cs` |
 | sml | ✓ |  |  |  |  |  |
@@ -288,6 +289,7 @@
 | werk | ✓ |  |  |  |  |  |
 | wesl | ✓ | ✓ |  |  |  |  |
 | wgsl | ✓ | ✓ | ✓ | ✓ | ✓ | `wgsl-analyzer` |
+| wikitext | ✓ |  |  |  |  | `wikitext-lsp` |
 | wit | ✓ |  | ✓ |  |  |  |
 | wren | ✓ | ✓ | ✓ |  |  |  |
 | xit | ✓ |  |  |  |  |  |

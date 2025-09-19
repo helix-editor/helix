@@ -374,6 +374,30 @@ impl<'a> Text<'a> {
         self.lines.len()
     }
 
+    /// Patch text with a new style. Only updates fields that are in the new style.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use helix_tui::text::Text;
+    /// # use helix_view::graphics::{Color,  Style};
+    /// let style1 = Style::default().fg(Color::Yellow);
+    /// let style2 = Style::default().fg(Color::Yellow).bg(Color::Black);
+    /// let mut half_styled_text = Text::styled(String::from("The first line\nThe second line"), style1);
+    /// let full_styled_text = Text::styled(String::from("The first line\nThe second line"), style2);
+    /// assert_ne!(half_styled_text, full_styled_text);
+    ///
+    /// half_styled_text.patch_style(Style::default().bg(Color::Black));
+    /// assert_eq!(half_styled_text, full_styled_text);
+    /// ```
+    pub fn patch_style(&mut self, style: Style) {
+        for line in &mut self.lines {
+            for span in &mut line.0 {
+                span.style = span.style.patch(style);
+            }
+        }
+    }
+
     /// Apply a new style to existing text.
     ///
     /// # Examples
@@ -386,13 +410,13 @@ impl<'a> Text<'a> {
     /// let styled_text = Text::styled(String::from("The first line\nThe second line"), style);
     /// assert_ne!(raw_text, styled_text);
     ///
-    /// raw_text.patch_style(style);
+    /// raw_text.set_style(style);
     /// assert_eq!(raw_text, styled_text);
     /// ```
-    pub fn patch_style(&mut self, style: Style) {
+    pub fn set_style(&mut self, style: Style) {
         for line in &mut self.lines {
             for span in &mut line.0 {
-                span.style = span.style.patch(style);
+                span.style = style;
             }
         }
     }
