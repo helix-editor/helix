@@ -3870,21 +3870,48 @@ pub(super) fn execute_command(
 
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
-    let mut prompt = Prompt::new(
-        ":".into(),
-        Some(':'),
-        complete_command_line,
-        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            if let Err(err) = execute_command_line(cx, input, event) {
-                cx.editor.set_error(err.to_string());
-            }
-        },
-    );
-    prompt.doc_fn = Box::new(command_line_doc);
+    use helix_view::editor::CmdlineStyle;
 
-    // Calculate initial completion
-    prompt.recalculate_completion(cx.editor);
-    cx.push_layer(Box::new(prompt));
+    let cmdline_style = cx.editor.config().cmdline.style;
+
+    match cmdline_style {
+        CmdlineStyle::Popup => {
+            let mut cmdline = ui::CmdlinePopup::new(
+                ":".into(),
+                Some(':'),
+                complete_command_line,
+                move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+                    if let Err(err) = execute_command_line(cx, input, event) {
+                        cx.editor.set_error(err.to_string());
+                    }
+                },
+                CmdlineStyle::Popup,
+            );
+
+            // Configure popup-specific settings
+            cmdline = cmdline.with_language("sh", cx.editor.syn_loader.clone());
+
+            cx.push_layer(Box::new(cmdline));
+        }
+        CmdlineStyle::Bottom => {
+            // Use traditional prompt
+            let mut prompt = Prompt::new(
+                ":".into(),
+                Some(':'),
+                complete_command_line,
+                move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+                    if let Err(err) = execute_command_line(cx, input, event) {
+                        cx.editor.set_error(err.to_string());
+                    }
+                },
+            );
+            prompt.doc_fn = Box::new(command_line_doc);
+
+            // Calculate initial completion
+            prompt.recalculate_completion(cx.editor);
+            cx.push_layer(Box::new(prompt));
+        }
+    }
 }
 
 fn command_line_doc(input: &str) -> Option<Cow<str>> {

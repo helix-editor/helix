@@ -51,6 +51,7 @@ tabstop = { modifiers = ["italic"], bg = "bossanova" }
 "ui.statusline" = { fg = "lilac", bg = "revolver" }
 "ui.statusline.inactive" = { fg = "lavender", bg = "revolver" }
 "ui.popup" = { bg = "revolver" }
+"ui.popup.border" = { fg = "lilac" }
 "ui.window" = { fg = "bossanova" }
 "ui.help" = { bg = "#7958DC", fg = "#171452" }
 "ui.text" = { fg = "lavender" }

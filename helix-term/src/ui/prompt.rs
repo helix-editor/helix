@@ -396,6 +396,26 @@ impl Prompt {
     pub fn exit_selection(&mut self) {
         self.selection = None;
     }
+
+    /// Get the current completions
+    pub fn completions(&self) -> &Vec<Completion> {
+        &self.completion
+    }
+
+    /// Get the current selection
+    pub fn selection(&self) -> Option<usize> {
+        self.selection
+    }
+
+    /// Get the language configuration
+    pub fn language(&self) -> &Option<(&'static str, std::sync::Arc<arc_swap::ArcSwap<helix_core::syntax::Loader>>)> {
+        &self.language
+    }
+
+    /// Get the prompt text
+    pub fn prompt(&self) -> &str {
+        &self.prompt
+    }
 }
 
 const BASE_WIDTH: u16 = 30;

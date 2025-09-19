@@ -1,4 +1,5 @@
 mod completion;
+pub mod cmdline_popup;
 mod document;
 pub(crate) mod editor;
 mod info;
@@ -17,6 +18,8 @@ mod text_decorations;
 use crate::compositor::Compositor;
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
+pub use cmdline_popup::CmdlinePopup;
+pub use helix_view::editor::CmdlineStyle;
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
@@ -54,10 +57,26 @@ pub fn prompt(
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
-    // Calculate the initial completion
-    prompt.recalculate_completion(cx.editor);
-    cx.push_layer(Box::new(prompt));
+    let cmdline_style = cx.editor.config().cmdline.style;
+
+    match cmdline_style {
+        CmdlineStyle::Popup => {
+            let mut cmdline = CmdlinePopup::new(
+                prompt,
+                history_register,
+                completion_fn,
+                callback_fn,
+                CmdlineStyle::Popup,
+            );
+            cx.push_layer(Box::new(cmdline));
+        }
+        CmdlineStyle::Bottom => {
+            let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
+            // Calculate the initial completion
+            prompt.recalculate_completion(cx.editor);
+            cx.push_layer(Box::new(prompt));
+        }
+    }
 }
 
 pub fn prompt_with_input(
@@ -68,9 +87,25 @@ pub fn prompt_with_input(
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
-        .with_line(input, cx.editor);
-    cx.push_layer(Box::new(prompt));
+    let cmdline_style = cx.editor.config().cmdline.style;
+
+    match cmdline_style {
+        CmdlineStyle::Popup => {
+            let cmdline = CmdlinePopup::new(
+                prompt,
+                history_register,
+                completion_fn,
+                callback_fn,
+                CmdlineStyle::Popup,
+            ).with_line(input, cx.editor);
+            cx.push_layer(Box::new(cmdline));
+        }
+        CmdlineStyle::Bottom => {
+            let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
+                .with_line(input, cx.editor);
+            cx.push_layer(Box::new(prompt));
+        }
+    }
 }
 
 pub fn regex_prompt(
@@ -101,89 +136,179 @@ pub fn raw_regex_prompt(
     let offset_snapshot = doc.view_offset(view.id);
     let config = cx.editor.config();
 
-    let mut prompt = Prompt::new(
-        prompt,
-        history_register,
-        completion_fn,
-        move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
-            match event {
-                PromptEvent::Abort => {
-                    let (view, doc) = current!(cx.editor);
-                    doc.set_selection(view.id, snapshot.clone());
-                    doc.set_view_offset(view.id, offset_snapshot);
-                }
-                PromptEvent::Update | PromptEvent::Validate => {
-                    // skip empty input
-                    if input.is_empty() {
-                        return;
-                    }
+    let cmdline_style = cx.editor.config().cmdline.style;
 
-                    let case_insensitive = if config.search.smart_case {
-                        !input.chars().any(char::is_uppercase)
-                    } else {
-                        false
-                    };
-
-                    match rope::RegexBuilder::new()
-                        .syntax(
-                            rope::Config::new()
-                                .case_insensitive(case_insensitive)
-                                .multi_line(true),
-                        )
-                        .build(input)
-                    {
-                        Ok(regex) => {
-                            let (view, doc) = current!(cx.editor);
-
-                            // revert state to what it was before the last update
-                            doc.set_selection(view.id, snapshot.clone());
-
-                            if event == PromptEvent::Validate {
-                                // Equivalent to push_jump to store selection just before jump
-                                view.jumps.push((doc_id, snapshot.clone()));
-                            }
-
-                            fun(cx, regex, input, event);
-
-                            let (view, doc) = current!(cx.editor);
-                            view.ensure_cursor_in_view(doc, config.scrolloff);
-                        }
-                        Err(err) => {
+    match cmdline_style {
+        CmdlineStyle::Popup => {
+            let mut cmdline = CmdlinePopup::new(
+                prompt,
+                history_register,
+                completion_fn,
+                move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+                    match event {
+                        PromptEvent::Abort => {
                             let (view, doc) = current!(cx.editor);
                             doc.set_selection(view.id, snapshot.clone());
                             doc.set_view_offset(view.id, offset_snapshot);
+                        }
+                        PromptEvent::Update | PromptEvent::Validate => {
+                            // skip empty input
+                            if input.is_empty() {
+                                return;
+                            }
 
-                            if event == PromptEvent::Validate {
-                                let callback = async move {
-                                    let call: job::Callback = Callback::EditorCompositor(Box::new(
-                                        move |_editor: &mut Editor, compositor: &mut Compositor| {
-                                            let contents = Text::new(format!("{}", err));
-                                            let size = compositor.size();
-                                            let popup = Popup::new("invalid-regex", contents)
-                                                .position(Some(helix_core::Position::new(
-                                                    size.height as usize - 2, // 2 = statusline + commandline
-                                                    0,
-                                                )))
-                                                .auto_close(true);
-                                            compositor.replace_or_push("invalid-regex", popup);
-                                        },
-                                    ));
-                                    Ok(call)
-                                };
+                            let case_insensitive = if config.search.smart_case {
+                                !input.chars().any(char::is_uppercase)
+                            } else {
+                                false
+                            };
 
-                                cx.jobs.callback(callback);
+                            match rope::RegexBuilder::new()
+                                .syntax(
+                                    rope::Config::new()
+                                        .case_insensitive(case_insensitive)
+                                        .multi_line(true),
+                                )
+                                .build(input)
+                            {
+                                Ok(regex) => {
+                                    let (view, doc) = current!(cx.editor);
+
+                                    // revert state to what it was before the last update
+                                    doc.set_selection(view.id, snapshot.clone());
+
+                                    if event == PromptEvent::Validate {
+                                        // Equivalent to push_jump to store selection just before jump
+                                        view.jumps.push((doc_id, snapshot.clone()));
+                                    }
+
+                                    fun(cx, regex, input, event);
+
+                                    let (view, doc) = current!(cx.editor);
+                                    view.ensure_cursor_in_view(doc, config.scrolloff);
+                                }
+                                Err(err) => {
+                                    let (view, doc) = current!(cx.editor);
+                                    doc.set_selection(view.id, snapshot.clone());
+                                    doc.set_view_offset(view.id, offset_snapshot);
+
+                                    if event == PromptEvent::Validate {
+                                        let callback = async move {
+                                            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                                                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                                                    let contents = Text::new(format!("{}", err));
+                                                    let size = compositor.size();
+                                                    let popup = Popup::new("invalid-regex", contents)
+                                                        .position(Some(helix_core::Position::new(
+                                                            size.height as usize - 2, // 2 = statusline + commandline
+                                                            0,
+                                                        )))
+                                                        .auto_close(true);
+                                                    compositor.replace_or_push("invalid-regex", popup);
+                                                },
+                                            ));
+                                            Ok(call)
+                                        };
+
+                                        cx.jobs.callback(callback);
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
-        },
-    )
-    .with_language("regex", std::sync::Arc::clone(&cx.editor.syn_loader));
-    // Calculate initial completion
-    prompt.recalculate_completion(cx.editor);
-    // prompt
-    cx.push_layer(Box::new(prompt));
+                },
+                CmdlineStyle::Popup,
+            )
+            .with_language("regex", std::sync::Arc::clone(&cx.editor.syn_loader));
+
+            cx.push_layer(Box::new(cmdline));
+        }
+        CmdlineStyle::Bottom => {
+            let mut prompt = Prompt::new(
+                prompt,
+                history_register,
+                completion_fn,
+                move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+                    match event {
+                        PromptEvent::Abort => {
+                            let (view, doc) = current!(cx.editor);
+                            doc.set_selection(view.id, snapshot.clone());
+                            doc.set_view_offset(view.id, offset_snapshot);
+                        }
+                        PromptEvent::Update | PromptEvent::Validate => {
+                            // skip empty input
+                            if input.is_empty() {
+                                return;
+                            }
+
+                            let case_insensitive = if config.search.smart_case {
+                                !input.chars().any(char::is_uppercase)
+                            } else {
+                                false
+                            };
+
+                            match rope::RegexBuilder::new()
+                                .syntax(
+                                    rope::Config::new()
+                                        .case_insensitive(case_insensitive)
+                                        .multi_line(true),
+                                )
+                                .build(input)
+                            {
+                                Ok(regex) => {
+                                    let (view, doc) = current!(cx.editor);
+
+                                    // revert state to what it was before the last update
+                                    doc.set_selection(view.id, snapshot.clone());
+
+                                    if event == PromptEvent::Validate {
+                                        // Equivalent to push_jump to store selection just before jump
+                                        view.jumps.push((doc_id, snapshot.clone()));
+                                    }
+
+                                    fun(cx, regex, input, event);
+
+                                    let (view, doc) = current!(cx.editor);
+                                    view.ensure_cursor_in_view(doc, config.scrolloff);
+                                }
+                                Err(err) => {
+                                    let (view, doc) = current!(cx.editor);
+                                    doc.set_selection(view.id, snapshot.clone());
+                                    doc.set_view_offset(view.id, offset_snapshot);
+
+                                    if event == PromptEvent::Validate {
+                                        let callback = async move {
+                                            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                                                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                                                    let contents = Text::new(format!("{}", err));
+                                                    let size = compositor.size();
+                                                    let popup = Popup::new("invalid-regex", contents)
+                                                        .position(Some(helix_core::Position::new(
+                                                            size.height as usize - 2, // 2 = statusline + commandline
+                                                            0,
+                                                        )))
+                                                        .auto_close(true);
+                                                    compositor.replace_or_push("invalid-regex", popup);
+                                                },
+                                            ));
+                                            Ok(call)
+                                        };
+
+                                        cx.jobs.callback(callback);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+            )
+            .with_language("regex", std::sync::Arc::clone(&cx.editor.syn_loader));
+            // Calculate initial completion
+            prompt.recalculate_completion(cx.editor);
+            // prompt
+            cx.push_layer(Box::new(prompt));
+        }
+    }
 }
 
 #[derive(Debug)]
