@@ -1,6 +1,6 @@
 use crate::compositor::{Component, Context, Event, EventResult};
 use crate::ui::prompt::{Completion, Prompt, PromptEvent};
-use crate::ui;
+use crate::ui::{self, gradient_border::GradientBorder};
 use helix_core::{Position, unicode::width::UnicodeWidthStr};
 use helix_view::{
     graphics::{CursorKind, Rect},
@@ -21,6 +21,8 @@ pub struct CmdlinePopup {
     min_width: u16,
     max_width: u16,
     padding: u16,
+    // Gradient border for cmdline popup
+    gradient_border: Option<GradientBorder>,
 }
 
 impl CmdlinePopup {
@@ -38,6 +40,7 @@ impl CmdlinePopup {
             min_width: 40,
             max_width: 80,
             padding: 2,
+            gradient_border: None,
         }
     }
 
@@ -94,23 +97,47 @@ impl CmdlinePopup {
         self.popup_area = popup_area;
 
         let theme = &cx.editor.theme;
+        let config = &cx.editor.config().gradient_borders;
 
         // Clear the area
         surface.clear_with(popup_area, theme.get("ui.popup"));
-        let border_style = theme.get("ui.popup.border");
-        let background_style = theme.get("ui.popup");
 
-        // Create styled block with borders
-        let border_type = BorderType::new(cx.editor.config().rounded_corners);
-        let block = Block::default()
-            .borders(tui::widgets::Borders::ALL)
-            .border_type(border_type)
-            .border_style(border_style)
-            .style(background_style);
+        // Use gradient border if enabled, otherwise use default border
+        let inner_area = if config.enable && self.style == CmdlineStyle::Popup {
+            // Initialize gradient border if needed
+            if self.gradient_border.is_none() {
+                self.gradient_border = Some(GradientBorder::from_theme(theme, config));
+            }
 
-        // Get inner area for content
-        let inner_area = block.inner(popup_area);
-        block.render(popup_area, surface);
+            // Render gradient border
+            if let Some(ref mut gradient_border) = self.gradient_border {
+                let rounded = cx.editor.config().rounded_corners;
+                gradient_border.render(popup_area, surface, theme, rounded);
+            }
+
+            // Calculate inner area manually (same as Block::inner)
+            Rect {
+                x: popup_area.x + 1,
+                y: popup_area.y + 1,
+                width: popup_area.width.saturating_sub(2),
+                height: popup_area.height.saturating_sub(2),
+            }
+        } else {
+            // Use traditional border
+            let border_style = theme.get("ui.popup.border");
+            let background_style = theme.get("ui.popup");
+
+            let border_type = BorderType::new(cx.editor.config().rounded_corners);
+            let block = Block::default()
+                .borders(tui::widgets::Borders::ALL)
+                .border_type(border_type)
+                .border_style(border_style)
+                .style(background_style);
+
+            let inner_area = block.inner(popup_area);
+            block.render(popup_area, surface);
+            inner_area
+        };
 
         // Render command icon and prompt
         let config = cx.editor.config();
@@ -173,7 +200,7 @@ impl CmdlinePopup {
     }
 
     /// Render completion popup
-    fn render_completion_popup(&self, base_area: Rect, surface: &mut Surface, cx: &Context) {
+    fn render_completion_popup(&mut self, base_area: Rect, surface: &mut Surface, cx: &Context) {
         let theme = &cx.editor.theme;
         let completion_bg = theme.get("ui.menu");
         let selected_style = theme.get("ui.menu.selected");
@@ -190,15 +217,37 @@ impl CmdlinePopup {
 
         // Clear and render completion background
         surface.clear_with(comp_area, completion_bg);
-        let border_type = BorderType::new(cx.editor.config().rounded_corners);
-        let block = Block::default()
-            .borders(tui::widgets::Borders::ALL)
-            .border_type(border_type)
-            .border_style(completion_bg)
-            .style(completion_bg);
 
-        let inner_area = block.inner(comp_area);
-        block.render(comp_area, surface);
+        let config = &cx.editor.config().gradient_borders;
+
+        // Use gradient border for completion if enabled
+        let inner_area = if config.enable && self.style == CmdlineStyle::Popup {
+            // Reuse the gradient border for completion popup
+            if let Some(ref mut gradient_border) = self.gradient_border {
+                let rounded = cx.editor.config().rounded_corners;
+                gradient_border.render(comp_area, surface, &cx.editor.theme, rounded);
+            }
+
+            // Calculate inner area manually
+            Rect {
+                x: comp_area.x + 1,
+                y: comp_area.y + 1,
+                width: comp_area.width.saturating_sub(2),
+                height: comp_area.height.saturating_sub(2),
+            }
+        } else {
+            // Use traditional border
+            let border_type = BorderType::new(cx.editor.config().rounded_corners);
+            let block = Block::default()
+                .borders(tui::widgets::Borders::ALL)
+                .border_type(border_type)
+                .border_style(completion_bg)
+                .style(completion_bg);
+
+            let inner_area = block.inner(comp_area);
+            block.render(comp_area, surface);
+            inner_area
+        };
 
         // Render completion items
         for (i, (_range, completion)) in self.prompt.completions().iter().enumerate().take(8) {

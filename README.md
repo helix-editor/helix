@@ -152,9 +152,173 @@ The line movement feature allows you to easily move the current line or multiple
 - Multiple selections: Moves all selected lines while preserving their relative positions
 - Discontinuous selections: Handles multiple separate line selections correctly
 - Unicode content: Properly handles files with Unicode characters
-- File boundaries: Prevents moving lines beyond the start or end of the file
 
-This feature eliminates the need for complex macros to achieve line movement and provides a smooth, predictable editing experience.
+## Noice.nvim-like Command Line (Cmdline)
+
+**Command Line Popup Configuration:**
+
+This fork includes a modern, noice.nvim-inspired command line with customizable icons and popup-style interface.
+
+```toml
+[editor.cmdline]
+# Command line style: "bottom" (default) or "popup" (noice.nvim style)
+style = "popup"
+
+# Show command type icons (default: true)
+show-icons = true
+
+# Popup dimensions
+min-popup-width = 40    # Minimum width for popup cmdline
+max-popup-width = 80    # Maximum width for popup cmdline
+
+# Customize command icons
+[editor.cmdline.icons]
+search = "🔍"    # For search commands (/,?)
+command = "⚙"    # For command mode (:)
+shell = "⚡"      # For shell commands (!)
+general = "💬"   # For other prompts
+```
+
+**Icon Theme Examples:**
+
+```toml
+# Minimalist ASCII Style
+[editor.cmdline.icons]
+search = "/"
+command = ":"
+shell = "$"
+general = ">"
+
+# Nerd Font Icons
+[editor.cmdline.icons]
+search = ""    # nf-fa-search
+command = ""    # nf-fa-cog
+shell = ""     # nf-fa-terminal
+general = ""   # nf-fa-comment
+
+# Fun Emoji Theme
+[editor.cmdline.icons]
+search = "🔎"
+command = "🛠️"
+shell = "🖥️"
+general = "📝"
+
+# Disable all icons
+[editor.cmdline]
+show-icons = false
+```
+
+**Features:**
+- **Popup-style command line** - Centered floating window instead of bottom line
+- **Command type icons** - Visual indicators for different command types
+- **Enhanced completion** - Better visual feedback and layout
+- **Customizable appearance** - Full control over icons and dimensions
+- **Backward compatibility** - Traditional bottom style still available
+
+## Aesthetic Gradient Borders
+
+**Gradient Borders Configuration:**
+
+Transform your Helix interface with beautiful, configurable gradient borders for all pickers and UI components.
+
+```toml
+[editor.gradient-borders]
+enable = true                    # Enable/disable gradient borders
+thickness = 2                   # Border thickness (1-5)
+direction = "horizontal"        # "horizontal", "vertical", "diagonal", "radial"
+start-color = "#8A2BE2"        # Start color (hex format)
+end-color = "#00BFFF"          # End color (hex format)
+middle-color = "#FF69B4"       # Optional middle color for 3-color gradients
+animation-speed = 3            # Animation speed (0-10, 0 = disabled)
+```
+
+**Aesthetic Theme Examples:**
+
+```toml
+# Cyberpunk Theme
+[editor.gradient-borders]
+enable = true
+thickness = 2
+direction = "horizontal"
+start-color = "#FF0080"        # Hot Pink
+end-color = "#00FFFF"          # Cyan
+animation-speed = 2
+
+# Sunset Theme
+[editor.gradient-borders]
+enable = true
+thickness = 3
+direction = "diagonal"
+start-color = "#FF4500"        # Orange Red
+middle-color = "#FFD700"       # Gold
+end-color = "#FF69B4"          # Hot Pink
+animation-speed = 1
+
+# Ocean Wave
+[editor.gradient-borders]
+enable = true
+thickness = 2
+direction = "vertical"
+start-color = "#00CED1"        # Dark Turquoise
+end-color = "#4169E1"          # Royal Blue
+animation-speed = 4
+
+# Matrix Style
+[editor.gradient-borders]
+enable = true
+thickness = 1
+direction = "radial"
+start-color = "#00FF00"        # Lime Green
+end-color = "#008000"          # Dark Green
+animation-speed = 5
+
+# Minimalist (No Animation)
+[editor.gradient-borders]
+enable = true
+thickness = 1
+direction = "horizontal"
+start-color = "#6A5ACD"        # Slate Blue
+end-color = "#9370DB"          # Medium Purple
+animation-speed = 0
+```
+
+**Border Thickness Styles:**
+- **1**: Thin Unicode lines (─│┌┐└┘ square, ─│╭╮╰╯ rounded)
+- **2**: Thick Unicode lines (━┃┏┓┗┛)
+- **3**: Double Unicode lines (═║╔╗╚╝)
+- **4**: Block characters (█ style)
+- **5**: Full block characters
+
+**Rounded Corners Support:**
+Gradient borders automatically respect your existing `rounded_corners` setting:
+
+```toml
+[editor]
+# Enable rounded corners for all borders (traditional and gradient)
+rounded-corners = true
+
+[editor.gradient-borders]
+enable = true
+thickness = 1    # Thin borders work best with rounded corners
+direction = "horizontal"
+start-color = "#6A5ACD"
+end-color = "#9370DB"
+```
+
+- **Thickness 1**: Full rounded corner support (╭╮╰╯)
+- **Thickness 2+**: Uses square corners (no Unicode rounded equivalents)
+- **Block styles**: Rounded corners don't apply to block characters
+
+**Features:**
+- **Applied to all components**: Pickers, command line popups, completion menus, preview panels
+- **Dynamic gradients**: Smooth color transitions across any direction
+- **Animation support**: Animated gradients with configurable speed
+- **Configurable thickness**: From thin lines to chunky block borders
+- **Multiple directions**: Horizontal, vertical, diagonal, and radial patterns
+- **3-color gradients**: Optional middle color for more complex gradients
+- **Performance optimized**: Efficient rendering with minimal overhead
+
+**Note**: Gradient borders are applied to file pickers, command palettes, completion menus, preview panels, and the noice.nvim-style command line popup. Traditional borders are used when gradient borders are disabled.
 
 ## Running app locally on MacOS systems
 run the following command on the terminal

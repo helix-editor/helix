@@ -400,6 +400,9 @@ pub struct Config {
     /// Command line configuration
     #[serde(default)]
     pub cmdline: CmdlineConfig,
+    /// Picker gradient border configuration
+    #[serde(default)]
+    pub gradient_borders: GradientBorderConfig,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -474,6 +477,58 @@ pub enum CmdlineStyle {
 impl Default for CmdlineStyle {
     fn default() -> Self {
         Self::Bottom
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GradientBorderConfig {
+    /// Enable gradient borders for pickers. Defaults to false.
+    pub enable: bool,
+    /// Border thickness (1-5). Defaults to 1.
+    pub thickness: u8,
+    /// Gradient direction. Options: "horizontal", "vertical", "diagonal". Defaults to "horizontal".
+    pub direction: GradientDirection,
+    /// Start color (in hex format like "#FF0000"). Defaults to "#8A2BE2".
+    pub start_color: String,
+    /// End color (in hex format like "#FF0000"). Defaults to "#00BFFF".
+    pub end_color: String,
+    /// Middle color for 3-color gradients (optional). Defaults to "".
+    pub middle_color: String,
+    /// Animation speed (0-10, 0 = disabled). Defaults to 0.
+    pub animation_speed: u8,
+}
+
+impl Default for GradientBorderConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            thickness: 1,
+            direction: GradientDirection::Horizontal,
+            start_color: "#8A2BE2".to_string(), // BlueViolet
+            end_color: "#00BFFF".to_string(),   // DeepSkyBlue
+            middle_color: "".to_string(),
+            animation_speed: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GradientDirection {
+    /// Left to right gradient
+    Horizontal,
+    /// Top to bottom gradient
+    Vertical,
+    /// Diagonal gradient (top-left to bottom-right)
+    Diagonal,
+    /// Radial gradient from center
+    Radial,
+}
+
+impl Default for GradientDirection {
+    fn default() -> Self {
+        Self::Horizontal
     }
 }
 
@@ -1183,6 +1238,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             cmdline: CmdlineConfig::default(),
+            gradient_borders: GradientBorderConfig::default(),
         }
     }
 }

@@ -2,6 +2,7 @@ mod completion;
 pub mod cmdline_popup;
 mod document;
 pub(crate) mod editor;
+pub mod gradient_border;
 mod info;
 pub mod lsp;
 mod markdown;
