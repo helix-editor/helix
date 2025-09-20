@@ -3740,7 +3740,7 @@ pub(super) fn command_mode(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 
-fn command_line_doc(input: &str) -> Option<Cow<str>> {
+fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
     let (command, _, _) = command_line::split(input);
     let command = TYPABLE_COMMAND_MAP.get(command)?;
 

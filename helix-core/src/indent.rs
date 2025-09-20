@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, iter};
+use std::{borrow::Cow, collections::HashMap};
 
 use helix_stdx::rope::RopeSliceExt;
 use tree_house::TREE_SITTER_MATCH_LIMIT;
@@ -214,7 +214,10 @@ fn whitespace_with_same_width(text: RopeSlice) -> String {
         if grapheme == "\t" {
             s.push('\t');
         } else {
-            s.extend(std::iter::repeat(' ').take(grapheme_width(&Cow::from(grapheme))));
+            s.extend(std::iter::repeat_n(
+                ' ',
+                grapheme_width(&Cow::from(grapheme)),
+            ));
         }
     }
     s
@@ -243,10 +246,10 @@ pub fn normalize_indentation(
         original_len += 1;
     }
     if indent_style == IndentStyle::Tabs {
-        dst.extend(iter::repeat('\t').take(len / tab_width));
+        dst.extend(std::iter::repeat_n('\t', len / tab_width));
         len %= tab_width;
     }
-    dst.extend(iter::repeat(' ').take(len));
+    dst.extend(std::iter::repeat_n(' ', len));
     original_len
 }
 
