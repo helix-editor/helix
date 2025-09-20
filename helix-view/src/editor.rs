@@ -221,6 +221,32 @@ impl Default for FilePickerConfig {
     }
 }
 
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct FileExplorerConfig {
+    /// IgnoreOptions
+    /// Enables ignoring hidden files.
+    /// Whether to hide hidden files in file explorer and global search results. Defaults to false.
+    pub hidden: bool,
+    /// Enables following symlinks.
+    /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
+    pub follow_symlinks: bool,
+    /// Enables reading ignore files from parent directories. Defaults to true.
+    pub parents: bool,
+    /// Enables reading `.ignore` files.
+    /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to true.
+    pub ignore: bool,
+    /// Enables reading `.gitignore` files.
+    /// Whether to hide files listed in .gitignore in file picker and global search results. Defaults to true.
+    pub git_ignore: bool,
+    /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
+    /// Whether to hide files listed in global .gitignore in file picker and global search results. Defaults to true.
+    pub git_global: bool,
+    /// Enables reading `.git/info/exclude` files.
+    /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to true.
+    pub git_exclude: bool,
+}
+
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -318,6 +344,7 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    pub file_explorer: FileExplorerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
@@ -1038,6 +1065,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,

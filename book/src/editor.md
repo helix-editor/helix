@@ -224,6 +224,24 @@ Example:
 !.gitattributes
 ```
 
+### `[editor.file-explorer]` Section
+
+In addition to the options for the file picker and global search, a similar set of options is presented to configure the file explorer separately. However, unlike the file picker, the defaults are set to avoid ignoring most files.
+
+Note that the ignore files consulted by the file explorer when `ignore` is set to true are the same ones used by the file picker, including the aforementioned Helix-specific ignore files.
+
+
+| Key | Description | Default |
+|--|--|---------|
+|`hidden` | Enables ignoring hidden files | `false`
+|`follow-symlinks` | Follow symlinks instead of ignoring them | `false`
+|`parents` | Enables reading ignore files from parent directories | `false`
+|`ignore` | Enables reading `.ignore` files | `false`
+|`git-ignore` | Enables reading `.gitignore` files | `false`
+|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `false`
+|`git-exclude` | Enables reading `.git/info/exclude` files | `false`
+
+
 ### `[editor.auto-pairs]` Section
 
 Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a

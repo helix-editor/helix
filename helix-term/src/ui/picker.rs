@@ -610,7 +610,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 let preview = std::fs::metadata(&path)
                     .and_then(|metadata| {
                         if metadata.is_dir() {
-                            let files = super::directory_content(&path)?;
+                            let files = super::directory_content(&path, editor)?;
                             let file_names: Vec<_> = files
                                 .iter()
                                 .filter_map(|(path, is_dir)| {
