@@ -90,13 +90,13 @@
 # "markup.raw.block"
 # "diff"
 "diff.plus" = { fg = "zb-diffadd-fg", bg = "zb-diffadd-bg", modifiers = ["bold"] }
-# "diff.plus.gutter"
+"diff.plus.gutter" = "zb-diffadd-fg"
 "diff.minus" = { fg = "zb-diffdelete-fg", bg = "zb-diffdelete-bg" }
-# "diff.minus.gutter"
+"diff.minus.gutter" = "zb-string-fg"
 "diff.delta" = { bg = "zb-diffchange-bg" }
 # "diff.delta.moved"
 # "diff.delta.conflict"
-# "diff.delta.gutter"
+"diff.delta.gutter" = "zb-normal-fg"
 
 "ui.background" = { bg = "zb-normal-bg" }
 # "ui.background.separator"
@@ -115,8 +115,8 @@
 # ui.gutter.selected	Gutter for the line the cursor is on
 "ui.linenr" = { fg = "zb-linenr-fg", bg = "zb-linenr-bg" }
 "ui.linenr.selected" = { fg = "zb-cursorlinenr-fg", bg = "zb-cursorlinenr-bg", modifiers = ["bold"] }
-"ui.statusline" = { fg = "zb-statusline-fg", bg = "zb-statusline-bg", modifiers = ["reversed", "bold"] }
-"ui.statusline.inactive" = { fg = "zb-statuslinenc-fg", bg = "zb-statuslinenc-bg", modifiers = ["reversed"] }
+"ui.statusline" = { bg = "zb-statusline-fg", fg = "zb-statusline-bg", modifiers = ["bold"] }
+"ui.statusline.inactive" = { bg = "zb-statuslinenc-fg", fg = "zb-statuslinenc-bg", modifiers = [] }
 # "ui.statusline.normal"
 # "ui.statusline.insert"
 # "ui.statusline.select"
