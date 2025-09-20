@@ -2,7 +2,7 @@ use crate::{
     align_view,
     annotations::diagnostics::InlineDiagnostics,
     document::{DocumentColorSwatches, DocumentInlayHints},
-    editor::{GutterConfig, GutterType},
+    editor::{DisplayInlayHints, GutterConfig, GutterType},
     graphics::Rect,
     handlers::diagnostics::DiagnosticsHandler,
     Align, Document, DocumentId, Theme, ViewId,
@@ -452,7 +452,7 @@ impl View {
         let config = doc.config.load();
 
         // Only render the inlay hints if the config has them enabled
-        if config.lsp.display_inlay_hints {
+        if config.lsp.display_inlay_hints == DisplayInlayHints::On {
             if let Some(DocumentInlayHints {
                 id: _,
                 type_inlay_hints,
