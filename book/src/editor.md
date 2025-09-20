@@ -161,7 +161,7 @@ The following statusline elements can be configured:
 | `display-messages`    | Display LSP `window/showMessage` messages below statusline[^1] | `true` |
 | `display-progress-messages` | Display LSP progress messages below statusline[^1]    | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
-| `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
+| `display-inlay-hints` | Display inlay hints[^2]                                     | `off` |
 | `inlay-hints-length-limit` | Maximum displayed length (non-zero number) of inlay hints | Unset by default  |
 | `display-color-swatches` | Show color swatches next to colors | `true` |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
