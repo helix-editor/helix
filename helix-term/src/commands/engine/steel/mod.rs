@@ -4126,6 +4126,11 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
         "Return the new mode from the event payload",
     );
 
+    module.register_fn("lsp-client-initialized?", is_lsp_client_initialized);
+    template_function_no_context(
+        "lsp-client-initialized?",
+        "Return if the lsp client is initialized",
+    );
     module.register_fn("lsp-client-name", lsp_client_name);
     template_function_no_context("lsp-client-name", "Get the name of the lsp client");
     module.register_fn("lsp-client-offset-encoding", lsp_client_offset_encoding);
@@ -5723,6 +5728,11 @@ fn get_active_lsp_clients(cx: &mut Context) -> SteelVal {
     )
 }
 
+fn is_lsp_client_initialized(client: LspClient) -> bool {
+    let client = client.0.upgrade();
+    client.is_some_and(|client| client.is_initialized())
+}
+
 fn lsp_client_name(client: LspClient) -> Option<String> {
     let client = client.0.upgrade();
     client.map(|client| client.name().to_owned())
@@ -5730,11 +5740,13 @@ fn lsp_client_name(client: LspClient) -> Option<String> {
 
 fn lsp_client_offset_encoding(client: LspClient) -> Option<&'static str> {
     let client = client.0.upgrade();
-    client.map(|client| match client.offset_encoding() {
-        helix_lsp::OffsetEncoding::Utf8 => "utf-8",
-        helix_lsp::OffsetEncoding::Utf16 => "utf-16",
-        helix_lsp::OffsetEncoding::Utf32 => "utf-32",
-    })
+    client
+        .filter(|client| client.is_initialized())
+        .map(|client| match client.offset_encoding() {
+            helix_lsp::OffsetEncoding::Utf8 => "utf-8",
+            helix_lsp::OffsetEncoding::Utf16 => "utf-16",
+            helix_lsp::OffsetEncoding::Utf32 => "utf-32",
+        })
 }
 
 fn send_arbitrary_lsp_command(
