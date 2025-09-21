@@ -402,7 +402,7 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
     Ok(content)
 }
 
-fn get_child_if_single_dir(path: &PathBuf) -> Option<PathBuf> {
+fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
     path.read_dir()
         .and_then(|mut entries| {
             let first_entry = entries
@@ -801,19 +801,16 @@ mod tests {
     fn test_get_child_if_single_dir() {
         let root = tempfile::tempdir().unwrap();
 
-        assert_eq!(get_child_if_single_dir(&root.path().to_path_buf()), None);
+        assert_eq!(get_child_if_single_dir(root.path()), None);
 
         let dir = root.path().join("dir1");
         create_dir(&dir).unwrap();
 
-        assert_eq!(
-            get_child_if_single_dir(&root.path().to_path_buf()),
-            Some(dir.to_path_buf())
-        );
+        assert_eq!(get_child_if_single_dir(root.path()), Some(dir));
 
         let file = root.path().join("file");
         File::create(file).unwrap();
 
-        assert_eq!(get_child_if_single_dir(&root.path().to_path_buf()), None);
+        assert_eq!(get_child_if_single_dir(root.path()), None);
     }
 }
