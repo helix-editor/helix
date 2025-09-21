@@ -45,6 +45,7 @@ pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     diagnostic::DiagnosticProvider,
+    movement::Movement,
     syntax::{
         self,
         config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
@@ -1306,6 +1307,10 @@ impl Editor {
     pub fn menu_border(&self) -> bool {
         self.config().popup_border == PopupBorderConfig::All
             || self.config().popup_border == PopupBorderConfig::Menu
+    }
+
+    pub fn should_extend(&self) -> bool {
+        self.mode == Mode::Select
     }
 
     pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {

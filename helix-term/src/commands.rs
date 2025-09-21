@@ -78,6 +78,7 @@ use std::{
     future::Future,
     io::Read,
     num::NonZeroUsize,
+    ops::DerefMut,
 };
 
 use std::{
@@ -1545,7 +1546,7 @@ fn find_char_line_ending(
     doc.set_selection(view.id, selection);
 }
 
-fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
+fn find_char(cx: &mut Context, direction: Direction, inclusive: bool) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
@@ -1559,7 +1560,7 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
                 code: KeyCode::Enter,
                 ..
             } => {
-                find_char_line_ending(cx, count, direction, inclusive, extend);
+                find_char_line_ending(cx, count, direction, inclusive, cx.editor.should_extend());
                 return;
             }
 
@@ -1575,12 +1576,22 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
         };
         let motion = move |editor: &mut Editor| {
             match direction {
-                Direction::Forward => {
-                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
-                }
-                Direction::Backward => {
-                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
-                }
+                Direction::Forward => find_char_impl(
+                    editor,
+                    &find_next_char_impl,
+                    inclusive,
+                    ch,
+                    count,
+                    editor.should_extend(),
+                ),
+                Direction::Backward => find_char_impl(
+                    editor,
+                    &find_prev_char_impl,
+                    inclusive,
+                    ch,
+                    count,
+                    editor.should_extend(),
+                ),
             };
         };
 
@@ -1595,9 +1606,9 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
     editor: &mut Editor,
     search_fn: &F,
     inclusive: bool,
-    extend: bool,
     char_matcher: M,
     count: usize,
+    extend: bool,
 ) where
     F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
 {
@@ -1663,35 +1674,35 @@ fn find_prev_char_impl(
 }
 
 fn find_till_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, false, false);
+    find_char(cx, Direction::Forward, false);
 }
 
 fn find_next_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, true, false)
+    find_char(cx, Direction::Forward, true)
 }
 
 fn extend_till_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, false, true)
+    find_char(cx, Direction::Forward, false)
 }
 
 fn extend_next_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, true, true)
+    find_char(cx, Direction::Forward, true)
 }
 
 fn till_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, false, false)
+    find_char(cx, Direction::Backward, false)
 }
 
 fn find_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, true, false)
+    find_char(cx, Direction::Backward, true)
 }
 
 fn extend_till_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, false, true)
+    find_char(cx, Direction::Backward, false)
 }
 
 fn extend_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, true, true)
+    find_char(cx, Direction::Backward, true)
 }
 
 fn repeat_last_motion(cx: &mut Context) {
@@ -5515,8 +5526,9 @@ fn select_prev_sibling(cx: &mut Context) {
     select_sibling_impl(cx, object::select_prev_sibling)
 }
 
-fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
+fn move_node_bound_impl(cx: &mut Context, dir: Direction) {
     let motion = move |editor: &mut Editor| {
+        let extend = editor.should_extend();
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {
@@ -5528,7 +5540,7 @@ fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
                 text,
                 current_selection.clone(),
                 dir,
-                movement,
+                extend,
             );
 
             doc.set_selection(view.id, selection);
@@ -5539,19 +5551,19 @@ fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
 }
 
 pub fn move_parent_node_end(cx: &mut Context) {
-    move_node_bound_impl(cx, Direction::Forward, Movement::Move)
+    move_node_bound_impl(cx, Direction::Forward)
 }
 
 pub fn move_parent_node_start(cx: &mut Context) {
-    move_node_bound_impl(cx, Direction::Backward, Movement::Move)
+    move_node_bound_impl(cx, Direction::Backward)
 }
 
 pub fn extend_parent_node_end(cx: &mut Context) {
-    move_node_bound_impl(cx, Direction::Forward, Movement::Extend)
+    move_node_bound_impl(cx, Direction::Forward)
 }
 
 pub fn extend_parent_node_start(cx: &mut Context) {
-    move_node_bound_impl(cx, Direction::Backward, Movement::Extend)
+    move_node_bound_impl(cx, Direction::Backward)
 }
 
 fn select_all_impl<F>(editor: &mut Editor, select_fn: F)
