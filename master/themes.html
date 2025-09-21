@@ -162,6 +162,14 @@
                     <main>
                         <h2 id="themes"><a class="header" href="#themes">Themes</a></h2>
 <p>To use a theme add <code>theme = "&lt;name&gt;"</code> to the top of your <a href="./configuration.html"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
+<p>Separate themes can be configured for light and dark modes. On terminals supporting <a href="https://github.com/contour-terminal/contour/blob/master/docs/vt-extensions/color-palette-update-notifications.md">mode 2031 dark/light detection</a>, the theme mode is detected from the terminal.</p>
+<pre><code class="language-toml">[theme]
+dark = "catppuccin_frappe"
+light = "catppuccin_latte"
+## Optional. Used if the terminal doesn't declare a preference.
+## Defaults to the theme set for `dark` if not specified.
+# fallback = "catppuccin_frappe"
+</code></pre>
 <h2 id="creating-a-theme"><a class="header" href="#creating-a-theme">Creating a theme</a></h2>
 <p>Create a file with the name of your theme as the file name (i.e <code>mytheme.toml</code>) and place it in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code> or <code>%AppData%\helix\themes</code> on Windows). The directory might have to be created beforehand.</p>
 <blockquote>
