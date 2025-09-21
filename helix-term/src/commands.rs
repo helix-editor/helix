@@ -1559,7 +1559,13 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool) {
                 code: KeyCode::Enter,
                 ..
             } => {
-                find_char_line_ending(cx, count, direction, inclusive, cx.editor.should_extend());
+                find_char_line_ending(
+                    cx,
+                    count,
+                    direction,
+                    inclusive,
+                    cx.editor.mode == Mode::Select,
+                );
                 return;
             }
 
@@ -1581,7 +1587,7 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool) {
                     inclusive,
                     ch,
                     count,
-                    editor.should_extend(),
+                    editor.mode == Mode::Select,
                 ),
                 Direction::Backward => find_char_impl(
                     editor,
@@ -1589,7 +1595,7 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool) {
                     inclusive,
                     ch,
                     count,
-                    editor.should_extend(),
+                    editor.mode == Mode::Select,
                 ),
             };
         };
@@ -5527,7 +5533,7 @@ fn select_prev_sibling(cx: &mut Context) {
 
 fn move_node_bound_impl(cx: &mut Context, dir: Direction) {
     let motion = move |editor: &mut Editor| {
-        let extend = editor.should_extend();
+        let extend = editor.mode == Mode::Select;
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {

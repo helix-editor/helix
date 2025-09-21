@@ -1308,10 +1308,6 @@ impl Editor {
             || self.config().popup_border == PopupBorderConfig::Menu
     }
 
-    pub fn should_extend(&self) -> bool {
-        self.mode == Mode::Select
-    }
-
     pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
         motion(self);
         self.last_motion = Some(Box::new(motion));
