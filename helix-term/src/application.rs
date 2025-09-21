@@ -36,6 +36,7 @@ use std::{
     sync::Arc,
 };
 
+#[cfg_attr(windows, allow(unused_imports))]
 use anyhow::{Context, Error};
 
 #[cfg(not(windows))]
@@ -43,17 +44,26 @@ use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(all(not(windows), not(feature = "integration")))]
 use tui::backend::TerminaBackend;
+
+#[cfg(all(windows, not(feature = "integration")))]
+use tui::backend::CrosstermBackend;
 
 #[cfg(feature = "integration")]
 use tui::backend::TestBackend;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(all(not(windows), not(feature = "integration")))]
 type TerminalBackend = TerminaBackend;
-
+#[cfg(all(windows, not(feature = "integration")))]
+type TerminalBackend = CrosstermBackend<std::io::Stdout>;
 #[cfg(feature = "integration")]
 type TerminalBackend = TestBackend;
+
+#[cfg(not(windows))]
+type TerminalEvent = termina::Event;
+#[cfg(windows)]
+type TerminalEvent = crossterm::event::Event;
 
 type Terminal = tui::terminal::Terminal<TerminalBackend>;
 
@@ -102,9 +112,11 @@ impl Application {
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
-        #[cfg(not(feature = "integration"))]
+        #[cfg(all(not(windows), not(feature = "integration")))]
         let backend = TerminaBackend::new((&config.editor).into())
             .context("failed to create terminal backend")?;
+        #[cfg(all(windows, not(feature = "integration")))]
+        let backend = CrosstermBackend::new(std::io::stdout(), (&config.editor).into());
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -286,7 +298,7 @@ impl Application {
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
     where
-        S: Stream<Item = std::io::Result<termina::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         self.render().await;
 
@@ -299,7 +311,7 @@ impl Application {
 
     pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
     where
-        S: Stream<Item = std::io::Result<termina::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -659,7 +671,7 @@ impl Application {
         false
     }
 
-    pub async fn handle_terminal_events(&mut self, event: std::io::Result<termina::Event>) {
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<TerminalEvent>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -667,6 +679,7 @@ impl Application {
         };
         // Handle key events
         let should_redraw = match event.unwrap() {
+            #[cfg(not(windows))]
             termina::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
                 self.terminal
                     .resize(Rect::new(0, 0, cols, rows))
@@ -679,9 +692,29 @@ impl Application {
                 self.compositor
                     .handle_event(&Event::Resize(cols, rows), &mut cx)
             }
+            #[cfg(not(windows))]
             // Ignore keyboard release events.
             termina::Event::Key(termina::event::KeyEvent {
                 kind: termina::event::KeyEventKind::Release,
+                ..
+            }) => false,
+            #[cfg(windows)]
+            TerminalEvent::Resize(width, height) => {
+                self.terminal
+                    .resize(Rect::new(0, 0, width, height))
+                    .expect("Unable to resize terminal");
+
+                let area = self.terminal.size().expect("couldn't get terminal size");
+
+                self.compositor.resize(area);
+
+                self.compositor
+                    .handle_event(&Event::Resize(width, height), &mut cx)
+            }
+            #[cfg(windows)]
+            // Ignore keyboard release events.
+            crossterm::event::Event::Key(crossterm::event::KeyEvent {
+                kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
             event => self.compositor.handle_event(&event.into(), &mut cx),
@@ -1132,15 +1165,20 @@ impl Application {
         self.terminal.restore()
     }
 
-    #[cfg(not(feature = "integration"))]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<termina::Event>> + Unpin {
+    #[cfg(all(not(feature = "integration"), not(windows)))]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
         use termina::Terminal as _;
         let reader = self.terminal.backend().terminal().event_reader();
         termina::EventStream::new(reader, |event| !event.is_escape())
     }
 
+    #[cfg(all(not(feature = "integration"), windows))]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+        crossterm::event::EventStream::new()
+    }
+
     #[cfg(feature = "integration")]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<termina::Event>> + Unpin {
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
         use std::{
             pin::Pin,
             task::{Context, Poll},
@@ -1150,7 +1188,7 @@ impl Application {
         pub struct DummyEventStream;
 
         impl Stream for DummyEventStream {
-            type Item = std::io::Result<termina::Event>;
+            type Item = std::io::Result<TerminalEvent>;
 
             fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
                 Poll::Pending
@@ -1162,7 +1200,7 @@ impl Application {
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
-        S: Stream<Item = std::io::Result<termina::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         self.terminal.claim()?;
 
