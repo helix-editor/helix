@@ -13,6 +13,7 @@
   (comment) @injection.content . (comment)* . [
     (package_clause) ; `package`
     (type_declaration) ; `type`
+    (function_declaration) ; `func`
     (method_declaration) ; `func`
     (var_declaration) ; `var`
     (const_declaration) ; `const`
@@ -43,6 +44,7 @@
 ; https://pkg.go.dev/fmt#Printf
 ; https://pkg.go.dev/fmt#Sprintf
 ; https://pkg.go.dev/fmt#Scanf
+; https://pkg.go.dev/fmt#Errorf
 ((call_expression
   function: (selector_expression
     operand: (identifier) @_module
@@ -50,7 +52,7 @@
   arguments: (argument_list
     . (interpreted_string_literal) @injection.content))
   (#eq? @_module "fmt")
-  (#any-of? @_func "Printf" "Sprintf" "Scanf")
+  (#any-of? @_func "Printf" "Sprintf" "Scanf" "Errorf")
   (#set! injection.language "go-format-string"))
 
 ; https://pkg.go.dev/fmt#Fprintf

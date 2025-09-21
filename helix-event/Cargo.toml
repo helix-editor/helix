@@ -13,7 +13,7 @@ homepage.workspace = true
 
 [dependencies]
 foldhash.workspace = true
-hashbrown = "0.15"
+hashbrown = "0.16"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
 # the event registry is essentially read only but must be an rwlock so we can
 # setup new events on initialization, hardware-lock-elision hugely benefits this case

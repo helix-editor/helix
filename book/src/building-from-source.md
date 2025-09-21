@@ -42,7 +42,7 @@ RUSTFLAGS="-C target-feature=-crt-static"
    # Optimized
    cargo install \
       --profile opt \
-      --config 'build.rustflags="-C target-cpu=native"' \
+      --config 'build.rustflags=["-C", "target-cpu=native"]' \
       --path helix-term \
       --locked
    ```

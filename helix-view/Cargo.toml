@@ -11,7 +11,8 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-term = ["crossterm"]
+default = []
+term = ["termina"]
 steel = ["dep:steel-core", "helix-core/steel"]
 unicode-lines = []
 
@@ -26,7 +27,7 @@ helix-vcs = { path = "../helix-vcs" }
 
 bitflags.workspace = true
 anyhow = "1"
-crossterm = { version = "0.28", optional = true }
+termina = { workspace = true, optional = true }
 
 tempfile.workspace = true
 
@@ -62,7 +63,7 @@ clipboard-win = { version = "5.4", features = ["std"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-rustix = { version = "1.0", features = ["fs"] }
+rustix = { version = "1.1", features = ["fs"] }
 
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }

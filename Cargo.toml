@@ -42,16 +42,17 @@ nucleo = "0.5.0"
 slotmap = "1.0.7"
 steel-core = { git = "https://github.com/mattwparas/steel.git", version = "0.7.0", features = ["anyhow", "dylibs", "sync", "triomphe", "imbl"] }
 thiserror = "2.0"
-tempfile = "3.20.0"
+tempfile = "3.22.0"
 bitflags = "2.9"
 unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
-foldhash = "0.1"
+foldhash = "0.2"
 parking_lot = "0.12"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 tokio-stream = "0.1.17"
 toml = "0.9"
+termina = "0.1"
 
 [workspace.package]
 version = "25.7.1"

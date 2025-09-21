@@ -446,6 +446,7 @@ pub enum DebugArgumentValue {
     String(String),
     Array(Vec<String>),
     Boolean(bool),
+    Table(HashMap<String, String>),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]

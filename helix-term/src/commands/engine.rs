@@ -2,6 +2,7 @@ use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::syntax;
 use helix_lsp::{jsonrpc, LanguageServerId};
 use helix_view::{document::Mode, input::KeyEvent};
+use termina::EventReader;
 
 use std::{borrow::Cow, sync::Arc};
 
@@ -64,6 +65,7 @@ impl ScriptingEngine {
         cx: &mut Context,
         configuration: Arc<ArcSwapAny<Arc<Config>>>,
         language_configuration: Arc<ArcSwap<syntax::Loader>>,
+        event_reader: EventReader,
     ) {
         for kind in PLUGIN_PRECEDENCE {
             manual_dispatch!(
@@ -71,7 +73,8 @@ impl ScriptingEngine {
                 run_initialization_script(
                     cx,
                     configuration.clone(),
-                    language_configuration.clone()
+                    language_configuration.clone(),
+                    event_reader.clone()
                 )
             )
         }
@@ -193,6 +196,7 @@ pub trait PluginSystem {
         _cx: &mut Context,
         _configuration: Arc<ArcSwapAny<Arc<Config>>>,
         _language_configuration: Arc<ArcSwap<syntax::Loader>>,
+        _event_reader: EventReader,
     ) {
     }
 

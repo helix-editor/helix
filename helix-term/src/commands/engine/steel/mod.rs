@@ -1,7 +1,6 @@
 mod components;
 
 use arc_swap::{ArcSwap, ArcSwapAny};
-use crossterm::event::{Event, KeyCode, KeyModifiers};
 use helix_core::{
     command_line::Args,
     diagnostic::Severity,
@@ -46,6 +45,7 @@ use steel::{
     },
     steelerr, RootedSteelVal, SteelErr, SteelVal,
 };
+use termina::EventReader;
 
 use std::{
     borrow::Cow,
@@ -81,10 +81,13 @@ use insert::insert_char;
 static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
 static SAFEPOINT_HANDLER: OnceCell<SafepointHandler> = OnceCell::new();
 
-// TODO: Use this for the available commands.
-// We just have to look at functions that have been defined at
-// the top level, _after_ they
 static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
+
+static EVENT_READER: OnceCell<EventReader> = OnceCell::new();
+
+fn install_event_reader(event_reader: EventReader) {
+    EVENT_READER.set(event_reader).unwrap()
+}
 
 fn setup() -> Engine {
     let engine = steel::steel_vm::engine::Engine::new();
@@ -93,7 +96,10 @@ fn setup() -> Engine {
     let running = Arc::new(AtomicBool::new(false));
 
     fn is_event_available() -> std::io::Result<bool> {
-        crossterm::event::poll(Duration::from_millis(10))
+        EVENT_READER
+            .get()
+            .unwrap()
+            .poll(Some(Duration::from_millis(10)), |_| true)
     }
 
     let controller_clone = controller.clone();
@@ -111,11 +117,11 @@ fn setup() -> Engine {
 
             while running.load(std::sync::atomic::Ordering::Relaxed) {
                 if is_event_available().unwrap_or(false) {
-                    let event = crossterm::event::read();
+                    let event = EVENT_READER.get().unwrap().read(|_| true);
 
-                    if let Ok(Event::Key(crossterm::event::KeyEvent {
-                        code: KeyCode::Char('c'),
-                        modifiers: KeyModifiers::CONTROL,
+                    if let Ok(termina::Event::Key(termina::event::KeyEvent {
+                        code: termina::event::KeyCode::Char('c'),
+                        modifiers: termina::event::Modifiers::CONTROL,
                         ..
                     })) = event
                     {
@@ -2358,10 +2364,10 @@ impl super::PluginSystem for SteelScriptingEngine {
         &self,
         cx: &mut Context,
         configuration: Arc<ArcSwapAny<Arc<Config>>>,
-        // Just apply... all the configurations at once?
         language_configuration: Arc<ArcSwap<syntax::Loader>>,
+        event_reader: EventReader,
     ) {
-        run_initialization_script(cx, configuration, language_configuration);
+        run_initialization_script(cx, configuration, language_configuration, event_reader);
     }
 
     fn handle_keymap_event(
@@ -3527,7 +3533,10 @@ fn run_initialization_script(
     cx: &mut Context,
     configuration: Arc<ArcSwapAny<Arc<Config>>>,
     language_configuration: Arc<ArcSwap<syntax::Loader>>,
+    event_reader: EventReader,
 ) {
+    install_event_reader(event_reader);
+
     log::info!("Loading init.scm...");
 
     let helix_module_path = helix_module_file();
