@@ -78,7 +78,6 @@ use std::{
     future::Future,
     io::Read,
     num::NonZeroUsize,
-    ops::DerefMut,
 };
 
 use std::{
