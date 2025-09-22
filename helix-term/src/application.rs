@@ -1118,7 +1118,6 @@ impl Application {
                             handlers::diagnostics::request_document_diagnostics(
                                 &mut self.editor,
                                 document,
-                                false,
                             );
                         }
 

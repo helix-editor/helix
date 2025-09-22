@@ -8,7 +8,7 @@ use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::Uri;
 use helix_event::{cancelable_future, register_hook, send_blocking};
-use helix_lsp::lsp;
+use helix_lsp::{lsp, LanguageServerId};
 use helix_view::document::Mode;
 use helix_view::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidOpen, LanguageServerInitialized,
@@ -49,13 +49,40 @@ pub(super) fn register_hooks(handlers: &Handlers) {
             event.doc.pull_diagnostic_controller.cancel();
             let document_id = event.doc.id();
             send_blocking(&tx, PullDiagnosticsEvent { document_id });
-            send_blocking(&tx_all_documents, PullAllDocumentsDiagnosticsEvent {});
+
+            let inter_file_dependencies_language_servers = event
+                .doc
+                .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
+                .filter(|language_server| {
+                    language_server
+                        .capabilities()
+                        .diagnostic_provider
+                        .as_ref()
+                        .is_some_and(|diagnostic_provider| match diagnostic_provider {
+                            lsp::DiagnosticServerCapabilities::Options(options) => {
+                                options.inter_file_dependencies
+                            }
+
+                            lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
+                                options.diagnostic_options.inter_file_dependencies
+                            }
+                        })
+                })
+                .map(|language_server| language_server.id())
+                .collect();
+
+            send_blocking(
+                &tx_all_documents,
+                PullAllDocumentsDiagnosticsEvent {
+                    language_servers: inter_file_dependencies_language_servers,
+                },
+            );
         }
         Ok(())
     });
 
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
-        request_document_diagnostics(event.editor, event.doc, false);
+        request_document_diagnostics(event.editor, event.doc);
 
         Ok(())
     });
@@ -64,7 +91,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         let doc_ids: Vec<_> = event.editor.documents().map(|doc| doc.id()).collect();
 
         for doc_id in doc_ids {
-            request_document_diagnostics(event.editor, doc_id, false);
+            request_document_diagnostics(event.editor, doc_id);
         }
 
         Ok(())
@@ -92,68 +119,58 @@ impl helix_event::AsyncHook for PullDiagnosticsHandler {
         let document_ids = self.document_ids.clone();
         job::dispatch_blocking(move |editor, _| {
             for document_id in document_ids {
-                request_document_diagnostics(editor, document_id, false);
+                request_document_diagnostics(editor, document_id);
             }
         })
     }
 }
 
 #[derive(Debug, Default)]
-pub(super) struct PullAllDocumentsDiagnosticHandler {}
+pub(super) struct PullAllDocumentsDiagnosticHandler {
+    language_servers: HashSet<LanguageServerId>,
+}
 
 impl helix_event::AsyncHook for PullAllDocumentsDiagnosticHandler {
     type Event = PullAllDocumentsDiagnosticsEvent;
 
     fn handle_event(
         &mut self,
-        _event: Self::Event,
+        event: Self::Event,
         _timeout: Option<tokio::time::Instant>,
     ) -> Option<tokio::time::Instant> {
+        self.language_servers.extend(&event.language_servers);
         Some(Instant::now() + Duration::from_secs(1))
     }
 
     fn finish_debounce(&mut self) {
+        let language_servers = self.language_servers.clone();
         job::dispatch_blocking(move |editor, _| {
             let documents: Vec<_> = editor.documents.values().map(|doc| doc.id()).collect();
 
             for document in documents {
-                request_document_diagnostics(editor, document, true);
+                request_document_diagnostics_for_language_severs(
+                    editor,
+                    document,
+                    language_servers.clone(),
+                );
             }
         })
     }
 }
 
-pub fn request_document_diagnostics(
+fn request_document_diagnostics_for_language_severs(
     editor: &mut Editor,
     doc_id: DocumentId,
-    only_providers_with_inter_file_dependencies: bool,
+    language_servers: HashSet<LanguageServerId>,
 ) {
     let Some(doc) = editor.document_mut(doc_id) else {
         return;
     };
 
-    let mut seen_language_servers = HashSet::new();
-    let mut futures: FuturesOrdered<_> = doc
-        .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
-        .filter(|ls| seen_language_servers.insert(ls.id()))
+    let mut futures: FuturesOrdered<_> = language_servers
+        .iter()
+        .filter_map(|x| doc.language_servers().find(|y| &y.id() == x))
         .filter_map(|language_server| {
-            if only_providers_with_inter_file_dependencies
-                && !language_server
-                    .capabilities()
-                    .diagnostic_provider
-                    .as_ref()
-                    .is_some_and(|diagnostic_provider| match diagnostic_provider {
-                        lsp::DiagnosticServerCapabilities::Options(options) => {
-                            options.inter_file_dependencies
-                        }
-                        lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
-                            options.diagnostic_options.inter_file_dependencies
-                        }
-                    })
-            {
-                return None;
-            }
-
             let future = language_server
                 .text_document_diagnostic(doc.identifier(), doc.previous_diagnostic_id.clone())?;
 
@@ -230,11 +247,12 @@ pub fn request_document_diagnostics(
                                 if parsed_cancellation_data.retrigger_request {
                                     tokio::time::sleep(Duration::from_millis(500)).await;
 
+                                    let language_servers = language_servers.clone();
                                     job::dispatch(move |editor, _| {
-                                        request_document_diagnostics(
+                                        request_document_diagnostics_for_language_severs(
                                             editor,
                                             doc_id,
-                                            only_providers_with_inter_file_dependencies,
+                                            language_servers,
                                         );
                                     })
                                     .await;
@@ -249,6 +267,19 @@ pub fn request_document_diagnostics(
             }
         });
     });
+}
+
+pub fn request_document_diagnostics(editor: &mut Editor, doc_id: DocumentId) {
+    let Some(doc) = editor.document(doc_id) else {
+        return;
+    };
+
+    let language_servers = doc
+        .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
+        .map(|language_servers| language_servers.id())
+        .collect();
+
+    request_document_diagnostics_for_language_severs(editor, doc_id, language_servers);
 }
 
 fn handle_pull_diagnostics_response(
