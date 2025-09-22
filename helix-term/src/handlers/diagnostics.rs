@@ -1,4 +1,4 @@
-use futures_util::stream::FuturesOrdered;
+use futures_util::stream::FuturesUnordered;
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::Instant;
@@ -169,7 +169,7 @@ fn request_document_diagnostics_for_language_severs(
 
     let cancel = doc.pull_diagnostic_controller.restart();
 
-    let mut futures: FuturesOrdered<_> = language_servers
+    let mut futures: FuturesUnordered<_> = language_servers
         .iter()
         .filter_map(|x| doc.language_servers().find(|y| &y.id() == x))
         .filter_map(|language_server| {
