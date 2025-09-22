@@ -172,6 +172,7 @@
 | move | ✓ |  |  |  |  |  |
 | msbuild | ✓ |  | ✓ |  |  |  |
 | nasm | ✓ | ✓ |  |  |  | `asm-lsp` |
+| nearley | ✓ |  |  |  | ✓ |  |
 | nestedtext | ✓ | ✓ | ✓ |  |  |  |
 | nginx | ✓ |  |  |  |  |  |
 | nickel | ✓ |  | ✓ |  |  | `nls` |
