@@ -403,19 +403,13 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
 }
 
 fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
-    path.read_dir()
-        .and_then(|mut entries| {
-            let first_entry = entries
-                .next()
-                .unwrap_or(Err(std::io::Error::other("No entry in directory.")));
-            match entries.next() {
-                Some(_) => Err(std::io::Error::other("There is a second entry")),
-                None => first_entry,
-            }
-        })
-        .ok()
-        .filter(|e| e.file_type().is_ok_and(|file_type| file_type.is_dir()))
-        .map(|e| e.path())
+    let mut entries = path.read_dir().ok()?;
+    let entry = entries.next()?.ok()?;
+    if entries.next().is_none() && entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
+        Some(entry.path())
+    } else {
+        None
+    }
 }
 
 pub mod completers {
