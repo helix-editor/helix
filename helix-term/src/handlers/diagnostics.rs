@@ -71,17 +71,9 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(super) struct PullDiagnosticsHandler {
     document_ids: HashSet<DocumentId>,
-}
-
-impl PullDiagnosticsHandler {
-    pub fn new() -> Self {
-        PullDiagnosticsHandler {
-            document_ids: Default::default(),
-        }
-    }
 }
 
 impl helix_event::AsyncHook for PullDiagnosticsHandler {
@@ -106,14 +98,8 @@ impl helix_event::AsyncHook for PullDiagnosticsHandler {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(super) struct PullAllDocumentsDiagnosticHandler {}
-
-impl PullAllDocumentsDiagnosticHandler {
-    pub fn new() -> Self {
-        PullAllDocumentsDiagnosticHandler {}
-    }
-}
 
 impl helix_event::AsyncHook for PullAllDocumentsDiagnosticHandler {
     type Event = PullAllDocumentsDiagnosticsEvent;
