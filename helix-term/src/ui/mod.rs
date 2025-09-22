@@ -354,12 +354,12 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     Ok(picker)
 }
 
-fn directory_content(path: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
     use ignore::WalkBuilder;
 
     let config = editor.config();
 
-    let mut walk_builder = WalkBuilder::new(path);
+    let mut walk_builder = WalkBuilder::new(root);
 
     let mut content: Vec<(PathBuf, bool)> = walk_builder
         .hidden(config.file_explorer.hidden)
@@ -377,25 +377,39 @@ fn directory_content(path: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
         .filter_map(|entry| {
             entry
                 .map(|entry| {
-                    (
-                        entry.path().to_path_buf(),
-                        entry
-                            .file_type()
-                            .is_some_and(|file_type| file_type.is_dir()),
-                    )
+                    let is_dir = entry
+                        .file_type()
+                        .is_some_and(|file_type| file_type.is_dir());
+                    let mut path = entry.path().to_path_buf();
+                    if is_dir && path != root && config.file_explorer.flatten_dirs {
+                        while let Some(single_child_directory) = get_child_if_single_dir(&path) {
+                            path = single_child_directory;
+                        }
+                    }
+                    (path, is_dir)
                 })
                 .ok()
-                .filter(|entry| entry.0 != path)
+                .filter(|entry| entry.0 != root)
         })
         .collect();
 
     content.sort_by(|(path1, is_dir1), (path2, is_dir2)| (!is_dir1, path1).cmp(&(!is_dir2, path2)));
 
-    if path.parent().is_some() {
-        content.insert(0, (path.join(".."), true));
+    if root.parent().is_some() {
+        content.insert(0, (root.join(".."), true));
     }
 
     Ok(content)
+}
+
+fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
+    let mut entries = path.read_dir().ok()?;
+    let entry = entries.next()?.ok()?;
+    if entries.next().is_none() && entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
+        Some(entry.path())
+    } else {
+        None
+    }
 }
 
 pub mod completers {
@@ -768,5 +782,29 @@ pub mod completers {
         }
 
         completions
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs::{create_dir, File};
+
+    use super::*;
+
+    #[test]
+    fn test_get_child_if_single_dir() {
+        let root = tempfile::tempdir().unwrap();
+
+        assert_eq!(get_child_if_single_dir(root.path()), None);
+
+        let dir = root.path().join("dir1");
+        create_dir(&dir).unwrap();
+
+        assert_eq!(get_child_if_single_dir(root.path()), Some(dir));
+
+        let file = root.path().join("file");
+        File::create(file).unwrap();
+
+        assert_eq!(get_child_if_single_dir(root.path()), None);
     }
 }

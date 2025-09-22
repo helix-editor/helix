@@ -613,8 +613,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             let files = super::directory_content(&path, editor)?;
                             let file_names: Vec<_> = files
                                 .iter()
-                                .filter_map(|(path, is_dir)| {
-                                    let name = path.file_name()?.to_string_lossy();
+                                .filter_map(|(file_path, is_dir)| {
+                                    let name = file_path
+                                        .strip_prefix(&path)
+                                        .map(|p| Some(p.as_os_str()))
+                                        .unwrap_or_else(|_| file_path.file_name())?
+                                        .to_string_lossy();
                                     if *is_dir {
                                         Some((format!("{}/", name), true))
                                     } else {
