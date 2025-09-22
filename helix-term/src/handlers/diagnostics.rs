@@ -167,6 +167,8 @@ fn request_document_diagnostics_for_language_severs(
         return;
     };
 
+    let cancel = doc.pull_diagnostic_controller.restart();
+
     let mut futures: FuturesOrdered<_> = language_servers
         .iter()
         .filter_map(|x| doc.language_servers().find(|y| &y.id() == x))
@@ -206,66 +208,57 @@ fn request_document_diagnostics_for_language_severs(
         return;
     }
 
-    job::dispatch_blocking(move |editor, _| {
-        let Some(doc) = editor.document_mut(doc_id) else {
-            return;
-        };
-
-        let cancel = doc.pull_diagnostic_controller.restart();
-
-        tokio::spawn(async move {
-            loop {
-                match cancelable_future(futures.next(), &cancel).await {
-                    Some(Some(future_result)) => match future_result.0 {
-                        Ok(result) => {
-                            job::dispatch(move |editor, _| {
-                                handle_pull_diagnostics_response(
-                                    editor,
-                                    result,
-                                    future_result.1,
-                                    future_result.2,
-                                    doc_id,
+    tokio::spawn(async move {
+        loop {
+            match cancelable_future(futures.next(), &cancel).await {
+                Some(Some(future_result)) => match future_result.0 {
+                    Ok(result) => {
+                        job::dispatch(move |editor, _| {
+                            handle_pull_diagnostics_response(
+                                editor,
+                                result,
+                                future_result.1,
+                                future_result.2,
+                                doc_id,
+                            )
+                        })
+                        .await
+                    }
+                    Err(err) => {
+                        let parsed_cancellation_data = if let helix_lsp::Error::Rpc(error) = err {
+                            error.data.and_then(|data| {
+                                serde_json::from_value::<lsp::DiagnosticServerCancellationData>(
+                                    data,
                                 )
+                                .ok()
                             })
-                            .await
-                        }
-                        Err(err) => {
-                            let parsed_cancellation_data = if let helix_lsp::Error::Rpc(error) = err
-                            {
-                                error.data.and_then(|data| {
-                                    serde_json::from_value::<lsp::DiagnosticServerCancellationData>(
-                                        data,
-                                    )
-                                    .ok()
+                        } else {
+                            log::error!("Pull diagnostic request failed: {err}");
+                            return;
+                        };
+
+                        if let Some(parsed_cancellation_data) = parsed_cancellation_data {
+                            if parsed_cancellation_data.retrigger_request {
+                                tokio::time::sleep(Duration::from_millis(500)).await;
+
+                                let language_servers = language_servers.clone();
+                                job::dispatch(move |editor, _| {
+                                    request_document_diagnostics_for_language_severs(
+                                        editor,
+                                        doc_id,
+                                        language_servers,
+                                    );
                                 })
-                            } else {
-                                log::error!("Pull diagnostic request failed: {err}");
-                                return;
-                            };
-
-                            if let Some(parsed_cancellation_data) = parsed_cancellation_data {
-                                if parsed_cancellation_data.retrigger_request {
-                                    tokio::time::sleep(Duration::from_millis(500)).await;
-
-                                    let language_servers = language_servers.clone();
-                                    job::dispatch(move |editor, _| {
-                                        request_document_diagnostics_for_language_severs(
-                                            editor,
-                                            doc_id,
-                                            language_servers,
-                                        );
-                                    })
-                                    .await;
-                                }
+                                .await;
                             }
                         }
-                    },
-                    Some(None) => break,
-                    // The request was cancelled.
-                    None => return,
-                }
+                    }
+                },
+                Some(None) => break,
+                // The request was cancelled.
+                None => return,
             }
-        });
+        }
     });
 }
 
