@@ -1,5 +1,6 @@
 use futures_util::stream::FuturesUnordered;
 use std::collections::HashSet;
+use std::mem;
 use std::time::Duration;
 use tokio::time::Instant;
 use tokio_stream::StreamExt;
@@ -116,7 +117,7 @@ impl helix_event::AsyncHook for PullDiagnosticsHandler {
     }
 
     fn finish_debounce(&mut self) {
-        let document_ids = self.document_ids.clone();
+        let document_ids = mem::take(&mut self.document_ids);
         job::dispatch_blocking(move |editor, _| {
             for document_id in document_ids {
                 request_document_diagnostics(editor, document_id);
@@ -143,7 +144,7 @@ impl helix_event::AsyncHook for PullAllDocumentsDiagnosticHandler {
     }
 
     fn finish_debounce(&mut self) {
-        let language_servers = self.language_servers.clone();
+        let language_servers = mem::take(&mut self.language_servers);
         job::dispatch_blocking(move |editor, _| {
             let documents: Vec<_> = editor.documents.values().map(|doc| doc.id()).collect();
 
