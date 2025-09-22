@@ -1,54 +1,108 @@
-["class"  "feature" "end" "do" "alias" "convert"
- "invariant" "across" "as" "loop" "check"
- "if" "attached" "then" "else" "elseif"
- "inspect" "when" "then"
- "note" "local" "create" "require" "ensure"
- "from" "variant" "until" "and" "and then" "or" "or else" "xor"
- "detachable" "old" "∀" "∃" "¦" "all" "some"
- "implies" "once" (unary_not) "attribute" "agent" "like" "export" "all"
-] @keyword
+[
+ "alias"
+ "convert"
+ "inherit"
+ "redefine"
+ "undefine"
+ "rename"
+ "select"
+ "note"
+ "create"
+] @keyword.control.import
 
-[ "frozen" "deferred" "inherit" "redefine" "undefine" "rename" "select" ] @keyword.modifier
+["export"] @keyword.control.export
 
-(conditional ["if" "elseif" "end"] @keyword.conditional)
-(else_part ["else"] @keyword.conditional)
-(then_part ["then"] @keyword.conditional)
-(conditional_expression ["if" "else" "elseif" "end"] @keyword.conditional)
-(else_part_expression ["else"] @keyword.conditional)
-(then_part_expression ["then"] @keyword.conditional)
+[
+ "do"
+ "end"
+ "once"
+ "attribute"
+] @keyword.control
 
-(quantifier_loop ["∀" "∃" ":" "¦"] @keyword.repeat)
-(quantifier_loop_body ["all" "some"] @keyword.repeat)
-(iteration ["across" "as"] @keyword.repeat)
-(initialization ["from"] @keyword.repeat)
-(exit_condition ["until"] @keyword.repeat)
-(loop (invariant "invariant" @keyword.repeat))
-(loop ["⟳" ":" "¦" "⟲"]@keyword.repeat)
-(loop "end" @keyword.repeat)
-(loop_body ["loop"] @keyword.repeat)
-(variant ["variant"] @keyword.repeat)
+[
+ "class"
+ "local"
+] @keyword.storage.type
 
-[["(" ")" "[" "]" "<<" ">>"]] @punctuation.bracket
-[["," ":"]] @punctuation.delimiter
-[[(unary) ":=" (binary_caret) (binary_mul_div) (binary_plus_minus)
-  (binary_comparison) (binary_and) (binary_or) (binary_implies)
-  (comparison)]] @operator
-[(result)] @variable.builtin
+[
+ "feature"
+ "agent"
+] @keyword.function
+
+[
+ "frozen"
+ "deferred"
+ "detachable"
+ "expanded"
+ "attached"
+ "old"
+ "like"
+] @keyword.storage.modifier
+
+(conditional ["if" "elseif" "end"] @keyword.control.conditional)
+(else_part ["else"] @keyword.control.conditional)
+(then_part ["then"] @keyword.control.conditional)
+
+(conditional_expression ["if" "else" "elseif" "end"] @keyword.control.conditional)
+(else_part_expression ["else"] @keyword.control.conditional)
+(then_part_expression ["then"] @keyword.control.conditional)
+
+(multi_branch "inspect" @keyword.control.conditional)
+(when_part ["when" "then"] @keyword.control.conditional)
+
+(multi_branch_expression "inspect" @keyword.control.conditional)
+(when_part_expression ["when" "then"] @keyword.control.conditional)
+
+(quantifier_loop ["∀" "∃" ":" "¦"] @keyword.control.repeat)
+(quantifier_loop_body ["all" "some"] @keyword.control.repeat)
+(iteration ["across" "as"] @keyword.control.repeat)
+(initialization "from" @keyword.control.repeat)
+(exit_condition "until" @keyword.control.repeat)
+(loop_body "loop" @keyword.control.repeat)
+(variant "variant" @keyword.control.repeat)
+(loop (invariant "invariant" @keyword.control.repeat))
+(loop ["⟳" ":" "¦" "⟲"]@keyword.control.repeat)
+(loop "end" @keyword.control.repeat)
+
+[
+ "require"
+ "ensure"
+ "invariant"
+ "check"
+] @keyword.control.exception
+
+["(" ")" "[" "]" "<<" ">>"] @punctuation.bracket
+["," ":" ";"] @punctuation.delimiter
+
+[
+ (unary)
+ ":="
+ (binary_caret)
+ (binary_mul_div)
+ (binary_plus_minus)
+ (binary_comparison)
+ (binary_and)
+ (binary_or)
+ (binary_implies)
+ (comparison)
+ (unary_not)
+] @operator
+
+(result) @variable.builtin
 (anchored (call (_) @variable))
 [(verbatim_string) (basic_manifest_string)] @string
 [(integer_constant) (real_constant)] @constant.numeric
-[(boolean_constant)] @constant.boolean
-[(void) (current)] @constant
+(boolean_constant) @constant.builtin.boolean
+(void) @constant.builtin
+(current) @variable.builtin
 (extended_feature_name (identifier) @function.method)
 
 (iteration (identifier) @variable)
 (quantifier_loop (identifier) @variable)
 (entity_declaration_group (identifier) @variable)
-[
- (class_name)
-] @type
 
-(extended_feature_name (identifier) @function)
+(class_name) @type
+(formal_generic) @type.parameter
 
-[ (comment) ] @comment
-[(header_comment)] @comment.documentation
+(comment) @comment.line
+(header_comment) @comment.line.documentation
