@@ -533,7 +533,7 @@ impl Tree {
         }
     }
 
-    pub fn traverse(&self) -> Traverse {
+    pub fn traverse(&self) -> Traverse<'_> {
         Traverse::new(self)
     }
 

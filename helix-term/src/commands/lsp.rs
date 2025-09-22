@@ -104,7 +104,7 @@ struct PickerDiagnostic {
     diag: lsp::Diagnostic,
 }
 
-fn location_to_file_location(location: &Location) -> Option<FileLocation> {
+fn location_to_file_location(location: &Location) -> Option<FileLocation<'_>> {
     let path = location.uri.as_path()?;
     let line = Some((
         location.range.start.line as usize,
@@ -637,7 +637,7 @@ struct CodeActionOrCommandItem {
 
 impl ui::menu::Item for CodeActionOrCommandItem {
     type Data = ();
-    fn format(&self, _data: &Self::Data) -> Row {
+    fn format(&self, _data: &Self::Data) -> Row<'_> {
         match &self.lsp_item {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
@@ -1290,7 +1290,7 @@ pub fn rename_symbol(cx: &mut Context) {
 
                 let Some(language_server) = doc
                     .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
-                    .find(|ls| language_server_id.map_or(true, |id| id == ls.id()))
+                    .find(|ls| language_server_id.is_none_or(|id| id == ls.id()))
                 else {
                     cx.editor
                         .set_error("No configured language server supports symbol renaming");

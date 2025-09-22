@@ -1663,7 +1663,7 @@ impl Document {
         let savepoint_idx = self
             .savepoints
             .iter()
-            .position(|savepoint_ref| savepoint_ref.as_ptr() == savepoint as *const _)
+            .position(|savepoint_ref| std::ptr::eq(savepoint_ref.as_ptr(), savepoint))
             .expect("Savepoint must belong to this document");
 
         let savepoint_ref = self.savepoints.remove(savepoint_idx);
