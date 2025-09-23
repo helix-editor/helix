@@ -3426,15 +3426,27 @@ pub fn command_palette(cx: &mut Context) {
                 [&cx.editor.mode]
                 .reverse_map();
 
-            let commands = MappableCommand::STATIC_COMMAND_LIST.iter().cloned().chain(
-                typed::TYPABLE_COMMAND_LIST
-                    .iter()
-                    .map(|cmd| MappableCommand::Typable {
-                        name: cmd.name.to_owned(),
+            let commands = MappableCommand::STATIC_COMMAND_LIST
+                .iter()
+                .cloned()
+                .chain(
+                    typed::TYPABLE_COMMAND_LIST
+                        .iter()
+                        .map(|cmd| MappableCommand::Typable {
+                            name: cmd.name.to_owned(),
+                            args: String::new(),
+                            doc: cmd.doc.to_owned(),
+                        }),
+                )
+                .chain(ScriptingEngine::available_commands().into_iter().map(|x| {
+                    let doc = ScriptingEngine::get_doc_for_identifier(&x).unwrap_or_default();
+
+                    MappableCommand::Typable {
+                        name: x.into_owned(),
                         args: String::new(),
-                        doc: cmd.doc.to_owned(),
-                    }),
-            );
+                        doc,
+                    }
+                }));
 
             let columns = [
                 ui::PickerColumn::new("name", |item, _| match item {
