@@ -73,6 +73,14 @@ where
     viewport: Viewport,
 }
 
+/// Default terminal size: 80 columns, 24 lines
+pub const DEFAULT_TERMINAL_SIZE: Rect = Rect {
+    x: 0,
+    y: 0,
+    width: 80,
+    height: 24,
+};
+
 impl<B> Terminal<B>
 where
     B: Backend,
@@ -80,7 +88,7 @@ where
     /// Wrapper around Terminal initialization. Each buffer is initialized with a blank string and
     /// default colors for the foreground and the background
     pub fn new(backend: B) -> io::Result<Terminal<B>> {
-        let size = backend.size()?;
+        let size = backend.size().unwrap_or(DEFAULT_TERMINAL_SIZE);
         Terminal::with_options(
             backend,
             TerminalOptions {
@@ -159,7 +167,7 @@ where
 
     /// Queries the backend for size and resizes if it doesn't match the previous size.
     pub fn autoresize(&mut self) -> io::Result<Rect> {
-        let size = self.size()?;
+        let size = self.size().unwrap_or(DEFAULT_TERMINAL_SIZE);
         if size != self.viewport.area {
             self.resize(size)?;
         };
