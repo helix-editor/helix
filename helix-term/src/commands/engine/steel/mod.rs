@@ -2594,11 +2594,10 @@ impl super::PluginSystem for SteelScriptingEngine {
             .get_by_id(server_id)
             .map(|x| x.name().to_owned());
 
-        if language_server_name.is_none() {
+        let Some(language_server_name) = language_server_name else {
             ctx.editor.set_error("Unable to find language server");
-        }
-
-        let language_server_name = language_server_name.unwrap();
+            return None;
+        };
 
         let mut pass_call_id = false;
 
