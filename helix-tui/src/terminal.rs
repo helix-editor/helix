@@ -167,7 +167,7 @@ where
 
     /// Queries the backend for size and resizes if it doesn't match the previous size.
     pub fn autoresize(&mut self) -> io::Result<Rect> {
-        let size = self.size().unwrap_or(DEFAULT_TERMINAL_SIZE);
+        let size = self.backend().size().unwrap_or(DEFAULT_TERMINAL_SIZE);
         if size != self.viewport.area {
             self.resize(size)?;
         };
@@ -240,10 +240,5 @@ where
         // Reset the back buffer to make sure the next update will redraw everything.
         self.buffers[1 - self.current].reset();
         Ok(())
-    }
-
-    /// Queries the real size of the backend.
-    pub fn size(&self) -> io::Result<Rect> {
-        self.backend.size()
     }
 }
