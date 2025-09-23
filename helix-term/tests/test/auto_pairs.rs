@@ -24,6 +24,36 @@ async fn insert_basic() -> anyhow::Result<()> {
         .await?;
     }
 
+    let pairs = hashmap!("\\(".into() => "\\)".into(), "<|".into() => "|>".into(), "```".into() => "```".into());
+
+    let config = Config {
+        editor: helix_view::editor::Config {
+            auto_pairs: AutoPairConfig::Pairs(pairs.clone()),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    for (open, close) in pairs.iter() {
+        let mut chars = open.chars();
+        let open_last = chars.next_back().unwrap();
+        let open_but_last: String = chars.collect();
+
+        let mut chars = close.chars();
+        let close_head = chars.next().unwrap();
+        let close_tail: String = chars.collect();
+        test_with_config(
+            AppBuilder::new().with_config(config.clone()),
+            (
+                format!("{}#[{}|]#", open_but_last, LINE_END),
+                format!("i{}", open_last),
+                format!("{}#[|{}]#{}{}", open, close_head, close_tail, LINE_END),
+                LineFeedHandling::AsIs,
+            ),
+        )
+        .await?;
+    }
+
     Ok(())
 }
 
