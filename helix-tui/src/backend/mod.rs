@@ -6,9 +6,14 @@ use crate::{buffer::Cell, terminal::Config};
 
 use helix_view::graphics::{CursorKind, Rect};
 
-#[cfg(feature = "crossterm")]
+#[cfg(all(feature = "termina", not(windows)))]
+mod termina;
+#[cfg(all(feature = "termina", not(windows)))]
+pub use self::termina::TerminaBackend;
+
+#[cfg(all(feature = "termina", windows))]
 mod crossterm;
-#[cfg(feature = "crossterm")]
+#[cfg(all(feature = "termina", windows))]
 pub use self::crossterm::CrosstermBackend;
 
 mod test;
@@ -17,13 +22,11 @@ pub use self::test::TestBackend;
 /// Representation of a terminal backend.
 pub trait Backend {
     /// Claims the terminal for TUI use.
-    fn claim(&mut self, config: Config) -> Result<(), io::Error>;
+    fn claim(&mut self) -> Result<(), io::Error>;
     /// Update terminal configuration.
     fn reconfigure(&mut self, config: Config) -> Result<(), io::Error>;
     /// Restores the terminal to a normal state, undoes `claim`
-    fn restore(&mut self, config: Config) -> Result<(), io::Error>;
-    /// Forcibly resets the terminal, ignoring errors and configuration
-    fn force_restore() -> Result<(), io::Error>;
+    fn restore(&mut self) -> Result<(), io::Error>;
     /// Draws styled text to the terminal
     fn draw<'a, I>(&mut self, content: I) -> Result<(), io::Error>
     where
@@ -32,8 +35,6 @@ pub trait Backend {
     fn hide_cursor(&mut self) -> Result<(), io::Error>;
     /// Sets the cursor to the given shape
     fn show_cursor(&mut self, kind: CursorKind) -> Result<(), io::Error>;
-    /// Gets the current position of the cursor
-    fn get_cursor(&mut self) -> Result<(u16, u16), io::Error>;
     /// Sets the cursor to the given position
     fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error>;
     /// Clears the terminal
@@ -42,4 +43,6 @@ pub trait Backend {
     fn size(&self) -> Result<Rect, io::Error>;
     /// Flushes the terminal buffer
     fn flush(&mut self) -> Result<(), io::Error>;
+    fn supports_true_color(&self) -> bool;
+    fn get_theme_mode(&self) -> Option<helix_view::theme::Mode>;
 }
