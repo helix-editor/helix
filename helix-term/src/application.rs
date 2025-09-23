@@ -125,7 +125,7 @@ impl Application {
 
         let theme_mode = backend.get_theme_mode();
         let terminal = Terminal::new(backend)?;
-        let area = terminal.size().expect("couldn't get terminal size");
+        let area = terminal.size();
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
@@ -542,7 +542,7 @@ impl Application {
                 }
 
                 // redraw the terminal
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
                 self.compositor.resize(area);
                 self.terminal.clear().expect("couldn't clear terminal");
 
@@ -700,7 +700,7 @@ impl Application {
                     .resize(Rect::new(0, 0, cols, rows))
                     .expect("Unable to resize terminal");
 
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
 
                 self.compositor.resize(area);
 
@@ -729,7 +729,7 @@ impl Application {
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
 
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
 
                 self.compositor.resize(area);
 
