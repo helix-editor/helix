@@ -980,7 +980,7 @@ impl Document {
         };
 
         let identifier = self.path().map(|_| self.identifier());
-        let language_servers = self.language_servers.clone();
+        let language_servers: Vec<_> = self.language_servers.values().cloned().collect();
 
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
@@ -1124,7 +1124,7 @@ impl Document {
                 text: text.clone(),
             };
 
-            for (_, language_server) in language_servers {
+            for language_server in language_servers {
                 if !language_server.is_initialized() {
                     continue;
                 }
