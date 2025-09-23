@@ -2380,7 +2380,6 @@ fn pipe_impl(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     shell(cx, &args.join(" "), behavior);
     Ok(())
 }
@@ -3684,21 +3683,51 @@ fn execute_command_line(
     input: &str,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let (command, rest, _) = command_line::split(input);
-    if command.is_empty() {
-        return Ok(());
+    if !input.contains(';') {
+        let (command, rest, _) = command_line::split(input);
+        if command.is_empty() {
+            return Ok(());
+        }
+
+        // If command is numeric, interpret as line number and go there.
+        if command.parse::<usize>().is_ok() && rest.trim().is_empty() {
+            let cmd = TYPABLE_COMMAND_MAP.get("goto").unwrap();
+            return execute_command(cx, cmd, command, event);
+        }
     }
 
-    // If command is numeric, interpret as line number and go there.
-    if command.parse::<usize>().is_ok() && rest.trim().is_empty() {
-        let cmd = TYPABLE_COMMAND_MAP.get("goto").unwrap();
-        return execute_command(cx, cmd, command, event);
-    }
+    let results: Vec<Result<(), anyhow::Error>> = input
+        .trim()
+        .split(";")
+        .map(|sub_command| {
+            let (command, rest, _) = command_line::split(sub_command.trim());
 
-    match typed::TYPABLE_COMMAND_MAP.get(command) {
-        Some(cmd) => execute_command(cx, cmd, rest, event),
-        None if event == PromptEvent::Validate => Err(anyhow!("no such command: '{command}'")),
-        None => Ok(()),
+            match typed::TYPABLE_COMMAND_MAP.get(command) {
+                Some(cmd) => execute_command(cx, cmd, rest, event),
+                None if event == PromptEvent::Validate => {
+                    Err(anyhow!("no such command '{command}'"))
+                }
+                None => Ok(()),
+            }
+        })
+        .collect();
+
+    if results.iter().all(|result| result.is_ok()) {
+        Ok(())
+    } else {
+        let mut erroneous_commands = Vec::new();
+
+        for result in results {
+            erroneous_commands.push(match result {
+                Err(e) => e.root_cause().to_string(),
+                _ => continue,
+            });
+        }
+
+        Err(anyhow!(
+            "error in your command: {}",
+            erroneous_commands.join(", ")
+        ))
     }
 }
 
