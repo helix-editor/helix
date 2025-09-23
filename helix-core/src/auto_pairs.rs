@@ -18,10 +18,182 @@ pub const DEFAULT_PAIRS: &[(&str, &str)] = &[
 
 /// The type that represents the collection of auto pairs,
 /// keyed by both opener and closer.
-#[derive(Debug, Clone)]
-pub enum AutoPairs {
-    Leaf(Pair),
-    Node(HashMap<Option<char>, AutoPairs>),
+#[derive(Debug, Clone, PartialEq)]
+pub struct AutoPairs(HashMap<char, AutoPairsNode>);
+
+#[derive(Debug, Clone, PartialEq)]
+struct AutoPairsInternal(HashMap<Option<char>, AutoPairsNode>);
+
+#[derive(Debug, Clone, PartialEq)]
+enum AutoPairsNode {
+    Terminal(Pair),
+    Internal(AutoPairsInternal),
+}
+
+impl AutoPairs {
+    pub fn new<'a, V, A>(pairs: V) -> Self
+    where
+        V: IntoIterator<Item = A> + 'a,
+        A: Into<Pair>,
+    {
+        pairs
+            .into_iter()
+            .map(Into::<Pair>::into)
+            .fold(AutoPairs::empty(), |acc, pair| {
+                acc.inserting(pair.clone(), pair.open.chars().rev())
+                    .inserting(pair.clone(), pair.close.chars())
+            })
+    }
+
+    fn empty() -> Self {
+        AutoPairs(HashMap::new())
+    }
+
+    fn inserting<T: Iterator<Item = char>>(self, pair: Pair, mut source: T) -> Self {
+        match (self, source.next()) {
+            (autopairs, None) => autopairs,
+            (AutoPairs(mut hash_map), Some(ch)) => {
+                let ch_next = source.next();
+                match (hash_map.remove(&ch), ch_next) {
+                    (Some(old_node), _) => {
+                        let _ = hash_map.insert(ch, old_node.inserting(pair, source, ch_next));
+                    }
+                    (None, Some(_)) => {
+                        let _ = hash_map.insert(
+                            ch,
+                            AutoPairsNode::Internal(
+                                AutoPairsInternal::empty().inserting(pair, source, ch_next),
+                            ),
+                        );
+                    }
+                    (None, None) => {
+                        let _ = hash_map.insert(ch, AutoPairsNode::Terminal(pair));
+                    }
+                };
+                AutoPairs(hash_map)
+            }
+        }
+    }
+
+    pub fn get(&self, doc: &Rope, cursor: usize, ch: char) -> Option<&Pair> {
+        let AutoPairs(hash_map) = self;
+        let pairs_internal = hash_map.get(&ch)?;
+
+        match pairs_internal {
+            AutoPairsNode::Terminal(pair) => Some(pair),
+            AutoPairsNode::Internal(auto_pairs_internal) => auto_pairs_internal
+                .get(iterate_backwards_from_index(doc, cursor))
+                .or_else(|| auto_pairs_internal.get(iterate_forward_from_index(doc, cursor))),
+        }
+    }
+}
+
+impl Default for AutoPairs {
+    fn default() -> Self {
+        AutoPairs::new(DEFAULT_PAIRS.iter())
+    }
+}
+
+impl AutoPairsInternal {
+    fn empty() -> Self {
+        Self(HashMap::new())
+    }
+
+    fn inserting<T: Iterator<Item = char>>(
+        self,
+        pair: Pair,
+        mut tail: T,
+        head: Option<char>,
+    ) -> Self {
+        match (self, head) {
+            (AutoPairsInternal(mut hash_map), None) => {
+                let _ = hash_map.insert(None, AutoPairsNode::Terminal(pair));
+                AutoPairsInternal(hash_map)
+            }
+            (AutoPairsInternal(mut hash_map), Some(ch)) => match hash_map.remove(&Some(ch)) {
+                Some(AutoPairsNode::Terminal(old_pair)) => {
+                    let new_head = tail.next();
+                    let rec = AutoPairsNode::Terminal(old_pair).inserting(pair, tail, new_head);
+                    let _ = hash_map.insert(Some(ch), rec);
+                    AutoPairsInternal(hash_map)
+                }
+                Some(AutoPairsNode::Internal(AutoPairsInternal(old_hash_map))) => {
+                    let new_head = tail.next();
+                    let rec = AutoPairsNode::Internal(
+                        AutoPairsInternal(old_hash_map).inserting(pair, tail, new_head),
+                    );
+                    let _ = hash_map.insert(Some(ch), rec);
+                    AutoPairsInternal(hash_map)
+                }
+                None => {
+                    let new_head = tail.next();
+                    let rec = AutoPairsNode::Internal(
+                        AutoPairsInternal::empty().inserting(pair, tail, new_head),
+                    );
+                    let _ = hash_map.insert(Some(ch), rec);
+                    AutoPairsInternal(hash_map)
+                }
+            },
+        }
+    }
+
+    fn get<T: Iterator<Item = char>>(&self, doc_chars: T) -> Option<&Pair> {
+        let mut last_feasible: Option<&Pair> = None;
+        let mut internal = self;
+        for doc_ch_next in doc_chars {
+            last_feasible = internal.get_none_or_unwrap().or(last_feasible);
+            match internal.mapping().get(&Some(doc_ch_next)) {
+                Some(AutoPairsNode::Terminal(pair)) => last_feasible = Some(pair),
+                Some(AutoPairsNode::Internal(next_internal)) => internal = next_internal,
+                None => break,
+            }
+        }
+        internal.get_none_or_unwrap().or(last_feasible)
+    }
+
+    fn get_none_or_unwrap(&self) -> Option<&Pair> {
+        let AutoPairsInternal(hash_map) = self;
+        hash_map.get(&None).map(|node| match node {
+            AutoPairsNode::Terminal(pair) => pair,
+            AutoPairsNode::Internal(_) => unreachable!(),
+        })
+    }
+
+    fn mapping(&self) -> &HashMap<Option<char>, AutoPairsNode> {
+        &self.0
+    }
+}
+
+impl AutoPairsNode {
+    fn inserting<T: Iterator<Item = char>>(
+        self,
+        pair: Pair,
+        mut tail: T,
+        head: Option<char>,
+    ) -> Self {
+        match (self, head) {
+            (AutoPairsNode::Terminal(old_pair), None) => {
+                AutoPairsNode::Internal(AutoPairsInternal(HashMap::from([
+                    (None, AutoPairsNode::Terminal(old_pair)),
+                    (None, AutoPairsNode::Terminal(pair)),
+                ])))
+            }
+            (AutoPairsNode::Terminal(old_pair), Some(ch)) => {
+                let next_head = tail.next();
+                let rec = AutoPairsNode::Internal(
+                    AutoPairsInternal::empty().inserting(pair, tail, next_head),
+                );
+
+                AutoPairsNode::Internal(AutoPairsInternal(HashMap::from([
+                    (None, AutoPairsNode::Terminal(old_pair)),
+                    (Some(ch), rec),
+                ])))
+            }
+            (AutoPairsNode::Internal(internal), _) => {
+                AutoPairsNode::Internal(internal.inserting(pair, tail, head))
+            }
+        }
+    }
 }
 
 /// Represents the config for a particular pairing.
@@ -160,143 +332,6 @@ where
     }
 }
 
-impl AutoPairs {
-    /// Returns the inner mutable mapping if available, otherwise it panics.
-    fn mut_mapping(&mut self) -> &mut HashMap<Option<char>, AutoPairs> {
-        match self {
-            AutoPairs::Leaf(_) => {
-                panic!("This function makes sense only on a Node variant of AutoPairs.")
-            }
-            AutoPairs::Node(ref mut hash_map) => hash_map,
-        }
-    }
-
-    /// Make a new AutoPairs set with the given pairs and default conditions.
-    pub fn new<'a, V, A>(pairs: V) -> Self
-    where
-        V: IntoIterator<Item = A> + 'a,
-        A: Into<Pair>,
-    {
-        fn step<I: Iterator<Item = char>>(
-            pair: Pair,
-            key: &mut I,
-            autopairs: AutoPairs,
-        ) -> AutoPairs {
-            let first = key.next();
-
-            match (autopairs, first) {
-                (ap @ AutoPairs::Leaf(_), None) => ap,
-                (ap @ AutoPairs::Leaf(_), Some(c)) => AutoPairs::Node(HashMap::from([
-                    (Some(c), step(pair, key, AutoPairs::Node(HashMap::new()))),
-                    (None, ap),
-                ])),
-                (mut ap @ AutoPairs::Node(_), None) => {
-                    let _ = ap.mut_mapping().insert(None, AutoPairs::Leaf(pair));
-                    ap
-                }
-                (mut ap @ AutoPairs::Node(_), k @ Some(_)) => {
-                    let mapping = ap.mut_mapping();
-                    match mapping.get(&k) {
-                        Some(autopairs) => {
-                            let _ = mapping.insert(k, step(pair, key, autopairs.clone()));
-                        }
-                        None => {
-                            let _ = mapping.insert(k, AutoPairs::Leaf(pair));
-                        }
-                    }
-                    ap
-                }
-            }
-        }
-
-        pairs.into_iter().map(Into::<Pair>::into).fold(
-            AutoPairs::Node(HashMap::new()),
-            |acc, pair| {
-                let pair_copy = pair.clone();
-                let open = pair.open;
-                let close = pair.close;
-                let adding_open = step(pair_copy.clone(), &mut open.chars().rev(), acc);
-                step(pair_copy, &mut close.chars().rev(), adding_open)
-            },
-        )
-    }
-
-    fn get_none_or_unwrap_leaf(&self) -> Option<&Pair> {
-        match self {
-            AutoPairs::Leaf(pair) => Some(pair),
-            AutoPairs::Node(hash_map) => match hash_map.get(&None) {
-                Some(AutoPairs::Leaf(pair)) => Some(pair),
-                Some(_) => unreachable!(),
-                None => None,
-            },
-        }
-    }
-
-    pub fn get(&self, doc: &Rope, cursor: usize, ch: char) -> Option<&Pair> {
-        let initial_pairs = match self {
-            AutoPairs::Leaf(_) => {
-                unreachable!()
-            }
-            AutoPairs::Node(mapping) => mapping.get(&Some(ch))?,
-        };
-
-        // Match terminates at cursor
-        let mut feasible_pair = None;
-        let mut autopairs = initial_pairs;
-        for oc in iterate_backwards_from_index(doc, cursor) {
-            if let pair @ Some(_) = autopairs.get_none_or_unwrap_leaf() {
-                feasible_pair = pair
-            }
-            match autopairs {
-                AutoPairs::Leaf(pair) => {
-                    return Some(pair);
-                }
-                AutoPairs::Node(hash_map) => match hash_map.get(&Some(oc)) {
-                    Some(maps) => {
-                        autopairs = maps;
-                    }
-                    None => {
-                        break;
-                    }
-                },
-            }
-        }
-        let match_terminating_at_cursor = autopairs.get_none_or_unwrap_leaf().or(feasible_pair);
-        if match_terminating_at_cursor.is_some() {
-            return match_terminating_at_cursor;
-        }
-
-        // Match starts at cursor
-        feasible_pair = None;
-        autopairs = initial_pairs;
-        for oc in iterate_forward_from_index(doc, cursor) {
-            if let pair @ Some(_) = autopairs.get_none_or_unwrap_leaf() {
-                feasible_pair = pair
-            }
-            match autopairs {
-                AutoPairs::Leaf(pair) => {
-                    return Some(pair);
-                }
-                AutoPairs::Node(hash_map) => match hash_map.get(&Some(oc)) {
-                    Some(maps) => {
-                        autopairs = maps;
-                    }
-                    None => {
-                        break;
-                    }
-                },
-            }
-        }
-        autopairs.get_none_or_unwrap_leaf().or(feasible_pair)
-    }
-}
-
-impl Default for AutoPairs {
-    fn default() -> Self {
-        AutoPairs::new(DEFAULT_PAIRS.iter())
-    }
-}
-
 // insert hook:
 // Fn(doc, selection, char) => Option<Transaction>
 // problem is, we want to do this per range, so we can call default handler for some ranges
@@ -307,11 +342,10 @@ impl Default for AutoPairs {
 
 // [TODO]
 // * delete implementation where it erases the whole bracket (|) -> |
-// * change to multi character pairs to handle cases like placing the cursor in the
-//   middle of triple quotes, and more exotic pairs like Jinja's {% %}
 
 #[must_use]
 pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> Option<Transaction> {
+    log::trace!("autopairs hook selection: {:#?}", selection);
     let primary_cursor = selection.primary().cursor(doc.slice(..));
 
     if let Some(pair) = pairs.get(doc, primary_cursor, ch) {
@@ -606,5 +640,12 @@ mod tests {
         assert!(autopairs.get(&doc, 0, '`').is_some());
         assert!(autopairs.get(&doc, 1, '`').is_some());
         assert!(autopairs.get(&doc, 2, '`').is_some());
+    }
+
+    #[test]
+    fn autopairs_creation() {
+        let pairs = AutoPairs::new(&[("(", ")"), ("\\(", "\\)")]);
+        let pairs_alt = AutoPairs::new(&[("\\(", "\\)"), ("(", ")")]);
+        assert_eq!(pairs, pairs_alt, "left: {pairs:#?}\nright: {pairs_alt:#?}");
     }
 }
