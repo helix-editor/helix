@@ -118,7 +118,7 @@
 #"ui.virtual.inlay-hint.parameter" = ""
 #"ui.virtual.inlay-hint.type" = ""
 "ui.virtual.jump-label" = { fg = "white", bg = "ui_jumplabel", modifiers = ["bold"] }
-"ui.virtual.ruler" = { bg = "ui_background_accent" }
+"ui.virtual.ruler" = { fg = "ui_background_accent" }
 "ui.virtual.whitespace" = "ui_text_dim"
 "ui.virtual.wrap" = "ui_text_dim"
 "ui.window" = "ui_split_line"

@@ -53,7 +53,7 @@
 "ui.text.focus" = { bg = "dark_gray", fg = "foreground" }
 "ui.text.info" = "foreground"
 "ui.virtual.whitespace" = "dark_gray"
-"ui.virtual.ruler" = { bg = "black" }
+"ui.virtual.ruler" = { fg = "black" }
 "ui.virtual.inlay-hint" = { fg = "#e6b450", bg = "#302a20" }  # original bg #e6b45033
 "ui.menu" = { fg = "foreground", bg = "black" }
 "ui.menu.selected" = { bg = "gray", fg = "background" }

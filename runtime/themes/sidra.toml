@@ -27,7 +27,7 @@
 "ui.text.inactive"            = {  fg = "fg_text_inactive"                                                                   }
 
 "ui.virtual"                  = {  fg = "fg_virtual"                                                                         }
-"ui.virtual.ruler"            = {                               bg = "bg_virtual_ruler"                                      }
+"ui.virtual.ruler"            = {  fg = "fg_virtual_ruler"                                                                   }
 "ui.virtual.indent-guide"     = {  fg = "fg_virtual_indent"                                                                  }
 
 "ui.debug"                    = {  fg = "fg_debug",                                      modifiers = ["bold"]                }
@@ -208,7 +208,7 @@ fg_text_inactive        = "#93a56f"        # Olive green (inactive text)
 # ===== VIRTUAL COLORS =====
 
 fg_virtual              = "#F1DCA7"        # Cream (virtual text)
-bg_virtual_ruler        = "#363638"        # Deep gray (ruler background)
+fg_virtual_ruler        = "#363638"        # Deep gray (ruler)
 fg_virtual_indent       = "#5B5B5A"        # Medium-dark gray (indent guides)
 
 # ===== DEBUGGING COLORS =====

@@ -41,7 +41,7 @@
 "ui.virtual.indent-guide" = { fg = "space" }
 "ui.virtual.inlay-hint" = { fg = "lacquer" }
 "ui.virtual.jump-label" = { fg = "myrtle" }
-"ui.virtual.ruler" = { bg = "space" }
+"ui.virtual.ruler" = { fg = "space" }
 "ui.window" = { fg = "space" }
 "warning" = "maple"
 

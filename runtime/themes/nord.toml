@@ -130,7 +130,7 @@
 "ui.virtual.indent-guide" = "nord3"
 "ui.virtual.inlay-hint" = { fg = "nord3", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "nord11", modifiers = ["bold"] }
-"ui.virtual.ruler" = { bg = "nord1" }
+"ui.virtual.ruler" = { fg = "nord1" }
 "ui.virtual.whitespace" = "nord3"
 "ui.virtual.wrap" = "nord3"
 

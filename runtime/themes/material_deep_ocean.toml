@@ -80,7 +80,7 @@
 "ui.cursorline.primary" = { bg = "active" }
 
 "ui.virtual" = { fg = "gray" }
-"ui.virtual.ruler" = { bg = "highlight" }
+"ui.virtual.ruler" = { fg = "highlight" }
 "ui.virtual.indent-guide" = { fg = "gray" }
 
 "ui.highlight" = { bg = "highlight" }

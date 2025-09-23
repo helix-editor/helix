@@ -39,7 +39,7 @@
 "ui.text.directory" = { fg = "iris" }
 
 "ui.virtual.jump-label" = { fg = "love", modifiers = ["bold"] }
-"ui.virtual.ruler" = { bg = "overlay" }
+"ui.virtual.ruler" = { fg = "overlay" }
 "ui.virtual.whitespace" = { fg = "highlight_high" }
 "ui.virtual.indent-guide" = { fg = "muted" }
 "ui.virtual.inlay-hint" = { fg = "subtle" }

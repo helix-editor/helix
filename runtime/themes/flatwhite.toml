@@ -60,7 +60,7 @@
 
 "ui.virtual" = { fg = "base5", bg = "base6" }
 "ui.virtual.whitespace" = { fg = "base5" }
-"ui.virtual.ruler" = { bg = "base6" }
+"ui.virtual.ruler" = { fg = "base6" }
 "ui.virtual.inlay-hint" = "base4"
 "ui.virtual.inlay-hint.parameter" = "base3"
 "ui.virtual.inlay-hint.type" = { fg = "base3", modifiers = ["italic"] }

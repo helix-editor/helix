@@ -75,7 +75,7 @@
 "ui.bufferline" = { fg = "slate_gray", modifiers = ["bold"] }                                        # bufferline inactive tab
 "ui.bufferline.active" = { fg = "winter_sky", bg = "twilight_blue" }                                 # bufferline active tab
 "ui.bufferline.background" = { bg = "pitch_black" }                                                  # bufferline background
-"ui.virtual.ruler" = { bg = "stormy_night" }                                                         # ruler columns
+"ui.virtual.ruler" = { fg = "stormy_night" }                                                         # ruler columns
 "ui.virtual.whitespace" = { fg = "stormy_night" }                                                    # whitespace characters
 "ui.virtual.indent-guide" = { fg = "stormy_night" }                                                  # vertical indent width guides
 "ui.virtual.inlay-hint" = { fg = "slate_gray" }                                                      # inlay hints of all kinds

@@ -50,7 +50,7 @@
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "orange" }
 
-"ui.virtual.ruler" = { bg = "light_black2" }
+"ui.virtual.ruler" = { fg = "light_black2" }
 "ui.virtual.indent-guide" = { fg = "dark_grey2" }
 "ui.virtual.whitespace" = { fg = "grey" }
  

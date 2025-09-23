@@ -94,7 +94,7 @@
 
 "ui.virtual" = "Gray 90" # .whitespace
 "ui.virtual.inlay-hint" = { fg = "Gray 70" }
-"ui.virtual.ruler" = { bg = "Gray 20" }
+"ui.virtual.ruler" = { fg = "Gray 20" }
 
 "hint" = "Gray 80"
 "info" = "#A366C4"

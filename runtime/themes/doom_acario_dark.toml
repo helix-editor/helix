@@ -65,7 +65,7 @@
 'ui.text.focus' = { bg = 'bg-alt', fg = 'fg' }
 'ui.text.info' = { fg = 'fg' }
 'ui.virtual.whitespace' = { fg = 'base2' }
-'ui.virtual.ruler' = { bg = 'black' }
+'ui.virtual.ruler' = { fg = 'black' }
 'ui.menu' = { fg = 'fg', bg = 'bg-alt' }
 'ui.menu.selected' = { bg = 'base3', fg = 'fg' }
 'ui.selection' = { bg = 'base2' }

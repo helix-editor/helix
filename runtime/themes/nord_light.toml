@@ -25,7 +25,7 @@
 
 # Virtual/invisible text
 "ui.virtual" = "nord8"
-"ui.virtual.ruler" = {bg="nord4"}
+"ui.virtual.ruler" = {fg="nord4"}
 "ui.virtual.inlay-hint" = { fg = "nord3", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "nord11", modifiers = ["bold"] }
 

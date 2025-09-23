@@ -10,7 +10,7 @@
 "ui.statusline" = { fg = "blue" }
 "ui.selection" = { bg = "bg_highlight" } 
 "ui.selection.primary" = { bg = "bg_highlight" }  
-"ui.virtual.ruler" = { bg = "bg_highlight" }
+"ui.virtual.ruler" = { fg = "bg_highlight" }
 
 # Markdown Highlighting
 "markup.raw" = { fg = "blue", bg = "bg" } 

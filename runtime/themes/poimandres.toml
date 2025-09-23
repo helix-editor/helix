@@ -58,7 +58,7 @@ string = { fg = "brightMint" }
 "ui.text.inactive" = "darkerGray"
 "ui.virtual" = { fg = "darkerGray.b0" }
 "ui.virtual.indent-guide" = "#303442"
-"ui.virtual.ruler" = { bg ="selection" }
+"ui.virtual.ruler" = { fg ="selection" }
 
 "ui.selection" = { bg = "focus" }
 "ui.selection.primary" = { bg = "selection" }

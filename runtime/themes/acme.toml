@@ -9,7 +9,7 @@
 "ui.statusline" = {fg="black", bg="acme_bar_bg"}
 "ui.statusline.inactive" = {fg="black", bg="acme_bar_inactive"}
 "ui.virtual" = "indent"
-"ui.virtual.ruler" = { bg = "acme_bar_bg" }
+"ui.virtual.ruler" = { fg = "acme_bar_bg" }
 "ui.cursor.match" = {bg="acme_bar_bg"}
 "ui.cursor" = {bg="cursor", fg="white"}
 "ui.debug" = {fg="orange"}

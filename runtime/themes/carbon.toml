@@ -119,7 +119,7 @@
 "ui.text.inactive" = { fg = "gray50" }
 "ui.text.info" = { fg = "blue40" }
 
-"ui.virtual.ruler" = { bg = "gray20" }
+"ui.virtual.ruler" = { fg = "gray20" }
 "ui.virtual.whitespace" = "gray30"
 "ui.virtual.indent-guide" = "gray30"
 "ui.virtual.inlay-hint" = { fg = "gray50", bg = "gray10" }
