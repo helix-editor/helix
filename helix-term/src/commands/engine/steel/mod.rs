@@ -1214,6 +1214,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     module
         .register_fn("keybindings", HelixConfiguration::keybindings)
         .register_fn("get-keybindings", HelixConfiguration::get_keybindings)
+        .register_fn("set-keybindings!", HelixConfiguration::set_keybindings)
         .register_fn("set-option!", dynamic_set_option);
 
     if generate_sources {
@@ -1907,6 +1908,7 @@ are shown, set to 5 for instant. Defaults to 250ms.
             ("smart-tab", "Enables smart tab"),
             ("rainbow-brackets", "Enabled rainbow brackets"),
             ("keybindings", "Keybindings config"),
+            ("set-keybindings!", "Override the global keybindings with the provided keymap"),
             ("inline-diagnostics-cursor-line-enable", "Inline diagnostics cursor line"),
             ("inline-diagnostics-end-of-line-enable", "Inline diagnostics end of line"),
             // language configuration functions
@@ -3204,6 +3206,12 @@ impl HelixConfiguration {
     fn keybindings(&self, keybindings: EmbeddedKeyMap) {
         let mut app_config = self.load_config();
         merge_keys(&mut app_config.keys, keybindings.0);
+        self.store_config(app_config);
+    }
+
+    fn set_keybindings(&self, keybindings: EmbeddedKeyMap) {
+        let mut app_config = self.load_config();
+        app_config.keys = keybindings.0;
         self.store_config(app_config);
     }
 
