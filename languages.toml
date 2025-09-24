@@ -4853,4 +4853,4 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nearley"
-source = { git = "https://github.com/mi2ebi/tree-sitter-nearley", rev = "4033073ac68953ff6a89989939ff9c3772aeb903" }
+source = { git = "https://github.com/mi2ebi/tree-sitter-nearley", rev = "12d01113e194c8e83f6341aab8c2a5f21db9cac9" }
