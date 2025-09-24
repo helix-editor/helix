@@ -998,7 +998,6 @@ fn dynamic_set_option(
 
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
 
-    // let mut config = serde_json::json!(&cx.editor.config().deref());
     let mut config = serde_json::json!(configuration.load_config().editor);
     let pointer = format!("/{}", key.replace('.', "/"));
     let jvalue = config.pointer_mut(&pointer).ok_or_else(key_error)?;
@@ -3060,18 +3059,6 @@ impl HelixConfiguration {
 
         Ok(())
     }
-
-    // fn get_individual_language_config_for_filename(
-    //     &self,
-    //     file_name: SteelString,
-    // ) -> Option<IndividualLanguageConfiguration> {
-    //     self.language_configuration
-    //         .load()
-    //         .language_config_for_file_name(std::path::Path::new(file_name.as_str()))
-    //         .map(|config| IndividualLanguageConfiguration {
-    //             config: (*config).clone(),
-    //         })
-    // }
 
     fn update_language_server_config(
         &mut self,

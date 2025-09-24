@@ -138,6 +138,27 @@ impl Application {
         let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
         compositor.push(editor_view);
 
+        let mut jobs = Jobs::new();
+        {
+            let syn_loader = editor.syn_loader.clone();
+
+            let mut cx = crate::commands::Context {
+                register: None,
+                count: std::num::NonZeroUsize::new(1),
+                editor: &mut editor,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs: &mut jobs,
+            };
+
+            crate::commands::ScriptingEngine::run_initialization_script(
+                &mut cx,
+                config.clone(),
+                syn_loader,
+                terminal.backend().terminal().event_reader(),
+            );
+        }
+
         if args.load_tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
@@ -241,35 +262,15 @@ impl Application {
         ])
         .context("build signal handler")?;
 
-        let mut app = Self {
+        let app = Self {
             compositor,
             terminal,
             editor,
             config,
             signals,
-            jobs: Jobs::new(),
+            jobs,
             lsp_progress: LspProgressMap::new(),
         };
-
-        {
-            let syn_loader = app.editor.syn_loader.clone();
-
-            let mut cx = crate::commands::Context {
-                register: None,
-                count: std::num::NonZeroUsize::new(1),
-                editor: &mut app.editor,
-                callback: Vec::new(),
-                on_next_key_callback: None,
-                jobs: &mut app.jobs,
-            };
-
-            crate::commands::ScriptingEngine::run_initialization_script(
-                &mut cx,
-                app.config.clone(),
-                syn_loader,
-                app.terminal.backend().terminal().event_reader(),
-            );
-        }
 
         Ok(app)
     }
