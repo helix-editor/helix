@@ -8,7 +8,7 @@
 (rule_name (identifier) @function)
 (rule (generic (identifier) @function))
 
-(directive) @keyword.directive
+(directive_name) @keyword.directive
 (directive_value (identifier) @constant)
 (directive_value (string) @string)
 
