@@ -725,6 +725,7 @@ impl DoubleEndedIterator for Traverse<'_> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::annotations::diagnostics::InlineDiagnosticsConfig;
     use crate::editor::GutterConfig;
     use crate::DocumentId;
 
@@ -736,22 +737,38 @@ mod test {
             width: 180,
             height: 80,
         });
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         tree.split(view, Layout::Vertical);
 
         // Tree in test
@@ -792,28 +809,44 @@ mod test {
         });
 
         let doc_l0 = DocumentId::default();
-        let mut view = View::new(doc_l0, GutterConfig::default());
+        let mut view = View::new(
+            doc_l0,
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
 
         let doc_r0 = DocumentId::default();
-        let view = View::new(doc_r0, GutterConfig::default());
+        let view = View::new(
+            doc_r0,
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
 
         let doc_l1 = DocumentId::default();
-        let view = View::new(doc_l1, GutterConfig::default());
+        let view = View::new(
+            doc_l1,
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
 
         let doc_l2 = DocumentId::default();
-        let view = View::new(doc_l2, GutterConfig::default());
+        let view = View::new(
+            doc_l2,
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
 
@@ -908,19 +941,35 @@ mod test {
             width: tree_area_width,
             height: 80,
         });
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         tree.split(view, Layout::Vertical);
 
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         tree.split(view, Layout::Horizontal);
 
         tree.remove(tree.focus);
 
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         tree.split(view, Layout::Vertical);
 
         // Make sure that we only have one level in the tree.
@@ -946,12 +995,20 @@ mod test {
             width: tree_area_width,
             height: tree_area_height,
         });
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(0, 0, tree_area_width, tree_area_height);
         tree.insert(view);
 
         for _ in 0..9 {
-            let view = View::new(DocumentId::default(), GutterConfig::default());
+            let view = View::new(
+                DocumentId::default(),
+                GutterConfig::default(),
+                InlineDiagnosticsConfig::default(),
+            );
             tree.split(view, Layout::Vertical);
         }
 
