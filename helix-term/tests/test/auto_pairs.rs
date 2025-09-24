@@ -23,7 +23,11 @@ async fn insert_basic() -> anyhow::Result<()> {
         ))
         .await?;
     }
+    Ok(())
+}
 
+#[tokio::test(flavor = "multi_thread")]
+async fn insert_multi_character_pairs() -> anyhow::Result<()> {
     let pairs = hashmap!("\\(".into() => "\\)".into(), "<|".into() => "|>".into(), "```".into() => "```".into());
 
     let config = Config {
@@ -53,7 +57,6 @@ async fn insert_basic() -> anyhow::Result<()> {
         )
         .await?;
     }
-
     Ok(())
 }
 
@@ -413,6 +416,40 @@ async fn append_basic() -> anyhow::Result<()> {
         .await?;
     }
 
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn append_multi_character_pairs() -> anyhow::Result<()> {
+    let pairs = hashmap!("\\(".into() => "\\)".into(), "<|".into() => "|>".into(), "```".into() => "```".into());
+
+    let config = Config {
+        editor: helix_view::editor::Config {
+            auto_pairs: AutoPairConfig::Pairs(pairs.clone()),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    for (open, close) in pairs.iter() {
+        let mut chars = open.chars();
+        let open_last = chars.next_back().unwrap();
+        let open_but_last: String = chars.collect();
+
+        let mut chars = close.chars();
+        let close_head = chars.next().unwrap();
+        let close_tail: String = chars.collect();
+        test_with_config(
+            AppBuilder::new().with_config(config.clone()),
+            (
+                format!("#[{}{}|]#", LINE_END, open_but_last),
+                format!("a{}", open_last),
+                format!("#[{eol}{open}{close_head}|]#{close_tail}{eol}", eol = LINE_END),
+                LineFeedHandling::AsIs,
+            ),
+        )
+        .await?;
+    }
     Ok(())
 }
 
