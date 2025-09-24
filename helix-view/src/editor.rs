@@ -503,7 +503,7 @@ impl Default for CmdlineIcons {
     fn default() -> Self {
         Self {
             search: "🔍".to_string(),
-            command: "⚙".to_string(),
+            command: "🛠️".to_string(),
             shell: "⚡".to_string(),
             general: "💬".to_string(),
         }

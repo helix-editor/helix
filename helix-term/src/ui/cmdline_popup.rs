@@ -85,7 +85,8 @@ impl CmdlinePopup {
         } else {
             // Check if this is a regex prompt by looking at the prompt text
             match self.prompt.prompt() {
-                s if s.starts_with("search:") => &config.search,
+                s if s.starts_with("search:") || s == "Search" => &config.search,
+                s if s == "Cmdline" => &config.command,
                 _ => &config.general
             }
         }
@@ -109,10 +110,10 @@ impl CmdlinePopup {
                 self.gradient_border = Some(GradientBorder::from_theme(theme, config));
             }
 
-            // Render gradient border
+            // Render gradient border with title
             if let Some(ref mut gradient_border) = self.gradient_border {
                 let rounded = cx.editor.config().rounded_corners;
-                gradient_border.render(popup_area, surface, theme, rounded);
+                gradient_border.render_with_title(popup_area, surface, theme, Some(self.prompt.prompt()), rounded);
             }
 
             // Calculate inner area manually (same as Block::inner)
@@ -132,39 +133,44 @@ impl CmdlinePopup {
                 .borders(tui::widgets::Borders::ALL)
                 .border_type(border_type)
                 .border_style(border_style)
-                .style(background_style);
+                .style(background_style)
+                .title(self.prompt.prompt());
 
             let inner_area = block.inner(popup_area);
             block.render(popup_area, surface);
             inner_area
         };
 
-        // Render command icon and prompt
+        // Render command icon (if enabled) but not the prompt text since it's now on the border
         let config = cx.editor.config();
         let icon = if config.cmdline.show_icons {
             self.get_command_icon(&config.cmdline.icons)
         } else {
             ""
         };
-        let prompt_text = if icon.is_empty() {
-            format!("{} ", self.prompt.prompt()) // Add space after prompt for input
+        let prefix_text = if icon.is_empty() {
+            "".to_string()
         } else {
-            format!("{} {} ", icon, self.prompt.prompt()) // Add space after prompt for input
+            format!("{} ", icon) // Just the icon with space
         };
 
-        let prompt_color = theme.get("ui.text.focus");
-        surface.set_string(
-            inner_area.x,
-            inner_area.y,
-            &prompt_text,
-            prompt_color,
-        );
+        if !prefix_text.is_empty() {
+            let prompt_color = theme.get("ui.text.focus");
+            // Make the icon more prominent with bold styling
+            let icon_style = prompt_color.add_modifier(helix_view::theme::Modifier::BOLD);
+            surface.set_string(
+                inner_area.x,
+                inner_area.y,
+                &prefix_text,
+                icon_style,
+            );
+        }
 
         // Calculate input area
         let input_area = Rect::new(
-            inner_area.x + prompt_text.width() as u16,
+            inner_area.x + prefix_text.width() as u16,
             inner_area.y,
-            inner_area.width.saturating_sub(prompt_text.width() as u16),
+            inner_area.width.saturating_sub(prefix_text.width() as u16),
             1,
         );
 
@@ -306,12 +312,11 @@ impl Component for CmdlinePopup {
                 } else {
                     ""
                 };
-                let prompt_text = if icon.is_empty() {
-                    format!("{} ", self.prompt.prompt()) // Add space after prompt for input
+                let prefix_width = if icon.is_empty() {
+                    0
                 } else {
-                    format!("{} {} ", icon, self.prompt.prompt()) // Add space after prompt for input
+                    icon.width() + 1 // icon + space
                 };
-                let total_prefix_width = prompt_text.width(); // No extra space needed
 
                 let inner_area = Block::default()
                     .borders(tui::widgets::Borders::ALL)
@@ -321,7 +326,7 @@ impl Component for CmdlinePopup {
                 // TODO: Fix cursor positioning to match actual cursor in prompt
                 let cursor_pos = self.prompt.line().width();
 
-                let cursor_x = inner_area.x as usize + total_prefix_width + cursor_pos;
+                let cursor_x = inner_area.x as usize + prefix_width + cursor_pos;
                 let cursor_y = inner_area.y as usize;
 
                 (

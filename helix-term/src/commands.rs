@@ -2288,7 +2288,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
 
     ui::regex_prompt(
         cx,
-        "search:".into(),
+        "Search".into(),
         Some(reg),
         move |_editor: &Editor, input: &str| {
             completions

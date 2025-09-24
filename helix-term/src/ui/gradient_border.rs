@@ -215,10 +215,11 @@ impl GradientBorder {
     pub fn render_with_title(&mut self, area: Rect, surface: &mut Surface, theme: &Theme, title: Option<&str>, rounded: bool) {
         self.render(area, surface, theme, rounded);
 
-        // If there's a title, render it in the top border
+        // If there's a title, render it centered in the top border
         if let Some(title) = title {
             if title.len() > 0 && area.width > title.len() as u16 + 4 {
-                let title_start = area.x + 2;
+                // Center the title
+                let title_start = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
                 let title_color = self.get_gradient_color(title_start, area.y, area);
                 let title_style = Style::default().fg(title_color).add_modifier(
                     Modifier::BOLD
