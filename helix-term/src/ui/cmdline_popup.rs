@@ -212,7 +212,10 @@ impl CmdlinePopup {
         let selected_style = theme.get("ui.menu.selected");
 
         // Position completion popup below the main popup
-        let comp_height = (self.prompt.completions().len() as u16).min(8) + 2; // Max 8 items + borders
+        let max_display_items = 10; // Fixed maximum items to display
+        let total_items = self.prompt.completions().len();
+        let visible_items = total_items.min(max_display_items);
+        let comp_height = visible_items as u16 + 2; // Fixed height based on visible items + borders
         let comp_width = base_area.width;
         let comp_area = Rect::new(
             base_area.x,
@@ -255,10 +258,31 @@ impl CmdlinePopup {
             inner_area
         };
 
-        // Render completion items
-        for (i, (_range, completion)) in self.prompt.completions().iter().enumerate().take(8) {
-            let y = inner_area.y + i as u16;
-            let is_selected = self.prompt.selection() == Some(i);
+        // Render completion items with scrolling support
+        let config = cx.editor.config();
+        let picker_symbol = config.picker_symbol.trim();
+        let symbol_width = picker_symbol.width();
+        
+        let completions = self.prompt.completions();
+        let selected_index = self.prompt.selection().unwrap_or(0);
+        
+        // Calculate scroll offset to keep selected item visible within the fixed window
+        let scroll_offset = if selected_index >= max_display_items {
+            selected_index.saturating_sub(max_display_items - 1)
+        } else {
+            0
+        };
+        
+        // Render visible completion items
+        for (display_idx, (completion_idx, (_range, completion))) in completions
+            .iter()
+            .enumerate()
+            .skip(scroll_offset)
+            .take(max_display_items)
+            .enumerate()
+        {
+            let y = inner_area.y + display_idx as u16;
+            let is_selected = self.prompt.selection() == Some(completion_idx);
             let item_style = if is_selected {
                 selected_style
             } else {
@@ -266,9 +290,9 @@ impl CmdlinePopup {
             };
 
             let prefix = if is_selected {
-                format!("{} ", cx.editor.config().picker_symbol)
+                picker_symbol.to_string()
             } else {
-                "  ".to_string()
+                " ".repeat(symbol_width)
             };
             let text = format!("{}{}", prefix, completion.content);
 
@@ -279,6 +303,31 @@ impl CmdlinePopup {
                 inner_area.width as usize,
                 item_style,
             );
+        }
+        
+        // Add scroll indicators if there are more items
+        if total_items > max_display_items {
+            let scroll_indicator_style = theme.get("ui.text.inactive");
+            
+            // Show up arrow if we can scroll up
+            if scroll_offset > 0 {
+                surface.set_string(
+                    inner_area.x + inner_area.width.saturating_sub(1),
+                    inner_area.y,
+                    "↑",
+                    scroll_indicator_style,
+                );
+            }
+            
+            // Show down arrow if we can scroll down
+            if scroll_offset + max_display_items < total_items {
+                surface.set_string(
+                    inner_area.x + inner_area.width.saturating_sub(1),
+                    inner_area.y + inner_area.height.saturating_sub(1),
+                    "↓",
+                    scroll_indicator_style,
+                );
+            }
         }
     }
 
