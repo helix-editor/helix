@@ -1,4 +1,5 @@
 use std::collections::btree_map::Entry;
+use std::collections::HashSet;
 use std::fmt::Display;
 
 use crate::editor::Action;
@@ -28,6 +29,14 @@ pub enum SignatureHelpEvent {
     ReTrigger,
     Cancel,
     RequestComplete { open: bool },
+}
+
+pub struct PullDiagnosticsEvent {
+    pub document_id: DocumentId,
+}
+
+pub struct PullAllDocumentsDiagnosticsEvent {
+    pub language_servers: HashSet<LanguageServerId>,
 }
 
 #[derive(Debug)]

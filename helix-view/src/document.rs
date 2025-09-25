@@ -204,11 +204,14 @@ pub struct Document {
 
     pub readonly: bool,
 
+    pub previous_diagnostic_id: Option<String>,
+
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
+    pub pull_diagnostic_controller: TaskController,
 
     /// Whether to render the welcome screen when opening the document
     pub is_welcome: bool,
@@ -731,6 +734,8 @@ impl Document {
             color_swatch_controller: TaskController::new(),
             is_welcome: false,
             syn_loader,
+            previous_diagnostic_id: None,
+            pull_diagnostic_controller: TaskController::new(),
         }
     }
 
@@ -983,7 +988,7 @@ impl Document {
         };
 
         let identifier = self.path().map(|_| self.identifier());
-        let language_servers = self.language_servers.clone();
+        let language_servers: Vec<_> = self.language_servers.values().cloned().collect();
 
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
@@ -1127,7 +1132,7 @@ impl Document {
                 text: text.clone(),
             };
 
-            for (_, language_server) in language_servers {
+            for language_server in language_servers {
                 if !language_server.is_initialized() {
                     continue;
                 }
@@ -2291,6 +2296,10 @@ impl Document {
     /// (since it often means inlay hints have been fully deactivated).
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
+    }
+
+    pub fn has_language_server_with_feature(&self, feature: LanguageServerFeature) -> bool {
+        self.language_servers_with_feature(feature).next().is_some()
     }
 }
 
