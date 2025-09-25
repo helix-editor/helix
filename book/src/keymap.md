@@ -49,6 +49,9 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `W`                   | Move next WORD start                               | `move_next_long_word_start` |
 | `B`                   | Move previous WORD start                           | `move_prev_long_word_start` |
 | `E`                   | Move next WORD end                                 | `move_next_long_word_end`   |
+| `Alt-w`               | Move next sub-word start                           | `move_next_sub_word_start`  |
+| `Alt-b`               | Move previous sub-word start                       | `move_prev_sub_word_start`  |
+| `Alt-e`               | Move next sub-word end                             | `move_next_sub_word_end`    |
 | `t`                   | Find till next char                                | `find_till_char`            |
 | `f`                   | Find next char                                     | `find_next_char`            |
 | `T`                   | Find till previous char                            | `till_prev_char`            |
@@ -149,8 +152,8 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Alt-n`, `Alt-right`     | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
 | `Alt-a`                  | Select all sibling nodes in syntax tree (**TS**)                  | `select_all_siblings`                |
 | `Alt-I`, `Alt-Shift-down`| Select all children nodes in syntax tree (**TS**)                 | `select_all_children`                |
-| `Alt-e`                  | Move to end of parent node in syntax tree (**TS**)                | `move_parent_node_end`               |
-| `Alt-b`                  | Move to start of parent node in syntax tree (**TS**)              | `move_parent_node_start`             |
+| `Alt-l`                  | Move to end of parent node in syntax tree (**TS**)                | `move_parent_node_end`               |
+| `Alt-h`                  | Move to start of parent node in syntax tree (**TS**)              | `move_parent_node_start`             |
 
 ### Search
 
