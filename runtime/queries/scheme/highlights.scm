@@ -70,7 +70,7 @@
 ; operators
 
 ((symbol) @operator
-  (#match? @operator "^(\\+|-|\\*|/|=|>|<|>=|<=)$"))
+  (#any-of? @operator "+" "-" "*" "/" "=" ">" "<" ">=" "<="))
 
 ; library
 
@@ -94,8 +94,7 @@
 (list
   .
   ((symbol) @keyword.conditional
-   (#match? @keyword.conditional "^(if|cond|case|when|unless)$"
-  )))
+   (#any-of? @keyword.conditional "if" "cond" "case" "when" "unless")))
 
 (list
   .
