@@ -5,7 +5,7 @@ use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{cancelable_future, register_hook, send_blocking, TaskController, TaskHandle};
 use helix_lsp::lsp::{self, SignatureInformation};
 use helix_stdx::rope::RopeSliceExt;
-use helix_view::document::Mode;
+use helix_view::document::{EmitLspNotification, Mode};
 use helix_view::events::{DocumentDidChange, SelectionDidChange};
 use helix_view::handlers::lsp::{SignatureHelpEvent, SignatureHelpInvoked};
 use helix_view::Editor;
@@ -353,7 +353,9 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 
     let tx = handlers.signature_hints.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
-        if event.doc.config.load().lsp.auto_signature_help && !event.ghost_transaction {
+        if event.doc.config.load().lsp.auto_signature_help
+            && matches!(event.emit_lsp_notification, Some(EmitLspNotification::Sync))
+        {
             send_blocking(&tx, SignatureHelpEvent::ReTrigger);
         }
         Ok(())
