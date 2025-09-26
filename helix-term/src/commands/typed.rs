@@ -3733,6 +3733,11 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         },
     );
+    if cx.editor.config().statusline.merge_with_commandline {
+        // command line prompt has the same background as the statusline when
+        // the statusline and the command line are merged
+        prompt.background = Some(cx.editor.theme.get("ui.statusline"))
+    }
     prompt.doc_fn = Box::new(command_line_doc);
 
     // Calculate initial completion
