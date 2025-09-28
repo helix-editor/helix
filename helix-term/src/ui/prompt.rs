@@ -19,6 +19,7 @@ use helix_core::{
 use helix_view::{
     graphics::{CursorKind, Margin, Rect},
     Editor,
+    editor::CmdlineStyle,
 };
 
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
@@ -531,10 +532,17 @@ impl Prompt {
         let line = area.height - 1;
         surface.clear_with(area.clip_top(line), background);
         // render buffer text
-        surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
+        // Map generic labels to traditional bottom-style symbols
+        let label = if cx.editor.config().cmdline.style == CmdlineStyle::Bottom {
+            if self.prompt == "Cmdline" { ":" } else if self.prompt == "Search" { "/" } else { &self.prompt }
+        } else {
+            &self.prompt
+        };
+        surface.set_string(area.x, area.y + line, label, prompt_color);
 
+        let label_len = label.len() as u16;
         self.line_area = area
-            .clip_left(self.prompt.len() as u16)
+            .clip_left(label_len)
             .clip_top(line)
             .clip_right(2);
 

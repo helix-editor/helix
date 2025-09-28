@@ -208,8 +208,9 @@ impl CmdlinePopup {
     /// Render completion popup
     fn render_completion_popup(&mut self, base_area: Rect, surface: &mut Surface, cx: &Context) {
         let theme = &cx.editor.theme;
+        // Match global autocomplete/picker colors
         let completion_bg = theme.get("ui.menu");
-        let selected_style = theme.get("ui.menu.selected");
+        let selected_row_bg = theme.get("ui.menu.selected");
 
         // Position completion popup below the main popup
         let max_display_items = 10; // Fixed maximum items to display
@@ -224,7 +225,7 @@ impl CmdlinePopup {
             comp_height,
         );
 
-        // Clear and render completion background
+        // Clear and render completion background (match global autocomplete)
         surface.clear_with(comp_area, completion_bg);
 
         let config = &cx.editor.config().gradient_borders;
@@ -245,12 +246,12 @@ impl CmdlinePopup {
                 height: comp_area.height.saturating_sub(2),
             }
         } else {
-            // Use traditional border
+            // Use traditional border, matching popup card styling
             let border_type = BorderType::new(cx.editor.config().rounded_corners);
             let block = Block::default()
                 .borders(tui::widgets::Borders::ALL)
                 .border_type(border_type)
-                .border_style(completion_bg)
+                .border_style(theme.get("ui.popup.border"))
                 .style(completion_bg);
 
             let inner_area = block.inner(comp_area);
@@ -284,7 +285,17 @@ impl CmdlinePopup {
             let y = inner_area.y + display_idx as u16;
             let is_selected = self.prompt.selection() == Some(completion_idx);
             let item_style = if is_selected {
-                selected_style
+                // Fill the whole selected row across the popup width.
+                let spaces = " ".repeat(inner_area.width as usize);
+                surface.set_stringn(
+                    inner_area.x,
+                    y,
+                    &spaces,
+                    inner_area.width as usize,
+                    selected_row_bg,
+                );
+                // Use the theme's selected style for text (fg+bg from ui.menu.selected)
+                selected_row_bg
             } else {
                 completion_bg.patch(completion.style)
             };
@@ -295,7 +306,6 @@ impl CmdlinePopup {
                 " ".repeat(symbol_width)
             };
             let text = format!("{}{}", prefix, completion.content);
-
             surface.set_stringn(
                 inner_area.x,
                 y,

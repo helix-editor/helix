@@ -26,6 +26,11 @@ impl GradientBorder {
         }
     }
 
+    /// Disable gradient animation (set speed to 0)
+    pub fn disable_animation(&mut self) {
+        self.config.animation_speed = 0;
+    }
+
     /// Parse hex color string to RGB
     fn parse_hex_color(hex: &str) -> Option<(u8, u8, u8)> {
         if hex.len() != 7 || !hex.starts_with('#') {

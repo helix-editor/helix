@@ -2785,6 +2785,42 @@ const WRITE_NO_FORMAT_FLAG: Flag = Flag {
     ..Flag::DEFAULT
 };
 
+fn notifications_history(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    
+    crate::commands::notification::show_notification_history(cx);
+    Ok(())
+}
+
+fn notifications_clear(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    
+    crate::commands::notification::clear_notification_history(cx);
+    Ok(())
+}
+
+fn notifications_dismiss(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    
+    crate::commands::notification::dismiss_all_notifications(cx);
+    Ok(())
+}
+
+fn notifications_test(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    
+    crate::commands::notification::test_notifications(cx);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3810,6 +3846,50 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "notifications-history",
+        aliases: &["notif-history", "nh"],
+        doc: "Show notification history.",
+        fun: notifications_history,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "notifications-clear",
+        aliases: &["notif-clear", "nc"],
+        doc: "Clear notification history.",
+        fun: notifications_clear,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "notifications-dismiss",
+        aliases: &["notif-dismiss", "nd"],
+        doc: "Dismiss all active notifications.",
+        fun: notifications_dismiss,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "notifications-test",
+        aliases: &["notif-test", "nt"],
+        doc: "Test notification system with sample notifications.",
+        fun: notifications_test,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
     },

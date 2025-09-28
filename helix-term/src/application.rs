@@ -839,6 +839,20 @@ impl Application {
                     }
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
+                        
+                        // Also show as notification if enabled
+                        if self.config.load().editor.lsp.display_messages {
+                            match params.typ {
+                                lsp::MessageType::ERROR => {
+                                    self.editor.notify_error(params.message);
+                                },
+                                lsp::MessageType::WARNING => {
+                                    self.editor.notify_warning(params.message);
+                                },
+                                // Skip info messages to reduce noise from background operations
+                                _ => {},
+                            };
+                        }
                     }
                     Notification::ProgressMessage(params)
                         if !self

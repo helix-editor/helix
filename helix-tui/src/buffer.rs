@@ -340,6 +340,9 @@ impl Buffer {
 
         if truncate_start {
             for _ in 0..graphemes.next().map(|(_, g)| g.width()).unwrap_or_default() {
+                if index >= self.content.len() {
+                    break;
+                }
                 self.content[index].set_symbol("…");
                 index += 1;
                 rendered_width += 1;
@@ -355,11 +358,19 @@ impl Buffer {
                 continue;
             }
 
+            // Bounds check before accessing content
+            if index >= self.content.len() {
+                break;
+            }
+
             self.content[index].set_symbol(s);
             self.content[index].set_style(style(byte_offset));
 
             // Reset following cells if multi-width (they would be hidden by the grapheme):
             for i in index + 1..index + grapheme_width {
+                if i >= self.content.len() {
+                    break;
+                }
                 self.content[i].reset();
             }
 
@@ -369,6 +380,9 @@ impl Buffer {
 
         if truncate_end {
             for _ in 0..width.saturating_sub(rendered_width) {
+                if index >= self.content.len() {
+                    break;
+                }
                 self.content[index].set_symbol("…");
                 index += 1;
             }

@@ -448,6 +448,9 @@ pub struct Config {
     /// Picker gradient border configuration
     #[serde(default)]
     pub gradient_borders: GradientBorderConfig,
+    /// Notification system configuration
+    #[serde(default)]
+    pub notifications: NotificationConfig,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -574,6 +577,223 @@ pub enum GradientDirection {
 impl Default for GradientDirection {
     fn default() -> Self {
         Self::Horizontal
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct NotificationConfig {
+    /// Enable notification system. Defaults to true.
+    pub enable: bool,
+    /// Notification display style. Options: "popup", "statusline". Defaults to "popup".
+    pub style: NotificationStyle,
+    /// Maximum number of notifications to keep in history. Defaults to 100.
+    pub max_history: usize,
+    /// Default timeout for notifications in milliseconds. 0 = no timeout. Defaults to 5000.
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
+    pub default_timeout: Duration,
+    /// Position for popup notifications. Defaults to "top-right".
+    pub position: NotificationPosition,
+    /// Maximum width for notification popups. Defaults to 60.
+    pub max_width: u16,
+    /// Maximum height for notification popups. Defaults to 10.
+    pub max_height: u16,
+    /// Show notification icons. Defaults to true.
+    pub show_icons: bool,
+    /// Notification icons for different severity levels.
+    pub icons: NotificationIcons,
+    /// Padding inside the notification content area
+    pub padding: u16,
+    /// Show notification emojis. Defaults to true.
+    pub show_emojis: bool,
+    /// Notification emojis for different severity levels.
+    pub emojis: NotificationEmojis,
+    /// Enable notification history command. Defaults to true.
+    pub enable_history: bool,
+    /// Border configuration for notifications.
+    pub border: NotificationBorderConfig,
+    /// Drop shadow configuration for notifications
+    pub shadow: NotificationShadowConfig,
+}
+
+impl Default for NotificationConfig {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            style: NotificationStyle::Popup,
+            max_history: 100,
+            default_timeout: Duration::from_millis(5000),
+            position: NotificationPosition::TopRight,
+            max_width: 60,
+            max_height: 10,
+            show_icons: true,
+            icons: NotificationIcons::default(),
+            padding: 1,
+            show_emojis: true,
+            emojis: NotificationEmojis::default(),
+            enable_history: true,
+            border: NotificationBorderConfig::default(),
+            shadow: NotificationShadowConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NotificationStyle {
+    /// Show notifications as popup windows (noice.nvim style)
+    Popup,
+    /// Show notifications in statusline (traditional style)
+    Statusline,
+}
+
+impl Default for NotificationStyle {
+    fn default() -> Self {
+        Self::Popup
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NotificationPosition {
+    /// Top-left corner
+    TopLeft,
+    /// Top-center
+    TopCenter,
+    /// Top-right corner
+    TopRight,
+    /// Bottom-left corner
+    BottomLeft,
+    /// Bottom-center
+    BottomCenter,
+    /// Bottom-right corner
+    BottomRight,
+}
+
+impl Default for NotificationPosition {
+    fn default() -> Self {
+        Self::TopRight
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct NotificationIcons {
+    /// Icon for info notifications. Defaults to "ℹ".
+    pub info: String,
+    /// Icon for warning notifications. Defaults to "⚠".
+    pub warning: String,
+    /// Icon for error notifications. Defaults to "✗".
+    pub error: String,
+    /// Icon for success notifications. Defaults to "✓".
+    pub success: String,
+}
+
+impl Default for NotificationIcons {
+    fn default() -> Self {
+        Self {
+            info: "ℹ".to_string(),
+            warning: "⚠".to_string(),
+            error: "✗".to_string(),
+            success: "✓".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct NotificationEmojis {
+    /// Emoji for info notifications. Defaults to "💡".
+    pub info: String,
+    /// Emoji for warning notifications. Defaults to "⚠️".
+    pub warning: String,
+    /// Emoji for error notifications. Defaults to "❌".
+    pub error: String,
+    /// Emoji for success notifications. Defaults to "✅".
+    pub success: String,
+}
+
+impl Default for NotificationEmojis {
+    fn default() -> Self {
+        Self {
+            info: "💡".to_string(),
+            warning: "⚠️".to_string(),
+            error: "❌".to_string(),
+            success: "✅".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct NotificationBorderConfig {
+    /// Enable borders for notifications. Defaults to true.
+    pub enable: bool,
+    /// Border width (1-5). Defaults to 1.
+    pub width: u8,
+    /// Border radius for rounded corners (0-10). Defaults to 2.
+    pub radius: u8,
+    /// Use gradient borders. Defaults to false.
+    pub gradient: bool,
+    /// Gradient start color (in hex format like "#FF0000"). Defaults to "#8A2BE2".
+    pub gradient_start: String,
+    /// Gradient end color (in hex format like "#FF0000"). Defaults to "#00BFFF".
+    pub gradient_end: String,
+    /// Border style. Options: "solid", "dashed", "dotted". Defaults to "solid".
+    pub style: NotificationBorderStyle,
+}
+
+impl Default for NotificationBorderConfig {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            width: 1,
+            radius: 2,
+            gradient: false,
+            gradient_start: "#8A2BE2".to_string(), // BlueViolet
+            gradient_end: "#00BFFF".to_string(),   // DeepSkyBlue
+            style: NotificationBorderStyle::Solid,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NotificationBorderStyle {
+    /// Solid border
+    Solid,
+    /// Dashed border
+    Dashed,
+    /// Dotted border
+    Dotted,
+}
+
+impl Default for NotificationBorderStyle {
+    fn default() -> Self {
+        Self::Solid
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct NotificationShadowConfig {
+    /// Enable drop shadow
+    pub enable: bool,
+    /// Shadow offset on x and y axes
+    pub offset_x: u16,
+    pub offset_y: u16,
+}
+
+impl Default for NotificationShadowConfig {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            offset_x: 1,
+            offset_y: 1,
+        }
     }
 }
 
@@ -1285,6 +1505,7 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             cmdline: CmdlineConfig::default(),
             gradient_borders: GradientBorderConfig::default(),
+            notifications: NotificationConfig::default(),
         }
     }
 }
@@ -1314,6 +1535,136 @@ pub struct Breakpoint {
 use futures_util::stream::{Flatten, Once};
 
 type Diagnostics = BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>;
+
+#[derive(Debug, Clone)]
+pub struct Notification {
+    pub id: usize,
+    pub message: Cow<'static, str>,
+    pub severity: Severity,
+    pub timestamp: Instant,
+    pub timeout: Option<Duration>,
+    pub dismissed: bool,
+    /// Optional corner radius override for this notification
+    pub corner_radius: Option<u8>,
+}
+
+impl Notification {
+    pub fn new(message: impl Into<Cow<'static, str>>, severity: Severity) -> Self {
+        Self {
+            id: 0, // Will be set by NotificationManager
+            message: message.into(),
+            severity,
+            timestamp: Instant::now(),
+            timeout: None,
+            dismissed: false,
+            corner_radius: None,
+        }
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
+    pub fn is_expired(&self) -> bool {
+        if let Some(timeout) = self.timeout {
+            let elapsed = self.timestamp.elapsed();
+            let expired = elapsed >= timeout;
+            if expired {
+                log::warn!("Notification {} expired: elapsed={:?}, timeout={:?}", self.id, elapsed, timeout);
+            }
+            expired
+        } else {
+            false
+        }
+    }
+
+    pub fn dismiss(&mut self) {
+        self.dismissed = true;
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct NotificationManager {
+    notifications: Vec<Notification>,
+    next_id: usize,
+    max_history: usize,
+}
+
+impl NotificationManager {
+    pub fn new(max_history: usize) -> Self {
+        Self {
+            notifications: Vec::new(),
+            next_id: 1,
+            max_history,
+        }
+    }
+
+    pub fn add(&mut self, mut notification: Notification) -> usize {
+        notification.id = self.next_id;
+        self.next_id += 1;
+        
+        let id = notification.id; // Store the ID before moving
+        self.notifications.push(notification);
+
+        // Clean up old notifications if we exceed max_history
+        if self.notifications.len() > self.max_history {
+            let excess = self.notifications.len() - self.max_history;
+            self.notifications.drain(0..excess);
+        }
+
+        id
+    }
+
+    pub fn dismiss(&mut self, id: usize) {
+        if let Some(notification) = self.notifications.iter_mut().find(|n| n.id == id) {
+            notification.dismiss();
+        }
+    }
+
+    pub fn dismiss_all(&mut self) {
+        for notification in &mut self.notifications {
+            notification.dismiss();
+        }
+    }
+
+    pub fn get_active(&self) -> Vec<&Notification> {
+        self.notifications
+            .iter()
+            .filter(|n| !n.dismissed && !n.is_expired())
+            .collect()
+    }
+
+    pub fn get_all(&self) -> &[Notification] {
+        &self.notifications
+    }
+
+    pub fn cleanup_expired(&mut self) {
+        let before_count = self.notifications.len();
+        
+        // Debug: Check each notification before cleanup
+        for notification in &self.notifications {
+            if let Some(timeout) = notification.timeout {
+                let elapsed = notification.timestamp.elapsed();
+                if elapsed >= timeout {
+                    log::warn!("DEBUG: About to clean up expired notification {} (elapsed: {:?}, timeout: {:?})", 
+                              notification.id, elapsed, timeout);
+                }
+            }
+        }
+        
+        self.notifications.retain(|n| !n.is_expired() && !n.dismissed);
+        let after_count = self.notifications.len();
+        if before_count != after_count {
+            log::warn!("DEBUG: Cleaned up {} expired/dismissed notifications ({} -> {})", 
+                      before_count - after_count, before_count, after_count);
+        }
+    }
+
+    pub fn clear_history(&mut self) {
+        self.notifications.clear();
+    }
+}
 
 pub struct Editor {
     /// Current editing mode.
@@ -1355,6 +1706,7 @@ pub struct Editor {
     pub last_selection: Option<Selection>,
 
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
+    pub notifications: NotificationManager,
     pub autoinfo: Option<Info>,
 
     pub config: Arc<dyn DynAccess<Config>>,
@@ -1493,6 +1845,7 @@ impl Editor {
                 |config: &Config| &config.clipboard_provider,
             ))),
             status_msg: None,
+            notifications: NotificationManager::new(conf.notifications.max_history),
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
@@ -1568,6 +1921,9 @@ impl Editor {
         self.idle_timer
             .as_mut()
             .reset(Instant::now() + config.idle_timeout);
+        
+        // Cleanup expired notifications periodically
+        self.cleanup_notifications();
     }
 
     pub fn clear_status(&mut self) {
@@ -1578,21 +1934,54 @@ impl Editor {
     pub fn set_status<T: Into<Cow<'static, str>>>(&mut self, status: T) {
         let status = status.into();
         log::debug!("editor status: {}", status);
-        self.status_msg = Some((status, Severity::Info));
+        
+        let config = self.config();
+        if config.notifications.enable && config.notifications.style == NotificationStyle::Popup {
+            // Only create notification, don't set status_msg for popup style
+            self.notify_info(status);
+        } else {
+            // Traditional behavior: set status_msg and optionally create notification
+            self.status_msg = Some((status.clone(), Severity::Info));
+            if config.notifications.enable {
+                self.notify_info(status);
+            }
+        }
     }
 
     #[inline]
     pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
         let error = error.into();
         log::debug!("editor error: {}", error);
-        self.status_msg = Some((error, Severity::Error));
+        
+        let config = self.config();
+        if config.notifications.enable && config.notifications.style == NotificationStyle::Popup {
+            // Only create notification, don't set status_msg for popup style
+            self.notify_error(error);
+        } else {
+            // Traditional behavior: set status_msg and optionally create notification
+            self.status_msg = Some((error.clone(), Severity::Error));
+            if config.notifications.enable {
+                self.notify_error(error);
+            }
+        }
     }
 
     #[inline]
     pub fn set_warning<T: Into<Cow<'static, str>>>(&mut self, warning: T) {
         let warning = warning.into();
         log::warn!("editor warning: {}", warning);
-        self.status_msg = Some((warning, Severity::Warning));
+        
+        let config = self.config();
+        if config.notifications.enable && config.notifications.style == NotificationStyle::Popup {
+            // Only create notification, don't set status_msg for popup style
+            self.notify_warning(warning);
+        } else {
+            // Traditional behavior: set status_msg and optionally create notification
+            self.status_msg = Some((warning.clone(), Severity::Warning));
+            if config.notifications.enable {
+                self.notify_warning(warning);
+            }
+        }
     }
 
     #[inline]
@@ -1607,6 +1996,98 @@ impl Editor {
             .as_ref()
             .map(|(_, sev)| *sev == Severity::Error)
             .unwrap_or(false)
+    }
+
+    // Notification methods
+    pub fn notify<T: Into<Cow<'static, str>>>(&mut self, message: T) -> usize {
+        self.notify_with_severity(message, Severity::Info)
+    }
+
+    pub fn notify_info<T: Into<Cow<'static, str>>>(&mut self, message: T) -> usize {
+        self.notify_with_severity(message, Severity::Info)
+    }
+
+    pub fn notify_warning<T: Into<Cow<'static, str>>>(&mut self, message: T) -> usize {
+        self.notify_with_severity(message, Severity::Warning)
+    }
+
+    pub fn notify_error<T: Into<Cow<'static, str>>>(&mut self, message: T) -> usize {
+        self.notify_with_severity(message, Severity::Error)
+    }
+
+    pub fn notify_with_severity<T: Into<Cow<'static, str>>>(&mut self, message: T, severity: Severity) -> usize {
+        let config = self.config();
+        if !config.notifications.enable {
+            // Fall back to traditional status messages if notifications are disabled
+            match severity {
+                Severity::Error => self.set_error(message),
+                Severity::Warning => self.set_warning(message),
+                _ => self.set_status(message),
+            }
+            return 0;
+        }
+
+        let mut notification = Notification::new(message, severity);
+        
+        // Set default timeout if configured
+        if config.notifications.default_timeout > Duration::ZERO {
+            let timeout = config.notifications.default_timeout;
+            notification = notification.with_timeout(timeout);
+            log::warn!("Notification created with timeout: {:?}", timeout);
+            // Schedule a redraw at the timeout moment so the UI can expire/fade it immediately
+            tokio::spawn(async move {
+                tokio::time::sleep(timeout).await;
+                helix_event::request_redraw();
+            });
+        } else {
+            log::warn!("Notification created with no timeout");
+        }
+
+        let id = self.notifications.add(notification);
+        
+        // Also set status message for compatibility if using statusline style
+        if config.notifications.style == NotificationStyle::Statusline {
+            match severity {
+                Severity::Error => {
+                    let msg = self.notifications.notifications.last().unwrap().message.clone();
+                    self.status_msg = Some((msg, Severity::Error));
+                },
+                Severity::Warning => {
+                    let msg = self.notifications.notifications.last().unwrap().message.clone();
+                    self.status_msg = Some((msg, Severity::Warning));
+                },
+                _ => {
+                    let msg = self.notifications.notifications.last().unwrap().message.clone();
+                    self.status_msg = Some((msg, Severity::Info));
+                },
+            }
+        }
+
+        id
+    }
+
+    pub fn dismiss_notification(&mut self, id: usize) {
+        self.notifications.dismiss(id);
+    }
+
+    pub fn dismiss_all_notifications(&mut self) {
+        self.notifications.dismiss_all();
+    }
+
+    pub fn get_active_notifications(&self) -> Vec<&Notification> {
+        self.notifications.get_active()
+    }
+
+    pub fn get_notification_history(&self) -> &[Notification] {
+        self.notifications.get_all()
+    }
+
+    pub fn clear_notification_history(&mut self) {
+        self.notifications.clear_history();
+    }
+
+    pub fn cleanup_notifications(&mut self) {
+        self.notifications.cleanup_expired();
     }
 
     pub fn unset_theme_preview(&mut self) {

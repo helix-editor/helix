@@ -3,6 +3,7 @@ pub mod cmdline_popup;
 mod document;
 pub(crate) mod editor;
 pub mod gradient_border;
+pub mod notification_popup;
 mod info;
 pub mod lsp;
 mod markdown;
@@ -23,6 +24,7 @@ pub use cmdline_popup::CmdlinePopup;
 pub use helix_view::editor::CmdlineStyle;
 pub use completion::Completion;
 pub use editor::EditorView;
+pub use notification_popup::NotificationPopup;
 use helix_stdx::rope;
 use helix_view::icons::ICONS;
 use helix_view::theme::Style;
@@ -72,7 +74,13 @@ pub fn prompt(
             cx.push_layer(Box::new(cmdline));
         }
         CmdlineStyle::Bottom => {
-            let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
+            // Map generic labels to traditional bottom style symbols
+            let prompt_label: std::borrow::Cow<'static, str> = match prompt.as_ref() {
+                "Cmdline" => ":".into(),
+                "Search" => "/".into(),
+                _ => prompt.clone(),
+            };
+            let mut prompt = Prompt::new(prompt_label, history_register, completion_fn, callback_fn);
             // Calculate the initial completion
             prompt.recalculate_completion(cx.editor);
             cx.push_layer(Box::new(prompt));
@@ -102,7 +110,13 @@ pub fn prompt_with_input(
             cx.push_layer(Box::new(cmdline));
         }
         CmdlineStyle::Bottom => {
-            let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
+            // Map generic labels to traditional bottom style symbols
+            let prompt_label: std::borrow::Cow<'static, str> = match prompt.as_ref() {
+                "Cmdline" => ":".into(),
+                "Search" => "/".into(),
+                _ => prompt.clone(),
+            };
+            let prompt = Prompt::new(prompt_label, history_register, completion_fn, callback_fn)
                 .with_line(input, cx.editor);
             cx.push_layer(Box::new(prompt));
         }

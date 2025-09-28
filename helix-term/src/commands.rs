@@ -1,5 +1,6 @@
 pub(crate) mod dap;
 pub(crate) mod lsp;
+pub(crate) mod notification;
 pub(crate) mod syntax;
 pub(crate) mod typed;
 
@@ -12,6 +13,7 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
+pub use notification::*;
 pub use syntax::*;
 use tui::{
     text::{Span, Spans},

@@ -9,7 +9,7 @@ use crate::{
         document::{render_document, LinePos, TextRenderer},
         statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
-        Completion, ProgressSpinners,
+        Completion, NotificationPopup, ProgressSpinners,
     },
 };
 
@@ -60,6 +60,7 @@ pub struct EditorView {
     bufferline_positions: Vec<u16>,
     /// Tracks if there are prompt layers active (updated by compositor)
     pub prompt_active: bool,
+    notification_popup: NotificationPopup,
 }
 
 #[derive(Debug, Clone)]
@@ -86,6 +87,7 @@ impl EditorView {
             terminal_focused: true,
             bufferline_positions: Vec::new(),
             prompt_active: false,
+            notification_popup: NotificationPopup::new(),
         }
     }
 
@@ -2062,6 +2064,12 @@ impl Component for EditorView {
         if let Some(completion) = self.completion.as_mut() {
             completion.render(area, surface, cx);
         }
+
+        // Cleanup expired notifications before rendering
+        cx.editor.cleanup_notifications();
+        
+        // Render notification popup
+        self.notification_popup.render(area, surface, cx);
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
