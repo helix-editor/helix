@@ -361,7 +361,7 @@ impl Transform {
                         }
                     }
                     FormatItem::Conditional(i, ref if_, ref else_) => {
-                        if cap.get_group(i).map_or(true, |mat| mat.is_empty()) {
+                        if cap.get_group(i).is_none_or(|mat| mat.is_empty()) {
                             buf.push_str(else_)
                         } else {
                             buf.push_str(if_)

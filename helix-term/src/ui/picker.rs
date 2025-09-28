@@ -610,11 +610,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 let preview = std::fs::metadata(&path)
                     .and_then(|metadata| {
                         if metadata.is_dir() {
-                            let files = super::directory_content(&path)?;
+                            let files = super::directory_content(&path, editor)?;
                             let file_names: Vec<_> = files
                                 .iter()
-                                .filter_map(|(path, is_dir)| {
-                                    let name = path.file_name()?.to_string_lossy();
+                                .filter_map(|(file_path, is_dir)| {
+                                    let name = file_path
+                                        .strip_prefix(&path)
+                                        .map(|p| Some(p.as_os_str()))
+                                        .unwrap_or_else(|_| file_path.file_name())?
+                                        .to_string_lossy();
                                     if *is_dir {
                                         Some((format!("{}/", name), true))
                                     } else {
@@ -896,7 +900,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         if let Some((preview, range)) = self.get_preview(cx.editor) {
             let doc = match preview.document() {
                 Some(doc)
-                    if range.map_or(true, |(start, end)| {
+                    if range.is_none_or(|(start, end)| {
                         start <= end && end <= doc.text().len_lines()
                     }) =>
                 {
