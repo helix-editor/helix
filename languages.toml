@@ -4843,3 +4843,7 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "slisp"
 source = { git = "https://github.com/xenogenics/tree-sitter-slisp", rev = "29f9c6707ce9dfc2fc915d175ec720b207f179f3" }
+
+[[grammar]]
+name = "kanata"
+source = { git = "https://github.com/postsolar/tree-sitter-kanata", rev = "af53b4c35d6faa3b4ba7c317fb795a6eb679b42a" }
