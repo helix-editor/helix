@@ -29,7 +29,7 @@ use helix_view::{
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
+    Document, DocumentId, Editor, Theme, View,
 };
 use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
 
@@ -42,6 +42,7 @@ pub struct EditorView {
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+    bufferline_info: BufferLineInfo,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
     terminal_focused: bool,
 }
@@ -66,6 +67,7 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            bufferline_info: BufferLineInfo::default(),
             terminal_focused: true,
         }
     }
@@ -592,7 +594,7 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
-    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+    pub fn render_bufferline(&mut self, editor: &Editor, viewport: Rect, surface: &mut Surface) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
             viewport,
@@ -615,6 +617,8 @@ impl EditorView {
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
+        self.bufferline_info.clear();
+
         for doc in editor.documents() {
             let fname = doc
                 .path()
@@ -634,9 +638,14 @@ impl EditorView {
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
+            let start_x = x;
             x = surface
                 .set_stringn(x, viewport.y, text, rem_width as usize, style)
                 .0;
+            let end_x = x.min(surface.area.right());
+
+            self.bufferline_info
+                .add_buffer_info(doc.id(), start_x..end_x);
 
             if x >= surface.area.right() {
                 break;
@@ -1158,6 +1167,14 @@ impl EditorView {
             MouseEventKind::Down(MouseButton::Left) => {
                 let editor = &mut cxt.editor;
 
+                if is_bufferline_visible(editor) && row == 0 {
+                    if let Some(buffer_info) = self.bufferline_info.get_clicked_buffer(column) {
+                        editor.switch(buffer_info.document_id, helix_view::editor::Action::Replace);
+                    }
+
+                    return EventResult::Consumed(None);
+                }
+
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
                     editor.focus(view_id);
 
@@ -1527,13 +1544,7 @@ impl Component for EditorView {
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
 
-        // check if bufferline should be rendered
-        use helix_view::editor::BufferLine;
-        let use_bufferline = match config.bufferline {
-            BufferLine::Always => true,
-            BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
-            _ => false,
-        };
+        let use_bufferline = is_bufferline_visible(cx.editor);
 
         // -1 for commandline and -1 for bufferline
         let mut editor_area = area.clip_bottom(1);
@@ -1545,7 +1556,7 @@ impl Component for EditorView {
         cx.editor.resize(editor_area);
 
         if use_bufferline {
-            Self::render_bufferline(cx.editor, area.with_height(1), surface);
+            self.render_bufferline(cx.editor, area.with_height(1), surface);
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
@@ -1637,6 +1648,48 @@ impl Component for EditorView {
             }
             cursor => cursor,
         }
+    }
+}
+
+#[derive(Debug, Default)]
+struct BufferLineInfo {
+    visible_buffers: Vec<BufferInfo>,
+}
+
+impl BufferLineInfo {
+    fn clear(&mut self) {
+        self.visible_buffers.clear();
+    }
+
+    fn add_buffer_info(&mut self, document_id: DocumentId, columns: std::ops::Range<u16>) {
+        self.visible_buffers.push(BufferInfo {
+            document_id,
+            columns,
+        });
+    }
+
+    fn get_clicked_buffer(&self, column: u16) -> Option<&BufferInfo> {
+        self.visible_buffers
+            .iter()
+            .find(|cell| cell.columns.contains(&column))
+    }
+}
+
+#[derive(Debug)]
+struct BufferInfo {
+    document_id: DocumentId,
+    // The bufferline column span used to show the document name
+    columns: std::ops::Range<u16>,
+}
+
+fn is_bufferline_visible(editor: &Editor) -> bool {
+    use helix_view::editor::BufferLine;
+    let config = editor.config();
+
+    match config.bufferline {
+        BufferLine::Always => true,
+        BufferLine::Multiple => editor.documents.len() > 1,
+        BufferLine::Never => false,
     }
 }
 
