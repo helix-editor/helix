@@ -12,6 +12,11 @@ New Features
    
    <img width="713" height="760" alt="image" src="https://github.com/user-attachments/assets/cf78a977-1fd1-421f-acb2-fe359791b3d9" />
 
+3. Cutomizable Picker border changes (now supports the gradients and the border thickness)
+
+   <img width="1916" height="980" alt="image" src="https://github.com/user-attachments/assets/abfeef4a-e633-489f-9236-3e9adbad05bb" />
+
+
    
 
 This fork of Helix implements the following pull requests. Future pull requests that are merged will be merged and listed here.
