@@ -1,6 +1,19 @@
 This is a just a fork of Helix. All claims rest with Helix maintainers and its copyright holders. I am just maintaining a fork. 
 For more information please see Helix's readme file. 
 
+New Features
+1. Noice Cmdline
+   
+   <img width="580" height="424" alt="image" src="https://github.com/user-attachments/assets/a91ef59a-0923-47ab-b35a-2d9cb22a6462" />
+   <img width="1395" height="624" alt="image" src="https://github.com/user-attachments/assets/42c01975-b4a0-4d80-ab0e-8171dbf4df72" />
+
+
+3. Noice Notifications
+   
+   <img width="713" height="760" alt="image" src="https://github.com/user-attachments/assets/cf78a977-1fd1-421f-acb2-fe359791b3d9" />
+
+   
+
 This fork of Helix implements the following pull requests. Future pull requests that are merged will be merged and listed here.
 1. https://github.com/helix-editor/helix/pull/13354 (index command)
 2. https://github.com/helix-editor/helix/pull/13053 (local search in buffer)
