@@ -1079,6 +1079,9 @@ pub enum StatusLineElement {
 
     /// The base of current working directory
     CurrentWorkingDirectory,
+
+    /// The current function name (from tree-sitter)
+    FunctionName,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs

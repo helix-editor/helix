@@ -158,6 +158,7 @@ where
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
         helix_view::editor::StatusLineElement::CurrentWorkingDirectory => render_cwd,
+        helix_view::editor::StatusLineElement::FunctionName => render_function_name,
     }
 }
 
@@ -652,4 +653,95 @@ where
         .to_string_lossy()
         .to_string();
     write(context, cwd.into())
+}
+
+fn render_function_name<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let function_name = get_current_function_name(context);
+    if let Some(name) = function_name {
+        write(context, format!(" {} ", name).into());
+    }
+}
+
+fn get_current_function_name(context: &RenderContext) -> Option<String> {
+    let syntax = context.doc.syntax()?;
+    let text = context.doc.text().slice(..);
+    
+    let root = syntax.tree().root_node();
+    let cursor_pos = context
+        .doc
+        .selection(context.view.id)
+        .primary()
+        .cursor(text);
+    let byte_pos = text.char_to_byte(cursor_pos) as u32;
+    
+    // Start from the deepest node at cursor position and walk up
+    let mut node = root.descendant_for_byte_range(byte_pos, byte_pos)?;
+    
+    // Walk up the tree to find a function-like node
+    loop {
+        let kind = node.kind();
+        
+        // Check if this is a function-like node
+        if kind.contains("function") || kind.contains("method") || kind.contains("closure") {
+            // First, try to find a child node that has the name (for traditional function declarations)
+            for i in 0..node.child_count() {
+                if let Some(child) = node.child(i) {
+                    // Check if this is the name field (identifier)
+                    if child.kind() == "identifier" || child.kind() == "field_identifier" {
+                        let start_byte = child.start_byte() as usize;
+                        let end_byte = child.end_byte() as usize;
+                        let start_char = text.byte_to_char(start_byte);
+                        let end_char = text.byte_to_char(end_byte);
+                        let name = text.slice(start_char..end_char).to_string();
+                        return Some(name);
+                    }
+                }
+            }
+            
+            // For arrow functions or anonymous functions assigned to variables,
+            // check the parent for a variable_declarator, assignment_expression, or pair
+            if let Some(parent) = node.parent() {
+                let parent_kind = parent.kind();
+                
+                // Handle: const name = () => {} or let name = function() {}
+                if parent_kind == "variable_declarator" || parent_kind == "assignment_expression" {
+                    for i in 0..parent.child_count() {
+                        if let Some(child) = parent.child(i) {
+                            if child.kind() == "identifier" && child.byte_range().end <= node.byte_range().start {
+                                let start_byte = child.start_byte() as usize;
+                                let end_byte = child.end_byte() as usize;
+                                let start_char = text.byte_to_char(start_byte);
+                                let end_char = text.byte_to_char(end_byte);
+                                let name = text.slice(start_char..end_char).to_string();
+                                return Some(name);
+                            }
+                        }
+                    }
+                }
+                
+                // Handle: { name: () => {} } or { name() {} }
+                if parent_kind == "pair" || parent_kind == "method_definition" {
+                    for i in 0..parent.child_count() {
+                        if let Some(child) = parent.child(i) {
+                            if child.kind() == "property_identifier" || 
+                               (child.kind() == "identifier" && child.byte_range().end <= node.byte_range().start) {
+                                let start_byte = child.start_byte() as usize;
+                                let end_byte = child.end_byte() as usize;
+                                let start_char = text.byte_to_char(start_byte);
+                                let end_char = text.byte_to_char(end_byte);
+                                let name = text.slice(start_char..end_char).to_string();
+                                return Some(name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Move to parent
+        node = node.parent()?;
+    }
 }
