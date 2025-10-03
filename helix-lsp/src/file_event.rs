@@ -1,14 +1,19 @@
+use std::path::Path;
 use std::{collections::HashMap, path::PathBuf, sync::Weak};
 
 use globset::{GlobBuilder, GlobSetBuilder};
+use helix_core::file_watcher::{EventType, Events, FileSystemDidChange};
+use helix_event::register_hook;
 use tokio::sync::mpsc;
 
 use crate::{lsp, Client, LanguageServerId};
 
 enum Event {
-    FileChanged {
+    /// file written by helix, special cased to not wait on FS
+    FileWritten {
         path: PathBuf,
     },
+    FileWatcher(Events),
     Register {
         client_id: LanguageServerId,
         client: Weak<Client>,
@@ -54,6 +59,11 @@ impl Handler {
     pub fn new() -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
         tokio::spawn(Self::run(rx));
+        let tx_ = tx.clone();
+        register_hook!(move |event: &mut FileSystemDidChange| {
+            let _ = tx_.send(Event::FileWatcher(event.fs_events.clone()));
+            Ok(())
+        });
         Self { tx }
     }
 
@@ -80,48 +90,72 @@ impl Handler {
     }
 
     pub fn file_changed(&self, path: PathBuf) {
-        let _ = self.tx.send(Event::FileChanged { path });
+        let _ = self.tx.send(Event::FileWritten { path });
     }
 
     pub fn remove_client(&self, client_id: LanguageServerId) {
         let _ = self.tx.send(Event::RemoveClient { client_id });
     }
 
+    fn notify_files<'a>(
+        state: &mut HashMap<LanguageServerId, ClientState>,
+        changes: impl Iterator<Item = (&'a Path, lsp::FileChangeType)> + Clone,
+    ) {
+        state.retain(|id, client_state| {
+            let notifications: Vec<_> = changes
+                .clone()
+                .filter(|(path, _)| {
+                    client_state
+                        .registered
+                        .values()
+                        .any(|glob| glob.is_match(path))
+                })
+                .filter_map(|(path, typ)| {
+                    let uri = lsp::Url::from_file_path(path).ok()?;
+                    let event = lsp::FileEvent { uri, typ };
+                    Some(event)
+                })
+                .collect();
+            if notifications.is_empty() {
+                return false;
+            }
+            let Some(client) = client_state.client.upgrade() else {
+                log::warn!("LSP client was dropped: {id}");
+                return false;
+            };
+            log::debug!(
+                "Sending didChangeWatchedFiles notification to client '{}'",
+                client.name()
+            );
+            client.did_change_watched_files(notifications);
+            true
+        })
+    }
+
     async fn run(mut rx: mpsc::UnboundedReceiver<Event>) {
         let mut state: HashMap<LanguageServerId, ClientState> = HashMap::new();
         while let Some(event) = rx.recv().await {
             match event {
-                Event::FileChanged { path } => {
+                Event::FileWatcher(events) => {
+                    Self::notify_files(
+                        &mut state,
+                        events.iter().filter_map(|event| {
+                            let ty = match event.ty {
+                                EventType::Create => lsp::FileChangeType::CREATED,
+                                EventType::Delete => lsp::FileChangeType::DELETED,
+                                EventType::Modified => lsp::FileChangeType::CHANGED,
+                                EventType::Tempfile => return None,
+                            };
+                            Some((event.path.as_std_path(), ty))
+                        }),
+                    );
+                }
+                Event::FileWritten { path } => {
                     log::debug!("Received file event for {:?}", &path);
-
-                    state.retain(|id, client_state| {
-                        if !client_state
-                            .registered
-                            .values()
-                            .any(|glob| glob.is_match(&path))
-                        {
-                            return true;
-                        }
-                        let Some(client) = client_state.client.upgrade() else {
-                            log::warn!("LSP client was dropped: {id}");
-                            return false;
-                        };
-                        let Ok(uri) = lsp::Url::from_file_path(&path) else {
-                            return true;
-                        };
-                        log::debug!(
-                            "Sending didChangeWatchedFiles notification to client '{}'",
-                            client.name()
-                        );
-                        client.did_change_watched_files(vec![lsp::FileEvent {
-                            uri,
-                            // We currently always send the CHANGED state
-                            // since we don't actually have more context at
-                            // the moment.
-                            typ: lsp::FileChangeType::CHANGED,
-                        }]);
-                        true
-                    });
+                    Self::notify_files(
+                        &mut state,
+                        [(&*path, lsp::FileChangeType::CHANGED)].iter().cloned(),
+                    );
                 }
                 Event::Register {
                     client_id,

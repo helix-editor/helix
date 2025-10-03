@@ -1,7 +1,8 @@
 use completion::{CompletionEvent, CompletionHandler};
-use helix_event::send_blocking;
+use helix_event::{register_hook, send_blocking};
 use tokio::sync::mpsc::Sender;
 
+use crate::events::ConfigDidChange;
 use crate::handlers::lsp::SignatureHelpInvoked;
 use crate::{DocumentId, Editor, ViewId};
 
@@ -59,4 +60,9 @@ impl Handlers {
 pub fn register_hooks(handlers: &Handlers) {
     lsp::register_hooks(handlers);
     word_index::register_hooks(handlers);
+    // must be done here because the file watcher is in helix-core
+    register_hook!(move |event: &mut ConfigDidChange<'_>| {
+        event.editor.file_watcher.reload(&event.new.file_watcher);
+        Ok(())
+    });
 }
