@@ -45,6 +45,7 @@ This fork of Helix implements the following pull requests. Future pull requests 
 19. https://github.com/helix-editor/helix/pull/13760 (support workspace commands)
 20.  https://github.com/helix-editor/helix/pull/13988 (add support to swap splits)
 21. https://github.com/helix-editor/helix/pull/13133 (Inline Git Blame - show commit info for current line)
+22. https://github.com/helix-editor/helix/pull/14453 (ruler chars)
 
 ## Building
 ```bash
