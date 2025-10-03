@@ -1,17 +1,17 @@
-FROM quay.io/fedora/fedora:latest
+FROM rust:latest
 
-# Install dependencies
-RUN dnf install -y git cargo
-
-# Set working directory
+# Set working directory to where we'll copy the repo
 WORKDIR /src
 
-# Clone Helix repo
-RUN git clone https://github.com/D4ario0/helix helix
+# Copy Helix repo from host
+# Assumes the Dockerfile is in the root of the repo
+COPY . /src/helix
 
-# Set environment variables to match your workflow
+# Set environment variables
 ENV HELIX_DISABLE_AUTO_GRAMMAR_BUILD=true
-ENV CARGO_INSTALL_ROOT=/out
+
+# Now, cargo install will put binaries into /src/helix/out inside the container
+ENV CARGO_INSTALL_ROOT=/src/helix/out
 
 # Build and install Helix (cargo install)
 WORKDIR /src/helix
@@ -20,6 +20,3 @@ RUN cargo install \
     --config 'build.rustflags="-C target-cpu=native"' \
     --path helix-term \
     --locked
-
-# Default working directory when container runs
-WORKDIR /out
