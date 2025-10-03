@@ -4176,6 +4176,15 @@ pub enum Open {
     Above,
 }
 
+impl Open {
+    pub fn from_signature_help_position(pos: &helix_view::editor::SignatureHelpPosition) -> Self {
+        match pos {
+            helix_view::editor::SignatureHelpPosition::Above => Self::Above,
+            helix_view::editor::SignatureHelpPosition::Below => Self::Below,
+        }
+    }
+}
+
 #[derive(PartialEq)]
 pub enum CommentContinuation {
     Enabled,
