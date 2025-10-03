@@ -174,6 +174,40 @@ impl Default for GutterLineNumbersConfig {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum InlineBlameShow {
+    /// Do not show inline blame, and do not request it in the background
+    ///
+    /// When manually requesting the inline blame, it may take several seconds to appear.
+    Never,
+    /// Show the inline blame on the cursor line
+    CursorLine,
+    /// Show the inline blame on every other line
+    AllLines,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct InlineBlameConfig {
+    /// How to show the inline blame
+    pub show: InlineBlameShow,
+    /// Whether the inline blame should be fetched in the background
+    pub auto_fetch: bool,
+    /// How the inline blame should look like and the information it includes
+    pub format: String,
+}
+
+impl Default for InlineBlameConfig {
+    fn default() -> Self {
+        Self {
+            show: InlineBlameShow::Never,
+            format: "{author}, {time-ago} • {title} • {commit}".to_owned(),
+            auto_fetch: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
@@ -384,6 +418,9 @@ pub struct Config {
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
+    /// Character used to render rulers in the foreground. Defaults to "┊".
+    /// Set to empty string "" to use background-style rulers instead of a glyph.
+    pub ruler_char: String,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
     /// Vertical indent width guides.
@@ -438,6 +475,9 @@ pub struct Config {
     pub max_panel_width_percent: f32,
     /// Maximum panel height as percentage of terminal height (0.0-1.0). Used when max_panel_height is 0. Defaults to 0.8.
     pub max_panel_height_percent: f32,
+    /// Inline blame allows showing the latest commit that affected the line the cursor is on as virtual text
+    #[serde(default)]
+    pub inline_blame: InlineBlameConfig,
     /// Whether to render rainbow colors for matching brackets. Defaults to `false`.
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
@@ -473,6 +513,8 @@ pub struct CmdlineConfig {
     pub min_popup_width: u16,
     /// Maximum width for popup cmdline. Defaults to 80.
     pub max_popup_width: u16,
+    /// Use full height when cmdline style is popup (removes the bottom space). Defaults to false.
+    pub use_full_height: bool,
     /// Customizable icons for different command types.
     pub icons: CmdlineIcons,
 }
@@ -484,6 +526,7 @@ impl Default for CmdlineConfig {
             show_icons: true,
             min_popup_width: 40,
             max_popup_width: 80,
+            use_full_height: false,
             icons: CmdlineIcons::default(),
         }
     }
@@ -879,6 +922,8 @@ pub struct LspConfig {
     pub auto_signature_help: bool,
     /// Display docs under signature help popup
     pub display_signature_help_docs: bool,
+    /// Position of signature help popup relative to cursor: "above" or "below"
+    pub signature_help_position: SignatureHelpPosition,
     /// Display inlay hints
     pub display_inlay_hints: bool,
     /// Maximum displayed length of inlay hints (excluding the added trailing `…`).
@@ -902,6 +947,7 @@ impl Default for LspConfig {
             display_messages: true,
             auto_signature_help: true,
             display_signature_help_docs: true,
+            signature_help_position: SignatureHelpPosition::Above,
             display_inlay_hints: false,
             inlay_hints_length_limit: None,
             snippets: true,
@@ -910,6 +956,13 @@ impl Default for LspConfig {
             color_swatches_string: "■".to_owned(),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SignatureHelpPosition {
+    Above,
+    Below,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1475,6 +1528,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
+            ruler_char: "┊".to_string(),
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
@@ -1499,6 +1553,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Enable(Severity::Hint),
             clipboard_provider: ClipboardProvider::default(),
+            inline_blame: InlineBlameConfig::default(),
             editor_config: true,
             max_panel_width: 50,
             max_panel_height: 50,
@@ -2556,11 +2611,13 @@ impl Editor {
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
+
             self.launch_language_servers(id);
 
             helix_event::dispatch(DocumentDidOpen {
                 editor: self,
                 doc: id,
+                path: &path,
             });
 
             id

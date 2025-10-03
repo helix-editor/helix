@@ -40,10 +40,27 @@ This fork of Helix implements the following pull requests. Future pull requests 
 18. https://github.com/helix-editor/helix/pull/13821 (fix block cursor in terminal)
 19. https://github.com/helix-editor/helix/pull/13760 (support workspace commands)
 20.  https://github.com/helix-editor/helix/pull/13988 (add support to swap splits)
+21. https://github.com/helix-editor/helix/pull/13133 (Inline Git Blame - show commit info for current line)
 
 ## Building
 ```bash
   cargo install --path helix-term --locked
+```
+
+**Full Height Mode:**
+
+When `use-full-height = true` is set along with `style = "popup"`, the command line popup uses the full terminal height by removing the traditionally reserved bottom line.
+
+```toml
+# Maximum screen space (recommended for popup style)
+[editor.cmdline]
+style = "popup"
+use-full-height = true
+
+# Traditional with reserved space (default)
+[editor.cmdline]
+style = "popup"
+use-full-height = false
 ```
 
 ## Window Resizing and Focus Mode Commands
@@ -109,6 +126,17 @@ max-panel-height-percent = 0.8
 - Automatically adapts to your terminal size
 - Smooth resizing throughout the entire range
 - Configurable limits for different workflows
+
+### Ruler Character
+
+Choose the character used to render rulers in the foreground (defaults to `┊`).
+Set it to an empty string to fall back to background-style rulers.
+
+```toml
+[editor]
+rulers = [80, 100, 120]
+ruler-char = "┊"   # examples: "┊", "│", ".", "|"; set to "" for background style
+```
 
 ## Hover Documentation Commands
 
@@ -188,6 +216,10 @@ show-icons = true
 # Popup dimensions
 min-popup-width = 40    # Minimum width for popup cmdline
 max-popup-width = 80    # Maximum width for popup cmdline
+
+# Use full height when style is popup (removes bottom space, default: false)
+# Only applies when style = "popup"
+use-full-height = true
 
 # Customize command icons
 [editor.cmdline.icons]
@@ -338,7 +370,83 @@ end-color = "#9370DB"
 
 **Note**: Gradient borders are applied to file pickers, command palettes, completion menus, preview panels, and the noice.nvim-style command line popup. Traditional borders are used when gradient borders are disabled.
 
-## Running app locally on MacOS systems
-run the following command on the terminal
+**Local Development on MacOS**:
+
+To run the app locally on MacOS systems, run the following command on the terminal:
 `xattr -d com.apple.quarantine /path/to/your/app`
 (this removes the quarantine attribute)
+
+## Inline Git Blame
+
+**Inline Blame Configuration:**
+
+Show git blame information as virtual text next to the current line you're editing. This feature displays the latest commit information for the line your cursor is on.
+
+```toml
+[editor]
+# Inline blame configuration (inline table form)
+inline-blame = { show = "cursor", format = "{author} • {time-ago} • {title}", auto-fetch = false }
+```
+
+Or in expanded format:
+
+```toml
+[editor.inline-blame]
+# Show inline blame on specific lines (default: "never")
+# Options: "cursor", "all", "never"
+show = "cursor"
+
+# Format string for blame display
+# Available placeholders: {author}, {commit}, {time-ago}, {title}
+format = "{author} • {time-ago} • {title}"
+
+# Auto-fetch blame information (default: false)
+auto-fetch = false
+```
+
+**Keybindings:**
+
+- `<space>B` - Show git blame for current line in status line (manual blame)
+
+**Configuration Examples:**
+
+```toml
+# Minimal blame display
+[editor.inline-blame]
+show = "cursor"
+format = "{author} • {time-ago}"
+
+# Detailed blame information
+[editor.inline-blame]
+show = "cursor"
+format = "{commit} - {author} ({time-ago}): {title}"
+
+# Show blame for all lines (can be noisy)
+[editor.inline-blame]
+show = "all"
+format = "{author}"
+auto-fetch = true
+
+# Manual blame only (no inline display, use <space>B)
+[editor.inline-blame]
+show = "never"
+```
+
+**Features:**
+- **Virtual text display** - Non-intrusive blame info that doesn't affect text editing
+- **Cursor-based** - Shows blame only for the line you're currently on
+- **Customizable format** - Control what information is displayed
+- **Manual fallback** - Use `<space>B` to check blame without enabling inline display
+- **Smart caching** - Efficiently caches blame data to avoid repeated git operations
+
+## Signature Help Position
+
+Control where signature help popups appear:
+
+```toml
+[editor.lsp]
+# Position signature help above cursor (default)
+signature-help-position = "above"
+
+# Or below cursor
+signature-help-position = "below"

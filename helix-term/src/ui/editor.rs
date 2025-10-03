@@ -26,7 +26,7 @@ use helix_loader::VERSION_AND_GIT_HASH;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CmdlineStyle, CompleteAction, CursorShapeConfig, InlineBlameConfig, InlineBlameShow},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     icons::ICONS,
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
@@ -46,6 +46,8 @@ use tui::{
     buffer::Buffer as Surface,
     text::{Span, Spans},
 };
+
+use super::text_decorations::blame::InlineBlame;
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -452,6 +454,7 @@ impl EditorView {
         }
 
         Self::render_rulers(editor, doc, view, inner, surface, theme);
+        Self::render_inline_blame(&config.inline_blame, doc, view, &mut decorations, theme);
 
         if config.welcome_screen && doc.version() == 0 && doc.is_welcome {
             Self::render_welcome(
@@ -485,6 +488,7 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+
         render_document(
             surface,
             inner,
@@ -515,15 +519,71 @@ impl EditorView {
             Self::render_diagnostics(doc, view, inner, surface, theme);
         }
 
+        // Statusline on the last row of the view area.
+        // The cmdline space reservation is handled at the top level in EditorView::render.
         let statusline_area = view
             .area
-            .clip_top(view.area.height.saturating_sub(1))
-            .clip_bottom(1); // -1 from bottom to remove commandline
+            .clip_top(view.area.height.saturating_sub(1));
 
         let mut context =
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
         statusline::render(&mut context, statusline_area, surface);
+    }
+
+    fn render_inline_blame(
+        inline_blame: &InlineBlameConfig,
+        doc: &Document,
+        view: &View,
+        decorations: &mut DecorationManager,
+        theme: &Theme,
+    ) {
+        const INLINE_BLAME_SCOPE: &str = "ui.virtual.inline-blame";
+        let text = doc.text();
+        match inline_blame.show {
+            InlineBlameShow::Never => (),
+            InlineBlameShow::CursorLine => {
+                let cursor_line_idx = doc.cursor_line(view.id);
+
+                // do not render inline blame for empty lines to reduce visual noise
+                if text.line(cursor_line_idx) != doc.line_ending.as_str() {
+                    if let Ok(line_blame) =
+                        doc.line_blame(cursor_line_idx as u32, &inline_blame.format)
+                    {
+                        decorations.add_decoration(InlineBlame::new(
+                            theme.get(INLINE_BLAME_SCOPE),
+                            text_decorations::blame::LineBlame::OneLine((
+                                cursor_line_idx,
+                                line_blame,
+                            )),
+                        ));
+                    };
+                }
+            }
+            InlineBlameShow::AllLines => {
+                let mut blame_lines = vec![None; text.len_lines()];
+
+                let blame_for_all_lines = view.line_range(doc).filter_map(|line_idx| {
+                    // do not render inline blame for empty lines to reduce visual noise
+                    if text.line(line_idx) != doc.line_ending.as_str() {
+                        doc.line_blame(line_idx as u32, &inline_blame.format)
+                            .ok()
+                            .map(|blame| (line_idx, blame))
+                    } else {
+                        None
+                    }
+                });
+
+                for (line_idx, blame) in blame_for_all_lines {
+                    blame_lines[line_idx] = Some(blame);
+                }
+
+                decorations.add_decoration(InlineBlame::new(
+                    theme.get(INLINE_BLAME_SCOPE),
+                    text_decorations::blame::LineBlame::ManyLines(blame_lines),
+                ));
+            }
+        }
     }
 
     pub fn render_rulers(
@@ -535,6 +595,7 @@ impl EditorView {
         theme: &Theme,
     ) {
         let editor_rulers = &editor.config().rulers;
+        let ruler_char = &editor.config().ruler_char;
         let ruler_theme = theme
             .try_get("ui.virtual.ruler")
             .unwrap_or_else(|| Style::default().bg(Color::Red));
@@ -553,7 +614,19 @@ impl EditorView {
             .filter_map(|ruler| ruler.checked_sub(1 + view_offset.horizontal_offset as u16))
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
-            .for_each(|area| surface.set_style(area, ruler_theme))
+            .for_each(|area| {
+                if ruler_char.is_empty() {
+                    // Background-style ruler (legacy behavior)
+                    surface.set_style(area, ruler_theme);
+                } else {
+                    // Foreground glyph ruler: draw the configured character on each visible row
+                    for y in area.top()..area.bottom() {
+                        surface[(area.x, y)]
+                            .set_symbol(ruler_char)
+                            .set_style(ruler_theme);
+                    }
+                }
+            })
     }
 
     fn viewport_byte_range(
@@ -1977,8 +2050,15 @@ impl Component for EditorView {
             _ => false,
         };
 
-        // -1 for commandline and -1 for bufferline
-        let mut editor_area = area.clip_bottom(1);
+        // Reserve bottom row for commandline only when NOT using popup with full-height
+        let mut editor_area = if config.cmdline.style == helix_view::editor::CmdlineStyle::Popup
+            && config.cmdline.use_full_height
+        {
+            area // Use full height
+        } else {
+            area.clip_bottom(1) // Reserve for commandline
+        };
+        
         if use_bufferline {
             editor_area = editor_area.clip_top(1);
         }

@@ -148,11 +148,8 @@ impl CmdlinePopup {
         } else {
             ""
         };
-        let prefix_text = if icon.is_empty() {
-            "".to_string()
-        } else {
-            format!("{} ", icon) // Just the icon with space
-        };
+        // Render icon without trailing space to avoid extra padding before input
+        let prefix_text = if icon.is_empty() { "".to_string() } else { icon.to_string() };
 
         if !prefix_text.is_empty() {
             let prompt_color = theme.get("ui.text.focus");
@@ -183,26 +180,12 @@ impl CmdlinePopup {
         }
     }
 
-    /// Render the input text with syntax highlighting
+    /// Render the input text (popup: render plain to avoid padding/offsets)
     fn render_input_text(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let text_style = theme.get("ui.text");
-
-        if let Some((language, loader)) = self.prompt.language().as_ref() {
-            // Use syntax highlighting for known languages
-            let mut text: ui::text::Text = crate::ui::markdown::highlighted_code_block(
-                self.prompt.line(),
-                language,
-                Some(&cx.editor.theme),
-                &loader.load(),
-                None,
-            )
-            .into();
-            text.render(area, surface, cx);
-        } else {
-            // Fallback to plain text
-            surface.set_string(area.x, area.y, self.prompt.line(), text_style);
-        }
+        // Always render plain text for exact alignment with cursor positioning.
+        surface.set_string(area.x, area.y, self.prompt.line(), text_style);
     }
 
     /// Render completion popup
@@ -371,26 +354,35 @@ impl Component for CmdlinePopup {
                 } else {
                     ""
                 };
-                let prefix_width = if icon.is_empty() {
-                    0
-                } else {
-                    icon.width() + 1 // icon + space
-                };
+                let prefix_width = if icon.is_empty() { 0 } else { icon.width() };
 
+                // Compute inner area similarly to render: border consumes 1 px around
                 let inner_area = Block::default()
                     .borders(tui::widgets::Borders::ALL)
                     .inner(self.popup_area);
 
-                // For now, just put cursor at end of input
-                // TODO: Fix cursor positioning to match actual cursor in prompt
-                let cursor_pos = self.prompt.line().width();
+                // Build the same input area used in render_popup
+                let input_area = Rect::new(
+                    inner_area.x + prefix_width as u16,
+                    inner_area.y,
+                    inner_area.width.saturating_sub(prefix_width as u16),
+                    1,
+                );
 
-                let cursor_x = inner_area.x as usize + prefix_width + cursor_pos;
-                let cursor_y = inner_area.y as usize;
+                // Compute cursor directly to avoid relying on bottom-mode internals
+                let byte_pos = self.prompt.position();
+                let line = self.prompt.line();
+                let grapheme_w = line[..byte_pos].width() as u16;
+                let clamped_w = grapheme_w.min(input_area.width.saturating_sub(1));
+                let cursor_x = input_area.x as usize + clamped_w as usize;
+                let cursor_y = input_area.y as usize;
 
                 (
                     Some(Position::new(cursor_y, cursor_x)),
-                    editor.config().cursor_shape.from_mode(helix_view::document::Mode::Insert),
+                    editor
+                        .config()
+                        .cursor_shape
+                        .from_mode(helix_view::document::Mode::Insert),
                 )
             }
             CmdlineStyle::Bottom => {

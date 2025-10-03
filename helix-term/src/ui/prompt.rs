@@ -792,9 +792,22 @@ impl Component for Prompt {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        // Use the same label logic used in render_prompt so the cursor aligns with what is drawn.
+        // When using the traditional bottom cmdline, we draw ":" for Cmdline and "/" for Search.
+        let effective_label_len: u16 = if editor.config().cmdline.style == CmdlineStyle::Bottom {
+            if self.prompt == "Cmdline" || self.prompt == "Search" {
+                1
+            } else {
+                self.prompt.len() as u16
+            }
+        } else {
+            // Popup style renders no textual label inside the input area.
+            0
+        };
+
         let area = area
-            .clip_left(self.prompt.len() as u16)
-            .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
+            .clip_left(effective_label_len)
+            .clip_right(if effective_label_len == 0 { 2 } else { 0 });
 
         let mut col = area.left() as usize + self.line[self.anchor..self.cursor].width();
 
