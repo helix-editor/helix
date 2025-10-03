@@ -16,6 +16,10 @@ New Features
 
    <img width="1916" height="980" alt="image" src="https://github.com/user-attachments/assets/abfeef4a-e633-489f-9236-3e9adbad05bb" />
 
+4. Show function name in the status bar
+   Add this following to your editor.statusline config 
+   <img width="428" height="220" alt="image" src="https://github.com/user-attachments/assets/dea63278-a649-4561-a29a-b1c0eddacf9f" />
+
 
    
 
