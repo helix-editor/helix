@@ -160,8 +160,10 @@ where
     path
 }
 
-/// Returns a truncated filepath where the basepart of the path is reduced to the first
-/// char of the folder and the whole filename appended.
+/// Returns a truncated filepath where the basepart of the path is reduced to
+/// try and fit the entire path into the character limit. The filename is never
+/// truncated and the basepart components will each keep at least their first character,
+/// so it is still possible for the resulting path to exceed the character limit.
 ///
 /// Also strip the current working directory from the beginning of the path.
 /// Note that this function does not check if the truncated path is unambiguous.
@@ -170,9 +172,17 @@ where
 ///    use helix_stdx::path::get_truncated_path;
 ///    use std::path::Path;
 ///
-///    assert_eq!(
-///         get_truncated_path("/home/cnorris/documents/jokes.txt").as_path(),
-///         Path::new("/h/c/d/jokes.txt")
+///     assert_eq!(
+///         get_truncated_path("/home/cnorris/documents/jokes_and_more.txt").as_path(),
+///         Path::new("/home/cnorr/docum/jokes_and_more.txt")
+///     );
+///     assert_eq!(
+///         get_truncated_path("/home/cnorris/documents/jokes_with_a_very_long_name.txt").as_path(),
+///         Path::new("/h/c/d/jokes_with_a_very_long_name.txt")
+///     );
+///     assert_eq!(
+///         get_truncated_path("crates/args_internal/src/format_argument.rs").as_path(),
+///         Path::new("crates/args_i/src/format_argument.rs")
 ///     );
 ///     assert_eq!(
 ///         get_truncated_path("jokes.txt").as_path(),
@@ -193,21 +203,39 @@ pub fn get_truncated_path(path: impl AsRef<Path>) -> PathBuf {
     let cwd = current_working_dir();
     let path = path.as_ref();
     let path = path.strip_prefix(cwd).unwrap_or(path);
-    let file = path.file_name().unwrap_or_default();
-    let base = path.parent().unwrap_or_else(|| Path::new(""));
-    let mut ret = PathBuf::with_capacity(file.len());
-    // A char can't be directly pushed to a PathBuf
-    let mut first_char_buffer = String::new();
-    for d in base {
-        let Some(first_char) = d.to_string_lossy().chars().next() else {
+
+    let char_limit = 36;
+    let mut result = path.to_path_buf();
+
+    while result.to_string_lossy().chars().count() > char_limit {
+        // find the longest path component
+        let longest = result
+            .components()
+            .rev()
+            .skip(1) // never truncate the last component, i.e. filename
+            .filter_map(|component| match component {
+                Component::Normal(c) => Some(c.to_string_lossy()),
+                _ => None,
+            })
+            .max_by(|c1, c2| c1.len().cmp(&c2.len()))
+            .unwrap_or_else(|| Cow::from(""));
+
+        if longest.chars().count() <= 1 {
             break;
-        };
-        first_char_buffer.push(first_char);
-        ret.push(&first_char_buffer);
-        first_char_buffer.clear();
+        }
+
+        // truncate longest component by one character
+        let mut new_path = PathBuf::with_capacity(result.capacity());
+        for c in result.components() {
+            if c.as_os_str().to_string_lossy() == longest {
+                new_path.push(&longest[..longest.len() - 1]);
+            } else {
+                new_path.push(c);
+            }
+        }
+        result = new_path;
     }
-    ret.push(file);
-    ret
+    result
 }
 
 fn path_component_regex(windows: bool) -> String {
