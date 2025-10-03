@@ -1569,6 +1569,8 @@ impl Component for EditorView {
             use helix_view::editor::Severity;
             let style = if *severity == Severity::Error {
                 cx.editor.theme.get("error")
+            } else if *severity == Severity::Warning {
+                cx.editor.theme.get("warning")
             } else {
                 cx.editor.theme.get("ui.text")
             };

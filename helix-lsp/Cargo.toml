@@ -16,6 +16,7 @@ homepage.workspace = true
 helix-stdx = { path = "../helix-stdx" }
 helix-core = { path = "../helix-core" }
 helix-loader = { path = "../helix-loader" }
+helix-event = { path = "../helix-event" }
 helix-lsp-types = { path = "../helix-lsp-types" }
 
 anyhow = "1.0"

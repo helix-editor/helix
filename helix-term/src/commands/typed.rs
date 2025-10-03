@@ -1438,11 +1438,13 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })?;
-    if let Some(path) = doc.path() {
-        cx.editor
-            .language_servers
-            .file_event_handler
-            .file_changed(path.clone());
+    if !cfg!(any(target_os = "linux", target_os = "android")) {
+        if let Some(path) = doc.path() {
+            cx.editor
+                .language_servers
+                .file_event_handler
+                .file_changed(path.clone());
+        }
     }
     Ok(())
 }
@@ -1484,11 +1486,13 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
             continue;
         }
 
-        if let Some(path) = doc.path() {
-            cx.editor
-                .language_servers
-                .file_event_handler
-                .file_changed(path.clone());
+        if !cfg!(any(target_os = "linux", target_os = "android")) {
+            if let Some(path) = doc.path() {
+                cx.editor
+                    .language_servers
+                    .file_event_handler
+                    .file_changed(path.clone());
+            }
         }
 
         for view_id in view_ids {
