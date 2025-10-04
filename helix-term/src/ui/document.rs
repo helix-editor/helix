@@ -211,14 +211,9 @@ impl<'a> TextRenderer<'a> {
         let WhitespaceConfig { render } = &editor_config.whitespace;
 
         let tab_width = doc.tab_width();
-
-        let icons = ICONS.load();
-
-        let whitespace = icons.ui().r#virtual();
-
-        let tab = if render.tab() == WhitespaceRenderValue::All {
-            std::iter::once(whitespace.tab())
-                .chain(std::iter::repeat(whitespace.tabpad()).take(tab_width - 1))
+        let tab = if ws_render.tab() == WhitespaceRenderValue::All {
+            std::iter::once(ws_chars.tab)
+                .chain(std::iter::repeat_n(ws_chars.tabpad, tab_width - 1))
                 .collect()
         } else {
             " ".repeat(tab_width)

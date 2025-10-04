@@ -1,8 +1,7 @@
 use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
 use helix_loader::merge_toml_values;
-use helix_view::document::Mode;
-use helix_view::icons::{Icons, ICONS};
+use helix_view::{document::Mode, theme};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -13,7 +12,7 @@ use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
-    pub theme: Option<String>,
+    pub theme: Option<theme::Config>,
     pub keys: HashMap<Mode, KeyTrie>,
     pub editor: helix_view::editor::Config,
 }
@@ -21,7 +20,7 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
-    pub theme: Option<String>,
+    pub theme: Option<theme::Config>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
     pub icons: Option<toml::Value>,
