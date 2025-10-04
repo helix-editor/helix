@@ -66,7 +66,6 @@
 | `editor-config` | Whether to read settings from [EditorConfig](https://editorconfig.org) files | `true` |
 | `rainbow-brackets` | Whether to render rainbow colors for matching brackets. Requires tree-sitter `rainbows.scm` queries for the language. | `false` |
 | `kitty-keyboard-protocol` | Whether to enable Kitty Keyboard Protocol. Can be `enabled`, `disabled` or `auto` | `auto` |
-| `welcome-screen` | Whether to enable the welcome screen | `true` |
 
 ### `[editor.clipboard-provider]` Section
 

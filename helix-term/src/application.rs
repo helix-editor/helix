@@ -219,11 +219,11 @@ impl Application {
                 editor.new_file(Action::VerticalSplit);
             }
         } else if stdin().is_terminal() || cfg!(feature = "integration") {
-            editor.new_file_welcome();
+            editor.new_file(Action::VerticalSplit);
         } else {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
-                .unwrap_or_else(|_| editor.new_file_welcome());
+                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
         #[cfg(windows)]
