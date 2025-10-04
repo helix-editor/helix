@@ -394,7 +394,7 @@ impl Prompt {
     }
 
     pub fn exit_selection(&mut self) {
-        self.selection = if self.completion.len() >= 1 {
+        self.selection = if !self.completion.is_empty() {
             Some(0)
         } else {
             None
