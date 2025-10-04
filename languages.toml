@@ -3047,6 +3047,7 @@ file-types = [
   "fodt",
   "fods",
   "itermcolors",
+  "terminal",
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
