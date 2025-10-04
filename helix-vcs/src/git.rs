@@ -167,6 +167,10 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
                     EntryStatus::Change(Change::Modification { .. }) => {
                         FileChange::Modified { path }
                     }
+                    // Jujutsu automatically marks all untracked files as such.
+                    // Treat these files the same way as untracked ones, so they
+                    // also show up in the "changed file picker".
+                    EntryStatus::IntentToAdd => FileChange::Untracked { path },
                     _ => continue,
                 }
             }
