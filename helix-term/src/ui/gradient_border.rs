@@ -9,13 +9,21 @@ use tui::buffer::Buffer as Surface;
 pub struct GradientBorder {
     config: GradientBorderConfig,
     animation_frame: u32,
+    // Cached parsed colors to avoid repeated hex parsing
+    start_rgb: (u8, u8, u8),
+    end_rgb: (u8, u8, u8),
+    middle_rgb: Option<(u8, u8, u8)>,
 }
 
 impl GradientBorder {
     pub fn new(config: GradientBorderConfig) -> Self {
+        let (start_rgb, end_rgb, middle_rgb) = Self::compute_cached_colors(&config);
         Self {
             config,
             animation_frame: 0,
+            start_rgb,
+            end_rgb,
+            middle_rgb,
         }
     }
 
@@ -42,6 +50,22 @@ impl GradientBorder {
         let b = u8::from_str_radix(&hex[5..7], 16).ok()?;
 
         Some((r, g, b))
+    }
+
+    /// Compute cached RGB values from config (with sensible fallbacks)
+    fn compute_cached_colors(config: &GradientBorderConfig) -> (
+        (u8, u8, u8),
+        (u8, u8, u8),
+        Option<(u8, u8, u8)>,
+    ) {
+        let start_rgb = Self::parse_hex_color(&config.start_color).unwrap_or((138, 43, 226));
+        let end_rgb = Self::parse_hex_color(&config.end_color).unwrap_or((0, 191, 255));
+        let middle_rgb = if config.middle_color.is_empty() {
+            None
+        } else {
+            Self::parse_hex_color(&config.middle_color)
+        };
+        (start_rgb, end_rgb, middle_rgb)
     }
 
     /// Interpolate between two colors
@@ -74,10 +98,8 @@ impl GradientBorder {
 
     /// Calculate gradient color at a specific position
     fn get_gradient_color(&self, x: u16, y: u16, area: Rect) -> Color {
-        let start_color = Self::parse_hex_color(&self.config.start_color)
-            .unwrap_or((138, 43, 226)); // BlueViolet fallback
-        let end_color = Self::parse_hex_color(&self.config.end_color)
-            .unwrap_or((0, 191, 255)); // DeepSkyBlue fallback
+        let start_color = self.start_rgb;
+        let end_color = self.end_rgb;
 
         // Apply animation offset if enabled
         let animation_offset = if self.config.animation_speed > 0 {
@@ -113,10 +135,8 @@ impl GradientBorder {
         };
 
         // Check if we have a middle color for 3-color gradients
-        if !self.config.middle_color.is_empty() {
-            if let Some(middle_color) = Self::parse_hex_color(&self.config.middle_color) {
-                return Self::interpolate_three_colors(start_color, middle_color, end_color, ratio);
-            }
+        if let Some(middle_color) = self.middle_rgb {
+            return Self::interpolate_three_colors(start_color, middle_color, end_color, ratio);
         }
 
         Self::interpolate_color(start_color, end_color, ratio)

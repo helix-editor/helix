@@ -843,7 +843,7 @@ impl Application {
                         }
                     }
                     Notification::LogMessage(params) => {
-                        log::info!("window/logMessage: {:?}", params);
+                        log::debug!("window/logMessage: {:?}", params);
                         
                         // Also show as notification if enabled
                         if self.config.load().editor.lsp.display_messages {

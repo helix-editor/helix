@@ -453,7 +453,6 @@ impl EditorView {
             );
         }
 
-        Self::render_rulers(editor, doc, view, inner, surface, theme);
         Self::render_inline_blame(&config.inline_blame, doc, view, &mut decorations, theme);
 
         if config.welcome_screen && doc.version() == 0 && doc.is_welcome {
@@ -500,6 +499,10 @@ impl EditorView {
             theme,
             decorations,
         );
+
+        // Draw rulers after document so background-style shows behind text and
+        // glyph-style can selectively draw on blank cells without being overwritten.
+        Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
@@ -596,9 +599,21 @@ impl EditorView {
     ) {
         let editor_rulers = &editor.config().rulers;
         let ruler_char = &editor.config().ruler_char;
-        let ruler_theme = theme
+        // Base style from theme for rulers
+        let base_style = theme
             .try_get("ui.virtual.ruler")
-            .unwrap_or_else(|| Style::default().bg(Color::Red));
+            .unwrap_or_else(|| Style::default());
+        // Background style is used only for background-style rulers. If theme lacks a bg, reuse fg.
+        let bg_style = if base_style.bg.is_none() {
+            if let Some(fg) = base_style.fg {
+                base_style.bg(fg)
+            } else {
+                // Fallback background to ensure visibility
+                Style::default().bg(Color::Red)
+            }
+        } else {
+            base_style
+        };
 
         let rulers = doc
             .language_config()
@@ -617,13 +632,20 @@ impl EditorView {
             .for_each(|area| {
                 if ruler_char.is_empty() {
                     // Background-style ruler (legacy behavior)
-                    surface.set_style(area, ruler_theme);
+                    surface.set_style(area, bg_style);
                 } else {
                     // Foreground glyph ruler: draw the configured character on each visible row
+                    // Do NOT force a background color here to avoid making the glyph invisible
+                    // when fg == bg in the theme.
+                    let mut glyph_style = base_style;
+                    glyph_style.bg = None;
+                    if glyph_style.fg.is_none() {
+                        glyph_style = glyph_style.fg(Color::Gray);
+                    }
                     for y in area.top()..area.bottom() {
                         surface[(area.x, y)]
                             .set_symbol(ruler_char)
-                            .set_style(ruler_theme);
+                            .set_style(glyph_style);
                     }
                 }
             })

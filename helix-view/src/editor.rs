@@ -418,7 +418,7 @@ pub struct Config {
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
-    /// Character used to render rulers in the foreground. Defaults to "┊".
+    /// Character used to render rulers in the foreground. Defaults to "" (background-style rulers).
     /// Set to empty string "" to use background-style rulers instead of a glyph.
     pub ruler_char: String,
     #[serde(default)]
@@ -1528,7 +1528,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
-            ruler_char: "┊".to_string(),
+            ruler_char: "".to_string(),
             whitespace: WhitespaceConfig::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,

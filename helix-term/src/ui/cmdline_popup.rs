@@ -116,12 +116,15 @@ impl CmdlinePopup {
                 gradient_border.render_with_title(popup_area, surface, theme, Some(self.prompt.prompt()), rounded);
             }
 
-            // Calculate inner area manually (same as Block::inner)
-            Rect {
-                x: popup_area.x + 1,
-                y: popup_area.y + 1,
-                width: popup_area.width.saturating_sub(2),
-                height: popup_area.height.saturating_sub(2),
+            // Calculate inner area manually using configured gradient thickness
+            {
+                let t: u16 = config.thickness as u16;
+                Rect {
+                    x: popup_area.x + t,
+                    y: popup_area.y + t,
+                    width: popup_area.width.saturating_sub(t * 2),
+                    height: popup_area.height.saturating_sub(t * 2),
+                }
             }
         } else {
             // Use traditional border
@@ -221,12 +224,15 @@ impl CmdlinePopup {
                 gradient_border.render(comp_area, surface, &cx.editor.theme, rounded);
             }
 
-            // Calculate inner area manually
-            Rect {
-                x: comp_area.x + 1,
-                y: comp_area.y + 1,
-                width: comp_area.width.saturating_sub(2),
-                height: comp_area.height.saturating_sub(2),
+            // Calculate inner area manually using configured gradient thickness
+            {
+                let t: u16 = config.thickness as u16;
+                Rect {
+                    x: comp_area.x + t,
+                    y: comp_area.y + t,
+                    width: comp_area.width.saturating_sub(t * 2),
+                    height: comp_area.height.saturating_sub(t * 2),
+                }
             }
         } else {
             // Use traditional border, matching popup card styling
@@ -356,10 +362,20 @@ impl Component for CmdlinePopup {
                 };
                 let prefix_width = if icon.is_empty() { 0 } else { icon.width() };
 
-                // Compute inner area similarly to render: border consumes 1 px around
-                let inner_area = Block::default()
-                    .borders(tui::widgets::Borders::ALL)
-                    .inner(self.popup_area);
+                // Compute inner area similar to render: respect gradient border thickness if enabled
+                let inner_area = if editor.config().gradient_borders.enable {
+                    let t: u16 = editor.config().gradient_borders.thickness as u16;
+                    Rect {
+                        x: self.popup_area.x + t,
+                        y: self.popup_area.y + t,
+                        width: self.popup_area.width.saturating_sub(t * 2),
+                        height: self.popup_area.height.saturating_sub(t * 2),
+                    }
+                } else {
+                    Block::default()
+                        .borders(tui::widgets::Borders::ALL)
+                        .inner(self.popup_area)
+                };
 
                 // Build the same input area used in render_popup
                 let input_area = Rect::new(

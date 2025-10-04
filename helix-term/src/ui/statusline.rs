@@ -7,7 +7,7 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
     theme::Style,
-    Document, Editor, View,
+    Document, Editor, View, DocumentId, ViewId,
 };
 
 use crate::ui::ProgressSpinners;
@@ -15,6 +15,7 @@ use crate::ui::ProgressSpinners;
 use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
+use std::sync::{LazyLock, Mutex};
 
 pub struct RenderContext<'a> {
     pub editor: &'a Editor,
@@ -659,10 +660,56 @@ fn render_function_name<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let function_name = get_current_function_name(context);
+    let function_name = get_current_function_name_cached(context);
     if let Some(name) = function_name {
         write(context, format!(" {} ", name).into());
     }
+}
+
+// Simple cache entry for function name lookups.
+#[derive(Clone)]
+struct FuncNameCacheEntry {
+    doc_id: DocumentId,
+    view_id: ViewId,
+    cursor_byte: u32,
+    doc_version: i32,
+    name: Option<String>,
+}
+
+static FUNC_NAME_CACHE: LazyLock<Mutex<Option<FuncNameCacheEntry>>> = LazyLock::new(|| Mutex::new(None));
+
+fn get_current_function_name_cached(context: &RenderContext) -> Option<String> {
+    let text = context.doc.text().slice(..);
+    let cursor_char = context
+        .doc
+        .selection(context.view.id)
+        .primary()
+        .cursor(text);
+    let cursor_byte = text.char_to_byte(cursor_char) as u32;
+    let doc_id = context.doc.id();
+    let view_id = context.view.id;
+    let doc_version = context.doc.version();
+
+    // Fast path from cache
+    if let Some(entry) = FUNC_NAME_CACHE.lock().unwrap().as_ref() {
+        if entry.doc_id == doc_id
+            && entry.view_id == view_id
+            && entry.cursor_byte == cursor_byte
+            && entry.doc_version == doc_version
+        {
+            return entry.name.clone();
+        }
+    }
+
+    let name = get_current_function_name(context);
+    *FUNC_NAME_CACHE.lock().unwrap() = Some(FuncNameCacheEntry {
+        doc_id,
+        view_id,
+        cursor_byte,
+        doc_version,
+        name: name.clone(),
+    });
+    name
 }
 
 fn get_current_function_name(context: &RenderContext) -> Option<String> {
@@ -670,12 +717,12 @@ fn get_current_function_name(context: &RenderContext) -> Option<String> {
     let text = context.doc.text().slice(..);
     
     let root = syntax.tree().root_node();
-    let cursor_pos = context
+    let cursor_char = context
         .doc
         .selection(context.view.id)
         .primary()
         .cursor(text);
-    let byte_pos = text.char_to_byte(cursor_pos) as u32;
+    let byte_pos = text.char_to_byte(cursor_char) as u32;
     
     // Start from the deepest node at cursor position and walk up
     let mut node = root.descendant_for_byte_range(byte_pos, byte_pos)?;
