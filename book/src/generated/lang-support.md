@@ -57,6 +57,7 @@
 | earthfile | ✓ | ✓ | ✓ |  |  | `earthlyls` |
 | edoc | ✓ |  |  |  |  |  |
 | eex | ✓ |  |  |  |  |  |
+| eiffel | ✓ | ✓ | ✓ |  |  | `eiffel-language-server` |
 | ejs | ✓ |  |  |  |  |  |
 | elisp | ✓ |  |  | ✓ |  |  |
 | elixir | ✓ | ✓ | ✓ | ✓ | ✓ | `elixir-ls`, `expert` |
