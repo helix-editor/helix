@@ -98,7 +98,7 @@ impl Transport {
             buffer.clear();
             if reader.read_line(buffer).await? == 0 {
                 return Err(Error::StreamClosed);
-            };
+            }
 
             // debug!("<- header {:?}", buffer);
 
@@ -133,12 +133,14 @@ impl Transport {
 
         info!("{language_server_name} <- {msg}");
 
-        // try parsing as output (server response) or call (server request)
-        let output: serde_json::Result<ServerMessage> = serde_json::from_str(msg);
+        // NOTE: We avoid using `?` here, since it would return early on error
+        // and skip clearing `content`. By returning the result directly instead,
+        // we ensure `content.clear()` is always called.
+        let output = sonic_rs::from_slice(content).map_err(Into::into);
 
         content.clear();
 
-        Ok(output?)
+        output
     }
 
     async fn recv_server_error(
