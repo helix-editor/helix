@@ -195,16 +195,18 @@ impl NotificationPopup {
                 .max(3);
             height = height.min(config.max_height.max(3));
 
-            log::warn!(
-                "DEBUG: layout calc id={} wrap_inner_width={} content_max_w={} -> width={} height={} (padding={}, thick={})",
-                item.notification.id,
-                wrap_inner_width,
-                content_max_w,
-                width,
-                height,
-                self.layout_padding,
-                self.layout_thickness,
-            );
+            if log::log_enabled!(log::Level::Debug) {
+                log::debug!(
+                    "layout calc id={} wrap_inner_width={} content_max_w={} -> width={} height={} (padding={}, thick={})",
+                    item.notification.id,
+                    wrap_inner_width,
+                    content_max_w,
+                    width,
+                    height,
+                    self.layout_padding,
+                    self.layout_thickness,
+                );
+            }
 
             let (x, y) = match config.position {
                 NotificationPosition::TopLeft => (
@@ -234,10 +236,12 @@ impl NotificationPopup {
             };
 
             let rect = Rect::new(x, y, width, height);
-            log::warn!(
-                "DEBUG: assign area id={} -> x={} y={} w={} h={}",
-                item.notification.id, rect.x, rect.y, rect.width, rect.height
-            );
+            if log::log_enabled!(log::Level::Debug) {
+                log::debug!(
+                    "assign area id={} -> x={} y={} w={} h={}",
+                    item.notification.id, rect.x, rect.y, rect.width, rect.height
+                );
+            }
             areas.push(rect);
             
             // For bottom positions, we need to stack upwards
@@ -519,14 +523,16 @@ impl NotificationPopup {
 
         // Render notification content inside the content_area
         let wrap_width = content_area.width.max(1);
-        log::warn!(
-            "DEBUG: render id={} item.area=({}, {}, {}, {}) inner=({}, {}, {}, {}) content=({}, {}, {}, {}) wrap_width={}",
-            item.notification.id,
-            item.area.x, item.area.y, item.area.width, item.area.height,
-            inner_area.x, inner_area.y, inner_area.width, inner_area.height,
-            content_area.x, content_area.y, content_area.width, content_area.height,
-            wrap_width
-        );
+        if log::log_enabled!(log::Level::Debug) {
+            log::debug!(
+                "render id={} item.area=({}, {}, {}, {}) inner=({}, {}, {}, {}) content=({}, {}, {}, {}) wrap_width={}",
+                item.notification.id,
+                item.area.x, item.area.y, item.area.width, item.area.height,
+                inner_area.x, inner_area.y, inner_area.width, inner_area.height,
+                content_area.x, content_area.y, content_area.width, content_area.height,
+                wrap_width
+            );
+        }
         let content_lines = self.wrap_text(&item.notification.message, wrap_width);
         let mut y_pos = content_area.y;
 
