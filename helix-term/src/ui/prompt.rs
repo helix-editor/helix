@@ -394,7 +394,11 @@ impl Prompt {
     }
 
     pub fn exit_selection(&mut self) {
-        self.selection = None;
+        self.selection = if self.completion.len() >= 1 {
+            Some(0)
+        } else {
+            None
+        };
     }
 }
 
@@ -669,8 +673,18 @@ impl Component for Prompt {
                 }
             }
             key!(Enter) => {
-                if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
-                    self.recalculate_completion(cx.editor);
+                if let Some(index) = self.selection {
+                    if self.line.ends_with(std::path::MAIN_SEPARATOR) {
+                        self.recalculate_completion(cx.editor);
+                    } else {
+                        // TODO: Save in history?
+                        (self.callback_fn)(
+                            cx,
+                            &self.completion[index].1.content,
+                            PromptEvent::Validate,
+                        );
+                        return close_fn;
+                    }
                 } else {
                     let last_item = self
                         .first_history_completion(cx.editor)
