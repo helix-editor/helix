@@ -414,7 +414,6 @@ name = "eiffel"
 scope = "source.eiffel"
 file-types = ["e"]
 comment-token = "--"
-roots = []
 language-servers = ["eiffel-language-server"]
 
 [[grammar]]
