@@ -47,6 +47,7 @@ use helix_core::{
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
+    gutter,
     theme::Style,
     view::ViewPosition,
     Document, DocumentId, Editor,
@@ -698,6 +699,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                                     path.clone(),
                                 );
                             }
+                            if let Some(diff_base) = editor.diff_providers.get_diff_base(&path) {
+                                doc.set_diff_base(diff_base);
+                            }
                             Ok(CachedPreview::Document(Box::new(doc)))
                         } else {
                             Err(std::io::Error::new(
@@ -1023,13 +1027,49 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
             }
 
-            EditorView::doc_diagnostics_highlights_into(
-                doc,
-                &cx.editor.theme,
-                &mut overlay_highlights,
-            );
+            let theme = &cx.editor.theme;
+            EditorView::doc_diagnostics_highlights_into(doc, theme, &mut overlay_highlights);
 
             let mut decorations = DecorationManager::default();
+
+            if doc.diff_handle().is_some() {
+                let gutter_style = theme.get("ui.gutter");
+                let gutter_style_virtual = theme.get("ui.gutter.virtual");
+
+                let mut gutter = gutter::diff_style(doc, theme);
+                // equivalent to helix_view::editor::GutterType::Diff.width(_, doc);
+                let width = 1;
+                // avoid lots of small allocations by reusing a text buffer for each line
+                let mut text = String::with_capacity(width);
+                let gutter_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
+                    // draw over the margin with width
+                    let x = inner.x - 1;
+                    let y = pos.visual_line;
+
+                    let gutter_style = match pos.first_visual_line {
+                        true => gutter_style,
+                        false => gutter_style_virtual,
+                    };
+
+                    if let Some(style) =
+                        gutter(pos.doc_line, false, pos.first_visual_line, &mut text)
+                    {
+                        renderer.set_stringn(x, y, &text, width, gutter_style.patch(style));
+                    } else {
+                        renderer.set_style(
+                            Rect {
+                                x,
+                                y,
+                                width: width as u16,
+                                height: 1,
+                            },
+                            gutter_style,
+                        );
+                    }
+                    text.clear();
+                };
+                decorations.add_decoration(gutter_decoration);
+            }
 
             if let Some((start, end)) = range {
                 let style = cx
