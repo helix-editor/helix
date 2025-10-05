@@ -1,6 +1,7 @@
 use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
+use std::convert::Infallible;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
@@ -240,15 +241,49 @@ fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Resul
     let repo_dir = repo.workdir().context("repo has no worktree")?;
     let rel_path = file.strip_prefix(repo_dir)?;
     let tree = commit.tree()?;
-    let tree_entry = tree
-        .lookup_entry_by_path(rel_path)?
-        .context("file is untracked")?;
-    match tree_entry.mode().kind() {
-        // not a file, everything is new, do not show diff
-        mode @ (EntryKind::Tree | EntryKind::Commit | EntryKind::Link) => {
-            bail!("entry at {} is not a file but a {mode:?}", file.display())
+    let mut err = anyhow::Error::msg("file is untracked");
+    match tree.lookup_entry_by_path(rel_path) {
+        Ok(Some(tree_entry)) => {
+            return match tree_entry.mode().kind() {
+                // not a file, everything is new, do not show diff
+                mode @ (EntryKind::Tree | EntryKind::Commit | EntryKind::Link) => {
+                    bail!("entry at {} is not a file but a {mode:?}", file.display())
+                }
+                // found a file
+                EntryKind::Blob | EntryKind::BlobExecutable => Ok(tree_entry.object_id()),
+            };
         }
-        // found a file
-        EntryKind::Blob | EntryKind::BlobExecutable => Ok(tree_entry.object_id()),
+        Ok(None) => {}
+        Err(error) => err = error.into(),
     }
+    let index = repo.index()?;
+    let file_path = gix::path::try_into_bstr(rel_path)?;
+    let rewrites = Rewrites {
+        copies: None,
+        percentage: Some(0.5),
+        limit: 1000,
+        ..Default::default()
+    };
+    let mut result: Result<ObjectId> = Err(err);
+    repo.tree_index_status(
+        &commit.tree_id()?,
+        &index,
+        None,
+        gix::status::tree_index::TrackRenames::Given(rewrites),
+        |c, _, _| -> Result<_, Infallible> {
+            if let gix::diff::index::ChangeRef::Rewrite {
+                source_id,
+                location,
+                ..
+            } = c
+            {
+                if location == file_path {
+                    result = Ok(source_id.into_owned());
+                    return Ok(gix::diff::index::Action::Break(()));
+                }
+            }
+            Ok(gix::diff::index::Action::Continue(()))
+        },
+    )?;
+    result
 }
