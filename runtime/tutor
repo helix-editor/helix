@@ -707,7 +707,8 @@
 =================================================================
 
  Type . to repeat the last insert command.
- Press Alt-. to repeat the last f / t selection.
+ Press Alt-. to repeat the last motion (e.g. f / t selection)
+ and Alt-> to reverse repeat the last motion.
 
  1. Move the cursor to the line marked '-->' below.
  2. Make a change, insertion or appendage and repeat it with . .
@@ -717,7 +718,6 @@
  --> This is some text for you to repeat things. You can repeat
      insertions like changing words, or repeat selections like
      f / t.
-
 
 
 
