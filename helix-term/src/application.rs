@@ -1060,8 +1060,21 @@ impl Application {
                                                     continue;
                                                 }
                                             };
+                                        for watch in &ops.watchers {
+                                            if let lsp::GlobPattern::Relative(pattern) =
+                                                &watch.glob_pattern
+                                            {
+                                                let base_url = match &pattern.base_uri {
+                                                    lsp::OneOf::Left(folder) => &folder.uri,
+                                                    lsp::OneOf::Right(url) => url,
+                                                };
+                                                let Ok(base_dir) = base_url.to_file_path() else {
+                                                    continue;
+                                                };
+                                                self.editor.file_watcher.add_root(&base_dir);
+                                            }
+                                        }
                                         self.editor.language_servers.file_event_handler.register(
-                                            client.id(),
                                             Arc::downgrade(client),
                                             reg.id,
                                             ops,
