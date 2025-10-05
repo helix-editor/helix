@@ -51,7 +51,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             enable: true,
-            watch_vcs: false,
+            watch_vcs: true,
             require_workspace: true,
             hidden: true,
             ignore: true,
@@ -167,7 +167,10 @@ impl Watcher {
             return;
         }
         let (workspace, _) = helix_loader::find_workspace();
-        self.roots.push((root.clone(), 1));
+        if root.starts_with(&workspace) {
+            return;
+        }
+        self.roots.insert(i, (root.clone(), 1));
         self.filter = Arc::new(WatchFilter::new(
             &self.config,
             &workspace,
