@@ -34,6 +34,14 @@ fn true_color() -> bool {
         return true;
     }
 
+    // OpenBSD
+    if matches!(
+        std::env::var("TERM").map(|v| matches!(v.as_str(), "xterm-256color")),
+        Ok(true)
+    ) {
+        return true;
+    }
+
     match termini::TermInfo::from_env() {
         Ok(t) => {
             t.extended_cap("RGB").is_some()
