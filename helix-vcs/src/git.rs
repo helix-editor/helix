@@ -228,7 +228,7 @@ fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Resul
         &index,
         None,
         gix::status::tree_index::TrackRenames::Given(rewrites),
-        |c, _, _| {
+        |c, _, _| -> Result<_, Infallible> {
             if let gix::diff::index::ChangeRef::Rewrite {
                 source_id,
                 location,
@@ -237,10 +237,10 @@ fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Resul
             {
                 if location == file_path {
                     result = Ok(source_id.into_owned());
-                    return Ok::<_, Infallible>(gix::diff::index::Action::Cancel);
+                    return Ok(gix::diff::index::Action::Cancel);
                 }
             }
-            Ok::<_, Infallible>(gix::diff::index::Action::Continue)
+            Ok(gix::diff::index::Action::Continue)
         },
     )?;
     result
