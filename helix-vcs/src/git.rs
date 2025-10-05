@@ -243,5 +243,5 @@ fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Resul
             Ok::<_, Infallible>(gix::diff::index::Action::Continue)
         },
     )?;
-    return result;
+    result
 }
