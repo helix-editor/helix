@@ -38,10 +38,12 @@ impl AutoReload {
         }
         job::dispatch_blocking(move |editor, _| {
             let config = editor.config();
+            let mut vcs_reload = false;
             for fs_event in &*fs_events {
                 if fs_event.ty != EventType::Modified {
                     continue;
                 }
+                vcs_reload |= editor.diff_providers.needs_reload(fs_event);
                 let Some(doc_id) = editor.document_id_by_path(fs_event.path.as_std_path()) else {
                     return;
                 };
@@ -80,6 +82,17 @@ impl AutoReload {
                             );
                             editor.set_error(msg);
                         }
+                    }
+                }
+            }
+            if vcs_reload {
+                for doc in editor.documents.values_mut() {
+                    let Some(path) = doc.path() else {
+                        continue;
+                    };
+                    match editor.diff_providers.get_diff_base(path) {
+                        Some(diff_base) => doc.set_diff_base(diff_base),
+                        None => doc.diff_handle = None,
                     }
                 }
             }
