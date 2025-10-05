@@ -1165,6 +1165,7 @@ file-types = [
   { glob = "sway/config" },
   { glob = ".tmux.conf" },
   { glob = "tmux.conf" },
+  { glob = ".sh_history" },
   { glob = ".bash_history" },
   { glob = ".bash_login" },
   { glob = ".bash_logout" },
