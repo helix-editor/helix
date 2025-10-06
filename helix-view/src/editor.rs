@@ -45,6 +45,7 @@ pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     diagnostic::DiagnosticProvider,
+    file_watcher::{self, Watcher},
     syntax::{
         self,
         config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
@@ -427,6 +428,8 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+    pub auto_reload: AutoReloadConfig,
+    pub file_watcher: file_watcher::Config,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -436,6 +439,22 @@ pub enum KittyKeyboardProtocolConfig {
     Auto,
     Disabled,
     Enabled,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct AutoReloadConfig {
+    pub enable: bool,
+    pub prompt_if_modified: bool,
+}
+
+impl Default for AutoReloadConfig {
+    fn default() -> Self {
+        AutoReloadConfig {
+            enable: true,
+            prompt_if_modified: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1118,6 +1137,8 @@ impl Default for Config {
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
+            file_watcher: file_watcher::Config::default(),
+            auto_reload: AutoReloadConfig::default(),
         }
     }
 }
@@ -1219,6 +1240,7 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+    pub file_watcher: Watcher,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1340,6 +1362,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            file_watcher: Watcher::new(&conf.file_watcher),
         }
     }
 
@@ -1544,12 +1567,15 @@ impl Editor {
             }
             ls.did_rename(old_path, &new_path, is_dir);
         }
-        self.language_servers
-            .file_event_handler
-            .file_changed(old_path.to_owned());
-        self.language_servers
-            .file_event_handler
-            .file_changed(new_path);
+
+        if !cfg!(any(target_os = "linux", target_os = "android")) {
+            self.language_servers
+                .file_event_handler
+                .file_changed(old_path.to_owned());
+            self.language_servers
+                .file_event_handler
+                .file_changed(new_path);
+        }
         Ok(())
     }
 
@@ -2018,8 +2044,10 @@ impl Editor {
         let handler = self.language_servers.file_event_handler.clone();
         let future = async move {
             let res = doc_save_future.await;
-            if let Ok(event) = &res {
-                handler.file_changed(event.path.clone());
+            if !cfg!(any(target_os = "linux", target_os = "android")) {
+                if let Ok(event) = &res {
+                    handler.file_changed(event.path.clone());
+                }
             }
             res
         };

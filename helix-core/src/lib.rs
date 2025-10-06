@@ -11,6 +11,7 @@ pub mod diagnostic;
 pub mod diff;
 pub mod doc_formatter;
 pub mod editor_config;
+pub mod file_watcher;
 pub mod fuzzy;
 pub mod graphemes;
 pub mod history;

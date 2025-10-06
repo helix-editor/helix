@@ -52,6 +52,7 @@ futures-util = { version = "0.3", features = ["std", "async-await"], default-fea
 tokio-stream = "0.1.17"
 toml = "0.9"
 termina = "0.1"
+ignore = "0.4"
 
 [workspace.package]
 version = "25.7.1"

@@ -596,7 +596,7 @@ impl Client {
                     }),
                     did_change_watched_files: Some(lsp::DidChangeWatchedFilesClientCapabilities {
                         dynamic_registration: Some(true),
-                        relative_pattern_support: Some(false),
+                        relative_pattern_support: Some(true),
                     }),
                     file_operations: Some(lsp::WorkspaceFileOperationsClientCapabilities {
                         will_rename: Some(true),
