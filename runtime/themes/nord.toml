@@ -150,7 +150,7 @@
 "markup.raw" = "nord7"
 
 # Rainbow brackets
-rainbow = ["nord13", "nord9", "nord12", "nord15", "nord14", "nord8"]
+rainbow = ["nord13", "nord15", "nord14", "nord12"]
 
 [palette]
 # Polar Night is made up of four darker colors that are commonly used for base elements like backgrounds or text color in bright ambiance designs.
