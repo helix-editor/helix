@@ -38,6 +38,7 @@ docker-compose-langserver = { command = "docker-compose-langserver", args = ["--
 dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
 dts-lsp = { command = "dts-lsp" }
 earthlyls = { command = "earthlyls" }
+eiffel-language-server = {command = "eiffel-language-server"}
 elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
 elm-language-server = { command = "elm-language-server" }
 elp = { command = "elp", args = ["server"] }
@@ -421,6 +422,17 @@ auto-format = true
 [[grammar]]
 name = "textproto"
 source = { git = "https://github.com/PorterAtGoogle/tree-sitter-textproto", rev = "568471b80fd8793d37ed01865d8c2208a9fefd1b"}
+
+[[language]]
+name = "eiffel"
+scope = "source.eiffel"
+file-types = ["e"]
+comment-token = "--"
+language-servers = ["eiffel-language-server"]
+
+[[grammar]]
+name = "eiffel"
+source = { git = "https://github.com/imustafin/tree-sitter-eiffel", rev = "d934fb44f1d22bb76be6b56a7b2425ab3b1daf8b" }
 
 [[language]]
 name = "elixir"
@@ -1153,6 +1165,7 @@ file-types = [
   { glob = "sway/config" },
   { glob = ".tmux.conf" },
   { glob = "tmux.conf" },
+  { glob = ".sh_history" },
   { glob = ".bash_history" },
   { glob = ".bash_login" },
   { glob = ".bash_logout" },
@@ -1854,7 +1867,7 @@ injection-regex = "mail|eml|email"
 
 [[grammar]]
 name = "mail"
-source = { git = "https://github.com/ficcdaf/tree-sitter-mail", rev = "8e60f38efbae1cc5f22833ae13c5500dd0f3b12f" }
+source = { git = "https://codeberg.org/ficd/tree-sitter-mail", rev = "8e60f38efbae1cc5f22833ae13c5500dd0f3b12f" }
 
 [[language]]
 name = "markdown"
@@ -2412,7 +2425,7 @@ language-servers = [ "nu-lsp" ]
 
 [[grammar]]
 name = "nu"
-source = { git = "https://github.com/nushell/tree-sitter-nu", rev = "358c4f509eb97f0148bbd25ad36acc729819b9c1" }
+source = { git = "https://github.com/nushell/tree-sitter-nu", rev = "cc4624fbc6ec3563d98fbe8f215a8b8e10b16f32" }
 
 [[language]]
 name = "vala"
@@ -3046,6 +3059,8 @@ file-types = [
   "gpx",
   "fodt",
   "fods",
+  "itermcolors",
+  "terminal",
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
@@ -3709,6 +3724,25 @@ file-types = ["jjtemplate"]
 [[grammar]]
 name = "jjtemplate"
 source = { git = "https://github.com/bryceberger/tree-sitter-jjtemplate", rev = "4313eda8ac31c60e550e3ad5841b100a0a686715" }
+
+[[language]]
+name = "miseconfig"
+scope = "source.miseconfig"
+injection-regex = "miseconfig"
+grammar = "toml"
+file-types = [
+  { glob = "mise.toml" },
+  { glob = ".mise.toml" },
+  { glob = "mise.*.toml" },
+  { glob = ".mise.*.toml" },
+  { glob = "mise/config.toml" },
+  { glob = ".mise/config.toml" },
+  { glob = ".config/mise.toml" },
+  { glob = ".config/mise/conf.d/*.toml" },
+]
+comment-token = "#"
+language-servers = [ "taplo", "tombi" ]
+indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "jq"
@@ -4843,3 +4877,14 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "slisp"
 source = { git = "https://github.com/xenogenics/tree-sitter-slisp", rev = "29f9c6707ce9dfc2fc915d175ec720b207f179f3" }
+
+[[language]]
+name = "nearley"
+scope = "source.nearley"
+file-types = ["ne"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "nearley"
+source = { git = "https://github.com/mi2ebi/tree-sitter-nearley", rev = "12d01113e194c8e83f6341aab8c2a5f21db9cac9" }

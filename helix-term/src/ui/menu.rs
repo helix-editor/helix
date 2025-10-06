@@ -13,7 +13,7 @@ pub trait Item: Sync + Send + 'static {
     /// Additional editor state that is used for label calculation.
     type Data: Sync + Send + 'static;
 
-    fn format(&self, data: &Self::Data) -> Row;
+    fn format(&self, data: &Self::Data) -> Row<'_>;
 }
 
 pub type MenuCallback<T> = Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>;

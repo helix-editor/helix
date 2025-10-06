@@ -31,6 +31,7 @@ parking_lot.workspace = true
 arc-swap = "1"
 slotmap.workspace = true
 thiserror.workspace = true
+sonic-rs.workspace = true
 
 [features]
 steel = []

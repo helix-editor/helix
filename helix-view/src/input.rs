@@ -569,6 +569,116 @@ impl From<KeyEvent> for termina::event::KeyEvent {
     }
 }
 
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::Event> for Event {
+    fn from(event: crossterm::event::Event) -> Self {
+        match event {
+            termina::event::Event::Key(key) => Self::Key(key.into()),
+            termina::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
+            termina::event::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
+                Self::Resize(cols, rows)
+            }
+            termina::event::Event::FocusIn => Self::FocusGained,
+            termina::event::Event::FocusOut => Self::FocusLost,
+            termina::event::Event::Paste(s) => Self::Paste(s),
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::MouseEvent> for MouseEvent {
+    fn from(
+        termina::event::MouseEvent {
+            kind,
+            column,
+            row,
+            modifiers,
+        }: termina::event::MouseEvent,
+    ) -> Self {
+        Self {
+            kind: kind.into(),
+            column,
+            row,
+            modifiers: modifiers.into(),
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::MouseEventKind> for MouseEventKind {
+    fn from(kind: crossterm::event::MouseEventKind) -> Self {
+        match kind {
+            termina::event::MouseEventKind::Down(button) => Self::Down(button.into()),
+            termina::event::MouseEventKind::Up(button) => Self::Up(button.into()),
+            termina::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
+            termina::event::MouseEventKind::Moved => Self::Moved,
+            termina::event::MouseEventKind::ScrollDown => Self::ScrollDown,
+            termina::event::MouseEventKind::ScrollUp => Self::ScrollUp,
+            termina::event::MouseEventKind::ScrollLeft => Self::ScrollLeft,
+            termina::event::MouseEventKind::ScrollRight => Self::ScrollRight,
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::MouseButton> for MouseButton {
+    fn from(button: crossterm::event::MouseButton) -> Self {
+        match button {
+            termina::event::MouseButton::Left => MouseButton::Left,
+            termina::event::MouseButton::Right => MouseButton::Right,
+            termina::event::MouseButton::Middle => MouseButton::Middle,
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::KeyEvent> for KeyEvent {
+    fn from(
+        termina::event::KeyEvent {
+            code, modifiers, ..
+        }: termina::event::KeyEvent,
+    ) -> Self {
+        if code == termina::event::KeyCode::BackTab {
+            // special case for BackTab -> Shift-Tab
+            let mut modifiers: KeyModifiers = modifiers.into();
+            modifiers.insert(KeyModifiers::SHIFT);
+            Self {
+                code: KeyCode::Tab,
+                modifiers,
+            }
+        } else {
+            Self {
+                code: code.into(),
+                modifiers: modifiers.into(),
+            }
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<KeyEvent> for crossterm::event::KeyEvent {
+    fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
+        if code == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
+            // special case for Shift-Tab -> BackTab
+            let mut modifiers = modifiers;
+            modifiers.remove(KeyModifiers::SHIFT);
+            termina::event::KeyEvent {
+                code: termina::event::KeyCode::BackTab,
+                modifiers: modifiers.into(),
+                kind: termina::event::KeyEventKind::Press,
+                state: termina::event::KeyEventState::NONE,
+            }
+        } else {
+            termina::event::KeyEvent {
+                code: code.into(),
+                modifiers: modifiers.into(),
+                kind: termina::event::KeyEventKind::Press,
+                state: termina::event::KeyEventState::NONE,
+            }
+        }
+    }
+}
 pub fn parse_macro(keys_str: &str) -> anyhow::Result<Vec<KeyEvent>> {
     use anyhow::Context;
     let mut keys_res: anyhow::Result<_> = Ok(Vec::new());

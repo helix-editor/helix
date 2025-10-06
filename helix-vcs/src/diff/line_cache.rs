@@ -128,7 +128,7 @@ impl InternedRopeLines {
     /// Returns the `InternedInput` for performing the diff.
     /// If `diff_base` or `doc` is so large that performing a diff could slow the editor
     /// this function returns `None`.
-    pub fn interned_lines(&self) -> Option<&InternedInput<RopeSlice>> {
+    pub fn interned_lines(&self) -> Option<&InternedInput<RopeSlice<'_>>> {
         if self.is_too_large() {
             None
         } else {
