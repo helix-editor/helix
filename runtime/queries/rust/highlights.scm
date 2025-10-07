@@ -79,11 +79,7 @@
 ; Types
 ; -------
 
-(type_parameters
-  (type_identifier) @type.parameter)
-(constrained_type_parameter
-  left: (type_identifier) @type.parameter)
-(optional_type_parameter
+(type_parameter
   name: (type_identifier) @type.parameter)
 ((type_arguments (type_identifier) @constant)
  (#match? @constant "^[A-Z_]+$"))
@@ -116,6 +112,7 @@
 ; Comments
 ; -------
 
+(shebang) @comment
 (line_comment) @comment.line
 (block_comment) @comment.block
 
@@ -242,10 +239,6 @@
 (use_as_clause "as" @keyword.control.import)
 
 (type_cast_expression "as" @keyword.operator)
-
-((generic_type
-    type: (type_identifier) @keyword)
- (#eq? @keyword "use"))
 
 [
   (crate)
