@@ -34,11 +34,17 @@ pub struct Cell<'a> {
     style: Style,
 }
 
-impl<'a> Cell<'a> {
+impl Cell<'_> {
     /// Set the `Style` of this cell.
     pub fn style(mut self, style: Style) -> Self {
-        self.style = style;
+        self.set_style(style);
         self
+    }
+
+    /// Set the `Style` of this cell.
+    pub fn set_style(&mut self, style: Style) {
+        self.style = style;
+        self.content.patch_style(style);
     }
 }
 
@@ -331,6 +337,7 @@ impl<'a> Table<'a> {
     }
 }
 
+/// Track [Table] scroll offset and selection
 #[derive(Debug, Default, Clone)]
 pub struct TableState {
     pub offset: usize,
@@ -351,7 +358,7 @@ impl TableState {
 }
 
 // impl<'a> StatefulWidget for Table<'a> {
-impl<'a> Table<'a> {
+impl Table<'_> {
     // type State = TableState;
 
     pub fn render_table(
@@ -452,6 +459,9 @@ impl<'a> Table<'a> {
             };
             if is_selected {
                 buf.set_style(table_row_area, self.highlight_style);
+                for cell in &mut table_row.cells {
+                    cell.set_style(self.highlight_style);
+                }
             }
             let mut col = table_row_start_col;
             for (width, cell) in columns_widths.iter().zip(table_row.cells.iter()) {
@@ -486,7 +496,7 @@ fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect, truncate: bool) {
     }
 }
 
-impl<'a> Widget for Table<'a> {
+impl Widget for Table<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut state = TableState::default();
         Table::render_table(self, area, buf, &mut state, false);

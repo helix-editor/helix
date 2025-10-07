@@ -1,6 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
+use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -11,7 +11,6 @@ use helix_view::{
     align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
     editor::{ConfigEvent, EditorEvent},
-    events::DiagnosticsDidChange,
     graphics::Rect,
     theme,
     tree::Layout,
@@ -31,31 +30,40 @@ use crate::{
 };
 
 use log::{debug, error, info, warn};
-#[cfg(not(feature = "integration"))]
-use std::io::stdout;
-use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
+use std::{
+    io::{stdin, IsTerminal},
+    path::Path,
+    sync::Arc,
+};
 
-#[cfg(not(windows))]
-use anyhow::Context;
-use anyhow::Error;
+#[cfg_attr(windows, allow(unused_imports))]
+use anyhow::{Context, Error};
 
-use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(all(not(windows), not(feature = "integration")))]
+use tui::backend::TerminaBackend;
+
+#[cfg(all(windows, not(feature = "integration")))]
 use tui::backend::CrosstermBackend;
 
 #[cfg(feature = "integration")]
 use tui::backend::TestBackend;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(all(not(windows), not(feature = "integration")))]
+type TerminalBackend = TerminaBackend;
+#[cfg(all(windows, not(feature = "integration")))]
 type TerminalBackend = CrosstermBackend<std::io::Stdout>;
-
 #[cfg(feature = "integration")]
 type TerminalBackend = TestBackend;
+
+#[cfg(not(windows))]
+type TerminalEvent = termina::Event;
+#[cfg(windows)]
+type TerminalEvent = crossterm::event::Event;
 
 type Terminal = tui::terminal::Terminal<TerminalBackend>;
 
@@ -66,14 +74,11 @@ pub struct Application {
 
     config: Arc<ArcSwap<Config>>,
 
-    #[allow(dead_code)]
-    theme_loader: Arc<theme::Loader>,
-    #[allow(dead_code)]
-    syn_loader: Arc<ArcSwap<syntax::Loader>>,
-
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+
+    theme_mode: Option<theme::Mode>,
 }
 
 #[cfg(feature = "integration")]
@@ -107,45 +112,37 @@ impl Application {
 
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
+        let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| theme_loader.default_theme(true_color));
-
-        let syn_loader = Arc::new(ArcSwap::from_pointee(lang_loader));
-
-        #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
+        #[cfg(all(not(windows), not(feature = "integration")))]
+        let backend = TerminaBackend::new((&config.editor).into())
+            .context("failed to create terminal backend")?;
+        #[cfg(all(windows, not(feature = "integration")))]
+        let backend = CrosstermBackend::new(std::io::stdout(), (&config.editor).into());
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
 
+        let theme_mode = backend.get_theme_mode();
         let terminal = Terminal::new(backend)?;
-        let area = terminal.size().expect("couldn't get terminal size");
+        let area = terminal.size();
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
         let mut editor = Editor::new(
             area,
-            theme_loader.clone(),
-            syn_loader.clone(),
+            Arc::new(theme_loader),
+            Arc::new(ArcSwap::from_pointee(lang_loader)),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
             handlers,
+        );
+        Self::load_configured_theme(
+            &mut editor,
+            &config.load(),
+            terminal.backend().supports_true_color(),
+            theme_mode,
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -164,7 +161,7 @@ impl Application {
 
             // If the first file is a directory, skip it and open a picker
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                let picker = ui::file_picker(first, &config.load().editor);
+                let picker = ui::file_picker(&editor, first);
                 compositor.push(Box::new(overlaid(picker)));
             }
 
@@ -175,7 +172,7 @@ impl Application {
                     nr_of_files += 1;
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
-                            "expected a path to file, found a directory. (to open a directory pass it as first argument)"
+                            "expected a path to file, but found a directory: {file:?}. (to open a directory pass it as first argument)"
                         ));
                     } else {
                         // If the user passes in either `--vsplit` or
@@ -189,6 +186,7 @@ impl Application {
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
                         };
+                        let old_id = editor.document_id_by_path(&file);
                         let doc_id = match editor.open(&file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
@@ -196,6 +194,11 @@ impl Application {
                                 continue;
                             }
                             Err(err) => return Err(anyhow::anyhow!(err)),
+                            // We can't open more than 1 buffer for 1 file, in this case we already have opened this file previously
+                            Ok(doc_id) if old_id == Some(doc_id) => {
+                                nr_of_files -= 1;
+                                doc_id
+                            }
                             Ok(doc_id) => doc_id,
                         };
                         // with Action::Load all documents have the same view
@@ -204,8 +207,13 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-                        doc.set_selection(view_id, pos);
+                        let selection = pos
+                            .into_iter()
+                            .map(|coords| {
+                                Range::point(pos_at_coords(doc.text().slice(..), coords, true))
+                            })
+                            .collect();
+                        doc.set_selection(view_id, selection);
                     }
                 }
 
@@ -226,15 +234,13 @@ impl Application {
             } else {
                 editor.new_file(Action::VerticalSplit);
             }
-        } else if stdin().is_tty() || cfg!(feature = "integration") {
+        } else if stdin().is_terminal() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
         } else {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
-
-        editor.set_theme(theme);
 
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
@@ -252,15 +258,11 @@ impl Application {
             compositor,
             terminal,
             editor,
-
             config,
-
-            theme_loader,
-            syn_loader,
-
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
+            theme_mode,
         };
 
         Ok(app)
@@ -301,7 +303,7 @@ impl Application {
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         self.render().await;
 
@@ -314,7 +316,7 @@ impl Application {
 
     pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -375,6 +377,8 @@ impl Application {
     }
 
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
+        let old_editor_config = self.editor.config();
+
         match config_event {
             ConfigEvent::Refresh => self.refresh_config(),
 
@@ -384,7 +388,7 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
-                if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
+                if let Err(err) = self.terminal.reconfigure((&app_config.editor).into()) {
                     self.editor.set_error(err.to_string());
                 };
                 self.config.store(Arc::new(app_config));
@@ -393,7 +397,7 @@ impl Application {
 
         // Update all the relevant members in the editor after updating
         // the configuration.
-        self.editor.refresh_config();
+        self.editor.refresh_config(&old_editor_config);
 
         // reset view position in case softwrap was enabled/disabled
         let scrolloff = self.editor.config().scrolloff;
@@ -403,55 +407,38 @@ impl Application {
         }
     }
 
-    /// refresh language config after config change
-    fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let lang_loader = helix_core::config::user_lang_loader()?;
-
-        self.syn_loader.store(Arc::new(lang_loader));
-        self.editor.syn_loader = self.syn_loader.clone();
-        for document in self.editor.documents.values_mut() {
-            document.detect_language(self.syn_loader.clone());
-            let diagnostics = Editor::doc_diagnostics(
-                &self.editor.language_servers,
-                &self.editor.diagnostics,
-                document,
-            );
-            document.replace_diagnostics(diagnostics, &[], None);
-        }
-
-        Ok(())
-    }
-
-    /// Refresh theme after config change
-    fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                self.theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
-
-        self.editor.set_theme(theme);
-        Ok(())
-    }
-
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
-            self.refresh_language_config()?;
-            self.refresh_theme(&default_config)?;
-            self.terminal
-                .reconfigure(default_config.editor.clone().into())?;
+
+            // Update the syntax language loader before setting the theme. Setting the theme will
+            // call `Loader::set_scopes` which must be done before the documents are re-parsed for
+            // the sake of locals highlighting.
+            let lang_loader = helix_core::config::user_lang_loader()?;
+            self.editor.syn_loader.store(Arc::new(lang_loader));
+            Self::load_configured_theme(
+                &mut self.editor,
+                &default_config,
+                self.terminal.backend().supports_true_color(),
+                self.theme_mode,
+            );
+
+            // Re-parse any open documents with the new language config.
+            let lang_loader = self.editor.syn_loader.load();
+            for document in self.editor.documents.values_mut() {
+                // Re-detect .editorconfig
+                document.detect_editor_config();
+                document.detect_language(&lang_loader);
+                let diagnostics = Editor::doc_diagnostics(
+                    &self.editor.language_servers,
+                    &self.editor.diagnostics,
+                    document,
+                );
+                document.replace_diagnostics(diagnostics, &[], None);
+            }
+
+            self.terminal.reconfigure((&default_config.editor).into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -465,6 +452,43 @@ impl Application {
                 self.editor.set_error(err.to_string());
             }
         }
+    }
+
+    /// Load the theme set in configuration
+    fn load_configured_theme(
+        editor: &mut Editor,
+        config: &Config,
+        terminal_true_color: bool,
+        mode: Option<theme::Mode>,
+    ) {
+        let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme_config| {
+                let theme = theme_config.choose(mode);
+                editor
+                    .theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| {
+                        let colors_ok = true_color || theme.is_16_color();
+                        if !colors_ok {
+                            log::warn!(
+                                "loaded theme `{}` but cannot use it because true color \
+                                support is not enabled",
+                                theme.name()
+                            );
+                        }
+                        colors_ok
+                    })
+            })
+            .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
+        editor.set_theme(theme);
     }
 
     #[cfg(windows)]
@@ -510,7 +534,7 @@ impl Application {
                 // https://github.com/neovim/neovim/issues/12322
                 // https://github.com/neovim/neovim/pull/13084
                 for retries in 1..=10 {
-                    match self.claim_term().await {
+                    match self.terminal.claim() {
                         Ok(()) => break,
                         Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
                         Err(_) => continue,
@@ -518,7 +542,7 @@ impl Application {
                 }
 
                 // redraw the terminal
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
                 self.compositor.resize(area);
                 self.terminal.clear().expect("couldn't clear terminal");
 
@@ -580,16 +604,41 @@ impl Application {
         doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
 
         let lines = doc_save_event.text.len_lines();
-        let bytes = doc_save_event.text.len_bytes();
+        let size = doc_save_event.text.len_bytes();
+
+        enum Size {
+            Bytes(u16),
+            HumanReadable(f32, &'static str),
+        }
+
+        impl std::fmt::Display for Size {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Bytes(bytes) => write!(f, "{bytes}B"),
+                    Self::HumanReadable(size, suffix) => write!(f, "{size:.1}{suffix}"),
+                }
+            }
+        }
+
+        let size = if size < 1024 {
+            Size::Bytes(size as u16)
+        } else {
+            const SUFFIX: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
+            let mut size = size as f32;
+            let mut i = 0;
+            while i < SUFFIX.len() - 1 && size >= 1024.0 {
+                size /= 1024.0;
+                i += 1;
+            }
+            Size::HumanReadable(size, SUFFIX[i])
+        };
 
         self.editor
             .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
         self.editor.set_status(format!(
-            "'{}' written, {}L {}B",
+            "'{}' written, {lines}L {size}",
             get_relative_path(&doc_save_event.path).to_string_lossy(),
-            lines,
-            bytes
         ));
     }
 
@@ -611,8 +660,8 @@ impl Application {
                 // limit render calls for fast language server messages
                 helix_event::request_redraw();
             }
-            EditorEvent::DebuggerEvent(payload) => {
-                let needs_render = self.editor.handle_debugger_message(payload).await;
+            EditorEvent::DebuggerEvent((id, payload)) => {
+                let needs_render = self.editor.handle_debugger_message(id, payload).await;
                 if needs_render {
                     self.render().await;
                 }
@@ -634,7 +683,10 @@ impl Application {
         false
     }
 
-    pub async fn handle_terminal_events(&mut self, event: std::io::Result<CrosstermEvent>) {
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<TerminalEvent>) {
+        #[cfg(not(windows))]
+        use termina::escape::csi;
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -642,20 +694,51 @@ impl Application {
         };
         // Handle key events
         let should_redraw = match event.unwrap() {
-            CrosstermEvent::Resize(width, height) => {
+            #[cfg(not(windows))]
+            termina::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
+                self.terminal
+                    .resize(Rect::new(0, 0, cols, rows))
+                    .expect("Unable to resize terminal");
+
+                let area = self.terminal.size();
+
+                self.compositor.resize(area);
+
+                self.compositor
+                    .handle_event(&Event::Resize(cols, rows), &mut cx)
+            }
+            #[cfg(not(windows))]
+            // Ignore keyboard release events.
+            termina::Event::Key(termina::event::KeyEvent {
+                kind: termina::event::KeyEventKind::Release,
+                ..
+            }) => false,
+            #[cfg(not(windows))]
+            termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
+                Self::load_configured_theme(
+                    &mut self.editor,
+                    &self.config.load(),
+                    self.terminal.backend().supports_true_color(),
+                    Some(mode.into()),
+                );
+                true
+            }
+            #[cfg(windows)]
+            TerminalEvent::Resize(width, height) => {
                 self.terminal
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
 
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
 
                 self.compositor.resize(area);
 
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
+            #[cfg(windows)]
             // Ignore keyboard release events.
-            CrosstermEvent::Key(crossterm::event::KeyEvent {
+            crossterm::event::Event::Key(crossterm::event::KeyEvent {
                 kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
@@ -711,33 +794,15 @@ impl Application {
                         // This might not be required by the spec but Neovim does this as well, so it's
                         // probably a good idea for compatibility.
                         if let Some(config) = language_server.config() {
-                            tokio::spawn(language_server.did_change_configuration(config.clone()));
+                            language_server.did_change_configuration(config.clone());
                         }
 
-                        let docs = self
-                            .editor
-                            .documents()
-                            .filter(|doc| doc.supports_language_server(server_id));
-
-                        // trigger textDocument/didOpen for docs that are already open
-                        for doc in docs {
-                            let url = match doc.url() {
-                                Some(url) => url,
-                                None => continue, // skip documents with no path
-                            };
-
-                            let language_id =
-                                doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
-
-                            tokio::spawn(language_server.text_document_did_open(
-                                url,
-                                doc.version(),
-                                doc.text(),
-                                language_id,
-                            ));
-                        }
+                        helix_event::dispatch(helix_view::events::LanguageServerInitialized {
+                            editor: &mut self.editor,
+                            server_id,
+                        });
                     }
-                    Notification::PublishDiagnostics(mut params) => {
+                    Notification::PublishDiagnostics(params) => {
                         let uri = match helix_core::Uri::try_from(params.uri) {
                             Ok(uri) => uri,
                             Err(err) => {
@@ -750,100 +815,16 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
-                        // have to inline the function because of borrow checking...
-                        let doc = self.editor.documents.values_mut()
-                            .find(|doc| doc.uri().is_some_and(|u| u == uri))
-                            .filter(|doc| {
-                                if let Some(version) = params.version {
-                                    if version != doc.version() {
-                                        log::info!("Version ({version}) is out of date for {uri:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
-                                        return false;
-                                    }
-                                }
-                                true
-                            });
-
-                        let mut unchanged_diag_sources = Vec::new();
-                        if let Some(doc) = &doc {
-                            let lang_conf = doc.language.clone();
-
-                            if let Some(lang_conf) = &lang_conf {
-                                if let Some(old_diagnostics) = self.editor.diagnostics.get(&uri) {
-                                    if !lang_conf.persistent_diagnostic_sources.is_empty() {
-                                        // Sort diagnostics first by severity and then by line numbers.
-                                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                                        params
-                                            .diagnostics
-                                            .sort_by_key(|d| (d.severity, d.range.start));
-                                    }
-                                    for source in &lang_conf.persistent_diagnostic_sources {
-                                        let new_diagnostics = params
-                                            .diagnostics
-                                            .iter()
-                                            .filter(|d| d.source.as_ref() == Some(source));
-                                        let old_diagnostics = old_diagnostics
-                                            .iter()
-                                            .filter(|(d, d_server)| {
-                                                *d_server == server_id
-                                                    && d.source.as_ref() == Some(source)
-                                            })
-                                            .map(|(d, _)| d);
-                                        if new_diagnostics.eq(old_diagnostics) {
-                                            unchanged_diag_sources.push(source.clone())
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        let diagnostics = params.diagnostics.into_iter().map(|d| (d, server_id));
-
-                        // Insert the original lsp::Diagnostics here because we may have no open document
-                        // for diagnosic message and so we can't calculate the exact position.
-                        // When using them later in the diagnostics picker, we calculate them on-demand.
-                        let diagnostics = match self.editor.diagnostics.entry(uri) {
-                            Entry::Occupied(o) => {
-                                let current_diagnostics = o.into_mut();
-                                // there may entries of other language servers, which is why we can't overwrite the whole entry
-                                current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
-                                current_diagnostics.extend(diagnostics);
-                                current_diagnostics
-                                // Sort diagnostics first by severity and then by line numbers.
-                            }
-                            Entry::Vacant(v) => v.insert(diagnostics.collect()),
+                        let provider = helix_core::diagnostic::DiagnosticProvider::Lsp {
+                            server_id,
+                            identifier: None,
                         };
-
-                        // Sort diagnostics first by severity and then by line numbers.
-                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                        diagnostics
-                            .sort_by_key(|(d, server_id)| (d.severity, d.range.start, *server_id));
-
-                        if let Some(doc) = doc {
-                            let diagnostic_of_language_server_and_not_in_unchanged_sources =
-                                |diagnostic: &lsp::Diagnostic, ls_id| {
-                                    ls_id == server_id
-                                        && diagnostic.source.as_ref().map_or(true, |source| {
-                                            !unchanged_diag_sources.contains(source)
-                                        })
-                                };
-                            let diagnostics = Editor::doc_diagnostics_with_filter(
-                                &self.editor.language_servers,
-                                &self.editor.diagnostics,
-                                doc,
-                                diagnostic_of_language_server_and_not_in_unchanged_sources,
-                            );
-                            doc.replace_diagnostics(
-                                diagnostics,
-                                &unchanged_diag_sources,
-                                Some(server_id),
-                            );
-
-                            let doc = doc.id();
-                            helix_event::dispatch(DiagnosticsDidChange {
-                                editor: &mut self.editor,
-                                doc,
-                            });
-                        }
+                        self.editor.handle_lsp_diagnostics(
+                            &provider,
+                            uri,
+                            params.version,
+                            params.diagnostics,
+                        );
                     }
                     Notification::ShowMessage(params) => {
                         if self.config.load().editor.lsp.display_messages {
@@ -868,10 +849,11 @@ impl Application {
                             .compositor
                             .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let lsp::ProgressParams { token, value } = params;
-
-                        let lsp::ProgressParamsValue::WorkDone(work) = value;
-                        let parts = match &work {
+                        let lsp::ProgressParams {
+                            token,
+                            value: lsp::ProgressParamsValue::WorkDone(work),
+                        } = params;
+                        let (title, message, percentage) = match &work {
                             lsp::WorkDoneProgress::Begin(lsp::WorkDoneProgressBegin {
                                 title,
                                 message,
@@ -899,47 +881,43 @@ impl Application {
                             }
                         };
 
-                        let token_d: &dyn std::fmt::Display = match &token {
-                            lsp::NumberOrString::Number(n) => n,
-                            lsp::NumberOrString::String(s) => s,
-                        };
-
-                        let status = match parts {
-                            (Some(title), Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
+                        if self.editor.config().lsp.display_progress_messages {
+                            let title =
+                                title.or_else(|| self.lsp_progress.title(server_id, &token));
+                            if title.is_some() || percentage.is_some() || message.is_some() {
+                                use std::fmt::Write as _;
+                                let mut status = format!("{}: ", language_server!().name());
+                                if let Some(percentage) = percentage {
+                                    write!(status, "{percentage:>2}% ").unwrap();
+                                }
+                                if let Some(title) = title {
+                                    status.push_str(title);
+                                }
+                                if title.is_some() && message.is_some() {
+                                    status.push_str(" ⋅ ");
+                                }
+                                if let Some(message) = message {
+                                    status.push_str(message);
+                                }
+                                self.editor.set_status(status);
                             }
-                            (Some(title), None, Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, title)
-                            }
-                            (Some(title), Some(message), None) => {
-                                format!("[{}] {} - {}", token_d, title, message)
-                            }
-                            (None, Some(message), Some(percentage)) => {
-                                format!("[{}] {}% {}", token_d, percentage, message)
-                            }
-                            (Some(title), None, None) => {
-                                format!("[{}] {}", token_d, title)
-                            }
-                            (None, Some(message), None) => {
-                                format!("[{}] {}", token_d, message)
-                            }
-                            (None, None, Some(percentage)) => {
-                                format!("[{}] {}%", token_d, percentage)
-                            }
-                            (None, None, None) => format!("[{}]", token_d),
-                        };
-
-                        if let lsp::WorkDoneProgress::End(_) = work {
-                            self.lsp_progress.end_progress(server_id, &token);
-                            if !self.lsp_progress.is_progressing(server_id) {
-                                editor_view.spinners_mut().get_or_create(server_id).stop();
-                            }
-                        } else {
-                            self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.load().editor.lsp.display_progress_messages {
-                            self.editor.set_status(status);
+                        match work {
+                            lsp::WorkDoneProgress::Begin(begin_status) => {
+                                self.lsp_progress
+                                    .begin(server_id, token.clone(), begin_status);
+                            }
+                            lsp::WorkDoneProgress::Report(report_status) => {
+                                self.lsp_progress
+                                    .update(server_id, token.clone(), report_status);
+                            }
+                            lsp::WorkDoneProgress::End(_) => {
+                                self.lsp_progress.end_progress(server_id, &token);
+                                if !self.lsp_progress.is_progressing(server_id) {
+                                    editor_view.spinners_mut().get_or_create(server_id).stop();
+                                };
+                            }
                         }
                     }
                     Notification::ProgressMessage(_params) => {
@@ -952,15 +930,22 @@ impl Application {
                         // we need to clear those and remove the entries from the list if this leads to
                         // an empty diagnostic list for said files
                         for diags in self.editor.diagnostics.values_mut() {
-                            diags.retain(|(_, lsp_id)| *lsp_id != server_id);
+                            diags.retain(|(_, provider)| {
+                                provider.language_server_id() != Some(server_id)
+                            });
                         }
 
                         self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
 
                         // Clear any diagnostics for documents with this server open.
                         for doc in self.editor.documents_mut() {
-                            doc.clear_diagnostics(Some(server_id));
+                            doc.clear_diagnostics_for_language_server(server_id);
                         }
+
+                        helix_event::dispatch(helix_view::events::LanguageServerExited {
+                            editor: &mut self.editor,
+                            server_id,
+                        });
 
                         // Remove the language server from the registry.
                         self.editor.language_servers.remove_by_id(server_id);
@@ -1118,9 +1103,35 @@ impl Application {
                         let result = self.handle_show_document(params, offset_encoding);
                         Ok(json!(result))
                     }
+                    Ok(MethodCall::WorkspaceDiagnosticRefresh) => {
+                        let language_server = language_server!().id();
+
+                        let documents: Vec<_> = self
+                            .editor
+                            .documents
+                            .values()
+                            .filter(|x| x.supports_language_server(language_server))
+                            .map(|x| x.id())
+                            .collect();
+
+                        for document in documents {
+                            handlers::diagnostics::request_document_diagnostics(
+                                &mut self.editor,
+                                document,
+                            );
+                        }
+
+                        Ok(serde_json::Value::Null)
+                    }
                 };
 
-                tokio::spawn(language_server!().reply(id, reply));
+                let language_server = language_server!();
+                if let Err(err) = language_server.reply(id.clone(), reply) {
+                    log::error!(
+                        "Failed to send reply to server '{}' request {id}: {err}",
+                        language_server.name()
+                    );
+                }
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }
@@ -1190,36 +1201,60 @@ impl Application {
         lsp::ShowDocumentResult { success: true }
     }
 
-    async fn claim_term(&mut self) -> std::io::Result<()> {
-        let terminal_config = self.config.load().editor.clone().into();
-        self.terminal.claim(terminal_config)
-    }
-
     fn restore_term(&mut self) -> std::io::Result<()> {
-        let terminal_config = self.config.load().editor.clone().into();
         use helix_view::graphics::CursorKind;
         self.terminal
             .backend_mut()
             .show_cursor(CursorKind::Block)
             .ok();
-        self.terminal.restore(terminal_config)
+        self.terminal.restore()
+    }
+
+    #[cfg(all(not(feature = "integration"), not(windows)))]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+        use termina::{escape::csi, Terminal as _};
+        let reader = self.terminal.backend().terminal().event_reader();
+        termina::EventStream::new(reader, |event| {
+            // Accept either non-escape sequences or theme mode updates.
+            !event.is_escape()
+                || matches!(
+                    event,
+                    termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(_)))
+                )
+        })
+    }
+
+    #[cfg(all(not(feature = "integration"), windows))]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+        crossterm::event::EventStream::new()
+    }
+
+    #[cfg(feature = "integration")]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+        use std::{
+            pin::Pin,
+            task::{Context, Poll},
+        };
+
+        /// A dummy stream that never polls as ready.
+        pub struct DummyEventStream;
+
+        impl Stream for DummyEventStream {
+            type Item = std::io::Result<TerminalEvent>;
+
+            fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                Poll::Pending
+            }
+        }
+
+        DummyEventStream
     }
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
-        self.claim_term().await?;
-
-        // Exit the alternate screen and disable raw mode before panicking
-        let hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(move |info| {
-            // We can't handle errors properly inside this closure.  And it's
-            // probably not a good idea to `unwrap()` inside a panic handler.
-            // So we just ignore the `Result`.
-            let _ = TerminalBackend::force_restore();
-            hook(info);
-        }));
+        self.terminal.claim()?;
 
         self.event_loop(input_stream).await;
 

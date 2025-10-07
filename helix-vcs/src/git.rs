@@ -11,7 +11,7 @@ use gix::dir::entry::Status;
 use gix::objs::tree::EntryKind;
 use gix::sec::trust::DefaultForLevel;
 use gix::status::{
-    index_worktree::iter::Item,
+    index_worktree::Item,
     plumbing::index_as_worktree::{Change, EntryStatus},
     UntrackedFiles,
 };
@@ -22,24 +22,30 @@ use crate::FileChange;
 #[cfg(test)]
 mod test;
 
+#[inline]
+fn get_repo_dir(file: &Path) -> Result<&Path> {
+    file.parent().context("file has no parent directory")
+}
+
 pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
+    let file = gix::path::realpath(file).context("resolve symlinks")?;
 
     // TODO cache repository lookup
 
-    let repo_dir = file.parent().context("file has no parent directory")?;
+    let repo_dir = get_repo_dir(&file)?;
     let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
     let head = repo.head_commit()?;
-    let file_oid = find_file_in_commit(&repo, &head, file)?;
+    let file_oid = find_file_in_commit(&repo, &head, &file)?;
 
     let file_object = repo.find_object(file_oid)?;
     let data = file_object.detach().data;
     // Get the actual data that git would make out of the git object.
     // This will apply the user's git config or attributes like crlf conversions.
-    if let Some(work_dir) = repo.work_dir() {
+    if let Some(work_dir) = repo.workdir() {
         let rela_path = file.strip_prefix(work_dir)?;
         let rela_path = gix::path::try_into_bstr(rela_path)?;
         let (mut pipeline, _) = repo.filter_pipeline(None)?;
@@ -56,7 +62,9 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
 pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
-    let repo_dir = file.parent().context("file has no parent directory")?;
+    let file = gix::path::realpath(file).context("resolve symlinks")?;
+
+    let repo_dir = get_repo_dir(&file)?;
     let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
@@ -120,7 +128,7 @@ fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
 /// Emulates the result of running `git status` from the command line.
 fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
     let work_dir = repo
-        .work_dir()
+        .workdir()
         .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
         .to_path_buf();
 
@@ -136,6 +144,7 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
             copies: None,
             percentage: Some(0.5),
             limit: 1000,
+            ..Default::default()
         }));
 
     // No filtering based on path
@@ -186,11 +195,11 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
 
 /// Finds the object that contains the contents of a file at a specific commit.
 fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Result<ObjectId> {
-    let repo_dir = repo.work_dir().context("repo has no worktree")?;
+    let repo_dir = repo.workdir().context("repo has no worktree")?;
     let rel_path = file.strip_prefix(repo_dir)?;
     let tree = commit.tree()?;
     let tree_entry = tree
-        .lookup_entry_by_path(rel_path, &mut Vec::new())?
+        .lookup_entry_by_path(rel_path)?
         .context("file is untracked")?;
     match tree_entry.mode().kind() {
         // not a file, everything is new, do not show diff

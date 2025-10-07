@@ -1,5 +1,4 @@
 use anyhow::{Context, Error, Result};
-use crossterm::event::EventStream;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
@@ -40,8 +39,15 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let help = format!(
-        "\
+    let args = Args::parse_args().context("could not parse arguments")?;
+
+    helix_loader::initialize_config_file(args.config_file.clone());
+    helix_loader::initialize_log_file(args.log_file.clone());
+
+    // Help has a higher priority and should be handled separately.
+    if args.display_help {
+        print!(
+            "\
 {} {}
 {}
 {}
@@ -50,40 +56,33 @@ USAGE:
     hx [FLAGS] [files]...
 
 ARGS:
-    <files>...    Sets the input file to use, position can also be specified via file[:row[:col]]
+    <files>...    Set the input file to use, position can also be specified via file[:row[:col]]
 
 FLAGS:
-    -h, --help                     Prints help information
-    --tutor                        Loads the tutorial
-    --health [CATEGORY]            Checks for potential errors in editor setup
-                                   CATEGORY can be a language or one of 'clipboard', 'languages'
-                                   or 'all'. 'all' is the default if not specified.
-    -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
-    -c, --config <file>            Specifies a file to use for configuration
-    -v                             Increases logging verbosity each use for up to 3 times
-    --log <file>                   Specifies a file to use for logging
+    -h, --help                     Print help information
+    --tutor                        Load the tutorial
+    --health [CATEGORY]            Check for potential errors in editor setup
+                                   CATEGORY can be a language or one of 'clipboard', 'languages',
+                                   'all-languages' or 'all'. 'languages' is filtered according to
+                                   user config, 'all-languages' and 'all' are not. If not specified,
+                                   the default is the same as 'all', but with languages filtering.
+    -g, --grammar {{fetch|build}}    Fetch or builds tree-sitter grammars listed in languages.toml
+    -c, --config <file>            Specify a file to use for configuration
+    -v                             Increase logging verbosity each use for up to 3 times
+    --log <file>                   Specify a file to use for logging
                                    (default file: {})
-    -V, --version                  Prints version information
-    --vsplit                       Splits all given files vertically into different windows
-    --hsplit                       Splits all given files horizontally into different windows
+    -V, --version                  Print version information
+    --vsplit                       Split all given files vertically into different windows
+    --hsplit                       Split all given files horizontally into different windows
     -w, --working-dir <path>       Specify an initial working directory
     +N                             Open the first given file at line number N
 ",
-        env!("CARGO_PKG_NAME"),
-        VERSION_AND_GIT_HASH,
-        env!("CARGO_PKG_AUTHORS"),
-        env!("CARGO_PKG_DESCRIPTION"),
-        helix_loader::default_log_file().display(),
-    );
-
-    let mut args = Args::parse_args().context("could not parse arguments")?;
-
-    helix_loader::initialize_config_file(args.config_file.clone());
-    helix_loader::initialize_log_file(args.log_file.clone());
-
-    // Help has a higher priority and should be handled separately.
-    if args.display_help {
-        print!("{}", help);
+            env!("CARGO_PKG_NAME"),
+            VERSION_AND_GIT_HASH,
+            env!("CARGO_PKG_AUTHORS"),
+            env!("CARGO_PKG_DESCRIPTION"),
+            helix_loader::default_log_file().display(),
+        );
         std::process::exit(0);
     }
 
@@ -116,10 +115,6 @@ FLAGS:
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;
 
-    // Before setting the working directory, resolve all the paths in args.files
-    for (path, _) in &mut args.files {
-        *path = helix_stdx::path::canonicalize(&*path);
-    }
     // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
     // Application::new() depends on this logic so it must be updated if this changes.
     if let Some(path) = &args.working_directory {
@@ -154,10 +149,10 @@ FLAGS:
     });
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app =
-        Application::new(args, config, lang_loader).context("unable to create new application")?;
+    let mut app = Application::new(args, config, lang_loader).context("unable to start Helix")?;
+    let mut events = app.event_stream();
 
-    let exit_code = app.run(&mut EventStream::new()).await?;
+    let exit_code = app.run(&mut events).await?;
 
     Ok(exit_code)
 }

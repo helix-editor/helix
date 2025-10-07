@@ -1,0 +1,111 @@
+inherits="adwaita-dark"
+"attribute" = "orange_5"
+
+"type" = "teal_4"
+"type.builtin" = "teal_4"
+
+"constructor" = "blue_4"
+
+"constant" = "violet_4"
+"constant.builtin" = { fg = "violet_4", modifiers = ["bold"] }
+"constant.character" = "teal_5"
+"constant.numeric" = { fg = "teal_5", modifiers = ["bold"] }
+"constant.character.escape" = "violet_4"
+
+"string" = "teal_3"
+"string.regexp" = "purple_4"
+"string.special" = "blue_4"
+
+"comment" = "light_6"
+
+"variable" = "dark_5"
+"variable.parameter" = "orange_4"
+"variable.builtin" = "orange_4"
+"variable.other" = "teal_4"
+"variable.other.member" = "teal_5"
+
+"label" = "purple_4"
+
+"punctuation" = "dark_4"
+"punctuation.delimiter" = "dark_4"
+"punctuation.bracket" = "dark_4"
+"punctuation.special" = "red_5"
+
+"keyword" = { fg = "orange_4", modifiers = ["bold"] }
+"keyword.control" = { fg = "orange_4", modifiers = ["bold"] }
+"keyword.operator" = "purple_4"
+"keyword.directive" = { fg = "orange_4", modifiers = ["bold"] }
+"keyword.function" = "orange_4"
+"keyword.storage" = { fg = "orange_4", modifiers = ["bold"] }
+
+"operator" = "purple_4"
+
+"function" = "blue_4"
+"function.builtin" = "blue_4"
+"function.macro" = { fg = "blue_4", modifiers = ["bold"] }
+"function.special" = { fg = "blue_4", modifiers = ["bold"] }
+
+"tag" = "teal_4"
+
+"namespace" = "orange_4"
+
+"markup" = "dark_4"
+"markup.heading" = { fg = "teal_4", modifiers = ["bold"] }
+"markup.list" = { fg = "orange_4", modifiers = ["bold"] }
+"markup.bold" = { fg = "dark_4", modifiers = ["bold"] }
+"markup.italic" = { fg = "dark_4", modifiers = ["italic"] }
+"markup.link" = { fg = "blue_5", modifiers = ["underlined"] }
+"markup.quote" = { fg = "dark_3", modifiers = ["italic"] }
+"diff.plus" = "teal_5"
+"diff.minus" = "red_3"
+"diff.delta" = "orange_5"
+"diff.delta.moved" = "orange_4"
+
+"ui.background" = { fg = "dark_4", bg = "light_1" }
+"ui.background.separator" = { fg = "split_and_borders", bg = "light_2" }
+"ui.cursor" = { fg = "light_2", bg = "dark_5" }
+"ui.cursor.insert" = { fg = "light_2", bg = "dark_4" }
+"ui.cursor.primary.insert" = { fg = "light_2", bg = "yellow_5" }
+"ui.cursor.select" = { fg = "light_2", bg = "dark_5" }
+"ui.cursor.match" = { fg = "light_2", bg = "blue_1" }
+"ui.cursor.primary" = { fg = "light_2", bg = "dark_6" }
+"ui.linenr" = "light_5"
+"ui.linenr.selected" = { fg = "dark_2", bg = "light_3", modifiers = [
+  "bold",
+] }
+"ui.statusline" = { fg = "dark_4", bg = "light_4" }
+"ui.statusline.inactive" = { fg = "dark_3", bg = "light_3" }
+"ui.statusline.insert" = { fg = "light_5", bg = "teal_3" }
+"ui.statusline.select" = { fg = "light_4", bg = "blue_3" }
+"ui.popup" = { bg = "light_3" }
+"ui.window" = "split_and_borders"
+"ui.help" = { bg = "light_3" }
+"ui.text" = "dark_4"
+"ui.virtual" = "light_5"
+"ui.virtual.ruler" = { bg = "light_5"}
+"ui.virtual.jump-label" = { modifiers = ["reversed"] }
+"ui.menu" = { fg = "dark_4", bg = "light_3" }
+"ui.menu.selected" = { fg = "dark_4", bg = "blue_1" }
+"ui.menu.scroll" = { fg = "dark_6", bg = "light_3" }
+"ui.selection" = { bg = "blue_0" }
+"ui.selection.primary" = { bg = "blue_0" }
+"ui.cursorline.primary" = { bg = "light_3" }
+"ui.virtual.whitespace" = "light_7"
+
+"warning" = "yellow_4"
+"error" = "red_5"
+"info" = "purple_3"
+"hint" = "blue_3"
+
+"diagnostic.hint" = { fg = "blue_4", modifiers = ["dim"] }
+"diagnostic.info" = { fg = "purple_4", modifiers = ["dim"] }
+"diagnostic.error" = { fg = "red_5", modifiers = ["underlined"] }
+"diagnostic.warning" = { fg = "yellow_4", modifiers = ["underlined"] }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"ui.bufferline" = { fg = "light_7", bg = "light_2" }
+"ui.bufferline.active" = { fg = "dark_4", bg = "light_4", modifiers = ["bold"]}
+
+[palette]
+blue_0 = "#d3e4f9"

@@ -1,3 +1,4 @@
+//! Functions for managine file metadata.
 //! From <https://github.com/Freaky/faccess>
 
 use std::io;
@@ -51,8 +52,8 @@ mod imp {
     }
 
     fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
-        let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
-        let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+        let uid = uid.map(rustix::fs::Uid::from_raw);
+        let gid = gid.map(rustix::fs::Gid::from_raw);
         rustix::fs::chown(p, uid, gid)?;
         Ok(())
     }
@@ -68,6 +69,16 @@ mod imp {
         if from_gid != to_gid && chown(to, None, Some(from_gid)).is_err() {
             let new_perms = (perms.mode() & 0o0707) | ((perms.mode() & 0o07) << 3);
             perms.set_mode(new_perms);
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            use std::fs::{File, FileTimes};
+            use std::os::macos::fs::FileTimesExt;
+
+            let to_file = File::options().write(true).open(to)?;
+            let times = FileTimes::new().set_created(from_meta.created()?);
+            to_file.set_times(times)?;
         }
 
         std::fs::set_permissions(to, perms)?;
@@ -108,7 +119,13 @@ mod imp {
 
     use std::ffi::c_void;
 
-    use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
+    use std::os::windows::{
+        ffi::OsStrExt,
+        fs::{FileTimesExt, OpenOptionsExt},
+        io::AsRawHandle,
+    };
+
+    use std::fs::{File, FileTimes};
 
     struct SecurityDescriptor {
         sd: PSECURITY_DESCRIPTOR,
@@ -411,6 +428,10 @@ mod imp {
 
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
+
+        let to_file = File::options().write(true).open(to)?;
+        let times = FileTimes::new().set_created(meta.created()?);
+        to_file.set_times(times)?;
 
         std::fs::set_permissions(to, perms)?;
 

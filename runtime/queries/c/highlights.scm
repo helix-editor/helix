@@ -1,3 +1,9 @@
+
+(identifier) @variable
+
+((identifier) @constant
+  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
+
 "sizeof" @keyword
 
 [
@@ -8,8 +14,6 @@
 ] @keyword.storage.type
 
 [
-  "extern"
-  "register"
   (type_qualifier)
   (storage_class_specifier)
 ] @keyword.storage.modifier
@@ -49,8 +53,11 @@
   (preproc_directive)
 ] @keyword.directive
 
-(pointer_declarator "*" @type.builtin)
-(abstract_pointer_declarator "*" @type.builtin)
+"..." @punctuation
+
+["," "." ":" "::" ";" "->"] @punctuation.delimiter
+
+["(" ")" "[" "]" "{" "}" "[[" "]]"] @punctuation.bracket
 
 [
   "+"
@@ -89,13 +96,11 @@
   "?"
 ] @operator
 
-(conditional_expression ":" @operator)
+(conditional_expression ":" @operator) ; After punctuation
 
-"..." @punctuation
+(pointer_declarator "*" @type.builtin) ; After Operators
+(abstract_pointer_declarator "*" @type.builtin)
 
-["," "." ":" ";" "->" "::"] @punctuation.delimiter
-
-["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 [(true) (false)] @constant.builtin.boolean
 
@@ -109,6 +114,12 @@
 (char_literal) @constant.character
 (escape_sequence) @constant.character.escape
 
+(field_identifier) @variable.other.member
+(statement_identifier) @label
+(type_identifier) @type
+(primitive_type) @type.builtin
+(sized_type_specifier) @type.builtin
+
 (call_expression
   function: (identifier) @function)
 (call_expression
@@ -117,26 +128,40 @@
 (call_expression (argument_list (identifier) @variable))
 (function_declarator
   declarator: [(identifier) (field_identifier)] @function)
+
+; Up to 6 layers of declarators
 (parameter_declaration
   declarator: (identifier) @variable.parameter)
 (parameter_declaration
-  (pointer_declarator
-    declarator: (identifier) @variable.parameter))
+  (_
+    (identifier) @variable.parameter))
+(parameter_declaration
+  (_
+    (_
+      (identifier) @variable.parameter)))
+(parameter_declaration
+  (_
+    (_
+      (_
+        (identifier) @variable.parameter))))
+(parameter_declaration
+  (_
+    (_
+      (_
+        (_
+          (identifier) @variable.parameter)))))
+(parameter_declaration
+  (_
+    (_
+      (_
+        (_
+          (_
+            (identifier) @variable.parameter))))))
+
 (preproc_function_def
   name: (identifier) @function.special)
 
 (attribute
   name: (identifier) @attribute)
-
-(field_identifier) @variable.other.member
-(statement_identifier) @label
-(type_identifier) @type
-(primitive_type) @type.builtin
-(sized_type_specifier) @type.builtin
-
-((identifier) @constant
-  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
-
-(identifier) @variable
 
 (comment) @comment

@@ -1,7 +1,7 @@
 # Author: Matous Dzivjak <matousdzivjak@gmail.com>
 # Adapted from https://protesilaos.com/emacs/modus-themes, by Protesilaos Stavrou
 # Source: https://github.com/protesilaos/modus-themes/blob/main/modus-vivendi-theme.el
-# Version 4.4.0
+# Version 4.6.0
 
 # Syntax highlighting
 # -------------------
@@ -75,9 +75,10 @@ punctuation = "fg-dim"
 
 "ui.popup" = { fg = "fg-main", bg = "bg-dim" }
 "ui.window" = { fg = "fg-dim" }
-"ui.help" = { fg = "fg-main", bg = "bg-dim" }
+"ui.help" = { fg = "fg-main", bg = "bg-active" }
 "ui.gutter" = { bg = "bg-dim" }
 "ui.text" = "fg-main"
+"ui.text.directory" = "blue-cooler"
 "ui.text.focus" = { fg = "fg-main", bg = "bg-completion", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "fg-dim" }
 "ui.virtual" = "bg-active"
@@ -85,8 +86,8 @@ punctuation = "fg-dim"
 "ui.virtual.inlay-hint" = { fg = "fg-dim", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "yellow-cooler", modifiers = ["bold"] }
 
-"ui.selection" = { fg = "fg-main", bg = "bg-inactive" }
-"ui.selection.primary" = { fg = "fg-main", bg = "bg-active" }
+"ui.selection" = { bg = "bg-inactive" }
+"ui.selection.primary" = { bg = "bg-active" }
 
 "ui.cursor" = { fg = "bg-main", bg = "fg-main" }
 "ui.cursor.primary" = { fg = "bg-main", bg = "fg-dim" }
@@ -111,6 +112,8 @@ warning = "yellow-warmer"
 info = "cyan-cooler"
 hint = "blue-cooler"
 
+rainbow = ["red", "yellow-warmer", "green-intense", "cyan", "blue", "magenta-intense"]
+
 [palette]
 # Basic values
 bg-main = "#000000"
@@ -124,7 +127,7 @@ bg-inactive = "#303030"
 # Common accent foregrounds
 red = "#ff5f59"
 red-warmer = "#ff6b55"
-red-cooler = "#ff7f9f"
+red-cooler = "#ff7f86"
 red-faint = "#ff9580"
 red-intense = "#ff5f5f"
 green = "#44bc44"

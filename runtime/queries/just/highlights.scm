@@ -3,6 +3,7 @@
 [
   "export"
   "import"
+  "unexport"
 ] @keyword.control.import
 
 "mod" @keyword.directive
@@ -18,18 +19,26 @@
   "else"
 ] @keyword.control.conditional
 
+[
+  "&&"
+  "||"
+] @operator
+
 ; Variables
 
 (value
   (identifier) @variable)
 
 (alias
-  name: (identifier) @variable)
+  alias_name: (identifier) @variable)
 
 (assignment
   name: (identifier) @variable)
 
 (shell_variable_name) @variable
+
+(unexport
+  name: (identifier) @variable)
 
 ; Functions
 
@@ -50,6 +59,9 @@
 ; Namespaces
 
 (mod
+  name: (identifier) @namespace)
+
+(module_path
   name: (identifier) @namespace)
 
 ; Paths
@@ -83,6 +95,7 @@
   "=="
   "!="
   "=~"
+  "!~"
   "@"
   "="
   "$"

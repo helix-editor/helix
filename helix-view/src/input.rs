@@ -1,4 +1,4 @@
-//! Input event handling, currently backed by crossterm.
+//! Input event handling, currently backed by termina.
 use anyhow::{anyhow, Error};
 use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::de::{self, Deserialize, Deserializer};
@@ -65,7 +65,7 @@ pub enum MouseButton {
 pub struct KeyEvent {
     pub code: KeyCode,
     pub modifiers: KeyModifiers,
-    // TODO: crossterm now supports kind & state if terminal supports kitty's extended protocol
+    // TODO: termina now supports kind & state if terminal supports kitty's extended protocol
 }
 
 impl KeyEvent {
@@ -162,7 +162,12 @@ pub(crate) mod keys {
 impl fmt::Display for KeyEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "{}{}{}",
+            "{}{}{}{}",
+            if self.modifiers.contains(KeyModifiers::SUPER) {
+                "Meta-"
+            } else {
+                ""
+            },
             if self.modifiers.contains(KeyModifiers::SHIFT) {
                 "S-"
             } else {
@@ -312,6 +317,10 @@ impl UnicodeWidthStr for KeyEvent {
         if self.modifiers.contains(KeyModifiers::CONTROL) {
             width += 2;
         }
+        if self.modifiers.contains(KeyModifiers::SUPER) {
+            // "-Meta"
+            width += 5;
+        }
         width
     }
 
@@ -387,6 +396,23 @@ impl std::str::FromStr for KeyEvent {
                     .then_some(KeyCode::F(function))
                     .ok_or_else(|| anyhow!("Invalid function key '{}'", function))?
             }
+            // Checking that the last token is empty ensures that this branch is only taken if
+            // `-` is used as a code. For example this branch will not be taken for `S-` (which is
+            // missing a code).
+            _ if s.ends_with('-') && tokens.last().is_some_and(|t| t.is_empty()) => {
+                if s == "-" {
+                    return Ok(KeyEvent {
+                        code: KeyCode::Char('-'),
+                        modifiers: KeyModifiers::empty(),
+                    });
+                } else {
+                    let suggestion = format!("{}-{}", s.trim_end_matches('-'), keys::MINUS);
+                    return Err(anyhow!(
+                        "Key '-' cannot be used with modifiers, use '{}' instead",
+                        suggestion
+                    ));
+                }
+            }
             invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),
         };
 
@@ -396,6 +422,7 @@ impl std::str::FromStr for KeyEvent {
                 "S" => KeyModifiers::SHIFT,
                 "A" => KeyModifiers::ALT,
                 "C" => KeyModifiers::CONTROL,
+                "Meta" | "Cmd" | "Win" => KeyModifiers::SUPER,
                 _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
             };
 
@@ -432,6 +459,117 @@ impl<'de> Deserialize<'de> for KeyEvent {
 }
 
 #[cfg(feature = "term")]
+impl From<termina::event::Event> for Event {
+    fn from(event: termina::event::Event) -> Self {
+        match event {
+            termina::event::Event::Key(key) => Self::Key(key.into()),
+            termina::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
+            termina::event::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
+                Self::Resize(cols, rows)
+            }
+            termina::event::Event::FocusIn => Self::FocusGained,
+            termina::event::Event::FocusOut => Self::FocusLost,
+            termina::event::Event::Paste(s) => Self::Paste(s),
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "term")]
+impl From<termina::event::MouseEvent> for MouseEvent {
+    fn from(
+        termina::event::MouseEvent {
+            kind,
+            column,
+            row,
+            modifiers,
+        }: termina::event::MouseEvent,
+    ) -> Self {
+        Self {
+            kind: kind.into(),
+            column,
+            row,
+            modifiers: modifiers.into(),
+        }
+    }
+}
+
+#[cfg(feature = "term")]
+impl From<termina::event::MouseEventKind> for MouseEventKind {
+    fn from(kind: termina::event::MouseEventKind) -> Self {
+        match kind {
+            termina::event::MouseEventKind::Down(button) => Self::Down(button.into()),
+            termina::event::MouseEventKind::Up(button) => Self::Up(button.into()),
+            termina::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
+            termina::event::MouseEventKind::Moved => Self::Moved,
+            termina::event::MouseEventKind::ScrollDown => Self::ScrollDown,
+            termina::event::MouseEventKind::ScrollUp => Self::ScrollUp,
+            termina::event::MouseEventKind::ScrollLeft => Self::ScrollLeft,
+            termina::event::MouseEventKind::ScrollRight => Self::ScrollRight,
+        }
+    }
+}
+
+#[cfg(feature = "term")]
+impl From<termina::event::MouseButton> for MouseButton {
+    fn from(button: termina::event::MouseButton) -> Self {
+        match button {
+            termina::event::MouseButton::Left => MouseButton::Left,
+            termina::event::MouseButton::Right => MouseButton::Right,
+            termina::event::MouseButton::Middle => MouseButton::Middle,
+        }
+    }
+}
+
+#[cfg(feature = "term")]
+impl From<termina::event::KeyEvent> for KeyEvent {
+    fn from(
+        termina::event::KeyEvent {
+            code, modifiers, ..
+        }: termina::event::KeyEvent,
+    ) -> Self {
+        if code == termina::event::KeyCode::BackTab {
+            // special case for BackTab -> Shift-Tab
+            let mut modifiers: KeyModifiers = modifiers.into();
+            modifiers.insert(KeyModifiers::SHIFT);
+            Self {
+                code: KeyCode::Tab,
+                modifiers,
+            }
+        } else {
+            Self {
+                code: code.into(),
+                modifiers: modifiers.into(),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "term")]
+impl From<KeyEvent> for termina::event::KeyEvent {
+    fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
+        if code == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
+            // special case for Shift-Tab -> BackTab
+            let mut modifiers = modifiers;
+            modifiers.remove(KeyModifiers::SHIFT);
+            termina::event::KeyEvent {
+                code: termina::event::KeyCode::BackTab,
+                modifiers: modifiers.into(),
+                kind: termina::event::KeyEventKind::Press,
+                state: termina::event::KeyEventState::NONE,
+            }
+        } else {
+            termina::event::KeyEvent {
+                code: code.into(),
+                modifiers: modifiers.into(),
+                kind: termina::event::KeyEventKind::Press,
+                state: termina::event::KeyEventState::NONE,
+            }
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
 impl From<crossterm::event::Event> for Event {
     fn from(event: crossterm::event::Event) -> Self {
         match event {
@@ -445,7 +583,7 @@ impl From<crossterm::event::Event> for Event {
     }
 }
 
-#[cfg(feature = "term")]
+#[cfg(all(feature = "term", windows))]
 impl From<crossterm::event::MouseEvent> for MouseEvent {
     fn from(
         crossterm::event::MouseEvent {
@@ -464,7 +602,7 @@ impl From<crossterm::event::MouseEvent> for MouseEvent {
     }
 }
 
-#[cfg(feature = "term")]
+#[cfg(all(feature = "term", windows))]
 impl From<crossterm::event::MouseEventKind> for MouseEventKind {
     fn from(kind: crossterm::event::MouseEventKind) -> Self {
         match kind {
@@ -480,7 +618,7 @@ impl From<crossterm::event::MouseEventKind> for MouseEventKind {
     }
 }
 
-#[cfg(feature = "term")]
+#[cfg(all(feature = "term", windows))]
 impl From<crossterm::event::MouseButton> for MouseButton {
     fn from(button: crossterm::event::MouseButton) -> Self {
         match button {
@@ -491,7 +629,7 @@ impl From<crossterm::event::MouseButton> for MouseButton {
     }
 }
 
-#[cfg(feature = "term")]
+#[cfg(all(feature = "term", windows))]
 impl From<crossterm::event::KeyEvent> for KeyEvent {
     fn from(
         crossterm::event::KeyEvent {
@@ -515,7 +653,7 @@ impl From<crossterm::event::KeyEvent> for KeyEvent {
     }
 }
 
-#[cfg(feature = "term")]
+#[cfg(all(feature = "term", windows))]
 impl From<KeyEvent> for crossterm::event::KeyEvent {
     fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
         if code == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
@@ -538,7 +676,6 @@ impl From<KeyEvent> for crossterm::event::KeyEvent {
         }
     }
 }
-
 pub fn parse_macro(keys_str: &str) -> anyhow::Result<Vec<KeyEvent>> {
     use anyhow::Context;
     let mut keys_res: anyhow::Result<_> = Ok(Vec::new());
@@ -661,6 +798,13 @@ mod test {
                 modifiers: KeyModifiers::NONE
             }
         );
+        assert_eq!(
+            str::parse::<KeyEvent>("-").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('-'),
+                modifiers: KeyModifiers::NONE,
+            }
+        );
     }
 
     #[test]
@@ -709,6 +853,28 @@ mod test {
                 modifiers: KeyModifiers::NONE
             }
         );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("Meta-c").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::SUPER
+            }
+        );
+        assert_eq!(
+            str::parse::<KeyEvent>("Win-s").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('s'),
+                modifiers: KeyModifiers::SUPER
+            }
+        );
+        assert_eq!(
+            str::parse::<KeyEvent>("Cmd-d").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('d'),
+                modifiers: KeyModifiers::SUPER
+            }
+        );
     }
 
     #[test]
@@ -721,6 +887,7 @@ mod test {
         assert!(str::parse::<KeyEvent>("FU").is_err());
         assert!(str::parse::<KeyEvent>("123").is_err());
         assert!(str::parse::<KeyEvent>("S--").is_err());
+        assert!(str::parse::<KeyEvent>("S-").is_err());
         assert!(str::parse::<KeyEvent>("S-percent").is_err());
     }
 
