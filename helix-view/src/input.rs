@@ -573,12 +573,15 @@ impl From<KeyEvent> for termina::event::KeyEvent {
 impl From<crossterm::event::Event> for Event {
     fn from(event: crossterm::event::Event) -> Self {
         match event {
-            crossterm::event::Event::Key(key) => Self::Key(key.into()),
-            crossterm::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
-            crossterm::event::Event::Resize(w, h) => Self::Resize(w, h),
-            crossterm::event::Event::FocusGained => Self::FocusGained,
-            crossterm::event::Event::FocusLost => Self::FocusLost,
-            crossterm::event::Event::Paste(s) => Self::Paste(s),
+            termina::event::Event::Key(key) => Self::Key(key.into()),
+            termina::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
+            termina::event::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
+                Self::Resize(cols, rows)
+            }
+            termina::event::Event::FocusIn => Self::FocusGained,
+            termina::event::Event::FocusOut => Self::FocusLost,
+            termina::event::Event::Paste(s) => Self::Paste(s),
+            _ => unreachable!(),
         }
     }
 }
@@ -586,12 +589,12 @@ impl From<crossterm::event::Event> for Event {
 #[cfg(all(feature = "term", windows))]
 impl From<crossterm::event::MouseEvent> for MouseEvent {
     fn from(
-        crossterm::event::MouseEvent {
+        termina::event::MouseEvent {
             kind,
             column,
             row,
             modifiers,
-        }: crossterm::event::MouseEvent,
+        }: termina::event::MouseEvent,
     ) -> Self {
         Self {
             kind: kind.into(),
@@ -606,14 +609,14 @@ impl From<crossterm::event::MouseEvent> for MouseEvent {
 impl From<crossterm::event::MouseEventKind> for MouseEventKind {
     fn from(kind: crossterm::event::MouseEventKind) -> Self {
         match kind {
-            crossterm::event::MouseEventKind::Down(button) => Self::Down(button.into()),
-            crossterm::event::MouseEventKind::Up(button) => Self::Up(button.into()),
-            crossterm::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
-            crossterm::event::MouseEventKind::Moved => Self::Moved,
-            crossterm::event::MouseEventKind::ScrollDown => Self::ScrollDown,
-            crossterm::event::MouseEventKind::ScrollUp => Self::ScrollUp,
-            crossterm::event::MouseEventKind::ScrollLeft => Self::ScrollLeft,
-            crossterm::event::MouseEventKind::ScrollRight => Self::ScrollRight,
+            termina::event::MouseEventKind::Down(button) => Self::Down(button.into()),
+            termina::event::MouseEventKind::Up(button) => Self::Up(button.into()),
+            termina::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
+            termina::event::MouseEventKind::Moved => Self::Moved,
+            termina::event::MouseEventKind::ScrollDown => Self::ScrollDown,
+            termina::event::MouseEventKind::ScrollUp => Self::ScrollUp,
+            termina::event::MouseEventKind::ScrollLeft => Self::ScrollLeft,
+            termina::event::MouseEventKind::ScrollRight => Self::ScrollRight,
         }
     }
 }
@@ -622,9 +625,9 @@ impl From<crossterm::event::MouseEventKind> for MouseEventKind {
 impl From<crossterm::event::MouseButton> for MouseButton {
     fn from(button: crossterm::event::MouseButton) -> Self {
         match button {
-            crossterm::event::MouseButton::Left => MouseButton::Left,
-            crossterm::event::MouseButton::Right => MouseButton::Right,
-            crossterm::event::MouseButton::Middle => MouseButton::Middle,
+            termina::event::MouseButton::Left => MouseButton::Left,
+            termina::event::MouseButton::Right => MouseButton::Right,
+            termina::event::MouseButton::Middle => MouseButton::Middle,
         }
     }
 }
@@ -632,11 +635,11 @@ impl From<crossterm::event::MouseButton> for MouseButton {
 #[cfg(all(feature = "term", windows))]
 impl From<crossterm::event::KeyEvent> for KeyEvent {
     fn from(
-        crossterm::event::KeyEvent {
+        termina::event::KeyEvent {
             code, modifiers, ..
-        }: crossterm::event::KeyEvent,
+        }: termina::event::KeyEvent,
     ) -> Self {
-        if code == crossterm::event::KeyCode::BackTab {
+        if code == termina::event::KeyCode::BackTab {
             // special case for BackTab -> Shift-Tab
             let mut modifiers: KeyModifiers = modifiers.into();
             modifiers.insert(KeyModifiers::SHIFT);
@@ -660,18 +663,18 @@ impl From<KeyEvent> for crossterm::event::KeyEvent {
             // special case for Shift-Tab -> BackTab
             let mut modifiers = modifiers;
             modifiers.remove(KeyModifiers::SHIFT);
-            crossterm::event::KeyEvent {
-                code: crossterm::event::KeyCode::BackTab,
+            termina::event::KeyEvent {
+                code: termina::event::KeyCode::BackTab,
                 modifiers: modifiers.into(),
-                kind: crossterm::event::KeyEventKind::Press,
-                state: crossterm::event::KeyEventState::NONE,
+                kind: termina::event::KeyEventKind::Press,
+                state: termina::event::KeyEventState::NONE,
             }
         } else {
-            crossterm::event::KeyEvent {
+            termina::event::KeyEvent {
                 code: code.into(),
                 modifiers: modifiers.into(),
-                kind: crossterm::event::KeyEventKind::Press,
-                state: crossterm::event::KeyEventState::NONE,
+                kind: termina::event::KeyEventKind::Press,
+                state: termina::event::KeyEventState::NONE,
             }
         }
     }

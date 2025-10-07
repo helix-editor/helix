@@ -1,3 +1,4 @@
+mod codegen;
 mod docgen;
 mod helpers;
 mod path;
@@ -7,6 +8,7 @@ use std::{env, error::Error};
 type DynError = Box<dyn Error>;
 
 pub mod tasks {
+    use crate::codegen::code_gen;
     use crate::DynError;
     use std::collections::HashSet;
 
@@ -43,6 +45,70 @@ pub mod tasks {
         println!("Query check succeeded");
 
         Ok(())
+    }
+
+    pub fn codegen() {
+        code_gen()
+    }
+
+    pub fn install_steel() {
+        std::process::Command::new("cargo")
+            .args([
+                "install",
+                "--git",
+                "https://github.com/mattwparas/steel.git",
+                "steel-interpreter",
+                "steel-language-server",
+                "cargo-steel-lib",
+            ])
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+
+        std::process::Command::new("cargo")
+            .args([
+                "install",
+                "--git",
+                "https://github.com/mattwparas/steel.git",
+                "steel-forge",
+            ])
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+
+        println!("----------------------------");
+        println!("=> Finished installing steel");
+        println!("----------------------------");
+        println!("Warming up `forge`...");
+
+        std::process::Command::new("forge")
+            .args(["pkg", "refresh"])
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+
+        println!("Done.");
+        println!("----------------------------");
+
+        code_gen();
+
+        std::process::Command::new("cargo")
+            .args([
+                "install",
+                "--path",
+                "helix-term",
+                "--features",
+                "steel,git",
+                "--locked",
+                "--force",
+            ])
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
     }
 
     pub fn themecheck(themes: impl Iterator<Item = String>) -> Result<(), DynError> {
@@ -89,6 +155,8 @@ pub mod tasks {
 Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
 
     Tasks:
+        steel                      Install steel and helix with steel enabled
+        code-gen                   Generate any code used for steel
         docgen                     Generate files to be included in the mdbook output.
         query-check [languages]    Check that tree-sitter queries are valid for the given
                                    languages, or all languages if none are specified.
@@ -106,6 +174,8 @@ fn main() -> Result<(), DynError> {
         None => tasks::print_help(),
         Some(t) => match t.as_str() {
             "docgen" => tasks::docgen()?,
+            "code-gen" => tasks::codegen(),
+            "steel" => tasks::install_steel(),
             "query-check" => tasks::querycheck(args)?,
             "theme-check" => tasks::themecheck(args)?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),

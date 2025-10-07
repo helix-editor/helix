@@ -1,4 +1,5 @@
 pub(crate) mod dap;
+pub(crate) mod engine;
 pub(crate) mod lsp;
 pub(crate) mod syntax;
 pub(crate) mod typed;
@@ -12,7 +13,10 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
+
+pub use engine::ScriptingEngine;
 pub use syntax::*;
+
 use tui::{
     text::{Span, Spans},
     widgets::Cell,
@@ -260,7 +264,10 @@ impl MappableCommand {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {
-                    cx.editor.set_error(format!("no such command: '{name}'"));
+                    let args = args.split_whitespace().map(Cow::from).collect();
+                    if !ScriptingEngine::call_function_by_name(cx, name, args) {
+                        cx.editor.set_error(format!("no such command: '{name}'"));
+                    }
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
@@ -297,6 +304,15 @@ impl MappableCommand {
             Self::Typable { doc, .. } => doc,
             Self::Static { doc, .. } => doc,
             Self::Macro { name, .. } => name,
+        }
+    }
+
+    #[cfg(feature = "steel")]
+    pub(crate) fn doc_mut(&mut self) -> Option<&mut String> {
+        if let Self::Typable { doc, .. } = self {
+            Some(doc)
+        } else {
+            None
         }
     }
 
@@ -651,21 +667,19 @@ impl std::str::FromStr for MappableCommand {
         if let Some(suffix) = s.strip_prefix(':') {
             let (name, args, _) = command_line::split(suffix);
             ensure!(!name.is_empty(), "Expected typable command name");
-            typed::TYPABLE_COMMAND_MAP
+            let typable = typed::TYPABLE_COMMAND_MAP
                 .get(name)
-                .map(|cmd| {
-                    let doc = if args.is_empty() {
-                        cmd.doc.to_string()
-                    } else {
-                        format!(":{} {:?}", cmd.name, args)
-                    };
-                    MappableCommand::Typable {
-                        name: cmd.name.to_owned(),
-                        doc,
-                        args: args.to_string(),
-                    }
+                .map(|cmd| MappableCommand::Typable {
+                    name: cmd.name.to_owned(),
+                    doc: format!(":{} {:?}", cmd.name, args),
+                    args: args.to_owned(),
                 })
-                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+                .unwrap_or_else(|| MappableCommand::Typable {
+                    name: name.to_owned(),
+                    args: args.to_owned(),
+                    doc: "Undocumented plugin command".to_string(),
+                });
+            Ok(typable)
         } else if let Some(suffix) = s.strip_prefix('@') {
             helix_view::input::parse_macro(suffix).map(|keys| Self::Macro {
                 name: s.to_string(),
@@ -3412,15 +3426,27 @@ pub fn command_palette(cx: &mut Context) {
                 [&cx.editor.mode]
                 .reverse_map();
 
-            let commands = MappableCommand::STATIC_COMMAND_LIST.iter().cloned().chain(
-                typed::TYPABLE_COMMAND_LIST
-                    .iter()
-                    .map(|cmd| MappableCommand::Typable {
-                        name: cmd.name.to_owned(),
+            let commands = MappableCommand::STATIC_COMMAND_LIST
+                .iter()
+                .cloned()
+                .chain(
+                    typed::TYPABLE_COMMAND_LIST
+                        .iter()
+                        .map(|cmd| MappableCommand::Typable {
+                            name: cmd.name.to_owned(),
+                            args: String::new(),
+                            doc: cmd.doc.to_owned(),
+                        }),
+                )
+                .chain(ScriptingEngine::available_commands().into_iter().map(|x| {
+                    let doc = ScriptingEngine::get_doc_for_identifier(&x).unwrap_or_default();
+
+                    MappableCommand::Typable {
+                        name: x.into_owned(),
                         args: String::new(),
-                        doc: cmd.doc.to_owned(),
-                    }),
-            );
+                        doc,
+                    }
+                }));
 
             let columns = [
                 ui::PickerColumn::new("name", |item, _| match item {
