@@ -15,7 +15,7 @@ use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
-    text_annotations::InlineAnnotation, Selection, Uri,
+    text_annotations::InlineAnnotation, textobject::Word, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -1098,7 +1098,7 @@ pub fn rename_symbol(cx: &mut Context) {
             primary_selection
         } else {
             use helix_core::textobject::{textobject_word, TextObject};
-            textobject_word(text, primary_selection, TextObject::Inside, 1, false)
+            textobject_word(text, primary_selection, TextObject::Inside, 1, Word::Short)
         }
         .fragment(text)
         .into()
