@@ -1163,8 +1163,28 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             HelixConfiguration::inline_diagnostics_cursor_line_enable,
         )
         .register_fn(
+            "inline-diagnostics-other-lines-enable",
+            HelixConfiguration::inline_diagnostics_other_lines_enable,
+        )
+        .register_fn(
             "inline-diagnostics-end-of-line-enable",
             HelixConfiguration::inline_diagnostics_end_of_line_enable,
+        )
+        .register_fn(
+            "inline-diagnostics-min-diagnostics-width",
+            HelixConfiguration::inline_diagnostics_min_diagnostic_width,
+        )
+        .register_fn(
+            "inline-diagnostics-prefix-len",
+            HelixConfiguration::inline_diagnostics_prefix_len,
+        )
+        .register_fn(
+            "inline-diagnostics-max-wrap",
+            HelixConfiguration::inline_diagnostics_max_wrap,
+        )
+        .register_fn(
+            "inline-diagnostics-max-diagnostics",
+            HelixConfiguration::inline_diagnostics_max_diagnostics,
         )
         .register_fn("auto-completion", HelixConfiguration::auto_completion)
         .register_fn("auto-format", HelixConfiguration::auto_format)
@@ -1909,7 +1929,12 @@ are shown, set to 5 for instant. Defaults to 250ms.
             ("keybindings", "Keybindings config"),
             ("set-keybindings!", "Override the global keybindings with the provided keymap"),
             ("inline-diagnostics-cursor-line-enable", "Inline diagnostics cursor line"),
+            ("inline-diagnostics-cursor-other-lines-enable", "Inline diagnostics other lines"),
             ("inline-diagnostics-end-of-line-enable", "Inline diagnostics end of line"),
+            ("inline-diagnostics-min-diagnostics-width", "Inline diagnostics min diagnostics width"),
+            ("inline-diagnostics-prefix-len", "Inline diagnostics prefix length"),
+            ("inline-diagnostics-max-wrap", "Inline diagnostics maximum wrap"),
+            ("inline-diagnostics-max-diagnostics", "Inline diagnostics max diagnostics"),
             // language configuration functions
             ("get-language-config", "Get the configuration for a specific language"),
             // ("get-language-config-by-filename", "Get the language configuration for a specific file"),
@@ -3301,7 +3326,6 @@ impl HelixConfiguration {
         self.store_config(app_config);
     }
 
-    // TODO: Finish diagnostic options!
     fn inline_diagnostics_cursor_line_enable(&self, severity: String) {
         let mut app_config = self.load_config();
         let severity = match severity.as_str() {
@@ -3312,6 +3336,43 @@ impl HelixConfiguration {
             _ => return,
         };
         app_config.editor.inline_diagnostics.cursor_line = DiagnosticFilter::Enable(severity);
+        self.store_config(app_config);
+    }
+
+    fn inline_diagnostics_other_lines_enable(&self, severity: String) {
+        let mut app_config = self.load_config();
+        let severity = match severity.as_str() {
+            "hint" => Severity::Hint,
+            "info" => Severity::Info,
+            "warning" => Severity::Warning,
+            "error" => Severity::Error,
+            _ => return,
+        };
+        app_config.editor.inline_diagnostics.other_lines = DiagnosticFilter::Enable(severity);
+        self.store_config(app_config);
+    }
+
+    fn inline_diagnostics_min_diagnostic_width(&self, min_diagnostic_width: u16) {
+        let mut app_config = self.load_config();
+        app_config.editor.inline_diagnostics.min_diagnostic_width = min_diagnostic_width;
+        self.store_config(app_config);
+    }
+
+    fn inline_diagnostics_prefix_len(&self, prefix_len: u16) {
+        let mut app_config = self.load_config();
+        app_config.editor.inline_diagnostics.prefix_len = prefix_len;
+        self.store_config(app_config);
+    }
+
+    fn inline_diagnostics_max_wrap(&self, max_wrap: u16) {
+        let mut app_config = self.load_config();
+        app_config.editor.inline_diagnostics.max_wrap = max_wrap;
+        self.store_config(app_config);
+    }
+
+    fn inline_diagnostics_max_diagnostics(&self, max_diagnostics: usize) {
+        let mut app_config = self.load_config();
+        app_config.editor.inline_diagnostics.max_diagnostics = max_diagnostics;
         self.store_config(app_config);
     }
 
