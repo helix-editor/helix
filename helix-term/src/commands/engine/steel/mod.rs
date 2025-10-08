@@ -1929,7 +1929,7 @@ are shown, set to 5 for instant. Defaults to 250ms.
             ("keybindings", "Keybindings config"),
             ("set-keybindings!", "Override the global keybindings with the provided keymap"),
             ("inline-diagnostics-cursor-line-enable", "Inline diagnostics cursor line"),
-            ("inline-diagnostics-cursor-other-lines-enable", "Inline diagnostics other lines"),
+            ("inline-diagnostics-other-lines-enable", "Inline diagnostics other lines"),
             ("inline-diagnostics-end-of-line-enable", "Inline diagnostics end of line"),
             ("inline-diagnostics-min-diagnostics-width", "Inline diagnostics min diagnostics width"),
             ("inline-diagnostics-prefix-len", "Inline diagnostics prefix length"),
