@@ -207,7 +207,8 @@ fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
                 }
             } else {
                 let handle = cx.editor.handlers.completions.request_controller.restart();
-                request_incomplete_completion_list(cx.editor, handle)
+                let trigger_char = if keep_non_word { c } else { None };
+                request_incomplete_completion_list(cx.editor, handle, trigger_char)
             }
         }
     }))
