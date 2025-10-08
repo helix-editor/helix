@@ -2931,16 +2931,14 @@ impl HelixConfiguration {
         self.language_configuration.store(Arc::new(language_config))
     }
 
-    fn get_language_config(
-        &self,
-        language: SteelString,
-    ) -> Option<IndividualLanguageConfiguration> {
+    fn get_language_config(&self, language: SteelString) -> Option<SteelVal> {
         self.language_configuration
             .load()
             .language_configs()
             .find(|x| x.language_id == language.as_str())
-            .map(|config| IndividualLanguageConfiguration {
-                config: (*config).clone(),
+            .and_then(|x| {
+                let config = serde_json::json!(x);
+                SteelVal::try_from(config).ok()
             })
     }
 
