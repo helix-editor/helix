@@ -27,19 +27,19 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "end" => goto_line_end,
 
         "A-w" => { "Alter Window"
-            "A-h"|"A-left" |"h"|"left" => shrink_buffer_width,
-            "A-l"|"A-right"|"l"|"right" => grow_buffer_width,
-            "A-j"|"A-down" |"j"|"down" => shrink_buffer_height,
-            "A-k"|"A-up"   |"k"|"up" => grow_buffer_height,
-            "A-f"|"f" => toggle_focus_window,
+            "A-h"|"A-left" |"h"|"left" => shrink_view_width,
+            "A-l"|"A-right"|"l"|"right" => grow_view_width,
+            "A-j"|"A-down" |"j"|"down" => shrink_view_height,
+            "A-k"|"A-up"   |"k"|"up" => grow_view_height,
+            "A-f"|"f" => toggle_view_focus,
         },
 
         "A-W" => { "Alter Window" sticky=true
-            "h"|"left" => shrink_buffer_width,
-            "l"|"right" => grow_buffer_width,
-            "j"|"down" => shrink_buffer_height,
-            "k"|"up" => grow_buffer_height,
-            "f" => toggle_focus_window,
+            "h"|"left" => shrink_view_width,
+            "l"|"right" => grow_view_width,
+            "j"|"down" => shrink_view_height,
+            "k"|"up" => grow_view_height,
+            "f" => toggle_view_focus,
         },
 
         "w" => move_next_word_start,
