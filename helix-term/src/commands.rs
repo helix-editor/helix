@@ -911,19 +911,23 @@ fn goto_line_start(cx: &mut Context) {
 }
 
 fn grow_view_width(cx: &mut Context) {
-    cx.editor.resize_view(Resize::Grow, Dimension::Width);
+    cx.editor
+        .resize_view(Resize::Grow, Dimension::Width, cx.count());
 }
 
 fn shrink_view_width(cx: &mut Context) {
-    cx.editor.resize_view(Resize::Shrink, Dimension::Width);
+    cx.editor
+        .resize_view(Resize::Shrink, Dimension::Width, cx.count());
 }
 
 fn grow_view_height(cx: &mut Context) {
-    cx.editor.resize_view(Resize::Grow, Dimension::Height);
+    cx.editor
+        .resize_view(Resize::Grow, Dimension::Height, cx.count());
 }
 
 fn shrink_view_height(cx: &mut Context) {
-    cx.editor.resize_view(Resize::Shrink, Dimension::Height);
+    cx.editor
+        .resize_view(Resize::Shrink, Dimension::Height, cx.count());
 }
 
 fn goto_next_buffer(cx: &mut Context) {

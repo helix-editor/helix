@@ -2120,8 +2120,8 @@ impl Editor {
         self.tree.transpose();
     }
 
-    pub fn resize_view(&mut self, resize_type: Resize, dimension: Dimension) {
-        self.tree.resize_view(resize_type, dimension);
+    pub fn resize_view(&mut self, resize_type: Resize, dimension: Dimension, count: usize) {
+        self.tree.resize_view(resize_type, dimension, count);
     }
 
     pub fn should_close(&self) -> bool {
