@@ -1,5 +1,6 @@
 use crate::{graphics::Rect, View, ViewId};
 use slotmap::SlotMap;
+use std::ops::{Index, IndexMut};
 
 // the dimensions are recomputed on window resize/tree change.
 //
@@ -73,9 +74,106 @@ pub enum Direction {
 #[derive(Debug)]
 pub struct Container {
     layout: Layout,
-    children: Vec<ViewId>,
+    children: Children,
     area: Rect,
-    node_bounds: Vec<ContainerBounds>,
+}
+
+#[derive(Debug)]
+struct Children {
+    pub views: Vec<ViewId>,
+    pub bounds: Vec<ContainerBounds>,
+}
+
+impl Children {
+    fn new() -> Self {
+        Children {
+            views: Vec::new(),
+            bounds: Vec::new(),
+        }
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, ViewId> {
+        self.views.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        debug_assert_eq!(self.views.len(), self.bounds.len());
+        self.views.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl Children {
+    fn push(&mut self, node: ViewId) {
+        self.views.push(node);
+
+        let portion = 1.0 / self.views.len() as f64;
+
+        let prev = 1.0 - portion;
+        for bound in &mut self.bounds {
+            bound.portion *= prev;
+        }
+
+        self.bounds.push(ContainerBounds { portion });
+    }
+
+    fn insert(&mut self, index: usize, node: ViewId) {
+        self.views.insert(index, node);
+
+        let portion = 1.0 / self.views.len() as f64;
+
+        let prev = 1.0 - portion;
+        for bound in &mut self.bounds {
+            bound.portion *= prev;
+        }
+
+        self.bounds.insert(index, ContainerBounds { portion });
+    }
+
+    fn pop(&mut self) -> Option<ViewId> {
+        let bound = self.bounds.pop()?;
+
+        let prev = 1.0 - bound.portion;
+        for bound in &mut self.bounds {
+            bound.portion /= prev;
+        }
+
+        self.views.pop()
+    }
+
+    fn remove(&mut self, index: usize) -> ViewId {
+        let bound = self.bounds.remove(index);
+
+        let prev = 1.0 - bound.portion;
+        for bound in &mut self.bounds {
+            bound.portion /= prev;
+        }
+
+        self.views.remove(index)
+    }
+}
+
+impl<Idx> Index<Idx> for Children
+where
+    Idx: std::slice::SliceIndex<[ViewId]>,
+{
+    type Output = Idx::Output;
+    fn index(&self, index: Idx) -> &Self::Output {
+        self.views.index(index)
+    }
+}
+
+impl<Idx> IndexMut<Idx> for Children
+where
+    Idx: std::slice::SliceIndex<[ViewId]>,
+{
+    #[inline(always)]
+    fn index_mut(&mut self, index: Idx) -> &mut Self::Output {
+        self.views.index_mut(index)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -87,68 +185,9 @@ impl Container {
     pub fn new(layout: Layout) -> Self {
         Self {
             layout,
-            children: Vec::new(),
+            children: Children::new(),
             area: Rect::default(),
-            node_bounds: Vec::new(),
         }
-    }
-
-    fn push_child(&mut self, node: ViewId) -> &mut Self {
-        self.children.push(node);
-        self.add_child_bounds();
-        self
-    }
-
-    fn insert_child(&mut self, index: usize, node: ViewId) -> &mut Self {
-        self.children.insert(index, node);
-        self.insert_child_bounds(index);
-        self
-    }
-
-    fn pop_child(&mut self) -> Option<ViewId> {
-        let bound = self.node_bounds.pop()?;
-
-        let prev = 1.0 - bound.portion;
-        for bound in &mut self.node_bounds {
-            bound.portion /= prev;
-        }
-
-        self.children.pop()
-    }
-
-    fn remove_child(&mut self, index: usize) -> ViewId {
-        let bound = self.node_bounds.remove(index);
-
-        let prev = 1.0 - bound.portion;
-        for bound in &mut self.node_bounds {
-            bound.portion /= prev;
-        }
-
-        self.children.remove(index)
-    }
-
-    fn add_child_bounds(&mut self) -> &mut Self {
-        let portion = 1.0 / self.children.len() as f64;
-
-        let prev = 1.0 - portion;
-        for bound in &mut self.node_bounds {
-            bound.portion *= prev;
-        }
-
-        self.node_bounds.push(ContainerBounds { portion });
-        self
-    }
-
-    fn insert_child_bounds(&mut self, index: usize) -> &mut Self {
-        let portion = 1.0 / self.children.len() as f64;
-
-        let prev = 1.0 - portion;
-        for bound in &mut self.node_bounds {
-            bound.portion *= prev;
-        }
-
-        self.node_bounds.insert(index, ContainerBounds { portion });
-        self
     }
 }
 
@@ -206,7 +245,7 @@ impl Tree {
             pos + 1
         };
 
-        container.insert_child(pos, node);
+        container.children.insert(pos, node);
         // focus the new node
         self.focus = node;
 
@@ -243,7 +282,7 @@ impl Tree {
                     .unwrap();
                 pos + 1
             };
-            container.insert_child(pos, node);
+            container.children.insert(pos, node);
             self.nodes[node].parent = parent;
         } else {
             let mut split = Node::container(layout);
@@ -257,8 +296,8 @@ impl Tree {
                 } => container,
                 _ => unreachable!(),
             };
-            container.push_child(focus);
-            container.push_child(node);
+            container.children.push(focus);
+            container.children.push(node);
             self.nodes[focus].parent = split;
             self.nodes[node].parent = split;
 
@@ -318,7 +357,7 @@ impl Tree {
             container.children[pos] = new;
             self.nodes[new].parent = parent;
         } else {
-            container.remove_child(pos);
+            container.children.remove(pos);
         }
     }
 
@@ -337,7 +376,7 @@ impl Tree {
         if parent_container.children.len() == 1 && !parent_is_root {
             // Lets merge the only child back to its grandparent so that Views
             // are equally spaced.
-            let sibling = parent_container.pop_child().unwrap();
+            let sibling = parent_container.children.pop().unwrap();
             self.remove_or_replace(parent, Some(sibling));
         }
 
@@ -461,7 +500,7 @@ impl Tree {
                             let mut child_y = area.y;
 
                             for (i, child) in container.children.iter().enumerate() {
-                                let bounds = container.node_bounds[i];
+                                let bounds = container.children.bounds[i];
                                 let height = (area.height as f64 * bounds.portion).floor() as u16;
 
                                 let mut area = Rect::new(
@@ -493,7 +532,7 @@ impl Tree {
                             let mut child_x = area.x;
 
                             for (i, child) in container.children.iter().enumerate() {
-                                let bounds = container.node_bounds[i];
+                                let bounds = container.children.bounds[i];
                                 let width = (used_area as f64 * bounds.portion).floor() as u16;
 
                                 let mut area = Rect::new(
@@ -553,7 +592,7 @@ impl Tree {
                 // It's possible to move in the desired direction within
                 // the parent container so an attempt is made to find the
                 // correct child.
-                match self.find_child(id, &parent_container.children, direction) {
+                match self.find_child(id, &parent_container.children.views, direction) {
                     // Child is found, search is ended
                     Some(id) => Some(id),
                     // A child is not found. This could be because of either two scenarios
@@ -726,10 +765,10 @@ impl Tree {
             };
             let diff = diff * count as f64;
 
-            let bounds = &mut container.node_bounds;
-
             let min = 0.05;
             let max = 1.0 - ((container.children.len() - 1) as f64 * min);
+
+            let bounds = &mut container.children.bounds;
             if bounds[idx].portion <= min && bounds[idx].portion >= max {
                 return;
             }
