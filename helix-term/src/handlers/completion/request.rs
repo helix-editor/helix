@@ -338,12 +338,17 @@ fn request_completions_from_language_server(
     }
 }
 
-pub fn request_incomplete_completion_list(editor: &mut Editor, handle: TaskHandle) {
+pub fn request_incomplete_completion_list(
+    editor: &mut Editor,
+    handle: TaskHandle,
+    trigger_char: Option<char>,
+) {
     let handler = &mut editor.handlers.completions;
     let mut requests = JoinSet::new();
     let mut savepoint = None;
+    let trigger_string = trigger_char.map(|c| c.to_string());
     for (&provider, context) in &handler.active_completions {
-        if !context.is_incomplete {
+        if trigger_string.is_none() && !context.is_incomplete {
             continue;
         }
         let CompletionProvider::Lsp(ls_id) = provider else {
@@ -353,16 +358,36 @@ pub fn request_incomplete_completion_list(editor: &mut Editor, handle: TaskHandl
         let Some(ls) = editor.language_servers.get_by_id(ls_id) else {
             continue;
         };
+        let trigger_context = trigger_string.as_ref().and_then(|trigger| {
+            let supports_char = ls
+                .capabilities()
+                .completion_provider
+                .as_ref()
+                .and_then(|provider| provider.trigger_characters.as_deref())
+                .map(|char| char.iter().any(|ch| ch == trigger))
+                .unwrap_or(false);
+            supports_char.then_some(CompletionContext {
+                trigger_kind: CompletionTriggerKind::TRIGGER_CHARACTER,
+                trigger_character: Some(trigger.clone()),
+            })
+        });
+        let request_context = if let Some(context) = trigger_context {
+            context
+        } else if context.is_incomplete {
+            CompletionContext {
+                trigger_kind: CompletionTriggerKind::TRIGGER_FOR_INCOMPLETE_COMPLETIONS,
+                trigger_character: None,
+            }
+        } else {
+            continue;
+        };
         let (view, doc) = current!(editor);
         let savepoint = savepoint.get_or_insert_with(|| doc.savepoint(view)).clone();
         let request = request_completions_from_language_server(
             ls,
             doc,
             view.id,
-            CompletionContext {
-                trigger_kind: CompletionTriggerKind::TRIGGER_FOR_INCOMPLETE_COMPLETIONS,
-                trigger_character: None,
-            },
+            request_context,
             context.priority,
             savepoint,
         );
