@@ -2973,7 +2973,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit-all!",
         aliases: &["wqa!", "xa!"],
-        doc: "Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views.",
+        doc: "Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes).",
         fun: force_write_all_quit,
         completer: CommandCompleter::none(),
         signature: Signature {
