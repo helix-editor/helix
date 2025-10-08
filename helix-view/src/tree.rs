@@ -716,7 +716,7 @@ impl Tree {
         None
     }
 
-    pub fn resize_buffer(&mut self, resize_type: Resize, dimension: Dimension) {
+    pub fn resize_view(&mut self, resize_type: Resize, dimension: Dimension) {
         match dimension {
             Dimension::Width => {
                 if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
@@ -755,7 +755,7 @@ impl Tree {
         }
     }
 
-    pub fn toggle_focus_window(&mut self) {
+    pub fn toggle_view_focus(&mut self) {
         if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
             bounds.expand = !bounds.expand;
         }
