@@ -1004,9 +1004,14 @@ impl Document {
                 }
             }
 
-            // Protect against overwriting changes made externally
             if !force {
                 if let Ok(metadata) = fs::metadata(&path).await {
+                    // Protect against overwriting entire directories
+                    // if `path` doesn't end with a directory separator.
+                    if !metadata.is_file() {
+                        bail!("path does not point to a regular file, use :w! to overwrite that directory and its contents");
+                    }
+                    // Protect against overwriting changes made externally
                     if let Ok(mtime) = metadata.modified() {
                         if last_saved_time < mtime {
                             bail!("file modified by an external process, use :w! to overwrite");
