@@ -712,6 +712,10 @@ impl Tree {
         };
 
         if let Some((container, idx)) = self.find_container(layout) {
+            if container.children.len() == 1 {
+                return;
+            }
+
             let diff = match dimension {
                 Dimension::Width => 1.0 / container.area.width as f64 * 2.0,
                 Dimension::Height => 1.0 / container.area.height as f64 * 2.0,
@@ -722,8 +726,17 @@ impl Tree {
             };
 
             let bounds = &mut container.node_bounds;
-            bounds[idx].portion += diff;
 
+            let min = 0.05;
+            let max = 1.0 - ((container.children.len() - 1) as f64 * min);
+            if bounds[idx].portion <= min && bounds[idx].portion >= max {
+                return;
+            }
+
+            let portion = bounds[idx].portion;
+            bounds[idx].portion = f64::clamp(portion + diff, min, max);
+
+            let diff = bounds[idx].portion - portion;
             if let Some(prev) = idx.checked_sub(1) {
                 if let Some(next) = bounds.get_mut(idx + 1) {
                     next.portion -= diff / 2.0;
