@@ -93,13 +93,6 @@ impl Container {
         }
     }
 
-    fn get_child_by_view_id(&mut self, node: ViewId) -> Option<&mut ContainerBounds> {
-        self.children
-            .iter()
-            .position(|child| child == &node)
-            .and_then(|index| self.node_bounds.get_mut(index))
-    }
-
     fn push_child(&mut self, node: ViewId) -> &mut Self {
         self.children.push(node);
         self.add_child_bounds();
@@ -681,32 +674,6 @@ impl Tree {
         }
     }
 
-    fn get_active_node_bounds_mut(
-        &mut self,
-        expect_layout: Layout,
-    ) -> Option<&mut ContainerBounds> {
-        let mut focus = self.focus;
-        let mut parent = self.nodes[focus].parent;
-
-        // Parent expected to be container
-        if let Some(focused_layout) = match &self.nodes[parent].content {
-            Content::View(_) => unreachable!(),
-            Content::Container(node) => Some(node.layout),
-        } {
-            // if we want to make a width change and we have a `Horizontal` layout focused,
-            // alter the parent `Vertical` layout instead and vice versa
-            if focused_layout != expect_layout {
-                focus = parent;
-                parent = self.nodes[parent].parent;
-            }
-
-            if let Content::Container(node) = &mut self.nodes[parent].content {
-                return node.as_mut().get_child_by_view_id(focus);
-            };
-        }
-        None
-    }
-
     fn find_container(&mut self, layout: Layout) -> Option<(&mut Container, usize)> {
         let mut focus = self.focus;
         let mut parent = self.nodes[focus].parent;
@@ -770,18 +737,6 @@ impl Tree {
 
             self.recalculate();
         }
-    }
-
-    pub fn toggle_view_focus(&mut self) {
-        if let Some(_bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
-            // bounds.expand = !bounds.expand;
-        }
-
-        if let Some(_bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
-            // bounds.expand = !bounds.expand;
-        }
-
-        self.recalculate();
     }
 
     pub fn swap_split_in_direction(&mut self, direction: Direction) -> Option<()> {
