@@ -2124,10 +2124,6 @@ impl Editor {
         self.tree.resize_view(resize_type, dimension);
     }
 
-    pub fn toggle_view_focus(&mut self) {
-        self.tree.toggle_view_focus();
-    }
-
     pub fn should_close(&self) -> bool {
         self.tree.is_empty()
     }

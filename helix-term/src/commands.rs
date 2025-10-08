@@ -462,7 +462,6 @@ impl MappableCommand {
         shrink_view_width, "Shrink focused container width",
         grow_view_height, "Grow focused container height",
         shrink_view_height, "Shrink focused container height",
-        toggle_view_focus, "Toggle focus mode on buffer",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_column, "Goto column",
@@ -925,10 +924,6 @@ fn grow_view_height(cx: &mut Context) {
 
 fn shrink_view_height(cx: &mut Context) {
     cx.editor.resize_view(Resize::Shrink, Dimension::Height);
-}
-
-fn toggle_view_focus(cx: &mut Context) {
-    cx.editor.toggle_view_focus();
 }
 
 fn goto_next_buffer(cx: &mut Context) {

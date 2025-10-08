@@ -273,7 +273,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                     "l" | "right" => grow_view_width,
                     "j" | "down" => shrink_view_height,
                     "k" | "up" => grow_view_height,
-                    "f" => toggle_view_focus,
                 },
                 "f" => goto_file_hsplit,
                 "F" => goto_file_vsplit,
