@@ -26,7 +26,7 @@
 | `:write-all`, `:wa` | Write changes from all buffers to disk. |
 | `:write-all!`, `:wa!` | Forcefully write changes from all buffers to disk creating necessary subdirectories. |
 | `:write-quit-all`, `:wqa`, `:xa` | Write changes from all buffers to disk and close all views. |
-| `:write-quit-all!`, `:wqa!`, `:xa!` | Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes). |
+| `:write-quit-all!`, `:wqa!`, `:xa!` | Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes). |
 | `:quit-all`, `:qa` | Close all views. |
 | `:quit-all!`, `:qa!` | Force close all views ignoring unsaved changes. |
 | `:cquit`, `:cq` | Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2). |
