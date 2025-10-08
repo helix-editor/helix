@@ -461,8 +461,8 @@ See the documentation page on [pickers](./pickers.md) for more info.
 | `Tab`, `Down`, `Ctrl-n`      | Next entry                                                 |
 | `PageUp`, `Ctrl-u`           | Page up                                                    |
 | `PageDown`, `Ctrl-d`         | Page down                                                  |
-| `Home`                       | Go to first entry                                          |
-| `End`                        | Go to last entry                                           |
+| `Ctrl-Home`                  | Go to first entry                                          |
+| `Ctrl-End`                   | Go to last entry                                           |
 | `Enter`                      | Open selected                                              |
 | `Alt-Enter`                  | Open selected in the background without closing the picker |
 | `Ctrl-s`                     | Open horizontally                                          |
