@@ -80,9 +80,7 @@ pub struct Container {
 
 #[derive(Debug, Clone, Copy)]
 pub struct ContainerBounds {
-    width: usize,
-    height: usize,
-    expand: bool,
+    portion: f64,
 }
 
 impl Container {
@@ -114,45 +112,50 @@ impl Container {
         self
     }
 
+    fn pop_child(&mut self) -> Option<ViewId> {
+        let bound = self.node_bounds.pop()?;
+
+        let prev = 1.0 - bound.portion;
+        for bound in &mut self.node_bounds {
+            bound.portion /= prev;
+        }
+
+        self.children.pop()
+    }
+
+    fn remove_child(&mut self, index: usize) -> ViewId {
+        let bound = self.node_bounds.remove(index);
+
+        let prev = 1.0 - bound.portion;
+        for bound in &mut self.node_bounds {
+            bound.portion /= prev;
+        }
+
+        self.children.remove(index)
+    }
+
     fn add_child_bounds(&mut self) -> &mut Self {
-        self.node_bounds.push(ContainerBounds {
-            width: 10,
-            height: 10,
-            expand: false,
-        });
+        let portion = 1.0 / self.children.len() as f64;
+
+        let prev = 1.0 - portion;
+        for bound in &mut self.node_bounds {
+            bound.portion *= prev;
+        }
+
+        self.node_bounds.push(ContainerBounds { portion });
         self
     }
 
     fn insert_child_bounds(&mut self, index: usize) -> &mut Self {
-        self.node_bounds.insert(
-            index,
-            ContainerBounds {
-                width: 10,
-                height: 10,
-                expand: false,
-            },
-        );
+        let portion = 1.0 / self.children.len() as f64;
+
+        let prev = 1.0 - portion;
+        for bound in &mut self.node_bounds {
+            bound.portion *= prev;
+        }
+
+        self.node_bounds.insert(index, ContainerBounds { portion });
         self
-    }
-
-    fn calculate_slots_width(&self) -> usize {
-        self.node_bounds
-            .iter()
-            .map(|bounds| match bounds.expand {
-                true => 40,
-                false => bounds.width,
-            })
-            .sum()
-    }
-
-    fn calculate_slots_height(&self) -> usize {
-        self.node_bounds
-            .iter()
-            .map(|bounds| match bounds.expand {
-                true => 40,
-                false => bounds.height,
-            })
-            .sum()
     }
 }
 
@@ -322,7 +325,7 @@ impl Tree {
             container.children[pos] = new;
             self.nodes[new].parent = parent;
         } else {
-            container.children.remove(pos);
+            container.remove_child(pos);
         }
     }
 
@@ -341,7 +344,7 @@ impl Tree {
         if parent_container.children.len() == 1 && !parent_is_root {
             // Lets merge the only child back to its grandparent so that Views
             // are equally spaced.
-            let sibling = parent_container.children.pop().unwrap();
+            let sibling = parent_container.pop_child().unwrap();
             self.remove_or_replace(parent, Some(sibling));
         }
 
@@ -462,17 +465,11 @@ impl Tree {
                         Layout::Horizontal => {
                             let len = container.children.len();
 
-                            let slots = container.calculate_slots_height();
-                            let slot_height = area.height as f32 / slots as f32;
-
                             let mut child_y = area.y;
 
                             for (i, child) in container.children.iter().enumerate() {
                                 let bounds = container.node_bounds[i];
-                                let height = match bounds.expand {
-                                    true => (40.0 * slot_height) as u16,
-                                    false => (slot_height * bounds.height as f32).floor() as u16,
-                                };
+                                let height = (area.height as f64 * bounds.portion).floor() as u16;
 
                                 let mut area = Rect::new(
                                     container.area.x,
@@ -500,17 +497,11 @@ impl Tree {
 
                             let used_area = area.width.saturating_sub(total_gap);
 
-                            let slots = container.calculate_slots_width();
-                            let slot_width: f32 = used_area as f32 / slots as f32;
-
                             let mut child_x = area.x;
 
                             for (i, child) in container.children.iter().enumerate() {
                                 let bounds = container.node_bounds[i];
-                                let width = match bounds.expand {
-                                    true => (40.0 * slot_width) as u16,
-                                    false => (slot_width * bounds.width as f32).floor() as u16,
-                                };
+                                let width = (used_area as f64 * bounds.portion).floor() as u16;
 
                                 let mut area = Rect::new(
                                     child_x,
@@ -716,52 +707,78 @@ impl Tree {
         None
     }
 
+    fn find_container(&mut self, layout: Layout) -> Option<(&mut Container, usize)> {
+        let mut focus = self.focus;
+        let mut parent = self.nodes[focus].parent;
+
+        let mut found = false;
+        while parent != focus {
+            let Content::Container(container) = &self.nodes[parent].content else {
+                unreachable!("parent should be a container");
+            };
+
+            if container.layout == layout {
+                found = true;
+                break;
+            }
+
+            focus = parent;
+            parent = self.nodes[focus].parent;
+        }
+
+        if found {
+            let Content::Container(container) = &mut self.nodes[parent].content else {
+                unreachable!("parent should be a container");
+            };
+
+            let idx = container.children.iter().position(|node| *node == focus)?;
+            Some((container, idx))
+        } else {
+            None
+        }
+    }
+
     pub fn resize_view(&mut self, resize_type: Resize, dimension: Dimension) {
-        match dimension {
-            Dimension::Width => {
-                if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
-                    match resize_type {
-                        Resize::Shrink => {
-                            if bounds.width > 1 {
-                                bounds.width -= 1;
-                            }
-                        }
-                        Resize::Grow => {
-                            if bounds.width < 20 {
-                                bounds.width += 1;
-                            }
-                        }
-                    };
-                    self.recalculate();
+        let layout = match dimension {
+            Dimension::Width => Layout::Vertical,
+            Dimension::Height => Layout::Horizontal,
+        };
+
+        if let Some((container, idx)) = self.find_container(layout) {
+            let diff = match dimension {
+                Dimension::Width => 1.0 / container.area.width as f64 * 2.0,
+                Dimension::Height => 1.0 / container.area.height as f64 * 2.0,
+            };
+            let diff = match resize_type {
+                Resize::Shrink => -diff,
+                Resize::Grow => diff,
+            };
+
+            let bounds = &mut container.node_bounds;
+            bounds[idx].portion += diff;
+
+            if let Some(prev) = idx.checked_sub(1) {
+                if let Some(next) = bounds.get_mut(idx + 1) {
+                    next.portion -= diff / 2.0;
+                    bounds[prev].portion -= diff / 2.0;
+                } else {
+                    bounds[prev].portion -= diff;
                 }
+            } else if let Some(next) = bounds.get_mut(idx + 1) {
+                next.portion -= diff;
             }
-            Dimension::Height => {
-                if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
-                    match resize_type {
-                        Resize::Shrink => {
-                            if bounds.height > 1 {
-                                bounds.height -= 1;
-                            }
-                        }
-                        Resize::Grow => {
-                            if bounds.height < 20 {
-                                bounds.height += 1;
-                            }
-                        }
-                    };
-                    self.recalculate();
-                }
-            }
+
+            self.recalculate();
         }
     }
 
     pub fn toggle_view_focus(&mut self) {
-        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
-            bounds.expand = !bounds.expand;
+        if let Some(_bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
+            // bounds.expand = !bounds.expand;
         }
 
-        if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
-            bounds.expand = !bounds.expand;
+        if let Some(_bounds) = self.get_active_node_bounds_mut(Layout::Vertical) {
+            // bounds.expand = !bounds.expand;
         }
 
         self.recalculate();
