@@ -705,7 +705,7 @@ impl Tree {
         }
     }
 
-    pub fn resize_view(&mut self, resize_type: Resize, dimension: Dimension) {
+    pub fn resize_view(&mut self, resize_type: Resize, dimension: Dimension, count: usize) {
         let layout = match dimension {
             Dimension::Width => Layout::Vertical,
             Dimension::Height => Layout::Horizontal,
@@ -724,6 +724,7 @@ impl Tree {
                 Resize::Shrink => -diff,
                 Resize::Grow => diff,
             };
+            let diff = diff * count as f64;
 
             let bounds = &mut container.node_bounds;
 
