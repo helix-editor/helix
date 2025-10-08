@@ -26,22 +26,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "home" => goto_line_start,
         "end" => goto_line_end,
 
-        "A-w" => { "Alter Window"
-            "A-h"|"A-left" |"h"|"left" => shrink_view_width,
-            "A-l"|"A-right"|"l"|"right" => grow_view_width,
-            "A-j"|"A-down" |"j"|"down" => shrink_view_height,
-            "A-k"|"A-up"   |"k"|"up" => grow_view_height,
-            "A-f"|"f" => toggle_view_focus,
-        },
-
-        "A-W" => { "Alter Window" sticky=true
-            "h"|"left" => shrink_view_width,
-            "l"|"right" => grow_view_width,
-            "j"|"down" => shrink_view_height,
-            "k"|"up" => grow_view_height,
-            "f" => toggle_view_focus,
-        },
-
         "w" => move_next_word_start,
         "b" => move_prev_word_start,
         "e" => move_next_word_end,
@@ -211,6 +195,12 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "C-s" | "s" => hsplit,
             "C-v" | "v" => vsplit,
             "C-t" | "t" => transpose_view,
+            "r" => { "Window resize mode" sticky=true
+                "h" | "left" => shrink_view_width,
+                "l" | "right" => grow_view_width,
+                "j" | "down" => shrink_view_height,
+                "k" | "up" => grow_view_height,
+            },
             "f" => goto_file_hsplit,
             "F" => goto_file_vsplit,
             "C-q" | "q" => wclose,
@@ -278,6 +268,13 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-t" | "t" => transpose_view,
+                "r" => { "Window resize mode" sticky=true
+                    "h" | "left" => shrink_view_width,
+                    "l" | "right" => grow_view_width,
+                    "j" | "down" => shrink_view_height,
+                    "k" | "up" => grow_view_height,
+                    "f" => toggle_view_focus,
+                },
                 "f" => goto_file_hsplit,
                 "F" => goto_file_vsplit,
                 "C-q" | "q" => wclose,
