@@ -57,6 +57,12 @@ impl DiffProviderRegistry {
             })
     }
 
+    pub fn needs_reload(&self, fs_event: &helix_core::file_watcher::Event) -> bool {
+        self.providers
+            .iter()
+            .any(|provider| provider.needs_reload(fs_event))
+    }
+
     /// Fire-and-forget changed file iteration. Runs everything in a background task. Keeps
     /// iteration until `on_change` returns `false`.
     pub fn for_each_changed_file(
@@ -102,6 +108,14 @@ enum DiffProvider {
 }
 
 impl DiffProvider {
+    pub fn needs_reload(&self, fs_event: &helix_core::file_watcher::Event) -> bool {
+        match self {
+            #[cfg(feature = "git")]
+            DiffProvider::Git => fs_event.path.as_std_path().ends_with(".git/HEAD"),
+            DiffProvider::None => false,
+        }
+    }
+
     fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
         match self {
             #[cfg(feature = "git")]

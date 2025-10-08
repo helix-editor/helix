@@ -70,7 +70,7 @@ log = "0.4"
 
 # File picker
 nucleo.workspace = true
-ignore = "0.4"
+ignore.workspace = true
 # markdown doc rendering
 pulldown-cmark = { version = "0.13", default-features = false }
 # file type detection

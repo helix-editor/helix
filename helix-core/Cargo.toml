@@ -18,8 +18,11 @@ integration = []
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
 helix-loader = { path = "../helix-loader" }
+helix-event = { path = "../helix-event" }
 helix-parsec = { path = "../helix-parsec" }
 
+filesentry = "0.2.1"
+ignore.workspace = true
 ropey.workspace = true
 smallvec = "1.15"
 smartstring = "1.0.1"

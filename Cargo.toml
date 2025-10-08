@@ -53,6 +53,7 @@ tokio-stream = "0.1.17"
 toml = "0.9"
 termina = "0.1"
 sonic-rs = "0.5"
+ignore = "0.4"
 
 [workspace.package]
 version = "25.7.1"
