@@ -232,20 +232,29 @@ impl<T: Component> Popup<T> {
             && y < self.area.bottom();
 
         if !mouse_is_within_popup {
-            return EventResult::Ignored(None);
+            return EventResult::Ignored(Some(self.close_cb()));
         }
 
         match kind {
             MouseEventKind::ScrollDown if self.has_scrollbar => {
                 self.scroll_half_page_down();
-                EventResult::Consumed(None)
             }
             MouseEventKind::ScrollUp if self.has_scrollbar => {
                 self.scroll_half_page_up();
-                EventResult::Consumed(None)
             }
-            _ => EventResult::Ignored(None),
-        }
+            _ => {}
+        };
+
+        // Mouse event happened within the popup; consume the event so that
+        // it doesn't bleed into the editor.
+        EventResult::Consumed(None)
+    }
+
+    fn close_cb(&self) -> Callback {
+        Box::new(|compositor, _| {
+            // remove the layer
+            compositor.remove(self.id.as_ref());
+        })
     }
 }
 
@@ -265,16 +274,11 @@ impl<T: Component> Component for Popup<T> {
             return EventResult::Ignored(None);
         }
 
-        let close_fn: Callback = Box::new(|compositor, _| {
-            // remove the layer
-            compositor.remove(self.id.as_ref());
-        });
-
         match key {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 let _ = self.contents.handle_event(event, cx);
-                EventResult::Consumed(Some(close_fn))
+                EventResult::Consumed(Some(self.close_cb()))
             }
             ctrl!('d') => {
                 self.scroll_half_page_down();
@@ -289,7 +293,7 @@ impl<T: Component> Component for Popup<T> {
 
                 if self.auto_close {
                     if let EventResult::Ignored(None) = contents_event_result {
-                        return EventResult::Ignored(Some(close_fn));
+                        return EventResult::Ignored(Some(self.close_cb()));
                     }
                 }
 
