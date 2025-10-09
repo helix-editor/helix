@@ -35,6 +35,7 @@ use helix_view::{
     DocumentId, Editor, Theme, ViewId,
 };
 use once_cell::sync::{Lazy, OnceCell};
+use serde_json::Value;
 use steel::{
     compiler::modules::steel_home,
     gc::{unsafe_erased_pointers::CustomReference, ShareableMut},
@@ -2938,6 +2939,7 @@ impl HelixConfiguration {
             .find(|x| x.language_id == language.as_str())
             .and_then(|x| {
                 let config = serde_json::json!(x);
+
                 SteelVal::try_from(config).ok()
             })
     }
@@ -2948,7 +2950,40 @@ impl HelixConfiguration {
         config: SteelVal,
     ) -> anyhow::Result<()> {
         // Do some gross json -> toml conversion
-        let value = serde_json::Value::try_from(config)?;
+        let mut value = serde_json::Value::try_from(config)?;
+
+        fn filter_null_values(value: &mut Value) {
+            match value {
+                Value::Object(map) => {
+                    map.retain(|_, v| {
+                        if v.is_null() {
+                            false
+                        } else {
+                            filter_null_values(v);
+                            true
+                        }
+                    });
+                }
+                Value::Array(arr) => {
+                    arr.retain_mut(|v| {
+                        if v.is_null() {
+                            false
+                        } else {
+                            filter_null_values(v);
+                            true
+                        }
+                    });
+                }
+                Value::Number(n) => {
+                    if let Some(f) = n.as_f64() {
+                        *n = (f.round() as i64).into();
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        filter_null_values(&mut value);
 
         // Horrendous, disgusting
         let mut toml_value: toml::Value = serde_json::from_str(&serde_json::to_string(&value)?)?;
