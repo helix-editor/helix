@@ -4241,7 +4241,7 @@ language-servers = [
     "ember-language-server",
 ]
 indent = { tab-width = 2, unit = "  " }
-grammar = "javascript"
+grammar = "glimmer-javascript"
 
 [language.auto-pairs]
 '<' = '>'
@@ -4249,6 +4249,10 @@ grammar = "javascript"
 "{" = "}"
 "(" = ")"
 '"' = '"'
+
+[[grammar]]
+name = "glimmer-javascript"
+source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer-javascript", rev = "5cc865a2a0a77cbfaf5062c8fcf2a9919bd54f87" }
 
 [[language]]
 name = "gts"
@@ -4265,7 +4269,7 @@ language-servers = [
     "ember-language-server",
 ]
 indent = { tab-width = 2, unit = "  " }
-grammar = "typescript"
+grammar = "glimmer-typescript"
 
 [language.auto-pairs]
 '<' = '>'
@@ -4273,6 +4277,10 @@ grammar = "typescript"
 "{" = "}"
 "(" = ")"
 '"' = '"'
+
+[[grammar]]
+name = "glimmer-typescript"
+source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer-typescript", rev = "12d98944c1d5077b957cbdb90d663a7c4d50118c" }
 
 [[language]]
 name = "gherkin"
