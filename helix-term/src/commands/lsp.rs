@@ -29,7 +29,7 @@ use helix_view::{
 };
 
 use crate::{
-    compositor::{self, Compositor},
+    compositor::{self, Compositor, Component},
     job::Callback,
     ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
@@ -1277,45 +1277,90 @@ pub fn rename_symbol(cx: &mut Context) {
         prefill: String,
         history_register: Option<char>,
         language_server_id: Option<LanguageServerId>,
-    ) -> Box<ui::Prompt> {
-        let prompt = ui::Prompt::new(
-            "rename-to:".into(),
-            history_register,
-            ui::completers::none,
-            move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-                if event != PromptEvent::Validate {
-                    return;
-                }
-                let (view, doc) = current!(cx.editor);
+    ) -> Box<dyn Component> {
+        match editor.config().cmdline.style {
+            helix_view::editor::CmdlineStyle::Popup => {
+                let cmdline = ui::CmdlinePopup::new(
+                    "rename-to:".into(),
+                    history_register,
+                    ui::completers::none,
+                    move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+                        if event != PromptEvent::Validate {
+                            return;
+                        }
+                        let (view, doc) = current!(cx.editor);
 
-                let Some(language_server) = doc
-                    .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
-                    .find(|ls| language_server_id.is_none_or(|id| id == ls.id()))
-                else {
-                    cx.editor
-                        .set_error("No configured language server supports symbol renaming");
-                    return;
-                };
+                        let Some(language_server) = doc
+                            .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
+                            .find(|ls| language_server_id.is_none_or(|id| id == ls.id()))
+                        else {
+                            cx.editor
+                                .set_error("No configured language server supports symbol renaming");
+                            return;
+                        };
 
-                let offset_encoding = language_server.offset_encoding();
-                let pos = doc.position(view.id, offset_encoding);
-                let future = language_server
-                    .rename_symbol(doc.identifier(), pos, input.to_string())
-                    .unwrap();
+                        let offset_encoding = language_server.offset_encoding();
+                        let pos = doc.position(view.id, offset_encoding);
+                        let future = language_server
+                            .rename_symbol(doc.identifier(), pos, input.to_string())
+                            .unwrap();
 
-                match block_on(future) {
-                    Ok(edits) => {
-                        let _ = cx
-                            .editor
-                            .apply_workspace_edit(offset_encoding, &edits.unwrap_or_default());
-                    }
-                    Err(err) => cx.editor.set_error(err.to_string()),
-                }
-            },
-        )
-        .with_line(prefill, editor);
+                        match block_on(future) {
+                            Ok(edits) => {
+                                let _ = cx
+                                    .editor
+                                    .apply_workspace_edit(offset_encoding, &edits.unwrap_or_default());
+                            }
+                            Err(err) => cx.editor.set_error(err.to_string()),
+                        }
+                    },
+                    helix_view::editor::CmdlineStyle::Popup,
+                )
+                .with_line(prefill, editor);
 
-        Box::new(prompt)
+                Box::new(cmdline)
+            }
+            helix_view::editor::CmdlineStyle::Bottom => {
+                let prompt = ui::Prompt::new(
+                    "rename-to:".into(),
+                    history_register,
+                    ui::completers::none,
+                    move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+                        if event != PromptEvent::Validate {
+                            return;
+                        }
+                        let (view, doc) = current!(cx.editor);
+
+                        let Some(language_server) = doc
+                            .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
+                            .find(|ls| language_server_id.is_none_or(|id| id == ls.id()))
+                        else {
+                            cx.editor
+                                .set_error("No configured language server supports symbol renaming");
+                            return;
+                        };
+
+                        let offset_encoding = language_server.offset_encoding();
+                        let pos = doc.position(view.id, offset_encoding);
+                        let future = language_server
+                            .rename_symbol(doc.identifier(), pos, input.to_string())
+                            .unwrap();
+
+                        match block_on(future) {
+                            Ok(edits) => {
+                                let _ = cx
+                                    .editor
+                                    .apply_workspace_edit(offset_encoding, &edits.unwrap_or_default());
+                            }
+                            Err(err) => cx.editor.set_error(err.to_string()),
+                        }
+                    },
+                )
+                .with_line(prefill, editor);
+
+                Box::new(prompt)
+            }
+        }
     }
 
     let (view, doc) = current_ref!(cx.editor);
