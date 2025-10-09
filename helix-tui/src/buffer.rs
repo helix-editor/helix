@@ -631,6 +631,8 @@ impl Buffer {
 
     /// Clear an area in the buffer
     pub fn clear(&mut self, area: Rect) {
+        // Clamp to buffer bounds to avoid out-of-bounds indexing
+        let area = self.area.intersection(area);
         for x in area.left()..area.right() {
             for y in area.top()..area.bottom() {
                 self[(x, y)].reset();
@@ -640,6 +642,8 @@ impl Buffer {
 
     /// Clear an area in the buffer with a default style.
     pub fn clear_with(&mut self, area: Rect, style: Style) {
+        // Clamp to buffer bounds to avoid out-of-bounds indexing
+        let area = self.area.intersection(area);
         for x in area.left()..area.right() {
             for y in area.top()..area.bottom() {
                 let cell = &mut self[(x, y)];
