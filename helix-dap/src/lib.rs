@@ -13,7 +13,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("failed to parse: {0}")]
-    Parse(#[from] serde_json::Error),
+    Parse(Box<dyn std::error::Error + Send + Sync>),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
     #[error("request {0} timed out")]
@@ -28,6 +28,18 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 }
 pub type Result<T> = core::result::Result<T, Error>;
+
+impl From<serde_json::Error> for Error {
+    fn from(value: serde_json::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
+
+impl From<sonic_rs::Error> for Error {
+    fn from(value: sonic_rs::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
 
 #[derive(Debug)]
 pub enum Request {
