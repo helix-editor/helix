@@ -102,10 +102,11 @@ impl Args {
                         }
                     }
                 }
+                "+" => line_number = usize::MAX,
                 arg if arg.starts_with('+') => {
-                    line_number = match arg[1..].parse::<usize>() {
-                        Ok(n) => n.saturating_sub(1),
-                        _ => usize::MAX,
+                    match arg[1..].parse::<usize>() {
+                        Ok(n) => line_number = n.saturating_sub(1),
+                        _ => insert_file_with_position(arg),
                     };
                 }
                 arg => insert_file_with_position(arg),
