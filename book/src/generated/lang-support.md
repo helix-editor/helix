@@ -24,7 +24,7 @@
 | cel | ✓ |  |  |  |  |  |
 | circom | ✓ |  |  |  |  | `circom-lsp` |
 | clarity | ✓ |  |  |  |  | `clarinet` |
-| clojure | ✓ |  |  |  | ✓ | `clojure-lsp` |
+| clojure | ✓ | ✓ | ✓ |  | ✓ | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ |  |  | `neocmakelsp`, `cmake-language-server` |
 | codeql | ✓ | ✓ |  |  |  | `codeql` |
 | comment | ✓ |  |  |  |  |  |
