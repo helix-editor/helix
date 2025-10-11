@@ -1482,3 +1482,51 @@ fn compute_inlay_hints_for_view(
 
     Some(callback)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn unique_definitions() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("non-existent-file");
+
+        // Vec with two locations with same uri and range, but with
+        // different offset encodings
+        let locations: Vec<Location> = vec![
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 20,
+                        character: 10,
+                    },
+                    end: lsp::Position {
+                        line: 30,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 20,
+                        character: 10,
+                    },
+                    end: lsp::Position {
+                        line: 30,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf16,
+            },
+        ];
+        let dedup_locations = deduplicate_locations(locations);
+        assert_eq!(dedup_locations.len(), 1);
+        assert_eq!(dedup_locations[0].offset_encoding, OffsetEncoding::Utf16);
+    }
+}
