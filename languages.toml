@@ -4905,4 +4905,4 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "cangjie"
-source = { git = "https://gitcode.com/Cangjie-SIG/tree-sitter-cangjie", rev = "3d3ae78ad1e42bd806f31f1171357c9f72250e28"}
+source = { git = "https://gitcode.com/Cangjie-SIG/tree-sitter-cangjie", rev = "4daa9e507385285883bdc1916a385baa5b7c5be4"}
