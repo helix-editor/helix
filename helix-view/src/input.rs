@@ -579,7 +579,6 @@ impl From<crossterm::event::Event> for Event {
             crossterm::event::Event::FocusGained => Self::FocusGained,
             crossterm::event::Event::FocusLost => Self::FocusLost,
             crossterm::event::Event::Paste(s) => Self::Paste(s),
-            _ => unreachable!(),
         }
     }
 }

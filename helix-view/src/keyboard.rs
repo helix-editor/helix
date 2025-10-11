@@ -63,7 +63,7 @@ impl From<termina::event::Modifiers> for KeyModifiers {
 #[cfg(all(feature = "term", windows))]
 impl From<KeyModifiers> for crossterm::event::KeyModifiers {
     fn from(key_modifiers: KeyModifiers) -> Self {
-        use crossterm::event::Modifiers as CKeyModifiers;
+        use crossterm::event::KeyModifiers as CKeyModifiers;
 
         let mut result = CKeyModifiers::NONE;
 
