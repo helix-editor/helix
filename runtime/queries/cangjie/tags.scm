@@ -1,0 +1,6 @@
+(classDefinition (className) @definition.class)
+(interfaceDefinition (interfaceName) @definition.interface)
+(functionDefinition (funcName) @definition.function)
+(macroDefinition (macroName) @definition.macro)
+(structDefinition (structName) @definition.struct)
+(typeAlias (typeAliasName) @definition.type)
