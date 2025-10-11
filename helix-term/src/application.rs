@@ -755,7 +755,7 @@ impl Application {
             #[cfg(windows)]
             TerminalEvent::Resize(width, height) => {
                 self.terminal
-                    .resize(Rect::new(0, 0, cols, rows))
+                    .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
 
                 let area = self.terminal.size();
@@ -763,7 +763,7 @@ impl Application {
                 self.compositor.resize(area);
 
                 self.compositor
-                    .handle_event(&Event::Resize(cols, rows), &mut cx)
+                    .handle_event(&Event::Resize(width, height), &mut cx)
             }
             #[cfg(windows)]
             // Ignore keyboard release events.
