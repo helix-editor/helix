@@ -61,8 +61,8 @@ pub struct TerminalEventReaderHandle;
 
 #[cfg(windows)]
 impl TerminalEventReaderHandle {
-    pub fn new(terminal: &dyn TerminalBackend) -> Self {
-        Self {}
+    pub fn new(terminal: &TerminalBackend) -> Self {
+        Self;
     }
 }
 

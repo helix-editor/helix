@@ -143,6 +143,7 @@ fn setup() -> Engine {
 
                 #[cfg(windows)]
                 if is_event_available().unwrap_or(false) {
+                    use crossterm::event::{Event, KeyCode, KeyModifiers};
                     let event = crossterm::event::read();
 
                     if let Ok(Event::Key(crossterm::event::KeyEvent {
