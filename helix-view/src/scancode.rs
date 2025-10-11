@@ -406,7 +406,7 @@ mod keyboard_state {
                                     }
                                     Err(e) => {
                                         log::error!("{device_name} read event error: {e}");
-                                        continue;
+                                        break;
                                     }
                                     _ => (),
                                 };
