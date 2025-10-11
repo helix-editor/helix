@@ -63,7 +63,7 @@ impl From<termina::event::Modifiers> for KeyModifiers {
 #[cfg(all(feature = "term", windows))]
 impl From<KeyModifiers> for crossterm::event::KeyModifiers {
     fn from(key_modifiers: KeyModifiers) -> Self {
-        use termina::event::Modifiers as CKeyModifiers;
+        use crossterm::event::Modifiers as CKeyModifiers;
 
         let mut result = CKeyModifiers::NONE;
 
@@ -187,7 +187,7 @@ impl From<termina::event::MediaKeyCode> for MediaKeyCode {
 #[cfg(all(feature = "term", windows))]
 impl From<MediaKeyCode> for crossterm::event::MediaKeyCode {
     fn from(media_key_code: MediaKeyCode) -> Self {
-        use termina::event::MediaKeyCode as CMediaKeyCode;
+        use crossterm::event::MediaKeyCode as CMediaKeyCode;
 
         match media_key_code {
             MediaKeyCode::Play => CMediaKeyCode::Play,
@@ -313,7 +313,7 @@ impl From<termina::event::ModifierKeyCode> for ModifierKeyCode {
 #[cfg(all(feature = "term", windows))]
 impl From<ModifierKeyCode> for crossterm::event::ModifierKeyCode {
     fn from(modifier_key_code: ModifierKeyCode) -> Self {
-        use termina::event::ModifierKeyCode as CModifierKeyCode;
+        use crossterm::event::ModifierKeyCode as CModifierKeyCode;
 
         match modifier_key_code {
             ModifierKeyCode::LeftShift => CModifierKeyCode::LeftShift,
@@ -494,7 +494,7 @@ impl From<termina::event::KeyCode> for KeyCode {
 #[cfg(all(feature = "term", windows))]
 impl From<KeyCode> for crossterm::event::KeyCode {
     fn from(key_code: KeyCode) -> Self {
-        use termina::event::KeyCode as CKeyCode;
+        use crossterm::event::KeyCode as CKeyCode;
 
         match key_code {
             KeyCode::Backspace => CKeyCode::Backspace,
@@ -510,10 +510,10 @@ impl From<KeyCode> for crossterm::event::KeyCode {
             KeyCode::Tab => CKeyCode::Tab,
             KeyCode::Delete => CKeyCode::Delete,
             KeyCode::Insert => CKeyCode::Insert,
-            KeyCode::F(f_number) => CKeyCode::Function(f_number),
+            KeyCode::F(f_number) => CKeyCode::F(f_number),
             KeyCode::Char(character) => CKeyCode::Char(character),
             KeyCode::Null => CKeyCode::Null,
-            KeyCode::Esc => CKeyCode::Escape,
+            KeyCode::Esc => CKeyCode::Esc,
             KeyCode::CapsLock => CKeyCode::CapsLock,
             KeyCode::ScrollLock => CKeyCode::ScrollLock,
             KeyCode::NumLock => CKeyCode::NumLock,
@@ -547,10 +547,10 @@ impl From<crossterm::event::KeyCode> for KeyCode {
             CKeyCode::BackTab => unreachable!("BackTab should have been handled on KeyEvent level"),
             CKeyCode::Delete => KeyCode::Delete,
             CKeyCode::Insert => KeyCode::Insert,
-            CKeyCode::Function(f_number) => KeyCode::F(f_number),
+            CKeyCode::F(f_number) => KeyCode::F(f_number),
             CKeyCode::Char(character) => KeyCode::Char(character),
             CKeyCode::Null => KeyCode::Null,
-            CKeyCode::Escape => KeyCode::Esc,
+            CKeyCode::Esc => KeyCode::Esc,
             CKeyCode::CapsLock => KeyCode::CapsLock,
             CKeyCode::ScrollLock => KeyCode::ScrollLock,
             CKeyCode::NumLock => KeyCode::NumLock,
