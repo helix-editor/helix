@@ -2308,9 +2308,9 @@ dependencies = [
 
 [[package]]
 name = "imbl"
-version = "6.1.0"
+version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fade8ae6828627ad1fa094a891eccfb25150b383047190a3648d66d06186501"
+checksum = "33afdc5d333c1a43f1f640bfc6ad3788729e5b2f18472e5d33a9187315257f8e"
 dependencies = [
  "archery",
  "bitmaps 3.2.1",
