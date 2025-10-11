@@ -1,16 +1,17 @@
 use crate::commands::{goto_location, Context};
 use crate::ui::{Picker, PickerColumn};
 use helix_core::diagnostic::Severity;
+use helix_core::regex::RegexBuilder;
 use helix_view::{
-    make::{Entry, Location},
+    make::{Entry, FormatType, Location},
     theme::Style,
 };
-use regex::RegexBuilder;
 use std::path::PathBuf;
 use tui::text::Span;
 
 // TODO(szulf): figure out how to display messages from the make_list the same way as diagnostics
 // and make it togglable in the config i think(off by default i think)
+
 // TODO(szulf): add keybindings for going to next/prev item in make list
 
 #[derive(Debug, Clone)]
@@ -65,30 +66,8 @@ pub fn make_picker(cx: &Context, root: PathBuf) -> MakePicker {
     })
 }
 
-#[derive(Debug)]
-pub enum MakeFormatType {
-    Default,
-    Rust,
-    Gcc,
-    Clang,
-    Msvc,
-}
-
-impl From<&str> for MakeFormatType {
-    fn from(value: &str) -> Self {
-        match value {
-            "rust" => MakeFormatType::Rust,
-            "gcc" => MakeFormatType::Gcc,
-            "clang" => MakeFormatType::Clang,
-            "msvc" => MakeFormatType::Msvc,
-            _ => MakeFormatType::Default,
-        }
-    }
-}
-
 fn parse_with_regex(source: &str, regex: &str) -> Vec<Entry> {
     let regex = RegexBuilder::new(regex).multi_line(true).build().unwrap();
-
     let mut results = Vec::new();
 
     for cap in regex.captures_iter(source) {
@@ -141,21 +120,10 @@ fn parse_msvc(source: &str) -> Vec<Entry> {
     )
 }
 
-fn parse_default(source: &str) -> Vec<Entry> {
-    let mut entries = Vec::new();
-
-    entries.append(&mut parse_rust(source));
-    entries.append(&mut parse_gcc(source));
-    entries.append(&mut parse_msvc(source));
-
-    entries
-}
-
-pub fn parse(format_type: MakeFormatType, source: &str) -> Vec<Entry> {
+pub fn parse(format_type: &FormatType, source: &str) -> Vec<Entry> {
     match format_type {
-        MakeFormatType::Default => parse_default(source),
-        MakeFormatType::Rust => parse_rust(source),
-        MakeFormatType::Gcc | MakeFormatType::Clang => parse_gcc(source),
-        MakeFormatType::Msvc => parse_msvc(source),
+        FormatType::Rust => parse_rust(source),
+        FormatType::Gcc | FormatType::Clang => parse_gcc(source),
+        FormatType::Msvc => parse_msvc(source),
     }
 }

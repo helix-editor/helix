@@ -2452,7 +2452,6 @@ fn make_search_word_bounded(cx: &mut Context) {
     }
 }
 
-// TODO(szulf): is there some more global function like this that doesnt depend on lsp stuff?
 pub fn goto_location(
     cx: &mut compositor::Context,
     path: &PathBuf,

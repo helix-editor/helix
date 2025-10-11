@@ -81,3 +81,18 @@ impl<'a> IntoIterator for &'a List {
         self.entries.iter()
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FormatType {
+    Rust,
+    Gcc,
+    Clang,
+    Msvc,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Command {
+    pub command: String,
+    pub format_type: FormatType,
+}
