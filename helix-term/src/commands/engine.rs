@@ -2,6 +2,8 @@ use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::syntax;
 use helix_lsp::{jsonrpc, LanguageServerId};
 use helix_view::{document::Mode, input::KeyEvent};
+
+#[cfg(unix)]
 use termina::{EventReader, Terminal};
 
 use std::{borrow::Cow, sync::Arc};
@@ -62,7 +64,7 @@ pub struct TerminalEventReaderHandle;
 #[cfg(windows)]
 impl TerminalEventReaderHandle {
     pub fn new(terminal: &TerminalBackend) -> Self {
-        Self;
+        Self
     }
 }
 
