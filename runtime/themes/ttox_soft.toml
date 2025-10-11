@@ -13,6 +13,10 @@
 "ui.popup" = { fg = "white", bg = "black" }
 "ui.help" = { fg = "white", bg = "black" }
 "ui.virtual.ruler" = { underline = { style = "line" } }
+"ui.bufferline" = { fg = "white", bg = "black" }
+"ui.bufferline.active" = { fg = "black", bg = "white" }
+"ui.bufferline.background" = { bg = "black" }
+
 
 "string" = { fg = "light-green" }
 "constant" = { fg = "light-cyan" }
