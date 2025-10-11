@@ -32,7 +32,13 @@ use crate::{
     ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
-use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    future::Future,
+    path::Path,
+};
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
@@ -81,6 +87,24 @@ fn lsp_location_to_location(
         range: location.range,
         offset_encoding,
     })
+}
+
+fn deduplicate_locations(locations: Vec<Location>) -> Vec<Location> {
+    let mut map: HashMap<(Uri, lsp::Range), Location> = HashMap::new();
+    for location in locations {
+        let key = (location.uri.clone(), location.range);
+        match map.get_mut(&key) {
+            Some(existing) => {
+                if location.offset_encoding > existing.offset_encoding {
+                    *existing = location;
+                }
+            }
+            None => {
+                map.insert(key, location);
+            }
+        }
+    }
+    map.into_values().collect()
 }
 
 struct SymbolInformationItem {
@@ -932,6 +956,8 @@ where
                 },
                 Err(err) => log::error!("Error requesting locations: {err}"),
             }
+
+            locations = deduplicate_locations(locations);
         }
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if locations.is_empty() {
@@ -1455,4 +1481,52 @@ fn compute_inlay_hints_for_view(
     );
 
     Some(callback)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn unique_definitions() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("non-existent-file");
+
+        // Vec with two locations with same uri and range, but with
+        // different offset encodings
+        let locations: Vec<Location> = vec![
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 20,
+                        character: 10,
+                    },
+                    end: lsp::Position {
+                        line: 30,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 20,
+                        character: 10,
+                    },
+                    end: lsp::Position {
+                        line: 30,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf16,
+            },
+        ];
+        let dedup_locations = deduplicate_locations(locations);
+        assert_eq!(dedup_locations.len(), 1);
+        assert_eq!(dedup_locations[0].offset_encoding, OffsetEncoding::Utf16);
+    }
 }
