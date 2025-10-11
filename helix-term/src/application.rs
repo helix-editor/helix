@@ -18,7 +18,6 @@ use helix_view::{
     Align, Editor,
 };
 use serde_json::json;
-use termina::Terminal as _;
 use tui::backend::Backend;
 
 use crate::{
@@ -57,11 +56,11 @@ use tui::backend::CrosstermBackend;
 use tui::backend::TestBackend;
 
 #[cfg(all(not(windows), not(feature = "integration")))]
-type TerminalBackend = TerminaBackend;
+pub type TerminalBackend = TerminaBackend;
 #[cfg(all(windows, not(feature = "integration")))]
-type TerminalBackend = CrosstermBackend<std::io::Stdout>;
+pub type TerminalBackend = CrosstermBackend<std::io::Stdout>;
 #[cfg(feature = "integration")]
-type TerminalBackend = TestBackend;
+pub type TerminalBackend = TestBackend;
 
 #[cfg(not(windows))]
 type TerminalEvent = termina::Event;
@@ -171,7 +170,7 @@ impl Application {
                 &mut cx,
                 config.clone(),
                 syn_loader,
-                terminal.backend().terminal().event_reader(),
+                crate::commands::engine::TerminalEventReaderHandle::new(terminal.backend()),
             );
         }
 

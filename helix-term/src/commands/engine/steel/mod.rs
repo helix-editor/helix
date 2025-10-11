@@ -76,7 +76,7 @@ use components::SteelDynamicComponent;
 
 use components::helix_component_module;
 
-use super::Context;
+use super::{Context, TerminalEventReaderHandle};
 use insert::insert_char;
 
 static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
@@ -86,8 +86,9 @@ static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
 
 static EVENT_READER: OnceCell<EventReader> = OnceCell::new();
 
-fn install_event_reader(event_reader: EventReader) {
-    EVENT_READER.set(event_reader).unwrap()
+fn install_event_reader(event_reader: TerminalEventReaderHandle) {
+    #[cfg(unix)]
+    EVENT_READER.set(event_reader.reader).unwrap()
 }
 
 fn setup() -> Engine {
@@ -97,10 +98,18 @@ fn setup() -> Engine {
     let running = Arc::new(AtomicBool::new(false));
 
     fn is_event_available() -> std::io::Result<bool> {
-        EVENT_READER
-            .get()
-            .unwrap()
-            .poll(Some(Duration::from_millis(10)), |_| true)
+        #[cfg(windows)]
+        {
+            crossterm::event::poll(Duration::from_millis(10))
+        }
+
+        #[cfg(unix)]
+        {
+            EVENT_READER
+                .get()
+                .unwrap()
+                .poll(Some(Duration::from_millis(10)), |_| true)
+        }
     }
 
     let controller_clone = controller.clone();
@@ -117,12 +126,28 @@ fn setup() -> Engine {
             std::thread::park();
 
             while running.load(std::sync::atomic::Ordering::Relaxed) {
+                #[cfg(unix)]
                 if is_event_available().unwrap_or(false) {
                     let event = EVENT_READER.get().unwrap().read(|_| true);
 
                     if let Ok(termina::Event::Key(termina::event::KeyEvent {
                         code: termina::event::KeyCode::Char('c'),
                         modifiers: termina::event::Modifiers::CONTROL,
+                        ..
+                    })) = event
+                    {
+                        controller.interrupt();
+                        break;
+                    }
+                }
+
+                #[cfg(windows)]
+                if is_event_available().unwrap_or(false) {
+                    let event = crossterm::event::read();
+
+                    if let Ok(Event::Key(crossterm::event::KeyEvent {
+                        code: KeyCode::Char('c'),
+                        modifiers: KeyModifiers::CONTROL,
                         ..
                     })) = event
                     {
@@ -2392,7 +2417,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         cx: &mut Context,
         configuration: Arc<ArcSwapAny<Arc<Config>>>,
         language_configuration: Arc<ArcSwap<syntax::Loader>>,
-        event_reader: EventReader,
+        event_reader: TerminalEventReaderHandle,
     ) {
         run_initialization_script(cx, configuration, language_configuration, event_reader);
     }
@@ -3621,7 +3646,7 @@ fn run_initialization_script(
     cx: &mut Context,
     configuration: Arc<ArcSwapAny<Arc<Config>>>,
     language_configuration: Arc<ArcSwap<syntax::Loader>>,
-    event_reader: EventReader,
+    event_reader: TerminalEventReaderHandle,
 ) {
     install_event_reader(event_reader);
 

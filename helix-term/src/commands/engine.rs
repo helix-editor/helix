@@ -2,11 +2,12 @@ use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::syntax;
 use helix_lsp::{jsonrpc, LanguageServerId};
 use helix_view::{document::Mode, input::KeyEvent};
-use termina::EventReader;
+use termina::{EventReader, Terminal};
 
 use std::{borrow::Cow, sync::Arc};
 
 use crate::{
+    application::TerminalBackend,
     compositor,
     config::Config,
     keymap::KeymapResult,
@@ -54,6 +55,32 @@ macro_rules! manual_dispatch {
     };
 }
 
+#[cfg(windows)]
+#[derive(Clone)]
+pub struct TerminalEventReaderHandle;
+
+#[cfg(windows)]
+impl TerminalEventReaderHandle {
+    pub fn new(terminal: &dyn TerminalBackend) -> Self {
+        Self {}
+    }
+}
+
+#[cfg(unix)]
+#[derive(Clone)]
+pub struct TerminalEventReaderHandle {
+    reader: EventReader,
+}
+
+#[cfg(unix)]
+impl TerminalEventReaderHandle {
+    pub fn new(terminal: &TerminalBackend) -> Self {
+        Self {
+            reader: terminal.terminal().event_reader(),
+        }
+    }
+}
+
 impl ScriptingEngine {
     pub fn initialize() {
         for kind in PLUGIN_PRECEDENCE {
@@ -65,7 +92,7 @@ impl ScriptingEngine {
         cx: &mut Context,
         configuration: Arc<ArcSwapAny<Arc<Config>>>,
         language_configuration: Arc<ArcSwap<syntax::Loader>>,
-        event_reader: EventReader,
+        event_reader: TerminalEventReaderHandle,
     ) {
         for kind in PLUGIN_PRECEDENCE {
             manual_dispatch!(
@@ -196,7 +223,7 @@ pub trait PluginSystem {
         _cx: &mut Context,
         _configuration: Arc<ArcSwapAny<Arc<Config>>>,
         _language_configuration: Arc<ArcSwap<syntax::Loader>>,
-        _event_reader: EventReader,
+        _event_reader: TerminalEventReaderHandle,
     ) {
     }
 
