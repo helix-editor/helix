@@ -274,3 +274,197 @@ fn fold_container_superest_fold_containing() {
         assert_eq!(result, expected, "case index = {case_idx}");
     }
 }
+
+#[test]
+fn fold_container_update_by_transaction() {
+    use crate::Rope;
+    use crate::Transaction;
+    use std::cell::RefCell;
+    use std::iter::once;
+
+    let init_container = &FoldContainer::from(*TEXT_SAMPLE, fold_points());
+    let container = RefCell::new(FoldContainer::from(*TEXT_SAMPLE, fold_points()));
+
+    let object_eq = |fold: Fold, object: &str| {
+        matches!(
+            fold.object(),
+            FoldObject::TextObject(textobject) if *textobject == object
+        )
+    };
+
+    let decrease_eq = |n: usize| n == init_container.len() - container.borrow().len();
+
+    // a change, an assert function
+    let cases: Vec<(_, Box<dyn Fn()>)> = vec![
+        (
+            // remove the first header char
+            (0, 1, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[0].fold(&container);
+
+                assert!(
+                    fold.header() == 0 && object_eq(fold, "0") && decrease_eq(0),
+                    "fold = {fold:#?}"
+                );
+            }),
+        ),
+        (
+            // replace the text "丂 line index: " from the 0i line
+            (0, 15, Some("new header".into())),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[0].fold(&container);
+
+                assert!(object_eq(fold, "0") && decrease_eq(0), "fold = {fold:#?}");
+            }),
+        ),
+        (
+            // replace the trimmed 0i line
+            (0, 16, Some("new header".into())),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[0].fold(&container);
+
+                assert!(object_eq(fold, "1") && decrease_eq(1), "fold = {fold:#?}");
+            }),
+        ),
+        (
+            // remove the entire 0i line
+            (0, 17, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[0].fold(&container);
+
+                assert!(object_eq(fold, "1") && decrease_eq(1), "fold = {fold:#?}");
+            }),
+        ),
+        (
+            // remove the first nonwhitespace char of 11i line
+            (137, 138, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[3].fold(&container);
+
+                assert!(object_eq(fold, "4") && decrease_eq(1), "fold = {fold:#?}");
+            }),
+        ),
+        (
+            // remove the last nonwhitespace char of the 19i line
+            (263, 264, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[4].fold(&container);
+
+                assert!(object_eq(fold, "5") && decrease_eq(1), "fold = {fold:#?}");
+            }),
+        ),
+        (
+            // remove the 33i entire line
+            (486, 504, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[9].fold(&container);
+
+                assert!(object_eq(fold, "9") && decrease_eq(2), "fold = {fold:#?}");
+            }),
+        ),
+        (
+            // remove the last nonwhitespace char of the 18i line
+            (263, 264, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[4].fold(&container);
+
+                assert!(
+                    object_eq(fold, "5") && fold.start.line == 19 && decrease_eq(1),
+                    "fold = {fold:#?}"
+                );
+            }),
+        ),
+        (
+            // remove the 9i entire line
+            (117, 136, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[3].fold(&container);
+
+                assert!(object_eq(fold, "3") && decrease_eq(0), "fold = {fold:#?}");
+            }),
+        ),
+        (
+            // replace the text "19 乪\n\t" of the 19i-20i lines
+            (279, 285, Some("new text\n\t".into())),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[6].fold(&container);
+
+                assert!(object_eq(fold, "6") && decrease_eq(0), "fold = {fold:#?}");
+            }),
+        ),
+        (
+            // replace the text "19 乪\n\t\tline" of the 19i-20i lines
+            (279, 292, Some("new text\n\t\tnew text".into())),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[6].fold(&container);
+
+                assert!(object_eq(fold, "7") && decrease_eq(1), "fold = {fold:#?}");
+            }),
+        ),
+        (
+            // remove the line ending of the 55i line and 56i-57i lines
+            (737, 740, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[15].fold(&container);
+
+                assert!(
+                    object_eq(fold, "15") && decrease_eq(0) && fold.end.line == 54,
+                    "fold = {fold:#?}"
+                );
+            }),
+        ),
+        (
+            // remove the line ending of the 33i line
+            (502, 503, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[11].fold(&container);
+
+                assert!(
+                    object_eq(fold, "11") && decrease_eq(0) && fold.end.line == 34,
+                    "fold = {fold:#?}"
+                )
+            }),
+        ),
+        (
+            // remove the entire 39i-40i lines
+            (558, 576, None),
+            Box::new(|| {
+                let container = container.borrow();
+                let fold = container.start_points[12].fold(&container);
+
+                assert!(
+                    object_eq(fold, "13") && decrease_eq(1) && fold.is_superest(),
+                    "fold = {fold:#?}"
+                )
+            }),
+        ),
+    ];
+
+    for (change, assert) in cases {
+        let doc = &mut Rope::from(*TEXT_SAMPLE);
+        // reset container
+        *container.borrow_mut() = init_container.clone();
+
+        let transaction = &Transaction::change(doc, once(change));
+        transaction.apply(doc);
+        // update container
+        container
+            .borrow_mut()
+            .update_by_transaction(doc.slice(..), *TEXT_SAMPLE, transaction);
+
+        assert();
+    }
+}

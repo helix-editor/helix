@@ -88,6 +88,8 @@ use crate::Range;
 use crate::RopeSlice;
 use crate::Selection;
 
+mod transaction;
+
 #[cfg(test)]
 pub(crate) mod test_utils;
 
