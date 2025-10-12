@@ -91,6 +91,8 @@ fn lsp_location_to_location(
 
 fn deduplicate_locations(locations: Vec<Location>) -> Vec<Location> {
     let mut map: HashMap<(Uri, lsp::Range), Location> = HashMap::new();
+    let mut order: Vec<(Uri, lsp::Range)> = Vec::new();
+
     for location in locations {
         let key = (location.uri.clone(), location.range);
         match map.get_mut(&key) {
@@ -100,11 +102,16 @@ fn deduplicate_locations(locations: Vec<Location>) -> Vec<Location> {
                 }
             }
             None => {
-                map.insert(key, location);
+                map.insert(key.clone(), location);
+                order.push(key);
             }
         }
     }
-    map.into_values().collect()
+
+    order
+        .into_iter()
+        .filter_map(|key| map.remove(&key))
+        .collect()
 }
 
 struct SymbolInformationItem {
