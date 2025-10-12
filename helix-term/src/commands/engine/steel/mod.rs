@@ -2888,8 +2888,8 @@ pub fn empty_keymap() -> EmbeddedKeyMap {
     EmbeddedKeyMap(HashMap::default())
 }
 
-pub fn string_to_embedded_keymap(value: String) -> EmbeddedKeyMap {
-    EmbeddedKeyMap(serde_json::from_str(&value).unwrap())
+pub fn string_to_embedded_keymap(value: String) -> anyhow::Result<EmbeddedKeyMap> {
+    Ok(EmbeddedKeyMap(serde_json::from_str(&value)?))
 }
 
 pub fn merge_keybindings(left: &mut EmbeddedKeyMap, right: EmbeddedKeyMap) {
