@@ -86,14 +86,14 @@
 
 (define-syntax #%keybindings
   (syntax-rules ()
+    [(_ conf (key (value ...)))
+     (hash (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+           (#%keybindings (hash) (value ...)))]
+
     [(_ conf (key (value ...) rest ...))
      (hash-insert conf
                   (if (string? (quote key)) (quote key) (symbol->string (quote key)))
                   (#%keybindings (hash) (value ...) rest ...))]
-
-    [(_ conf (key (value ...)))
-     (hash (dbg! (if (string? (quote key) (symbol->string (quote key)))))
-           (#%keybindings (hash) (value ...)))]
 
     [(_ conf (key value))
 
@@ -117,7 +117,7 @@
       rest ...)]))
 
 (define-syntax keymap
-  (syntax-rules (global insert normal select with-map inherit-from)
+  (syntax-rules (global insert normal select with-map inherit-from extension buffer)
 
     [(_ (global) args ...) (add-global-keybinding (keymap args ...))]
 
@@ -141,13 +141,14 @@
 
     ;; Expand to the same thing since the underlying
     ;; infrastructure is the same
-
     [(_ (buffer name (inherit-from kmap)) (with-map bindings))
      (keymap (extension name (inherit-from kmap)) (with-map bindings))]
+
     [(_ (buffer name (inherit-from kmap)) args ...)
      (keymap (extension name (inherit-from kmap)) args ...)]
 
     [(_ (buffer name) (with-map bindings)) (keymap (extension name) (with-map bindings))]
+
     [(_ (buffer name) args ...) (keymap (extension name) args ...)]
 
     [(_) (hash)]
