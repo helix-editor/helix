@@ -62,7 +62,6 @@ use std::{str::FromStr as _, sync::Arc};
 use steel::{rvals::Custom, steel_vm::builtin::BuiltInModule};
 
 use crate::{
-    // args::Args,
     commands::{insert, TYPABLE_COMMAND_LIST},
     compositor::{self, Component, Compositor},
     config::Config,
@@ -2020,6 +2019,24 @@ fn load_theme_api(engine: &mut Engine, generate_sources: bool) {
     }
 
     engine.register_module(module);
+}
+
+fn load_high_level_keymap_api(engine: &mut Engine, generate_sources: bool) {
+    let keymap = include_str!("keymaps.scm");
+
+    if generate_sources {
+        if let Some(mut target_directory) = alternative_runtime_search_path() {
+            if !target_directory.exists() {
+                std::fs::create_dir_all(&target_directory).unwrap();
+            }
+
+            target_directory.push("keymaps.scm");
+
+            std::fs::write(target_directory, keymap).unwrap();
+        }
+    }
+
+    engine.register_steel_module("helix/keymaps.scm".to_string(), keymap.to_string());
 }
 
 fn load_high_level_theme_api(engine: &mut Engine, generate_sources: bool) {
@@ -4801,6 +4818,7 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     // This depends on the components and theme api, so should
     // be loaded after.
     load_high_level_theme_api(engine, generate_sources);
+    load_high_level_keymap_api(engine, generate_sources);
     load_ext_api(engine, generate_sources);
 
     // TODO: Remove this once all of the globals have been moved into their own modules
