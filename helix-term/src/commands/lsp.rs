@@ -1533,7 +1533,107 @@ mod tests {
             },
         ];
         let dedup_locations = deduplicate_locations(locations);
+
+        // should have 1 unique location
         assert_eq!(dedup_locations.len(), 1);
+
+        // the location should have the highest OffsetEncoding between them
         assert_eq!(dedup_locations[0].offset_encoding, OffsetEncoding::Utf16);
+    }
+
+    #[test]
+    fn preserves_order_with_multiple_duplicates() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("non-existent-file");
+
+        let locations: Vec<Location> = vec![
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 1,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 1,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 2,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 2,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf16,
+            },
+            // duplicate of second location
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 2,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 2,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+            // duplicate of first location
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 1,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 1,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf16,
+            },
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 3,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 3,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+        ];
+
+        let dedup_locations = deduplicate_locations(locations);
+
+        // should have 3 unique locations
+        assert_eq!(dedup_locations.len(), 3);
+
+        // check order is preserved: line1, line2, line3
+        assert_eq!(dedup_locations[0].range.start.line, 1);
+        assert_eq!(dedup_locations[1].range.start.line, 2);
+        assert_eq!(dedup_locations[2].range.start.line, 3);
+
+        // check that higher offset_encoding was used for duplicates
+        assert_eq!(dedup_locations[0].offset_encoding, OffsetEncoding::Utf16);
+        assert_eq!(dedup_locations[1].offset_encoding, OffsetEncoding::Utf16);
+        assert_eq!(dedup_locations[2].offset_encoding, OffsetEncoding::Utf8);
     }
 }
