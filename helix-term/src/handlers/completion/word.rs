@@ -1,7 +1,8 @@
 use std::{borrow::Cow, sync::Arc};
 
 use helix_core::{
-    self as core, chars::char_is_word, completion::CompletionProvider, movement, Transaction,
+    self as core, chars::char_is_word, completion::CompletionProvider, movement,
+    text_annotations::TextAnnotations, Transaction,
 };
 use helix_event::TaskHandle;
 use helix_stdx::rope::RopeSliceExt as _;
@@ -38,7 +39,12 @@ pub(super) fn completion(
     let selection = doc.selection(view.id).clone();
     let pos = selection.primary().cursor(text);
 
-    let cursor = movement::move_prev_word_start(text, core::Range::point(pos), 1);
+    let cursor = movement::move_prev_word_start(
+        text,
+        &TextAnnotations::default(),
+        core::Range::point(pos),
+        1,
+    );
     if cursor.head == pos {
         return None;
     }
