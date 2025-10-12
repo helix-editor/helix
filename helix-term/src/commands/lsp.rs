@@ -32,13 +32,9 @@ use crate::{
     ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
-use std::{
-    cmp::Ordering,
-    collections::{HashMap, HashSet},
-    fmt::Display,
-    future::Future,
-    path::Path,
-};
+use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
+
+use indexmap::IndexMap;
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
@@ -90,8 +86,7 @@ fn lsp_location_to_location(
 }
 
 fn deduplicate_locations(locations: Vec<Location>) -> Vec<Location> {
-    let mut map: HashMap<(Uri, lsp::Range), Location> = HashMap::new();
-    let mut order: Vec<(Uri, lsp::Range)> = Vec::new();
+    let mut map: IndexMap<(Uri, lsp::Range), Location> = IndexMap::new();
 
     for location in locations {
         let key = (location.uri.clone(), location.range);
@@ -103,15 +98,11 @@ fn deduplicate_locations(locations: Vec<Location>) -> Vec<Location> {
             }
             None => {
                 map.insert(key.clone(), location);
-                order.push(key);
             }
         }
     }
 
-    order
-        .into_iter()
-        .filter_map(|key| map.remove(&key))
-        .collect()
+    map.into_values().collect()
 }
 
 struct SymbolInformationItem {
