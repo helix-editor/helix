@@ -6859,7 +6859,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     // This is not necessarily exact if there is virtual text like soft wrap.
     // It's ok though because the extra jump labels will not be rendered.
     let start = text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor));
-    let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
+    let end = text.line_to_char(view.estimate_last_doc_line(&annotations, doc) + 1);
 
     let primary_selection = doc.selection(view.id).primary();
     let cursor = primary_selection.cursor(text);

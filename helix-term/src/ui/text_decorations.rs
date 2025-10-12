@@ -1,8 +1,11 @@
 use std::cmp::Ordering;
 
 use helix_core::doc_formatter::FormattedGrapheme;
+use helix_core::text_annotations::TextAnnotations;
+use helix_core::text_folding::FoldAnnotations;
 use helix_core::Position;
 use helix_view::editor::CursorCache;
+use helix_view::theme::{Style, Theme};
 
 use crate::ui::document::{LinePos, TextRenderer};
 
@@ -170,6 +173,70 @@ impl Decoration for Cursor<'_> {
             let position = grapheme.visual_pos - renderer.offset;
             self.cache.set(Some(position));
         }
+        usize::MAX
+    }
+}
+
+pub(crate) struct FoldDecoration<'a> {
+    annotations: FoldAnnotations<'a>,
+    style: Style,
+}
+
+impl<'a> FoldDecoration<'a> {
+    pub(crate) fn new(annotations: &'a TextAnnotations<'a>, theme: &Theme) -> Self {
+        Self {
+            annotations: annotations.folds.clone(),
+            style: theme.get("ui.virtual.fold-decoration"),
+        }
+    }
+}
+
+impl<'a> Decoration for FoldDecoration<'a> {
+    fn render_virt_lines(
+        &mut self,
+        renderer: &mut TextRenderer,
+        pos: LinePos,
+        virt_off: Position,
+    ) -> Position {
+        use helix_core::Tendril;
+        use std::fmt::Write;
+
+        let Some(fold) = self
+            .annotations
+            .consume_next(pos.doc_line, |fold| fold.start.line - 1)
+        else {
+            return Position::new(0, 0);
+        };
+
+        let draw_col = virt_off.col as u16 + 1;
+        let width = renderer.viewport.width;
+        let text = {
+            let mut text = Tendril::new();
+            let len_lines = fold.end.line - fold.start.line + 1;
+            text.write_fmt(format_args!(
+                "...+{len_lines} {object} {measure}",
+                object = fold.object(),
+                measure = if len_lines > 1 { "lines" } else { "line" },
+            ))
+            .unwrap();
+            text
+        };
+
+        renderer.set_string_truncated(
+            renderer.viewport.x + draw_col,
+            pos.visual_line,
+            &text,
+            width.saturating_sub(draw_col) as usize,
+            |_| self.style,
+            true,
+            false,
+        );
+
+        Position::new(1, 0)
+    }
+
+    fn reset_pos(&mut self, pos: usize) -> usize {
+        self.annotations.reset_pos(pos, |fold| fold.start.char - 1);
         usize::MAX
     }
 }
