@@ -3,9 +3,14 @@ use crate::graphemes::next_grapheme_boundary;
 use super::*;
 
 use test_utils::new_fold_points;
-use test_utils::TEXT_SAMPLE;
 use test_utils::{fold_points, fold_points_filtered_by};
 use test_utils::{folds_eq, folds_eq_by};
+use test_utils::{FOLDED_TEXT_SAMPLE, TEXT_SAMPLE};
+
+#[test]
+fn fold_text() {
+    _ = *FOLDED_TEXT_SAMPLE;
+}
 
 #[test]
 fn fold_container_from() {

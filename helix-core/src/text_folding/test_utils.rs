@@ -13,6 +13,45 @@ pub(crate) static TEXT_SAMPLE: LazyLock<RopeSlice> = LazyLock::new(|| {
     RopeSlice::from(fs::read_to_string(PATH).unwrap().leak() as &str)
 });
 
+// INFO: to update the text set the envaroment variable HELIX_UPDATE_FOLDED_SIMPLE_TEXT
+pub(crate) static FOLDED_TEXT_SAMPLE: LazyLock<RopeSlice> = LazyLock::new(|| {
+    use std::fmt::Write;
+
+    use crate::doc_formatter::{DocumentFormatter, TextFormat};
+    use crate::graphemes::Grapheme;
+    use crate::text_annotations::TextAnnotations;
+
+    const PATH: &str = "src/text_folding/test_utils/folded-text-sample";
+    const VAR: &str = "HELIX_UPDATE_FOLDED_SIMPLE_TEXT";
+
+    let container = &FoldContainer::from(*TEXT_SAMPLE, fold_points());
+
+    let text_format = &TextFormat::default();
+    let annotations = &mut TextAnnotations::default();
+    annotations.add_folds(container);
+
+    let formatter =
+        DocumentFormatter::new_at_prev_checkpoint(*TEXT_SAMPLE, text_format, &annotations, 0);
+
+    let mut folded_text = String::new();
+    for g in formatter {
+        match g.raw {
+            Grapheme::Newline => write!(folded_text, "\n").unwrap(),
+            Grapheme::Tab { width: _ } => write!(folded_text, "\t").unwrap(),
+            Grapheme::Other { g } => write!(folded_text, "{g}").unwrap(),
+        }
+    }
+    // remove EOf
+    folded_text.remove(folded_text.len() - 1);
+
+    match std::env::var(VAR) {
+        Ok(_) => fs::write(PATH, &folded_text).unwrap(),
+        Err(_) => assert_eq!(folded_text, fs::read_to_string(PATH).unwrap()),
+    }
+
+    RopeSlice::from(folded_text.leak() as &str)
+});
+
 pub(crate) fn new_fold_points(
     text: RopeSlice,
     object: &'static str,
