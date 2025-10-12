@@ -97,7 +97,7 @@ fn deduplicate_locations(locations: Vec<Location>) -> Vec<Location> {
                 }
             }
             None => {
-                map.insert(key.clone(), location);
+                map.insert(key, location);
             }
         }
     }
