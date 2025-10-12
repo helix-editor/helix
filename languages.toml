@@ -1534,6 +1534,7 @@ file-types = [
   { glob = ".gem/credentials" },
   { glob = ".kube/config" },
   { glob = ".kube/kuberc" },
+  { glob = "yarn.lock" },
   "sublime-syntax"
 ]
 comment-token = "#"
