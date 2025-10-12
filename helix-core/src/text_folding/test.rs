@@ -276,6 +276,31 @@ fn fold_container_superest_fold_containing() {
 }
 
 #[test]
+fn fold_annotations_folded_lines_between() {
+    let container = &FoldContainer::from(*TEXT_SAMPLE, fold_points());
+    let annotations = FoldAnnotations::new(Some(container));
+
+    // line range, expected
+    let cases = [
+        (0..=0, 0),
+        (3..=3, 0),
+        (0..=3, 1),
+        (0..=5, 2),
+        (5..=7, 0),
+        (5..=30, 22),
+        (30..=31, 0),
+        (30..=51, 13),
+        (51..=51, 0),
+        (62..=79, 5),
+    ];
+
+    for (case_idx, (line_range, expected)) in cases.into_iter().enumerate() {
+        let result = annotations.folded_lines_between(&line_range);
+        assert_eq!(result, expected, "case index = {case_idx}");
+    }
+}
+
+#[test]
 fn fold_container_update_by_transaction() {
     use crate::Rope;
     use crate::Transaction;

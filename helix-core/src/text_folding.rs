@@ -73,6 +73,7 @@
 //! Folds that span other folds are called **super** folds.
 //! Folds that are not nested are called **superest** folds.
 
+use std::cell::Cell;
 use std::cmp::{max, min, Ordering};
 use std::fmt;
 use std::iter::once;
@@ -728,5 +729,148 @@ impl FoldContainer {
                 self.start_points[efp.link].link -= 1;
             }
         }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct FoldAnnotations<'a> {
+    pub(super) container: Option<&'a FoldContainer>,
+    pub(super) current_index: Cell<isize>,
+}
+
+impl<'a> FoldAnnotations<'a> {
+    pub fn new(container: Option<&'a FoldContainer>) -> Self {
+        Self {
+            container,
+            current_index: Cell::new(0),
+        }
+    }
+
+    /// `None` when container is empty.
+    pub fn container(&self) -> Option<&'a FoldContainer> {
+        self.container.filter(|container| !container.is_empty())
+    }
+
+    pub fn reset_pos(&self, idx: usize, mut get_idx: impl FnMut(Fold) -> usize) {
+        let Some(container) = self.container() else {
+            return;
+        };
+
+        let new_index = container
+            .start_points
+            .partition_point(|sfp| get_idx(sfp.fold(container)) < idx);
+
+        // verify that the fold at the new index is superest
+        if let Some(fold) = container
+            .start_points
+            .get(new_index)
+            .map(|sfp| sfp.fold(container))
+            .filter(|fold| !fold.is_superest())
+        {
+            let msg = format!(
+                "Unexpected nested fold.\n\
+                idx = {idx}\n\
+                fold = {fold:#?}"
+            );
+            if cfg!(debug_assertions) {
+                panic!("{msg}");
+            } else {
+                log::error!("{msg}");
+            }
+        }
+
+        self.current_index.set(new_index as isize);
+    }
+
+    /// Returns the next fold if `idx` is equal to `get_idx(fold)`.
+    pub fn consume_next(
+        &self,
+        idx: usize,
+        mut get_idx: impl FnMut(Fold) -> usize,
+    ) -> Option<Fold<'a>> {
+        let container = self.container()?;
+        let current_index: usize = self.current_index.get().try_into().ok()?;
+        let fold = container
+            .start_points
+            .get(current_index)
+            .map(|sfp| sfp.fold(container))?;
+
+        let fold_idx = get_idx(fold);
+
+        if fold_idx < idx {
+            let msg = format!(
+                "Unexpected fold.\n\
+                idx = {idx}\n\
+                fold index = {fold_idx}\n\
+                fold = {fold:#?}"
+            );
+            if cfg!(debug_assertions) {
+                panic!("{msg}");
+            } else {
+                log::error!("{msg}");
+            }
+        }
+
+        (fold_idx == idx).then(|| {
+            self.current_index.set(fold.end_idx() as isize + 1);
+            fold
+        })
+    }
+
+    /// Returns the previous fold if `idx` is equal to `get_idx(fold)`.
+    pub fn consume_prev(&self, idx: usize, mut get_idx: impl FnMut(Fold) -> usize) -> Option<Fold> {
+        let container = self.container()?;
+        let current_index: usize = (self.current_index.get() - 1).try_into().ok()?;
+        let fold = container
+            .end_points
+            .get(current_index)
+            .map(|efp| efp.fold(container))?;
+
+        let fold_idx = get_idx(fold);
+
+        if fold_idx > idx {
+            let msg = format!(
+                "Unexpected fold.\n\
+                idx = {idx}\n\
+                fold idx = {fold_idx}\n\
+                fold = {fold:#?}"
+            );
+            if cfg!(debug_assertions) {
+                panic!("{msg}");
+            } else {
+                log::error!("{msg}");
+            }
+        }
+
+        (fold_idx == idx).then(|| {
+            self.current_index.set(fold.start_idx() as isize);
+            fold
+        })
+    }
+
+    pub fn superest_fold_containing(
+        &self,
+        idx: usize,
+        get_range: impl FnMut(Fold) -> ops::RangeInclusive<usize>,
+    ) -> Option<Fold> {
+        self.container()
+            .and_then(|container| container.superest_fold_containing(idx, get_range))
+    }
+
+    /// Returns the number of folded lines that are included in `line_range`.
+    /// # Invariant
+    /// `line_range` must have non-folded start and end lines.
+    pub fn folded_lines_between(&self, line_range: &ops::RangeInclusive<usize>) -> usize {
+        let Some(container) = self.container() else {
+            return 0;
+        };
+
+        container
+            .start_points_in_range(line_range, |sfp| sfp.line)
+            .iter()
+            .map(|sfp| sfp.fold(container))
+            .filter(|fold| fold.is_superest())
+            .map(|fold| fold.end.line - fold.start.line + 1)
+            .sum()
     }
 }
