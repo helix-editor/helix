@@ -13,6 +13,7 @@ use std::ptr::NonNull;
 use std::{slice, str};
 
 use crate::chars::{char_is_whitespace, char_is_word};
+use crate::text_folding::FoldAnnotations;
 use crate::LineEnding;
 
 #[inline]
@@ -209,6 +210,84 @@ pub fn nth_next_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -
     }
     let tmp = byte_to_char_idx(chunk, byte_idx - chunk_byte_idx);
     chunk_char_idx + tmp
+}
+
+#[must_use]
+// OPTIMIZE: consider inlining fold-checking into `nth_prev_grapheme_boundary`
+// to avoid `prev_grapheme_boundary` loop calls.
+pub fn nth_prev_folded_grapheme_boundary(
+    slice: RopeSlice,
+    annotations: &FoldAnnotations,
+    mut char_idx: usize,
+    n: usize,
+) -> usize {
+    if n == 0 {
+        return char_idx;
+    }
+
+    annotations.reset_pos(char_idx, |fold| fold.start.char);
+
+    for _ in 0..n {
+        char_idx = prev_grapheme_boundary(slice, char_idx);
+        if let Some(fold) = annotations.consume_prev(char_idx, |fold| fold.end.char) {
+            char_idx = prev_grapheme_boundary(slice, fold.start.char)
+        }
+    }
+
+    char_idx
+}
+
+#[must_use]
+// OPTIMIZE: consider inlining fold-checking into `nth_next_grapheme_boundary`
+// to avoid `next_grapheme_boundary` loop calls.
+pub fn nth_next_folded_grapheme_boundary(
+    slice: RopeSlice,
+    annotations: &FoldAnnotations,
+    mut char_idx: usize,
+    mut n: usize,
+) -> usize {
+    if n == 0 {
+        return char_idx;
+    }
+
+    annotations.reset_pos(char_idx, |fold| fold.start.char);
+
+    // This function is used for `Range`, which utilizes a gap index.
+    // Consequently, the right index of `Range` may be positioned at the start fold point char.
+    // This code handles that specific case.
+    if let Some(fold) = annotations.consume_next(char_idx, |fold| fold.start.char) {
+        char_idx = next_grapheme_boundary(slice, fold.end.char);
+        n -= 1;
+    }
+
+    for _ in 0..n {
+        char_idx = next_grapheme_boundary(slice, char_idx);
+        if let Some(fold) = annotations.consume_next(char_idx, |fold| fold.start.char) {
+            char_idx = next_grapheme_boundary(slice, fold.end.char)
+        }
+    }
+
+    char_idx
+}
+
+#[must_use]
+#[inline(always)]
+pub fn prev_folded_grapheme_boundary(
+    slice: RopeSlice,
+    annotations: &FoldAnnotations,
+    char_idx: usize,
+) -> usize {
+    nth_prev_folded_grapheme_boundary(slice, annotations, char_idx, 1)
+}
+
+#[must_use]
+#[inline(always)]
+pub fn next_folded_grapheme_boundary(
+    slice: RopeSlice,
+    annotations: &FoldAnnotations,
+    char_idx: usize,
+) -> usize {
+    nth_next_folded_grapheme_boundary(slice, annotations, char_idx, 1)
 }
 
 /// Finds the next grapheme boundary after the given char position.

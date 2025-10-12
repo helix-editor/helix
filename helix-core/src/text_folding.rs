@@ -89,6 +89,9 @@ use crate::Range;
 use crate::RopeSlice;
 use crate::Selection;
 
+pub use ropex::RopeSliceFoldExt;
+
+pub mod ropex;
 mod transaction;
 
 #[cfg(test)]
