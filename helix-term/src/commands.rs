@@ -5757,11 +5757,15 @@ fn split(editor: &mut Editor, action: Action) {
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
     let offset = doc.view_offset(view.id);
+    let container = doc.fold_container(view.id).cloned();
 
     editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = current!(editor);
+    if let Some(container) = container {
+        doc.insert_fold_container(view.id, container);
+    }
     doc.set_selection(view.id, selection);
     // match the view scroll offset (switch doesn't handle this fully
     // since the selection is only matched after the split)

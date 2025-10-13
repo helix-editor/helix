@@ -1588,3 +1588,44 @@ async fn open() -> anyhow::Result<()> {
     )
     .await
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn default_folding() -> anyhow::Result<()> {
+    use helix_view::editor::LspConfig;
+
+    let config = Config {
+        editor: helix_view::editor::Config {
+            fold_textobjects: vec!["class".into(), "function".into()],
+            lsp: LspConfig {
+                // suppress lsp error
+                enable: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let app = &mut AppBuilder::new()
+        .with_file(RUST_CODE, None)
+        .with_lang_loader(helpers::test_syntax_loader(None))
+        .with_config(config)
+        .build()
+        .unwrap();
+
+    test_key_sequence(
+        app,
+        None,
+        Some(&|app| {
+            let (view, doc) = current_ref!(&app.editor);
+            let container = doc
+                .fold_container(view.id)
+                .expect("Container must be initialized.");
+
+            let folds_number = container.len();
+            assert_eq!(folds_number, 11);
+        }),
+        false,
+    )
+    .await
+}
