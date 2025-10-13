@@ -1444,3 +1444,147 @@ async fn unfold() -> anyhow::Result<()> {
     )
     .await
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn open() -> anyhow::Result<()> {
+    let app = &mut AppBuilder::new()
+        .with_file(RUST_CODE, None)
+        .with_lang_loader(helpers::test_syntax_loader(None))
+        .build()
+        .unwrap();
+
+    // (text of the new line, additional folds number)
+    type TestResult<'a> = (String, isize);
+
+    let prev_folds_number = Cell::new(0);
+    // NOTE: new_line is one-based indexing
+    let result = |app: &Application, new_line: usize| -> TestResult {
+        let (view, doc) = current_ref!(&app.editor);
+        let text = doc.text().slice(..);
+        let container = doc
+            .fold_container(view.id)
+            .expect("Container must be initialized.");
+
+        let additional_folds_number = {
+            let folds_number = container.len();
+            folds_number as isize - prev_folds_number.replace(folds_number) as isize
+        };
+
+        let new_line = text.line(new_line - 1).as_str().unwrap();
+
+        (new_line.into(), additional_folds_number)
+    };
+
+    test_key_sequences(
+        app,
+        vec![
+            (
+                Some(":fold -a -d class<ret>"),
+                Some(&|app| {
+                    let (view, doc) = current_ref!(&app.editor);
+                    let container = doc
+                        .fold_container(view.id)
+                        .expect("Container must be initialized.");
+
+                    prev_folds_number.set(container.len());
+                }),
+            ),
+            (
+                Some(
+                    "g53g\
+                    o\
+                    new text<esc>",
+                ),
+                Some(&|app| {
+                    let expected = ("    new text\n".into(), 0);
+                    assert_eq!(result(app, 55), expected);
+                }),
+            ),
+            (Some("xd"), None),
+            (
+                Some(
+                    "g55g\
+                    O\
+                    new text<esc>",
+                ),
+                Some(&|app| {
+                    let expected = ("    new text\n".into(), 0);
+                    assert_eq!(result(app, 55), expected);
+                }),
+            ),
+            (Some("xd"), None),
+            (
+                Some(
+                    "g63g\
+                    o\
+                    new text<esc>",
+                ),
+                Some(&|app| {
+                    let expected = ("        new text\n".into(), -1);
+                    assert_eq!(result(app, 71), expected);
+                }),
+            ),
+            (
+                Some("xdzf"),
+                Some(&|app| {
+                    let (view, doc) = current_ref!(&app.editor);
+                    let container = doc
+                        .fold_container(view.id)
+                        .expect("Container must be initialized.");
+
+                    prev_folds_number.set(container.len());
+                }),
+            ),
+            (
+                Some(
+                    "g71g\
+                    O\
+                    new text<esc>",
+                ),
+                Some(&|app| {
+                    let expected = ("        new text\n".into(), -1);
+                    assert_eq!(result(app, 71), expected);
+                }),
+            ),
+            (
+                Some(
+                    "gg\
+                    o\
+                    new text<esc>",
+                ),
+                Some(&|app| {
+                    let expected = ("new text\n".into(), 0);
+                    assert_eq!(result(app, 4), expected);
+                }),
+            ),
+            (
+                Some(
+                    "xd\
+                    gg\
+                    zF",
+                ),
+                Some(&|app| {
+                    let (view, doc) = current_ref!(&app.editor);
+                    let container = doc
+                        .fold_container(view.id)
+                        .expect("Container must be initialized.");
+
+                    prev_folds_number.set(container.len());
+                }),
+            ),
+            (
+                Some(
+                    "g3g\
+                    o\
+                    new text<esc>",
+                ),
+                Some(&|app| {
+                    let expected = ("//! new text\n".into(), 0);
+                    assert_eq!(result(app, 4), expected);
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}

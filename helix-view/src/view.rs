@@ -12,7 +12,7 @@ use helix_core::{
     char_idx_at_visual_offset,
     doc_formatter::TextFormat,
     text_annotations::TextAnnotations,
-    text_folding::RopeSliceFoldExt,
+    text_folding::{FoldAnnotations, RopeSliceFoldExt},
     visual_offset_from_anchor, visual_offset_from_block, Position, RopeSlice, Selection,
     Transaction,
     VisualOffsetError::{PosAfterMaxRow, PosBeforeAnchorRow},
@@ -517,6 +517,10 @@ impl View {
         }
 
         text_annotations
+    }
+
+    pub fn fold_annotations<'a>(&self, doc: &'a Document) -> FoldAnnotations<'a> {
+        FoldAnnotations::new(doc.fold_container(self.id))
     }
 
     pub fn text_pos_at_screen_coords(

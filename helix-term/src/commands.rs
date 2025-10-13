@@ -28,6 +28,7 @@ use helix_core::{
     encoding, find_workspace,
     graphemes::{
         self, next_folded_grapheme_boundary, next_grapheme_boundary, prev_folded_grapheme_boundary,
+        prev_grapheme_boundary,
     },
     history::UndoKind,
     increment,
@@ -2661,6 +2662,7 @@ fn extend_line_above(cx: &mut Context) {
 fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
+    let annotations = view.fold_annotations(doc);
 
     let text = doc.text();
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -2675,18 +2677,48 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
         // extend to previous/next line if current line is selected
         let (anchor, head) = if range.from() == start && range.to() == end {
             match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count))),
+                Extend::Above => (
+                    end,
+                    text.line_to_char(text.slice(..).nth_prev_folded_line(
+                        &annotations,
+                        start_line,
+                        count,
+                    )),
+                ),
                 Extend::Below => (
                     start,
-                    text.line_to_char((end_line + count + 1).min(text.len_lines())),
+                    text.line_to_char({
+                        let mut idx =
+                            text.slice(..)
+                                .nth_next_folded_line(&annotations, end_line, count);
+                        if idx < text.len_lines() {
+                            idx += 1;
+                        }
+                        idx
+                    }),
                 ),
             }
         } else {
             match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count - 1))),
+                Extend::Above => (
+                    end,
+                    text.line_to_char(text.slice(..).nth_prev_folded_line(
+                        &annotations,
+                        start_line,
+                        count - 1,
+                    )),
+                ),
                 Extend::Below => (
                     start,
-                    text.line_to_char((end_line + count).min(text.len_lines())),
+                    text.line_to_char({
+                        let mut idx =
+                            text.slice(..)
+                                .nth_next_folded_line(&annotations, end_line, count - 1);
+                        if idx < text.len_lines() {
+                            idx += 1;
+                        }
+                        idx
+                    }),
                 ),
             }
         };
@@ -3590,7 +3622,7 @@ async fn make_format_callback(
     Ok(call)
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Open {
     Below,
     Above,
@@ -3608,6 +3640,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let loader = cx.editor.syn_loader.load();
+    let mut annotations = view.text_annotations(doc, None);
 
     let text = doc.text().slice(..);
     let contents = doc.text();
@@ -3625,6 +3658,33 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
         };
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
+        // if open is Below and next line is folded,
+        // move the range to the next visible line, and open Above
+        let (range, open) = (open == Open::Below)
+            .then(|| {
+                let next_line_is_folded = {
+                    let next_line = text.char_to_line(prev_grapheme_boundary(text, range.to())) + 1;
+                    annotations
+                        .folds
+                        .superest_fold_containing(next_line, |fold| fold.start.line..=fold.end.line)
+                        .is_some()
+                };
+
+                next_line_is_folded.then(|| {
+                    move_vertically(
+                        text,
+                        *range,
+                        Direction::Forward,
+                        1,
+                        Movement::Move,
+                        &TextFormat::default(),
+                        &mut annotations,
+                    )
+                })
+            })
+            .flatten()
+            .map_or((*range, open), |range| (range, Open::Above));
+
         // the line number, where the cursor is currently
         let curr_line_num = text.char_to_line(match open {
             Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
@@ -3716,6 +3776,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             Some(text.into()),
         )
     });
+    drop(annotations);
 
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
@@ -3792,12 +3853,22 @@ fn extend_to_last_line(cx: &mut Context) {
 fn goto_last_line_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    let line_idx = if text.line(text.len_lines() - 1).len_chars() == 0 {
-        // If the last line is blank, don't jump to it.
-        text.len_lines().saturating_sub(2)
+    let annotations = &view.fold_annotations(doc);
+
+    let last_visible_line = if let Some(fold) = annotations
+        .superest_fold_containing(text.len_lines(), |fold| fold.start.line..=fold.end.line)
+    {
+        fold.start.line - 1
     } else {
-        text.len_lines() - 1
+        text.len_lines().saturating_sub(1)
     };
+
+    let line_idx = if text.line(last_visible_line).len_chars() == 0 {
+        text.prev_folded_line(annotations, last_visible_line)
+    } else {
+        last_visible_line
+    };
+
     let pos = text.line_to_char(line_idx);
     let selection = doc
         .selection(view.id)
@@ -4701,6 +4772,7 @@ fn paste_impl(
 
     let text = doc.text();
     let selection = doc.selection(view.id);
+    let annotations = view.fold_annotations(doc);
 
     let mut offset = 0;
     let mut ranges = SmallVec::with_capacity(selection.len());
@@ -4712,12 +4784,15 @@ fn paste_impl(
             // paste linewise after
             (Paste::After, true) => {
                 let line = range.line_range(text.slice(..)).1;
-                text.line_to_char((line + 1).min(text.len_lines()))
+                text.line_to_char(text.slice(..).next_folded_line(&annotations, line))
             }
             // paste insert
             (Paste::Before, false) => range.from(),
             // paste append
-            (Paste::After, false) => range.to(),
+            (Paste::After, false) => text.slice(..).next_folded_char(
+                &annotations,
+                prev_grapheme_boundary(text.slice(..), range.to()),
+            ),
             // paste at cursor
             (Paste::Cursor, _) => range.cursor(text.slice(..)),
         };
