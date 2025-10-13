@@ -16,6 +16,7 @@ use super::{align_view, push_jump, Align, Context, Editor};
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
     text_annotations::InlineAnnotation, Selection, Uri,
+    text_folding::ropex::RopeSliceFoldExt,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -1298,7 +1299,7 @@ fn compute_inlay_hints_for_view(
         .next()?;
 
     let doc_text = doc.text();
-    let len_lines = doc_text.len_lines();
+    let annotations = &view.fold_annotations(doc);
 
     // Compute ~3 times the current view height of inlay hints, that way some scrolling
     // will not show half the view with hints and half without while still being faster
@@ -1308,9 +1309,7 @@ fn compute_inlay_hints_for_view(
     let first_visible_line =
         doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
     let first_line = first_visible_line.saturating_sub(view_height);
-    let last_line = first_visible_line
-        .saturating_add(view_height.saturating_mul(2))
-        .min(len_lines);
+    let last_line = doc_text.slice(..).nth_next_folded_line(annotations, first_visible_line, view_height.saturating_mul(2));
 
     let new_doc_inlay_hints_id = DocumentInlayHintsId {
         first_line,
