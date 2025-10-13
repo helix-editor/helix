@@ -615,6 +615,8 @@ impl MappableCommand {
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
+        fold, "Fold text objects",
+        unfold, "Unfold text objects",
     );
 }
 
@@ -6971,4 +6973,14 @@ fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
     } else {
         syntax_workspace_symbol_picker(cx);
     }
+}
+
+fn fold(cx: &mut Context) {
+    let command: MappableCommand = ":fold --all".parse().unwrap();
+    command.execute(cx);
+}
+
+fn unfold(cx: &mut Context) {
+    let command: MappableCommand = ":unfold --all".parse().unwrap();
+    command.execute(cx);
 }

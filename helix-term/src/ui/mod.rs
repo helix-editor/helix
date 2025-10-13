@@ -783,6 +783,14 @@ pub mod completers {
 
         completions
     }
+
+    pub fn foldable_textobjects(_editor: &Editor, input: &str) -> Vec<Completion> {
+        let textobjects = ["class", "function", "comment"];
+        fuzzy_match(input, textobjects.iter(), false)
+            .into_iter()
+            .map(|(name, _)| ((0..), (*name).into()))
+            .collect()
+    }
 }
 
 #[cfg(test)]

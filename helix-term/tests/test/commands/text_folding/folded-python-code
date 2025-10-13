@@ -1,0 +1,24 @@
+# top comment
+
+
+class Fizz:
+
+
+# comment
+def f(a, b):
+    """
+    doc comment
+    doc comment
+    doc comment
+    """
+
+    class Nested:
+
+    def nested(a, b):
+        # interfering comment
+        """
+
+    c = a + b
+    d = a + b + c
+    # nested comment
+    return c + d  # interfering comment

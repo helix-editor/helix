@@ -6,6 +6,7 @@ mod insert;
 mod movement;
 mod reverse_selection_contents;
 mod rotate_selection_contents;
+mod text_folding;
 mod write;
 
 #[tokio::test(flavor = "multi_thread")]

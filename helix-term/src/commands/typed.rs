@@ -10,6 +10,8 @@ use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
+use helix_core::syntax::Loader;
+use helix_core::text_folding;
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
@@ -2636,6 +2638,504 @@ fn echo(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
     Ok(())
 }
 
+/// The signature is public because it is used
+/// for default folding when a file is opened.
+pub const FOLD_SIGNATURE: Signature = Signature {
+    positionals: (0, None),
+    flags: &[
+        Flag {
+            name: "selection",
+            alias: Some('s'),
+            doc: "Fold selection text.",
+            ..Flag::DEFAULT
+        },
+        Flag {
+            name: "document",
+            alias: Some('d'),
+            doc: "Fold textobjects within an entire document.",
+            ..Flag::DEFAULT
+        },
+        Flag {
+            name: "all",
+            alias: Some('a'),
+            doc: "Fold all textobjects, excluding specified ones.",
+            ..Flag::DEFAULT
+        },
+    ],
+    ..Signature::DEFAULT
+};
+
+fn fold(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
+
+    if args.has_flag("selection") {
+        fold_selection(doc, view, args)
+    } else {
+        let loader = cx.editor.syn_loader.load();
+        fold_textobjects(doc, view, &loader, args)
+    }
+}
+
+fn fold_selection(doc: &mut Document, view: &View, args: Args) -> anyhow::Result<()> {
+    use text_folding::{Fold, FoldObject};
+
+    // additional validation
+    let invalid = args.has_flag("document") || args.has_flag("all") || args.first().is_some();
+    if invalid {
+        return Err(anyhow!(
+            "Flag `document`, flag `all`, and positional arguments are unavailable \
+            with the flag `selection`."
+        ));
+    }
+
+    let text = doc.text().slice(..);
+    let range = doc.selection(view.id).primary();
+    let (start, end) = range.line_range(text);
+
+    if start == end {
+        return Err(anyhow!(
+            "Nothing to fold. \
+            The line range of the selection must include at least two lines."
+        ));
+    }
+
+    if line_ending::get_line_ending(&text.line(end)).is_none() {
+        return Err(anyhow!(
+            "Nothing to fold. \
+            The end line of the selection must have a line ending."
+        ));
+    }
+
+    let object = FoldObject::Selection;
+    let header = text.line_to_char(start);
+    let target = {
+        let start = text.line_to_char(start + 1)
+            + text
+                .line(start + 1)
+                .first_non_whitespace_char()
+                .unwrap_or(0);
+        let end = text
+            .line(end)
+            .last_non_whitespace_char()
+            .map_or(line_end_char_index(&text, end), |char| {
+                text.line_to_char(end) + char
+            });
+        start..=end
+    };
+
+    let points = vec![Fold::new_points(text, object, header, &target)];
+    doc.replace_folds(view, points);
+
+    Ok(())
+}
+
+/// The function is public because it is used
+/// for default folding when a file is opened.
+pub fn fold_textobjects(
+    doc: &mut Document,
+    view: &View,
+    loader: &Loader,
+    args: Args,
+) -> anyhow::Result<()> {
+    use std::cmp::{max, min};
+    use std::ops;
+
+    use graphemes::{ensure_grapheme_boundary_prev, prev_grapheme_boundary};
+    use text_folding::{Fold, FoldObject};
+
+    let Some(syntax) = doc.syntax() else {
+        return Err(anyhow!("Syntax is unavailable in the current buffer."));
+    };
+
+    let Some(textobject_query) = loader.textobject_query(syntax.root_language()) else {
+        return Err(anyhow!("Failed to compile text object query."));
+    };
+
+    let text = doc.text().slice(..);
+    let root_node = syntax.tree().root_node();
+    let range = doc.selection(view.id).primary();
+
+    let textobjects: Vec<_> = ["class", "function", "comment"]
+        .into_iter()
+        .filter(|textobject| args.contains(textobject) ^ args.has_flag("all"))
+        .map(|textobject| match textobject {
+            "class" => "class.around",
+            "function" => "function.around",
+            "comment" => "comment.around",
+            other => unreachable!("Unexpected textobject {other}."),
+        })
+        .collect();
+    if textobjects.is_empty() {
+        return Err(anyhow!("The list of text objects is empty."));
+    }
+
+    // the range is used to determine search boundaries
+    let search_range = if args.has_flag("document") {
+        0..text.len_bytes()
+    } else {
+        let (start, end) = range.into_byte_range(text);
+        start..end
+    };
+
+    // the range is used to determine nesting
+    let nesting_range = if args.has_flag("document") {
+        0..text.len_bytes()
+    } else {
+        let start = text.char_to_byte(range.from());
+        let end = if range.is_empty() {
+            text.char_to_byte(range.from())
+        } else {
+            text.char_to_byte(prev_grapheme_boundary(text, range.to()))
+        };
+
+        let join = |r1: &ops::Range<_>, r2: &ops::Range<_>| {
+            let start = min(r1.start, r2.start);
+            let end = max(r1.end, r2.end);
+            start..end
+        };
+
+        // the range of the captured node contains the start byte
+        let top = textobject_query
+            .capture_nodes_all(&textobjects, &root_node, text)
+            .map(|(_, cap_node)| cap_node.byte_range())
+            .filter(|range| range.contains(&start))
+            .min_by_key(|range| range.len());
+
+        // the range of the captured node contains the end byte
+        let bottom = textobject_query
+            .capture_nodes_all(&textobjects, &root_node, text)
+            .map(|(_, cap_node)| cap_node.byte_range())
+            .filter(|range| range.contains(&end))
+            .min_by_key(|range| range.len());
+
+        match (top, bottom) {
+            (None, None) => 0..text.len_bytes(),
+            (None, Some(range)) | (Some(range), None) => join(&range, &search_range),
+            (Some(top), Some(bottom)) => {
+                let joined = join(&top, &bottom);
+                if joined == top {
+                    bottom
+                } else if joined == bottom {
+                    top
+                } else {
+                    joined
+                }
+            }
+        }
+    };
+
+    let fold_points: Vec<_> = textobject_query
+        .capture_nodes_all(&textobjects, &root_node, text)
+        .filter_map(|(cap, cap_node)| {
+            let range = cap_node.byte_range();
+
+            // the captured node's range overlaps with the search range
+            let overlapped = {
+                let start = max(range.start, search_range.start);
+                let end = min(range.end, search_range.end);
+                !(start..end).is_empty()
+            };
+
+            // the captured node's range is nested within the nesting range
+            let nested = {
+                let start = max(range.start, nesting_range.start);
+                let end = min(range.end, nesting_range.end);
+                (start..end) == range
+            };
+
+            (overlapped && nested).then_some((cap, range))
+        })
+        .filter_map(|(cap, range)| {
+            let capture_name = cap.name(textobject_query.query());
+            match capture_name {
+                "class.around" | "function.around" => {
+                    let (capture, textobject) = match capture_name {
+                        "class.around" => ("class.inside", "class"),
+                        "function.around" => ("function.inside", "function"),
+                        _ => unreachable!(),
+                    };
+                    let node = syntax
+                        .descendant_for_byte_range(range.start as u32, range.end as u32)
+                        .expect("The range must belong to the captured node.");
+                    textobject_query
+                        .capture_nodes(capture, &node, text)?
+                        .next()
+                        .map(|cap_node| {
+                            let header = text.byte_to_char(range.start);
+                            let target = {
+                                let start = text.byte_to_char(cap_node.start_byte());
+                                let end = ensure_grapheme_boundary_prev(
+                                    text,
+                                    text.byte_to_char(cap_node.end_byte() - 1),
+                                );
+                                start..=end
+                            };
+                            (FoldObject::TextObject(textobject), header, target)
+                        })
+                }
+                "comment.around" => {
+                    let start_line = text.byte_to_line(range.start);
+                    let end_line = text.byte_to_line(range.end - 1);
+                    (start_line < end_line).then(|| {
+                        let object = FoldObject::TextObject("comment");
+                        let header = text.byte_to_char(range.start);
+                        let target = {
+                            let start = text.line_to_char(start_line + 1)
+                                + text
+                                    .line(start_line + 1)
+                                    .first_non_whitespace_char()
+                                    .unwrap_or(0);
+                            let end = ensure_grapheme_boundary_prev(
+                                text,
+                                text.byte_to_char(range.end - 1),
+                            );
+                            start..=end
+                        };
+                        (object, header, target)
+                    })
+                }
+                other => unreachable!("Unexpected capture name: {other}."),
+            }
+        })
+        // the last line of target must have line ending
+        .filter(|(_, _, target)| {
+            let end_line = text.line(text.char_to_line(*target.end()));
+            line_ending::get_line_ending(&end_line).is_some()
+        })
+        // create fold points
+        .map(|(object, header, target)| Fold::new_points(text, object, header, &target))
+        // filter out existing folds
+        .filter(|(sfp, efp)| {
+            let Some(container) = doc.fold_container(view.id) else {
+                return true;
+            };
+            let fold = Fold::new(sfp, efp);
+            let target = |fold: Fold| fold.start.target..=fold.end.target;
+            container
+                .find(fold.object(), &target(fold), target)
+                .is_none()
+        })
+        .collect();
+    if fold_points.is_empty() {
+        return Err(anyhow!("Nothing to fold."));
+    }
+
+    doc.add_folds(view, fold_points);
+
+    Ok(())
+}
+
+fn unfold(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
+
+    if args.has_flag("selection") {
+        unfold_selection(doc, view, args)
+    } else {
+        let loader = cx.editor.syn_loader.load();
+        unfold_textobjects(doc, view, &loader, args)
+    }
+}
+
+fn unfold_selection(doc: &mut Document, view: &View, args: Args) -> anyhow::Result<()> {
+    use std::cmp::{max, min};
+
+    use graphemes::prev_grapheme_boundary;
+    use text_folding::FoldObject;
+
+    // additional validation
+    let invalid = args.has_flag("all") || args.first().is_some();
+    if invalid {
+        return Err(anyhow!(
+            "Flag `all` and positional arguments are unavailable \
+            with the flag `selection`."
+        ));
+    }
+
+    let text = doc.text().slice(..);
+    let Some(container) = doc.fold_container(view.id) else {
+        return Err(anyhow!("Fold container is empty."));
+    };
+    let range = doc.selection(view.id).primary();
+
+    // the range is used to determine search boundaries
+    let search_range = if args.has_flag("document") {
+        0..=prev_grapheme_boundary(text, text.len_chars())
+    } else {
+        let start = range.from();
+        let end = if range.from() == range.to() {
+            range.to()
+        } else {
+            prev_grapheme_boundary(text, range.to())
+        };
+        start..=end
+    };
+
+    let start_indices: Vec<_> = container
+        .start_points()
+        .iter()
+        .enumerate()
+        .filter(|(_, sfp)| matches!(sfp.object, FoldObject::Selection))
+        .filter(|(_, sfp)| sfp.is_superest() || args.has_flag("recursive"))
+        .filter(|(_, sfp)| {
+            let fold = sfp.fold(container);
+            let range = fold.header()..=fold.end.target;
+
+            let start = max(*range.start(), *search_range.start());
+            let end = min(*range.end(), *search_range.end());
+            !(start..=end).is_empty()
+        })
+        .map(|(idx, _)| idx)
+        .collect();
+    if start_indices.is_empty() {
+        return Err(anyhow!("Nothing to unfold."));
+    }
+
+    doc.remove_folds(view, start_indices);
+
+    Ok(())
+}
+
+fn unfold_textobjects(
+    doc: &mut Document,
+    view: &View,
+    loader: &Loader,
+    args: Args,
+) -> anyhow::Result<()> {
+    use std::cmp::{max, min};
+    use std::ops;
+
+    use graphemes::prev_grapheme_boundary;
+    use text_folding::FoldObject;
+
+    let Some(syntax) = doc.syntax() else {
+        return Err(anyhow!("Syntax is unavailable in the current buffer."));
+    };
+
+    let Some(textobject_query) = loader.textobject_query(syntax.root_language()) else {
+        return Err(anyhow!("Failed to compile text object query."));
+    };
+
+    let text = doc.text().slice(..);
+    let root_node = syntax.tree().root_node();
+    let Some(container) = doc.fold_container(view.id) else {
+        return Err(anyhow!("Fold container is empty."));
+    };
+    let range = doc.selection(view.id).primary();
+    let (start, end) = range.into_byte_range(text);
+
+    let textobjects: Vec<_> = ["class", "function", "comment"]
+        .into_iter()
+        .filter(|textobject| args.contains(textobject) ^ args.has_flag("all"))
+        .map(|textobject| match textobject {
+            "class" => "class.around",
+            "function" => "function.around",
+            "comment" => "comment.around",
+            _ => unreachable!(),
+        })
+        .collect();
+    if textobjects.is_empty() {
+        return Err(anyhow!("The list of textobjects is empty."));
+    }
+
+    // the range is used to determine search boundaries
+    let search_range = if args.has_flag("document") {
+        0..text.len_bytes()
+    } else {
+        let (start, end) = range.into_byte_range(text);
+        start..end
+    };
+
+    // the range is used to determine nesting
+    let nesting_range = if args.has_flag("document") {
+        0..text.len_bytes()
+    } else {
+        let join = |r1: &ops::Range<_>, r2: &ops::Range<_>| {
+            let start = min(r1.start, r2.start);
+            let end = max(r1.end, r2.end);
+            start..end
+        };
+
+        // the range of the captured node contains the start byte
+        let top = textobject_query
+            .capture_nodes_all(&textobjects, &root_node, text)
+            .map(|(_, cap_node)| cap_node.byte_range())
+            .filter(|range| range.contains(&start))
+            .min_by_key(|range| range.len());
+
+        // the range of the captured node contains the end byte
+        let bottom = textobject_query
+            .capture_nodes_all(&textobjects, &root_node, text)
+            .map(|(_, cap_node)| cap_node.byte_range())
+            .filter(|range| range.contains(&end))
+            .min_by_key(|range| range.len());
+
+        match (top, bottom) {
+            (None, None) => 0..text.len_bytes(),
+            (None, Some(range)) | (Some(range), None) => join(&range, &search_range),
+            (Some(top), Some(bottom)) => join(&top, &bottom),
+        }
+    };
+
+    // convert the byte range into the char range inclusive
+    let convert = |range: ops::Range<_>| {
+        let start = text.byte_to_char(range.start);
+        let end = prev_grapheme_boundary(text, text.byte_to_char(range.end));
+        start..=end
+    };
+
+    let search_range = convert(search_range);
+    let nesting_range = convert(nesting_range);
+
+    let start_indices: Vec<_> = container
+        .start_points()
+        .iter()
+        .enumerate()
+        .filter(|(_, sfp)| {
+            matches!(sfp.object,
+                FoldObject::TextObject(textobject)
+                    if args.contains(textobject) ^ args.has_flag("all")
+            )
+        })
+        .filter(|(_, sfp)| sfp.is_superest() || args.has_flag("recursive"))
+        .filter(|(_, sfp)| {
+            let fold = sfp.fold(container);
+            let range = fold.header()..=fold.end.target;
+
+            // the fold's range overlaps with the search range
+            let overlapped = {
+                let start = max(*range.start(), *search_range.start());
+                let end = min(*range.end(), *search_range.end());
+                !(start..=end).is_empty()
+            };
+
+            // the fold's range is nested within the nesting range
+            let nested = {
+                let start = max(*range.start(), *nesting_range.start());
+                let end = min(*range.end(), *nesting_range.end());
+                (start..=end) == range
+            };
+
+            overlapped && nested
+        })
+        .map(|(idx, _)| idx)
+        .collect();
+    if start_indices.is_empty() {
+        return Err(anyhow!("Nothing to unfold."));
+    }
+
+    doc.remove_folds(view, start_indices);
+
+    Ok(())
+}
+
 fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyhow::Result<()> {
     Ok(())
 }
@@ -3652,6 +4152,51 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (1, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "fold",
+        aliases: &[],
+        doc: "Fold text.",
+        fun: fold,
+        completer: CommandCompleter::all(completers::foldable_textobjects),
+        signature: FOLD_SIGNATURE,
+    },
+    TypableCommand {
+        name: "unfold",
+        aliases: &[],
+        doc: "Unfold text.",
+        fun: unfold,
+        completer: CommandCompleter::all(completers::foldable_textobjects),
+        signature: Signature {
+            positionals: (0, Some(3)),
+            flags: &[
+                Flag {
+                    name: "selection",
+                    alias: Some('s'),
+                    doc: "Unfold folds that were folded with the flag `selection`.",
+                    ..Flag::DEFAULT
+                },
+                Flag {
+                    name: "document",
+                    alias: Some('d'),
+                    doc: "Unfold folds within an entire document.",
+                    ..Flag::DEFAULT
+                },
+                Flag {
+                    name: "all",
+                    alias: Some('a'),
+                    doc: "Unfold all textobjects, excluding specified ones.",
+                    ..Flag::DEFAULT
+                },
+                Flag {
+                    name: "recursive",
+                    alias: Some('r'),
+                    doc: "Unfold both superest and nested folds.",
+                    ..Flag::DEFAULT
+                },
+            ],
             ..Signature::DEFAULT
         },
     },

@@ -1050,6 +1050,39 @@ impl TextObjectQuery {
             })
     }
 
+    pub fn capture_nodes_all<'a>(
+        &'a self,
+        capture_names: &'a [&str],
+        node: &Node<'a>,
+        slice: RopeSlice<'a>,
+    ) -> impl Iterator<Item = (Capture, CapturedNode)> + use<'a> {
+        let mut cursor = self.cursor(node, slice);
+        let captures: Vec<_> = capture_names
+            .iter()
+            .filter_map(|name| self.query.get_capture(name))
+            .collect();
+
+        iter::from_fn(move || {
+            cursor.next_match().map(|query_match| {
+                captures
+                    .iter()
+                    .filter_map(|&cap| {
+                        let nodes: Vec<_> = query_match.nodes_for_capture(cap).cloned().collect();
+                        match nodes.len() {
+                            0 => None,
+                            1 => nodes
+                                .into_iter()
+                                .map(|n| (cap, CapturedNode::Single(n)))
+                                .next(),
+                            2.. => Some((cap, CapturedNode::Grouped(nodes))),
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+        })
+        .flatten()
+    }
+
     pub fn cursor<'a>(
         &'a self,
         node: &Node<'a>,
@@ -1060,6 +1093,10 @@ impl TextObjectQuery {
             node,
             RopeInput::new(slice),
         )
+    }
+
+    pub fn query(&self) -> &Query {
+        &self.query
     }
 }
 

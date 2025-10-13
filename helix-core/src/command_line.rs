@@ -932,6 +932,10 @@ impl<'a> Args<'a> {
         self.positionals.join(sep)
     }
 
+    pub fn contains(&self, arg: &str) -> bool {
+        self.positionals.contains(&Cow::Borrowed(arg))
+    }
+
     /// Returns an iterator over all positional arguments.
     pub fn iter(&self) -> slice::Iter<'_, Cow<'_, str>> {
         self.positionals.iter()

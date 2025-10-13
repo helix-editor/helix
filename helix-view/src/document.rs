@@ -12,7 +12,7 @@ use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
-use helix_core::text_folding::FoldContainer;
+use helix_core::text_folding::{EndFoldPoint, FoldContainer, StartFoldPoint};
 use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
@@ -151,7 +151,7 @@ pub struct Document {
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
-    pub fold_container: HashMap<ViewId, FoldContainer>,
+    fold_container: HashMap<ViewId, FoldContainer>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
@@ -2313,11 +2313,52 @@ impl Document {
         self.fold_container.insert(view_id, container);
     }
 
-    /// `None` when container is empty.
     pub fn fold_container(&self, view_id: ViewId) -> Option<&FoldContainer> {
-        self.fold_container
-            .get(&view_id)
-            .filter(|container| !container.is_empty())
+        self.fold_container.get(&view_id)
+    }
+
+    fn add_folds_impl(
+        &mut self,
+        view: &View,
+        fold_points: Vec<(StartFoldPoint, EndFoldPoint)>,
+        replace: bool,
+    ) {
+        let text = self.text.slice(..);
+        let range = self.selection(view.id).primary();
+        let container = self.fold_container.entry(view.id).or_default();
+
+        if replace {
+            container.replace(text, fold_points);
+        } else {
+            container.add(text, fold_points);
+        }
+
+        let range = container.throw_range_out_of_folds(text, range);
+        self.set_selection(view.id, Selection::single(range.anchor, range.head));
+
+        let scrolloff = self.config.load().scrolloff;
+        view.ensure_cursor_in_view(self, scrolloff);
+    }
+
+    pub fn add_folds(&mut self, view: &View, fold_points: Vec<(StartFoldPoint, EndFoldPoint)>) {
+        self.add_folds_impl(view, fold_points, false);
+    }
+
+    pub fn replace_folds(&mut self, view: &View, fold_points: Vec<(StartFoldPoint, EndFoldPoint)>) {
+        self.add_folds_impl(view, fold_points, true);
+    }
+
+    pub fn remove_folds(&mut self, view: &View, start_indices: Vec<usize>) {
+        let text = self.text.slice(..);
+        let container = self
+            .fold_container
+            .get_mut(&view.id)
+            .expect("Container must be initialized");
+
+        container.remove(text, start_indices);
+
+        let scrolloff = self.config.load().scrolloff;
+        view.ensure_cursor_in_view(self, scrolloff);
     }
 }
 
