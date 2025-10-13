@@ -427,6 +427,10 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+
+    /// Whether or not to use steel for configuration. Defaults to `true`. If set to `false`,
+    /// the steel engine will not be initialized.
+    pub enable_steel: bool,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1122,6 +1126,12 @@ impl Default for Config {
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
+
+            #[cfg(feature = "steel")]
+            enable_steel: true,
+
+            #[cfg(not(feature = "steel"))]
+            enable_steel: false,
         }
     }
 }

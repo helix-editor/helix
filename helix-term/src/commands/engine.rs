@@ -33,13 +33,18 @@ pub enum PluginSystemTypes {
     Steel(steel::SteelScriptingEngine),
 }
 
-// The order in which the plugins will be evaluated against - if we wanted to include, lets say `rhai`,
-// we would have to order the precedence for searching for exported commands, or somehow merge them?
-const PLUGIN_PRECEDENCE: &[PluginSystemTypes] = &[
+const DEFAULT_PLUGIN_PRECEDENCE: &[PluginSystemTypes] = &[
     #[cfg(feature = "steel")]
     PluginSystemTypes::Steel(steel::SteelScriptingEngine),
     PluginSystemTypes::None(NoEngine),
 ];
+
+static PLUGIN_PRECEDENCE: once_cell::sync::OnceCell<Vec<PluginSystemTypes>> =
+    once_cell::sync::OnceCell::new();
+
+fn plugins() -> impl Iterator<Item = &'static PluginSystemTypes> {
+    PLUGIN_PRECEDENCE.get().unwrap().iter()
+}
 
 pub struct NoEngine;
 
@@ -85,7 +90,7 @@ impl TerminalEventReaderHandle {
 
 impl ScriptingEngine {
     pub fn initialize() {
-        for kind in PLUGIN_PRECEDENCE {
+        for kind in DEFAULT_PLUGIN_PRECEDENCE {
             manual_dispatch!(kind, initialize())
         }
     }
@@ -96,7 +101,22 @@ impl ScriptingEngine {
         language_configuration: Arc<ArcSwap<syntax::Loader>>,
         event_reader: TerminalEventReaderHandle,
     ) {
-        for kind in PLUGIN_PRECEDENCE {
+        // Set up a flag to disable steel, even on the current build?
+        if configuration.load().editor.enable_steel {
+            PLUGIN_PRECEDENCE
+                .set(vec![
+                    #[cfg(feature = "steel")]
+                    PluginSystemTypes::Steel(steel::SteelScriptingEngine),
+                    PluginSystemTypes::None(NoEngine),
+                ])
+                .ok();
+        } else {
+            PLUGIN_PRECEDENCE
+                .set(vec![PluginSystemTypes::None(NoEngine)])
+                .ok();
+        }
+
+        for kind in plugins() {
             manual_dispatch!(
                 kind,
                 run_initialization_script(
@@ -115,7 +135,7 @@ impl ScriptingEngine {
         cxt: &mut Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        for kind in PLUGIN_PRECEDENCE {
+        for kind in plugins() {
             let res = manual_dispatch!(kind, handle_keymap_event(editor, mode, cxt, event));
 
             if res.is_some() {
@@ -127,7 +147,7 @@ impl ScriptingEngine {
     }
 
     pub fn call_function_by_name(cx: &mut Context, name: &str, args: Vec<Cow<str>>) -> bool {
-        for kind in PLUGIN_PRECEDENCE {
+        for kind in plugins() {
             if manual_dispatch!(kind, call_function_by_name(cx, name, &args)) {
                 return true;
             }
@@ -142,7 +162,7 @@ impl ScriptingEngine {
         parts: &'a [&'a str],
         event: PromptEvent,
     ) -> bool {
-        for kind in PLUGIN_PRECEDENCE {
+        for kind in plugins() {
             if manual_dispatch!(kind, call_typed_command(cx, command, parts, event)) {
                 return true;
             }
@@ -152,7 +172,7 @@ impl ScriptingEngine {
     }
 
     pub fn get_doc_for_identifier(ident: &str) -> Option<String> {
-        for kind in PLUGIN_PRECEDENCE {
+        for kind in plugins() {
             let doc = manual_dispatch!(kind, get_doc_for_identifier(ident));
 
             if doc.is_some() {
@@ -164,8 +184,7 @@ impl ScriptingEngine {
     }
 
     pub fn available_commands<'a>() -> Vec<Cow<'a, str>> {
-        PLUGIN_PRECEDENCE
-            .iter()
+        plugins()
             .flat_map(|kind| manual_dispatch!(kind, available_commands()))
             .collect()
     }
@@ -177,7 +196,7 @@ impl ScriptingEngine {
         call_id: jsonrpc::Id,
         params: jsonrpc::Params,
     ) -> Option<Result<serde_json::Value, jsonrpc::Error>> {
-        for kind in PLUGIN_PRECEDENCE {
+        for kind in plugins() {
             if let Some(value) = manual_dispatch!(
                 kind,
                 handle_lsp_call(
@@ -196,7 +215,7 @@ impl ScriptingEngine {
     }
 
     pub fn generate_sources() {
-        for kind in PLUGIN_PRECEDENCE {
+        for kind in plugins() {
             manual_dispatch!(kind, generate_sources())
         }
     }

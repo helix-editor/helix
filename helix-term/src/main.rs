@@ -116,9 +116,6 @@ FLAGS:
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;
 
-    // Initialize the engine before we boot up!
-    helix_term::commands::ScriptingEngine::initialize();
-
     // Before setting the working directory, resolve all the paths in args.files
     for (path, _) in args.files.iter_mut2() {
         *path = helix_stdx::path::canonicalize(&*path);
