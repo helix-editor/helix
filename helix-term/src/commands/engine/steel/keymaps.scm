@@ -84,36 +84,68 @@
   ;; off of the configuration object
   (get-keybindings))
 
+(define (merge-values left right)
+  (cond
+    [(and (list? left) (list? right)) (append left right)]
+    [(and (hash? left) (hash? right))
+     (define merged
+       (transduce left
+                  (mapping (lambda (p)
+                             (define key (list-ref p 0))
+                             (define value (list-ref p 1))
+                             (if (hash-contains? right key)
+                                 (cons key (merge-values value (hash-get right key)))
+                                 (cons key value))))
+                  (into-hashmap)))
+
+     (define rhs-keys-not-present
+       (transduce right
+                  (filtering (lambda (p) (not (hash-contains? merged (car p)))))
+                  (into-hashmap)))
+     (hash-union merged rhs-keys-not-present)]
+    [else right]))
+
+(define (hash-insert-or-merge hm key value)
+  (if (hash-contains? hm key)
+      (begin
+        (let ([existing-value (hash-get hm key)])
+          (hash-insert hm key (merge-values existing-value value))))
+      (hash-insert hm key value)))
+
 (define-syntax #%keybindings
   (syntax-rules ()
+
     [(_ conf (key (value ...)))
      (hash (if (string? (quote key)) (quote key) (symbol->string (quote key)))
            (#%keybindings (hash) (value ...)))]
 
     [(_ conf (key (value ...) rest ...))
-     (hash-insert conf
-                  (if (string? (quote key)) (quote key) (symbol->string (quote key)))
-                  (#%keybindings (hash) (value ...) rest ...))]
+     (hash-insert-or-merge conf
+                           (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                           (#%keybindings (hash) (value ...) rest ...))]
 
     [(_ conf (key value))
 
-     (hash-insert conf
-                  (if (string? (quote key)) (quote key) (symbol->string (quote key)))
-                  (if (string? value) value (~>> (quote value) symbol->string (string-append ":"))))]
+     (hash-insert-or-merge
+      conf
+      (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+      (if (string? value) value (~>> (quote value) symbol->string (string-append ":"))))]
 
     [(_ conf (key (value ...)) rest ...)
 
-     (#%keybindings (hash-insert conf
-                                 (if (string? (quote key)) (quote key) (symbol->string (quote key)))
-                                 (#%keybindings (hash) (value ...)))
-                    rest ...)]
+     (#%keybindings
+      (hash-insert-or-merge conf
+                            (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                            (#%keybindings (hash) (value ...)))
+      rest ...)]
 
     [(_ conf (key value) rest ...)
 
      (#%keybindings
-      (hash-insert conf
-                   (if (string? (quote key)) (quote key) (symbol->string (quote key)))
-                   (if (string? value) value (~>> (quote value) symbol->string (string-append ":"))))
+      (hash-insert-or-merge
+       conf
+       (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+       (if (string? value) value (~>> (quote value) symbol->string (string-append ":"))))
       rest ...)]))
 
 (define-syntax keymap
@@ -135,6 +167,7 @@
       (merge-keybindings (deep-copy-global-keybindings) bindings))]
 
     [(_ (extension name) args ...)
+
      (helix.keymaps.#%add-extension-or-labeled-keymap
       name
       (merge-keybindings (deep-copy-global-keybindings) (keymap args ...)))]
@@ -143,12 +176,10 @@
     ;; infrastructure is the same
     [(_ (buffer name (inherit-from kmap)) (with-map bindings))
      (keymap (extension name (inherit-from kmap)) (with-map bindings))]
-
     [(_ (buffer name (inherit-from kmap)) args ...)
      (keymap (extension name (inherit-from kmap)) args ...)]
 
     [(_ (buffer name) (with-map bindings)) (keymap (extension name) (with-map bindings))]
-
     [(_ (buffer name) args ...) (keymap (extension name) args ...)]
 
     [(_) (hash)]
