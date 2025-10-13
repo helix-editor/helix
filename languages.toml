@@ -1180,6 +1180,9 @@ file-types = [
   { glob = ".zimrc" },
   { glob = "APKBUILD" },
   { glob = ".bash_aliases" },
+  { glob = "bash_completion" },
+  { glob = "bash-completion/completions/*" },
+  { glob = "bash_completion.d/*" },
   { glob = ".Renviron" },
   { glob = ".xprofile" },
   { glob = ".xsession" },
@@ -1534,6 +1537,7 @@ file-types = [
   { glob = ".gem/credentials" },
   { glob = ".kube/config" },
   { glob = ".kube/kuberc" },
+  { glob = "yarn.lock" },
   "sublime-syntax"
 ]
 comment-token = "#"
@@ -1753,8 +1757,8 @@ source = { git = "https://github.com/tree-sitter-perl/tree-sitter-pod", rev = "0
 [[language]]
 name = "racket"
 scope = "source.racket"
-file-types = ["rkt", "rktd", "rktl", "scrbl"]
-shebangs = ["racket"]
+file-types = ["rkt", "rktd", "rktl", "scrbl", "zuo"]
+shebangs = ["racket", "zuo"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "#|", end = "|#" }
@@ -2054,7 +2058,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-regex", rev = "e1cf
 [[language]]
 name = "git-config"
 scope = "source.gitconfig"
-file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
+file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = "gitconfig" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }

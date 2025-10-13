@@ -73,6 +73,7 @@ impl TerminalEventReaderHandle {
     }
 }
 
+#[allow(unused)]
 #[cfg(all(not(windows), not(feature = "integration")))]
 #[derive(Clone)]
 pub struct TerminalEventReaderHandle {
