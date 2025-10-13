@@ -115,11 +115,20 @@
 (define-syntax #%keybindings
   (syntax-rules ()
 
+    [(_ conf) conf]
+
     [(_ conf (key (value ...)))
      (hash (if (string? (quote key)) (quote key) (symbol->string (quote key)))
            (#%keybindings (hash) (value ...)))]
 
+    [(_ conf (key (value ...) rest ...) other ...)
+
+     (hash-insert-or-merge (#%keybindings (hash) other ...)
+                           (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                           (#%keybindings (hash) (value ...) rest ...))]
+
     [(_ conf (key (value ...) rest ...))
+
      (hash-insert-or-merge conf
                            (if (string? (quote key)) (quote key) (symbol->string (quote key)))
                            (#%keybindings (hash) (value ...) rest ...))]
