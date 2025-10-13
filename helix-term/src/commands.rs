@@ -26,19 +26,22 @@ use helix_core::{
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
-    graphemes::{self, next_grapheme_boundary},
+    graphemes::{
+        self, next_folded_grapheme_boundary, next_grapheme_boundary, prev_folded_grapheme_boundary,
+    },
     history::UndoKind,
     increment,
     indent::{self, IndentStyle},
-    line_ending::{get_line_ending_of_str, line_end_char_index},
+    line_ending::{get_line_ending_of_str, line_end_char_index, rope_is_line_ending},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    search::{self, CharMatcher},
+    search::{self, GraphemeMatcher},
     selection, surround,
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
+    text_folding::RopeSliceFoldExt,
     textobject,
     unicode::width::UnicodeWidthChar,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
@@ -1495,135 +1498,70 @@ fn extend_next_sub_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_sub_word_end)
 }
 
-/// Separate branch to find_char designed only for `<ret>` char.
-//
-// This is necessary because the one document can have different line endings inside. And we
-// cannot predict what character to find when <ret> is pressed. On the current line it can be `lf`
-// but on the next line it can be `crlf`. That's why [`find_char_impl`] cannot be applied here.
-fn find_char_line_ending(
-    cx: &mut Context,
-    count: usize,
-    direction: Direction,
-    inclusive: bool,
-    extend: bool,
-) {
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let cursor = range.cursor(text);
-        let cursor_line = range.cursor_line(text);
-
-        // Finding the line where we're going to find <ret>. Depends mostly on
-        // `count`, but also takes into account edge cases where we're already at the end
-        // of a line or the beginning of a line
-        let find_on_line = match direction {
-            Direction::Forward => {
-                let on_edge = line_end_char_index(&text, cursor_line) == cursor;
-                let line = cursor_line + count - 1 + (on_edge as usize);
-                if line >= text.len_lines() - 1 {
-                    return range;
-                } else {
-                    line
-                }
-            }
-            Direction::Backward => {
-                let on_edge = text.line_to_char(cursor_line) == cursor && !inclusive;
-                let line = cursor_line as isize - (count as isize - 1 + on_edge as isize);
-                if line <= 0 {
-                    return range;
-                } else {
-                    line as usize
-                }
-            }
-        };
-
-        let pos = match (direction, inclusive) {
-            (Direction::Forward, true) => line_end_char_index(&text, find_on_line),
-            (Direction::Forward, false) => line_end_char_index(&text, find_on_line) - 1,
-            (Direction::Backward, true) => line_end_char_index(&text, find_on_line - 1),
-            (Direction::Backward, false) => text.line_to_char(find_on_line),
-        };
-
-        if extend {
-            range.put_cursor(text, pos, true)
-        } else {
-            Range::point(range.cursor(text)).put_cursor(text, pos, true)
-        }
-    });
-    doc.set_selection(view.id, selection);
-}
-
 fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
 
     // need to wait for next key
-    // TODO: should this be done by grapheme rather than char?  For example,
-    // we can't properly handle the line-ending CRLF case here in terms of char.
     cx.on_next_key(move |cx, event| {
-        let ch = match event {
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
-                find_char_line_ending(cx, count, direction, inclusive, extend);
-                return;
-            }
-
-            KeyEvent {
-                code: KeyCode::Tab, ..
-            } => '\t',
-
-            KeyEvent {
-                code: KeyCode::Char(ch),
-                ..
-            } => ch,
-            _ => return,
-        };
         let motion = move |editor: &mut Editor| {
-            match direction {
-                Direction::Forward => {
-                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
-                }
-                Direction::Backward => {
-                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
-                }
-            };
+            macro_rules! find_char_impl {
+                ($matcher:expr) => {{
+                    let search_fn = match direction {
+                        Direction::Forward => find_next_char_impl,
+                        Direction::Backward => find_prev_char_impl,
+                    };
+                    find_char_impl(editor, &search_fn, inclusive, extend, $matcher, count)
+                }};
+            }
+            match event {
+                KeyEvent {
+                    code: KeyCode::Enter,
+                    ..
+                } => find_char_impl!(rope_is_line_ending),
+
+                KeyEvent {
+                    code: KeyCode::Tab, ..
+                } => find_char_impl!('\t'),
+
+                KeyEvent {
+                    code: KeyCode::Char(ch),
+                    ..
+                } => find_char_impl!(ch),
+                _ => (),
+            }
         };
 
         cx.editor.apply_motion(motion);
     })
 }
 
-//
-
 #[inline]
-fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
+fn find_char_impl<F, M: GraphemeMatcher + Copy>(
     editor: &mut Editor,
     search_fn: &F,
     inclusive: bool,
     extend: bool,
-    char_matcher: M,
+    matcher: M,
     count: usize,
 ) where
-    F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
+    F: Fn(RopeSlice, &TextAnnotations, M, usize, usize, bool) -> Option<usize> + 'static,
 {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
+    let annotations = view.text_annotations(doc, None);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-        // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-        // here, but just in terms of chars instead.
-        let search_start_pos = if range.anchor < range.head {
-            range.head - 1
-        } else {
-            range.head
-        };
-
-        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
+        search_fn(
+            text,
+            &annotations,
+            matcher,
+            range.cursor(text),
+            count,
+            inclusive,
+        )
+        .map_or(range, |pos| {
             if extend {
                 range.put_cursor(text, pos, true)
             } else {
@@ -1631,43 +1569,53 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
             }
         })
     });
+    drop(annotations);
     doc.set_selection(view.id, selection);
 }
 
 fn find_next_char_impl(
     text: RopeSlice,
-    ch: char,
+    annotations: &TextAnnotations,
+    matcher: impl GraphemeMatcher,
     pos: usize,
     n: usize,
     inclusive: bool,
 ) -> Option<usize> {
-    let pos = (pos + 1).min(text.len_chars());
     if inclusive {
-        search::find_nth_next(text, ch, pos, n)
+        search::find_folded_nth_next(text, &annotations.folds, matcher, pos, n)
     } else {
-        let n = match text.get_char(pos) {
-            Some(next_ch) if next_ch == ch => n + 1,
+        let n = match text
+            .folded_graphemes_at(&annotations.folds, text.char_to_byte(pos))
+            .nth(1)
+        {
+            Some(g) if matcher.grapheme_match(g) => n + 1,
             _ => n,
         };
-        search::find_nth_next(text, ch, pos, n).map(|n| n.saturating_sub(1))
+        search::find_folded_nth_next(text, &annotations.folds, matcher, pos, n)
+            .map(|idx| prev_folded_grapheme_boundary(text, &annotations.folds, idx))
     }
 }
 
 fn find_prev_char_impl(
     text: RopeSlice,
-    ch: char,
+    annotations: &TextAnnotations,
+    matcher: impl GraphemeMatcher,
     pos: usize,
     n: usize,
     inclusive: bool,
 ) -> Option<usize> {
     if inclusive {
-        search::find_nth_prev(text, ch, pos, n)
+        search::find_folded_nth_prev(text, &annotations.folds, matcher, pos, n)
     } else {
-        let n = match text.get_char(pos.saturating_sub(1)) {
-            Some(next_ch) if next_ch == ch => n + 1,
+        let n = match text
+            .folded_graphemes_at(&annotations.folds, text.char_to_byte(pos))
+            .prev()
+        {
+            Some(g) if matcher.grapheme_match(g) => n + 1,
             _ => n,
         };
-        search::find_nth_prev(text, ch, pos, n).map(|n| (n + 1).min(text.len_chars()))
+        search::find_folded_nth_prev(text, &annotations.folds, matcher, pos, n)
+            .map(|idx| next_folded_grapheme_boundary(text, &annotations.folds, idx))
     }
 }
 
