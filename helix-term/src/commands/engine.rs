@@ -57,24 +57,24 @@ macro_rules! manual_dispatch {
     };
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, feature = "integration"))]
 #[derive(Clone)]
 pub struct TerminalEventReaderHandle;
 
-#[cfg(windows)]
+#[cfg(any(windows, feature = "integration"))]
 impl TerminalEventReaderHandle {
     pub fn new(terminal: &TerminalBackend) -> Self {
         Self
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(not(windows), not(feature = "integration")))]
 #[derive(Clone)]
 pub struct TerminalEventReaderHandle {
     reader: EventReader,
 }
 
-#[cfg(unix)]
+#[cfg(all(not(windows), not(feature = "integration")))]
 impl TerminalEventReaderHandle {
     pub fn new(terminal: &TerminalBackend) -> Self {
         Self {

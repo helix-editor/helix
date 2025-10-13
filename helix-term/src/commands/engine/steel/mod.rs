@@ -86,8 +86,13 @@ static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
 static EVENT_READER: OnceCell<EventReader> = OnceCell::new();
 
 fn install_event_reader(event_reader: TerminalEventReaderHandle) {
-    #[cfg(unix)]
-    EVENT_READER.set(event_reader.reader).unwrap()
+    #[cfg(feature = "integration")]
+    {}
+
+    #[cfg(all(not(windows), not(feature = "integration")))]
+    {
+        EVENT_READER.set(event_reader.reader).unwrap()
+    }
 }
 
 fn setup() -> Engine {
@@ -2423,7 +2428,7 @@ pub struct SteelScriptingEngine;
 
 impl super::PluginSystem for SteelScriptingEngine {
     fn initialize(&self) {
-        initialize_engine();
+        std::thread::spawn(initialize_engine);
     }
 
     fn engine_name(&self) -> super::PluginSystemKind {
