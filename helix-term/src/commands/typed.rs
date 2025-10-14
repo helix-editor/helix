@@ -68,45 +68,45 @@ impl CommandCompleter {
     }
 }
 
-fn xit(
-    cx: &mut compositor::Context, 
-    args: &[Cow<str>], 
-    event: PromptEvent,
-)-> anyhow::Result<()> {
-
+fn exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let (_view, doc) = current!(cx.editor);
-    
-    if doc.is_modified() {
-        write_impl(cx, args.first(), false)?;
+    if doc!(cx.editor).is_modified() {
+        write_impl(
+            cx,
+            args.first(),
+            WriteOptions {
+                force: false,
+                auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            },
+        )?;
     }
     cx.block_try_flush_writes()?;
-    quit(cx, &[], event)
+    quit(cx, Args::default(), event)
 }
 
-fn force_xit(
-    cx: &mut compositor::Context, 
-    args: &[Cow<str>], 
-    event: PromptEvent,
-)-> anyhow::Result<()> {
-
+fn force_exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let (_view, doc) = current!(cx.editor);
-    
-    if doc.is_modified() {
-        write_impl(cx, args.first(), true)?;
+    if doc!(cx.editor).is_modified() {
+        write_impl(
+            cx,
+            args.first(),
+            WriteOptions {
+                force: true,
+                auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            },
+        )?;
     }
     cx.block_try_flush_writes()?;
-    quit(cx, &[], event)
+    quit(cx, Args::default(), event)
 }
-                                            
-fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+
+fn quit(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
     log::debug!("quitting...");
 
     if event != PromptEvent::Validate {
@@ -2715,18 +2715,28 @@ const WRITE_NO_FORMAT_FLAG: Flag = Flag {
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
-        name: "xit",
-        aliases: &["x"],
-        doc: "Write changes to disk if any are made. Otherwise just close. Doesn't require a path if buffer is not modified.",
-        fun: xit,
-        signature: CommandSignature::positional(&[completers::filename]),
+        name: "exit",
+        aliases: &["x", "xit"],
+        doc: "Write changes to disk if the buffer is modified and then quit. Accepts an optional path (:exit some/path.txt).",
+        fun: exit,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[WRITE_NO_FORMAT_FLAG],
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
-        name: "xit!",
-        aliases: &["x!"],
-        doc: "Write changes to disk if any are made. Otherwise just close. Doesn't require a path if buffer is not modified. Force write.",
-        fun: force_xit,
-        signature: CommandSignature::positional(&[completers::filename]),
+        name: "exit!",
+        aliases: &["x!", "xit!"],
+        doc: "Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit. Accepts an optional path (:exit! some/path.txt).",
+        fun: force_exit,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[WRITE_NO_FORMAT_FLAG],
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "quit",
