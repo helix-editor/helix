@@ -284,6 +284,10 @@ args = ["lsp"]
 command = "docker-language-server"
 args = ["start", "--stdio"]
 
+[language-server.kcl-lsp]
+command = "kcl-language-server"
+args = ["server", "--stdio"]
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -4899,10 +4903,6 @@ formatter = { command = "zoo" , args = ["kcl", "fmt", "-"] }
 language-servers = [ "kcl-lsp" ]
 block-comment-tokens = { start = "/*", end = "*/"}
 
-[language-server.kcl-lsp]
-command = "kcl-language-server"
-args = ["server", "--stdio"]
-
 [[grammer]]
 name = "kcl"
-source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "1f9e40020b1bb76b31a7144b994bec1a559dc735"}
+source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "8905e0bdbf5870b50bc3f24345f1af27746f42e8"}
