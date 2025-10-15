@@ -219,7 +219,7 @@ impl Client {
         let cmd_binary_path = helix_stdx::env::which(cmd)?;
 
         let mut command = Command::new(cmd_binary_path);
-        let mut command_mut = command
+        command
             .envs(server_environment)
             .args(args)
             .stdin(Stdio::piped())
@@ -231,7 +231,7 @@ impl Client {
 
         #[cfg(unix)]
         unsafe {
-            command_mut = command_mut.pre_exec(|| match libc::setsid() {
+            command.pre_exec(|| match libc::setsid() {
                 -1 => Err(std::io::Error::last_os_error()),
                 _ => Ok(()),
             });
@@ -239,13 +239,13 @@ impl Client {
 
         #[cfg(windows)]
         {
-            command_mut = command_mut.creation_flags(
+            command.creation_flags(
                 windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP
                     | windows_sys::Win32::System::Threading::DETACHED_PROCESS,
             );
         }
 
-        let mut process = command_mut.spawn()?;
+        let mut process = command.spawn()?;
 
         // TODO: do we need bufreader/writer here? or do we use async wrappers on unblock?
         let writer = BufWriter::new(process.stdin.take().expect("Failed to open stdin"));
