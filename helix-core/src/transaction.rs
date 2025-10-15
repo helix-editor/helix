@@ -371,6 +371,16 @@ impl ChangeSet {
         self.changes.is_empty() || self.changes == [Operation::Retain(self.len)]
     }
 
+    /// # Warning
+    /// Unstable API, used to update `FoldContainer`.
+    pub fn update_positions_with_helper<Helper>(
+        &self,
+        helper: Helper,
+        items: impl Iterator<Item = impl UpdatePosition<Helper>>,
+    ) {
+        PositionsUpdateIterator::new(self, helper, items).for_each(|_| ());
+    }
+
     /// Map a (mostly) *sorted* list of positions through the changes.
     ///
     /// This is equivalent to updating each position with `map_pos`:
@@ -522,6 +532,272 @@ impl ChangeSet {
 
     pub fn changes_iter(&self) -> ChangeIterator<'_> {
         ChangeIterator::new(self)
+    }
+}
+
+/// # Warning
+/// Unstable API, used to update `FoldContainer`.
+pub trait UpdatePosition<Helper> {
+    fn get_pos(&self) -> usize;
+    fn set_pos(&mut self, new_pos: usize);
+
+    fn retain(&mut self, old_pos: usize, new_pos: usize, _helper: &mut Helper) {
+        self.set_pos(new_pos + (self.get_pos() - old_pos))
+    }
+
+    fn delete(&mut self, len: usize, old_pos: usize, new_pos: usize, helper: &mut Helper);
+
+    fn insert(&mut self, new_pos: usize, fragment: &str, helper: &mut Helper);
+
+    fn replace(
+        &mut self,
+        len: usize,
+        old_pos: usize,
+        new_pos: usize,
+        fragment: &str,
+        helper: &mut Helper,
+    );
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum Update {
+    Retention,
+    Deletion,
+    Insertion,
+    Replacement,
+    Rest,
+}
+
+struct PositionsUpdateIterator<'a, Iter, Item, Helper> {
+    changes: &'a [Operation],
+    changes_iter: std::iter::Enumerate<std::slice::Iter<'a, Operation>>,
+    peeked_change: Option<(usize, &'a Operation)>,
+
+    items: Iter,
+    retained_item: Option<Item>,
+
+    update: Option<Update>,
+
+    len: usize,
+    old_pos: usize,
+    new_pos: usize,
+    fragment: &'a str,
+
+    helper: Helper,
+
+    change_idx: usize,
+}
+
+impl<'a, Iter, Item, Helper> PositionsUpdateIterator<'a, Iter, Item, Helper>
+where
+    Iter: Iterator<Item = Item>,
+    Item: UpdatePosition<Helper>,
+{
+    fn new(change_set: &'a ChangeSet, helper: Helper, items: Iter) -> Self {
+        Self {
+            changes: change_set.changes(),
+            changes_iter: change_set.changes().iter().enumerate(),
+            peeked_change: None,
+            items,
+            retained_item: None,
+            update: None,
+            len: 0,
+            old_pos: 0,
+            new_pos: 0,
+            fragment: "",
+            helper,
+            change_idx: 0,
+        }
+    }
+
+    fn next_update(&mut self) -> Update {
+        let Some((change_idx, change)) = self.next_change() else {
+            self.change_idx = self.changes.len();
+            return Update::Rest;
+        };
+
+        self.change_idx = change_idx;
+
+        match change {
+            Operation::Retain(len) => {
+                self.len = *len;
+                Update::Retention
+            }
+            Operation::Delete(len) => {
+                self.len = *len;
+                Update::Deletion
+            }
+            Operation::Insert(fragment) => {
+                self.fragment = fragment;
+
+                if let Some(len) = self
+                    .peek_change()
+                    .and_then(|(_, operation)| match operation {
+                        Operation::Delete(len) => Some(*len),
+                        _ => None,
+                    })
+                {
+                    // consume the delete operation
+                    self.peeked_change.take();
+
+                    self.len = len;
+                    Update::Replacement
+                } else {
+                    self.len = 0;
+                    Update::Insertion
+                }
+            }
+        }
+    }
+
+    fn update(&mut self, update: Update) -> Option<Item> {
+        use Update::*;
+
+        let mut item = self.next_item()?;
+
+        if item.get_pos() < self.old_pos {
+            return self.revert(item);
+        }
+
+        match update {
+            Retention if item.get_pos() < self.old_pos + self.len => {
+                item.retain(self.old_pos, self.new_pos, &mut self.helper);
+                Some(item)
+            }
+            Insertion if item.get_pos() == self.old_pos => {
+                item.insert(self.new_pos, self.fragment, &mut self.helper);
+                Some(item)
+            }
+            Deletion if item.get_pos() < self.old_pos + self.len => {
+                item.delete(self.len, self.old_pos, self.new_pos, &mut self.helper);
+                Some(item)
+            }
+            Replacement if item.get_pos() < self.old_pos + self.len => {
+                item.replace(
+                    self.len,
+                    self.old_pos,
+                    self.new_pos,
+                    self.fragment,
+                    &mut self.helper,
+                );
+                Some(item)
+            }
+            Rest if item.get_pos() == self.old_pos => {
+                item.set_pos(self.new_pos);
+                Some(item)
+            }
+            _ => {
+                self.retain_item(item);
+
+                if update != Rest {
+                    self.old_pos += self.len;
+                }
+
+                match update {
+                    Retention => self.new_pos += self.len,
+                    Insertion | Replacement => {
+                        self.new_pos += self.fragment.chars().count();
+                    }
+                    _ => (),
+                }
+
+                None
+            }
+        }
+    }
+
+    fn revert(&mut self, item: Item) -> Option<Item> {
+        for (change_idx, change) in self.changes[..self.change_idx].iter().enumerate().rev() {
+            match change {
+                Operation::Retain(len) => {
+                    self.old_pos -= len;
+                    self.new_pos -= len;
+                }
+                Operation::Delete(len) => {
+                    self.old_pos -= len;
+                }
+                Operation::Insert(fragment) => {
+                    self.new_pos -= fragment.chars().count();
+                }
+            }
+            if self.old_pos <= item.get_pos() {
+                self.changes_iter = self.changes[change_idx..].iter().enumerate();
+            }
+        }
+
+        debug_assert!(
+            self.old_pos <= item.get_pos(),
+            "Reverse Iter across changeset works"
+        );
+
+        self.retain_item(item);
+        self.peeked_change = None;
+        self.update = None;
+
+        self.next()
+    }
+
+    fn next_change(&mut self) -> Option<(usize, &'a Operation)> {
+        self.peeked_change
+            .take()
+            .or_else(|| self.changes_iter.next())
+    }
+
+    fn peek_change(&mut self) -> Option<(usize, &Operation)> {
+        if self.peeked_change.is_none() {
+            self.peeked_change = Some(self.changes_iter.next()?);
+        }
+        self.peeked_change
+    }
+
+    fn next_item(&mut self) -> Option<Item> {
+        self.retained_item.take().or_else(|| self.items.next())
+    }
+
+    fn retain_item(&mut self, item: Item) {
+        self.retained_item = Some(item);
+    }
+
+    fn items_is_exhausted(&mut self) -> bool {
+        self.next_item().map_or(true, |item| {
+            self.retain_item(item);
+            false
+        })
+    }
+
+    fn panic_items_are_out_of_range(&mut self) -> ! {
+        let out_of_bounds =
+            std::iter::from_fn(|| self.next_item().map(|item| item.get_pos())).collect::<Vec<_>>();
+        panic!(
+            "Positions {out_of_bounds:?} are out of range for changeset len {}!",
+            self.old_pos
+        )
+    }
+}
+
+impl<'a, Iter, Item, Helper> Iterator for PositionsUpdateIterator<'a, Iter, Item, Helper>
+where
+    Iter: Iterator<Item = Item>,
+    Item: UpdatePosition<Helper>,
+{
+    type Item = Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let update = self.update.unwrap_or_else(|| {
+            let update = self.next_update();
+            self.update = Some(update);
+            update
+        });
+        match self.update(update) {
+            None if !self.items_is_exhausted() => {
+                if update == Update::Rest {
+                    self.panic_items_are_out_of_range()
+                }
+                self.update = None;
+                self.next()
+            }
+            result => result,
+        }
     }
 }
 

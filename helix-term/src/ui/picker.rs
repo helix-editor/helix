@@ -960,8 +960,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
             let loader = cx.editor.syn_loader.load();
 
-            let syntax_highlighter =
-                EditorView::doc_syntax_highlighter(doc, offset.anchor, area.height, &loader);
+            let syntax_highlighter = EditorView::doc_syntax_highlighter(
+                doc,
+                &TextAnnotations::default(),
+                offset.anchor,
+                area.height,
+                &loader,
+            );
             let mut overlay_highlights = Vec::new();
 
             EditorView::doc_diagnostics_highlights_into(

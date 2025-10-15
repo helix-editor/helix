@@ -1,19 +1,18 @@
 use std::{borrow::Cow, cmp::Reverse, iter};
 
-use ropey::iter::Chars;
-
 use crate::{
     char_idx_at_visual_offset,
     chars::{categorize_char, char_is_line_ending, CharCategory},
     doc_formatter::TextFormat,
     graphemes::{
-        next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
-        prev_grapheme_boundary,
+        next_folded_grapheme_boundary, next_grapheme_boundary, nth_next_folded_grapheme_boundary,
+        nth_prev_folded_grapheme_boundary, prev_grapheme_boundary,
     },
-    line_ending::rope_is_line_ending,
+    line_ending::{line_end_char_index, rope_is_line_ending},
     position::char_idx_at_visual_block_offset,
     syntax,
     text_annotations::TextAnnotations,
+    text_folding::{ropex::FoldedChars, RopeSliceFoldExt},
     textobject::TextObject,
     tree_sitter::Node,
     visual_offset_from_block, Range, RopeSlice, Selection, Syntax,
@@ -38,14 +37,18 @@ pub fn move_horizontally(
     count: usize,
     behaviour: Movement,
     _: &TextFormat,
-    _: &mut TextAnnotations,
+    annotations: &mut TextAnnotations,
 ) -> Range {
     let pos = range.cursor(slice);
 
     // Compute the new position.
     let new_pos = match dir {
-        Direction::Forward => nth_next_grapheme_boundary(slice, pos, count),
-        Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
+        Direction::Forward => {
+            nth_next_folded_grapheme_boundary(slice, &annotations.folds, pos, count)
+        }
+        Direction::Backward => {
+            nth_prev_folded_grapheme_boundary(slice, &annotations.folds, pos, count)
+        }
     };
 
     // Compute the final new range.
@@ -126,10 +129,32 @@ pub fn move_vertically(
     let line_idx = slice.char_to_line(pos);
 
     // Compute the new position.
-    let mut new_line_idx = match dir {
-        Direction::Forward => line_idx.saturating_add(count),
-        Direction::Backward => line_idx.saturating_sub(count),
-    };
+    annotations
+        .folds
+        .reset_pos(line_idx, |fold| fold.start.line);
+    let mut new_line_idx = line_idx;
+    for _ in 0..count {
+        match dir {
+            Direction::Forward => {
+                new_line_idx += 1;
+                if let Some(fold) = annotations
+                    .folds
+                    .consume_next(new_line_idx, |fold| fold.start.line)
+                {
+                    new_line_idx = fold.end.line + 1
+                }
+            }
+            Direction::Backward => {
+                new_line_idx = new_line_idx.saturating_sub(1);
+                if let Some(fold) = annotations
+                    .folds
+                    .consume_prev(new_line_idx, |fold| fold.end.line)
+                {
+                    new_line_idx = (fold).start.line - 1;
+                }
+            }
+        }
+    }
 
     let line = if new_line_idx >= slice.len_lines() - 1 {
         // there is no line terminator for the last line
@@ -165,55 +190,193 @@ pub fn move_vertically(
     new_range
 }
 
-pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::NextWordStart)
+pub fn move_next_word_start(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::NextWordStart,
+    )
 }
 
-pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::NextWordEnd)
+pub fn move_next_word_end(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::NextWordEnd,
+    )
 }
 
-pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevWordStart)
+pub fn move_prev_word_start(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::PrevWordStart,
+    )
 }
 
-pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+pub fn move_prev_word_end(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::PrevWordEnd,
+    )
 }
 
-pub fn move_next_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::NextLongWordStart)
+pub fn move_next_long_word_start(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::NextLongWordStart,
+    )
 }
 
-pub fn move_next_long_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::NextLongWordEnd)
+pub fn move_next_long_word_end(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::NextLongWordEnd,
+    )
 }
 
-pub fn move_prev_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevLongWordStart)
+pub fn move_prev_long_word_start(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::PrevLongWordStart,
+    )
 }
 
-pub fn move_prev_long_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevLongWordEnd)
+pub fn move_prev_long_word_end(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::PrevLongWordEnd,
+    )
 }
 
-pub fn move_next_sub_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::NextSubWordStart)
+pub fn move_next_sub_word_start(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::NextSubWordStart,
+    )
 }
 
-pub fn move_next_sub_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::NextSubWordEnd)
+pub fn move_next_sub_word_end(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::NextSubWordEnd,
+    )
 }
 
-pub fn move_prev_sub_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevSubWordStart)
+pub fn move_prev_sub_word_start(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::PrevSubWordStart,
+    )
 }
 
-pub fn move_prev_sub_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevSubWordEnd)
+pub fn move_prev_sub_word_end(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+) -> Range {
+    word_move(
+        slice,
+        annotations,
+        range,
+        count,
+        WordMotionTarget::PrevSubWordEnd,
+    )
 }
 
-fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
+fn word_move(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+    target: WordMotionTarget,
+) -> Range {
     let is_prev = matches!(
         target,
         WordMotionTarget::PrevWordStart
@@ -252,7 +415,10 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     // Do the main work.
     let mut range = start_range;
     for _ in 0..count {
-        let next_range = slice.chars_at(range.head).range_to_target(target, range);
+        let next_range = slice
+            // two distinct fold annotations are needed, therefore, folds are cloned
+            .folded_chars_at(&annotations.folds.clone(), range.head)
+            .range_to_target(slice, annotations, target, range);
         if range == next_range {
             break;
         }
@@ -261,96 +427,135 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     range
 }
 
-pub fn move_prev_paragraph(
-    slice: RopeSlice,
+fn move_paragraph_impl(
+    text: RopeSlice,
+    direction: Direction,
+    annotations: &TextAnnotations,
     range: Range,
     count: usize,
     behavior: Movement,
 ) -> Range {
-    let mut line = range.cursor_line(slice);
-    let first_char = slice.line_to_char(line) == range.cursor(slice);
-    let prev_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
-    let curr_line_empty = rope_is_line_ending(slice.line(line));
-    let prev_empty_to_line = prev_line_empty && !curr_line_empty;
+    use std::ops::ControlFlow;
 
-    // skip character before paragraph boundary
-    if prev_empty_to_line && !first_char {
-        line += 1;
-    }
-    let mut lines = slice.lines_at(line);
-    lines.reverse();
-    let mut lines = lines.map(rope_is_line_ending).peekable();
-    let mut last_line = line;
-    for _ in 0..count {
-        while lines.next_if(|&e| e).is_some() {
-            line -= 1;
-        }
-        while lines.next_if(|&e| !e).is_some() {
-            line -= 1;
-        }
-        if line == last_line {
-            break;
-        }
-        last_line = line;
-    }
+    let fold_annotations = &annotations.folds;
 
-    let head = slice.line_to_char(line);
-    let anchor = if behavior == Movement::Move {
-        // exclude first character after paragraph boundary
-        if prev_empty_to_line && first_char {
-            range.cursor(slice)
-        } else {
-            range.head
+    let abort = |cursor: usize| -> bool {
+        match direction {
+            Direction::Forward => {
+                next_folded_grapheme_boundary(text, fold_annotations, cursor) == text.len_chars()
+            }
+            Direction::Backward => cursor == 0,
         }
-    } else {
-        range.put_cursor(slice, head, true).anchor
     };
+
+    let line_is_empty = |line: usize| -> bool { rope_is_line_ending(text.line(line)) };
+
+    let target_is_reached = |cursor: usize| -> bool {
+        let cursor_line = text.char_to_line(cursor);
+        match direction {
+            Direction::Forward => {
+                let next_line = text.next_folded_line(fold_annotations, cursor_line);
+                line_is_empty(cursor_line)
+                    && (!line_is_empty(next_line) || next_line == text.len_lines())
+            }
+            Direction::Backward => {
+                let prev_line = text.prev_folded_line(fold_annotations, cursor_line);
+                let line_first_char = text.line_to_char(cursor_line);
+                !line_is_empty(cursor_line) && cursor == line_first_char && line_is_empty(prev_line)
+            }
+        }
+    };
+
+    let move_to_target = |mut cursor: usize| -> ControlFlow<usize, usize> {
+        while !abort(cursor) {
+            let cursor_line = text.char_to_line(cursor);
+
+            cursor = match direction {
+                Direction::Forward => {
+                    let line_end_char = line_end_char_index(&text, cursor_line);
+                    if cursor == line_end_char {
+                        text.line_to_char(text.next_folded_line(fold_annotations, cursor_line))
+                    } else {
+                        line_end_char
+                    }
+                }
+                Direction::Backward => {
+                    let line_first_char = text.line_to_char(cursor_line);
+                    if cursor == line_first_char {
+                        text.line_to_char(text.prev_folded_line(fold_annotations, cursor_line))
+                    } else {
+                        line_first_char
+                    }
+                }
+            };
+
+            if target_is_reached(cursor) {
+                return ControlFlow::Continue(cursor);
+            }
+        }
+        ControlFlow::Break(cursor)
+    };
+
+    let cursor = range.cursor(text);
+    let mut new_cursor = cursor;
+    for _ in 0..count {
+        match move_to_target(new_cursor) {
+            ControlFlow::Continue(r) => new_cursor = r,
+            ControlFlow::Break(r) => {
+                new_cursor = r;
+                break;
+            }
+        }
+    }
+
+    let head = match direction {
+        Direction::Forward => next_grapheme_boundary(text, new_cursor),
+        Direction::Backward => new_cursor,
+    };
+
+    let anchor = match behavior {
+        Movement::Extend => range.put_cursor(text, head, true).anchor,
+        Movement::Move => match (direction, target_is_reached(cursor)) {
+            (Direction::Forward, true) | (Direction::Backward, false) => range.head,
+            (Direction::Forward, false) | (Direction::Backward, true) => cursor,
+        },
+    };
+
     Range::new(anchor, head)
+}
+
+pub fn move_prev_paragraph(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    range: Range,
+    count: usize,
+    behavior: Movement,
+) -> Range {
+    move_paragraph_impl(
+        slice,
+        Direction::Backward,
+        annotations,
+        range,
+        count,
+        behavior,
+    )
 }
 
 pub fn move_next_paragraph(
     slice: RopeSlice,
+    annotations: &TextAnnotations,
     range: Range,
     count: usize,
     behavior: Movement,
 ) -> Range {
-    let mut line = range.cursor_line(slice);
-    let last_char =
-        prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
-    let curr_line_empty = rope_is_line_ending(slice.line(line));
-    let next_line_empty =
-        rope_is_line_ending(slice.line(slice.len_lines().saturating_sub(1).min(line + 1)));
-    let curr_empty_to_line = curr_line_empty && !next_line_empty;
-
-    // skip character after paragraph boundary
-    if curr_empty_to_line && last_char {
-        line += 1;
-    }
-    let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
-    let mut last_line = line;
-    for _ in 0..count {
-        while lines.next_if(|&e| !e).is_some() {
-            line += 1;
-        }
-        while lines.next_if(|&e| e).is_some() {
-            line += 1;
-        }
-        if line == last_line {
-            break;
-        }
-        last_line = line;
-    }
-    let head = slice.line_to_char(line);
-    let anchor = if behavior == Movement::Move {
-        if curr_empty_to_line && last_char {
-            range.head
-        } else {
-            range.cursor(slice)
-        }
-    } else {
-        range.put_cursor(slice, head, true).anchor
-    };
-    Range::new(anchor, head)
+    move_paragraph_impl(
+        slice,
+        Direction::Forward,
+        annotations,
+        range,
+        count,
+        behavior,
+    )
 }
 
 // ---- util ------------
@@ -410,14 +615,28 @@ pub enum WordMotionTarget {
 }
 
 pub trait CharHelpers {
-    fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range;
+    fn range_to_target(
+        &mut self,
+        text: RopeSlice,
+        annotations: &TextAnnotations,
+        target: WordMotionTarget,
+        origin: Range,
+    ) -> Range;
 }
 
-impl CharHelpers for Chars<'_> {
+impl CharHelpers for FoldedChars<'_> {
     /// Note: this only changes the anchor of the range if the head is effectively
     /// starting on a boundary (either directly or after skipping newline characters).
     /// Any other changes to the anchor should be handled by the calling code.
-    fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range {
+    fn range_to_target(
+        &mut self,
+        text: RopeSlice,
+        annotations: &TextAnnotations,
+        target: WordMotionTarget,
+        origin: Range,
+    ) -> Range {
+        let fold_annotations = &annotations.folds;
+
         let is_prev = matches!(
             target,
             WordMotionTarget::PrevWordStart
@@ -435,9 +654,27 @@ impl CharHelpers for Chars<'_> {
 
         // Function to advance index in the appropriate motion direction.
         let advance: &dyn Fn(&mut usize) = if is_prev {
-            &|idx| *idx = idx.saturating_sub(1)
+            &|idx| {
+                fold_annotations.reset_pos(*idx, |fold| fold.end.char);
+                if let Some(fold) = fold_annotations.consume_prev(*idx, |fold| fold.end.char) {
+                    *idx = prev_grapheme_boundary(text, fold.start.char);
+                }
+                *idx = idx.saturating_sub(1);
+                if let Some(fold) = fold_annotations.consume_prev(*idx, |fold| fold.end.char) {
+                    *idx = prev_grapheme_boundary(text, fold.start.char);
+                }
+            }
         } else {
-            &|idx| *idx += 1
+            &|idx| {
+                fold_annotations.reset_pos(*idx, |fold| fold.start.char);
+                if let Some(fold) = fold_annotations.consume_next(*idx, |fold| fold.start.char) {
+                    *idx = next_grapheme_boundary(text, fold.end.char);
+                }
+                *idx += 1;
+                if let Some(fold) = fold_annotations.consume_next(*idx, |fold| fold.start.char) {
+                    *idx = next_grapheme_boundary(text, fold.end.char);
+                }
+            }
         };
 
         // Initialize state variables.
@@ -485,6 +722,14 @@ impl CharHelpers for Chars<'_> {
             self.reverse();
         }
 
+        // ensure the anchor is not folded
+        if let Some(fold) = fold_annotations
+            .superest_fold_containing(anchor, |fold| fold.start.char..=fold.end.char)
+        {
+            if !is_prev {
+                anchor = next_grapheme_boundary(text, fold.end.char);
+            }
+        };
         Range::new(anchor, head)
     }
 }
@@ -563,6 +808,7 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
 #[allow(clippy::too_many_arguments)]
 pub fn goto_treesitter_object(
     slice: RopeSlice,
+    annotations: &TextAnnotations,
     range: Range,
     object_name: &str,
     dir: Direction,
@@ -576,15 +822,27 @@ pub fn goto_treesitter_object(
         let byte_pos = slice.char_to_byte(range.cursor(slice));
 
         let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
-        let nodes = textobject_query?.capture_nodes_any(
-            &[
-                &cap_name(TextObject::Movement),
-                &cap_name(TextObject::Around),
-                &cap_name(TextObject::Inside),
-            ],
-            slice_tree,
-            slice,
-        )?;
+        let nodes = textobject_query?
+            .capture_nodes_any(
+                &[
+                    &cap_name(TextObject::Movement),
+                    &cap_name(TextObject::Around),
+                    &cap_name(TextObject::Inside),
+                ],
+                slice_tree,
+                slice,
+            )?
+            // filter out folds that are entirely folded
+            .filter(|cap_node| {
+                let start = slice.byte_to_char(cap_node.start_byte());
+                let end = prev_grapheme_boundary(slice, slice.byte_to_char(cap_node.end_byte()));
+                [start, end].into_iter().any(|char| {
+                    annotations
+                        .folds
+                        .superest_fold_containing(char, |fold| fold.start.char..=fold.end.char)
+                        .is_none()
+                })
+            });
 
         let node = match dir {
             Direction::Forward => nodes
@@ -974,19 +1232,34 @@ mod test {
     #[test]
     #[should_panic]
     fn nonsensical_ranges_panic_on_forward_movement_attempt_in_debug_mode() {
-        move_next_word_start(Rope::from("Sample").slice(..), Range::point(99999999), 1);
+        move_next_word_start(
+            Rope::from("Sample").slice(..),
+            &TextAnnotations::default(),
+            Range::point(99999999),
+            1,
+        );
     }
 
     #[test]
     #[should_panic]
     fn nonsensical_ranges_panic_on_forward_to_end_movement_attempt_in_debug_mode() {
-        move_next_word_end(Rope::from("Sample").slice(..), Range::point(99999999), 1);
+        move_next_word_end(
+            Rope::from("Sample").slice(..),
+            &TextAnnotations::default(),
+            Range::point(99999999),
+            1,
+        );
     }
 
     #[test]
     #[should_panic]
     fn nonsensical_ranges_panic_on_backwards_movement_attempt_in_debug_mode() {
-        move_prev_word_start(Rope::from("Sample").slice(..), Range::point(99999999), 1);
+        move_prev_word_start(
+            Rope::from("Sample").slice(..),
+            &TextAnnotations::default(),
+            Range::point(99999999),
+            1,
+        );
     }
 
     #[test]
@@ -1069,7 +1342,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_word_start(Rope::from(sample).slice(..), begin, count);
+                let range = move_next_word_start(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1155,7 +1433,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_sub_word_start(Rope::from(sample).slice(..), begin, count);
+                let range = move_next_sub_word_start(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1241,7 +1524,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_sub_word_end(Rope::from(sample).slice(..), begin, count);
+                let range = move_next_sub_word_end(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1325,7 +1613,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_long_word_start(Rope::from(sample).slice(..), begin, count);
+                let range = move_next_long_word_start(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1410,7 +1703,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_prev_word_start(Rope::from(sample).slice(..), begin, count);
+                let range = move_prev_word_start(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1496,7 +1794,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_prev_sub_word_start(Rope::from(sample).slice(..), begin, count);
+                let range = move_prev_sub_word_start(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1593,7 +1896,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_prev_long_word_start(Rope::from(sample).slice(..), begin, count);
+                let range = move_prev_long_word_start(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1677,7 +1985,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_word_end(Rope::from(sample).slice(..), begin, count);
+                let range = move_next_word_end(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1759,7 +2072,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_prev_word_end(Rope::from(sample).slice(..), begin, count);
+                let range = move_prev_word_end(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1845,7 +2163,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_prev_sub_word_end(Rope::from(sample).slice(..), begin, count);
+                let range = move_prev_sub_word_end(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1927,7 +2250,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_long_word_end(Rope::from(sample).slice(..), begin, count);
+                let range = move_next_long_word_end(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -2021,7 +2349,12 @@ mod test {
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_prev_long_word_end(Rope::from(sample).slice(..), begin, count);
+                let range = move_prev_long_word_end(
+                    Rope::from(sample).slice(..),
+                    &TextAnnotations::default(),
+                    begin,
+                    count,
+                );
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -2054,8 +2387,15 @@ mod test {
         for (before, expected) in tests {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
-            let selection =
-                selection.transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Move));
+            let selection = selection.transform(|r| {
+                move_prev_paragraph(
+                    text.slice(..),
+                    &TextAnnotations::default(),
+                    r,
+                    1,
+                    Movement::Move,
+                )
+            });
             let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
@@ -2077,8 +2417,15 @@ mod test {
         for (before, expected) in tests {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
-            let selection =
-                selection.transform(|r| move_prev_paragraph(text.slice(..), r, 2, Movement::Move));
+            let selection = selection.transform(|r| {
+                move_prev_paragraph(
+                    text.slice(..),
+                    &TextAnnotations::default(),
+                    r,
+                    2,
+                    Movement::Move,
+                )
+            });
             let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
@@ -2100,8 +2447,15 @@ mod test {
         for (before, expected) in tests {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
-            let selection = selection
-                .transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Extend));
+            let selection = selection.transform(|r| {
+                move_prev_paragraph(
+                    text.slice(..),
+                    &TextAnnotations::default(),
+                    r,
+                    1,
+                    Movement::Extend,
+                )
+            });
             let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
@@ -2142,8 +2496,15 @@ mod test {
         for (before, expected) in tests {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
-            let selection =
-                selection.transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Move));
+            let selection = selection.transform(|r| {
+                move_next_paragraph(
+                    text.slice(..),
+                    &TextAnnotations::default(),
+                    r,
+                    1,
+                    Movement::Move,
+                )
+            });
             let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
@@ -2165,8 +2526,15 @@ mod test {
         for (before, expected) in tests {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
-            let selection =
-                selection.transform(|r| move_next_paragraph(text.slice(..), r, 2, Movement::Move));
+            let selection = selection.transform(|r| {
+                move_next_paragraph(
+                    text.slice(..),
+                    &TextAnnotations::default(),
+                    r,
+                    2,
+                    Movement::Move,
+                )
+            });
             let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
@@ -2188,10 +2556,327 @@ mod test {
         for (before, expected) in tests {
             let (s, selection) = crate::test::print(before);
             let text = Rope::from(s.as_str());
-            let selection = selection
-                .transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Extend));
+            let selection = selection.transform(|r| {
+                move_next_paragraph(
+                    text.slice(..),
+                    &TextAnnotations::default(),
+                    r,
+                    1,
+                    Movement::Extend,
+                )
+            });
             let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
+        }
+    }
+
+    mod with_folds {
+        use super::super::*;
+
+        use helix_stdx::rope::RopeSliceExt;
+
+        use crate::text_folding::FoldContainer;
+        use crate::{Position, Range};
+
+        use crate::text_folding::test_utils as utils;
+        use utils::{FOLDED_TEXT_SAMPLE, TEXT_SAMPLE};
+
+        fn unfold_position(
+            text: RopeSlice,
+            annotations: &TextAnnotations,
+            position: Position,
+        ) -> Position {
+            Position {
+                row: text.nth_next_folded_line(&annotations.folds, 0, position.row),
+                col: position.col,
+            }
+        }
+
+        fn range_from_position(text: RopeSlice, position: Position) -> Range {
+            Range::point(
+                text.line_to_char(position.row)
+                    + text
+                        .line(position.row)
+                        .graphemes()
+                        .take(position.col)
+                        .fold(0, |acc, g| acc + g.len_chars()),
+            )
+        }
+
+        fn position_from_range(text: RopeSlice, range: Range) -> Position {
+            let cursor = range.cursor(text);
+            let line = text.char_to_line(cursor);
+            Position {
+                row: line,
+                col: cursor - text.line_to_char(line),
+            }
+        }
+
+        #[test]
+        fn test_move_horizontally() {
+            let container = &FoldContainer::from(*TEXT_SAMPLE, utils::fold_points());
+
+            let default_annotations = &mut TextAnnotations::default();
+            let annotations = &mut TextAnnotations::default();
+            annotations.add_folds(container);
+
+            for (line, col, dir) in (0..FOLDED_TEXT_SAMPLE.len_lines()).flat_map(|line| {
+                let last_grapheme = FOLDED_TEXT_SAMPLE.line(line).graphemes().count() - 1;
+                [
+                    (line, last_grapheme, Direction::Forward),
+                    (line, 0, Direction::Backward),
+                ]
+            }) {
+                let folded_position = Position::new(line, col);
+                let position = unfold_position(*TEXT_SAMPLE, annotations, folded_position);
+
+                let folded_range = range_from_position(*FOLDED_TEXT_SAMPLE, folded_position);
+                let range = range_from_position(*TEXT_SAMPLE, position);
+
+                let folded_expected = position_from_range(
+                    *FOLDED_TEXT_SAMPLE,
+                    move_horizontally(
+                        *FOLDED_TEXT_SAMPLE,
+                        folded_range,
+                        dir,
+                        1,
+                        Movement::Move,
+                        &TextFormat::default(),
+                        default_annotations,
+                    ),
+                );
+                let expected = unfold_position(*TEXT_SAMPLE, annotations, folded_expected);
+                let result = position_from_range(
+                    *TEXT_SAMPLE,
+                    move_horizontally(
+                        *TEXT_SAMPLE,
+                        range,
+                        dir,
+                        1,
+                        Movement::Move,
+                        &TextFormat::default(),
+                        annotations,
+                    ),
+                );
+
+                assert_eq!(
+                    result, expected,
+                    "\n\
+                    \tfolded_position = {folded_position:?}\n\
+                    \tposition = {position:?}\n\
+                    \tdir = {dir:?}\n\
+                    \tfolded_expected = {folded_expected:?}\n",
+                )
+            }
+        }
+
+        #[test]
+        fn test_move_vertically() {
+            let container = FoldContainer::from(*TEXT_SAMPLE, utils::fold_points());
+
+            let default_annotations = &mut TextAnnotations::default();
+            let annotations = &mut TextAnnotations::default();
+            annotations.add_folds(&container);
+
+            for (line, dir) in (0..FOLDED_TEXT_SAMPLE.len_lines())
+                .flat_map(|line| [(line, Direction::Forward), (line, Direction::Backward)])
+            {
+                let folded_position = Position::new(line, 0);
+                let position = unfold_position(*TEXT_SAMPLE, annotations, folded_position);
+
+                let folded_range = range_from_position(*FOLDED_TEXT_SAMPLE, folded_position);
+                let range = range_from_position(*TEXT_SAMPLE, position);
+
+                let folded_expected = position_from_range(
+                    *FOLDED_TEXT_SAMPLE,
+                    move_vertically(
+                        *FOLDED_TEXT_SAMPLE,
+                        folded_range,
+                        dir,
+                        1,
+                        Movement::Move,
+                        &TextFormat::default(),
+                        default_annotations,
+                    ),
+                );
+                let expected = unfold_position(*TEXT_SAMPLE, annotations, folded_expected);
+                let result = position_from_range(
+                    *TEXT_SAMPLE,
+                    move_vertically(
+                        *TEXT_SAMPLE,
+                        range,
+                        dir,
+                        1,
+                        Movement::Move,
+                        &TextFormat::default(),
+                        annotations,
+                    ),
+                );
+
+                assert_eq!(
+                    result, expected,
+                    "\n\
+                    \tfolded_position = {folded_position:?}\n\
+                    \tposition = {position:?}\n\
+                    \tdir = {dir:?}\n\
+                    \tfolded_expected = {folded_expected:?}\n",
+                )
+            }
+        }
+
+        #[test]
+        fn test_move_vertically_visual() {
+            let container = FoldContainer::from(*TEXT_SAMPLE, utils::fold_points());
+
+            let default_annotations = &mut TextAnnotations::default();
+            let annotations = &mut TextAnnotations::default();
+            annotations.add_folds(&container);
+
+            let text_format = &mut TextFormat::default();
+            text_format.soft_wrap = true;
+            text_format.viewport_width = 7;
+
+            for (line, dir) in (0..FOLDED_TEXT_SAMPLE.len_lines())
+                .flat_map(|line| [(line, Direction::Forward), (line, Direction::Backward)])
+            {
+                let folded_position = Position::new(line, 0);
+                let position = unfold_position(*TEXT_SAMPLE, annotations, folded_position);
+
+                let folded_range = range_from_position(*FOLDED_TEXT_SAMPLE, folded_position);
+                let range = range_from_position(*TEXT_SAMPLE, position);
+
+                let folded_expected = position_from_range(
+                    *FOLDED_TEXT_SAMPLE,
+                    move_vertically_visual(
+                        *FOLDED_TEXT_SAMPLE,
+                        folded_range,
+                        dir,
+                        1,
+                        Movement::Move,
+                        text_format,
+                        default_annotations,
+                    ),
+                );
+                let expected = unfold_position(*TEXT_SAMPLE, annotations, folded_expected);
+                let result = position_from_range(
+                    *TEXT_SAMPLE,
+                    move_vertically_visual(
+                        *TEXT_SAMPLE,
+                        range,
+                        dir,
+                        1,
+                        Movement::Move,
+                        text_format,
+                        annotations,
+                    ),
+                );
+
+                assert_eq!(
+                    result, expected,
+                    "\n\
+                    \tfolded_position = {folded_position:?}\n\
+                    \tposition = {position:?}\n\
+                    \tdir = {dir:?}\n\
+                    \tfolded_expected = {folded_expected:?}\n",
+                )
+            }
+        }
+
+        #[test]
+        fn test_word_move() {
+            let container = &FoldContainer::from(*TEXT_SAMPLE, utils::fold_points());
+
+            let default_annotations = &mut TextAnnotations::default();
+            let annotations = &mut TextAnnotations::default();
+            annotations.add_folds(container);
+
+            for (line, col, target) in (0..FOLDED_TEXT_SAMPLE.len_lines()).flat_map(|line| {
+                let last_grapheme = FOLDED_TEXT_SAMPLE.line(line).graphemes().count() - 1;
+                [
+                    (line, last_grapheme, WordMotionTarget::NextWordStart),
+                    (line, 0, WordMotionTarget::PrevWordStart),
+                ]
+            }) {
+                let folded_position = Position::new(line, col);
+                let position = unfold_position(*TEXT_SAMPLE, annotations, folded_position);
+
+                let folded_range = range_from_position(*FOLDED_TEXT_SAMPLE, folded_position);
+                let range = range_from_position(*TEXT_SAMPLE, position);
+
+                let folded_expected = position_from_range(
+                    *FOLDED_TEXT_SAMPLE,
+                    word_move(
+                        *FOLDED_TEXT_SAMPLE,
+                        default_annotations,
+                        folded_range,
+                        1,
+                        target,
+                    ),
+                );
+                let expected = unfold_position(*TEXT_SAMPLE, annotations, folded_expected);
+                let result = position_from_range(
+                    *TEXT_SAMPLE,
+                    word_move(*TEXT_SAMPLE, annotations, range, 1, target),
+                );
+
+                assert_eq!(
+                    result, expected,
+                    "\n\
+                    \tfolded_position = {folded_position:?}\n\
+                    \tposition = {position:?}\n\
+                    \ttarget = {target:?}\n\
+                    \tfolded_expected = {folded_expected:?}\n",
+                )
+            }
+        }
+
+        #[test]
+        fn test_move_paragraph() {
+            let container = &FoldContainer::from(*TEXT_SAMPLE, utils::fold_points());
+
+            let default_annotations = &mut TextAnnotations::default();
+            let annotations = &mut TextAnnotations::default();
+            annotations.add_folds(container);
+
+            for (line, col, dir) in (0..FOLDED_TEXT_SAMPLE.len_lines()).flat_map(|line| {
+                let last_grapheme = FOLDED_TEXT_SAMPLE.line(line).graphemes().count() - 1;
+                [
+                    (line, last_grapheme, Direction::Forward),
+                    (line, 0, Direction::Backward),
+                ]
+            }) {
+                let folded_position = Position::new(line, col);
+                let position = unfold_position(*TEXT_SAMPLE, annotations, folded_position);
+
+                let folded_range = range_from_position(*FOLDED_TEXT_SAMPLE, folded_position);
+                let range = range_from_position(*TEXT_SAMPLE, position);
+
+                let folded_expected = position_from_range(
+                    *FOLDED_TEXT_SAMPLE,
+                    move_paragraph_impl(
+                        *FOLDED_TEXT_SAMPLE,
+                        dir,
+                        default_annotations,
+                        folded_range,
+                        1,
+                        Movement::Move,
+                    ),
+                );
+                let expected = unfold_position(*TEXT_SAMPLE, annotations, folded_expected);
+                let result = position_from_range(
+                    *TEXT_SAMPLE,
+                    move_paragraph_impl(*TEXT_SAMPLE, dir, annotations, range, 1, Movement::Move),
+                );
+
+                assert_eq!(
+                    result, expected,
+                    "\n\
+                    \tfolded_position = {folded_position:?}\n\
+                    \tposition = {position:?}\n\
+                    \tdir = {dir:?}\n\
+                    \tfolded_expected = {folded_expected:?}\n",
+                )
+            }
         }
     }
 }
