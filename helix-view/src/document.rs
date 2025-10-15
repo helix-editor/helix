@@ -1188,21 +1188,19 @@ impl Document {
 
     pub fn pickup_last_saved_time(&mut self) {
         self.last_saved_time = match self.path() {
-            Some(path) => match path.metadata() {
-                Ok(metadata) => match metadata.modified() {
-                    Ok(mtime) => mtime,
-                    Err(err) => {
-                        log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
-                        SystemTime::now()
-                    }
-                },
-                Err(err) => {
-                    log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
-                    SystemTime::now()
-                }
-            },
+            Some(path) => path.metadata().and_then(|m| m.modified()).unwrap_or_else(|err| {
+                log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
+                SystemTime::now()
+            }),
             None => SystemTime::now(),
         };
+    }
+
+    /// Path given and externally modified since `last_saved_time`?
+    pub fn externally_overwritten(&self) -> bool {
+        self.path()
+            .and_then(|p| p.metadata().ok().and_then(|m| m.modified().ok()))
+            .is_some_and(|mtime| mtime > self.last_saved_time)
     }
 
     // Detect if the file is readonly and change the readonly field if necessary (unix only)

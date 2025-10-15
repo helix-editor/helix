@@ -143,14 +143,56 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
 
     file.as_file_mut().flush()?;
     file.as_file_mut().sync_all()?;
+    let last_saved_time = file.path().metadata()?.modified()?;
 
-    test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
+    // Exit empty unmodified view, externally changed file shouldn't be overwritten
+    test_key_sequence(&mut app, Some(":x<ret>"), None, true).await?;
 
     reload_file(&mut file).unwrap();
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
 
     assert_eq!("extremely important content", file_content);
+
+    let saved_time = file.path().metadata()?.modified()?;
+    assert_eq!(saved_time, last_saved_time);
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_overwrite_if_not_modified_since() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    file.as_file_mut().write_all("34".as_bytes())?;
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    helpers::run_event_loop_until_idle(&mut app).await;
+
+    // Modify and exit allowing saving because file hasn't been changed externally since opening
+    test_key_sequence(&mut app, Some("i12<esc>:x<ret>"), None, true).await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.read_to_string(&mut file_content)?;
+
+    assert_eq!("1234", file_content);
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_exit_if_not_named() -> anyhow::Result<()> {
+    let mut app = helpers::AppBuilder::new().build()?;
+
+    helpers::run_event_loop_until_idle(&mut app).await;
+
+    // Modify and exit without saving because file hasn't been named yet
+    test_key_sequence(&mut app, Some("i12<esc>:x<ret>"), None, true).await?;
 
     Ok(())
 }

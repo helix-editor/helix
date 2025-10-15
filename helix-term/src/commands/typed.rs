@@ -731,6 +731,28 @@ fn force_write_quit(
     force_quit(cx, Args::default(), event)
 }
 
+/// exit command: Write only if named and modified (but not externally), then quit.
+fn write_exit(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_, doc) = current!(cx.editor);
+
+    // Current document named and modified?
+    // Write changes if not externally modified already.
+    if doc.is_modified() {
+        if doc.path().is_some() && !doc.externally_overwritten() {
+            write_impl(cx, None, false)?;
+            cx.block_try_flush_writes()?;
+        } else {
+            doc.reset_modified();
+        }
+    }
+
+    quit(cx, Args::default(), event)
+}
+
 /// Results in an error if there are modified buffers remaining and sets editor
 /// error, otherwise returns `Ok(())`. If the current document is unmodified,
 /// and there are modified documents, switches focus to one of them.
@@ -2910,7 +2932,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "write-quit",
-        aliases: &["wq", "x"],
+        aliases: &["wq"],
         doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
         fun: write_quit,
         completer: CommandCompleter::positional(&[completers::filename]),
@@ -2922,13 +2944,24 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "write-quit!",
-        aliases: &["wq!", "x!"],
+        aliases: &["wq!"],
         doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
         fun: force_write_quit,
         completer: CommandCompleter::positional(&[completers::filename]),
         signature: Signature {
             positionals: (0, Some(1)),
             flags: &[WRITE_NO_FORMAT_FLAG],
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "exit",
+        aliases: &["xit", "x", "x!"],
+        doc: "Save the current view if named and modified (but not externally), then quit.",
+        fun: write_exit,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
     },
