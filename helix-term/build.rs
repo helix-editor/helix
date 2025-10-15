@@ -16,6 +16,7 @@ mod windows_rc {
     use std::io::prelude::Write;
     use std::{env, io, path::Path, path::PathBuf, process};
 
+    #[cfg(target_env = "msvc")]
     pub(crate) fn link_icon_in_windows_exe(icon_path: &str) {
         let rc_exe = find_rc_exe().expect("Windows SDK is to be installed along with MSVC");
 
@@ -32,6 +33,7 @@ mod windows_rc {
         println!("cargo:rustc-link-lib=dylib=resource");
     }
 
+    #[cfg(target_env = "msvc")]
     fn compile_with_toolkit_msvc(rc_exe: PathBuf, output: PathBuf, input: PathBuf) {
         let mut command = process::Command::new(rc_exe);
         let command = command.arg(format!(
@@ -56,6 +58,7 @@ mod windows_rc {
         );
     }
 
+    #[cfg(target_env = "msvc")]
     fn find_rc_exe() -> io::Result<PathBuf> {
         let find_reg_key = process::Command::new("reg")
             .arg("query")
@@ -142,6 +145,59 @@ mod windows_rc {
                 }
             }
         }
+    }
+
+    #[cfg(target_env = "gnu")]
+    pub(crate) fn link_icon_in_windows_exe(icon_path: &str) {
+        let windres_exe = PathBuf::from(r"windres.exe");
+        if !check_if_exe_works(&windres_exe) {
+            panic!("Could not locate windres.exe binary from gnu toolkit in the PATH environment variable.")
+        };
+
+        let output = env::var("OUT_DIR").expect("Env var OUT_DIR should have been set by compiler");
+        let output_dir = PathBuf::from(output);
+
+        let rc_path = output_dir.join("resource.rc");
+        write_resource_file(&rc_path, icon_path).unwrap();
+
+        let resource_file = PathBuf::from(&output_dir).join("resource.lib");
+        compile_with_toolkit_gnu(windres_exe, resource_file, rc_path);
+
+        println!("cargo:rustc-link-search=native={}", output_dir.display());
+        println!("cargo:rustc-link-lib=dylib=resource");
+    }
+
+    #[cfg(target_env = "gnu")]
+    fn compile_with_toolkit_gnu(windres_exe: PathBuf, output: PathBuf, input: PathBuf) {
+        let mut command = process::Command::new(windres_exe);
+        let command = command.arg(format!(
+            "-I {}",
+            env::var("CARGO_MANIFEST_DIR")
+                .expect("CARGO_MANIFEST_DIR should have been set by Cargo")
+        ));
+
+        let status = command
+            .arg(format!("--output={}", output.display()))
+            .arg(format!("{}", input.display()))
+            .output()
+            .unwrap();
+
+        println!(
+            "RC Output:\n{}\n------",
+            String::from_utf8_lossy(&status.stdout)
+        );
+        println!(
+            "RC Error:\n{}\n------",
+            String::from_utf8_lossy(&status.stderr)
+        );
+    }
+
+    #[cfg(target_env = "gnu")]
+    fn check_if_exe_works(exe: &PathBuf) -> bool {
+        process::Command::new(exe)
+            .arg("--version") // Optional: You can pass an argument to check if the command is working
+            .output()
+            .is_okay()
     }
 
     fn write_resource_file(rc_path: &Path, icon_path: &str) -> io::Result<()> {
