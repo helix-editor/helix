@@ -910,7 +910,7 @@ args = { program = "{0}", skipFiles = [ "<node_internals>/**" ] }
 
 [[grammar]]
 name = "javascript"
-source = { git = "https://github.com/tree-sitter/tree-sitter-javascript", rev = "f772967f7b7bc7c28f845be2420a38472b16a8ee" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-javascript", rev = "3a837b6f3658ca3618f2022f8707e29739c91364" }
 
 [[language]]
 name = "jsx"
@@ -940,7 +940,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "typescript"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "b1bf4825d9eaa0f3bdeb1e52f099533328acfbdf", subpath = "typescript" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "75b3874edb2dc714fb1fd77a32013d0f8699989f", subpath = "typescript" }
 
 [[language]]
 name = "typespec"
@@ -973,7 +973,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "tsx"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "b1bf4825d9eaa0f3bdeb1e52f099533328acfbdf", subpath = "tsx" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "75b3874edb2dc714fb1fd77a32013d0f8699989f", subpath = "tsx" }
 
 [[language]]
 name = "css"
@@ -4249,7 +4249,7 @@ language-servers = [
     "ember-language-server",
 ]
 indent = { tab-width = 2, unit = "  " }
-grammar = "javascript"
+grammar = "glimmer-javascript"
 
 [language.auto-pairs]
 '<' = '>'
@@ -4257,6 +4257,10 @@ grammar = "javascript"
 "{" = "}"
 "(" = ")"
 '"' = '"'
+
+[[grammar]]
+name = "glimmer-javascript"
+source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer-javascript", rev = "5cc865a2a0a77cbfaf5062c8fcf2a9919bd54f87" }
 
 [[language]]
 name = "gts"
@@ -4273,7 +4277,7 @@ language-servers = [
     "ember-language-server",
 ]
 indent = { tab-width = 2, unit = "  " }
-grammar = "typescript"
+grammar = "glimmer-typescript"
 
 [language.auto-pairs]
 '<' = '>'
@@ -4281,6 +4285,10 @@ grammar = "typescript"
 "{" = "}"
 "(" = ")"
 '"' = '"'
+
+[[grammar]]
+name = "glimmer-typescript"
+source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer-typescript", rev = "12d98944c1d5077b957cbdb90d663a7c4d50118c" }
 
 [[language]]
 name = "gherkin"
