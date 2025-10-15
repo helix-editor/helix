@@ -4218,7 +4218,7 @@ language-servers = ["pest-language-server"]
 
 [[grammar]]
 name = "pest"
-source = { git = "https://github.com/pest-parser/tree-sitter-pest", rev = "a8a98a824452b1ec4da7f508386a187a2f234b85" }
+source = { git = "https://github.com/pest-parser/tree-sitter-pest", rev = "c19629a0c50e6ca2485c3b154b1dde841a08d169" }
 
 [[language]]
 name = "elisp"
