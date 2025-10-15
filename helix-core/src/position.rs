@@ -262,7 +262,14 @@ pub fn visual_offset_from_anchor(
 pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending: bool) -> usize {
     let Position { mut row, col } = coords;
     if limit_before_line_ending {
-        row = row.min(text.len_lines() - 1);
+        let lines = text.len_lines() - 1;
+
+        if lines > 0 && text.line(lines).len_chars() == 0 {
+            // if the last line is empty, don't jump to it
+            row = row.min(lines - 1);
+        } else {
+            row = row.min(lines);
+        }
     };
     let line_start = text.line_to_char(row);
     let line_end = if limit_before_line_ending {
