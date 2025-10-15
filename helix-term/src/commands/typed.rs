@@ -68,6 +68,44 @@ impl CommandCompleter {
     }
 }
 
+fn exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if doc!(cx.editor).is_modified() {
+        write_impl(
+            cx,
+            args.first(),
+            WriteOptions {
+                force: false,
+                auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            },
+        )?;
+    }
+    cx.block_try_flush_writes()?;
+    quit(cx, Args::default(), event)
+}
+
+fn force_exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if doc!(cx.editor).is_modified() {
+        write_impl(
+            cx,
+            args.first(),
+            WriteOptions {
+                force: true,
+                auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            },
+        )?;
+    }
+    cx.block_try_flush_writes()?;
+    quit(cx, Args::default(), event)
+}
+
 fn quit(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
     log::debug!("quitting...");
 
@@ -2677,6 +2715,30 @@ const WRITE_NO_FORMAT_FLAG: Flag = Flag {
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
+        name: "exit",
+        aliases: &["x", "xit"],
+        doc: "Write changes to disk if the buffer is modified and then quit. Accepts an optional path (:exit some/path.txt).",
+        fun: exit,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[WRITE_NO_FORMAT_FLAG],
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "exit!",
+        aliases: &["x!", "xit!"],
+        doc: "Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit. Accepts an optional path (:exit! some/path.txt).",
+        fun: force_exit,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[WRITE_NO_FORMAT_FLAG],
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
         name: "quit",
         aliases: &["q"],
         doc: "Close the current view.",
@@ -2910,7 +2972,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "write-quit",
-        aliases: &["wq", "x"],
+        aliases: &["wq"],
         doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
         fun: write_quit,
         completer: CommandCompleter::positional(&[completers::filename]),
@@ -2922,7 +2984,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "write-quit!",
-        aliases: &["wq!", "x!"],
+        aliases: &["wq!"],
         doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
         fun: force_write_quit,
         completer: CommandCompleter::positional(&[completers::filename]),
