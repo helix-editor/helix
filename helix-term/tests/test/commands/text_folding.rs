@@ -1629,3 +1629,86 @@ async fn default_folding() -> anyhow::Result<()> {
     )
     .await
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn toggle_fold() -> anyhow::Result<()> {
+    let app = &mut AppBuilder::new()
+        .with_file(RUST_CODE, None)
+        .with_lang_loader(helpers::test_syntax_loader(None))
+        .build()
+        .unwrap();
+
+    let folds_number = |app: &Application| {
+        let (view, doc) = current_ref!(&app.editor);
+        doc.fold_container(view.id)
+            .map_or(0, |container| container.len())
+    };
+
+    test_key_sequences(
+        app,
+        vec![
+            (
+                Some("z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 1)),
+            ),
+            (
+                Some("z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 0)),
+            ),
+            (
+                Some("g7gz<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 0)),
+            ),
+            (
+                Some("g5|z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 1)),
+            ),
+            (
+                Some("z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 0)),
+            ),
+            (
+                Some("g10gg5|z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 1)),
+            ),
+            (
+                Some("z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 0)),
+            ),
+            (
+                Some("g12gg13|z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 1)),
+            ),
+            (
+                Some("z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 0)),
+            ),
+            (
+                Some("g17gg17|z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 1)),
+            ),
+            (
+                Some("z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 0)),
+            ),
+            (
+                Some("g93gg13|z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 1)),
+            ),
+            (
+                Some("z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 0)),
+            ),
+            (
+                Some("g105gg21|z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 1)),
+            ),
+            (
+                Some("z<A-f>"),
+                Some(&|app| assert_eq!(folds_number(app), 0)),
+            ),
+        ],
+        false,
+    )
+    .await
+}

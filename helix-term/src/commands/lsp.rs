@@ -15,8 +15,7 @@ use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
-    text_annotations::InlineAnnotation, Selection, Uri,
-    text_folding::ropex::RopeSliceFoldExt,
+    text_annotations::InlineAnnotation, text_folding::ropex::RopeSliceFoldExt, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -1309,7 +1308,11 @@ fn compute_inlay_hints_for_view(
     let first_visible_line =
         doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
     let first_line = first_visible_line.saturating_sub(view_height);
-    let last_line = doc_text.slice(..).nth_next_folded_line(annotations, first_visible_line, view_height.saturating_mul(2));
+    let last_line = doc_text.slice(..).nth_next_folded_line(
+        annotations,
+        first_visible_line,
+        view_height.saturating_mul(2),
+    );
 
     let new_doc_inlay_hints_id = DocumentInlayHintsId {
         first_line,

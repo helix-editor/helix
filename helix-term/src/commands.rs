@@ -42,7 +42,7 @@ use helix_core::{
     selection, surround,
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
-    text_folding::RopeSliceFoldExt,
+    text_folding::{self, RopeSliceFoldExt},
     textobject,
     unicode::width::UnicodeWidthChar,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
@@ -621,6 +621,7 @@ impl MappableCommand {
         rotate_selections_last, "Make the last selection your primary one",
         fold, "Fold text objects",
         unfold, "Unfold text objects",
+        toggle_fold, "Toggle fold for the text object at the primary cursor",
     );
 }
 
@@ -7010,4 +7011,120 @@ fn fold(cx: &mut Context) {
 fn unfold(cx: &mut Context) {
     let command: MappableCommand = ":unfold --all".parse().unwrap();
     command.execute(cx);
+}
+
+fn toggle_fold(cx: &mut Context) {
+    use graphemes::ensure_grapheme_boundary_prev;
+    use text_folding::{Fold, FoldObject};
+
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let loader = cx.editor.syn_loader.load();
+
+    let Some(syntax) = doc.syntax() else {
+        cx.editor
+            .set_error("Syntax is unavailable in the current buffer.");
+        return;
+    };
+
+    let Some(textobject_query) = loader.textobject_query(syntax.root_language()) else {
+        cx.editor.set_error("Failed to compile text object query.");
+        return;
+    };
+
+    let textobjects = &["class.around", "function.around", "comment.around"];
+    let root_node = syntax.tree().root_node();
+
+    // search for a textobject at the cursor
+    let Some((capture_name, node_range)) = textobject_query
+        .capture_nodes_all(textobjects, &root_node, text)
+        .map(|(cap, node)| (cap.name(textobject_query.query()), node.byte_range()))
+        .filter(|(_, range)| range.contains(&text.char_to_byte(cursor)))
+        .min_by_key(|(_, range)| range.len())
+        .map(|(cap, range)| {
+            (cap, {
+                let start = text.byte_to_char(range.start);
+                let end = ensure_grapheme_boundary_prev(text, text.byte_to_char(range.end - 1));
+                start..=end
+            })
+        })
+    else {
+        cx.editor
+            .set_status("There is no text object at the cursor.");
+        return;
+    };
+
+    let object = {
+        let textobject = match capture_name {
+            "class.around" => "class",
+            "function.around" => "function",
+            "comment.around" => "comment",
+            other => unreachable!("Unexpected textobject {other}"),
+        };
+        FoldObject::TextObject(textobject)
+    };
+
+    let fold = doc.fold_container(view.id).and_then(|container| {
+        container.find(&object, &node_range, |fold| fold.header()..=fold.end.target)
+    });
+    if let Some(fold) = fold {
+        doc.remove_folds(view, vec![fold.start_idx()]);
+        return;
+    }
+
+    let header = *node_range.start();
+    let target = {
+        match capture_name {
+            "class.around" | "function.around" => {
+                let capture = match capture_name {
+                    "class.around" => "class.inside",
+                    "function.around" => "function.inside",
+                    _ => unreachable!(),
+                };
+                let byte_range = {
+                    let start = text.char_to_byte(*node_range.start());
+                    let end = text.char_to_byte(next_grapheme_boundary(text, *node_range.end()));
+                    start..end
+                };
+                let node = syntax
+                    .descendant_for_byte_range(byte_range.start as u32, byte_range.end as u32)
+                    .expect("The range must belong to the captured node.");
+                let Some(target) = || -> Option<_> {
+                    textobject_query
+                        .capture_nodes(capture, &node, text)?
+                        .next()
+                        .map(|cap_node| {
+                            let start = text.byte_to_char(cap_node.start_byte());
+                            let end = ensure_grapheme_boundary_prev(
+                                text,
+                                text.byte_to_char(cap_node.end_byte() - 1),
+                            );
+                            start..=end
+                        })
+                }() else {
+                    return;
+                };
+                target
+            }
+            "comment.around" => {
+                let start_line = text.char_to_line(*node_range.start());
+                let end_line = text.char_to_line(*node_range.end());
+                if start_line >= end_line {
+                    cx.editor.set_status("One-line comment does not fold.");
+                    return;
+                }
+                let start = text.line_to_char(start_line + 1)
+                    + text
+                        .line(start_line + 1)
+                        .first_non_whitespace_char()
+                        .unwrap_or(0);
+                start..=*node_range.end()
+            }
+            other => unreachable!("Unexpected textobject {other}"),
+        }
+    };
+
+    let new_fold = Fold::new_points(text, object, header, &target);
+    doc.add_folds(view, vec![new_fold]);
 }

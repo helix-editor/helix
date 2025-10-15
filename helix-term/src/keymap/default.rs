@@ -307,6 +307,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
             "f" => fold,
             "F" => unfold,
+            "A-f" => toggle_fold,
 
             "/" => search,
             "?" => rsearch,
@@ -327,6 +328,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
             "f" => fold,
             "F" => unfold,
+            "A-f" => toggle_fold,
 
             "/" => search,
             "?" => rsearch,
