@@ -3,6 +3,7 @@ use std::io::BufReader;
 use std::ops::{self, Deref};
 
 use crate::job::Job;
+use crate::make::{self};
 
 use super::*;
 
@@ -2678,6 +2679,44 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+fn make(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let shell = cx.editor.config().shell.clone();
+    // TODO(szulf): for now i take the command each time the :make is run,
+    // can i maybe just take it once and store it on Editor
+    if cx.editor.make_cmd.is_none() {
+        let workspace = find_workspace().0;
+        let contains = cx.editor.config().make_cmds.contains_key(&workspace);
+        if !contains {
+            return Err(anyhow!("No make command set for current workspace."));
+        }
+        cx.editor.make_cmd = Some(cx.editor.config().make_cmds[&workspace].clone());
+    }
+    let command = cx.editor.make_cmd.clone().unwrap();
+
+    let callback = async move {
+        let output = shell_impl_async(&shell, &command.command, None).await?;
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, _compositor: &mut Compositor| {
+                let entries = make::parse(&command.format_type, output.as_str());
+                let entries_count = entries.len();
+                editor.make_list.set(entries);
+                editor.set_status(format!(
+                    "Command run. Filled make list with {} entries.",
+                    entries_count
+                ));
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 /// This command accepts a single boolean --skip-visible flag and no positionals.
 const BUFFER_CLOSE_OTHERS_SIGNATURE: Signature = Signature {
     positionals: (0, Some(0)),
@@ -3725,6 +3764,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "make",
+        aliases: &["mk"],
+        doc: "Executes the config specified make command and fills the make picker with its output.",
+        fun: make,
+        completer: SHELL_COMPLETER,
+        signature: Signature {
+            positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
     },
