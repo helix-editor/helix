@@ -5,6 +5,7 @@ use helix_core::syntax;
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use std::borrow::Borrow;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
@@ -480,7 +481,12 @@ impl Prompt {
             }
         }
 
-        if let Some(doc) = (self.doc_fn)(&self.line) {
+        if let Some(doc) = self
+            .selection
+            .and_then(|i| self.completion.get(i))
+            .map(|(_, span)| span.content.borrow())
+            .and_then(&self.doc_fn)
+        {
             let mut text = ui::Text::new(doc.to_string());
 
             let max_width = BASE_WIDTH * 3;
