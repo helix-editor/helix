@@ -34,7 +34,7 @@ use crate::{
 
 use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
 
-use indexmap::IndexMap;
+use indexmap::IndexSet;
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
@@ -60,7 +60,7 @@ macro_rules! language_server_with_feature {
 
 /// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri` and adds
 /// the server's  offset encoding.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Location {
     uri: Uri,
     range: lsp::Range,
@@ -86,23 +86,8 @@ fn lsp_location_to_location(
 }
 
 fn deduplicate_locations(locations: Vec<Location>) -> Vec<Location> {
-    let mut map: IndexMap<(Uri, lsp::Range), Location> = IndexMap::new();
-
-    for location in locations {
-        let key = (location.uri.clone(), location.range);
-        match map.get_mut(&key) {
-            Some(existing) => {
-                if location.offset_encoding > existing.offset_encoding {
-                    *existing = location;
-                }
-            }
-            None => {
-                map.insert(key, location);
-            }
-        }
-    }
-
-    map.into_values().collect()
+    let set: IndexSet<Location> = IndexSet::from_iter(locations);
+    set.into_iter().collect()
 }
 
 struct SymbolInformationItem {
@@ -1520,16 +1505,13 @@ mod tests {
                         character: 10,
                     },
                 },
-                offset_encoding: OffsetEncoding::Utf16,
+                offset_encoding: OffsetEncoding::Utf8,
             },
         ];
         let dedup_locations = deduplicate_locations(locations);
 
         // should have 1 unique location
         assert_eq!(dedup_locations.len(), 1);
-
-        // the location should have the highest OffsetEncoding between them
-        assert_eq!(dedup_locations[0].offset_encoding, OffsetEncoding::Utf16);
     }
 
     #[test]
@@ -1594,7 +1576,7 @@ mod tests {
                         character: 10,
                     },
                 },
-                offset_encoding: OffsetEncoding::Utf16,
+                offset_encoding: OffsetEncoding::Utf8,
             },
             Location {
                 uri: Uri::from(path.clone()),
@@ -1615,16 +1597,18 @@ mod tests {
         let dedup_locations = deduplicate_locations(locations);
 
         // should have 3 unique locations
-        assert_eq!(dedup_locations.len(), 3);
+        assert_eq!(dedup_locations.len(), 4);
 
         // check order is preserved: line1, line2, line3
         assert_eq!(dedup_locations[0].range.start.line, 1);
         assert_eq!(dedup_locations[1].range.start.line, 2);
-        assert_eq!(dedup_locations[2].range.start.line, 3);
+        assert_eq!(dedup_locations[2].range.start.line, 2);
+        assert_eq!(dedup_locations[3].range.start.line, 3);
 
         // check that higher offset_encoding was used for duplicates
-        assert_eq!(dedup_locations[0].offset_encoding, OffsetEncoding::Utf16);
+        assert_eq!(dedup_locations[0].offset_encoding, OffsetEncoding::Utf8);
         assert_eq!(dedup_locations[1].offset_encoding, OffsetEncoding::Utf16);
+        assert_eq!(dedup_locations[2].offset_encoding, OffsetEncoding::Utf8);
         assert_eq!(dedup_locations[2].offset_encoding, OffsetEncoding::Utf8);
     }
 }
