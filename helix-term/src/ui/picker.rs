@@ -1048,23 +1048,23 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         let close_fn = |picker: &mut Self| {
             // if the picker is very large don't store it as last_picker to avoid
             // excessive memory consumption
-            let callback: compositor::Callback = if picker.matcher.snapshot().item_count() > 100_000
-            {
-                Box::new(|compositor: &mut Compositor, _ctx| {
-                    // remove the layer
-                    compositor.pop();
-                })
-            } else {
-                // stop streaming in new items in the background, really we should
-                // be restarting the stream somehow once the picker gets
-                // reopened instead (like for an FS crawl) that would also remove the
-                // need for the special case above but that is pretty tricky
-                picker.version.fetch_add(1, atomic::Ordering::Relaxed);
-                Box::new(|compositor: &mut Compositor, _ctx| {
-                    // remove the layer
-                    compositor.last_picker = compositor.pop();
-                })
-            };
+            let callback: compositor::Callback =
+                if picker.matcher.snapshot().item_count() > 1_000_000 {
+                    Box::new(|compositor: &mut Compositor, _ctx| {
+                        // remove the layer
+                        compositor.pop();
+                    })
+                } else {
+                    // stop streaming in new items in the background, really we should
+                    // be restarting the stream somehow once the picker gets
+                    // reopened instead (like for an FS crawl) that would also remove the
+                    // need for the special case above but that is pretty tricky
+                    picker.version.fetch_add(1, atomic::Ordering::Relaxed);
+                    Box::new(|compositor: &mut Compositor, _ctx| {
+                        // remove the layer
+                        compositor.last_picker = compositor.pop();
+                    })
+                };
             EventResult::Consumed(Some(callback))
         };
 

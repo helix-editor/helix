@@ -10,6 +10,100 @@ use helix_view::doc;
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_exit_w_buffer_w_path() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+    // Check for write operation on given path and edited buffer
+    test_key_sequence(
+        &mut app,
+        Some("iBecause of the obvious threat to untold numbers of citizens due to the crisis that is even now developing, this radio station will remain on the air day and night.<ret><esc>:x<ret>"),
+        None,
+        true,
+    )
+    .await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        LineFeedHandling::Native.apply("Because of the obvious threat to untold numbers of citizens due to the crisis that is even now developing, this radio station will remain on the air day and night.\n"),
+        file_content
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_exit_wo_buffer_w_path() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    helpers::run_event_loop_until_idle(&mut app).await;
+
+    file.as_file_mut()
+        .write_all("extremely important content".as_bytes())?;
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    test_key_sequence(&mut app, Some(":x<ret>"), None, true).await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.read_to_string(&mut file_content)?;
+    // check that nothing is written to file
+    assert_eq!("extremely important content", file_content);
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_exit_wo_buffer_wo_path() -> anyhow::Result<()> {
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(":x<ret>"),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+        }),
+        true,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_exit_w_buffer_wo_file() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    test_key_sequence(
+        // try to write without destination
+        &mut AppBuilder::new().build()?,
+        Some("itest<esc>:x<ret>"),
+        None,
+        false,
+    )
+    .await?;
+    test_key_sequence(
+        // try to write with path succeeds
+        &mut AppBuilder::new().build()?,
+        Some(format!("iMicCheck<esc>:x {}<ret>", file.path().to_string_lossy()).as_ref()),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+        }),
+        true,
+    )
+    .await?;
+
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("MicCheck"))?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
     let mut app = helpers::AppBuilder::new()
@@ -144,7 +238,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
     file.as_file_mut().flush()?;
     file.as_file_mut().sync_all()?;
 
-    test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
+    test_key_sequence(&mut app, Some("iOverwriteData<esc>:x<ret>"), None, false).await?;
 
     reload_file(&mut file).unwrap();
     let mut file_content = String::new();

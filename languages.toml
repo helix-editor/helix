@@ -284,6 +284,10 @@ args = ["lsp"]
 command = "docker-language-server"
 args = ["start", "--stdio"]
 
+[language-server.kcl-lsp]
+command = "kcl-language-server"
+args = ["server", "--stdio"]
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -340,7 +344,7 @@ args = { attachCommands = [ "platform select remote-gdb-server", "platform conne
 
 [[grammar]]
 name = "rust"
-source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "1f63b33efee17e833e0ea29266dd3d713e27e321" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "261b20226c04ef601adbdf185a800512a5f66291" }
 
 [[language]]
 name = "sway"
@@ -1180,6 +1184,9 @@ file-types = [
   { glob = ".zimrc" },
   { glob = "APKBUILD" },
   { glob = ".bash_aliases" },
+  { glob = "bash_completion" },
+  { glob = "bash-completion/completions/*" },
+  { glob = "bash_completion.d/*" },
   { glob = ".Renviron" },
   { glob = ".xprofile" },
   { glob = ".xsession" },
@@ -1534,6 +1541,7 @@ file-types = [
   { glob = ".gem/credentials" },
   { glob = ".kube/config" },
   { glob = ".kube/kuberc" },
+  { glob = "yarn.lock" },
   "sublime-syntax"
 ]
 comment-token = "#"
@@ -1753,8 +1761,8 @@ source = { git = "https://github.com/tree-sitter-perl/tree-sitter-pod", rev = "0
 [[language]]
 name = "racket"
 scope = "source.racket"
-file-types = ["rkt", "rktd", "rktl", "scrbl"]
-shebangs = ["racket"]
+file-types = ["rkt", "rktd", "rktl", "scrbl", "zuo"]
+shebangs = ["racket", "zuo"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "#|", end = "|#" }
@@ -2054,7 +2062,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-regex", rev = "e1cf
 [[language]]
 name = "git-config"
 scope = "source.gitconfig"
-file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
+file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = "gitconfig" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -4888,3 +4896,18 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "nearley"
 source = { git = "https://github.com/mi2ebi/tree-sitter-nearley", rev = "12d01113e194c8e83f6341aab8c2a5f21db9cac9" }
+
+[[language]]
+name = "kcl"
+scope = "source.kcl"
+injection-regex = "kcl"
+file-types = ["kcl"]
+comment-tokens = "//"
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "zoo" , args = ["kcl", "fmt", "-"] }
+language-servers = [ "kcl-lsp" ]
+block-comment-tokens = { start = "/*", end = "*/"}
+
+[[grammer]]
+name = "kcl"
+source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "8905e0bdbf5870b50bc3f24345f1af27746f42e8"}
