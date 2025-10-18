@@ -1162,7 +1162,11 @@ impl Document {
                 ));
             }
 
-            let backup = Backup::from(write_path.clone()).await.ok();
+            let backup = if path.exists() && atomic_save {
+                Backup::from(write_path.clone()).await.ok()
+            } else {
+                None
+            };
 
             let write_result: anyhow::Result<_> = async {
                 let mut dst = tokio::fs::File::create(&write_path).await?;
