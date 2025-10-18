@@ -38,6 +38,7 @@ docker-compose-langserver = { command = "docker-compose-langserver", args = ["--
 dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
 dts-lsp = { command = "dts-lsp" }
 earthlyls = { command = "earthlyls" }
+eiffel-language-server = {command = "eiffel-language-server"}
 elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
 elm-language-server = { command = "elm-language-server" }
 elp = { command = "elp", args = ["server"] }
@@ -283,6 +284,10 @@ args = ["lsp"]
 command = "docker-language-server"
 args = ["start", "--stdio"]
 
+[language-server.kcl-lsp]
+command = "kcl-language-server"
+args = ["server", "--stdio"]
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -339,7 +344,7 @@ args = { attachCommands = [ "platform select remote-gdb-server", "platform conne
 
 [[grammar]]
 name = "rust"
-source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "1f63b33efee17e833e0ea29266dd3d713e27e321" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "261b20226c04ef601adbdf185a800512a5f66291" }
 
 [[language]]
 name = "sway"
@@ -421,6 +426,17 @@ auto-format = true
 [[grammar]]
 name = "textproto"
 source = { git = "https://github.com/PorterAtGoogle/tree-sitter-textproto", rev = "568471b80fd8793d37ed01865d8c2208a9fefd1b"}
+
+[[language]]
+name = "eiffel"
+scope = "source.eiffel"
+file-types = ["e"]
+comment-token = "--"
+language-servers = ["eiffel-language-server"]
+
+[[grammar]]
+name = "eiffel"
+source = { git = "https://github.com/imustafin/tree-sitter-eiffel", rev = "d934fb44f1d22bb76be6b56a7b2425ab3b1daf8b" }
 
 [[language]]
 name = "elixir"
@@ -1153,6 +1169,7 @@ file-types = [
   { glob = "sway/config" },
   { glob = ".tmux.conf" },
   { glob = "tmux.conf" },
+  { glob = ".sh_history" },
   { glob = ".bash_history" },
   { glob = ".bash_login" },
   { glob = ".bash_logout" },
@@ -1167,6 +1184,9 @@ file-types = [
   { glob = ".zimrc" },
   { glob = "APKBUILD" },
   { glob = ".bash_aliases" },
+  { glob = "bash_completion" },
+  { glob = "bash-completion/completions/*" },
+  { glob = "bash_completion.d/*" },
   { glob = ".Renviron" },
   { glob = ".xprofile" },
   { glob = ".xsession" },
@@ -1521,6 +1541,7 @@ file-types = [
   { glob = ".gem/credentials" },
   { glob = ".kube/config" },
   { glob = ".kube/kuberc" },
+  { glob = "yarn.lock" },
   "sublime-syntax"
 ]
 comment-token = "#"
@@ -1740,8 +1761,8 @@ source = { git = "https://github.com/tree-sitter-perl/tree-sitter-pod", rev = "0
 [[language]]
 name = "racket"
 scope = "source.racket"
-file-types = ["rkt", "rktd", "rktl", "scrbl"]
-shebangs = ["racket"]
+file-types = ["rkt", "rktd", "rktl", "scrbl", "zuo"]
+shebangs = ["racket", "zuo"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "#|", end = "|#" }
@@ -2041,7 +2062,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-regex", rev = "e1cf
 [[language]]
 name = "git-config"
 scope = "source.gitconfig"
-file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
+file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = "gitconfig" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -3046,6 +3067,8 @@ file-types = [
   "gpx",
   "fodt",
   "fods",
+  "itermcolors",
+  "terminal",
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
@@ -3709,6 +3732,25 @@ file-types = ["jjtemplate"]
 [[grammar]]
 name = "jjtemplate"
 source = { git = "https://github.com/bryceberger/tree-sitter-jjtemplate", rev = "4313eda8ac31c60e550e3ad5841b100a0a686715" }
+
+[[language]]
+name = "miseconfig"
+scope = "source.miseconfig"
+injection-regex = "miseconfig"
+grammar = "toml"
+file-types = [
+  { glob = "mise.toml" },
+  { glob = ".mise.toml" },
+  { glob = "mise.*.toml" },
+  { glob = ".mise.*.toml" },
+  { glob = "mise/config.toml" },
+  { glob = ".mise/config.toml" },
+  { glob = ".config/mise.toml" },
+  { glob = ".config/mise/conf.d/*.toml" },
+]
+comment-token = "#"
+language-servers = [ "taplo", "tombi" ]
+indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "jq"
@@ -4832,7 +4874,7 @@ indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "<!--", end = "-->" }
 word-completion.trigger-length = 4
 
-[[language]] 
+[[language]]
 name = "slisp"
 scope = "source.sl"
 injection-regex = "sl"
@@ -4843,3 +4885,29 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "slisp"
 source = { git = "https://github.com/xenogenics/tree-sitter-slisp", rev = "29f9c6707ce9dfc2fc915d175ec720b207f179f3" }
+
+[[language]]
+name = "nearley"
+scope = "source.nearley"
+file-types = ["ne"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "nearley"
+source = { git = "https://github.com/mi2ebi/tree-sitter-nearley", rev = "12d01113e194c8e83f6341aab8c2a5f21db9cac9" }
+
+[[language]]
+name = "kcl"
+scope = "source.kcl"
+injection-regex = "kcl"
+file-types = ["kcl"]
+comment-tokens = "//"
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "zoo" , args = ["kcl", "fmt", "-"] }
+language-servers = [ "kcl-lsp" ]
+block-comment-tokens = { start = "/*", end = "*/"}
+
+[[grammer]]
+name = "kcl"
+source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "8905e0bdbf5870b50bc3f24345f1af27746f42e8"}
