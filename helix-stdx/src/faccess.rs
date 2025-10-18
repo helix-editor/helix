@@ -463,12 +463,6 @@ mod imp {
 
     // SAFETY: It is the caller's responsibility to close the handle
     fn chown(handle: HANDLE, sd: SecurityDescriptor) -> io::Result<()> {
-        let path = std::fs::canonicalize(p)?;
-        let pathos = path.as_os_str();
-        let mut pathw = Vec::with_capacity(pathos.len() + 1);
-        pathw.extend(pathos.encode_wide());
-        pathw.push(0);
-
         let mut owner = std::ptr::null_mut();
         let mut group = std::ptr::null_mut();
         let mut dacl = std::ptr::null();
