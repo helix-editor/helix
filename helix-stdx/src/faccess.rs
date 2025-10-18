@@ -183,7 +183,7 @@ mod imp {
 
     use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE};
     use windows_sys::Win32::Security::Authorization::{
-        GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
+        GetNamedSecurityInfoW, SetSecurityInfo, SE_FILE_OBJECT,
     };
     use windows_sys::Win32::Security::{
         AccessCheck, AclSizeInformation, GetAce, GetAclInformation, GetSidIdentifierAuthority,
@@ -196,7 +196,9 @@ mod imp {
     };
     use windows_sys::Win32::Storage::FileSystem::{
         GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS,
-        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
+        FILE_ALL_ACCESS, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_EXECUTE,
+        FILE_GENERIC_READ, FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_GENERIC_WRITE, WRITE_DAC,
+        WRITE_OWNER,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
 
@@ -458,7 +460,8 @@ mod imp {
         }
     }
 
-    fn chown(p: &Path, sd: SecurityDescriptor) -> io::Result<()> {
+    // SAFETY: It is the caller's responsibility to close the handle
+    fn chown(handle: HANDLE, sd: SecurityDescriptor) -> io::Result<()> {
         let path = std::fs::canonicalize(p)?;
         let pathos = path.as_os_str();
         let mut pathw = Vec::with_capacity(pathos.len() + 1);
@@ -489,8 +492,8 @@ mod imp {
         }
 
         let err = unsafe {
-            SetNamedSecurityInfoW(
-                pathw.as_ptr(),
+            SetSecurityInfo(
+                handle,
                 SE_FILE_OBJECT,
                 si,
                 owner,
@@ -507,9 +510,18 @@ mod imp {
         }
     }
 
-    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
+    pub fn copy_ownership(from: &Path, to: &Path) -> io::Result<()> {
         let sd = SecurityDescriptor::for_path(from)?;
-        chown(to, sd)?;
+        let to_file = std::fs::OpenOptions::new()
+            .read(true)
+            .access_mode(GENERIC_READ | GENERIC_WRITE | WRITE_OWNER | WRITE_DAC)
+            .open(to)?;
+        chown(to_file.as_raw_handle(), sd)?;
+        Ok(())
+    }
+
+    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
+        copy_ownership(from, to)?;
 
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
