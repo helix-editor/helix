@@ -181,7 +181,9 @@ mod imp {
 #[cfg(windows)]
 mod imp {
 
-    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, LocalFree, ERROR_SUCCESS, GENERIC_READ, GENERIC_WRITE, HANDLE,
+    };
     use windows_sys::Win32::Security::Authorization::{
         GetNamedSecurityInfoW, SetSecurityInfo, SE_FILE_OBJECT,
     };
@@ -196,8 +198,7 @@ mod imp {
     };
     use windows_sys::Win32::Storage::FileSystem::{
         GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS,
-        FILE_ALL_ACCESS, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_EXECUTE,
-        FILE_GENERIC_READ, FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_GENERIC_WRITE, WRITE_DAC,
+        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE, WRITE_DAC,
         WRITE_OWNER,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
