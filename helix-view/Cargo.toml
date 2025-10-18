@@ -54,6 +54,8 @@ thiserror.workspace = true
 
 kstring = "2.0"
 
+filetime = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
 crossterm = { version = "0.28", optional = true }
