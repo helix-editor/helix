@@ -1145,17 +1145,7 @@ impl Document {
                     }
                 }
             }
-            let write_path = tokio::fs::read_link(&path)
-                .await
-                .ok()
-                .and_then(|p| {
-                    if p.is_relative() {
-                        path.parent().map(|parent| parent.join(p))
-                    } else {
-                        Some(p)
-                    }
-                })
-                .unwrap_or_else(|| path.clone());
+            let write_path = path.clone();
 
             if readonly(&write_path) {
                 bail!(std::io::Error::new(
@@ -1200,7 +1190,7 @@ impl Document {
                             open_opt.mode(mode);
                         }
 
-                        let mut file = open_opt.open(&path).await?;
+                        let file = open_opt.open(&path).await?;
 
                         #[cfg(unix)]
                         {
@@ -1221,7 +1211,7 @@ impl Document {
                             use std::fs::{File, FileTimes};
                             use std::os::macos::fs::FileTimesExt;
 
-                            let file = file.try_clone()?.into_std();
+                            let file = file.try_clone().await?.into_std();
                             let times = FileTimes::new().set_created(meta.created()?);
                             file.set_times(times)?;
                         }
