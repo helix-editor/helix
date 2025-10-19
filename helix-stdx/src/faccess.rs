@@ -591,6 +591,11 @@ pub fn copy_xattr(src: &Path, dst: &Path) -> io::Result<()> {
     imp::copy_xattr(src, dst)
 }
 
+#[cfg(windows)]
+pub fn copy_ownership(from: &Path, to: &Path) -> io::Result<()> {
+    imp::copy_ownership(from, to)
+}
+
 pub fn readonly(p: &Path) -> bool {
     match imp::access(p, AccessMode::WRITE) {
         Ok(_) => false,
