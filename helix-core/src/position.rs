@@ -264,12 +264,12 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending
     if limit_before_line_ending {
         let lines = text.len_lines() - 1;
 
-        if lines > 0 && text.line(lines).len_chars() == 0 {
+        row = row.min(if crate::line_ending::get_line_ending(&text).is_some() {
             // if the last line is empty, don't jump to it
-            row = row.min(lines - 1);
+            lines - 1
         } else {
-            row = row.min(lines);
-        }
+            lines
+        });
     };
     let line_start = text.line_to_char(row);
     let line_end = if limit_before_line_ending {
