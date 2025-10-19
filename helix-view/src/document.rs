@@ -1200,7 +1200,7 @@ impl Document {
                             open_opt.mode(mode);
                         }
 
-                        let file = open_opt.open(&path).await?;
+                        let mut file = open_opt.open(&path).await?;
 
                         #[cfg(unix)]
                         {
@@ -1221,6 +1221,7 @@ impl Document {
                             use std::fs::{File, FileTimes};
                             use std::os::macos::fs::FileTimesExt;
 
+                            let file = file.try_clone()?.into_std();
                             let times = FileTimes::new().set_created(meta.created()?);
                             file.set_times(times)?;
                         }
