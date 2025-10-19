@@ -30,13 +30,13 @@ impl std::fmt::Display for LanguageLoaderError {
 impl std::error::Error for LanguageLoaderError {}
 
 /// Language configuration based on user configured languages.toml.
-pub fn user_lang_config() -> Result<Configuration, toml::de::Error> {
-    helix_loader::config::user_lang_config()?.try_into()
+pub fn user_lang_config(use_local: bool) -> Result<Configuration, toml::de::Error> {
+    helix_loader::config::user_lang_config(use_local)?.try_into()
 }
 
 /// Language configuration loader based on user configured languages.toml.
-pub fn user_lang_loader() -> Result<Loader, LanguageLoaderError> {
-    let config: Configuration = helix_loader::config::user_lang_config()
+pub fn user_lang_loader(use_local: bool) -> Result<Loader, LanguageLoaderError> {
+    let config: Configuration = helix_loader::config::user_lang_config(use_local)
         .map_err(LanguageLoaderError::DeserializeError)?
         .try_into()
         .map_err(LanguageLoaderError::DeserializeError)?;

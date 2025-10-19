@@ -83,11 +83,11 @@ fn ensure_git_is_available() -> Result<()> {
     Ok(())
 }
 
-pub fn fetch_grammars() -> Result<()> {
+pub fn fetch_grammars(use_local_config: bool) -> Result<()> {
     ensure_git_is_available()?;
 
     // We do not need to fetch local grammars.
-    let mut grammars = get_grammar_configs()?;
+    let mut grammars = get_grammar_configs(use_local_config)?;
     grammars.retain(|grammar| !matches!(grammar.source, GrammarSource::Local { .. }));
 
     println!("Fetching {} grammars", grammars.len());
@@ -144,10 +144,10 @@ pub fn fetch_grammars() -> Result<()> {
     Ok(())
 }
 
-pub fn build_grammars(target: Option<String>) -> Result<()> {
+pub fn build_grammars(target: Option<String>, use_local_config: bool) -> Result<()> {
     ensure_git_is_available()?;
 
-    let grammars = get_grammar_configs()?;
+    let grammars = get_grammar_configs(use_local_config)?;
     println!("Building {} grammars", grammars.len());
     let results = run_parallel(grammars, move |grammar| {
         build_grammar(grammar, target.as_deref())
@@ -191,8 +191,8 @@ pub fn build_grammars(target: Option<String>) -> Result<()> {
 // Grammars are configured in the default and user `languages.toml` and are
 // merged. The `grammar_selection` key of the config is then used to filter
 // down all grammars into a subset of the user's choosing.
-fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
-    let config: Configuration = crate::config::user_lang_config()
+fn get_grammar_configs(use_local_config: bool) -> Result<Vec<GrammarConfiguration>> {
+    let config: Configuration = crate::config::user_lang_config(use_local_config)
         .context("Could not parse languages.toml")?
         .try_into()?;
 
@@ -213,8 +213,8 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
     Ok(grammars)
 }
 
-pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
-    let config: Configuration = crate::config::user_lang_config()
+pub fn get_grammar_names(use_local_config: bool) -> Result<Option<HashSet<String>>> {
+    let config: Configuration = crate::config::user_lang_config(use_local_config)
         .context("Could not parse languages.toml")?
         .try_into()?;
 
