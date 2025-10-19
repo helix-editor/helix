@@ -15,7 +15,7 @@ use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
-use helix_stdx::faccess::{copy_metadata, readonly};
+use helix_stdx::faccess::readonly;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 use once_cell::sync::OnceCell;
 use thiserror;
@@ -212,34 +212,54 @@ impl Backup {
 
             let backup_path = if is_copy {
                 let from_meta = std::fs::metadata(&path_).ok()?;
-                let backup_path = builder
-                    .permissions(perms) // NEED_CHECK: Don't recall why I didn't do this in the original PR...
-                    .make_in(path_.parent()?, |backup| std::fs::copy(&path_, backup))
-                    .ok()?
-                    .into_temp_path();
+                let (backup, backup_path) = builder.tempfile().ok()?.into_parts();
+                std::fs::copy(&path_, &backup_path).ok()?;
 
                 #[cfg(unix)]
                 {
-                    use std::os::unix::fs::{MetadataExt, PermissionsExt};
-
-                    let mut perms = from_meta.permissions();
-
-                    // Strip s-bit
-                    perms.set_mode(perms.mode() & 0o0777);
+                    use std::os::{
+                        fd::AsFd,
+                        unix::fs::{MetadataExt, PermissionsExt},
+                    };
 
                     let to_meta = std::fs::metadata(&backup_path).ok()?;
                     let from_gid = from_meta.gid();
                     let to_gid = to_meta.gid();
 
+                    let mut perms = from_meta.permissions();
+                    perms.set_mode(perms.mode() & 0o0777); // Strip s-bit
+
                     // If chown fails, se the protection bits for the roup the same as the perm bits for others
                     if from_gid != to_gid
-                        && helix_stdx::faccess::chown(&backup_path, None, Some(from_gid)).is_err()
+                        && helix_stdx::faccess::fchown(backup.as_fd(), None, Some(from_gid))
+                            .is_err()
                     {
                         let new_perms = (perms.mode() & 0o0707) | ((perms.mode() & 0o07) << 3);
                         perms.set_mode(new_perms);
                     }
+
+                    #[cfg(target_os = "macos")]
+                    {
+                        use std::fs::{File, FileTimes};
+                        use std::os::macos::fs::FileTimesExt;
+
+                        let to_file = File::options().write(true).open(&backup_path).ok()?;
+                        let times = FileTimes::new().set_created(from_meta.created().ok()?);
+                        to_file.set_times(times).ok()?;
+                    }
+
                     std::fs::set_permissions(&backup_path, perms).ok()?;
                     helix_stdx::faccess::copy_xattr(&path_, &backup_path).ok()?;
+                }
+
+                #[cfg(windows)]
+                {
+                    let backup_p_ = backup_path.clone();
+                    tokio::task::spawn_blocking(move || -> std::io::Result<()> {
+                        copy_metadata(&p, &backup_p_)?;
+                        Ok(())
+                    })
+                    .await??;
                 }
 
                 let atime = FileTime::from_last_access_time(&from_meta);
@@ -1221,7 +1241,7 @@ impl Document {
                             let from = path.clone();
                             let to = backup.path.clone();
                             tokio::task::spawn_blocking(move || -> Result<(), Error> {
-                                helix_stdx::faccess::copy_ownership(&from, &to)?;
+                                helix_stdx::faccess::copy_metadata(&from, &to)?;
                                 Ok(())
                             })
                             .await??;
@@ -1229,8 +1249,14 @@ impl Document {
 
                         file
                     } else {
-                        // INTEGRITY: Backup copy already exists
-                        tokio::fs::File::create(&path).await?
+                        // INTEGRITY: Backup copy already exists. But possible TOCTOU race w/ file being changed underneath
+                        let mut open_opt = tokio::fs::File::options();
+                        open_opt
+                            .create(false)
+                            .write(true)
+                            .truncate(true)
+                            .open(&path)
+                            .await?
                     };
                     to_writer(&mut dst, encoding_with_bom_info, &text).await?;
                     dst.sync_all().await?;
@@ -1281,14 +1307,10 @@ impl Document {
                         filetime::set_file_times(&path, atime, mtime)?;
                     }
                 } else {
-                    // copy metadata and delete backup
-                    let _ = tokio::task::spawn_blocking(move || {
-                        let _ = copy_metadata(&backup.path, &write_path)
-                            .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
-                        let _ = std::fs::remove_file(backup.path)
-                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
-                    })
-                    .await;
+                    // We're done; delete backup
+                    let _ = tokio::fs::remove_file(backup.path)
+                        .await
+                        .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
                 }
             }
 

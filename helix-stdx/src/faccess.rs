@@ -26,7 +26,7 @@ mod imp {
     use super::*;
 
     use rustix::fs::Access;
-    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    use std::os::unix::fs::MetadataExt;
 
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
         let mut imode = Access::empty();
@@ -66,34 +66,6 @@ mod imp {
         let uid = uid.map(rustix::fs::Uid::from_raw);
         let gid = gid.map(rustix::fs::Gid::from_raw);
         rustix::fs::fchown(fd, uid, gid)?;
-        Ok(())
-    }
-
-    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
-        let from_meta = std::fs::metadata(from)?;
-        let to_meta = std::fs::metadata(to)?;
-        let from_gid = from_meta.gid();
-        let to_gid = to_meta.gid();
-
-        let mut perms = from_meta.permissions();
-        perms.set_mode(perms.mode() & 0o0777);
-        if from_gid != to_gid && chown(to, None, Some(from_gid)).is_err() {
-            let new_perms = (perms.mode() & 0o0707) | ((perms.mode() & 0o07) << 3);
-            perms.set_mode(new_perms);
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            use std::fs::{File, FileTimes};
-            use std::os::macos::fs::FileTimesExt;
-
-            let to_file = File::options().write(true).open(to)?;
-            let times = FileTimes::new().set_created(from_meta.created()?);
-            to_file.set_times(times)?;
-        }
-
-        std::fs::set_permissions(to, perms)?;
-
         Ok(())
     }
 
@@ -604,6 +576,7 @@ pub fn readonly(p: &Path) -> bool {
     }
 }
 
+#[cfg(windows)]
 pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
     imp::copy_metadata(from, to)
 }
