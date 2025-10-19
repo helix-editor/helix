@@ -169,11 +169,11 @@ impl Backup {
         let mut is_copy = is_hardlink || is_symlink;
 
         // We are probing the process's permissions here before actually creating a backup.
+        let from_meta = tokio::fs::metadata(&p).await?;
+        let perms = from_meta.permissions();
         if !is_copy {
-            let from_meta = tokio::fs::metadata(&p).await?;
-            let perms = from_meta.permissions();
             let mut builder = tempfile::Builder::new();
-            builder.permissions(perms);
+            builder.permissions(perms.clone());
 
             if let Ok(file) = builder.tempfile() {
                 // Check if we have perms to set perms
@@ -198,7 +198,7 @@ impl Backup {
                 }
 
                 #[cfg(not(unix))]
-                if copy_metadata(&p, f.path()).is_err() {
+                if copy_metadata(&p, file.path()).is_err() {
                     is_copy = true;
                 }
             }
@@ -213,6 +213,7 @@ impl Backup {
             let backup_path = if is_copy {
                 let from_meta = std::fs::metadata(&path_).ok()?;
                 let backup_path = builder
+                    .permissions(perms) // NEED_CHECK: Don't recall why I didn't do this in the original PR...
                     .make_in(path_.parent()?, |backup| std::fs::copy(&path_, backup))
                     .ok()?
                     .into_temp_path();
@@ -252,6 +253,7 @@ impl Backup {
                     .ok()?
                     .into_temp_path()
             };
+
             backup_path.keep().ok()
         })
         .await?;
@@ -1162,16 +1164,81 @@ impl Document {
                 ));
             }
 
+            // Use a backup file
+            let meta = if path.exists() {
+                Some(tokio::fs::metadata(&path).await?)
+            } else {
+                None
+            };
+
             let backup = if path.exists() && atomic_save {
-                Backup::from(write_path.clone()).await.ok()
+                let res = Backup::from(write_path.clone()).await;
+                match res {
+                    Ok(bck) => Some(bck),
+                    Err(e) => {
+                        log::error!("Failed to create backup file: {}", e);
+                        None
+                    }
+                }
             } else {
                 None
             };
 
             let write_result: anyhow::Result<_> = async {
-                let mut dst = tokio::fs::File::create(&write_path).await?;
-                to_writer(&mut dst, encoding_with_bom_info, &text).await?;
-                dst.sync_all().await?;
+                if let Some(backup) = backup.as_ref() {
+                    let mut dst = if !backup.is_copy {
+                        #[cfg(unix)]
+                        let meta = meta.as_ref().unwrap();
+
+                        let mut open_opt = tokio::fs::OpenOptions::new();
+                        open_opt.read(true).write(true).create_new(true);
+
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::PermissionsExt;
+                            let mode = meta.permissions().mode();
+                            open_opt.mode(mode);
+                        }
+
+                        let file = open_opt.open(&path).await?;
+
+                        #[cfg(unix)]
+                        {
+                            use std::os::fd::AsFd;
+                            use std::os::unix::fs::MetadataExt;
+                            helix_stdx::faccess::fchown(
+                                file.as_fd(),
+                                Some(meta.uid()),
+                                Some(meta.gid()),
+                            )?;
+
+                            // RECALL: File at `path` is newly created, and file at `backup.path` is the original.
+                            helix_stdx::faccess::copy_xattr(&backup.path, &path)?;
+                        }
+
+                        #[cfg(windows)]
+                        {
+                            let from = path.clone();
+                            let to = backup.path.clone();
+                            tokio::task::spawn_blocking(move || -> Result<(), Error> {
+                                helix_stdx::faccess::copy_ownership(&from, &to)?;
+                                Ok(())
+                            })
+                            .await??;
+                        }
+
+                        file
+                    } else {
+                        // INTEGRITY: Backup copy already exists
+                        tokio::fs::File::create(&path).await?
+                    };
+                    to_writer(&mut dst, encoding_with_bom_info, &text).await?;
+                    dst.sync_all().await?;
+                } else {
+                    let mut dst = tokio::fs::File::create(&write_path).await?;
+                    to_writer(&mut dst, encoding_with_bom_info, &text).await?;
+                    dst.sync_all().await?;
+                }
                 Ok(())
             }
             .await;
@@ -1202,9 +1269,17 @@ impl Document {
                     }
                 } else if write_result.is_err() {
                     // restore backup
-                    let _ = tokio::fs::rename(&backup.path, &write_path)
+                    if tokio::fs::rename(&backup.path, &write_path)
                         .await
-                        .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
+                        .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"))
+                        .is_ok()
+                    {
+                        // Essentially no modification to the content had been done.
+                        let meta = meta.as_ref().unwrap();
+                        let atime = FileTime::from_last_access_time(meta);
+                        let mtime = FileTime::from_last_modification_time(meta);
+                        filetime::set_file_times(&path, atime, mtime)?;
+                    }
                 } else {
                     // copy metadata and delete backup
                     let _ = tokio::task::spawn_blocking(move || {
