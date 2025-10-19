@@ -1216,6 +1216,15 @@ impl Document {
                             helix_stdx::faccess::copy_xattr(&backup.path, &path)?;
                         }
 
+                        #[cfg(target_os = "macos")]
+                        {
+                            use std::fs::{File, FileTimes};
+                            use std::os::macos::fs::FileTimesExt;
+
+                            let times = FileTimes::new().set_created(meta.created()?);
+                            file.set_times(times)?;
+                        }
+
                         #[cfg(windows)]
                         {
                             let from = path.clone();
