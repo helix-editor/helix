@@ -1211,7 +1211,7 @@ impl Document {
                             use std::fs::{File, FileTimes};
                             use std::os::macos::fs::FileTimesExt;
 
-                            let file = file.try_clone().await?.into_std();
+                            let file = file.try_clone().await?.into_std().await;
                             let times = FileTimes::new().set_created(meta.created()?);
                             file.set_times(times)?;
                         }
