@@ -216,7 +216,7 @@ impl ScriptingEngine {
     }
 
     pub fn generate_sources() {
-        for kind in plugins() {
+        for kind in DEFAULT_PLUGIN_PRECEDENCE {
             manual_dispatch!(kind, generate_sources())
         }
     }
