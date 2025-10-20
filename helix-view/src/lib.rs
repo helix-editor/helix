@@ -14,6 +14,8 @@ pub mod info;
 pub mod input;
 pub mod keyboard;
 pub mod register;
+#[cfg(scancode)]
+pub mod scancode;
 pub mod theme;
 pub mod tree;
 pub mod view;
