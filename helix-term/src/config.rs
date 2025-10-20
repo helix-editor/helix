@@ -90,7 +90,9 @@ impl Config {
                 }
 
                 let editor = match (global.editor, local.editor) {
-                    // (None, Some(_)) because the default is not loading local configuration
+                    (None, Some(val)) if use_local => {
+                        val.try_into().map_err(ConfigLoadError::BadConfig)?
+                    }
                     (None, None) | (None, Some(_)) => helix_view::editor::Config::default(),
 
                     (Some(val), None) => val.try_into().map_err(ConfigLoadError::BadConfig)?,
