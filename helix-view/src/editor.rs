@@ -56,6 +56,7 @@ use helix_lsp::lsp;
 use helix_stdx::path::canonicalize;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Value;
 
 use arc_swap::{
     access::{DynAccess, DynGuard},
@@ -1236,7 +1237,7 @@ pub enum EditorEvent {
 #[derive(Debug, Clone)]
 pub enum ConfigEvent {
     Refresh,
-    Update(Box<Config>),
+    Update(String, Value),
 }
 
 enum ThemeAction {
