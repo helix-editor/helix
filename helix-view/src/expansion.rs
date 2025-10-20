@@ -31,6 +31,8 @@ pub enum Variable {
     ///
     /// This corresponds to `crate::Document::display_name`.
     BufferName,
+    /// The directory name housing the currently focused document.
+    BufferDir,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
     /// Curreng working directory
@@ -52,6 +54,7 @@ impl Variable {
         Self::CursorLine,
         Self::CursorColumn,
         Self::BufferName,
+        Self::BufferDir,
         Self::LineEnding,
         Self::CurrentWorkingDirectory,
         Self::WorkspaceDirectory,
@@ -66,6 +69,7 @@ impl Variable {
             Self::CursorLine => "cursor_line",
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
+            Self::BufferDir => "buffer_dir",
             Self::LineEnding => "line_ending",
             Self::CurrentWorkingDirectory => "current_working_directory",
             Self::WorkspaceDirectory => "workspace_directory",
@@ -81,6 +85,7 @@ impl Variable {
             "cursor_line" => Some(Self::CursorLine),
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
+            "buffer_dir" => Some(Self::BufferDir),
             "line_ending" => Some(Self::LineEnding),
             "workspace_directory" => Some(Self::WorkspaceDirectory),
             "current_working_directory" => Some(Self::CurrentWorkingDirectory),
@@ -243,6 +248,20 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             } else {
                 Ok(Cow::Borrowed(crate::document::SCRATCH_BUFFER_NAME))
             }
+        }
+        Variable::BufferDir => {
+            // This follows the partial reimpl of `display_name` from `Variable::BufferName`
+            if let Some(path) = doc.relative_path() {
+                if let Some(dir_path) = path.parent() {
+                    return Ok(Cow::Owned(dir_path.to_string_lossy().into_owned()));
+                };
+            };
+            // Default to current working dir for scratch buffers and files with no parent dir
+            Ok(Cow::Owned(
+                helix_stdx::env::current_working_dir()
+                    .to_string_lossy()
+                    .into_owned(),
+            ))
         }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
         Variable::CurrentWorkingDirectory => Ok(std::borrow::Cow::Owned(
