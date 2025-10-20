@@ -61,7 +61,7 @@ tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 arc-swap = { version = "1.7.1" }
 termini = "1"
-indexmap = "2.11"
+indexmap = "2.12"
 
 # Logging
 fern = "0.7"
@@ -88,8 +88,8 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
 # ripgrep for global search
-grep-regex = "0.1.13"
-grep-searcher = "0.1.14"
+grep-regex = "0.1.14"
+grep-searcher = "0.1.15"
 
 dashmap = "6.0"
 
