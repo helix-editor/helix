@@ -198,7 +198,7 @@ impl Backup {
                 }
 
                 #[cfg(not(unix))]
-                if copy_metadata(&p, file.path()).is_err() {
+                if helix_stdx::faccess::copy_metadata(&p, file.path()).is_err() {
                     is_copy = true;
                 }
             }
@@ -212,6 +212,7 @@ impl Backup {
 
             let backup_path = if is_copy {
                 let from_meta = std::fs::metadata(&path_).ok()?;
+                #[allow(unused_variables)] // Needed on Windows
                 let (backup, backup_path) = builder.tempfile().ok()?.into_parts();
                 std::fs::copy(&path_, &backup_path).ok()?;
 
@@ -254,12 +255,8 @@ impl Backup {
 
                 #[cfg(windows)]
                 {
-                    let backup_p_ = backup_path.clone();
-                    tokio::task::spawn_blocking(move || -> std::io::Result<()> {
-                        copy_metadata(&p, &backup_p_)?;
-                        Ok(())
-                    })
-                    .await??;
+                    let backup_p_ = backup_path.to_path_buf();
+                    helix_stdx::faccess::copy_metadata(&p, &backup_p_).ok()?;
                 }
 
                 let atime = FileTime::from_last_access_time(&from_meta);
