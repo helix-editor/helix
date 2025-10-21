@@ -269,6 +269,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
+    navigation_mode: bool,
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -394,6 +395,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             file_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
+            navigation_mode: false,
         }
     }
 
@@ -410,6 +412,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
         self.truncate_start = truncate_start;
+        self
+    }
+
+    pub fn with_navigation_mode(mut self, navigation_mode: bool) -> Self {
+        self.navigation_mode = navigation_mode;
         self
     }
 
@@ -722,6 +729,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let area = inner.clip_left(1).with_height(1);
         let line_area = area.clip_right(count.len() as u16 + 1);
 
+        /// show navigation mode indicator
+        if self.navigation_mode {
+            let indicator = Span::styled(" [NAV] ", cx.editor.theme.get("info"));
+            surface.set_spans(area.x, area.y, &Spans::from(indicator), area.width);
+        }
+        
         // render the prompt first since it will clear its background
         self.prompt.render(line_area, surface, cx);
 
@@ -1067,6 +1080,27 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 };
             EventResult::Consumed(Some(callback))
         };
+
+        // Handle navigation mode keys first
+        if self.navigation_mode {
+            match key_event {
+                key!('j') => {
+                    let count = ctx.editor.count.take().unwrap_or(std::num::NonZeroUsize::new(1).unwrap());
+                    self.move_by(count.get() as u32, Direction::Forward);
+                    return EventResult::Consumed(None);
+                }
+                key!('k') => {
+                    let count = ctx.editor.count.take().unwrap_or(std::num::NonZeroUsize::new(1).unwrap());
+                    self.move_by(count.get() as u32, Direction::Backward);
+                    return EventResult::Consumed(None);
+                }
+                key!('/') => {
+                    self.navigation_mode = false;
+                    return EventResult::Consumed(None)
+                }
+                _ => {}
+            }
+        }
 
         match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {

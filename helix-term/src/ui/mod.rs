@@ -301,7 +301,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
             }
         });
     }
-    picker
+    picker.with_navigation_mode(editor.config().picker.default_navigation_mode)
 }
 
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
@@ -351,7 +351,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
 
-    Ok(picker)
+    Ok(picker.with_navigation_mode(editor.config().picker.default_navigation_mode))
 }
 
 fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
