@@ -269,6 +269,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
+    /// Indicates motions being activated for
     navigation_mode: bool,
 }
 
@@ -729,12 +730,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let area = inner.clip_left(1).with_height(1);
         let line_area = area.clip_right(count.len() as u16 + 1);
 
-        /// show navigation mode indicator
+        // show navigation mode indicator
         if self.navigation_mode {
             let indicator = Span::styled(" [NAV] ", cx.editor.theme.get("info"));
             surface.set_spans(area.x, area.y, &Spans::from(indicator), area.width);
         }
-        
+
         // render the prompt first since it will clear its background
         self.prompt.render(line_area, surface, cx);
 
@@ -1084,24 +1085,55 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         // Handle navigation mode keys first
         if self.navigation_mode {
             match key_event {
+                key!(i @ '0'..='9') if ctx.editor.count.is_some() => {
+                    let i = i.to_digit(10).unwrap() as usize;
+                    let count = ctx.editor.count.unwrap().get() * 10 + i;
+                    if count > 100_000_000 {
+                        return EventResult::Consumed(None);
+                    }
+                    ctx.editor.count = std::num::NonZeroUsize::new(count);
+                    return EventResult::Consumed(None);
+                }
+                key!(i @ '1'..='9') if ctx.editor.count.is_none() => {
+                    let i = i.to_digit(10).unwrap() as usize;
+                    ctx.editor.count = std::num::NonZeroUsize::new(i);
+                    return EventResult::Consumed(None);
+                }
                 key!('j') => {
-                    let count = ctx.editor.count.take().unwrap_or(std::num::NonZeroUsize::new(1).unwrap());
+                    let count = ctx
+                        .editor
+                        .count
+                        .take()
+                        .unwrap_or(std::num::NonZeroUsize::new(1).unwrap());
                     self.move_by(count.get() as u32, Direction::Forward);
                     return EventResult::Consumed(None);
                 }
                 key!('k') => {
-                    let count = ctx.editor.count.take().unwrap_or(std::num::NonZeroUsize::new(1).unwrap());
+                    let count = ctx
+                        .editor
+                        .count
+                        .take()
+                        .unwrap_or(std::num::NonZeroUsize::new(1).unwrap());
                     self.move_by(count.get() as u32, Direction::Backward);
                     return EventResult::Consumed(None);
                 }
-                key!('/') => {
+                key!('/') | key!(Esc) => {
                     self.navigation_mode = false;
-                    return EventResult::Consumed(None)
+                    ctx.editor.count = None;
+                    return EventResult::Consumed(None);
                 }
+
                 _ => {}
+            }
+        } else {
+            match key_event {
+                _ => {
+                    self.prompt_handle_event(event, ctx);
+                }
             }
         }
 
+        // These keys work regardless of naviation mode
         match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
@@ -1177,11 +1209,8 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             ctrl!('t') => {
                 self.toggle_preview();
             }
-            _ => {
-                self.prompt_handle_event(event, ctx);
-            }
+            _ => {}
         }
-
         EventResult::Consumed(None)
     }
 
