@@ -730,14 +730,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let area = inner.clip_left(1).with_height(1);
         let line_area = area.clip_right(count.len() as u16 + 1);
 
-        // show navigation mode indicator
+        self.prompt.render(line_area, surface, cx);
+
         if self.navigation_mode {
             let indicator = Span::styled(" [NAV] ", cx.editor.theme.get("info"));
             surface.set_spans(area.x, area.y, &Spans::from(indicator), area.width);
         }
-
-        // render the prompt first since it will clear its background
-        self.prompt.render(line_area, surface, cx);
 
         surface.set_stringn(
             (area.x + area.width).saturating_sub(count.len() as u16 + 1),
@@ -1117,16 +1115,17 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     self.move_by(count.get() as u32, Direction::Backward);
                     return EventResult::Consumed(None);
                 }
-                key!('/') | key!(Esc) => {
+                key!('/') => {
                     self.navigation_mode = false;
                     ctx.editor.count = None;
                     return EventResult::Consumed(None);
                 }
-
+                key!(Esc) => return close_fn(self),
                 _ => {}
             }
         } else {
             match key_event {
+                key!(Esc) => self.navigation_mode = true,
                 _ => {
                     self.prompt_handle_event(event, ctx);
                 }
@@ -1153,7 +1152,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             key!(End) => {
                 self.to_end();
             }
-            key!(Esc) | ctrl!('c') => return close_fn(self),
+            ctrl!('c') => return close_fn(self),
             alt!(Enter) => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, self.default_action);
