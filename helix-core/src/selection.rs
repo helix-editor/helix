@@ -14,6 +14,7 @@ use crate::{
 };
 use helix_stdx::range::is_subset;
 use helix_stdx::rope::{self, RopeSliceExt};
+use regex_cursor::{regex_automata::Match, Input, RopeyCursor};
 use smallvec::{smallvec, SmallVec};
 use std::{borrow::Cow, iter, slice};
 
@@ -783,16 +784,39 @@ pub fn keep_or_remove_matches(
     None
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum SelectOnMatch {
+    First,
+    Last,
+    All,
+}
+
 // TODO: support to split on capture #N instead of whole match
 pub fn select_on_matches(
     text: RopeSlice,
     selection: &Selection,
     regex: &rope::Regex,
+    ty: SelectOnMatch,
+) -> Option<Selection> {
+    match ty {
+        SelectOnMatch::First => select_on_matches_iter(text, selection, |c| regex.find(c)),
+        SelectOnMatch::Last => {
+            select_on_matches_iter(text, selection, |c| regex.find_iter(c).last())
+        }
+        SelectOnMatch::All => select_on_matches_iter(text, selection, |c| regex.find_iter(c)),
+    }
+}
+
+fn select_on_matches_iter<'a, I: IntoIterator<Item = Match> + 'a>(
+    text: RopeSlice<'a>,
+    selection: &Selection,
+    f: impl Fn(Input<RopeyCursor<'a>>) -> I,
 ) -> Option<Selection> {
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
-        for mat in regex.find_iter(text.regex_input_at(sel.from()..sel.to())) {
+        let input = text.regex_input_at(sel.from()..sel.to());
+        for mat in f(input) {
             // TODO: retain range direction
 
             let start = text.byte_to_char(mat.start());
@@ -1098,16 +1122,29 @@ mod test {
 
     #[test]
     fn test_select_on_matches() {
+        use SelectOnMatch::*;
+
         let r = Rope::from_str("Nobody expects the Spanish inquisition");
         let s = r.slice(..);
 
         let selection = Selection::single(0, r.len_chars());
+        let re = &rope::Regex::new(r"[A-Z][a-z]*").unwrap();
         assert_eq!(
-            select_on_matches(s, &selection, &rope::Regex::new(r"[A-Z][a-z]*").unwrap()),
+            select_on_matches(s, &selection, re, All),
             Some(Selection::new(
                 smallvec![Range::new(0, 6), Range::new(19, 26)],
                 0
             ))
+        );
+
+        assert_eq!(
+            select_on_matches(s, &selection, re, First),
+            Some(Selection::new(smallvec![Range::new(0, 6)], 0))
+        );
+
+        assert_eq!(
+            select_on_matches(s, &selection, re, Last),
+            Some(Selection::new(smallvec![Range::new(19, 26)], 0))
         );
 
         let r = Rope::from_str("This\nString\n\ncontains multiple\nlines");
@@ -1124,32 +1161,32 @@ mod test {
 
         // line without ending
         assert_eq!(
-            select_on_matches(s, &Selection::single(0, 4), &start_of_line),
+            select_on_matches(s, &Selection::single(0, 4), &start_of_line, All),
             Some(Selection::single(0, 0))
         );
         assert_eq!(
-            select_on_matches(s, &Selection::single(0, 4), &end_of_line),
+            select_on_matches(s, &Selection::single(0, 4), &end_of_line, All),
             None
         );
         // line with ending
         assert_eq!(
-            select_on_matches(s, &Selection::single(0, 5), &start_of_line),
+            select_on_matches(s, &Selection::single(0, 5), &start_of_line, All),
             Some(Selection::single(0, 0))
         );
         assert_eq!(
-            select_on_matches(s, &Selection::single(0, 5), &end_of_line),
+            select_on_matches(s, &Selection::single(0, 5), &end_of_line, All),
             Some(Selection::single(4, 4))
         );
         // line with start of next line
         assert_eq!(
-            select_on_matches(s, &Selection::single(0, 6), &start_of_line),
+            select_on_matches(s, &Selection::single(0, 6), &start_of_line, All),
             Some(Selection::new(
                 smallvec![Range::point(0), Range::point(5)],
                 0
             ))
         );
         assert_eq!(
-            select_on_matches(s, &Selection::single(0, 6), &end_of_line),
+            select_on_matches(s, &Selection::single(0, 6), &end_of_line, All),
             Some(Selection::single(4, 4))
         );
 
@@ -1161,7 +1198,8 @@ mod test {
                 &rope::RegexBuilder::new()
                     .syntax(rope::Config::new().multi_line(true))
                     .build(r"^[a-z ]*$")
-                    .unwrap()
+                    .unwrap(),
+                All
             ),
             Some(Selection::new(
                 smallvec![Range::point(12), Range::new(13, 30), Range::new(31, 36)],
