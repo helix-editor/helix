@@ -1,3 +1,7 @@
+//! `helix_vcs` provides types for working with diffs from a Version Control System (VCS).
+//! Currently `git` is the only supported provider for diffs, but this architecture allows
+//! for other providers to be added in the future.
+
 use anyhow::{anyhow, bail, Result};
 use arc_swap::ArcSwap;
 use std::{
@@ -16,12 +20,16 @@ mod status;
 
 pub use status::FileChange;
 
+/// Contains all active diff providers. Diff providers are compiled in via features. Currently
+/// only `git` is supported.
 #[derive(Clone)]
 pub struct DiffProviderRegistry {
     providers: Vec<DiffProvider>,
 }
 
 impl DiffProviderRegistry {
+    /// Get the given file from the VCS. This provides the unedited document as a "base"
+    /// for a diff to be created.
     pub fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>> {
         self.providers
             .iter()
@@ -35,6 +43,7 @@ impl DiffProviderRegistry {
             })
     }
 
+    /// Get the current name of the current [HEAD](https://stackoverflow.com/questions/2304087/what-is-head-in-git).
     pub fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
         self.providers
             .iter()
@@ -75,6 +84,7 @@ impl Default for DiffProviderRegistry {
         let providers = vec![
             #[cfg(feature = "git")]
             DiffProvider::Git,
+            DiffProvider::None,
         ];
         DiffProviderRegistry { providers }
     }
@@ -85,7 +95,7 @@ impl Default for DiffProviderRegistry {
 ///
 /// `Copy` is simply to ensure the `clone()` call is the simplest it can be.
 #[derive(Copy, Clone)]
-pub enum DiffProvider {
+enum DiffProvider {
     #[cfg(feature = "git")]
     Git,
     None,

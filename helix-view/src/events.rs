@@ -2,7 +2,7 @@ use helix_core::{ChangeSet, Rope};
 use helix_event::events;
 use helix_lsp::LanguageServerId;
 
-use crate::{Document, DocumentId, Editor, ViewId};
+use crate::{editor::Config, Document, DocumentId, Editor, ViewId};
 
 events! {
     DocumentDidOpen<'a> {
@@ -32,5 +32,13 @@ events! {
     LanguageServerExited<'a> {
         editor: &'a mut Editor,
         server_id: LanguageServerId
+    }
+
+    // NOTE: this event is simple for now and is expected to change as the config system evolves.
+    // Ideally it would say what changed.
+    ConfigDidChange<'a> {
+        editor: &'a mut Editor,
+        old: &'a Config,
+        new: &'a Config
     }
 }

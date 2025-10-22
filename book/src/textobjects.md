@@ -24,6 +24,7 @@ function or block of code.
 | `c`                    | Comment                  |
 | `T`                    | Test                     |
 | `g`                    | Change                   |
+| `x`                    | (X)HTML element          |
 
 > 💡 `f`, `t`, etc. need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only

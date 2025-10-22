@@ -1,0 +1,37 @@
+# name = "Ashokai Evermoor"
+# author = "TeriyakiBomb"
+# version = "1.0.0"
+
+inherits = "ashokai"
+
+[palette]
+bg0 = "#1D2A26"
+bg1 = "#14332A"
+bg2 = "#49385D"
+bg3 = "#3F6457"
+fg0 = "#F8FFF8"
+helptext = "#5E9785"
+helpbg = "#0F241E"
+grey = "#70697D"
+grey1 = "#667E99"
+red = "#FF5D5D"
+yellow = "#FBC664"
+green = "#7AEA92"
+blue = "#7AC3FF"
+blue2 = "#4E6A97"
+lightblue = "#B0DDD2"
+aqua = "#5DB1B1"
+orange = "#FF9647"
+purple = "#9983D7"
+magenta = "#F94786"
+pink = "#F9518C"
+
+diffgreen = "#5B7753"
+
+line_number = "#32403B"
+line_number_selected = "#5E8F81"
+comment = "#6C9286"
+
+cursor = "#5E8F81"
+cursorline = "#1E302A"
+selection = "#214037"

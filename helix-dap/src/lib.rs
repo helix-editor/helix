@@ -1,8 +1,9 @@
 mod client;
+pub mod registry;
 mod transport;
 mod types;
 
-pub use client::{Client, ConnectionType};
+pub use client::Client;
 pub use transport::{Payload, Response, Transport};
 pub use types::*;
 
@@ -12,7 +13,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("failed to parse: {0}")]
-    Parse(#[from] serde_json::Error),
+    Parse(Box<dyn std::error::Error + Send + Sync>),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
     #[error("request {0} timed out")]
@@ -28,9 +29,22 @@ pub enum Error {
 }
 pub type Result<T> = core::result::Result<T, Error>;
 
+impl From<serde_json::Error> for Error {
+    fn from(value: serde_json::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
+
+impl From<sonic_rs::Error> for Error {
+    fn from(value: sonic_rs::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
+
 #[derive(Debug)]
 pub enum Request {
     RunInTerminal(<requests::RunInTerminal as types::Request>::Arguments),
+    StartDebugging(<requests::StartDebugging as types::Request>::Arguments),
 }
 
 impl Request {
@@ -40,6 +54,7 @@ impl Request {
         let arguments = arguments.unwrap_or_default();
         let request = match command {
             requests::RunInTerminal::COMMAND => Self::RunInTerminal(parse_value(arguments)?),
+            requests::StartDebugging::COMMAND => Self::StartDebugging(parse_value(arguments)?),
             _ => return Err(Error::Unhandled),
         };
 

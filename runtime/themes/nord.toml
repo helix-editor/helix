@@ -5,7 +5,7 @@
 ## SYNTAX HIGHLIGHTING
 
 # Constants
-"constant" = "nord4" 
+"constant" = "nord4"
 "constant.builtin" = "nord9"
 "constant.builtin.boolean" = "nord9"
 "constant.builtin.character" = "nord15"
@@ -110,7 +110,7 @@
 "ui.linenr.selected" = "nord5"
 
 # Cursor
-"ui.cursor" = { fg = "nord4", modifiers = [ "reversed" ] }
+"ui.cursor" = { fg = "nord4", modifiers = ["reversed"] }
 "ui.cursorcolumn.primary" = { bg = "nord1" }
 "ui.cursorline.primary" = { bg = "nord1" }
 "ui.cursor.match" = { bg = "nord3" }
@@ -119,7 +119,7 @@
 "ui.highlight" = { fg = "nord8", bg = "nord2" }
 
 # Statusline
-"ui.statusline" = {  bg = "nord1" }
+"ui.statusline" = { bg = "nord1" }
 "ui.statusline.inactive" = { fg = "nord8", bg = "nord1" }
 "ui.statusline.insert" = { fg = "nord1", bg = "nord6" }
 "ui.statusline.normal" = { fg = "nord1", bg = "nord8" }
@@ -136,7 +136,9 @@
 
 # Bufferline
 "ui.bufferline" = { fg = "nord5", bg = "nord1" }
-"ui.bufferline.active" = { fg = "nord6", bg = "nord2", underline = { color = "nord8", style = "line" }, modifiers = [ "italic" ] }
+"ui.bufferline.active" = { fg = "nord6", bg = "nord2", underline = { color = "nord8", style = "line" }, modifiers = [
+  "italic",
+] }
 
 # Markup
 "markup.heading" = "nord8"
@@ -147,48 +149,51 @@
 "markup.link.text" = "nord8"
 "markup.raw" = "nord7"
 
+# Rainbow brackets
+rainbow = ["nord13", "nord15", "nord14", "nord12"]
+
 [palette]
 # Polar Night is made up of four darker colors that are commonly used for base elements like backgrounds or text color in bright ambiance designs.
 #
 # The origin color or the Polar Night palette
-nord0 = "#2e3440" 
+nord0 = "#2e3440"
 # A brighter shade color based on nord0
-nord1 = "#3B4252" 
+nord1 = "#3B4252"
 # An even more brighter shade color of nord0
-nord2 = "#434C5E" 
+nord2 = "#434C5E"
 # The brightest shade color based on nord0
-nord3 = "#4C566A" 
+nord3 = "#4C566A"
 # 10% brighter for comments, see https://github.com/nordtheme/nord/issues/94
-nord3_bright = "#616e88" 
+nord3_bright = "#616e88"
 
 # Snow Storm is made up of three bright colors that are commonly used for text colors or base UI elements in bright ambiance designs.
 # The origin color or the Snow Storm palette
-nord4 = "#D8DEE9" 
+nord4 = "#D8DEE9"
 # A brighter shade color of nord4
-nord5 = "#E5E9F0" 
+nord5 = "#E5E9F0"
 # The brightest shade color based on nord4
-nord6 = "#ECEFF4" 
+nord6 = "#ECEFF4"
 
 # Frost can be described as the heart palette of Nord, a group of four bluish colors that are commonly used for primary UI component and text highlighting and essential code syntax elements.
 #
 # A calm and highly contrasted color reminiscent of frozen polar water
-nord7 = "#8FBCBB" 
+nord7 = "#8FBCBB"
 # The bright and shiny primary accent color reminiscent of pure and clear ice
-nord8 = "#88C0D0" 
+nord8 = "#88C0D0"
 # A more darkened and less saturated color reminiscent of arctic waters
-nord9 = "#81A1C1" 
+nord9 = "#81A1C1"
 # A dark and intensive color reminiscent of the deep arctic ocean
-nord10 = "#5E81AC" 
+nord10 = "#5E81AC"
 
 # Aurora consists of five colorful components reminiscent of the "Aurora borealis", sometimes referred to as polar lights or northern lights.
 #
 # Red
-nord11 = "#BF616A" 
+nord11 = "#BF616A"
 # Orange
-nord12 = "#D08770" 
+nord12 = "#D08770"
 # Yellow
-nord13 = "#EBCB8B" 
+nord13 = "#EBCB8B"
 # Green
-nord14 = "#A3BE8C" 
+nord14 = "#A3BE8C"
 # Purple
-nord15 = "#B48EAD" 
+nord15 = "#B48EAD"
