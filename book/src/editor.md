@@ -43,10 +43,10 @@
 | `completion-timeout` | Time in milliseconds after typing a word character before completions are shown, set to 5 for instant.  | `250` |
 | `preview-completion-insert` | Whether to apply completion item instantly when selected | `true` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
-| `completion-replace` | Set to `true` to make completions always replace the entire word and not just the part before the cursor | `false` |
+| `completion-replace` | Whether to make completions always replace the entire word and not just the part before the cursor | `false` |
 | `auto-info` | Whether to display info boxes | `true` |
-| `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative | `false` |
-| `undercurl` | Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative | `false` |
+| `true-color` | Whether to override automatic detection of terminal truecolor support in the event of a false negative | `false` |
+| `undercurl` | Whether to override automatic detection of terminal undercurl support in the event of a false negative | `false` |
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file | `[]` |
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `never` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
