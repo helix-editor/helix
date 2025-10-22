@@ -40,7 +40,7 @@ use helix_core::{
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
-    unicode::width::UnicodeWidthChar,
+    unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthChar},
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
     Selection, SmallVec, Syntax, Tendril, Transaction,
 };
@@ -610,6 +610,7 @@ impl MappableCommand {
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
+        flash, "Jump with a flash",
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
         goto_prev_tabstop, "Goto next snippet placeholder",
@@ -2231,6 +2232,132 @@ fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
     items.sort_unstable();
     items.dedup();
     items.into_iter().map(|value| value.to_string()).collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn flash_jump(
+    cx: &mut Context,
+    input: &str,
+    movement: Movement
+) {
+    // if no search string provided - return early
+    if input.is_empty() {
+        return;
+    }
+
+    // Calculate the jump candidates: ranges for any visible words with two or
+    // more characters.
+    let alphabet = &cx.editor.config().jump_label_alphabet;
+    if alphabet.is_empty() {
+        return;
+    }
+
+    let jump_label_limit = alphabet.len() * alphabet.len();
+    let mut words = Vec::with_capacity(jump_label_limit);
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text().slice(..);
+
+    // This is not necessarily exact if there is virtual text like soft wrap.
+    // It's ok though because the extra jump labels will not be rendered.
+    let start = text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor));
+    let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
+
+    // let primary_selection = doc.selection(view.id).primary();
+    // let cursor = primary_selection.cursor(text);
+    let mut cursor_pos = Range::point(start);
+
+    'outer: loop {
+        let mut changed = false;
+        while cursor_pos.head < end {
+            cursor_pos = movement::move_next_word_end(text, cursor_pos, 1);
+
+            // The cursor is on a word that is at least two graphemes long and
+            // made up of word characters. The latter condition is needed because
+            // move_next_word_end simply treats a sequence of characters from
+            // the same char class as a word so `=<` would also count as a word.
+            let is_word = text
+                .slice(..cursor_pos.head)
+                .graphemes_rev()
+                .take(2)
+                .take_while(|g| g.chars().all(char_is_word))
+                .count()
+                > 1;
+
+            if !is_word {
+                continue;
+            }
+
+            let is_match = text
+                .slice(..cursor_pos.head)
+                .graphemes()
+                .take(input.len())
+                .zip(input.graphemes(true))
+                .all(|(ch1, ch2)| ch1 == ch2);
+
+            if !is_match {
+                continue;
+            }
+
+            changed = true;
+
+            // skip any leading whitespace
+            cursor_pos.anchor += text
+                .chars_at(cursor_pos.anchor)
+                .take_while(|&c| !char_is_word(c))
+                .count();
+
+            words.push(cursor_pos);
+
+            if words.len() == jump_label_limit {
+                break 'outer;
+            }
+
+            break;
+        }
+
+        if !changed {
+            break;
+        }
+    }
+
+    jump_to_label(cx, words, movement)
+}
+
+fn flash(cx: &mut Context) {
+    let reg = cx.register.unwrap_or('/');
+    let completions = search_completions(cx, Some(reg));
+
+    let movement = if cx.editor.mode() == Mode::Select {
+        Movement::Extend
+    } else {
+        Movement::Move
+    };
+
+    ui::prompt(
+        cx,
+        "flash:".into(),
+        Some(reg),
+        move |_editor: &Editor, input: &str| {
+            completions
+                .iter()
+                .filter(|comp| comp.starts_with(input))
+                .map(|comp| (0.., comp.clone().into()))
+                .collect()
+        },
+        move |cx, input, event| {
+            if event == PromptEvent::Validate {
+                cx.editor.registers.last_search_register = reg;
+            } else if event != PromptEvent::Update {
+                return;
+            }
+
+            flash_jump(
+                cx,
+                &input,
+                movement
+            );
+        },
+    );
 }
 
 fn search(cx: &mut Context) {
