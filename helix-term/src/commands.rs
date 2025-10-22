@@ -36,7 +36,8 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection, surround,
+    selection::{self, SelectOnMatch},
+    surround,
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
@@ -368,6 +369,8 @@ impl MappableCommand {
         page_cursor_half_down, "Move page and cursor half down",
         select_all, "Select whole document",
         select_regex, "Select all regex matches inside selections",
+        select_regex_first, "Select the first regex match inside selections",
+        select_regex_last, "Select the last regex match inside selections",
         split_selection, "Split selections on regex matches",
         split_selection_on_newline, "Split selection on newlines",
         merge_selections, "Merge selections",
@@ -2080,6 +2083,18 @@ fn select_all(cx: &mut Context) {
 }
 
 fn select_regex(cx: &mut Context) {
+    select_regex_ty(cx, SelectOnMatch::All)
+}
+
+fn select_regex_first(cx: &mut Context) {
+    select_regex_ty(cx, SelectOnMatch::First)
+}
+
+fn select_regex_last(cx: &mut Context) {
+    select_regex_ty(cx, SelectOnMatch::Last)
+}
+
+fn select_regex_ty(cx: &mut Context, ty: SelectOnMatch) {
     let reg = cx.register.unwrap_or('/');
     ui::regex_prompt(
         cx,
@@ -2093,7 +2108,7 @@ fn select_regex(cx: &mut Context) {
             }
             let text = doc.text().slice(..);
             if let Some(selection) =
-                selection::select_on_matches(text, doc.selection(view.id), &regex)
+                selection::select_on_matches(text, doc.selection(view.id), &regex, ty)
             {
                 doc.set_selection(view.id, selection);
             } else {
