@@ -6,6 +6,7 @@ use std::ptr::NonNull;
 
 use crate::doc_formatter::FormattedGrapheme;
 use crate::syntax::{Highlight, OverlayHighlights};
+use crate::text_folding::{FoldAnnotations, FoldContainer};
 use crate::{Position, Tendril};
 
 /// An inline annotation is continuous text shown
@@ -279,6 +280,7 @@ pub struct TextAnnotations<'a> {
     inline_annotations: Vec<Layer<'a, InlineAnnotation, Option<Highlight>>>,
     overlays: Vec<Layer<'a, Overlay, Option<Highlight>>>,
     line_annotations: Vec<(Cell<usize>, RawBox<dyn LineAnnotation + 'a>)>,
+    pub folds: FoldAnnotations<'a>,
 }
 
 impl Debug for TextAnnotations<'_> {
@@ -286,6 +288,7 @@ impl Debug for TextAnnotations<'_> {
         f.debug_struct("TextAnnotations")
             .field("inline_annotations", &self.inline_annotations)
             .field("overlays", &self.overlays)
+            .field("folds", &self.folds)
             .finish_non_exhaustive()
     }
 }
@@ -295,11 +298,13 @@ impl<'a> TextAnnotations<'a> {
     pub fn reset_pos(&self, char_idx: usize) {
         reset_pos(&self.inline_annotations, char_idx, |annot| annot.char_idx);
         reset_pos(&self.overlays, char_idx, |annot| annot.char_idx);
+        self.folds.reset_pos(char_idx, |fold| fold.start.char);
         for (next_anchor, layer) in &self.line_annotations {
             next_anchor.set(unsafe { layer.get().reset_pos(char_idx) });
         }
     }
 
+    // OPTIMIZE: skip folded highlights
     pub fn collect_overlay_highlights(&self, char_range: Range<usize>) -> OverlayHighlights {
         let mut highlights = Vec::new();
         self.reset_pos(char_range.start);
@@ -350,6 +355,13 @@ impl<'a> TextAnnotations<'a> {
     pub fn add_overlay(&mut self, layer: &'a [Overlay], highlight: Option<Highlight>) -> &mut Self {
         if !layer.is_empty() {
             self.overlays.push((layer, highlight).into());
+        }
+        self
+    }
+
+    pub fn add_folds(&mut self, fold_container: &'a FoldContainer) -> &mut Self {
+        if !fold_container.is_empty() {
+            self.folds.container = Some(fold_container);
         }
         self
     }

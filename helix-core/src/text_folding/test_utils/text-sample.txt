@@ -1,0 +1,80 @@
+丂 line index: 0
+line index: 1 乄
+
+	丅 line index: 3
+line index: 4 乊
+
+丏 line index: 6
+line index: 7 乕
+		丗 line index: 8
+		line index: 9 乚
+		丠 line index: 10
+		line index: 11 乢
+
+
+	丣 line index: 14
+	line index: 15 乤
+	丩 line index: 16
+	line index: 17 乧
+	丯 line index: 18
+		line index: 19 乪
+		丳 line index: 20
+		line index: 21 乬
+		丷 line index: 22
+
+		line index: 24 乮
+		乀 line index: 25
+	line index: 26 乿
+	乴 line index: 27
+line index: 28 亁
+乶 line index: 29
+
+line index: 31 亃
+	乸 line index: 32
+line index: 33 亅
+	乺 line index: 34
+line index: 35 亊
+	伇 line index: 36
+
+
+line index: 39 伬
+
+伋 line index: 41
+
+line index: 43 伮
+
+伒 line index: 45
+line index: 46 伳
+
+	伔 line index: 48
+
+	line index: 50 伷
+
+	伖 line index: 52
+
+	line index: 54 伻
+齔line_index: 55
+
+
+line num_ber: 58 伻
+齖line_num_ber: 59
+line_index: 60 伻
+齘line_index: 61
+line_index: 62 伻
+齚line_index: 63
+
+
+line_index: 66 伻
+齜line_index: 67 伻
+line_index: 68 伻
+齞line_index: 69 伻
+line_index: 70 伻
+
+齠line_index: 72 伻
+		line_index: 73 伻
+	齢line_index: 74 伻
+			line_index: 75 伻
+齤line_index: 76 伻
+			line_index: 77 伻
+		齦line_index: 78 伻
+line_index: 79

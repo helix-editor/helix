@@ -269,13 +269,23 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         },
     )];
     let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
-        if let Err(e) = cx.editor.open(path, action) {
-            let err = if let Some(err) = e.source() {
-                format!("{}", err)
-            } else {
-                format!("unable to open \"{}\"", path.display())
-            };
-            cx.editor.set_error(err);
+        let path = helix_stdx::path::canonicalize(path);
+        let old_id = cx.editor.document_id_by_path(&path);
+
+        match cx.editor.open(&path, action) {
+            Ok(doc_id) => {
+                if old_id.map_or(true, |id| id != doc_id) {
+                    default_folding(cx.editor);
+                }
+            }
+            Err(e) => {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
         }
     })
     .with_preview(|_editor, path| Some((path.as_path().into(), None)));
@@ -339,13 +349,25 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     Ok(call)
                 });
                 cx.jobs.callback(callback);
-            } else if let Err(e) = cx.editor.open(path, action) {
-                let err = if let Some(err) = e.source() {
-                    format!("{}", err)
-                } else {
-                    format!("unable to open \"{}\"", path.display())
-                };
-                cx.editor.set_error(err);
+            } else {
+                let path = helix_stdx::path::canonicalize(path);
+                let old_id = cx.editor.document_id_by_path(&path);
+
+                match cx.editor.open(&path, action) {
+                    Ok(doc_id) => {
+                        if old_id.map_or(true, |id| id != doc_id) {
+                            default_folding(cx.editor);
+                        }
+                    }
+                    Err(e) => {
+                        let err = if let Some(err) = e.source() {
+                            format!("{}", err)
+                        } else {
+                            format!("unable to open \"{}\"", path.display())
+                        };
+                        cx.editor.set_error(err);
+                    }
+                }
             }
         },
     )
@@ -400,6 +422,24 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
     }
 
     Ok(content)
+}
+
+pub fn default_folding(editor: &mut Editor) {
+    use crate::commands::typed::{fold_textobjects, FOLD_SIGNATURE};
+    use helix_core::command_line::Args;
+
+    let textobjects = editor.config.load().fold_textobjects.join(" ");
+    if textobjects.is_empty() {
+        return;
+    }
+
+    let loader = editor.syn_loader.load();
+
+    let str = format!("--document {textobjects}");
+    let args = Args::parse(&str, FOLD_SIGNATURE, true, |token| Ok(token.content)).unwrap();
+
+    let (view, doc) = current!(editor);
+    _ = fold_textobjects(doc, view, &loader, args);
 }
 
 fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
@@ -782,6 +822,14 @@ pub mod completers {
         }
 
         completions
+    }
+
+    pub fn foldable_textobjects(_editor: &Editor, input: &str) -> Vec<Completion> {
+        let textobjects = ["class", "function", "comment"];
+        fuzzy_match(input, textobjects.iter(), false)
+            .into_iter()
+            .map(|(name, _)| ((0..), (*name).into()))
+            .collect()
     }
 }
 
