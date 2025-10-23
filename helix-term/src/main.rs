@@ -2,7 +2,7 @@ use anyhow::{Context, Error, Result};
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
-use helix_term::config::{Config, ConfigLoadError};
+use helix_term::config::{Config, ConfigLoadError, LoadWorkspaceConfig};
 
 fn setup_logging(verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
@@ -92,28 +92,6 @@ FLAGS:
         std::process::exit(0);
     }
 
-    if args.health {
-        if let Err(err) = helix_term::health::print_health(args.health_arg) {
-            // Piping to for example `head -10` requires special handling:
-            // https://stackoverflow.com/a/65760807/7115678
-            if err.kind() != std::io::ErrorKind::BrokenPipe {
-                return Err(err.into());
-            }
-        }
-
-        std::process::exit(0);
-    }
-
-    if args.fetch_grammars {
-        helix_loader::grammar::fetch_grammars()?;
-        return Ok(0);
-    }
-
-    if args.build_grammars {
-        helix_loader::grammar::build_grammars(None)?;
-        return Ok(0);
-    }
-
     setup_logging(args.verbosity).context("failed to initialize logging")?;
 
     // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
@@ -139,15 +117,40 @@ FLAGS:
             Config::default()
         }
     };
+    let use_local_config = config.load_workspace_config == LoadWorkspaceConfig::Always;
 
-    let lang_loader = helix_core::config::user_lang_loader().unwrap_or_else(|err| {
-        eprintln!("{}", err);
-        eprintln!("Press <ENTER> to continue with default language config");
-        use std::io::Read;
-        // This waits for an enter press.
-        let _ = std::io::stdin().read(&mut []);
-        helix_core::config::default_lang_loader()
-    });
+    if args.health {
+        if let Err(err) = helix_term::health::print_health(args.health_arg, use_local_config) {
+            // Piping to for example `head -10` requires special handling:
+            // https://stackoverflow.com/a/65760807/7115678
+            if err.kind() != std::io::ErrorKind::BrokenPipe {
+                return Err(err.into());
+            }
+        }
+
+        std::process::exit(0);
+    }
+
+    // is this safe to put true here?
+    if args.fetch_grammars {
+        helix_loader::grammar::fetch_grammars(use_local_config)?;
+        return Ok(0);
+    }
+
+    if args.build_grammars {
+        helix_loader::grammar::build_grammars(None, use_local_config)?;
+        return Ok(0);
+    }
+
+    let lang_loader =
+        helix_core::config::user_lang_loader(use_local_config).unwrap_or_else(|err| {
+            eprintln!("{}", err);
+            eprintln!("Press <ENTER> to continue with default language config");
+            use std::io::Read;
+            // This waits for an enter press.
+            let _ = std::io::stdin().read(&mut []);
+            helix_core::config::default_lang_loader()
+        });
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config, lang_loader).context("unable to start Helix")?;

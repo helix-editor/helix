@@ -22,7 +22,7 @@ use tui::backend::Backend;
 use crate::{
     args::Args,
     compositor::{Compositor, Event},
-    config::Config,
+    config::{Config, LoadWorkspaceConfig},
     handlers,
     job::Jobs,
     keymap::Keymaps,
@@ -415,7 +415,9 @@ impl Application {
             // Update the syntax language loader before setting the theme. Setting the theme will
             // call `Loader::set_scopes` which must be done before the documents are re-parsed for
             // the sake of locals highlighting.
-            let lang_loader = helix_core::config::user_lang_loader()?;
+            let lang_loader = helix_core::config::user_lang_loader(
+                self.config.load().load_workspace_config == LoadWorkspaceConfig::Always,
+            )?;
             self.editor.syn_loader.store(Arc::new(lang_loader));
             Self::load_configured_theme(
                 &mut self.editor,
