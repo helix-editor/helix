@@ -7049,6 +7049,22 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
             return
         }
 
+        if event.code == KeyCode::Backspace {
+            if search_str2.len() > 0 {
+                // recur with one character less
+                let mut new_search_str = search_str2.to_string();
+                new_search_str.pop();
+                doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+                let new_words = flash_words(cx.editor, &new_search_str);
+                flash_impl_rec(cx, movement, &new_search_str, new_words, false);
+            } else {
+                // if string is already empty - cancel flash
+                doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+            }
+
+            return
+        }
+
         // empty search_str and words_maybe case should be handled before this line
         // this is the first call scenario handling, when there are no matches yet
         let key_input = event.char().filter(|_| event.modifiers.is_empty());
