@@ -2234,132 +2234,6 @@ fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
     items.into_iter().map(|value| value.to_string()).collect()
 }
 
-#[allow(clippy::too_many_arguments)]
-fn flash_jump(
-    cx: &mut Context,
-    input: &str,
-    movement: Movement
-) {
-    // if no search string provided - return early
-    if input.is_empty() {
-        return;
-    }
-
-    // Calculate the jump candidates: ranges for any visible words with two or
-    // more characters.
-    let alphabet = &cx.editor.config().jump_label_alphabet;
-    if alphabet.is_empty() {
-        return;
-    }
-
-    let jump_label_limit = alphabet.len() * alphabet.len();
-    let mut words = Vec::with_capacity(jump_label_limit);
-    let (view, doc) = current_ref!(cx.editor);
-    let text = doc.text().slice(..);
-
-    // This is not necessarily exact if there is virtual text like soft wrap.
-    // It's ok though because the extra jump labels will not be rendered.
-    let start = text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor));
-    let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
-
-    // let primary_selection = doc.selection(view.id).primary();
-    // let cursor = primary_selection.cursor(text);
-    let mut cursor_pos = Range::point(start);
-
-    'outer: loop {
-        let mut changed = false;
-        while cursor_pos.head < end {
-            cursor_pos = movement::move_next_word_end(text, cursor_pos, 1);
-
-            // The cursor is on a word that is at least two graphemes long and
-            // made up of word characters. The latter condition is needed because
-            // move_next_word_end simply treats a sequence of characters from
-            // the same char class as a word so `=<` would also count as a word.
-            let is_word = text
-                .slice(..cursor_pos.head)
-                .graphemes_rev()
-                .take(2)
-                .take_while(|g| g.chars().all(char_is_word))
-                .count()
-                > 1;
-
-            if !is_word {
-                continue;
-            }
-
-            let is_match = text
-                .slice(..cursor_pos.head)
-                .graphemes()
-                .take(input.len())
-                .zip(input.graphemes(true))
-                .all(|(ch1, ch2)| ch1 == ch2);
-
-            if !is_match {
-                continue;
-            }
-
-            changed = true;
-
-            // skip any leading whitespace
-            cursor_pos.anchor += text
-                .chars_at(cursor_pos.anchor)
-                .take_while(|&c| !char_is_word(c))
-                .count();
-
-            words.push(cursor_pos);
-
-            if words.len() == jump_label_limit {
-                break 'outer;
-            }
-
-            break;
-        }
-
-        if !changed {
-            break;
-        }
-    }
-
-    jump_to_label(cx, words, movement)
-}
-
-fn flash(cx: &mut Context) {
-    let reg = cx.register.unwrap_or('/');
-    let completions = search_completions(cx, Some(reg));
-
-    let movement = if cx.editor.mode() == Mode::Select {
-        Movement::Extend
-    } else {
-        Movement::Move
-    };
-
-    ui::prompt(
-        cx,
-        "flash:".into(),
-        Some(reg),
-        move |_editor: &Editor, input: &str| {
-            completions
-                .iter()
-                .filter(|comp| comp.starts_with(input))
-                .map(|comp| (0.., comp.clone().into()))
-                .collect()
-        },
-        move |cx, input, event| {
-            if event == PromptEvent::Validate {
-                cx.editor.registers.last_search_register = reg;
-            } else if event != PromptEvent::Update {
-                return;
-            }
-
-            flash_jump(
-                cx,
-                &input,
-                movement
-            );
-        },
-    );
-}
-
 fn search(cx: &mut Context) {
     searcher(cx, Direction::Forward)
 }
@@ -7044,6 +6918,237 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
         }
     }
     jump_to_label(cx, words, behaviour)
+}
+
+struct FlashMatch {
+    range: Range,
+    label: char,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn flash_words(
+    editor: &mut Editor,
+    input: &str
+) -> Option<Vec<FlashMatch>> {
+    // if no search string provided - return early
+    if input.is_empty() {
+        return None;
+    }
+
+    // Calculate the jump candidates: ranges for any visible words with two or
+    // more characters.
+    let alphabet = &editor.config().jump_label_alphabet;
+    if alphabet.is_empty() {
+        return None;
+    }
+
+    let jump_label_limit = alphabet.len() * alphabet.len();
+    let mut words = Vec::with_capacity(jump_label_limit);
+    let (view, doc) = current_ref!(editor);
+    let text = doc.text().slice(..);
+
+    // This is not necessarily exact if there is virtual text like soft wrap.
+    // It's ok though because the extra jump labels will not be rendered.
+    let start = text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor));
+    let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
+
+    // let primary_selection = doc.selection(view.id).primary();
+    // let cursor = primary_selection.cursor(text);
+    let mut cursor_pos = Range::point(start);
+
+    'outer: loop {
+        let mut changed = false;
+        while cursor_pos.head < end {
+            cursor_pos = movement::move_next_word_end(text, cursor_pos, 1);
+
+            // The cursor is on a word that is at least two graphemes long and
+            // made up of word characters. The latter condition is needed because
+            // move_next_word_end simply treats a sequence of characters from
+            // the same char class as a word so `=<` would also count as a word.
+            let is_word = text
+                .slice(..cursor_pos.head)
+                .graphemes_rev()
+                .take(2)
+                .take_while(|g| g.chars().all(char_is_word))
+                .count()
+                > 1;
+
+            if !is_word {
+                continue;
+            }
+
+            let is_match = text
+                .slice(..cursor_pos.head)
+                .graphemes()
+                .any(|s| s.as_str().filter(|o| o.starts_with(input)).is_some());
+
+            if !is_match {
+                continue;
+            }
+
+            changed = true;
+
+            // skip any leading whitespace
+            cursor_pos.anchor += text
+                .chars_at(cursor_pos.anchor)
+                .take_while(|&c| !char_is_word(c))
+                .count();
+
+            words.push(cursor_pos);
+
+            if words.len() == jump_label_limit {
+                break 'outer;
+            }
+
+            break;
+        }
+
+        if !changed {
+            break;
+        }
+    }
+
+    // let results = words.iter()
+    //     .map(|w| text.slice(w.anchor..w.head).as_str().unwrap())
+    //     .collect();
+
+    let last_letters: Vec<char> = words
+        .iter()
+        .copied()
+        .map(|w| {
+            text.slice(w.anchor..(input.len() - 1))
+                .as_str()
+                .unwrap()
+                .chars()
+                .last()
+                .unwrap()
+        })
+        .collect();
+
+    let labels: Vec<char> = alphabet
+        .iter()
+        .copied()
+        .filter(|l| !last_letters.contains(l))
+        .collect();
+
+    let results: Vec<FlashMatch> = words
+        .iter()
+        .zip(labels.iter())
+        .map(|(m, l)| FlashMatch {
+            range: m.clone(),
+            label: l.clone(), // rust nonsence, but arguably right thing? copying a value of **char** instead of **borrowing** it
+        })
+        .collect();
+
+    Some(results)
+}
+
+fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_maybe: Option<Vec<FlashMatch>>, is_first_call: bool) {
+    if !is_first_call && (search_str.is_empty() || words_maybe.is_none()) {
+        let (view, doc) = current!(cx.editor);
+        let doc_id = doc.id();
+        let view_id = view.id;
+        doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+
+        return;
+    }
+
+    cx.on_next_key(move |cx, event| {
+        let (view, doc) = current!(cx.editor);
+        let doc_id = doc.id();
+        let view_id = view.id;
+
+        // empty search_str and words_maybe case should be handled before this line
+        // this is the first call scenario handling, when there are no matches yet
+        let key_input = event.char().filter(|_| event.modifiers.is_empty());
+
+        if search_str.is_empty() && key_input.is_some() {
+            let new_search_str = format!("{}{}", search_str, key_input.unwrap());
+            let new_words = flash_words(cx.editor, &new_search_str);
+
+            flash_impl_rec(cx, movement, &new_search_str, new_words, false);
+            return
+        }
+
+        // assume we've hit a match
+        if !is_first_call && search_str.len() > 1 && key_input.is_some() {
+            let matched_word = words_maybe.unwrap()
+                .iter()
+                .find(|w| w.label == key_input.unwrap());
+
+            if let Some(FlashMatch { range, .. }) = matched_word {
+                let (view, doc) = current!(cx.editor);
+                let doc_id = doc.id();
+                let view_id = view.id;
+                doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+
+                let primary_selection = doc.selection(view.id).primary();
+
+                let range = if movement == Movement::Extend {
+                    let anchor = if range.anchor < range.head {
+                        let from = primary_selection.from();
+                        if range.anchor < from {
+                            range.anchor
+                        } else {
+                            from
+                        }
+                    } else {
+                        let to = primary_selection.to();
+                        if range.anchor > to {
+                            range.anchor
+                        } else {
+                            to
+                        }
+                    };
+                    Range::new(anchor, range.head)
+                } else {
+                    range.with_direction(Direction::Forward)
+                };
+
+                doc_mut!(cx.editor, &doc_id).set_selection(view_id, range.into());
+
+                return;
+            }
+        }
+
+        if let Some(words) = words_maybe {
+            // assume there are _some_ matches; we need to highlight them
+            doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+
+            // Add label for each jump candidate to the View as virtual text.
+            let text = doc.text().slice(..);
+
+            let mut overlays: Vec<_> = words
+                .iter()
+                .flat_map(|FlashMatch { range, label }| {
+                    let mut ch = Tendril::new();
+                    ch.push(*label);
+
+                    return [
+                        Overlay::new(range.from(), ch),
+                        Overlay::new(
+                            graphemes::next_grapheme_boundary(text, range.from()),
+                            ch,
+                        ),
+                    ]
+                })
+                .collect();
+
+            overlays.sort_unstable_by_key(|overlay| overlay.char_idx);
+            let (view, doc) = current!(cx.editor);
+            doc.set_jump_labels(view.id, overlays);
+        }
+    });
+}
+
+fn flash(cx: &mut Context) {
+    let movement = if cx.editor.mode() == Mode::Select {
+        Movement::Extend
+    } else {
+        Movement::Move
+    };
+
+    flash_impl_rec(cx, movement, "", None, true);
 }
 
 fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
