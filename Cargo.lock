@@ -1550,6 +1550,7 @@ dependencies = [
  "once_cell",
  "open",
  "pulldown-cmark",
+ "regex",
  "same-file",
  "serde",
  "serde_json",

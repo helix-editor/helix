@@ -1,6 +1,7 @@
 use std::fmt::Write;
 
 use helix_core::syntax::config::LanguageServerFeature;
+use helix_loader::find_workspace;
 
 use crate::{
     editor::GutterType,
@@ -81,6 +82,50 @@ pub fn diagnostic<'doc>(
                     Some(Severity::Warning) | None => warning,
                     Some(Severity::Info) => info,
                     Some(Severity::Hint) => hint,
+                }
+            })
+        },
+    )
+}
+
+pub fn make_list_diagnostic<'doc>(
+    editor: &'doc Editor,
+    doc: &'doc Document,
+    _view: &View,
+    theme: &Theme,
+    _is_focused: bool,
+) -> GutterFn<'doc> {
+    let warning = theme.get("warning");
+    let error = theme.get("error");
+    let info = theme.get("info");
+    let hint = theme.get("hint");
+    let root_path = find_workspace().0;
+
+    Box::new(
+        move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            if !first_visual_line {
+                return None;
+            }
+            use helix_core::diagnostic::Severity;
+            let path = match doc.path() {
+                Some(path) => match path.strip_prefix(&root_path) {
+                    Ok(p) => p,
+                    Err(_) => return None,
+                },
+                None => return None,
+            };
+
+            let diagnostics = (&editor.make_list)
+                .into_iter()
+                .filter(|entry| entry.location.path == path && entry.location.line == line);
+
+            diagnostics.max_by_key(|e| e.severity).map(|e| {
+                write!(out, "●").ok();
+                match e.severity {
+                    Severity::Error => error,
+                    Severity::Warning => warning,
+                    Severity::Info => info,
+                    Severity::Hint => hint,
                 }
             })
         },
@@ -313,6 +358,7 @@ pub fn diagnostics_or_breakpoints<'doc>(
     theme: &Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
+    let mut make_list_diagnostics = make_list_diagnostic(editor, doc, view, theme, is_focused);
     let mut diagnostics = diagnostic(editor, doc, view, theme, is_focused);
     let mut breakpoints = breakpoints(editor, doc, view, theme, is_focused);
     let mut execution_pause_indicator = execution_pause_indicator(editor, doc, theme, is_focused);
@@ -321,6 +367,7 @@ pub fn diagnostics_or_breakpoints<'doc>(
         execution_pause_indicator(line, selected, first_visual_line, out)
             .or_else(|| breakpoints(line, selected, first_visual_line, out))
             .or_else(|| diagnostics(line, selected, first_visual_line, out))
+            .or_else(|| make_list_diagnostics(line, selected, first_visual_line, out))
     })
 }
 
