@@ -6953,8 +6953,6 @@ fn flash_words(
     let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
 
     for pos in start..(end - input.len() - 1) {
-        let sw = text.slice(pos..(pos + input.len())).as_str().unwrap();
-
         let is_word = text.slice(pos..(pos + input.len()))
             .graphemes()
             .all(|g| g.chars().all(char_is_word));
@@ -6963,20 +6961,10 @@ fn flash_words(
             .as_str()
             .filter(|s| s.starts_with(input)).is_some();
 
-        log::debug!(".. checking {sw:?} against {input:?}: is_word = {is_word:?} / is_match = {is_match:?}");
-
         if is_word && is_match {
             words.push(Range { anchor: pos, head: pos + input.len() + 1, old_visual_position: None });
         }
     }
-
-    let ln = words.len();
-    log::debug!("> flash_words found {ln:?} words for {input:?}");
-    words.iter()
-        .filter(|w| w.len() >= input.len())
-        .copied()
-        .map(|w| text.slice(w.anchor..(w.anchor + input.len() + 1)).as_str())
-        .for_each(|w| log::debug!(">> {w:?}"));
 
     let last_letters: Vec<char> = words
         .iter()
@@ -7012,14 +7000,6 @@ fn flash_words(
 
 fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_maybe: Option<Vec<FlashMatch>>, is_first_call: bool) {
     if !is_first_call && (search_str.is_empty() || words_maybe.is_none()) {
-        if search_str.is_empty() {
-            log::debug!("flash_jump has no search string on non-first call, exit");
-        }
-
-        if words_maybe.is_none() {
-            log::debug!("flash_jump has no matches on non-first call, exit");
-        }
-
         let (view, doc) = current!(cx.editor);
         let doc_id = doc.id();
         let view_id = view.id;
@@ -7056,10 +7036,6 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
 
             doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
             doc_mut!(cx.editor, &doc_id).set_jump_labels(view.id, overlays);
-
-            let lbm = words.len();
-            log::debug!("flash_jump highlights {lbm:?} matches for {search_str2:?}");
-            words.iter().for_each(|FlashMatch { range, label }| log::debug!(">> {range:?} / {label:?}"));
         }
     }
 
@@ -7069,7 +7045,6 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
         let view_id = view.id;
 
         if event.code == KeyCode::Esc {
-            log::debug!("flash_jump escaped, exit");
             doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
             return
         }
@@ -7079,10 +7054,8 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
         let key_input = event.char().filter(|_| event.modifiers.is_empty());
 
         if is_first_call && search_str2.is_empty() && key_input.is_some() {
-            let new_search_str = format!("{}{}", search_str2, key_input.unwrap());
-            log::debug!("flash_jump search string empty on first call, recur with {new_search_str:?} / {key_input:?}");
-
             doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+            let new_search_str = format!("{}{}", search_str2, key_input.unwrap());
             let new_words = flash_words(cx.editor, &new_search_str);
             flash_impl_rec(cx, movement, &new_search_str, new_words, false);
             return
@@ -7091,14 +7064,10 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
         // used later, prevent borrow checker errors
         let primary_selection = doc.selection(view.id).primary();
 
-        // check if we've hit a match
+        // check if we've hit a match; allow for search of length 1
         if !is_first_call && search_str2.len() > 0 && key_input.is_some() {
             if let Some(ref words) = words_maybe {
                 let key_char = key_input.unwrap();
-
-                let lb = words.len();
-                log::debug!("flash_jump previously found {lb:?} matches for 2+ character match on non-first call, trying to match with {key_char:?}");
-                words.iter().for_each(|FlashMatch { range, label }| log::debug!(">> {range:?} / {label:?}"));
 
                 let matched_word = words
                     .iter()
@@ -7106,39 +7075,24 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
 
                 // we have a match, jump
                 if let Some(FlashMatch { range, .. }) = matched_word {
-                    log::debug!("> flash_jump found word match at {range:?}");
-
                     let range = if movement == Movement::Extend {
-                        log::debug!(">> flash_jump extends range");
-
                         let anchor = if range.anchor < range.head {
                             let from = primary_selection.from();
                             if range.anchor < from {
-                                let a = range.anchor;
-                                log::debug!(">>> range.anchor {a:?} < {from:?}");
-
                                 range.anchor
                             } else {
-                                log::debug!(">>> from {from:?}");
-
                                 from
                             }
                         } else {
                             let to = primary_selection.to();
                             if range.anchor > to {
-                                let a = range.anchor;
-                                log::debug!(">>> range.anchor {a:?} > {to:?}");
-
                                 range.anchor
                             } else {
-                                log::debug!(">>> to {to:?}");
-
                                 to
                             }
                         };
                         Range::new(anchor, range.head)
                     } else {
-                        log::debug!(">> flash jump moves forward");
                         // TODO: check if should move backward?
                         range.with_direction(Direction::Forward)
                     };
@@ -7148,8 +7102,6 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
                 } else {
                     // no match hit _yet_
                     let new_search_str = format!("{}{}", search_str2, key_input.unwrap());
-                    log::debug!("flash_jump no match was hit for {key_input:?}, recur with {new_search_str:?} / {key_input:?}");
-
                     doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
                     let new_words = flash_words(cx.editor, &new_search_str);
                     flash_impl_rec(cx, movement, &new_search_str, new_words, false);
