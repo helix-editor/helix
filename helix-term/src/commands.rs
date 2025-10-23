@@ -40,7 +40,7 @@ use helix_core::{
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
-    unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthChar},
+    unicode::width::UnicodeWidthChar,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
     Selection, SmallVec, Syntax, Tendril, Transaction,
 };
@@ -7007,10 +7007,6 @@ fn flash_words(
             break;
         }
     }
-
-    // let results = words.iter()
-    //     .map(|w| text.slice(w.anchor..w.head).as_str().unwrap())
-    //     .collect();
 
     let last_letters: Vec<char> = words
         .iter()
