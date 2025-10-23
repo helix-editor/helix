@@ -7053,6 +7053,8 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
         return;
     }
 
+    let search_str2 = search_str.to_string();
+
     cx.on_next_key(move |cx, event| {
         let (view, doc) = current!(cx.editor);
         let doc_id = doc.id();
@@ -7062,8 +7064,8 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
         // this is the first call scenario handling, when there are no matches yet
         let key_input = event.char().filter(|_| event.modifiers.is_empty());
 
-        if search_str.is_empty() && key_input.is_some() {
-            let new_search_str = format!("{}{}", search_str, key_input.unwrap());
+        if search_str2.is_empty() && key_input.is_some() {
+            let new_search_str = format!("{}{}", search_str2, key_input.unwrap());
             let new_words = flash_words(cx.editor, &new_search_str);
 
             flash_impl_rec(cx, movement, &new_search_str, new_words, false);
@@ -7071,47 +7073,51 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
         }
 
         // assume we've hit a match
-        if !is_first_call && search_str.len() > 1 && key_input.is_some() {
-            let matched_word = words_maybe.unwrap()
-                .iter()
-                .find(|w| w.label == key_input.unwrap());
+        if !is_first_call && search_str2.len() > 1 && key_input.is_some() {
+            if let Some(ref words) = words_maybe {
+                let key_char = key_input.unwrap();
 
-            if let Some(FlashMatch { range, .. }) = matched_word {
-                let (view, doc) = current!(cx.editor);
-                let doc_id = doc.id();
-                let view_id = view.id;
-                doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+                let matched_word = words
+                    .iter()
+                    .find(|w| w.label == key_char);
 
-                let primary_selection = doc.selection(view.id).primary();
+                if let Some(FlashMatch { range, .. }) = matched_word {
+                    let (view, doc) = current!(cx.editor);
+                    let doc_id = doc.id();
+                    let view_id = view.id;
+                    doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
 
-                let range = if movement == Movement::Extend {
-                    let anchor = if range.anchor < range.head {
-                        let from = primary_selection.from();
-                        if range.anchor < from {
-                            range.anchor
+                    let primary_selection = doc.selection(view.id).primary();
+
+                    let range = if movement == Movement::Extend {
+                        let anchor = if range.anchor < range.head {
+                            let from = primary_selection.from();
+                            if range.anchor < from {
+                                range.anchor
+                            } else {
+                                from
+                            }
                         } else {
-                            from
-                        }
+                            let to = primary_selection.to();
+                            if range.anchor > to {
+                                range.anchor
+                            } else {
+                                to
+                            }
+                        };
+                        Range::new(anchor, range.head)
                     } else {
-                        let to = primary_selection.to();
-                        if range.anchor > to {
-                            range.anchor
-                        } else {
-                            to
-                        }
+                        range.with_direction(Direction::Forward)
                     };
-                    Range::new(anchor, range.head)
-                } else {
-                    range.with_direction(Direction::Forward)
-                };
 
-                doc_mut!(cx.editor, &doc_id).set_selection(view_id, range.into());
+                    doc_mut!(cx.editor, &doc_id).set_selection(view_id, range.into());
 
-                return;
+                    return;
+                }
             }
         }
 
-        if let Some(words) = words_maybe {
+        if let Some(ref words) = words_maybe {
             // assume there are _some_ matches; we need to highlight them
             doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
 
@@ -7121,14 +7127,14 @@ fn flash_impl_rec(cx: &mut Context, movement: Movement, search_str: &str, words_
             let mut overlays: Vec<_> = words
                 .iter()
                 .flat_map(|FlashMatch { range, label }| {
-                    let mut ch = Tendril::new();
-                    ch.push(*label);
+                    let mut ch1 = Tendril::new();
+                    ch1.push(*label);
 
                     return [
-                        Overlay::new(range.from(), ch),
+                        Overlay::new(range.from(), ch1.clone()),
                         Overlay::new(
                             graphemes::next_grapheme_boundary(text, range.from()),
-                            ch,
+                            ch1.clone()
                         ),
                     ]
                 })
