@@ -40,8 +40,7 @@ impl Default for Config {
             theme: None,
             keys: keymap::default(),
             editor: helix_view::editor::Config::default(),
-            // more secure than LoadWorkspaceConfig::Always
-            load_workspace_config: LoadWorkspaceConfig::Never,
+            load_workspace_config: LoadWorkspaceConfig::default(),
         }
     }
 }
