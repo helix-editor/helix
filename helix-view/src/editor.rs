@@ -1963,9 +1963,9 @@ impl Editor {
         };
         if let Some(url) = url {
             let identifier = lsp::TextDocumentIdentifier::new(url.clone());
-            let language_servers: Vec<_> = self
+            let language_servers: Vec<_> = doc
                 .language_servers
-                .iter_clients()
+                .values()
                 .filter(|client| client.is_initialized())
                 .cloned()
                 .collect();
