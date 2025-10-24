@@ -107,7 +107,7 @@ impl TestBackend {
 }
 
 impl Backend for TestBackend {
-    fn claim(&mut self, _config: Config) -> Result<(), io::Error> {
+    fn claim(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
 
@@ -115,11 +115,7 @@ impl Backend for TestBackend {
         Ok(())
     }
 
-    fn restore(&mut self, _config: Config) -> Result<(), io::Error> {
-        Ok(())
-    }
-
-    fn force_restore() -> Result<(), io::Error> {
+    fn restore(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
 
@@ -143,10 +139,6 @@ impl Backend for TestBackend {
         Ok(())
     }
 
-    fn get_cursor(&mut self) -> Result<(u16, u16), io::Error> {
-        Ok(self.pos)
-    }
-
     fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         self.pos = (x, y);
         Ok(())
@@ -163,5 +155,13 @@ impl Backend for TestBackend {
 
     fn flush(&mut self) -> Result<(), io::Error> {
         Ok(())
+    }
+
+    fn supports_true_color(&self) -> bool {
+        false
+    }
+
+    fn get_theme_mode(&self) -> Option<helix_view::theme::Mode> {
+        None
     }
 }

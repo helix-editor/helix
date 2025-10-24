@@ -5,8 +5,8 @@
 #       The help message won't be overridden though, so it will still be present here
 
 def health_categories [] {
-    let languages = ^hx --health languages | detect columns | get Language | filter { $in != null }
-    let completions = [ "all", "clipboard", "languages" ] | append $languages
+    let languages = ^hx --health all-languages | detect columns | get Language | where { $in != null }
+    let completions = [ "all", "clipboard", "languages", "all-languages" ] | append $languages
     return $completions
 }
 

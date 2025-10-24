@@ -36,6 +36,10 @@ inherits = "monokai"
 "ui.popup.info" = { fg = "light-blue", bg = "#000000" }
 "ui.text.info" = { fg = "light-blue", bg = "#000000" }
 
+"ui.statusline.normal" = { fg = "#080808", bg = "#e6db74", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "#282828", bg = "#8787af", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "#282828", bg = "#ffd700", modifiers = ["bold"] }
+
 "warning" = { fg = "#ffffff", modifiers = ["bold"] }
 "error" = { fg = "#ffffff", modifiers = ["bold"] }
 "info" = { fg = "#ffffff", modifiers = ["bold"] }

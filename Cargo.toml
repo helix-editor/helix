@@ -41,18 +41,23 @@ tree-house = { version = "0.3.0", default-features = false }
 nucleo = "0.5.0"
 slotmap = "1.0.7"
 thiserror = "2.0"
-tempfile = "3.20.0"
-bitflags = "2.9"
+tempfile = "3.23.0"
+bitflags = "2.10"
 unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
-foldhash = "0.1"
+foldhash = "0.2"
 parking_lot = "0.12"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 tokio-stream = "0.1.17"
+toml = "0.9"
+termina = "0.1"
+sonic-rs = "0.5"
+# MSRV: update once the MSRV is >=1.85
+globset = "=0.4.16"
 
 [workspace.package]
-version = "25.1.1"
+version = "25.7.1"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]
