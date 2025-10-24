@@ -96,6 +96,12 @@ impl ScriptingEngine {
         }
     }
 
+    pub fn reinitialize() {
+        for kind in DEFAULT_PLUGIN_PRECEDENCE {
+            manual_dispatch!(kind, reinitialize())
+        }
+    }
+
     pub fn run_initialization_script(
         cx: &mut Context,
         configuration: Arc<ArcSwapAny<Arc<Config>>>,
@@ -234,6 +240,10 @@ pub trait PluginSystem {
     /// If any initialization needs to happen prior to the initialization script being run,
     /// this is done here. This is run before the context is available.
     fn initialize(&self) {}
+
+    /// Any work that needs to be done to unload the existing engine in preparation
+    /// for a new run.
+    fn reinitialize(&self) {}
 
     #[allow(unused)]
     fn engine_name(&self) -> PluginSystemKind;

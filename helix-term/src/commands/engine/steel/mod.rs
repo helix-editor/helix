@@ -22,10 +22,10 @@ use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
     editor::{
-        Action, AutoSave, BufferLine, ConfigEvent, CursorShapeConfig, FilePickerConfig,
-        GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig,
-        SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig, WhitespaceRender,
-        WhitespaceRenderValue,
+        Action, AutoSave, BufferLine, ClippingConfiguration, ConfigEvent, CursorShapeConfig,
+        FilePickerConfig, GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber,
+        LspConfig, SearchConfig, SmartTabConfig, StatusLineConfig, TerminalConfig,
+        WhitespaceConfig, WhitespaceRender, WhitespaceRenderValue,
     },
     events::{DocumentDidOpen, DocumentFocusLost, DocumentSaved, SelectionDidChange},
     extension::document_id_to_usize,
@@ -54,7 +54,10 @@ use std::{
     error::Error,
     io::Write,
     path::PathBuf,
-    sync::{atomic::AtomicBool, Mutex, MutexGuard, RwLock, RwLockReadGuard, Weak},
+    sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        Mutex, MutexGuard, RwLock, RwLockReadGuard, Weak,
+    },
     time::{Duration, SystemTime},
 };
 use std::{str::FromStr as _, sync::Arc};
@@ -78,10 +81,12 @@ use components::helix_component_module;
 use super::{Context, TerminalEventReaderHandle};
 use insert::insert_char;
 
-static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
-static SAFEPOINT_HANDLER: OnceCell<SafepointHandler> = OnceCell::new();
+static INTERRUPT_HANDLER: Lazy<Mutex<Option<Arc<InterruptHandler>>>> =
+    Lazy::new(|| Mutex::new(None));
+static SAFEPOINT_HANDLER: Lazy<Mutex<Option<Arc<SafepointHandler>>>> =
+    Lazy::new(|| Mutex::new(None));
 
-static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
+static GLOBAL_OFFSET: AtomicUsize = AtomicUsize::new(0);
 
 static EVENT_READER: OnceCell<EventReader> = OnceCell::new();
 
@@ -91,8 +96,21 @@ fn install_event_reader(event_reader: TerminalEventReaderHandle) {
 
     #[cfg(all(not(windows), not(feature = "integration")))]
     {
-        EVENT_READER.set(event_reader.reader).unwrap()
+        EVENT_READER.set(event_reader.reader).ok();
     }
+}
+
+fn reload_engine() {
+    enter_engine(|engine| {
+        // Install a new generation. Anything using the old engine at this point
+        // should (hopefully) gracefully go out of scope.
+        increment_generation();
+
+        reset_buffer_extension_keymap();
+        reset_lsp_call_registry();
+
+        *engine = setup();
+    })
 }
 
 fn setup() -> Engine {
@@ -100,6 +118,8 @@ fn setup() -> Engine {
 
     let controller = engine.get_thread_state_controller();
     let running = Arc::new(AtomicBool::new(false));
+
+    let current_generation = load_generation();
 
     fn is_event_available() -> std::io::Result<bool> {
         #[cfg(windows)]
@@ -126,7 +146,7 @@ fn setup() -> Engine {
         let controller = controller_clone;
         let running = running_clone;
 
-        loop {
+        while is_current_generation(current_generation) {
             std::thread::park();
 
             while running.load(std::sync::atomic::Ordering::Relaxed) {
@@ -171,7 +191,7 @@ fn setup() -> Engine {
     let safepoint_wakeup = std::thread::spawn(move || {
         let running_command = running_command_clone;
 
-        loop {
+        while is_current_generation(current_generation) {
             // If this is running, don't acquire the lock. Park until we're back.
             if running_command.load(std::sync::atomic::Ordering::Relaxed) {
                 std::thread::park();
@@ -189,20 +209,16 @@ fn setup() -> Engine {
         }
     });
 
-    SAFEPOINT_HANDLER
-        .set(SafepointHandler {
-            running_command,
-            handle: safepoint_wakeup,
-        })
-        .ok();
+    *SAFEPOINT_HANDLER.lock().unwrap() = Some(Arc::new(SafepointHandler {
+        running_command,
+        handle: safepoint_wakeup,
+    }));
 
-    INTERRUPT_HANDLER
-        .set(InterruptHandler {
-            controller: controller.clone(),
-            running: running.clone(),
-            handle: thread_handle,
-        })
-        .ok();
+    *INTERRUPT_HANDLER.lock().unwrap() = Some(Arc::new(InterruptHandler {
+        controller: controller.clone(),
+        running: running.clone(),
+        handle: thread_handle,
+    }));
 
     configure_engine_impl(engine)
 }
@@ -210,6 +226,20 @@ fn setup() -> Engine {
 // The Steel scripting engine instance. This is what drives the whole integration.
 pub static GLOBAL_ENGINE: Lazy<Mutex<steel::steel_vm::engine::Engine>> =
     Lazy::new(|| Mutex::new(setup()));
+
+static GENERATION: AtomicUsize = AtomicUsize::new(0);
+
+fn increment_generation() {
+    GENERATION.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+}
+
+fn is_current_generation(gen: usize) -> bool {
+    GENERATION.load(std::sync::atomic::Ordering::SeqCst) == gen
+}
+
+fn load_generation() -> usize {
+    GENERATION.load(std::sync::atomic::Ordering::SeqCst)
+}
 
 fn acquire_engine_lock() -> MutexGuard<'static, Engine> {
     GLOBAL_ENGINE.lock().unwrap()
@@ -222,8 +252,8 @@ where
     F: FnOnce(&mut Engine) -> R,
 {
     // Unpark the other thread, get it ready
-    let handler = SAFEPOINT_HANDLER.get();
-    if let Some(x) = handler {
+    let handler = SAFEPOINT_HANDLER.lock().unwrap().clone();
+    if let Some(x) = &handler {
         x.running_command
             .store(true, std::sync::atomic::Ordering::Relaxed);
         x.handle.thread().unpark();
@@ -244,7 +274,7 @@ pub fn try_enter_engine<F, R>(f: F) -> Option<R>
 where
     F: FnOnce(&mut Engine) -> R,
 {
-    let handler = SAFEPOINT_HANDLER.get().unwrap();
+    let handler = SAFEPOINT_HANDLER.lock().unwrap().clone().unwrap();
 
     // If we're currently running a command, we need to try lock against
     // the lock since we don't want to lock up the engine explicitly.
@@ -293,7 +323,7 @@ pub fn with_interrupt_handler<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let handler = INTERRUPT_HANDLER.get().unwrap();
+    let handler = INTERRUPT_HANDLER.lock().unwrap().clone().unwrap();
     handler
         .running
         .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -317,30 +347,68 @@ static BUFFER_EXTENSION_KEYMAP: Lazy<RwLock<BufferExtensionKeyMap>> = Lazy::new(
     })
 });
 
+fn reset_buffer_extension_keymap() {
+    let mut guard = BUFFER_EXTENSION_KEYMAP.write().unwrap();
+    guard.map.clear();
+    guard.reverse.clear();
+}
+
 enum LspKind {
     Call(RootedSteelVal),
     Notification(RootedSteelVal),
 }
 
-static LSP_CALL_REGISTRY: Lazy<RwLock<HashMap<(String, String), LspKind>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+struct LspCallRegistryId {
+    lsp_name: String,
+    event_name: String,
+    generation: usize,
+}
+
+struct LspCallRegistry {
+    map: HashMap<LspCallRegistryId, LspKind>,
+}
+
+static LSP_CALL_REGISTRY: Lazy<RwLock<LspCallRegistry>> = Lazy::new(|| {
+    RwLock::new(LspCallRegistry {
+        map: HashMap::new(),
+    })
+});
+
+fn reset_lsp_call_registry() {
+    LSP_CALL_REGISTRY.write().unwrap().map.clear();
+}
 
 fn register_lsp_call_callback(lsp: String, kind: String, function: SteelVal) {
     let rooted = function.as_rooted();
 
+    let id = LspCallRegistryId {
+        lsp_name: lsp,
+        event_name: kind,
+        generation: load_generation(),
+    };
+
     LSP_CALL_REGISTRY
         .write()
         .unwrap()
-        .insert((lsp, kind), LspKind::Call(rooted));
+        .map
+        .insert(id, LspKind::Call(rooted));
 }
 
 fn register_lsp_notification_callback(lsp: String, kind: String, function: SteelVal) {
     let rooted = function.as_rooted();
 
+    let id = LspCallRegistryId {
+        lsp_name: lsp,
+        event_name: kind,
+        generation: load_generation(),
+    };
+
     LSP_CALL_REGISTRY
         .write()
         .unwrap()
-        .insert((lsp, kind), LspKind::Notification(rooted));
+        .map
+        .insert(id, LspKind::Notification(rooted));
 }
 
 fn send_arbitrary_lsp_notification(
@@ -2431,6 +2499,10 @@ impl super::PluginSystem for SteelScriptingEngine {
         std::thread::spawn(initialize_engine);
     }
 
+    fn reinitialize(&self) {
+        reload_engine();
+    }
+
     fn engine_name(&self) -> super::PluginSystemKind {
         super::PluginSystemKind::Steel
     }
@@ -2574,7 +2646,7 @@ impl super::PluginSystem for SteelScriptingEngine {
     fn available_commands<'a>(&self) -> Vec<Cow<'a, str>> {
         try_enter_engine(|engine| {
             engine
-                .readable_globals(*GLOBAL_OFFSET.get().unwrap())
+                .readable_globals(GLOBAL_OFFSET.load(std::sync::atomic::Ordering::Relaxed))
                 .iter()
                 .map(|x| x.resolve().to_string().into())
                 .collect()
@@ -2676,10 +2748,17 @@ impl super::PluginSystem for SteelScriptingEngine {
 
         let mut pass_call_id = false;
 
+        let id = LspCallRegistryId {
+            lsp_name: language_server_name,
+            event_name,
+            generation: load_generation(),
+        };
+
         let function = LSP_CALL_REGISTRY
             .read()
             .unwrap()
-            .get(&(language_server_name, event_name))
+            .map
+            .get(&id)
             .map(|x| match x {
                 LspKind::Call(rooted_steel_val) => {
                     pass_call_id = true;
@@ -3649,7 +3728,7 @@ impl HelixConfiguration {
 // Get doc from function ptr table, hack
 fn get_doc_for_global(engine: &mut Engine, ident: &str) -> Option<String> {
     if engine.global_exists(ident) {
-        let readable_globals = engine.readable_globals(*GLOBAL_OFFSET.get().unwrap());
+        let readable_globals = engine.readable_globals(GLOBAL_OFFSET.load(Ordering::Relaxed));
 
         for global in readable_globals {
             if global.resolve() == ident {
@@ -3672,6 +3751,11 @@ fn run_initialization_script(
     event_reader: TerminalEventReaderHandle,
 ) {
     install_event_reader(event_reader);
+
+    // Hack:
+    // This might be fussed with, and under re initialization we want
+    // to reset this back to what it was before.
+    cx.editor.editor_clipping = ClippingConfiguration::default();
 
     log::info!("Loading init.scm...");
 
@@ -3837,11 +3921,16 @@ impl Custom for MappableCommand {}
 // Don't take the function name, just take the function itself?
 fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecoverableResult {
     let rooted = callback_fn.as_rooted();
+    let generation = load_generation();
 
     match event_kind.as_str() {
         "on-mode-switch" => {
             register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
                 if let Err(e) = enter_engine(|guard| {
+                    if !is_current_generation(generation) {
+                        return Ok(SteelVal::Void);
+                    }
+
                     let minimized_event = OnModeSwitchEvent {
                         old_mode: event.old_mode,
                         new_mode: event.new_mode,
@@ -3868,6 +3957,10 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
         "post-insert-char" => {
             register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
                 if let Err(e) = enter_engine(|guard| {
+                    if !is_current_generation(generation) {
+                        return Ok(SteelVal::Void);
+                    }
+
                     guard.with_mut_reference(event.cx).consume(|engine, args| {
                         let context = args[0].clone();
                         engine.update_value("*helix.cx*", context);
@@ -3890,6 +3983,10 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
         "post-command" => {
             register_hook!(move |event: &mut PostCommand<'_, '_>| {
                 if let Err(e) = enter_engine(|guard| {
+                    if !is_current_generation(generation) {
+                        return Ok(SteelVal::Void);
+                    }
+
                     guard.with_mut_reference(event.cx).consume(|engine, args| {
                         let context = args[0].clone();
                         engine.update_value("*helix.cx*", context);
@@ -3929,6 +4026,10 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         jobs,
                     };
                     enter_engine(|guard| {
+                        if !is_current_generation(generation) {
+                            return;
+                        }
+
                         if let Err(e) = guard
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
@@ -3975,6 +4076,10 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         jobs,
                     };
                     enter_engine(|guard| {
+                        if !is_current_generation(generation) {
+                            return;
+                        }
+
                         if let Err(e) = guard
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
@@ -4019,6 +4124,10 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         jobs,
                     };
                     enter_engine(|guard| {
+                        if !is_current_generation(generation) {
+                            return;
+                        }
+
                         if let Err(e) = guard
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
@@ -4063,6 +4172,10 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         jobs,
                     };
                     enter_engine(|guard| {
+                        if !is_current_generation(generation) {
+                            return;
+                        }
+
                         if let Err(e) = guard
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
@@ -5161,7 +5274,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     // Create directory since we can't do that in the current state
     engine.register_fn("hx.create-directory", create_directory);
 
-    GLOBAL_OFFSET.set(engine.globals().len()).unwrap();
+    GLOBAL_OFFSET.store(engine.globals().len(), Ordering::Relaxed);
 
     engine
 }
@@ -5547,6 +5660,7 @@ fn set_error(cx: &mut Context, value: SteelVal) {
 
 fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
     let rooted = callback_fn.as_rooted();
+    let current_gen = load_generation();
 
     let callback = async move {
         let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
@@ -5563,6 +5677,10 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
                 let cloned_func = rooted.value();
 
                 enter_engine(|guard| {
+                    if !is_current_generation(current_gen) {
+                        return;
+                    }
+
                     if let Err(e) = guard
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
@@ -5585,6 +5703,7 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
 // Apply arbitrary delay for update rate...
 fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: SteelVal) {
     let rooted = callback_fn.as_rooted();
+    let current_gen = load_generation();
 
     let callback = async move {
         let delay = delay.int_or_else(|| panic!("FIX ME")).unwrap();
@@ -5605,6 +5724,10 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
                 let cloned_func = rooted.value();
 
                 enter_engine(|guard| {
+                    if !is_current_generation(current_gen) {
+                        return;
+                    }
+
                     if let Err(e) = guard
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
@@ -5631,6 +5754,7 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
     }
 
     let rooted = callback_fn.as_rooted();
+    let current_gen = load_generation();
 
     let callback = async move {
         let future_value = value.as_future().unwrap().await;
@@ -5657,6 +5781,10 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                         };
 
                         enter_engine(|guard| {
+                            if !is_current_generation(current_gen) {
+                                return;
+                            }
+
                             if let Err(e) = guard
                                 .with_mut_reference::<Context, Context>(&mut ctx)
                                 .consume_once(callback)

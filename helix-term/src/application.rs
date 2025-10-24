@@ -469,6 +469,32 @@ impl Application {
             self.terminal.reconfigure((&default_config.editor).into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
+
+            {
+                crate::commands::ScriptingEngine::reinitialize();
+
+                let syn_loader = self.editor.syn_loader.clone();
+                let config = self.config.clone();
+
+                let mut cx = crate::commands::Context {
+                    register: None,
+                    count: std::num::NonZeroUsize::new(1),
+                    editor: &mut self.editor,
+                    callback: Vec::new(),
+                    on_next_key_callback: None,
+                    jobs: &mut self.jobs,
+                };
+
+                crate::commands::ScriptingEngine::run_initialization_script(
+                    &mut cx,
+                    config.clone(),
+                    syn_loader,
+                    crate::commands::engine::TerminalEventReaderHandle::new(
+                        self.terminal.backend(),
+                    ),
+                );
+            }
+
             Ok(())
         };
 

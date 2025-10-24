@@ -27,7 +27,8 @@ use crate::{
 };
 
 use super::{
-    enter_engine, format_docstring, present_error_inside_engine_context, WrappedDynComponent,
+    enter_engine, format_docstring, is_current_generation, load_generation,
+    present_error_inside_engine_context, WrappedDynComponent,
 };
 
 #[derive(Clone)]
@@ -1759,6 +1760,8 @@ pub struct SteelDynamicComponent {
     // Just root all of the inputs so that we don't have any issues with
     // things dropping
     _roots: Vec<RootedSteelVal>,
+
+    generation: usize,
 }
 
 impl SteelDynamicComponent {
@@ -1786,6 +1789,7 @@ impl SteelDynamicComponent {
             required_size: h.get("required_size").cloned(),
             key_event: None,
             _roots: roots,
+            generation: load_generation(),
         }
     }
 
@@ -1830,6 +1834,10 @@ impl Component for SteelDynamicComponent {
         frame: &mut tui::buffer::Buffer,
         ctx: &mut compositor::Context,
     ) {
+        if !is_current_generation(self.generation) {
+            return;
+        }
+
         // Skip rendering if the function is actually false
         if let SteelVal::BoolV(false) = self.render {
             return;
@@ -1889,6 +1897,15 @@ impl Component for SteelDynamicComponent {
         event: &Event,
         ctx: &mut compositor::Context,
     ) -> compositor::EventResult {
+        // Ignore this event off the stack
+        if !is_current_generation(self.generation) {
+            return compositor::EventResult::Ignored(Some(Box::new(
+                |compositor: &mut compositor::Compositor, _| {
+                    compositor.pop();
+                },
+            )));
+        }
+
         if let Some(handle_event) = &mut self.handle_event {
             let mut ctx = Context {
                 register: None,
@@ -1925,11 +1942,6 @@ impl Component for SteelDynamicComponent {
                     &mut [self.state.clone(), self.key_event.clone().unwrap()],
                 )
             };
-
-            // let event = match event {
-            //     Event::Key(event) => *event,
-            //     _ => return compositor::EventResult::Ignored(None),
-            // };
 
             match enter_engine(|guard| {
                 guard
@@ -2008,6 +2020,10 @@ impl Component for SteelDynamicComponent {
         Option<helix_core::Position>,
         helix_view::graphics::CursorKind,
     ) {
+        if !is_current_generation(self.generation) {
+            return (None, helix_view::graphics::CursorKind::Hidden);
+        }
+
         if let Some(cursor) = &self.cursor {
             // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
             // attempting to render
@@ -2081,7 +2097,9 @@ impl Component for SteelDynamicComponent {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        // let name = self.type_name();
+        if !is_current_generation(self.generation) {
+            return None;
+        }
 
         if let Some(required_size) = &mut self.required_size {
             // log::info!("Calling required-size inside: {}", name);
