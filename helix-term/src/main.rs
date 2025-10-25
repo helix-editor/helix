@@ -42,6 +42,7 @@ async fn main_impl() -> Result<i32> {
     let args = Args::parse_args().context("could not parse arguments")?;
 
     helix_loader::initialize_config_file(args.config_file.clone());
+    helix_loader::initialize_theme_file(args.theme_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
 
     // Help has a higher priority and should be handled separately.
@@ -68,6 +69,7 @@ FLAGS:
                                    the default is the same as 'all', but with languages filtering.
     -g, --grammar {{fetch|build}}    Fetch or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specify a file to use for configuration
+    -t, --theme <file>             Specify a theme file to use
     -v                             Increase logging verbosity each use for up to 3 times
     --log <file>                   Specify a file to use for logging
                                    (default file: {})
