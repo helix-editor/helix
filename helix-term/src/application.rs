@@ -462,32 +462,57 @@ impl Application {
         mode: Option<theme::Mode>,
     ) {
         let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme_config| {
-                let theme = theme_config.choose(mode);
-                editor
-                    .theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| {
-                        let colors_ok = true_color || theme.is_16_color();
-                        if !colors_ok {
-                            log::warn!(
-                                "loaded theme `{}` but cannot use it because true color \
-                                support is not enabled",
-                                theme.name()
-                            );
-                        }
-                        colors_ok
-                    })
-            })
-            .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
+
+        // Check if a theme file was specified via --theme flag
+        let theme = if let Some(theme_file) = helix_loader::theme_file() {
+            editor
+                .theme_loader
+                .load_from_file(&theme_file)
+                .map_err(|e| {
+                    log::warn!("failed to load theme from file `{}` - {}", theme_file.display(), e);
+                    e
+                })
+                .ok()
+                .filter(|theme| {
+                    let colors_ok = true_color || theme.is_16_color();
+                    if !colors_ok {
+                        log::warn!(
+                            "loaded theme from file `{}` but cannot use it because true color \
+                            support is not enabled",
+                            theme_file.display()
+                        );
+                    }
+                    colors_ok
+                })
+        } else {
+            config
+                .theme
+                .as_ref()
+                .and_then(|theme_config| {
+                    let theme = theme_config.choose(mode);
+                    editor
+                        .theme_loader
+                        .load(theme)
+                        .map_err(|e| {
+                            log::warn!("failed to load theme `{}` - {}", theme, e);
+                            e
+                        })
+                        .ok()
+                        .filter(|theme| {
+                            let colors_ok = true_color || theme.is_16_color();
+                            if !colors_ok {
+                                log::warn!(
+                                    "loaded theme `{}` but cannot use it because true color \
+                                    support is not enabled",
+                                    theme.name()
+                                );
+                            }
+                            colors_ok
+                        })
+                })
+        }
+        .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
+
         editor.set_theme(theme);
     }
 
