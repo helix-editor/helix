@@ -106,6 +106,7 @@
 | gts | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | hare | ✓ |  |  |  |  |  |
 | haskell | ✓ | ✓ |  |  |  | `haskell-language-server-wrapper` |
+| haskell-literate |  |  |  |  |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |  |  |
 | hcl | ✓ | ✓ | ✓ |  |  | `terraform-ls` |
 | hdl | ✓ |  |  |  |  | `hdls` |
