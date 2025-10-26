@@ -4933,3 +4933,21 @@ block-comment-tokens = { start = "/*", end = "*/"}
 [[grammer]]
 name = "kcl"
 source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "8905e0bdbf5870b50bc3f24345f1af27746f42e8"}
+
+[[language]]
+name = "cangjie"
+scope = "source.cangjie"
+injection-regex = "cangjie"
+file-types = ["cj"]
+roots = ["cjpm.toml", "cjpm.lock"]
+auto-format = true
+comment-tokens = ["//"]
+block-comment-tokens = [
+  { start = "/*", end = "*/"},
+  { start = "/**", end = "*/"}
+]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cangjie"
+source = { git = "https://gitcode.com/Cangjie-SIG/tree-sitter-cangjie", rev = "4daa9e507385285883bdc1916a385baa5b7c5be4"}
