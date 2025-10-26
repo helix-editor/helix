@@ -25,3 +25,23 @@
 
 (enum_constant
   name: (identifier) @definition.constant)
+
+; References
+
+(superclass
+  (type_identifier) @reference.class)
+
+(super_interfaces
+  (type_list
+    (type_identifier) @reference.interface))
+
+(object_creation_expression
+  type: (_) @reference.type)
+
+(type_identifier) @reference.type
+
+(method_invocation
+  name: (identifier) @reference.function)
+
+(field_access
+  field: (identifier) @reference.constant)
