@@ -7,6 +7,7 @@ mod movement;
 mod reverse_selection_contents;
 mod rotate_selection_contents;
 mod write;
+mod yank_join;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn search_selection_detect_word_boundaries_at_eof() -> anyhow::Result<()> {
