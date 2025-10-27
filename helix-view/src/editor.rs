@@ -15,6 +15,7 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 use helix_event::dispatch;
+use helix_loader::trust_db::{self};
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -264,6 +265,15 @@ impl Default for FileExplorerConfig {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WorkspaceTrust {
+    Always,
+    #[default]
+    Ask,
+    Manual,
+    Never,
+}
+
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -427,6 +437,8 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+
+    pub workspace_trust: WorkspaceTrust,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -581,6 +593,7 @@ impl Default for StatusLineConfig {
                 E::Spinner,
                 E::FileName,
                 E::ReadOnlyIndicator,
+                E::Restricted,
                 E::FileModificationIndicator,
             ],
             center: vec![],
@@ -622,6 +635,9 @@ impl Default for ModeConfig {
 pub enum StatusLineElement {
     /// The editor mode (Normal, Insert, Visual/Selection)
     Mode,
+
+    /// Whether the current doc is restricted or not
+    Restricted,
 
     /// The LSP activity spinner
     Spinner,
@@ -1118,6 +1134,7 @@ impl Default for Config {
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
+            workspace_trust: WorkspaceTrust::default(),
         }
     }
 }
@@ -1603,6 +1620,11 @@ impl Editor {
         let Some(doc_url) = doc.url() else {
             return;
         };
+
+        if !doc.is_trusted.unwrap_or_default() {
+            return;
+        }
+
         let (lang, path) = (doc.language.clone(), doc.path().cloned());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
@@ -2357,6 +2379,60 @@ impl Editor {
 
     pub fn get_last_cwd(&mut self) -> Option<&Path> {
         self.last_cwd.as_deref()
+    }
+
+    pub fn trust_workspace(&mut self) -> anyhow::Result<()> {
+        let Some(path) = doc!(self).path() else {
+            bail!("Document does not have a path; you need to add a path to trust it.")
+        };
+        let workspace = helix_loader::find_workspace_in(path).0;
+        match trust_db::trust_path(&workspace) {
+            Err(e) => bail!("Couldn't edit trust database: {e}"),
+            Ok(is_new_entry) => {
+                if is_new_entry {
+                    self.set_status(format!(
+                        "Workspace '{}' unrestricted; LSPs, debuggers and formatters available.",
+                        workspace.display()
+                    ))
+                } else {
+                    self.set_status(format!(
+                        "Workspace '{}' is already trusted.",
+                        workspace.display()
+                    ));
+                }
+                self.documents_mut()
+                    .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
+                    .for_each(|d| d.is_trusted = Some(true));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn untrust_workspace(&mut self) -> anyhow::Result<()> {
+        let Some(path) = doc!(self).path() else {
+            bail!("Document does not have a path; it is already untrusted.")
+        };
+        let workspace = helix_loader::find_workspace_in(path).0;
+        match trust_db::untrust_path(&workspace) {
+            Err(e) => bail!("Couldn't edit trust database: {e}"),
+            Ok(was_removed) => {
+                if was_removed {
+                    self.set_status(format!(
+                        "Workspace '{}' restricted; LSPs, formatters and debuggers do not work.",
+                        workspace.display()
+                    ));
+                } else {
+                    self.set_status(format!(
+                        "Workspace '{}' was already untrusted.",
+                        workspace.display()
+                    ));
+                }
+                self.documents_mut()
+                    .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
+                    .for_each(|d| d.is_trusted = Some(false));
+            }
+        }
+        Ok(())
     }
 }
 

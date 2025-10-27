@@ -21,6 +21,7 @@ mod document_colors;
 mod prompt;
 mod signature_help;
 mod snippet;
+pub mod trust;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     events::register();
@@ -51,5 +52,6 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     snippet::register_hooks(&handlers);
     document_colors::register_hooks(&handlers);
     prompt::register_hooks(&handlers);
+    trust::register_hooks(&handlers);
     handlers
 }

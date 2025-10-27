@@ -13,6 +13,7 @@ use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
+use helix_loader::trust_db;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -43,6 +44,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
+use crate::editor::WorkspaceTrust;
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
@@ -217,6 +219,8 @@ pub struct Document {
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
+
+    pub is_trusted: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -733,6 +737,7 @@ impl Document {
             syn_loader,
             previous_diagnostic_id: None,
             pull_diagnostic_controller: TaskController::new(),
+            is_trusted: None,
         }
     }
 
@@ -790,6 +795,14 @@ impl Document {
 
         doc.editor_config = editor_config;
         doc.detect_indent_and_line_ending();
+        let workspace_trust = doc.config.load().workspace_trust;
+        doc.is_trusted = match workspace_trust {
+            WorkspaceTrust::Always => Some(true),
+            WorkspaceTrust::Never => Some(false),
+            WorkspaceTrust::Ask | WorkspaceTrust::Manual => {
+                trust_db::is_workspace_trusted(helix_loader::find_workspace_in(path).0)?
+            }
+        };
 
         Ok(doc)
     }
@@ -815,6 +828,9 @@ impl Document {
         &self,
         editor: &Editor,
     ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+        if !self.is_trusted.unwrap_or_default() {
+            return None;
+        }
         if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
             .and_then(|c| c.formatter.as_ref())

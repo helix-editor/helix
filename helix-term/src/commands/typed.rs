@@ -577,6 +577,15 @@ fn format(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     }
 
     let (view, doc) = current_ref!(cx.editor);
+    // Document::format doesn't work anyways; this is done to notify the user
+    match doc!(cx.editor).is_trusted {
+        Some(is_trusted) => {
+            if !is_trusted {
+                bail!("Formatting is disabled in untrusted workspaces.")
+            }
+        }
+        None => bail!("Set up trust settings first"),
+    }
     let format = doc.format(cx.editor).context(
         "A formatter isn't available, and no language server provides formatting capabilities",
     )?;
@@ -1533,6 +1542,14 @@ fn lsp_workspace_command(
     }
 
     let doc = doc!(cx.editor);
+    match doc!(cx.editor).is_trusted {
+        Some(is_trusted) => {
+            if !is_trusted {
+                bail!("LSP commands are disabled in untrusted workspaces.");
+            }
+        }
+        None => bail!("Set up trust settings first"),
+    }
     let ls_id_commands = doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
         .flat_map(|ls| {
@@ -1628,8 +1645,18 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         return Ok(());
     }
 
-    let editor_config = cx.editor.config.load();
     let doc = doc!(cx.editor);
+    match doc!(cx.editor).is_trusted {
+        Some(is_trusted) => {
+            if !is_trusted {
+                bail!("LSPs are disabled in untrusted workspaces.")
+            }
+        }
+        None => bail!("Set up trust settings first"),
+    }
+
+    let editor_config = cx.editor.config.load();
+
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
@@ -1900,6 +1927,14 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     if event != PromptEvent::Validate {
         return Ok(());
     }
+    match doc!(cx.editor).is_trusted {
+        Some(is_trusted) => {
+            if !is_trusted {
+                bail!("Debugging is disabled in untrusted workspaces.")
+            }
+        }
+        None => bail!("Set up trust settings first"),
+    }
 
     if let Some(debugger) = cx.editor.debug_adapters.get_active_client() {
         let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
@@ -1922,6 +1957,14 @@ fn debug_start(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
     if event != PromptEvent::Validate {
         return Ok(());
     }
+    match doc!(cx.editor).is_trusted {
+        Some(is_trusted) => {
+            if !is_trusted {
+                bail!("Debugging is disabled in untrusted workspaces.")
+            }
+        }
+        None => bail!("Set up trust settings first"),
+    }
 
     let mut args: Vec<_> = args.into_iter().collect();
     let name = match args.len() {
@@ -1938,6 +1981,14 @@ fn debug_remote(
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
+    }
+    match doc!(cx.editor).is_trusted {
+        Some(is_trusted) => {
+            if !is_trusted {
+                bail!("Debugging is disabled in untrusted workspaces.")
+            }
+        }
+        None => bail!("Set up trust settings first"),
     }
 
     let mut args: Vec<_> = args.into_iter().collect();
@@ -2675,6 +2726,50 @@ fn echo(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
 }
 
 fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyhow::Result<()> {
+    Ok(())
+}
+
+fn trust_workspace(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    cx.editor.trust_workspace()
+}
+
+fn untrust_workspace(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor.untrust_workspace()
+}
+
+fn trust_dialog(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                crate::handlers::trust::trust_dialog(editor, compositor);
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+
     Ok(())
 }
 
@@ -3728,6 +3823,40 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             ..Signature::DEFAULT
         },
     },
+    TypableCommand {
+        name: "trust-workspace",
+        aliases: &[],
+        doc: "Allow the usage of LSPs, debuggers, formatters and workspace config in the current workspace.",
+        fun: trust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "untrust-workspace",
+        aliases: &[],
+        doc: "Disallow the usage of LSPs, debuggers, formatters and workspace config in the current workspace.",
+        fun: untrust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "trust-dialog",
+        aliases: &[],
+        doc: "Open up the trust dialog. You can use :trust-workspace/:untrust-workspace commands instead.",
+        fun: trust_dialog,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =

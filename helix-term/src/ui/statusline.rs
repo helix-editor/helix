@@ -131,6 +131,7 @@ where
 {
     match element_id {
         helix_view::editor::StatusLineElement::Mode => render_mode,
+        helix_view::editor::StatusLineElement::Restricted => render_restricted,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
@@ -188,6 +189,15 @@ where
         Style::default()
     };
     write(context, Span::styled(content, style));
+}
+
+fn render_restricted<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let visible = !context.doc.is_trusted.unwrap_or_default();
+    let content = if visible { "[Restricted]" } else { "" };
+    write(context, content.into());
 }
 
 // TODO think about handling multiple language servers

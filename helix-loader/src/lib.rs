@@ -1,5 +1,6 @@
 pub mod config;
 pub mod grammar;
+pub mod trust_db;
 
 use helix_stdx::{env::current_working_dir, path};
 
@@ -132,6 +133,14 @@ pub fn cache_dir() -> PathBuf {
     path
 }
 
+pub fn data_dir() -> PathBuf {
+    // TODO: allow env var override
+    let strategy = choose_base_strategy().expect("Unable to find the data directory!");
+    let mut path = strategy.data_dir();
+    path.push("helix");
+    path
+}
+
 pub fn config_file() -> PathBuf {
     CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
@@ -247,14 +256,18 @@ pub fn find_workspace() -> (PathBuf, bool) {
     find_workspace_in(current_dir)
 }
 
+pub fn is_workspace(path: impl AsRef<Path>) -> bool {
+    let path = path.as_ref();
+    path.join(".git").exists()
+        || path.join(".svn").exists()
+        || path.join(".jj").exists()
+        || path.join(".helix").exists()
+}
+
 pub fn find_workspace_in(dir: impl AsRef<Path>) -> (PathBuf, bool) {
     let dir = dir.as_ref();
     for ancestor in dir.ancestors() {
-        if ancestor.join(".git").exists()
-            || ancestor.join(".svn").exists()
-            || ancestor.join(".jj").exists()
-            || ancestor.join(".helix").exists()
-        {
+        if is_workspace(ancestor) {
             return (ancestor.to_owned(), false);
         }
     }
