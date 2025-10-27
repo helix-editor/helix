@@ -127,8 +127,9 @@ fn choose_parent_dialog(
         .skip(1)
         .map(|p| p.to_path_buf())
         .collect::<Vec<PathBuf>>();
+    let trust_or_untrust = if trust { "trust" } else { "untrust " };
     let columns = [ui::PickerColumn::new(
-        "Workspace to trust".to_string(),
+        format!("Workspace to {trust_or_untrust}"),
         |path: &PathBuf, _| path.display().to_string().into(),
     )];
     let picker = ui::Picker::new(columns, 0, options, (), move |cx, path, _action| {
