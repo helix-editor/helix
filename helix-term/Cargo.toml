@@ -71,10 +71,10 @@ log = "0.4"
 # File picker
 nucleo.workspace = true
 # MSRV: update once the MSRV is >=1.85
-ignore = "=0.4.23"
+ignore = "=0.4.24"
 grep-regex = "=0.1.13"
 grep-searcher = "=0.1.14"
-grep-matcher = "=0.1.7"
+grep-matcher = "=0.1.8"
 # markdown doc rendering
 pulldown-cmark = { version = "0.13", default-features = false }
 # file type detection
@@ -105,6 +105,6 @@ helix-loader = { path = "../helix-loader" }
 
 [dev-dependencies]
 smallvec = "1.15"
-indoc = "2.0.6"
+indoc = "2.0.7"
 tempfile.workspace = true
 same-file = "1.0.1"
