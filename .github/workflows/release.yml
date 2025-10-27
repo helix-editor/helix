@@ -36,7 +36,7 @@ jobs:
       - name: Bundle grammars
         run: tar cJf grammars.tar.xz -C runtime/grammars/sources .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: grammars
           path: grammars.tar.xz
@@ -224,7 +224,7 @@ jobs:
           fi
           cp -r runtime dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: bins-${{ matrix.build }}
           path: dist
@@ -294,7 +294,7 @@ jobs:
           overwrite: true
 
       - name: Upload binaries as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: env.preview == 'true'
         with:
           name: release
