@@ -4937,10 +4937,17 @@ source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "8905e0bdb
 [[language]]
 name = "bovex"
 scope = "source.bovex"
-file-types = ["bovex"]
+file-types = ["bovex", "bibvex"]
 comment-tokens = []
 block-comment-tokens = [{start = "(*", end = "*)"}, {start = "[*", end = "*]"}]
 indent = {tab-width = 2, unit = "  "}
+[language.auto-pairs]
+'(' = ')'
+'[' = ']'
+'{' = '}'
+'"' = '"'
+'“' = '”'
+'‘' = '’'
 
 [[grammar]]
 name = "bovex"
