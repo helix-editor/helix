@@ -266,6 +266,7 @@ impl Default for FileExplorerConfig {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum WorkspaceTrust {
     Always,
     #[default]
