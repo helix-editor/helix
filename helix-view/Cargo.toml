@@ -12,7 +12,7 @@ homepage.workspace = true
 
 [features]
 default = []
-term = ["termina", "crossterm"]
+term = ["termina", "crossterm", "helix-graphics/term", "helix-input/term"]
 unicode-lines = []
 
 [dependencies]
@@ -23,6 +23,8 @@ helix-loader = { path = "../helix-loader" }
 helix-lsp = { path = "../helix-lsp" }
 helix-dap = { path = "../helix-dap" }
 helix-vcs = { path = "../helix-vcs" }
+helix-graphics = { path = "../helix-graphics" }
+helix-input = { path = "../helix-input" }
 
 bitflags.workspace = true
 anyhow = "1"
