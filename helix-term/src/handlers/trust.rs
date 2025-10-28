@@ -2,9 +2,8 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::compositor::Compositor;
-use crate::job::Callback;
-use crate::job::Job;
 use crate::ui;
+use crate::ui::PromptEvent;
 use anyhow::anyhow;
 use helix_stdx::env::set_current_working_dir;
 use helix_view::editor::WorkspaceTrust;
@@ -14,9 +13,42 @@ use helix_view::theme::Modifier;
 use helix_view::theme::Style;
 use helix_view::Editor;
 use tui::text::Span;
-use tui::text::Spans;
 use ui::overlay::overlaid;
 
+#[derive(Clone, Copy)]
+pub enum TrustOptions {
+    Trust,
+    DoNotTrust,
+    DistrustParent,
+    TrustParent,
+}
+
+impl ui::menu::Item for TrustOptions {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> tui::widgets::Row<'_> {
+        let style = match self {
+            TrustOptions::Trust | TrustOptions::TrustParent => {
+                Style::new().fg(helix_view::theme::Color::Green)
+            }
+            TrustOptions::DoNotTrust | TrustOptions::DistrustParent => {
+                Style::new().fg(helix_view::theme::Color::Red)
+            }
+        }
+        .add_modifier(Modifier::BOLD);
+        Span::styled(self.as_ref(), style).into()
+    }
+}
+
+impl AsRef<str> for TrustOptions {
+    fn as_ref(&self) -> &str {
+        match self {
+            TrustOptions::Trust => "Trust",
+            TrustOptions::DoNotTrust => "Do not trust",
+            TrustOptions::DistrustParent => "Distrust a parent directory (picker)",
+            TrustOptions::TrustParent => "Trust a parent directory (picker)",
+        }
+    }
+}
 pub fn trust_dialog(editor: &mut Editor, compositor: &mut Compositor) {
     let Some(file_path) = doc!(editor).path() else {
         // helix doesn't send the document open event when it has no paths, but the user may still use :trust-dialog anyways.
@@ -24,95 +56,54 @@ pub fn trust_dialog(editor: &mut Editor, compositor: &mut Compositor) {
         return;
     };
     let (path, is_file) = helix_loader::find_workspace_in(file_path);
-
-    let do_not_trust = "Do not trust";
-    let trust = "Trust";
-    let trust_parent = "Turn a parent into a workspace and trust it";
-    let untrust_parent = "Turn a parent into a workspace and untrust it";
-    let mut options = vec![
-        (
-            Span::styled(
-                do_not_trust,
-                Style::new()
-                    .fg(helix_view::theme::Color::Red)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            "Do not allow the usage of LSPs, formatters, debuggers and workspace config. "
-                .to_string(),
-        ),
-        (
-            Span::styled(
-                trust,
-                Style::new()
-                    .fg(helix_view::theme::Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            "Allow the usage of LSPs, formatters, debuggers and workspace config.".to_string(),
-        ),
+    let options = vec![
+        TrustOptions::DoNotTrust,
+        TrustOptions::Trust,
+        TrustOptions::DistrustParent,
+        TrustOptions::TrustParent,
     ];
-    if is_file {
-        options.insert(1,(
-            Span::styled(
-                untrust_parent,
-                Style::new()
-                    .fg(helix_view::theme::Color::Red)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            "Insert a '.helix' folder in a parent directory (dialog) and untrust it. See 'Do not trust' option for implications.".to_string(),
-        ));
-
-        options.push((
-            Span::styled(
-                trust_parent,
-                Style::new()
-                    .fg(helix_view::theme::Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            "Insert a '.helix' folder in a parent directory (dialog) and trust it. See 'Trust' option for implications.".to_string(),
-        ));
-    }
     let file_or_workspace = if is_file { "file" } else { "workspace" };
-    let columns = [
-        ui::PickerColumn::new(
-            format!("Trust {file_or_workspace} '{}'?", path.display()),
-            |(t, _): &(Span<'_>, String), _| Spans(vec![t.clone()]).into(),
-        ),
-        ui::PickerColumn::new("", |(_, explain): &(_, String), _| explain.as_str().into()),
-    ];
+    let path_clone = path.clone();
+    let warning = format!("Trusting the {file_or_workspace} will allow the usage of LSPs, formatters, debuggers and workspace config, all of which can lead to remote code execution.
+Ensure you trust the source of the {file_or_workspace} before trusting it.");
+    let ui = ui::Select::new(
+        format!("Trust {file_or_workspace} '{}'?\n{warning}", path.display()),
+        options,
+        move |editor, option, event| {
+            match event {
+                PromptEvent::Update => return,
+                PromptEvent::Abort => {
+                    editor.set_status(
+                        "Trust dialog aborted. Use :trust-dialog to bring it up again.",
+                    );
+                    return;
+                }
+                PromptEvent::Validate => (),
+            }
+            let maybe_err = match option {
+                TrustOptions::Trust => editor.trust_workspace(),
+                TrustOptions::DoNotTrust => editor.untrust_workspace(),
+                TrustOptions::DistrustParent | TrustOptions::TrustParent => {
+                    let path = path_clone.clone();
+                    let option = option.clone();
+                    crate::job::dispatch_blocking(move |editor, compositor| {
+                        choose_parent_dialog(
+                            path,
+                            matches!(option, TrustOptions::TrustParent),
+                            editor,
+                            compositor,
+                        )
+                    });
+                    Ok(())
+                }
+            };
+            if let Err(e) = maybe_err {
+                editor.set_error(e.to_string())
+            }
+        },
+    );
 
-    let picker = ui::Picker::new(columns, 0, options, (), move |cx, str, _action| {
-        let maybe_err = if str.0.content == do_not_trust {
-            cx.editor.untrust_workspace()
-        } else if str.0.content == trust {
-            cx.editor.trust_workspace()
-        } else if str.0.content == trust_parent {
-            let path_clone = path.clone();
-            let job = Job::with_callback(async move {
-                Ok(Callback::EditorCompositor(Box::new(
-                    |editor, compositor| {
-                        choose_parent_dialog(path_clone, true, editor, compositor);
-                    },
-                )))
-            });
-            cx.jobs.add(job);
-            Ok(())
-        } else {
-            let path_clone = path.clone();
-            let job = Job::with_callback(async move {
-                Ok(Callback::EditorCompositor(Box::new(
-                    |editor, compositor| {
-                        choose_parent_dialog(path_clone, false, editor, compositor);
-                    },
-                )))
-            });
-            cx.jobs.add(job);
-            Ok(())
-        };
-        if let Err(e) = maybe_err {
-            cx.editor.set_status(e.to_string());
-        }
-    });
-    compositor.push(Box::new(overlaid(picker)));
+    compositor.push(Box::new(overlaid(ui)));
 }
 
 fn choose_parent_dialog(
