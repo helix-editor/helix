@@ -1304,7 +1304,7 @@ name = "lean"
 scope = "source.lean"
 injection-regex = "lean"
 file-types = ["lean"]
-roots = [ "lakefile.lean" ]
+roots = [ "lakefile.lean", "lakefile.toml" ]
 comment-token = "--"
 block-comment-tokens = { start = "/-", end = "-/" }
 language-servers = [ "lean" ]
