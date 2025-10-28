@@ -2,19 +2,19 @@
 pub mod macros;
 
 pub mod annotations;
-pub mod clipboard;
+pub use helix_input::clipboard;
 pub mod document;
 pub mod editor;
 pub mod events;
 pub mod expansion;
-pub mod graphics;
+pub use helix_graphics::graphics;
 pub mod gutter;
 pub mod handlers;
 pub mod info;
-pub mod input;
-pub mod keyboard;
+pub use helix_input::input;
+pub use helix_input::keyboard;
 pub mod register;
-pub mod theme;
+pub use helix_graphics::theme;
 pub mod tree;
 pub mod view;
 

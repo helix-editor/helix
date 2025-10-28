@@ -1424,6 +1424,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-graphics"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "bitflags",
+ "crossterm",
+ "helix-core",
+ "helix-loader",
+ "log",
+ "once_cell",
+ "serde",
+ "termina",
+ "toml",
+]
+
+[[package]]
+name = "helix-input"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "bitflags",
+ "clipboard-win",
+ "crossterm",
+ "helix-core",
+ "helix-stdx",
+ "libc",
+ "log",
+ "rustix 1.1.2",
+ "serde",
+ "termina",
+ "thiserror",
+]
+
+[[package]]
 name = "helix-loader"
 version = "25.7.1"
 dependencies = [
@@ -1591,6 +1625,8 @@ dependencies = [
  "helix-core",
  "helix-dap",
  "helix-event",
+ "helix-graphics",
+ "helix-input",
  "helix-loader",
  "helix-lsp",
  "helix-stdx",
