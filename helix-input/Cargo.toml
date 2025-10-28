@@ -1,0 +1,35 @@
+[package]
+name = "helix-input"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+term = ["termina", "crossterm"]
+
+[dependencies]
+helix-stdx = { path = "../helix-stdx" }
+helix-core = { path = "../helix-core" }
+
+bitflags.workspace = true
+anyhow = "1"
+termina = { workspace = true, optional = true }
+
+serde = { version = "1.0", features = ["derive"] }
+log = "~0.4"
+
+thiserror.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+clipboard-win = { version = "5.4", features = ["std"] }
+crossterm = { version = "0.28", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+rustix = { version = "1.1", features = ["fs"] }
