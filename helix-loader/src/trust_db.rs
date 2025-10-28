@@ -21,6 +21,9 @@ pub enum Trust {
     Untrusted,
 }
 
+static ENSURE_TRUST_DB_INITIALIZED: std::sync::LazyLock<()> =
+    std::sync::LazyLock::new(initialize_trust_db);
+
 impl TrustDb {
     fn is_workspace_trusted(&self, path: impl AsRef<Path>) -> Option<bool> {
         self.trust.as_ref().and_then(|map| {
@@ -35,6 +38,7 @@ impl TrustDb {
     }
 
     fn lock() -> std::io::Result<File> {
+        *ENSURE_TRUST_DB_INITIALIZED;
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -140,6 +144,6 @@ pub fn untrust_path(path: impl AsRef<Path>) -> std::io::Result<bool> {
     })
 }
 
-pub fn initialize_trust_db() {
+fn initialize_trust_db() {
     ensure_parent_dir(&trust_db_file());
 }

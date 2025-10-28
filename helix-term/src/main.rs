@@ -43,7 +43,6 @@ async fn main_impl() -> Result<i32> {
 
     helix_loader::initialize_config_file(args.config_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
-    helix_loader::trust_db::initialize_trust_db();
 
     // Help has a higher priority and should be handled separately.
     if args.display_help {
