@@ -69,6 +69,7 @@ Ensure you trust the source of the {file_or_workspace} before trusting it.");
     let ui = ui::Select::new(
         format!("Trust {file_or_workspace} '{}'?\n{warning}", path.display()),
         options,
+        (),
         move |editor, option, event| {
             match event {
                 PromptEvent::Update => return,

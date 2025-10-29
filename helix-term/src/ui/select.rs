@@ -9,26 +9,16 @@ use tui::{
 
 use crate::compositor::{Component, Context, Event, EventResult};
 
-use super::{Menu, PromptEvent, Text};
+use super::{menu::Item, Menu, PromptEvent, Text};
 
-pub struct Select<T: AsRef<str> + Sync + Send + 'static> {
+pub struct Select<T: Item> {
     message: Text,
 
-    options: Menu<SelectItem<T>>,
+    options: Menu<T>,
 }
 
-struct SelectItem<T: AsRef<str>>(T);
-
-impl<T: AsRef<str> + Sync + Send + 'static> super::menu::Item for SelectItem<T> {
-    type Data = ();
-
-    fn format(&self, _data: &Self::Data) -> tui::widgets::Row {
-        self.0.as_ref().into()
-    }
-}
-
-impl<T: AsRef<str> + Sync + Send + 'static> Select<T> {
-    pub fn new<M, I, F>(message: M, options: I, callback: F) -> Self
+impl<T: Item> Select<T> {
+    pub fn new<M, I, F>(message: M, options: I, editor_data: T::Data, callback: F) -> Self
     where
         M: Into<Cow<'static, str>>,
 
@@ -38,16 +28,16 @@ impl<T: AsRef<str> + Sync + Send + 'static> Select<T> {
     {
         let message = tui::text::Text::from(message.into()).into();
 
-        let options: Vec<_> = options.into_iter().map(SelectItem).collect();
+        let options: Vec<_> = options.into_iter().collect();
 
         assert!(!options.is_empty());
 
-        let mut menu = Menu::new(options, (), move |editor, option, event| {
+        let mut menu = Menu::new(options, editor_data, move |editor, option, event| {
             // Options are non-empty (asserted above) and an option is selected by default,
 
             // so `option` must be Some here.
 
-            let option = &option.unwrap().0;
+            let option = &option.unwrap();
 
             callback(editor, option, event)
         })
@@ -65,7 +55,7 @@ impl<T: AsRef<str> + Sync + Send + 'static> Select<T> {
     }
 }
 
-impl<T: AsRef<str> + Sync + Send + 'static> Component for Select<T> {
+impl<T: Item> Component for Select<T> {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         self.options.handle_event(event, cx)
     }
