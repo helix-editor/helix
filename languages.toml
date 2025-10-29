@@ -4930,7 +4930,7 @@ formatter = { command = "zoo" , args = ["kcl", "fmt", "-"] }
 language-servers = [ "kcl-lsp" ]
 block-comment-tokens = { start = "/*", end = "*/"}
 
-[[grammer]]
+[[grammar]]
 name = "kcl"
 source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "8905e0bdbf5870b50bc3f24345f1af27746f42e8"}
 
