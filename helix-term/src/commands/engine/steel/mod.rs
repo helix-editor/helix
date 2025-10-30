@@ -492,6 +492,7 @@ fn load_keymap_api(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("helix-string->keymap", string_to_embedded_keymap);
     module.register_fn("keymap?", is_keymap);
     module.register_fn("helix-deep-copy-keymap", deep_copy_keymap);
+    module.register_fn("query-keymap", query_keybindings);
 
     module.register_fn(
         "#%add-extension-or-labeled-keymap",
@@ -3006,6 +3007,35 @@ pub fn string_to_embedded_keymap(value: String) -> anyhow::Result<EmbeddedKeyMap
 
 pub fn merge_keybindings(left: &mut EmbeddedKeyMap, right: EmbeddedKeyMap) {
     merge_keys(&mut left.0, right.0)
+}
+
+pub fn query_keybindings(
+    map: &mut EmbeddedKeyMap,
+    mode: SteelString,
+    keybindings: Vec<String>,
+) -> anyhow::Result<SteelVal> {
+    let mode = match mode.as_str() {
+        "normal" => Mode::Normal,
+        "select" => Mode::Select,
+        "insert" => Mode::Insert,
+        _ => anyhow::bail!("unknown mode: {}", mode),
+    };
+
+    let keymap = map.0.get(&mode);
+    let bindings = keybindings
+        .into_iter()
+        .map(|x| KeyEvent::from_str(&x))
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    if let Some(keymap) = keymap {
+        let value = keymap.search(&bindings);
+        match value {
+            Some(KeyTrie::MappableCommand(k)) => Ok(SteelVal::StringV(k.name().into())),
+            _ => Ok(SteelVal::BoolV(false)),
+        }
+    } else {
+        Ok(SteelVal::BoolV(false))
+    }
 }
 
 pub fn is_keymap(keymap: SteelVal) -> bool {

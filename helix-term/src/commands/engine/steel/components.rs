@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use helix_core::Position;
 use helix_view::{
@@ -1414,6 +1414,24 @@ value : any?
 
 * event : Event?
         "#
+    );
+
+    register!(
+        "string->key-event",
+        |value: SteelString| { KeyEvent::from_str(value.as_str()) },
+        "Get a key event from a string"
+    );
+
+    register!(
+        "event->key-event",
+        |event: Event| {
+            if let Event::Key(k) = event {
+                Some(k)
+            } else {
+                None
+            }
+        },
+        "Return the key event from an event, if it is one"
     );
 
     register!(

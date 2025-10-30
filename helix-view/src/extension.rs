@@ -19,7 +19,7 @@ mod steel_implementations {
             SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
         },
         graphics::{Color, Rect, Style, UnderlineStyle},
-        input::Event,
+        input::{Event, KeyEvent},
         Document, DocumentId, Editor, ViewId,
     };
 
@@ -117,4 +117,6 @@ mod steel_implementations {
     impl Custom for LineEndingConfig {}
     impl Custom for SmartTabConfig {}
     impl Custom for AutoSave {}
+
+    impl Custom for KeyEvent {}
 }
