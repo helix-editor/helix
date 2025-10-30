@@ -23,7 +23,7 @@ toml.workspace = true
 etcetera = "0.10"
 once_cell = "1.21"
 log = "0.4"
-
+arc-swap = { version = "1.7.1"}
 # TODO: these two should be on !wasm32 only
 
 # cloning/compiling tree-sitter grammars

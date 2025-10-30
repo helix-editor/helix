@@ -1459,6 +1459,7 @@ name = "helix-loader"
 version = "25.7.1"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "cc",
  "etcetera",
  "fs2",

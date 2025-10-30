@@ -1,28 +1,122 @@
 use std::{
     collections::HashMap,
     fs::File,
-    io::ErrorKind,
+    io::{ErrorKind, Write},
     path::{Path, PathBuf},
+    sync::LazyLock,
 };
 
 use fs2::FileExt;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{data_dir, ensure_parent_dir, is_workspace};
+use arc_swap::ArcSwapOption;
+use std::sync::Arc;
+
+/// A simple file-backed database which is cached in memory.
+/// It supports concurrent writes, however, the cache won't update itself after a write from another process.
+/// It is optimized mostly for reading. Writing is expensive.
+struct SimpleDb<T> {
+    path: PathBuf,
+    db: ArcSwapOption<T>,
+}
+
+impl<T: Default + DeserializeOwned + Serialize> SimpleDb<T> {
+    pub fn new(path: impl AsRef<Path>) -> Self {
+        if let Some(parent) = path.as_ref().parent() {
+            ensure_parent_dir(parent)
+        }
+        Self {
+            path: path.as_ref().to_path_buf(),
+            db: ArcSwapOption::empty(),
+        }
+    }
+    fn lock(&self) -> std::io::Result<File> {
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(self.path.with_extension("lock"))?;
+        file.lock_exclusive()?;
+        Ok(file)
+    }
+
+    fn read(&self) -> std::io::Result<T> {
+        Ok(match std::fs::read_to_string(&self.path) {
+            Ok(s) => toml::from_str(&s).unwrap_or_else(|_| {
+                // the database is always written to atomically. This shouldn't occur unless the user tempered with it.
+                panic!(
+                    "Database is corrupted. Try to fix {} or delete it",
+                    self.path.display()
+                )
+            }),
+            Err(e) => {
+                if e.kind() == ErrorKind::NotFound {
+                    T::default()
+                } else {
+                    return Err(e);
+                }
+            }
+        })
+    }
+
+    pub fn sync_cache(&self) -> std::io::Result<Arc<T>> {
+        let db = Arc::new(self.read()?);
+        self.db.store(Some(Arc::clone(&db)));
+        Ok(db)
+    }
+
+    pub fn inspect<F, R>(&self, f: F) -> std::io::Result<R>
+    where
+        F: FnOnce(&T) -> R,
+    {
+        if let Some(db) = self.db.load().as_ref() {
+            Ok(f(db.as_ref()))
+        } else {
+            let db = self.sync_cache()?;
+            let r = f(db.as_ref());
+            Ok(r)
+        }
+    }
+
+    pub fn modify<F, R>(&self, f: F) -> std::io::Result<R>
+    where
+        F: FnOnce(&mut T) -> R,
+    {
+        let lock = self.lock()?;
+        let mut db = self.read()?;
+        let r = f(&mut db);
+        let toml_updated = toml::to_string(&db).expect("toml serialization of database failed?");
+        let mut tmp = if let Some(parent) = self.path.parent() {
+            tempfile::NamedTempFile::new_in(parent)
+        } else {
+            tempfile::NamedTempFile::new()
+        }?;
+        // atomically ensure that the file is always valid
+        tmp.write_all(toml_updated.as_bytes())?;
+        tmp.as_file().sync_data()?;
+        tmp.persist(&self.path)?;
+        // we could go even further here and fsync the directory, but data loss isn't that important
+
+        drop(lock);
+        self.db.store(Some(Arc::new(db)));
+        Ok(r)
+    }
+}
+
+static TRUST_DB: LazyLock<SimpleDb<TrustDb>> = LazyLock::new(|| SimpleDb::new(trust_db_file()));
 
 #[derive(Serialize, Deserialize, Default)]
 struct TrustDb {
     trust: Option<HashMap<PathBuf, Trust>>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Trust {
     Trusted,
     Untrusted,
 }
-
-static ENSURE_TRUST_DB_INITIALIZED: std::sync::LazyLock<()> =
-    std::sync::LazyLock::new(initialize_trust_db);
 
 impl TrustDb {
     fn is_workspace_trusted(&self, path: impl AsRef<Path>) -> Option<bool> {
@@ -36,95 +130,25 @@ impl TrustDb {
             })
         })
     }
-
-    fn lock() -> std::io::Result<File> {
-        *ENSURE_TRUST_DB_INITIALIZED;
-        let file = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(trust_db_lock_file())?;
-        file.lock_exclusive()?;
-        Ok(file)
-    }
-
-    fn inspect<F, R>(f: F) -> std::io::Result<R>
-    where
-        F: FnOnce(TrustDb) -> R,
-    {
-        let lock = TrustDb::lock()?;
-        let contents = match std::fs::read_to_string(trust_db_file()) {
-            Ok(s) => s,
-            Err(e) => {
-                if e.kind() == ErrorKind::NotFound {
-                    toml::to_string(&TrustDb::default()).unwrap()
-                } else {
-                    return Err(e);
-                }
-            }
-        };
-        let toml: TrustDb = toml::from_str(&contents).unwrap_or_else(|_| {
-            panic!(
-                "Trust database is corrupted. Try to fix {} or delete it",
-                trust_db_file().display()
-            )
-        });
-        let r = f(toml);
-        drop(lock);
-        Ok(r)
-    }
-
-    fn modify<F, R>(f: F) -> std::io::Result<R>
-    where
-        F: FnOnce(&mut TrustDb) -> R,
-    {
-        let lock = TrustDb::lock()?;
-        let contents = match std::fs::read_to_string(trust_db_file()) {
-            Ok(s) => s,
-            Err(e) => {
-                if e.kind() == ErrorKind::NotFound {
-                    toml::to_string(&TrustDb::default()).unwrap()
-                } else {
-                    return Err(e);
-                }
-            }
-        };
-        let mut toml: TrustDb = toml::from_str(&contents).unwrap_or_else(|_| {
-            panic!(
-                "Trust database is corrupted. Try to fix {} or delete it",
-                trust_db_file().display()
-            )
-        });
-        let r = f(&mut toml);
-        let toml_updated =
-            toml::to_string(&toml).expect("toml serialization of trust database failed?");
-        std::fs::write(trust_db_file(), toml_updated)?;
-        drop(lock);
-        Ok(r)
-    }
 }
 
 fn trust_db_file() -> PathBuf {
     data_dir().join("trust_db.toml")
 }
 
-fn trust_db_lock_file() -> PathBuf {
-    trust_db_file().with_extension("lock")
-}
-
 pub fn is_workspace_trusted(path: impl AsRef<Path>) -> std::io::Result<Option<bool>> {
     let Ok(path) = path.as_ref().canonicalize() else {
         return Ok(Some(false));
     };
-    TrustDb::inspect(|db| db.is_workspace_trusted(path))
+
+    TRUST_DB.inspect(|db| db.is_workspace_trusted(path))
 }
 
 pub fn trust_path(path: impl AsRef<Path>) -> std::io::Result<bool> {
     let Ok(path) = path.as_ref().canonicalize() else {
         return Ok(false);
     };
-    TrustDb::modify(|db| {
+    TRUST_DB.modify(|db| {
         db.trust
             .get_or_insert(HashMap::new())
             .insert(path, Trust::Trusted)
@@ -136,7 +160,7 @@ pub fn untrust_path(path: impl AsRef<Path>) -> std::io::Result<bool> {
     let Ok(path) = path.as_ref().canonicalize() else {
         return Ok(false);
     };
-    TrustDb::modify(|db| {
+    TRUST_DB.modify(|db| {
         db.trust
             .get_or_insert(HashMap::new())
             .insert(path, Trust::Untrusted)
@@ -144,6 +168,49 @@ pub fn untrust_path(path: impl AsRef<Path>) -> std::io::Result<bool> {
     })
 }
 
-fn initialize_trust_db() {
-    ensure_parent_dir(&trust_db_file());
+#[cfg(test)]
+mod test {
+    use tempfile::TempDir;
+
+    use super::*;
+    #[test]
+    fn trust() {
+        let dir = TempDir::new().unwrap();
+        let db_path = dir.path().join("trust_db.toml");
+        let db = SimpleDb::<TrustDb>::new(db_path.clone());
+        let some_path = dir.path().join("file.py");
+        std::fs::write(&some_path, "# this is needed for .is_file() to return true").unwrap();
+        assert_eq!(
+            db.inspect(|db| db.is_workspace_trusted(&some_path))
+                .unwrap(),
+            None
+        );
+        assert_eq!(
+            db.modify(|db| {
+                db.trust
+                    .get_or_insert(HashMap::new())
+                    .insert(some_path.clone(), Trust::Untrusted)
+            })
+            .unwrap(),
+            None
+        );
+        assert_eq!(
+            db.inspect(|db| db.is_workspace_trusted(&some_path))
+                .unwrap(),
+            Some(false)
+        );
+        assert_eq!(
+            db.modify(|db| db
+                .trust
+                .get_or_insert(HashMap::new())
+                .insert(some_path.clone(), Trust::Trusted))
+                .unwrap(),
+            Some(Trust::Untrusted)
+        );
+        assert_eq!(
+            db.inspect(|db| db.is_workspace_trusted(&some_path))
+                .unwrap(),
+            Some(true)
+        );
+    }
 }
