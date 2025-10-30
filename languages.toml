@@ -1603,6 +1603,10 @@ block-comment-tokens = { start = "{-", end = "-}" }
 language-servers = [ "haskell-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
+[[grammar]]
+name = "haskell-literate"
+source = { git = "https://github.com/LaurentRDC/tree-sitter-haskell-literate", rev = "8ad7bd1b1595f4cc1a4ccc775d4a3c460f43a596" }
+
 [[language]]
 name = "purescript"
 scope = "source.purescript"
