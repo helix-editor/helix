@@ -83,7 +83,7 @@
 | ghostty | ✓ |  |  |  |  |  |
 | git-attributes | ✓ |  |  |  |  |  |
 | git-cliff-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
-| git-commit | ✓ | ✓ |  |  |  |  |
+| git-commit | ✓ | ✓ |  |  |  | `commit-lsp` |
 | git-config | ✓ | ✓ |  |  |  |  |
 | git-ignore | ✓ |  |  |  |  |  |
 | git-notes | ✓ |  |  |  |  |  |
