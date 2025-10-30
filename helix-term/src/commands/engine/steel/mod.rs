@@ -849,7 +849,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     engine.register_module(module);
 }
 
-fn goto_line_impl(cx: &mut Context, mut line: usize) {
+fn goto_line_impl(cx: &mut Context, mut line: usize, extend: bool) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -861,13 +861,13 @@ fn goto_line_impl(cx: &mut Context, mut line: usize) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line_start = text.line_to_char(line);
-        range.put_cursor(text, line_start, false)
+        range.put_cursor(text, line_start, extend)
     });
     crate::commands::push_jump(view, doc);
     doc.set_selection(view.id, selection);
 }
 
-fn goto_column_impl(cx: &mut Context, char_index: usize) {
+fn goto_column_impl(cx: &mut Context, char_index: usize, extend: bool) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -876,7 +876,7 @@ fn goto_column_impl(cx: &mut Context, char_index: usize) {
         let line_start = text.line_to_char(line) + char_index;
         let line_end = helix_core::line_ending::line_end_char_index(&text, line);
         let pos = graphemes::nth_next_grapheme_boundary(text, line_start, count - 1).min(line_end);
-        range.put_cursor(text, pos, false)
+        range.put_cursor(text, pos, extend)
     });
     crate::commands::push_jump(view, doc);
     doc.set_selection(view.id, selection);
@@ -943,8 +943,8 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 
 ;;@doc
 ;; Move the cursor to the given character index within the same line
-(define (goto-column col)
-    (helix.goto-column *helix.cx* col))
+(define (goto-column col [extend #false])
+    (helix.goto-column *helix.cx* col extend))
 "#,
     );
 
@@ -954,8 +954,8 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 
 ;;@doc
 ;; Move the cursor to the given line
-(define (goto-line line)
-    (helix.goto-line *helix.cx* line))
+(define (goto-line line [extend #false])
+    (helix.goto-line *helix.cx* line extend))
 "#,
     );
 
