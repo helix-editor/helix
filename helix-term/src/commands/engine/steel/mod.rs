@@ -849,6 +849,24 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     engine.register_module(module);
 }
 
+fn goto_line_impl(cx: &mut Context, mut line: usize) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    if line > text.len_lines() {
+        line = text.len_lines();
+    }
+
+    let line = line.saturating_sub(1);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let line_start = text.line_to_char(line);
+        range.put_cursor(text, line_start, false)
+    });
+    crate::commands::push_jump(view, doc);
+    doc.set_selection(view.id, selection);
+}
+
 fn goto_column_impl(cx: &mut Context, char_index: usize) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -917,6 +935,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     }
 
     module.register_fn("goto-column", goto_column_impl);
+    module.register_fn("goto-line", goto_line_impl);
 
     builtin_typable_command_module.push_str(
         &r#"
@@ -926,6 +945,17 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 ;; Move the cursor to the given character index within the same line
 (define (goto-column col)
     (helix.goto-column *helix.cx* col))
+"#,
+    );
+
+    builtin_typable_command_module.push_str(
+        &r#"
+(provide goto-line)
+
+;;@doc
+;; Move the cursor to the given line
+(define (goto-line line)
+    (helix.goto-line *helix.cx* line))
 "#,
     );
 
