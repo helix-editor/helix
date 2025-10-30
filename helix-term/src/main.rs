@@ -1,5 +1,4 @@
 use anyhow::{Context, Error, Result};
-use helix_loader::trust_db::Trust;
 use helix_loader::{trust_db, VERSION_AND_GIT_HASH};
 use helix_term::application::Application;
 use helix_term::args::Args;

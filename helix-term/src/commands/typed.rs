@@ -2737,7 +2737,7 @@ fn trust_workspace(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    cx.editor.trust_workspace()
+    cx.editor.trust_current_workspace()
 }
 
 fn untrust_workspace(
@@ -2749,7 +2749,7 @@ fn untrust_workspace(
         return Ok(());
     }
 
-    cx.editor.untrust_workspace()
+    cx.editor.untrust_current_workspace()
 }
 
 fn trust_dialog(

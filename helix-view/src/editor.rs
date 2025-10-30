@@ -2382,23 +2382,27 @@ impl Editor {
         self.last_cwd.as_deref()
     }
 
-    pub fn trust_workspace(&mut self) -> anyhow::Result<()> {
+    pub fn trust_current_workspace(&mut self) -> anyhow::Result<()> {
         let Some(path) = doc!(self).path() else {
             bail!("Document does not have a path; you need to add a path to trust it.")
         };
         let workspace = helix_loader::find_workspace_in(path).0;
+        self.trust_workspace(workspace)
+    }
+
+    pub fn trust_workspace(&mut self, workspace: impl AsRef<Path>) -> anyhow::Result<()> {
         match trust_db::trust_path(&workspace) {
             Err(e) => bail!("Couldn't edit trust database: {e}"),
             Ok(is_new_entry) => {
                 if is_new_entry {
                     self.set_status(format!(
                         "Workspace '{}' unrestricted; LSPs, debuggers and formatters available.",
-                        workspace.display()
+                        workspace.as_ref().display()
                     ))
                 } else {
                     self.set_status(format!(
                         "Workspace '{}' is already trusted.",
-                        workspace.display()
+                        workspace.as_ref().display()
                     ));
                 }
                 self.documents_mut()
@@ -2409,23 +2413,27 @@ impl Editor {
         Ok(())
     }
 
-    pub fn untrust_workspace(&mut self) -> anyhow::Result<()> {
+    pub fn untrust_current_workspace(&mut self) -> anyhow::Result<()> {
         let Some(path) = doc!(self).path() else {
             bail!("Document does not have a path; it is already untrusted.")
         };
         let workspace = helix_loader::find_workspace_in(path).0;
+        self.untrust_workspace(workspace)
+    }
+
+    pub fn untrust_workspace(&mut self, workspace: impl AsRef<Path>) -> anyhow::Result<()> {
         match trust_db::untrust_path(&workspace) {
             Err(e) => bail!("Couldn't edit trust database: {e}"),
             Ok(was_removed) => {
                 if was_removed {
                     self.set_status(format!(
                         "Workspace '{}' restricted; LSPs, formatters and debuggers do not work.",
-                        workspace.display()
+                        workspace.as_ref().display()
                     ));
                 } else {
                     self.set_status(format!(
                         "Workspace '{}' was already untrusted.",
-                        workspace.display()
+                        workspace.as_ref().display()
                     ));
                 }
                 self.documents_mut()

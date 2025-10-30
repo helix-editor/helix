@@ -78,8 +78,8 @@ Ensure you trust the source of the {file_or_workspace} before trusting it.");
             }
 
             let maybe_err = match option {
-                TrustOptions::Trust => editor.trust_workspace(),
-                TrustOptions::DoNotTrust => editor.untrust_workspace(),
+                TrustOptions::Trust => editor.trust_workspace(&path_clone),
+                TrustOptions::DoNotTrust => editor.untrust_workspace(&path_clone),
                 TrustOptions::DistrustParent | TrustOptions::TrustParent => {
                     let path = path_clone.clone();
                     let option = option.clone();
@@ -122,9 +122,9 @@ fn choose_parent_dialog(path: impl AsRef<Path>, trust: bool) -> impl Component +
                 path.display()
             ))
         } else if trust {
-            cx.editor.trust_workspace()
+            cx.editor.trust_workspace(path)
         } else {
-            cx.editor.untrust_workspace()
+            cx.editor.untrust_workspace(path)
         };
         if let Err(e) = result {
             cx.editor.set_error(e.to_string());
