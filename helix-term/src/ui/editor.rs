@@ -148,6 +148,8 @@ impl EditorView {
             decorations.add_decoration(line_decoration);
         }
 
+        let view_offset = doc.view_offset(view.id);
+
         let syntax_highlighter =
             Self::doc_syntax_highlighter(doc, view_offset.anchor, inner.height, &loader);
         let mut overlays = Vec::new();
