@@ -1,8 +1,10 @@
 use anyhow::{Context, Error, Result};
+use helix_loader::trust_db::Trust;
 use helix_loader::{trust_db, VERSION_AND_GIT_HASH};
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
+use helix_view::editor::WorkspaceTrust;
 
 fn setup_logging(verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
@@ -118,8 +120,13 @@ FLAGS:
         }
     };
 
-    let use_local_config =
-        trust_db::is_workspace_trusted(helix_loader::find_workspace().0)?.unwrap_or_default();
+    let use_local_config = match config.editor.workspace_trust {
+        WorkspaceTrust::Always => true,
+        WorkspaceTrust::Never => false,
+        WorkspaceTrust::Manual | WorkspaceTrust::Ask => {
+            trust_db::is_workspace_trusted(helix_loader::find_workspace().0)?.unwrap_or_default()
+        }
+    };
 
     if args.health {
         if let Err(err) = helix_term::health::print_health(args.health_arg, use_local_config) {
