@@ -1,64 +1,96 @@
 ; Keywords
-"DIM" @keyword
-"IF" @keyword
-"THEN" @keyword
-"ELSE" @keyword
-"END IF" @keyword
-"WHILE" @keyword
-"WEND" @keyword
-"FOR" @keyword
-"TO" @keyword
-"STEP" @keyword
-"NEXT" @keyword
-"DO" @keyword
-"LOOP" @keyword
-"UNTIL" @keyword
-"SUB" @keyword
-"END SUB" @keyword
-"FUNCTION" @keyword
-"END FUNCTION" @keyword
-"RETURN" @keyword
-"PRINT" @keyword
-"INPUT" @keyword
-"SLEEP" @keyword
-"AS" @keyword
-"AND" @keyword.operator
-"OR" @keyword.operator
-"NOT" @keyword.operator
+[
+  "DIM"
+  "IF"
+  "THEN"
+  "ELSE"
+  "END IF"
+  "WHILE"
+  "WEND"
+  "FOR"
+  "TO"
+  "STEP"
+  "NEXT"
+  "DO"
+  "LOOP"
+  "UNTIL"
+  "SUB"
+  "END SUB"
+  "FUNCTION"
+  "END FUNCTION"
+  "RETURN"
+  "PRINT"
+  "INPUT"
+  "SLEEP"
+  "AS"
+] @keyword
+
+; Logical operators
+[
+  "AND"
+  "OR"
+  "NOT"
+  "MOD"
+] @keyword.operator
 
 ; Types
+[
+  "INTEGER"
+  "LONG"
+  "SINGLE"
+  "DOUBLE"
+  "STRING"
+  "BYTE"
+] @type
+
 (type_identifier) @type
 
-; Functions
-(function_declaration name: (identifier) @function)
-(sub_declaration name: (identifier) @function)
-(call_expression function: (identifier) @function.call)
+; Function and sub declarations
+(sub_declaration
+  name: (identifier) @function)
+(function_declaration
+  name: (identifier) @function)
+
+; Function calls
+(call_expression
+  function: (identifier) @function.call)
+
+; Built-in functions
+((identifier) @function.builtin
+  (#match? @function.builtin "^(?i)(ABS|SIN|COS|TAN|SQR|LEN|VAL|ASC|CHR|LEFT|RIGHT|MID|STR|INT|RND|INSTR|UCASE|LCASE|LTRIM|RTRIM|SPACE|TIME|DATE|TIMER)$"))
 
 ; Literals
-(number_literal) @number
+(number_literal) @constant.numeric
 (string_literal) @string
 
 ; Comments
 (comment) @comment
 
 ; Operators
-"=" @operator
-"+" @operator
-"-" @operator
-"*" @operator
-"/" @operator
-"^" @operator
-"<>" @operator
-"<" @operator
-">" @operator
-"<=" @operator
-">=" @operator
+[
+  "="
+  "+"
+  "-"
+  "*"
+  "/"
+  "^"
+  "<>"
+  "<"
+  ">"
+  "<="
+  ">="
+] @operator
 
 ; Punctuation
-"(" @punctuation.bracket
-")" @punctuation.bracket
-"," @punctuation.delimiter
-";" @punctuation.delimiter
+[
+  "("
+  ")"
+] @punctuation.bracket
 
-; Variables (should be last to avoid conflicts)
+[
+  ","
+  ";"
+] @punctuation.delimiter
+
+; Variables
 (identifier) @variable
