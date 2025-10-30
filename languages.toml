@@ -5027,7 +5027,7 @@ source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-basic", rev = "ab9
 name = "freebasic"
 scope = "source.freebasic"
 injection-regex = "freebasic"
-file-types = ["bi"]
+file-types = ["bas", "bi"]
 comment-tokens = ["'", "REM"]
 indent = { tab-width = 4, unit = "    " }
 
