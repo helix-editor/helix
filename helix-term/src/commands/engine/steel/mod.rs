@@ -2272,6 +2272,7 @@ Get the current focus of the editor, as a `ViewId`.
 ```
         "#
     );
+
     register_0!(
         "editor-mode",
         cx_get_mode,
@@ -2280,6 +2281,19 @@ Get the current mode of the editor
 
 ```scheme
 (editor-mode) -> Mode?
+```
+        "#
+    );
+
+    register_0!(
+        "string->editor-mode",
+        string_to_mode,
+        r#"
+Create an editor mode from a string, or false if it string was not one of
+"normal", "insert", or "select"
+
+```scheme
+(string->editor-mode "normal") -> (or Mode? #f)
 ```
         "#
     );
@@ -5690,6 +5704,15 @@ fn cx_switch_action(cx: &mut Context, doc_id: DocumentId, action: Action) {
 
 fn cx_get_mode(cx: &mut Context) -> Mode {
     cx.editor.mode
+}
+
+fn string_to_mode(_: &mut Context, value: SteelString) -> Option<Mode> {
+    match value.as_str() {
+        "normal" => Some(Mode::Normal),
+        "insert" => Some(Mode::Insert),
+        "select" => Some(Mode::Select),
+        _ => None,
+    }
 }
 
 fn cx_set_mode(cx: &mut Context, mode: Mode) {
