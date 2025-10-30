@@ -141,6 +141,13 @@ pub fn data_dir() -> PathBuf {
     path
 }
 
+pub fn state_dir() -> Option<PathBuf> {
+    // TODO: allow env var override
+    let strategy = choose_base_strategy().expect("Unable to find the data directory!");
+    let path = strategy.state_dir();
+    path.map(|p| p.join("helix"))
+}
+
 pub fn config_file() -> PathBuf {
     CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }

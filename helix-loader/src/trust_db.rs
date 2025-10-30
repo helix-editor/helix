@@ -9,7 +9,7 @@ use std::{
 use fs2::FileExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::{data_dir, ensure_parent_dir, is_workspace};
+use crate::{data_dir, ensure_parent_dir, is_workspace, state_dir};
 use arc_swap::ArcSwapOption;
 use std::sync::Arc;
 
@@ -131,7 +131,7 @@ impl TrustDb {
 }
 
 fn trust_db_file() -> PathBuf {
-    data_dir().join("trust_db.toml")
+    state_dir().unwrap_or(data_dir()).join("trust_db.toml")
 }
 
 pub fn is_workspace_trusted(path: impl AsRef<Path>) -> std::io::Result<Option<bool>> {
