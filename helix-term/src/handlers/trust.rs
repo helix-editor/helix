@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::compositor::Compositor;
+use crate::compositor::Component;
 use crate::ui;
 use crate::ui::PromptEvent;
 use anyhow::anyhow;
@@ -11,7 +11,6 @@ use helix_view::events::DocumentDidOpen;
 use helix_view::handlers::Handlers;
 use helix_view::theme::Modifier;
 use helix_view::theme::Style;
-use helix_view::Editor;
 use tui::text::Span;
 use ui::overlay::overlaid;
 
@@ -49,13 +48,9 @@ impl AsRef<str> for TrustOptions {
         }
     }
 }
-pub fn trust_dialog(editor: &mut Editor, compositor: &mut Compositor) {
-    let Some(file_path) = doc!(editor).path() else {
-        // helix doesn't send the document open event when it has no paths, but the user may still use :trust-dialog anyways.
-        editor.set_error("Could not open trust dialog: the file does not have a path.");
-        return;
-    };
-    let (path, is_file) = helix_loader::find_workspace_in(file_path);
+
+pub fn trust_dialog(path: impl AsRef<Path>) -> impl Component + 'static {
+    let (path, is_file) = helix_loader::find_workspace_in(path.as_ref());
     let options = vec![
         TrustOptions::DoNotTrust,
         TrustOptions::Trust,
@@ -66,7 +61,7 @@ pub fn trust_dialog(editor: &mut Editor, compositor: &mut Compositor) {
     let path_clone = path.clone();
     let warning = format!("Trusting the {file_or_workspace} will allow the usage of LSPs, formatters, debuggers and workspace config, all of which can lead to remote code execution.
 Ensure you trust the source of the {file_or_workspace} before trusting it.");
-    let ui = ui::Select::new(
+    ui::Select::new(
         format!("Trust {file_or_workspace} '{}'?\n{warning}", path.display()),
         options,
         (),
@@ -81,19 +76,17 @@ Ensure you trust the source of the {file_or_workspace} before trusting it.");
                 }
                 PromptEvent::Validate => (),
             }
+
             let maybe_err = match option {
                 TrustOptions::Trust => editor.trust_workspace(),
                 TrustOptions::DoNotTrust => editor.untrust_workspace(),
                 TrustOptions::DistrustParent | TrustOptions::TrustParent => {
                     let path = path_clone.clone();
                     let option = option.clone();
-                    crate::job::dispatch_blocking(move |editor, compositor| {
-                        choose_parent_dialog(
-                            path,
-                            matches!(option, TrustOptions::TrustParent),
-                            editor,
-                            compositor,
-                        )
+                    crate::job::dispatch_blocking(move |_editor, compositor| {
+                        let dialog =
+                            choose_parent_dialog(path, matches!(option, TrustOptions::TrustParent));
+                        compositor.push(Box::new(overlaid(dialog)))
                     });
                     Ok(())
                 }
@@ -102,17 +95,10 @@ Ensure you trust the source of the {file_or_workspace} before trusting it.");
                 editor.set_error(e.to_string())
             }
         },
-    );
-
-    compositor.push(Box::new(overlaid(ui)));
+    )
 }
 
-fn choose_parent_dialog(
-    path: impl AsRef<Path>,
-    trust: bool,
-    _editor: &mut Editor,
-    compositor: &mut Compositor,
-) {
+fn choose_parent_dialog(path: impl AsRef<Path>, trust: bool) -> impl Component + 'static {
     let path = path.as_ref().to_path_buf();
     let options = path
         .ancestors()
@@ -124,7 +110,7 @@ fn choose_parent_dialog(
         format!("Workspace to {trust_or_untrust}"),
         |path: &PathBuf, _| path.display().to_string().into(),
     )];
-    let picker = ui::Picker::new(columns, 0, options, (), move |cx, path, _action| {
+    ui::Picker::new(columns, 0, options, (), move |cx, path, _action| {
         let result = if let Err(e) = std::fs::create_dir(path.join(".helix")) {
             Err(anyhow!(
                 "Couldn't make '{}' into a workspace: {e}",
@@ -144,8 +130,7 @@ fn choose_parent_dialog(
             cx.editor.set_error(e.to_string());
         }
     })
-    .always_show_header(true);
-    compositor.push(Box::new(overlaid(picker)))
+    .always_show_header(true)
 }
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
@@ -154,11 +139,22 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             && event
                 .editor
                 .document(event.doc)
-                .is_some_and(|doc| doc.is_trusted.is_none())
+                .is_some_and(|doc| doc.path().is_some() && doc.is_trusted.is_none())
         {
+            // these unwraps are fine due to the above. TODO: change this to if let chains once rust is bumped to 1.88
+            let path = event
+                .editor
+                .document(event.doc)
+                .unwrap()
+                .path()
+                .unwrap()
+                .to_path_buf();
+            // we use tokio::spawn because crate::job::dispatch_blocking hangs on singular file.
+            // Probably should investigate that.
             tokio::spawn(async move {
-                crate::job::dispatch(move |editor, compositor| {
-                    trust_dialog(editor, compositor);
+                crate::job::dispatch(move |_, compositor| {
+                    let dialog = trust_dialog(path);
+                    compositor.push(Box::new(dialog));
                 })
                 .await;
             });

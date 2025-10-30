@@ -2760,10 +2760,15 @@ fn trust_dialog(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+    let Some(path) = doc!(cx.editor).path() else {
+        bail!("document must have a path first");
+    };
+    let path = path.clone();
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
-            move |editor: &mut Editor, compositor: &mut Compositor| {
-                crate::handlers::trust::trust_dialog(editor, compositor);
+            move |_editor: &mut Editor, compositor: &mut Compositor| {
+                let dialog = crate::handlers::trust::trust_dialog(path);
+                compositor.push(Box::new(dialog))
             },
         ));
         Ok(call)
