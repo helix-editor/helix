@@ -23,9 +23,7 @@ struct SimpleDb<T> {
 
 impl<T: Default + DeserializeOwned + Serialize> SimpleDb<T> {
     pub fn new(path: impl AsRef<Path>) -> Self {
-        if let Some(parent) = path.as_ref().parent() {
-            ensure_parent_dir(parent)
-        }
+        ensure_parent_dir(path.as_ref());
         Self {
             path: path.as_ref().to_path_buf(),
             db: ArcSwapOption::empty(),
