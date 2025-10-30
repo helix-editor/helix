@@ -1,36 +1,46 @@
+; Keywords
+[
+  "PRINT"
+  "LET"
+  "IF"
+  "THEN"
+  "GOTO"
+  "GOSUB"
+  "RETURN"
+  "FOR"
+  "TO"
+  "STEP"
+  "NEXT"
+  "INPUT"
+  "END"
+  "REM"
+  "DATA"
+  "READ"
+  "DIM"
+] @keyword
+
+; Logical operators
+[
+  "AND"
+  "and"
+  "OR"
+  "or"
+  "NOT"
+] @keyword.operator
+
 ; Comments
 (comment) @comment
-(comment_text) @comment
+(rem_statement) @comment
 
-; Statements (using patterns)
-(print_statement) @keyword
-(let_statement) @keyword
-(if_statement) @keyword
-(goto_statement) @keyword
-(gosub_statement) @keyword
-(return_statement) @keyword
-(for_statement) @keyword
-(next_statement) @keyword
-(input_statement) @keyword
-(end_statement) @keyword
-(rem_statement) @keyword
-(data_statement) @keyword
-(read_statement) @keyword
-(dim_statement) @keyword
-
-; Built-in functions
-(identifier) @function.builtin
-  (#match? @function.builtin "^(ABS|SIN|COS|TAN|SQR|LEN|VAL|ASC|CHR\\$|LEFT\\$|RIGHT\\$|MID\\$)$")
+; Function calls
+(function_call) @function.call
 
 ; Numbers
-(line_number) @number
-(number) @number
+(line_number) @constant.numeric
+(number) @constant.numeric
 
 ; Strings
 (string) @string
-
-; Variables
-(identifier) @variable
 
 ; Operators
 [
@@ -57,3 +67,6 @@
   ","
   ";"
 ] @punctuation.delimiter
+
+; Variables
+(identifier) @variable
