@@ -23,7 +23,8 @@ use tree_house::{
     query_iter::QueryIter,
     tree_sitter::{
         query::{InvalidPredicateError, UserPredicate},
-        Capture, Grammar, InactiveQueryCursor, InputEdit, Node, Pattern, Query, RopeInput, Tree,
+        Capture, Grammar, InactiveQueryCursor, InputEdit, Node, Pattern, Query, QueryCursor,
+        RopeInput, Tree,
     },
     Error, InjectionLanguageMarker, LanguageConfig as SyntaxConfig, Layer,
 };
@@ -1031,24 +1032,71 @@ impl TextObjectQuery {
         node: &Node<'a>,
         slice: RopeSlice<'a>,
     ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
-        let capture = capture_names
+        capture_names
             .iter()
-            .find_map(|cap| self.query.get_capture(cap))?;
+            .find_map(|cap| self.query.get_capture(cap))
+            .map(|capture| {
+                let mut cursor = self.cursor(node, slice);
+                iter::from_fn(move || {
+                    cursor
+                        .next_match()
+                        .map(|mat| mat.nodes_for_capture(capture).cloned().collect::<Vec<_>>())
+                })
+                .filter_map(|nodes| match nodes.len() {
+                    0 => None,
+                    1 => nodes.into_iter().map(CapturedNode::Single).next(),
+                    2.. => Some(CapturedNode::Grouped(nodes)),
+                })
+            })
+    }
 
-        let mut cursor = InactiveQueryCursor::new(0..u32::MAX, TREE_SITTER_MATCH_LIMIT)
-            .execute_query(&self.query, node, RopeInput::new(slice));
-        let capture_node = iter::from_fn(move || {
-            let (mat, _) = cursor.next_matched_node()?;
-            Some(mat.nodes_for_capture(capture).cloned().collect())
+    pub fn capture_nodes_all<'a>(
+        &'a self,
+        capture_names: &'a [&str],
+        node: &Node<'a>,
+        slice: RopeSlice<'a>,
+    ) -> impl Iterator<Item = (Capture, CapturedNode)> + use<'a> {
+        let mut cursor = self.cursor(node, slice);
+        let captures: Vec<_> = capture_names
+            .iter()
+            .filter_map(|name| self.query.get_capture(name))
+            .collect();
+
+        iter::from_fn(move || {
+            cursor.next_match().map(|query_match| {
+                captures
+                    .iter()
+                    .filter_map(|&cap| {
+                        let nodes: Vec<_> = query_match.nodes_for_capture(cap).cloned().collect();
+                        match nodes.len() {
+                            0 => None,
+                            1 => nodes
+                                .into_iter()
+                                .map(|n| (cap, CapturedNode::Single(n)))
+                                .next(),
+                            2.. => Some((cap, CapturedNode::Grouped(nodes))),
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
         })
-        .filter_map(move |nodes: Vec<_>| {
-            if nodes.len() > 1 {
-                Some(CapturedNode::Grouped(nodes))
-            } else {
-                nodes.into_iter().map(CapturedNode::Single).next()
-            }
-        });
-        Some(capture_node)
+        .flatten()
+    }
+
+    pub fn cursor<'a>(
+        &'a self,
+        node: &Node<'a>,
+        slice: RopeSlice<'a>,
+    ) -> QueryCursor<'_, '_, RopeInput> {
+        InactiveQueryCursor::new(0..u32::MAX, TREE_SITTER_MATCH_LIMIT).execute_query(
+            &self.query,
+            node,
+            RopeInput::new(slice),
+        )
+    }
+
+    pub fn query(&self) -> &Query {
+        &self.query
     }
 }
 
@@ -1367,5 +1415,31 @@ mod test {
             0,
             source.len(),
         );
+    }
+
+    #[test]
+    fn test_match_around_comment() {
+        let text = RopeSlice::from(
+            "fn f() {}\n\
+            // abc\n\
+            // def\n\
+            // ghi\n\
+            fn g() {}",
+        );
+
+        let lang = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(text, lang, &LOADER).unwrap();
+        let root_node = &syntax.tree().root_node();
+        let textobject_query = LOADER.textobject_query(lang).unwrap();
+
+        let result = textobject_query
+            .capture_nodes("comment.around", root_node, text)
+            .unwrap()
+            .next()
+            .map(|node| node.byte_range())
+            .unwrap();
+        let expected = 10..30;
+
+        assert_eq!(result, expected);
     }
 }

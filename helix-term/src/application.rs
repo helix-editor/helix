@@ -199,7 +199,10 @@ impl Application {
                                 nr_of_files -= 1;
                                 doc_id
                             }
-                            Ok(doc_id) => doc_id,
+                            Ok(doc_id) => {
+                                ui::default_folding(&mut editor);
+                                doc_id
+                            }
                         };
                         // with Action::Load all documents have the same view
                         // NOTE: this isn't necessarily true anymore. If

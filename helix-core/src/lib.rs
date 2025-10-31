@@ -29,6 +29,7 @@ pub mod surround;
 pub mod syntax;
 pub mod test;
 pub mod text_annotations;
+pub mod text_folding;
 pub mod textobject;
 mod transaction;
 pub mod uri;

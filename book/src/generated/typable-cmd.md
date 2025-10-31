@@ -90,4 +90,6 @@
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
+| `:fold` | Fold text. |
+| `:unfold` | Unfold text. |
 | `:noop` | Does nothing. |

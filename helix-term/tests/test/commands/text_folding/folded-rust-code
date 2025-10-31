@@ -1,0 +1,28 @@
+//! top-level comment
+
+mod format_is_needed {
+
+    /// `Bazz` doc comment
+    pub struct Bazz {
+    } // interfering comment
+
+                pub struct Fizz<T, U, V>
+    // `where` block comment
+where
+T: Copy,
+U: Copy,
+        V: Copy,
+}
+
+/* block comment
+
+/// `TraitA` doc comment
+trait TraitA {
+
+impl<T, U, V> TraitA for format_is_needed::Fizz<T, U, V>
+where
+    T: Copy,
+    /* block comment
+    U: Copy,
+    /* block comment
+    V: Copy,
