@@ -231,7 +231,7 @@ impl Client {
     }
 
     fn next_request_id(&self) -> u64 {
-        self.request_counter.fetch_add(1, Ordering::Relaxed)
+        self.request_counter.fetch_add(1, Ordering::Relaxed) + 1
     }
 
     // Internal, called by specific DAP commands when resuming
