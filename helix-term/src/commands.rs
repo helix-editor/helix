@@ -58,6 +58,7 @@ use helix_view::{
 };
 
 use anyhow::{anyhow, bail, ensure, Context as _};
+use arc_swap::access::DynAccess;
 use insert::*;
 use movement::Movement;
 
@@ -4152,7 +4153,9 @@ pub mod insert {
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text();
         let selection = doc.selection(view.id);
-        let auto_pairs = doc.auto_pairs(cx.editor);
+
+        let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
+        let auto_pairs = doc.auto_pairs(cx.editor, loader, view);
 
         let transaction = auto_pairs
             .as_ref()
@@ -4320,11 +4323,12 @@ pub mod insert {
                     ),
                 };
 
+                let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
                 // If we are between pairs (such as brackets), we want to
                 // insert an additional line which is indented one level
                 // more and place the cursor there
                 let on_auto_pair = doc
-                    .auto_pairs(cx.editor)
+                    .auto_pairs(cx.editor, loader, view)
                     .and_then(|pairs| pairs.get(prev))
                     .is_some_and(|pair| pair.open == prev && pair.close == curr);
 
@@ -4412,7 +4416,9 @@ pub mod insert {
         let text = doc.text().slice(..);
         let tab_width = doc.tab_width();
         let indent_width = doc.indent_width();
-        let auto_pairs = doc.auto_pairs(cx.editor);
+
+        let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
+        let auto_pairs = doc.auto_pairs(cx.editor, loader, view);
 
         let transaction =
             Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {

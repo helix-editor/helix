@@ -2170,7 +2170,12 @@ impl Document {
     /// language config with auto pairs configured, returns that;
     /// otherwise, falls back to the global auto pairs config. If the global
     /// config is false, then ignore language settings.
-    pub fn auto_pairs<'a>(&'a self, editor: &'a Editor) -> Option<&'a AutoPairs> {
+    pub fn auto_pairs<'a>(
+        &'a self,
+        editor: &'a Editor,
+        loader: &'a syntax::Loader,
+        view: &View,
+    ) -> Option<&'a AutoPairs> {
         let global_config = (editor.auto_pairs).as_ref();
 
         // NOTE: If the user specifies the global auto pairs config as false, then
@@ -2182,10 +2187,19 @@ impl Document {
             }
         }
 
-        match &self.language {
-            Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
-            None => global_config,
-        }
+        let selection = self.selection(view.id).primary();
+        self.syntax
+            .as_ref()
+            .and_then(|syntax| {
+                syntax
+                    .layers_for_byte_range(selection.from() as u32, selection.to() as u32)
+                    .last()
+                    .and_then(|layer| {
+                        let lang_config = loader.language(syntax.layer(layer).language).config();
+                        lang_config.auto_pairs.as_ref()
+                    })
+            })
+            .or(global_config)
     }
 
     pub fn snippet_ctx(&self) -> SnippetRenderCtx {

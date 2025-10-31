@@ -546,6 +546,10 @@ impl Syntax {
         self.inner.root()
     }
 
+    pub fn layers_for_byte_range(&self, start: u32, end: u32) -> impl Iterator<Item = Layer> + '_ {
+        self.inner.layers_for_byte_range(start, end)
+    }
+
     pub fn layer_for_byte_range(&self, start: u32, end: u32) -> Layer {
         self.inner.layer_for_byte_range(start, end)
     }
