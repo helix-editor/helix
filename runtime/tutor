@@ -337,7 +337,7 @@
  1. Move the cursor to the line marked '-->' below.
  2. Type 2w to move 2 words forward.
  3. Type 3e to move to the end of the third word forward.
- 4. Type 2b to move 2 words backwards
+ 4. Type 2b to move 2 words backwards.
  5. Try the above with different numbers.
 
  --> This is just a line with words you can move around in.
@@ -755,7 +755,7 @@
  1. Move the cursor to the line marked '-->' below.
  2. Type w to select "watermelons" and then y to yank it.
  3. Select "oranges" with w.
- 4. Type R to replace "oranges" with "watermelons"
+ 4. Type R to replace "oranges" with "watermelons".
 
 
  --> I like watermelons because oranges are refreshing.
