@@ -2170,7 +2170,12 @@ impl Document {
     /// language config with auto pairs configured, returns that;
     /// otherwise, falls back to the global auto pairs config. If the global
     /// config is false, then ignore language settings.
-    pub fn auto_pairs<'a>(&'a self, editor: &'a Editor, view: &View) -> Option<Cow<'a, AutoPairs>> {
+    pub fn auto_pairs<'a>(
+        &'a self,
+        editor: &'a Editor,
+        loader: &'a syntax::Loader,
+        view: &View,
+    ) -> Option<&'a AutoPairs> {
         let global_config = (editor.auto_pairs).as_ref();
 
         // NOTE: If the user specifies the global auto pairs config as false, then
@@ -2190,12 +2195,11 @@ impl Document {
                     .layers_for_byte_range(selection.from() as u32, selection.to() as u32)
                     .last()
                     .and_then(|layer| {
-                        let loader: &syntax::Loader = &editor.syn_loader.load();
                         let lang_config = loader.language(syntax.layer(layer).language).config();
-                        lang_config.auto_pairs.clone().map(Cow::Owned)
+                        lang_config.auto_pairs.as_ref()
                     })
             })
-            .or(global_config.map(Cow::Borrowed))
+            .or(global_config)
     }
 
     pub fn snippet_ctx(&self) -> SnippetRenderCtx {
