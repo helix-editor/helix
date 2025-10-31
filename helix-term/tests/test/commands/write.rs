@@ -923,11 +923,13 @@ async fn test_reload_all_no_force() -> anyhow::Result<()> {
 
             let (mut doc1_visited, mut doc2_visited) = (false, false);
             for doc in app.editor.documents() {
-                if doc.path().unwrap() == file1.path() {
+                if same_file::is_same_file(doc.path().unwrap(), file1.path()).unwrap_or(false) {
                     assert!(doc.is_modified());
                     assert_eq!(doc.text(), "change1");
                     doc1_visited = true;
-                } else if doc.path().unwrap() == file2.path() {
+                } else if same_file::is_same_file(doc.path().unwrap(), file2.path())
+                    .unwrap_or(false)
+                {
                     assert!(!doc.is_modified());
                     assert_eq!(doc.text(), "change2");
                     doc2_visited = true;
@@ -964,11 +966,13 @@ async fn test_reload_all_force() -> anyhow::Result<()> {
 
             let (mut doc1_visited, mut doc2_visited) = (false, false);
             for doc in app.editor.documents() {
-                if doc.path().unwrap() == file1.path() {
+                if same_file::is_same_file(doc.path().unwrap(), file1.path()).unwrap_or(false) {
                     assert!(!doc.is_modified());
                     assert_eq!(doc.text(), "");
                     doc1_visited = true;
-                } else if doc.path().unwrap() == file2.path() {
+                } else if same_file::is_same_file(doc.path().unwrap(), file2.path())
+                    .unwrap_or(false)
+                {
                     assert!(!doc.is_modified());
                     assert_eq!(doc.text(), "change2");
                     doc2_visited = true;
