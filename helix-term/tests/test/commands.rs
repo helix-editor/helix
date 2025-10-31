@@ -1,6 +1,10 @@
 use helix_term::application::Application;
+use helix_view::editor::Severity;
 
 use super::*;
+use helix_view::current_ref;
+use std::fs::File;
+use std::ops::Deref;
 
 mod insert;
 mod movement;
@@ -842,5 +846,119 @@ async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
     ))
     .await?;
 
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_goto_next_file() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+
+    let a = dir.path().join("a");
+    let b = dir.path().join("b");
+    let c = dir.path().join("c");
+    let d = dir.path().join("d").join("ignored");
+
+    std::fs::create_dir(d.parent().unwrap())?;
+
+    File::create(&a)?;
+    File::create(&b)?;
+    File::create(&c)?;
+    File::create(&d)?;
+
+    test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some("]'"),
+        Some(&|app| {
+            let (msg, severity) = app.editor.get_status().unwrap();
+            assert_eq!("current buffer has no path or parent", msg);
+            assert_eq!(&Severity::Error, severity);
+        }),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some("['"),
+        Some(&|app| {
+            let (msg, severity) = app.editor.get_status().unwrap();
+            assert_eq!("current buffer has no path or parent", msg);
+            assert_eq!(&Severity::Error, severity);
+        }),
+        false,
+    )
+    .await?;
+
+    fn open_buffers(app: &Application) -> Vec<String> {
+        app.editor
+            .documents()
+            .filter_map(|d| d.path()?.file_name())
+            .map(|n| n.to_string_lossy().deref().to_owned())
+            .collect()
+    }
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(&b, None).build()?,
+        Some("['"),
+        Some(&|app| {
+            assert_eq!(vec!["b", "a"], open_buffers(app));
+            assert_status_not_error(&app.editor);
+        }),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(&c, None).build()?,
+        Some("['['['['['"),
+        Some(&|app| {
+            assert_eq!(vec!["c", "b", "a"], open_buffers(app));
+
+            let (msg, severity) = app.editor.get_status().unwrap();
+            assert_eq!("No more files", msg);
+            assert_eq!(&Severity::Error, severity);
+        }),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(&b, None).build()?,
+        Some("]'"),
+        Some(&|app| {
+            assert_eq!(vec!["b", "c"], open_buffers(app));
+            assert_status_not_error(&app.editor);
+        }),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(&a, None).build()?,
+        Some("]']']']']'"),
+        Some(&|app| {
+            assert_eq!(vec!["a", "b", "c"], open_buffers(app));
+
+            let (msg, severity) = app.editor.get_status().unwrap();
+            assert_eq!("No more files", msg);
+            assert_eq!(&Severity::Error, severity);
+        }),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new()
+            .with_file(dir.path().join("not").join("there"), None)
+            .build()?,
+        Some("['"),
+        Some(&|app| {
+            let (msg, severity) = app.editor.get_status().unwrap();
+            assert_eq!("No more files", msg);
+            assert_eq!(&Severity::Error, severity);
+        }),
+        false,
+    )
+    .await?;
     Ok(())
 }

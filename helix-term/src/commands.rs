@@ -65,6 +65,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
+    parent_dir,
     ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
 };
 
@@ -463,6 +464,8 @@ impl MappableCommand {
         extend_to_column, "Extend to column",
         goto_next_buffer, "Goto next buffer",
         goto_previous_buffer, "Goto previous buffer",
+        goto_next_file, "Go to the next file alphabetically in the current file's directory",
+        goto_prev_file, "Go to the previous file alphabetically in the current file's directory",
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
         trim_selections, "Trim whitespace from selections",
@@ -3069,16 +3072,9 @@ fn file_picker(cx: &mut Context) {
 }
 
 fn file_picker_in_current_buffer_directory(cx: &mut Context) {
-    let doc_dir = doc!(cx.editor)
-        .path()
-        .and_then(|path| path.parent().map(|path| path.to_path_buf()));
-
-    let path = match doc_dir {
-        Some(path) => path,
-        None => {
-            cx.editor.set_error("current buffer has no path or parent");
-            return;
-        }
+    let path = match parent_dir(cx.editor) {
+        Some(value) => value,
+        None => return,
     };
 
     let picker = ui::file_picker(cx.editor, path);
@@ -6947,5 +6943,50 @@ fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
         lsp::workspace_symbol_picker(cx);
     } else {
         syntax_workspace_symbol_picker(cx);
+    }
+}
+
+fn goto_next_file(cx: &mut Context) {
+    goto_next_file_impl(cx.editor, Direction::Forward, cx.count());
+}
+
+fn goto_prev_file(cx: &mut Context) {
+    goto_next_file_impl(cx.editor, Direction::Backward, cx.count());
+}
+
+fn goto_next_file_impl(editor: &mut Editor, direction: Direction, count: usize) {
+    let path = match parent_dir(editor) {
+        Some(value) => value,
+        None => return,
+    };
+    let (_, doc) = current_ref!(editor);
+    let files: Vec<_> = WalkBuilder::new(path)
+        .sort_by_file_name(|name1, name2| name1.cmp(name2))
+        .max_depth(Some(1))
+        .build()
+        .flatten()
+        .map(|e| e.into_path())
+        .filter(|p| p.is_file())
+        .collect();
+    if let Some(path) = doc.path() {
+        let file = match direction {
+            Direction::Forward => files.iter().skip_while(|f| *f != path).nth(count),
+            Direction::Backward => files.iter().rev().skip_while(|f| *f != path).nth(count),
+        };
+
+        if let Some(file) = file {
+            let found = editor
+                .documents
+                .values()
+                .find(|doc| doc.path().map_or(false, |p| p == file))
+                .map(|doc| doc.id());
+            if let Some(id) = found {
+                editor.switch(id, Action::Replace);
+            } else if let Err(e) = editor.open(file, Action::Replace) {
+                editor.set_error(format!("Open file failed: {:?}", e));
+            }
+        } else {
+            editor.set_error("No more files");
+        }
     }
 }
