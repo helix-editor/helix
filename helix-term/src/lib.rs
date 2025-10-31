@@ -12,11 +12,12 @@ pub mod job;
 pub mod keymap;
 pub mod ui;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use futures_util::Future;
 mod handlers;
 
+use helix_view::Editor;
 use ignore::DirEntry;
 use url::Url;
 
@@ -84,5 +85,19 @@ fn open_external_url_callback(
         Ok(job::Callback::Editor(Box::new(move |editor| {
             editor.set_error("Opening URL in external program failed")
         })))
+    }
+}
+
+/// Get the parent dir if it exists.
+fn parent_dir(editor: &mut Editor) -> Option<PathBuf> {
+    let doc_dir = doc!(editor)
+        .path()
+        .and_then(|path| path.parent().map(|path| path.to_path_buf()));
+    match doc_dir {
+        None => {
+            editor.set_error("current buffer has no path or parent");
+            None
+        }
+        e => e,
     }
 }

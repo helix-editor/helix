@@ -481,6 +481,28 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     }
 }
 
+fn file_next(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    goto_next_file_impl(cx.editor, Direction::Forward, 1);
+    Ok(())
+}
+
+fn file_previous(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    goto_next_file_impl(cx.editor, Direction::Backward, 1);
+    Ok(())
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct WriteOptions {
     pub force: bool,
@@ -2847,6 +2869,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bp", "bprev"],
         doc: "Goto previous buffer.",
         fun: buffer_previous,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "file-next",
+        aliases: &["fn"],
+        doc: "Goto next file in the current file's directory.",
+        fun: file_next,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "file-previous",
+        aliases: &["fp"],
+        doc: "Goto previous file in the current file's directory.",
+        fun: file_previous,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
