@@ -2,6 +2,7 @@ pub(crate) mod dap;
 pub(crate) mod lsp;
 pub(crate) mod syntax;
 pub(crate) mod typed;
+pub(crate) mod vte;
 
 pub use dap::*;
 use futures_util::FutureExt;
@@ -18,6 +19,7 @@ use tui::{
     widgets::Cell,
 };
 pub use typed::*;
+pub use vte::*;
 
 use helix_core::{
     char_idx_at_visual_offset,
@@ -615,6 +617,8 @@ impl MappableCommand {
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
+        toggle_terminal, "Toggle integrated terminal",
+        close_terminal, "Close active terminal",
     );
 }
 
