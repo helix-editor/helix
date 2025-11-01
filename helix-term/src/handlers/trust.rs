@@ -149,14 +149,9 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
                 .path()
                 .unwrap()
                 .to_path_buf();
-            // we use tokio::spawn because crate::job::dispatch_blocking hangs on singular file.
-            // Probably should investigate that.
-            tokio::spawn(async move {
-                crate::job::dispatch(move |_, compositor| {
-                    let dialog = trust_dialog(path);
-                    compositor.push(Box::new(dialog));
-                })
-                .await;
+            crate::job::dispatch_blocking(move |_, compositor| {
+                let dialog = trust_dialog(path);
+                compositor.push(Box::new(dialog));
             });
         }
 

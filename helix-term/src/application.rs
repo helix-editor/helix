@@ -110,6 +110,8 @@ impl Application {
 
         use helix_view::editor::Action;
 
+        // initialize jobs early incase something hooks into DocumentDidOpen and uses dispatch
+        let jobs = Jobs::new();
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = theme::Loader::new(&theme_parent_dirs);
@@ -260,7 +262,7 @@ impl Application {
             editor,
             config,
             signals,
-            jobs: Jobs::new(),
+            jobs,
             lsp_progress: LspProgressMap::new(),
             theme_mode,
         };
