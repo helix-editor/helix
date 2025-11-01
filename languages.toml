@@ -4952,3 +4952,29 @@ indent = {tab-width = 2, unit = "  "}
 [[grammar]]
 name = "bovex"
 source = { git = "https://github.com/mi2ebi/tree-sitter-bovex", rev = "de7657a9cc3525b9b77c6d268da09dad5b1346b0" }
+
+
+[[language]]
+name = "basic"
+scope = "source.basic"
+injection-regex = "basic"
+file-types = ["bas"]
+comment-token = "REM"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "basic"
+source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-basic", rev = "ab991e0986759e86b2d7d67347b6676cdfd018dd" }
+
+[[language]]
+name = "freebasic"
+scope = "source.freebasic"
+injection-regex = "freebasic"
+file-types = ["bas", "bi"]
+comment-tokens = ["'", "REM"]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "freebasic"
+source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-freebasic", rev = "d885938e6fd826cedb61e64814625e9cbc655ec4" }
+
