@@ -1,6 +1,6 @@
 use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
-use helix_loader::merge_toml_values;
+use helix_loader::{merge_toml_values, trust_db};
 use helix_view::editor::WorkspaceTrust;
 use helix_view::{document::Mode, theme};
 use serde::Deserialize;
@@ -38,6 +38,7 @@ impl Default for Config {
 #[derive(Debug)]
 pub enum ConfigLoadError {
     BadConfig(TomlError),
+    TrustDb(trust_db::SimpleDbError),
     Error(IOError),
 }
 
@@ -52,6 +53,7 @@ impl Display for ConfigLoadError {
         match self {
             ConfigLoadError::BadConfig(err) => err.fmt(f),
             ConfigLoadError::Error(err) => err.fmt(f),
+            ConfigLoadError::TrustDb(err) => err.fmt(f),
         }
     }
 }
@@ -77,7 +79,7 @@ impl Config {
             .unwrap_or_default();
         let use_local = matches!(workspace_trust, WorkspaceTrust::Always)
             || helix_loader::trust_db::is_workspace_trusted(helix_core::find_workspace().0)
-                .map_err(ConfigLoadError::Error)?
+                .map_err(ConfigLoadError::TrustDb)?
                 .unwrap_or_default();
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));

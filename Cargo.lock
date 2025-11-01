@@ -1468,6 +1468,7 @@ dependencies = [
  "once_cell",
  "serde",
  "tempfile",
+ "thiserror",
  "threadpool",
  "toml",
  "tree-house",

@@ -138,6 +138,8 @@ pub enum DocumentOpenError {
     IrregularFile,
     #[error(transparent)]
     IoError(#[from] io::Error),
+    #[error(transparent)]
+    TrustDb(#[from] trust_db::SimpleDbError),
 }
 
 pub struct Document {
