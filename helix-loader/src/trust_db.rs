@@ -3,14 +3,14 @@ use std::{
     fs::File,
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
-    sync::LazyLock,
+    sync::{LazyLock, OnceLock},
 };
 
 use fs2::FileExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{data_dir, ensure_parent_dir, is_workspace, state_dir};
-use arc_swap::ArcSwapOption;
+use arc_swap::ArcSwap;
 use std::sync::Arc;
 
 /// A simple file-backed database which is cached in memory.
@@ -18,7 +18,7 @@ use std::sync::Arc;
 /// It is optimized mostly for reading. Writing is expensive.
 struct SimpleDb<T> {
     path: PathBuf,
-    db: ArcSwapOption<T>,
+    db: OnceLock<ArcSwap<T>>,
 }
 
 impl<T: Default + DeserializeOwned + Serialize> SimpleDb<T> {
@@ -26,7 +26,7 @@ impl<T: Default + DeserializeOwned + Serialize> SimpleDb<T> {
         ensure_parent_dir(path.as_ref());
         Self {
             path: path.as_ref().to_path_buf(),
-            db: ArcSwapOption::empty(),
+            db: OnceLock::new(),
         }
     }
     fn lock(&self) -> std::io::Result<File> {
@@ -61,7 +61,8 @@ impl<T: Default + DeserializeOwned + Serialize> SimpleDb<T> {
 
     pub fn sync_cache(&self) -> std::io::Result<Arc<T>> {
         let db = Arc::new(self.read()?);
-        self.db.store(Some(Arc::clone(&db)));
+        let arc = self.db.get_or_init(|| Arc::clone(&db).into());
+        arc.store(Arc::clone(&db));
         Ok(db)
     }
 
@@ -69,12 +70,11 @@ impl<T: Default + DeserializeOwned + Serialize> SimpleDb<T> {
     where
         F: FnOnce(&T) -> R,
     {
-        if let Some(db) = self.db.load().as_ref() {
-            Ok(f(db.as_ref()))
+        if let Some(db) = self.db.get() {
+            Ok(f(db.load().as_ref()))
         } else {
             let db = self.sync_cache()?;
-            let r = f(db.as_ref());
-            Ok(r)
+            Ok(f(db.as_ref()))
         }
     }
 
@@ -82,7 +82,7 @@ impl<T: Default + DeserializeOwned + Serialize> SimpleDb<T> {
     where
         F: FnOnce(&mut T) -> R,
     {
-        let lock = self.lock()?;
+        let _lock = self.lock()?;
         let mut db = self.read()?;
         let r = f(&mut db);
         let toml_updated = toml::to_string(&db).expect("toml serialization of database failed?");
@@ -97,8 +97,9 @@ impl<T: Default + DeserializeOwned + Serialize> SimpleDb<T> {
         tmp.persist(&self.path)?;
         // we could go even further here and fsync the directory, but data loss isn't that important
 
-        drop(lock);
-        self.db.store(Some(Arc::new(db)));
+        let db = Arc::new(db);
+        let arc = self.db.get_or_init(|| Arc::clone(&db).into());
+        arc.store(db);
         Ok(r)
     }
 }
