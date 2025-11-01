@@ -594,7 +594,7 @@ impl Default for StatusLineConfig {
                 E::Spinner,
                 E::FileName,
                 E::ReadOnlyIndicator,
-                E::Restricted,
+                E::Untrusted,
                 E::FileModificationIndicator,
             ],
             center: vec![],
@@ -637,8 +637,8 @@ pub enum StatusLineElement {
     /// The editor mode (Normal, Insert, Visual/Selection)
     Mode,
 
-    /// Whether the current doc is restricted or not
-    Restricted,
+    /// Whether the current doc is untrusted or not
+    Untrusted,
 
     /// The LSP activity spinner
     Spinner,
