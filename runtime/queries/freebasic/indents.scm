@@ -1,5 +1,6 @@
 [
   (for_statement)
+  (if_statement)
   (while_statement)
   (do_statement)
   (function_declaration)
@@ -8,6 +9,7 @@
 
 [
   "NEXT"
+  "END IF"
   "WEND"
   "LOOP"
   "END FUNCTION"
