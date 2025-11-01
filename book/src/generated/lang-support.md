@@ -278,7 +278,7 @@
 | typespec | ✓ | ✓ | ✓ |  |  | `tsp-server` |
 | typst | ✓ |  |  | ✓ |  | `tinymist` |
 | ungrammar | ✓ |  |  |  |  |  |
-| unison | ✓ | ✓ | ✓ |  |  |  |
+| unison | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | uxntal | ✓ |  |  |  |  |  |
 | v | ✓ | ✓ | ✓ |  |  | `v-analyzer` |
 | vala | ✓ | ✓ |  |  |  | `vala-language-server` |
