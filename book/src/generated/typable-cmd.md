@@ -91,3 +91,6 @@
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |
+| `:trust-workspace` | Allow the usage of LSPs, debuggers, formatters and workspace config in the current workspace. |
+| `:untrust-workspace` | Disallow the usage of LSPs, debuggers, formatters and workspace config in the current workspace. |
+| `:trust-dialog` | Open up the trust dialog. You can use :trust-workspace/:untrust-workspace commands instead. |

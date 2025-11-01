@@ -110,6 +110,8 @@ impl Application {
 
         use helix_view::editor::Action;
 
+        // initialize jobs early incase something hooks into DocumentDidOpen and uses dispatch
+        let jobs = Jobs::new();
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = theme::Loader::new(&theme_parent_dirs);
@@ -260,7 +262,7 @@ impl Application {
             editor,
             config,
             signals,
-            jobs: Jobs::new(),
+            jobs,
             lsp_progress: LspProgressMap::new(),
             theme_mode,
         };
@@ -412,10 +414,11 @@ impl Application {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
 
+            let use_local_lang = doc!(self.editor).is_trusted.unwrap_or_default();
             // Update the syntax language loader before setting the theme. Setting the theme will
             // call `Loader::set_scopes` which must be done before the documents are re-parsed for
             // the sake of locals highlighting.
-            let lang_loader = helix_core::config::user_lang_loader()?;
+            let lang_loader = helix_core::config::user_lang_loader(use_local_lang)?;
             self.editor.syn_loader.store(Arc::new(lang_loader));
             Self::load_configured_theme(
                 &mut self.editor,

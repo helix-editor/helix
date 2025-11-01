@@ -8,23 +8,25 @@ pub fn default_lang_config() -> toml::Value {
 }
 
 /// User configured languages.toml file, merged with the default config.
-pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
-    let config = [
-        crate::config_dir(),
-        crate::find_workspace().0.join(".helix"),
-    ]
-    .into_iter()
-    .map(|path| path.join("languages.toml"))
-    .filter_map(|file| {
-        std::fs::read_to_string(file)
-            .map(|config| toml::from_str(&config))
-            .ok()
-    })
-    .collect::<Result<Vec<_>, _>>()?
-    .into_iter()
-    .fold(default_lang_config(), |a, b| {
-        crate::merge_toml_values(a, b, 3)
-    });
+pub fn user_lang_config(use_local: bool) -> Result<toml::Value, toml::de::Error> {
+    let mut dirs = vec![crate::config_dir()];
+    if use_local {
+        dirs.push(crate::find_workspace().0.join(".helix"));
+    }
+
+    let config = dirs
+        .into_iter()
+        .map(|path| path.join("languages.toml"))
+        .filter_map(|file| {
+            std::fs::read_to_string(file)
+                .map(|config| toml::from_str(&config))
+                .ok()
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .fold(default_lang_config(), |a, b| {
+            crate::merge_toml_values(a, b, 3)
+        });
 
     Ok(config)
 }
