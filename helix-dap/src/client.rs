@@ -231,6 +231,10 @@ impl Client {
     }
 
     fn next_request_id(&self) -> u64 {
+        // > The `seq` for the first message sent by a client or debug adapter
+        // > is 1, and for each subsequent message is 1 greater than the
+        // > previous message sent by that actor
+        // <https://microsoft.github.io/debug-adapter-protocol/specification#Base_Protocol_ProtocolMessage>
         self.request_counter.fetch_add(1, Ordering::Relaxed) + 1
     }
 
