@@ -2403,16 +2403,26 @@ impl Editor {
                     self.set_status(format!(
                         "Workspace '{}' unrestricted; LSPs, debuggers and formatters available.",
                         workspace.as_ref().display()
-                    ))
+                    ));
+
+                    let docs = self
+                        .documents_mut()
+                        .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
+                        .map(|d| {
+                            d.is_trusted = Some(true);
+                            d.id
+                        })
+                        .collect::<Vec<_>>();
+                    for doc_id in docs {
+                        self.launch_language_servers(doc_id);
+                    }
+                    self.config_events.0.send(ConfigEvent::Refresh)?;
                 } else {
                     self.set_status(format!(
                         "Workspace '{}' is already trusted.",
                         workspace.as_ref().display()
                     ));
                 }
-                self.documents_mut()
-                    .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
-                    .for_each(|d| d.is_trusted = Some(true));
             }
         }
         Ok(())
@@ -2435,15 +2445,15 @@ impl Editor {
                         "Workspace '{}' restricted; LSPs, formatters and debuggers do not work.",
                         workspace.as_ref().display()
                     ));
+                    self.documents_mut()
+                        .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
+                        .for_each(|d| d.is_trusted = Some(false));
                 } else {
                     self.set_status(format!(
                         "Workspace '{}' was already untrusted.",
                         workspace.as_ref().display()
                     ));
                 }
-                self.documents_mut()
-                    .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
-                    .for_each(|d| d.is_trusted = Some(false));
             }
         }
         Ok(())
