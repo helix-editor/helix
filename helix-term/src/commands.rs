@@ -560,6 +560,7 @@ impl MappableCommand {
         scroll_up, "Scroll view up",
         scroll_down, "Scroll view down",
         match_brackets, "Goto matching bracket",
+        extend_brackets, "Extend to matching bracket",
         surround_add, "Surround add",
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
@@ -5592,9 +5593,9 @@ fn select_all_children(cx: &mut Context) {
     cx.editor.apply_motion(motion);
 }
 
-fn match_brackets(cx: &mut Context) {
+fn match_brackets_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
-    let is_select = cx.editor.mode == Mode::Select;
+    let is_select = movement == Movement::Extend;
     let text = doc.text();
     let text_slice = text.slice(..);
 
@@ -5613,7 +5614,13 @@ fn match_brackets(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-//
+fn match_brackets(cx: &mut Context) {
+    match_brackets_impl(cx, Movement::Move);
+}
+
+fn extend_brackets(cx: &mut Context) {
+    match_brackets_impl(cx, Movement::Extend);
+}
 
 fn jump_forward(cx: &mut Context) {
     let count = cx.count();
