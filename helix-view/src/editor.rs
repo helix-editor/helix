@@ -2043,6 +2043,11 @@ impl Editor {
             let res = doc_save_future.await;
             if let Ok(event) = &res {
                 handler.file_changed(event.path.clone());
+                if event.is_newly_created {
+                    helix_event::dispatch(crate::events::FileCreated {
+                        path: event.path.clone(),
+                    })
+                }
             }
             res
         };

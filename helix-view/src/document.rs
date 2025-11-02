@@ -119,6 +119,7 @@ pub struct DocumentSavedEvent {
     pub save_time: SystemTime,
     pub doc_id: DocumentId,
     pub path: PathBuf,
+    pub is_newly_created: bool,
     pub text: Rope,
 }
 
@@ -1051,9 +1052,10 @@ impl Document {
                 ));
             }
 
+            let path_exists = path.exists();
             // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
             let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
-            let backup = if path.exists() && atomic_save {
+            let backup = if path_exists && atomic_save {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
                 // non clobbered temporary path for us we don't want
@@ -1139,6 +1141,7 @@ impl Document {
                 save_time,
                 doc_id,
                 path,
+                is_newly_created: !path_exists,
                 text: text.clone(),
             };
 

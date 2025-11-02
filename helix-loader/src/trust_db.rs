@@ -142,7 +142,7 @@ fn trust_db_file() -> PathBuf {
 
 pub fn is_workspace_trusted(path: impl AsRef<Path>) -> Result<Option<bool>> {
     let Ok(path) = path.as_ref().canonicalize() else {
-        return Ok(Some(false));
+        return Ok(None);
     };
 
     TRUST_DB.inspect(|db| db.is_workspace_trusted(path))

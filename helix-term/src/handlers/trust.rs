@@ -8,6 +8,7 @@ use anyhow::anyhow;
 use helix_stdx::env::set_current_working_dir;
 use helix_view::editor::WorkspaceTrust;
 use helix_view::events::DocumentDidOpen;
+use helix_view::events::FileCreated;
 use helix_view::handlers::Handlers;
 use helix_view::theme::Modifier;
 use helix_view::theme::Style;
@@ -136,10 +137,9 @@ fn choose_parent_dialog(path: impl AsRef<Path>, trust: bool) -> impl Component +
 pub(super) fn register_hooks(_handlers: &Handlers) {
     helix_event::register_hook!(move |event: &mut DocumentDidOpen<'_>| {
         if event.editor.config.load().workspace_trust == WorkspaceTrust::Ask
-            && event
-                .editor
-                .document(event.doc)
-                .is_some_and(|doc| doc.path().is_some() && doc.is_trusted.is_none())
+            && event.editor.document(event.doc).is_some_and(|doc| {
+                doc.path().is_some_and(|p| p.exists()) && doc.is_trusted.is_none()
+            })
         {
             // these unwraps are fine due to the above. TODO: change this to if let chains once rust is bumped to 1.88
             let path = event
@@ -155,6 +155,28 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             });
         }
 
+        Ok(())
+    });
+
+    helix_event::register_hook!(move |event: &mut FileCreated| {
+        let path = event.path.clone();
+        crate::job::dispatch_blocking(move |editor, _compositor| {
+            if !matches!(
+                editor.config().workspace_trust,
+                WorkspaceTrust::Ask | WorkspaceTrust::Manual
+            ) {
+                return;
+            }
+            if let Some(doc) = editor.document_by_path(&path) {
+                if doc.is_trusted.is_none() {
+                    if let Err(e) = editor.trust_workspace(path) {
+                        editor.set_error(format!(
+                            "Couldn't trust file: {e}; use :trust-workspace to trust it"
+                        ))
+                    }
+                }
+            }
+        });
         Ok(())
     });
 }
