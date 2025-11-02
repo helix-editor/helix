@@ -26,19 +26,23 @@ use helix_core::{
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
-    graphemes::{self, next_grapheme_boundary},
+    graphemes::{
+        self, next_folded_grapheme_boundary, next_grapheme_boundary, prev_folded_grapheme_boundary,
+        prev_grapheme_boundary,
+    },
     history::UndoKind,
     increment,
     indent::{self, IndentStyle},
-    line_ending::{get_line_ending_of_str, line_end_char_index},
+    line_ending::{get_line_ending_of_str, line_end_char_index, rope_is_line_ending},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    search::{self, CharMatcher},
+    search::{self, GraphemeMatcher},
     selection, surround,
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
+    text_folding::{self, RopeSliceFoldExt},
     textobject,
     unicode::width::UnicodeWidthChar,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
@@ -615,6 +619,9 @@ impl MappableCommand {
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
+        fold, "Fold text objects",
+        unfold, "Unfold text objects",
+        toggle_fold, "Toggle fold for the text object at the primary cursor",
     );
 }
 
@@ -1179,16 +1186,17 @@ fn goto_window_bottom(cx: &mut Context) {
 
 fn move_word_impl<F>(cx: &mut Context, move_fn: F)
 where
-    F: Fn(RopeSlice, Range, usize) -> Range,
+    F: Fn(RopeSlice, &TextAnnotations, Range, usize) -> Range,
 {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
+    let annotations = view.text_annotations(doc, None);
 
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| move_fn(text, range, count));
+        .transform(move |range| move_fn(text, &annotations, range, count));
     doc.set_selection(view.id, selection);
 }
 
@@ -1242,12 +1250,13 @@ fn move_next_sub_word_end(cx: &mut Context) {
 
 fn goto_para_impl<F>(cx: &mut Context, move_fn: F)
 where
-    F: Fn(RopeSlice, Range, usize, Movement) -> Range + 'static,
+    F: Fn(RopeSlice, &TextAnnotations, Range, usize, Movement) -> Range + 'static,
 {
     let count = cx.count();
     let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
         let text = doc.text().slice(..);
+        let annotations = view.text_annotations(doc, None);
         let behavior = if editor.mode == Mode::Select {
             Movement::Extend
         } else {
@@ -1257,7 +1266,9 @@ where
         let selection = doc
             .selection(view.id)
             .clone()
-            .transform(|range| move_fn(text, range, count, behavior));
+            .transform(|range| move_fn(text, &annotations, range, count, behavior));
+
+        drop(annotations);
         doc.set_selection(view.id, selection);
     };
     cx.editor.apply_motion(motion)
@@ -1424,17 +1435,20 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
 where
-    F: Fn(RopeSlice, Range, usize) -> Range,
+    F: Fn(RopeSlice, &TextAnnotations, Range, usize) -> Range,
 {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
+    let annotations = view.text_annotations(doc, None);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = extend_fn(text, range, count);
+        let word = extend_fn(text, &annotations, range, count);
         let pos = word.cursor(text);
         range.put_cursor(text, pos, true)
     });
+
+    drop(annotations);
     doc.set_selection(view.id, selection);
 }
 
@@ -1486,135 +1500,70 @@ fn extend_next_sub_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_sub_word_end)
 }
 
-/// Separate branch to find_char designed only for `<ret>` char.
-//
-// This is necessary because the one document can have different line endings inside. And we
-// cannot predict what character to find when <ret> is pressed. On the current line it can be `lf`
-// but on the next line it can be `crlf`. That's why [`find_char_impl`] cannot be applied here.
-fn find_char_line_ending(
-    cx: &mut Context,
-    count: usize,
-    direction: Direction,
-    inclusive: bool,
-    extend: bool,
-) {
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let cursor = range.cursor(text);
-        let cursor_line = range.cursor_line(text);
-
-        // Finding the line where we're going to find <ret>. Depends mostly on
-        // `count`, but also takes into account edge cases where we're already at the end
-        // of a line or the beginning of a line
-        let find_on_line = match direction {
-            Direction::Forward => {
-                let on_edge = line_end_char_index(&text, cursor_line) == cursor;
-                let line = cursor_line + count - 1 + (on_edge as usize);
-                if line >= text.len_lines() - 1 {
-                    return range;
-                } else {
-                    line
-                }
-            }
-            Direction::Backward => {
-                let on_edge = text.line_to_char(cursor_line) == cursor && !inclusive;
-                let line = cursor_line as isize - (count as isize - 1 + on_edge as isize);
-                if line <= 0 {
-                    return range;
-                } else {
-                    line as usize
-                }
-            }
-        };
-
-        let pos = match (direction, inclusive) {
-            (Direction::Forward, true) => line_end_char_index(&text, find_on_line),
-            (Direction::Forward, false) => line_end_char_index(&text, find_on_line) - 1,
-            (Direction::Backward, true) => line_end_char_index(&text, find_on_line - 1),
-            (Direction::Backward, false) => text.line_to_char(find_on_line),
-        };
-
-        if extend {
-            range.put_cursor(text, pos, true)
-        } else {
-            Range::point(range.cursor(text)).put_cursor(text, pos, true)
-        }
-    });
-    doc.set_selection(view.id, selection);
-}
-
 fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
 
     // need to wait for next key
-    // TODO: should this be done by grapheme rather than char?  For example,
-    // we can't properly handle the line-ending CRLF case here in terms of char.
     cx.on_next_key(move |cx, event| {
-        let ch = match event {
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
-                find_char_line_ending(cx, count, direction, inclusive, extend);
-                return;
-            }
-
-            KeyEvent {
-                code: KeyCode::Tab, ..
-            } => '\t',
-
-            KeyEvent {
-                code: KeyCode::Char(ch),
-                ..
-            } => ch,
-            _ => return,
-        };
         let motion = move |editor: &mut Editor| {
-            match direction {
-                Direction::Forward => {
-                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
-                }
-                Direction::Backward => {
-                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
-                }
-            };
+            macro_rules! find_char_impl {
+                ($matcher:expr) => {{
+                    let search_fn = match direction {
+                        Direction::Forward => find_next_char_impl,
+                        Direction::Backward => find_prev_char_impl,
+                    };
+                    find_char_impl(editor, &search_fn, inclusive, extend, $matcher, count)
+                }};
+            }
+            match event {
+                KeyEvent {
+                    code: KeyCode::Enter,
+                    ..
+                } => find_char_impl!(rope_is_line_ending),
+
+                KeyEvent {
+                    code: KeyCode::Tab, ..
+                } => find_char_impl!('\t'),
+
+                KeyEvent {
+                    code: KeyCode::Char(ch),
+                    ..
+                } => find_char_impl!(ch),
+                _ => (),
+            }
         };
 
         cx.editor.apply_motion(motion);
     })
 }
 
-//
-
 #[inline]
-fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
+fn find_char_impl<F, M: GraphemeMatcher + Copy>(
     editor: &mut Editor,
     search_fn: &F,
     inclusive: bool,
     extend: bool,
-    char_matcher: M,
+    matcher: M,
     count: usize,
 ) where
-    F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
+    F: Fn(RopeSlice, &TextAnnotations, M, usize, usize, bool) -> Option<usize> + 'static,
 {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
+    let annotations = view.text_annotations(doc, None);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-        // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-        // here, but just in terms of chars instead.
-        let search_start_pos = if range.anchor < range.head {
-            range.head - 1
-        } else {
-            range.head
-        };
-
-        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
+        search_fn(
+            text,
+            &annotations,
+            matcher,
+            range.cursor(text),
+            count,
+            inclusive,
+        )
+        .map_or(range, |pos| {
             if extend {
                 range.put_cursor(text, pos, true)
             } else {
@@ -1622,43 +1571,53 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
             }
         })
     });
+    drop(annotations);
     doc.set_selection(view.id, selection);
 }
 
 fn find_next_char_impl(
     text: RopeSlice,
-    ch: char,
+    annotations: &TextAnnotations,
+    matcher: impl GraphemeMatcher,
     pos: usize,
     n: usize,
     inclusive: bool,
 ) -> Option<usize> {
-    let pos = (pos + 1).min(text.len_chars());
     if inclusive {
-        search::find_nth_next(text, ch, pos, n)
+        search::find_folded_nth_next(text, &annotations.folds, matcher, pos, n)
     } else {
-        let n = match text.get_char(pos) {
-            Some(next_ch) if next_ch == ch => n + 1,
+        let n = match text
+            .folded_graphemes_at(&annotations.folds, text.char_to_byte(pos))
+            .nth(1)
+        {
+            Some(g) if matcher.grapheme_match(g) => n + 1,
             _ => n,
         };
-        search::find_nth_next(text, ch, pos, n).map(|n| n.saturating_sub(1))
+        search::find_folded_nth_next(text, &annotations.folds, matcher, pos, n)
+            .map(|idx| prev_folded_grapheme_boundary(text, &annotations.folds, idx))
     }
 }
 
 fn find_prev_char_impl(
     text: RopeSlice,
-    ch: char,
+    annotations: &TextAnnotations,
+    matcher: impl GraphemeMatcher,
     pos: usize,
     n: usize,
     inclusive: bool,
 ) -> Option<usize> {
     if inclusive {
-        search::find_nth_prev(text, ch, pos, n)
+        search::find_folded_nth_prev(text, &annotations.folds, matcher, pos, n)
     } else {
-        let n = match text.get_char(pos.saturating_sub(1)) {
-            Some(next_ch) if next_ch == ch => n + 1,
+        let n = match text
+            .folded_graphemes_at(&annotations.folds, text.char_to_byte(pos))
+            .prev()
+        {
+            Some(g) if matcher.grapheme_match(g) => n + 1,
             _ => n,
         };
-        search::find_nth_prev(text, ch, pos, n).map(|n| (n + 1).min(text.len_chars()))
+        search::find_folded_nth_prev(text, &annotations.folds, matcher, pos, n)
+            .map(|idx| next_folded_grapheme_boundary(text, &annotations.folds, idx))
     }
 }
 
@@ -2704,6 +2663,7 @@ fn extend_line_above(cx: &mut Context) {
 fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
+    let annotations = view.fold_annotations(doc);
 
     let text = doc.text();
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -2718,18 +2678,48 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
         // extend to previous/next line if current line is selected
         let (anchor, head) = if range.from() == start && range.to() == end {
             match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count))),
+                Extend::Above => (
+                    end,
+                    text.line_to_char(text.slice(..).nth_prev_folded_line(
+                        &annotations,
+                        start_line,
+                        count,
+                    )),
+                ),
                 Extend::Below => (
                     start,
-                    text.line_to_char((end_line + count + 1).min(text.len_lines())),
+                    text.line_to_char({
+                        let mut idx =
+                            text.slice(..)
+                                .nth_next_folded_line(&annotations, end_line, count);
+                        if idx < text.len_lines() {
+                            idx += 1;
+                        }
+                        idx
+                    }),
                 ),
             }
         } else {
             match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count - 1))),
+                Extend::Above => (
+                    end,
+                    text.line_to_char(text.slice(..).nth_prev_folded_line(
+                        &annotations,
+                        start_line,
+                        count - 1,
+                    )),
+                ),
                 Extend::Below => (
                     start,
-                    text.line_to_char((end_line + count).min(text.len_lines())),
+                    text.line_to_char({
+                        let mut idx =
+                            text.slice(..)
+                                .nth_next_folded_line(&annotations, end_line, count - 1);
+                        if idx < text.len_lines() {
+                            idx += 1;
+                        }
+                        idx
+                    }),
                 ),
             }
         };
@@ -3633,7 +3623,7 @@ async fn make_format_callback(
     Ok(call)
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Open {
     Below,
     Above,
@@ -3651,6 +3641,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let loader = cx.editor.syn_loader.load();
+    let mut annotations = view.text_annotations(doc, None);
 
     let text = doc.text().slice(..);
     let contents = doc.text();
@@ -3668,6 +3659,33 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
         };
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
+        // if open is Below and next line is folded,
+        // move the range to the next visible line, and open Above
+        let (range, open) = (open == Open::Below)
+            .then(|| {
+                let next_line_is_folded = {
+                    let next_line = text.char_to_line(prev_grapheme_boundary(text, range.to())) + 1;
+                    annotations
+                        .folds
+                        .superest_fold_containing(next_line, |fold| fold.start.line..=fold.end.line)
+                        .is_some()
+                };
+
+                next_line_is_folded.then(|| {
+                    move_vertically(
+                        text,
+                        *range,
+                        Direction::Forward,
+                        1,
+                        Movement::Move,
+                        &TextFormat::default(),
+                        &mut annotations,
+                    )
+                })
+            })
+            .flatten()
+            .map_or((*range, open), |range| (range, Open::Above));
+
         // the line number, where the cursor is currently
         let curr_line_num = text.char_to_line(match open {
             Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
@@ -3759,6 +3777,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             Some(text.into()),
         )
     });
+    drop(annotations);
 
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
@@ -3835,12 +3854,22 @@ fn extend_to_last_line(cx: &mut Context) {
 fn goto_last_line_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    let line_idx = if text.line(text.len_lines() - 1).len_chars() == 0 {
-        // If the last line is blank, don't jump to it.
-        text.len_lines().saturating_sub(2)
+    let annotations = &view.fold_annotations(doc);
+
+    let last_visible_line = if let Some(fold) = annotations
+        .superest_fold_containing(text.len_lines(), |fold| fold.start.line..=fold.end.line)
+    {
+        fold.start.line - 1
     } else {
-        text.len_lines() - 1
+        text.len_lines().saturating_sub(1)
     };
+
+    let line_idx = if text.line(last_visible_line).len_chars() == 0 {
+        text.prev_folded_line(annotations, last_visible_line)
+    } else {
+        last_visible_line
+    };
+
     let pos = text.line_to_char(line_idx);
     let selection = doc
         .selection(view.id)
@@ -4502,7 +4531,13 @@ pub mod insert {
         delete_by_selection_insert_mode(
             cx,
             |text, range| {
-                let anchor = movement::move_prev_word_start(text, *range, count).from();
+                let anchor = movement::move_prev_word_start(
+                    text,
+                    &TextAnnotations::default(),
+                    *range,
+                    count,
+                )
+                .from();
                 let next = Range::new(anchor, range.cursor(text));
                 let range = exclude_cursor(text, next, *range);
                 (range.from(), range.to())
@@ -4516,7 +4551,9 @@ pub mod insert {
         delete_by_selection_insert_mode(
             cx,
             |text, range| {
-                let head = movement::move_next_word_end(text, *range, count).to();
+                let head =
+                    movement::move_next_word_end(text, &TextAnnotations::default(), *range, count)
+                        .to();
                 (range.cursor(text), head)
             },
             Direction::Forward,
@@ -4736,6 +4773,7 @@ fn paste_impl(
 
     let text = doc.text();
     let selection = doc.selection(view.id);
+    let annotations = view.fold_annotations(doc);
 
     let mut offset = 0;
     let mut ranges = SmallVec::with_capacity(selection.len());
@@ -4747,12 +4785,15 @@ fn paste_impl(
             // paste linewise after
             (Paste::After, true) => {
                 let line = range.line_range(text.slice(..)).1;
-                text.line_to_char((line + 1).min(text.len_lines()))
+                text.line_to_char(text.slice(..).next_folded_line(&annotations, line))
             }
             // paste insert
             (Paste::Before, false) => range.from(),
             // paste append
-            (Paste::After, false) => range.to(),
+            (Paste::After, false) => text.slice(..).next_folded_char(
+                &annotations,
+                prev_grapheme_boundary(text.slice(..), range.to()),
+            ),
             // paste at cursor
             (Paste::Cursor, _) => range.cursor(text.slice(..)),
         };
@@ -5717,11 +5758,15 @@ fn split(editor: &mut Editor, action: Action) {
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
     let offset = doc.view_offset(view.id);
+    let container = doc.fold_container(view.id).cloned();
 
     editor.switch(id, action);
 
     // match the selection in the previous view
     let (view, doc) = current!(editor);
+    if let Some(container) = container {
+        doc.insert_fold_container(view.id, container);
+    }
     doc.set_selection(view.id, selection);
     // match the view scroll offset (switch doesn't handle this fully
     // since the selection is only matched after the split)
@@ -5901,10 +5946,19 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             let root = syntax.tree().root_node();
+            let annotations = view.text_annotations(doc, None);
 
             let selection = doc.selection(view.id).clone().transform(|range| {
                 let new_range = movement::goto_treesitter_object(
-                    text, range, object, direction, &root, syntax, &loader, count,
+                    text,
+                    &annotations,
+                    range,
+                    object,
+                    direction,
+                    &root,
+                    syntax,
+                    &loader,
+                    count,
                 );
 
                 if editor.mode == Mode::Select {
@@ -5919,6 +5973,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
                     new_range.with_direction(direction)
                 }
             });
+            drop(annotations);
 
             push_jump(view, doc);
             doc.set_selection(view.id, selection);
@@ -6825,31 +6880,28 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     // Calculate the jump candidates: ranges for any visible words with two or
     // more characters.
     let alphabet = &cx.editor.config().jump_label_alphabet;
-    if alphabet.is_empty() {
-        return;
-    }
-
     let jump_label_limit = alphabet.len() * alphabet.len();
     let mut words = Vec::with_capacity(jump_label_limit);
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text().slice(..);
+    let annotations = view.text_annotations(doc, None);
 
     // This is not necessarily exact if there is virtual text like soft wrap.
     // It's ok though because the extra jump labels will not be rendered.
     let start = text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor));
-    let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
+    let end = text.line_to_char(view.estimate_last_doc_line(&annotations, doc) + 1);
 
     let primary_selection = doc.selection(view.id).primary();
     let cursor = primary_selection.cursor(text);
     let mut cursor_fwd = Range::point(cursor);
     let mut cursor_rev = Range::point(cursor);
     if text.get_char(cursor).is_some_and(|c| !c.is_whitespace()) {
-        let cursor_word_end = movement::move_next_word_end(text, cursor_fwd, 1);
+        let cursor_word_end = movement::move_next_word_end(text, &annotations, cursor_fwd, 1);
         //  single grapheme words need a special case
         if cursor_word_end.anchor == cursor {
             cursor_fwd = cursor_word_end;
         }
-        let cursor_word_start = movement::move_prev_word_start(text, cursor_rev, 1);
+        let cursor_word_start = movement::move_prev_word_start(text, &annotations, cursor_rev, 1);
         if cursor_word_start.anchor == next_grapheme_boundary(text, cursor) {
             cursor_rev = cursor_word_start;
         }
@@ -6857,7 +6909,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     'outer: loop {
         let mut changed = false;
         while cursor_fwd.head < end {
-            cursor_fwd = movement::move_next_word_end(text, cursor_fwd, 1);
+            cursor_fwd = movement::move_next_word_end(text, &annotations, cursor_fwd, 1);
             // The cursor is on a word that is atleast two graphemes long and
             // madeup of word characters. The latter condition is needed because
             // move_next_word_end simply treats a sequence of characters from
@@ -6885,7 +6937,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             break;
         }
         while cursor_rev.head > start {
-            cursor_rev = movement::move_prev_word_start(text, cursor_rev, 1);
+            cursor_rev = movement::move_prev_word_start(text, &annotations, cursor_rev, 1);
             // The cursor is on a word that is atleast two graphemes long and
             // madeup of word characters. The latter condition is needed because
             // move_prev_word_start simply treats a sequence of characters from
@@ -6916,6 +6968,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             break;
         }
     }
+    drop(annotations);
     jump_to_label(cx, words, behaviour)
 }
 
@@ -6948,4 +7001,130 @@ fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
     } else {
         syntax_workspace_symbol_picker(cx);
     }
+}
+
+fn fold(cx: &mut Context) {
+    let command: MappableCommand = ":fold --all".parse().unwrap();
+    command.execute(cx);
+}
+
+fn unfold(cx: &mut Context) {
+    let command: MappableCommand = ":unfold --all".parse().unwrap();
+    command.execute(cx);
+}
+
+fn toggle_fold(cx: &mut Context) {
+    use graphemes::ensure_grapheme_boundary_prev;
+    use text_folding::{Fold, FoldObject};
+
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let loader = cx.editor.syn_loader.load();
+
+    let Some(syntax) = doc.syntax() else {
+        cx.editor
+            .set_error("Syntax is unavailable in the current buffer.");
+        return;
+    };
+
+    let Some(textobject_query) = loader.textobject_query(syntax.root_language()) else {
+        cx.editor.set_error("Failed to compile text object query.");
+        return;
+    };
+
+    let textobjects = &["class.around", "function.around", "comment.around"];
+    let root_node = syntax.tree().root_node();
+
+    // search for a textobject at the cursor
+    let Some((capture_name, node_range)) = textobject_query
+        .capture_nodes_all(textobjects, &root_node, text)
+        .map(|(cap, node)| (cap.name(textobject_query.query()), node.byte_range()))
+        .filter(|(_, range)| range.contains(&text.char_to_byte(cursor)))
+        .min_by_key(|(_, range)| range.len())
+        .map(|(cap, range)| {
+            (cap, {
+                let start = text.byte_to_char(range.start);
+                let end = ensure_grapheme_boundary_prev(text, text.byte_to_char(range.end - 1));
+                start..=end
+            })
+        })
+    else {
+        cx.editor
+            .set_status("There is no text object at the cursor.");
+        return;
+    };
+
+    let object = {
+        let textobject = match capture_name {
+            "class.around" => "class",
+            "function.around" => "function",
+            "comment.around" => "comment",
+            other => unreachable!("Unexpected textobject {other}"),
+        };
+        FoldObject::TextObject(textobject)
+    };
+
+    let fold = doc.fold_container(view.id).and_then(|container| {
+        container.find(&object, &node_range, |fold| fold.header()..=fold.end.target)
+    });
+    if let Some(fold) = fold {
+        doc.remove_folds(view, vec![fold.start_idx()]);
+        return;
+    }
+
+    let header = *node_range.start();
+    let target = {
+        match capture_name {
+            "class.around" | "function.around" => {
+                let capture = match capture_name {
+                    "class.around" => "class.inside",
+                    "function.around" => "function.inside",
+                    _ => unreachable!(),
+                };
+                let byte_range = {
+                    let start = text.char_to_byte(*node_range.start());
+                    let end = text.char_to_byte(next_grapheme_boundary(text, *node_range.end()));
+                    start..end
+                };
+                let node = syntax
+                    .descendant_for_byte_range(byte_range.start as u32, byte_range.end as u32)
+                    .expect("The range must belong to the captured node.");
+                let Some(target) = || -> Option<_> {
+                    textobject_query
+                        .capture_nodes(capture, &node, text)?
+                        .next()
+                        .map(|cap_node| {
+                            let start = text.byte_to_char(cap_node.start_byte());
+                            let end = ensure_grapheme_boundary_prev(
+                                text,
+                                text.byte_to_char(cap_node.end_byte() - 1),
+                            );
+                            start..=end
+                        })
+                }() else {
+                    return;
+                };
+                target
+            }
+            "comment.around" => {
+                let start_line = text.char_to_line(*node_range.start());
+                let end_line = text.char_to_line(*node_range.end());
+                if start_line >= end_line {
+                    cx.editor.set_status("One-line comment does not fold.");
+                    return;
+                }
+                let start = text.line_to_char(start_line + 1)
+                    + text
+                        .line(start_line + 1)
+                        .first_non_whitespace_char()
+                        .unwrap_or(0);
+                start..=*node_range.end()
+            }
+            other => unreachable!("Unexpected textobject {other}"),
+        }
+    };
+
+    let new_fold = Fold::new_points(text, object, header, &target);
+    doc.add_folds(view, vec![new_fold]);
 }

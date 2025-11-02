@@ -8,7 +8,9 @@ use crate::{
     ui::{
         document::{render_document, LinePos, TextRenderer},
         statusline,
-        text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
+        text_decorations::{
+            self, Decoration, DecorationManager, FoldDecoration, InlineDiagnostics,
+        },
         Completion, ProgressSpinners,
     },
 };
@@ -19,6 +21,7 @@ use helix_core::{
     movement::Direction,
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
+    text_folding::RopeSliceFoldExt,
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
@@ -98,6 +101,8 @@ impl EditorView {
             decorations.add_decoration(Self::cursorline(doc, view, theme));
         }
 
+        decorations.add_decoration(FoldDecoration::new(&text_annotations, theme));
+
         if is_focused && config.cursorcolumn {
             Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
         }
@@ -116,8 +121,13 @@ impl EditorView {
             decorations.add_decoration(line_decoration);
         }
 
-        let syntax_highlighter =
-            Self::doc_syntax_highlighter(doc, view_offset.anchor, inner.height, &loader);
+        let syntax_highlighter = Self::doc_syntax_highlighter(
+            doc,
+            &text_annotations,
+            view_offset.anchor,
+            inner.height,
+            &loader,
+        );
         let mut overlays = Vec::new();
 
         overlays.push(Self::overlay_syntax_highlights(
@@ -132,9 +142,14 @@ impl EditorView {
             .and_then(|config| config.rainbow_brackets)
             .unwrap_or(config.rainbow_brackets)
         {
-            if let Some(overlay) =
-                Self::doc_rainbow_highlights(doc, view_offset.anchor, inner.height, theme, &loader)
-            {
+            if let Some(overlay) = Self::doc_rainbow_highlights(
+                doc,
+                &text_annotations,
+                view_offset.anchor,
+                inner.height,
+                theme,
+                &loader,
+            ) {
                 overlays.push(overlay);
             }
         }
@@ -269,13 +284,16 @@ impl EditorView {
 
     fn viewport_byte_range(
         text: helix_core::RopeSlice,
+        annotations: &TextAnnotations,
         row: usize,
         height: u16,
     ) -> std::ops::Range<usize> {
         // Calculate viewport byte ranges:
         // Saturating subs to make it inclusive zero indexing.
         let last_line = text.len_lines().saturating_sub(1);
-        let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+        let last_visible_line = text
+            .nth_next_folded_line(&annotations.folds, row, (height as usize).saturating_sub(1))
+            .min(last_line);
         let start = text.line_to_byte(row.min(last_line));
         let end = text.line_to_byte(last_visible_line + 1);
 
@@ -287,6 +305,7 @@ impl EditorView {
     /// directly to enable rendering syntax highlighted docs anywhere (eg. picker preview)
     pub fn doc_syntax_highlighter<'editor>(
         doc: &'editor Document,
+        annotations: &TextAnnotations,
         anchor: usize,
         height: u16,
         loader: &'editor syntax::Loader,
@@ -294,7 +313,7 @@ impl EditorView {
         let syntax = doc.syntax()?;
         let text = doc.text().slice(..);
         let row = text.char_to_line(anchor.min(text.len_chars()));
-        let range = Self::viewport_byte_range(text, row, height);
+        let range = Self::viewport_byte_range(text, annotations, row, height);
         let range = range.start as u32..range.end as u32;
 
         let highlighter = syntax.highlighter(text, loader, range);
@@ -310,7 +329,7 @@ impl EditorView {
         let text = doc.text().slice(..);
         let row = text.char_to_line(anchor.min(text.len_chars()));
 
-        let mut range = Self::viewport_byte_range(text, row, height);
+        let mut range = Self::viewport_byte_range(text, text_annotations, row, height);
         range = text.byte_to_char(range.start)..text.byte_to_char(range.end);
 
         text_annotations.collect_overlay_highlights(range)
@@ -318,6 +337,7 @@ impl EditorView {
 
     pub fn doc_rainbow_highlights(
         doc: &Document,
+        annotations: &TextAnnotations,
         anchor: usize,
         height: u16,
         theme: &Theme,
@@ -326,7 +346,7 @@ impl EditorView {
         let syntax = doc.syntax()?;
         let text = doc.text().slice(..);
         let row = text.char_to_line(anchor.min(text.len_chars()));
-        let visible_range = Self::viewport_byte_range(text, row, height);
+        let visible_range = Self::viewport_byte_range(text, annotations, row, height);
         let start = syntax::child_for_byte_range(
             &syntax.tree().root_node(),
             visible_range.start as u32..visible_range.end as u32,
