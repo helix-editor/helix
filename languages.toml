@@ -26,6 +26,7 @@ clangd = { command = "clangd" }
 clojure-lsp = { command = "clojure-lsp" }
 cmake-language-server = { command = "cmake-language-server" }
 codeql = { command = "codeql", args = ["execute", "language-server", "--check-errors=ON_CHANGE"] }
+commit-lsp = { command = "commit-lsp", args = ["run"] }
 crystalline = { command = "crystalline", args = ["--stdio"] }
 cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
 csharp-ls = { command = "csharp-ls" }
@@ -2010,6 +2011,7 @@ indent = { tab-width = 4, unit = "    " }
 rulers = [51, 73]
 text-width = 72
 grammar = "gitcommit"
+language-servers = [ "commit-lsp" ]
 
 [[grammar]]
 name = "gitcommit"
