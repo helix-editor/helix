@@ -1848,6 +1848,56 @@ fn tree_sitter_highlight_name(
     Ok(())
 }
 
+fn tree_sitter_layers(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current_ref!(cx.editor);
+    let Some(syntax) = doc.syntax() else {
+        bail!("Syntax information is not available");
+    };
+
+    let loader = cx.editor.syn_loader.load();
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let byte = text.char_to_byte(cursor) as u32;
+    let languages =
+        syntax
+            .layers_for_byte_range(byte, byte)
+            .fold(String::new(), |mut acc, layer| {
+                if !acc.is_empty() {
+                    acc.push_str(", ");
+                }
+                acc.push_str(
+                    &loader
+                        .language(syntax.layer(layer).language)
+                        .config()
+                        .language_id,
+                );
+                acc
+            });
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let content = ui::Markdown::new(languages, editor.syn_loader.clone());
+                let popup = Popup::new("hover", content).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn vsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -3357,6 +3407,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Display name of tree-sitter highlight scope under the cursor.",
         fun: tree_sitter_highlight_name,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "tree-sitter-layers",
+        aliases: &[],
+        doc: "Display language names of tree-sitter injection layers under the cursor.",
+        fun: tree_sitter_layers,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
