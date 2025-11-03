@@ -7,7 +7,9 @@ use helix_lsp::LanguageServerId;
 use crate::{editor::Config, Document, DocumentId, Editor, ViewId};
 
 events! {
-    FileCreated {
+    FileCreated<'a> {
+        editor: &'a mut Editor,
+        doc: DocumentId,
         path: PathBuf
     }
     DocumentDidOpen<'a> {

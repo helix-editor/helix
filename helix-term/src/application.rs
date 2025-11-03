@@ -11,6 +11,7 @@ use helix_view::{
     align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
     editor::{ConfigEvent, EditorEvent},
+    events::FileCreated,
     graphics::Rect,
     theme,
     tree::Layout,
@@ -605,6 +606,14 @@ impl Application {
         );
 
         doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
+
+        if doc_save_event.is_newly_created {
+            helix_event::dispatch(FileCreated {
+                editor: &mut self.editor,
+                doc: doc_save_event.doc_id,
+                path: doc_save_event.path.clone(),
+            })
+        }
 
         let lines = doc_save_event.text.len_lines();
         let size = doc_save_event.text.len_bytes();

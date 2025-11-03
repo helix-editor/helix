@@ -158,25 +158,22 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         Ok(())
     });
 
-    helix_event::register_hook!(move |event: &mut FileCreated| {
-        let path = event.path.clone();
-        crate::job::dispatch_blocking(move |editor, _compositor| {
-            if !matches!(
-                editor.config().workspace_trust,
-                WorkspaceTrust::Ask | WorkspaceTrust::Manual
-            ) {
-                return;
-            }
-            if let Some(doc) = editor.document_by_path(&path) {
-                if doc.is_trusted.is_none() {
-                    if let Err(e) = editor.trust_workspace(path) {
-                        editor.set_error(format!(
-                            "Couldn't trust file: {e}; use :trust-workspace to trust it"
-                        ))
-                    }
+    helix_event::register_hook!(move |event: &mut FileCreated<'_>| {
+        if !matches!(
+            event.editor.config().workspace_trust,
+            WorkspaceTrust::Ask | WorkspaceTrust::Manual
+        ) {
+            return Ok(());
+        }
+        if let Some(doc) = event.editor.document_by_path(&event.path) {
+            if doc.is_trusted.is_none() {
+                if let Err(e) = event.editor.trust_workspace(&event.path) {
+                    event.editor.set_error(format!(
+                        "Couldn't trust file: {e}; use :trust-workspace to trust it"
+                    ))
                 }
             }
-        });
+        }
         Ok(())
     });
 }
