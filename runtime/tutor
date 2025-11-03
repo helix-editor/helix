@@ -1294,7 +1294,7 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=                CHAPTER 13.1 CREATE NEW SPLIT                  =
+=                     13.1 CREATE NEW SPLIT                     =
 =================================================================
 
  In Normal mode, press Ctrl-w to open the Window menu, which displays
@@ -1315,7 +1315,7 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=                CHAPTER 13.2 MOVE BETWEEN SPLITS               =
+=                    13.2 MOVE BETWEEN SPLITS                   =
 =================================================================
 
  Use Ctrl-w k to move to the split above your current split. Use
@@ -1338,7 +1338,7 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=               CHAPTER 13.3 SPLIT CURRENT BUFFER               =
+=                   13.3 SPLIT CURRENT BUFFER                   =
 =================================================================
 
  Use Ctrl-w s to split the view of the current buffer horizontally
@@ -1350,7 +1350,7 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=               CHAPTER 13.4 USE COMMANDS TO SPLIT              =
+=                   13.4 USE COMMANDS TO SPLIT                  =
 =================================================================
 
  The :vsplit (or :vs for short) and :hsplit (or :hs) commands can
@@ -1373,7 +1373,7 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=                  CHAPTER 13.5 SWAPPING SPLITS                 =
+=                      13.5 SWAPPING SPLITS                     =
 =================================================================
 
  Open a split on the left with :vs hello1 and then a split below
@@ -1393,7 +1393,7 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=                CHAPTER 13.6 TRANSPOSE SPLITS                  =
+=                    13.6 TRANSPOSE SPLITS                      =
 =================================================================
 
  Open a split on the left with :vs hello1 and then a split below
@@ -1415,7 +1415,7 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=             CHAPTER 13.7 OPEN SPLIT FROM FILEPICKER           =
+=                 13.7 OPEN SPLIT FROM FILEPICKER               =
 =================================================================
 
  Splits can also be opened directly from the file picker. Press
