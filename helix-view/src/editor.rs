@@ -2397,7 +2397,12 @@ impl Editor {
 
     pub fn trust_workspace(&mut self, workspace: impl AsRef<Path>) -> anyhow::Result<()> {
         // we need to canonicalize since doc paths are canonicalized by default
-        let workspace = helix_stdx::path::canonicalize(workspace);
+        let Ok(workspace) = workspace.as_ref().canonicalize() else {
+            bail!(
+                "Cannot trust '{}' since it does not exist",
+                workspace.as_ref().display()
+            )
+        };
         match trust_db::trust_path(&workspace) {
             Err(e) => bail!("Couldn't edit trust database: {e}"),
             Ok(is_new_entry) => {
@@ -2440,7 +2445,12 @@ impl Editor {
 
     pub fn untrust_workspace(&mut self, workspace: impl AsRef<Path>) -> anyhow::Result<()> {
         // we need to canonicalize since doc paths are canonicalized by default
-        let workspace = helix_stdx::path::canonicalize(workspace);
+        let Ok(workspace) = workspace.as_ref().canonicalize() else {
+            bail!(
+                "Cannot trust '{}' since it does not exist",
+                workspace.as_ref().display()
+            )
+        };
         match trust_db::untrust_path(&workspace) {
             Err(e) => bail!("Couldn't edit trust database: {e}"),
             Ok(was_removed) => {
