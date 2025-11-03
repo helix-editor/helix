@@ -1862,7 +1862,7 @@ fn tree_sitter_layers(
         bail!("Syntax information is not available");
     };
 
-    let loader = cx.editor.syn_loader.load();
+    let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
     let text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(text);
     let byte = text.char_to_byte(cursor) as u32;
