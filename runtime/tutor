@@ -752,7 +752,7 @@ lines.
  3. Move to the third line and type < to unindent it.
 
  --> These lines
-    are indented
+   are indented
          very poorly.
 
      These lines
