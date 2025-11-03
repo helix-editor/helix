@@ -89,6 +89,8 @@
 | `:redraw` | Clear and re-render the whole UI |
 | `:move`, `:mv` | Move the current buffer and its corresponding file to a different path |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
+| `:yank-path` | Yank the path of the current document to register, or clipboard by default |
+| `:yank-path-relative` | Yank the path of the current document relative to the working directory to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |

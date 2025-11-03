@@ -2676,6 +2676,66 @@ fn yank_diagnostic(
     Ok(())
 }
 
+fn yank_path(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let reg = match args.first() {
+        Some(s) => {
+            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+            s.chars().next().unwrap()
+        }
+        None => '+',
+    };
+
+    let doc = doc!(cx.editor);
+    let path = doc.path();
+
+    if path.is_none() {
+        bail!("Current document has no path");
+    }
+
+    cx.editor
+        .registers
+        .write(reg, vec![path.unwrap().to_string_lossy().to_string()])?;
+    cx.editor
+        .set_status(format!("Yanked path to register {reg}",));
+    Ok(())
+}
+
+fn yank_path_relative(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let reg = match args.first() {
+        Some(s) => {
+            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+            s.chars().next().unwrap()
+        }
+        None => '+',
+    };
+
+    let doc = doc!(cx.editor);
+    let path = doc.relative_path();
+
+    if path.is_none() {
+        bail!("Current document has no path");
+    }
+
+    cx.editor
+        .registers
+        .write(reg, vec![path.unwrap().to_string_lossy().to_string()])?;
+    cx.editor
+        .set_status(format!("Yanked relative path to register {reg}",));
+    Ok(())
+}
+
 fn read(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -3750,6 +3810,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
+        completer: CommandCompleter::all(completers::register),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "yank-path",
+        aliases: &[],
+        doc: "Yank the path of the current document to register, or clipboard by default",
+        fun: yank_path,
+        completer: CommandCompleter::all(completers::register),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "yank-path-relative",
+        aliases: &[],
+        doc: "Yank the path of the current document relative to the working directory to register, or clipboard by default",
+        fun: yank_path_relative,
         completer: CommandCompleter::all(completers::register),
         signature: Signature {
             positionals: (0, Some(1)),
