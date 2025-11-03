@@ -546,8 +546,24 @@ impl Syntax {
         self.inner.root()
     }
 
+    /// Finds the smallest injection layer which fully includes the range `start..=end`.
+    ///
+    /// This is the same as using the last item in the `layers_for_byte_range` iterator.
     pub fn layer_for_byte_range(&self, start: u32, end: u32) -> Layer {
         self.inner.layer_for_byte_range(start, end)
+    }
+
+    /// Returns an iterator of layers which **fully include** the byte range `start..=end`.
+    ///
+    /// The iterator is non-empty and the root is always the first element. Other layers are
+    /// returned in decreasing order based on the size of each layer. I.e. the last element is
+    /// the smallest layer including the byte range.
+    pub fn layers_for_byte_range(
+        &self,
+        start: u32,
+        end: u32,
+    ) -> impl Iterator<Item = Layer> + use<'_> {
+        self.inner.layers_for_byte_range(start, end)
     }
 
     pub fn root_language(&self) -> Language {
