@@ -18,7 +18,7 @@ bass = { command = "bass", args = ["--lsp"] }
 beancount-language-server = { command = "beancount-language-server" }
 bicep-langserver = { command = "bicep-langserver" }
 bitbake-language-server = { command = "bitbake-language-server" }
-buf = { command = "buf", args = ["beta", "lsp", "--timeout", "0"] }
+buf = { command = "buf", args = ["lsp", "serve", "--timeout", "0"] }
 cairo-language-server = { command = "cairo-language-server", args = [] }
 circom-lsp = { command = "circom-lsp" }
 cl-lsp = { command = "cl-lsp" }
