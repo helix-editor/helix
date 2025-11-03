@@ -124,8 +124,9 @@ pub enum Trust {
 
 impl TrustDb {
     fn is_workspace_trusted(&self, path: impl AsRef<Path>) -> Option<bool> {
+        let path = helix_stdx::path::canonicalize(path);
         self.trust.as_ref().and_then(|map| {
-            path.as_ref().ancestors().find_map(|path| {
+            path.ancestors().find_map(|path| {
                 if is_workspace(path) || path.is_file() {
                     map.get(path).map(|trust| matches!(trust, Trust::Trusted))
                 } else {
@@ -134,42 +135,41 @@ impl TrustDb {
             })
         })
     }
+
+    fn trust_path(&mut self, path: impl AsRef<Path>) -> bool {
+        let path = helix_stdx::path::canonicalize(path);
+        self.trust
+            .get_or_insert(HashMap::new())
+            .insert(path, Trust::Trusted)
+            != Some(Trust::Trusted)
+    }
+
+    fn untrust_path(&mut self, path: impl AsRef<Path>) -> bool {
+        let path = helix_stdx::path::canonicalize(path);
+        self.trust
+            .get_or_insert(HashMap::new())
+            .insert(path, Trust::Untrusted)
+            != Some(Trust::Untrusted)
+    }
 }
 
 fn trust_db_file() -> PathBuf {
     state_dir().unwrap_or(data_dir()).join("trust_db.toml")
 }
 
+/// check if the workspace is trusted. If the result is Ok(None) it implies that the path does not exist in the database.
 pub fn is_workspace_trusted(path: impl AsRef<Path>) -> Result<Option<bool>> {
-    let Ok(path) = path.as_ref().canonicalize() else {
-        return Ok(None);
-    };
-
     TRUST_DB.inspect(|db| db.is_workspace_trusted(path))
 }
 
+/// Trust a path. If the result is Ok, it returns true if the path was not trusted before.
 pub fn trust_path(path: impl AsRef<Path>) -> Result<bool> {
-    let Ok(path) = path.as_ref().canonicalize() else {
-        return Ok(false);
-    };
-    TRUST_DB.modify(|db| {
-        db.trust
-            .get_or_insert(HashMap::new())
-            .insert(path, Trust::Trusted)
-            != Some(Trust::Trusted)
-    })
+    TRUST_DB.modify(|db| db.trust_path(path))
 }
 
+/// Trust a path. If the result is Ok, it returns true if the path was not untrusted before.
 pub fn untrust_path(path: impl AsRef<Path>) -> Result<bool> {
-    let Ok(path) = path.as_ref().canonicalize() else {
-        return Ok(false);
-    };
-    TRUST_DB.modify(|db| {
-        db.trust
-            .get_or_insert(HashMap::new())
-            .insert(path, Trust::Untrusted)
-            != Some(Trust::Untrusted)
-    })
+    TRUST_DB.modify(|db| db.untrust_path(path))
 }
 
 #[cfg(test)]
@@ -190,27 +190,19 @@ mod test {
             None
         );
         assert_eq!(
-            db.modify(|db| {
-                db.trust
-                    .get_or_insert(HashMap::new())
-                    .insert(some_path.clone(), Trust::Untrusted)
-            })
-            .unwrap(),
-            None
+            db.modify(|db| { db.untrust_path(&some_path) }).unwrap(),
+            true
+        );
+        assert_eq!(
+            db.modify(|db| { db.untrust_path(&some_path) }).unwrap(),
+            false,
         );
         assert_eq!(
             db.inspect(|db| db.is_workspace_trusted(&some_path))
                 .unwrap(),
             Some(false)
         );
-        assert_eq!(
-            db.modify(|db| db
-                .trust
-                .get_or_insert(HashMap::new())
-                .insert(some_path.clone(), Trust::Trusted))
-                .unwrap(),
-            Some(Trust::Untrusted)
-        );
+        assert_eq!(db.modify(|db| db.trust_path(&some_path)).unwrap(), true);
         assert_eq!(
             db.inspect(|db| db.is_workspace_trusted(&some_path))
                 .unwrap(),
