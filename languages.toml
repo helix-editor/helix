@@ -1015,6 +1015,14 @@ language-servers = [ "vscode-html-language-server", "superhtml" ]
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+"<" = ">"
+
 [[grammar]]
 name = "html"
 source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "cbb91a0ff3621245e890d1c50cc811bffb77a26b" }
