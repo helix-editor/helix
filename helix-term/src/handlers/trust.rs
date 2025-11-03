@@ -165,7 +165,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         ) {
             return Ok(());
         }
-        if let Some(doc) = event.editor.document_by_path(&event.path) {
+        if let Some(doc) = event.editor.document(event.doc) {
             if doc.is_trusted.is_none() {
                 if let Err(e) = event.editor.trust_workspace(&event.path) {
                     event.editor.set_error(format!(
