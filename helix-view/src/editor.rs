@@ -2396,13 +2396,15 @@ impl Editor {
     }
 
     pub fn trust_workspace(&mut self, workspace: impl AsRef<Path>) -> anyhow::Result<()> {
+        // we need to canonicalize since doc paths are canonicalized by default
+        let workspace = helix_stdx::path::canonicalize(workspace);
         match trust_db::trust_path(&workspace) {
             Err(e) => bail!("Couldn't edit trust database: {e}"),
             Ok(is_new_entry) => {
                 if is_new_entry {
                     self.set_status(format!(
                         "Workspace '{}' unrestricted; LSPs, debuggers and formatters available.",
-                        workspace.as_ref().display()
+                        workspace.display()
                     ));
 
                     let docs = self
@@ -2420,7 +2422,7 @@ impl Editor {
                 } else {
                     self.set_status(format!(
                         "Workspace '{}' is already trusted.",
-                        workspace.as_ref().display()
+                        workspace.display()
                     ));
                 }
             }
@@ -2437,13 +2439,15 @@ impl Editor {
     }
 
     pub fn untrust_workspace(&mut self, workspace: impl AsRef<Path>) -> anyhow::Result<()> {
+        // we need to canonicalize since doc paths are canonicalized by default
+        let workspace = helix_stdx::path::canonicalize(workspace);
         match trust_db::untrust_path(&workspace) {
             Err(e) => bail!("Couldn't edit trust database: {e}"),
             Ok(was_removed) => {
                 if was_removed {
                     self.set_status(format!(
                         "Workspace '{}' restricted; LSPs, formatters and debuggers do not work.",
-                        workspace.as_ref().display()
+                        workspace.display()
                     ));
                     self.documents_mut()
                         .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
@@ -2451,7 +2455,7 @@ impl Editor {
                 } else {
                     self.set_status(format!(
                         "Workspace '{}' was already untrusted.",
-                        workspace.as_ref().display()
+                        workspace.display()
                     ));
                 }
             }
