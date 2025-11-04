@@ -60,6 +60,7 @@ pub mod tasks {
                 "steel-interpreter",
                 "steel-language-server",
                 "cargo-steel-lib",
+                "--locked",
             ])
             .spawn()
             .unwrap()
@@ -72,6 +73,7 @@ pub mod tasks {
                 "--git",
                 "https://github.com/mattwparas/steel.git",
                 "steel-forge",
+                "--locked",
             ])
             .spawn()
             .unwrap()
