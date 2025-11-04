@@ -161,6 +161,8 @@
 | `extend_to_column` | Extend to column | select: `` g\| `` |
 | `goto_next_buffer` | Goto next buffer | normal: `` gn ``, select: `` gn `` |
 | `goto_previous_buffer` | Goto previous buffer | normal: `` gp ``, select: `` gp `` |
+| `goto_next_file` | Go to the next file alphabetically in the current file's directory | normal: `` ]n ``, select: `` ]n `` |
+| `goto_prev_file` | Go to the previous file alphabetically in the current file's directory | normal: `` [n ``, select: `` [n `` |
 | `goto_line_end_newline` | Goto newline at line end | insert: `` <end> `` |
 | `goto_first_nonwhitespace` | Goto first non-blank in line | normal: `` gs ``, select: `` gs `` |
 | `trim_selections` | Trim whitespace from selections | normal: `` _ ``, select: `` _ `` |
