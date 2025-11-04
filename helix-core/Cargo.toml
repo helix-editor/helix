@@ -55,7 +55,7 @@ textwrap = "0.16.2"
 
 nucleo.workspace = true
 parking_lot.workspace = true
-globset = "0.4.16"
+globset.workspace = true
 regex-cursor = "0.1.5"
 
 [dev-dependencies]

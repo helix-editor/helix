@@ -26,7 +26,7 @@
 
 ((call_expression
    function: (identifier) @_template_function_name
-   arguments: (template_string) @injection.content)
+   arguments: (template_string (string_fragment) @injection.content))
  (#eq? @_template_function_name "gql")
  (#set! injection.language "graphql"))
 
