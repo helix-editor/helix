@@ -1155,7 +1155,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "rshtml"
-source = { git = "https://github.com/rshtml/tree-sitter-rshtml", rev = "30a6805924b3c5ffaff74e1cfd613a5b5985f0e8" }
+source = { git = "https://github.com/rshtml/tree-sitter-rshtml", rev = "89ae0f3a5e221a83aad243def85e822616d3b3c2" }
 
 [[language]]
 name = "bash"
