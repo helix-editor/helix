@@ -99,6 +99,16 @@ impl Jobs {
         self.add(Job::with_callback(f));
     }
 
+    /// Like `callback` but the job is added to wait_futures, allowing synchronous code
+    /// to block and wait for it. Used during macro replay to ensure async operations
+    /// complete before subsequent keys are processed.
+    pub fn callback_wait<F: Future<Output = anyhow::Result<Callback>> + Send + 'static>(
+        &mut self,
+        f: F,
+    ) {
+        self.add(Job::with_callback(f).wait_before_exiting());
+    }
+
     pub fn handle_callback(
         &self,
         editor: &mut Editor,

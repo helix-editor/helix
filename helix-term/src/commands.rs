@@ -277,6 +277,7 @@ impl MappableCommand {
                 cx.callback.push(Box::new(move |compositor, cx| {
                     for key in keys.into_iter() {
                         compositor.handle_event(&compositor::Event::Key(key), cx);
+                        drain_pending_jobs(cx.jobs, &mut cx.editor, compositor);
                     }
                     cx.editor.macro_replaying.pop();
                 }));
@@ -6676,6 +6677,36 @@ fn record_macro(cx: &mut Context) {
     }
 }
 
+/// Drains pending async callbacks and futures after processing a key during macro replay.
+/// This ensures UI components from async operations (like LSP pickers) are available
+/// before the next key is processed.
+fn drain_pending_jobs(jobs: &mut Jobs, editor: &mut Editor, compositor: &mut Compositor) {
+    use futures_util::StreamExt;
+    loop {
+        let mut drained_any = false;
+
+        // Drain completed callbacks from the channel
+        while let Ok(callback) = jobs.callbacks.try_recv() {
+            jobs.handle_callback(editor, compositor, Ok(Some(callback)));
+            drained_any = true;
+        }
+
+        // Wait for any pending futures to complete
+        while !jobs.wait_futures.is_empty() {
+            if let Some(callback) =
+                tokio::task::block_in_place(|| helix_lsp::block_on(jobs.wait_futures.next()))
+            {
+                jobs.handle_callback(editor, compositor, callback);
+                drained_any = true;
+            }
+        }
+
+        if !drained_any {
+            break;
+        }
+    }
+}
+
 fn replay_macro(cx: &mut Context) {
     let reg = cx.register.unwrap_or('@');
 
@@ -6715,6 +6746,7 @@ fn replay_macro(cx: &mut Context) {
         for _ in 0..count {
             for &key in keys.iter() {
                 compositor.handle_event(&compositor::Event::Key(key), cx);
+                drain_pending_jobs(cx.jobs, &mut cx.editor, compositor);
             }
         }
         // The macro under replay is cleared at the end of the callback, not in the

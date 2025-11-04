@@ -396,7 +396,7 @@ pub fn symbol_picker(cx: &mut Context) {
         return;
     }
 
-    cx.jobs.callback(async move {
+    let future = async move {
         let mut symbols = Vec::new();
         while let Some(response) = futures.next().await {
             match response {
@@ -440,7 +440,16 @@ pub fn symbol_picker(cx: &mut Context) {
         };
 
         Ok(Callback::EditorCompositor(Box::new(call)))
-    });
+    };
+
+    // Use callback_wait during macro replay to ensure the picker is pushed
+    // before subsequent keys in the macro are processed. This allows the macro
+    // replay code to block and wait for the LSP response.
+    if cx.editor.macro_replaying.is_empty() {
+        cx.jobs.callback(future);
+    } else {
+        cx.jobs.callback_wait(future);
+    }
 }
 
 pub fn workspace_symbol_picker(cx: &mut Context) {
