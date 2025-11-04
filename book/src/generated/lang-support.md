@@ -15,6 +15,7 @@
 | bitbake | ✓ |  |  |  |  | `bitbake-language-server` |
 | blade | ✓ | ✓ |  |  | ✓ |  |
 | blueprint | ✓ |  |  |  |  | `blueprint-compiler` |
+| bovex | ✓ |  |  |  | ✓ |  |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp` |
 | cabal |  |  |  |  |  | `haskell-language-server-wrapper` |
@@ -82,7 +83,7 @@
 | ghostty | ✓ |  |  |  |  |  |
 | git-attributes | ✓ |  |  |  |  |  |
 | git-cliff-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
-| git-commit | ✓ | ✓ |  |  |  |  |
+| git-commit | ✓ | ✓ |  |  |  | `commit-lsp` |
 | git-config | ✓ | ✓ |  |  |  |  |
 | git-ignore | ✓ |  |  |  |  |  |
 | git-notes | ✓ |  |  |  |  |  |
@@ -136,7 +137,7 @@
 | json | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
 | json-ld | ✓ | ✓ | ✓ |  |  | `vscode-json-language-server` |
 | json5 | ✓ |  |  |  |  |  |
-| jsonc | ✓ |  | ✓ |  |  | `vscode-json-language-server` |
+| jsonc | ✓ |  | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ |  |  | `julia` |
@@ -163,7 +164,7 @@
 | mail | ✓ | ✓ |  |  |  |  |
 | make | ✓ |  | ✓ |  |  |  |
 | markdoc | ✓ |  |  |  |  | `markdoc-ls` |
-| markdown | ✓ |  |  | ✓ |  | `marksman`, `markdown-oxide` |
+| markdown | ✓ |  |  | ✓ |  | `marksman`, `markdown-oxide`, `rumdl` |
 | markdown-rustdoc | ✓ |  |  |  |  |  |
 | markdown.inline | ✓ |  |  |  |  |  |
 | matlab | ✓ | ✓ | ✓ |  |  |  |
@@ -277,7 +278,7 @@
 | typespec | ✓ | ✓ | ✓ |  |  | `tsp-server` |
 | typst | ✓ |  |  | ✓ |  | `tinymist` |
 | ungrammar | ✓ |  |  |  |  |  |
-| unison | ✓ | ✓ | ✓ |  |  |  |
+| unison | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | uxntal | ✓ |  |  |  |  |  |
 | v | ✓ | ✓ | ✓ |  |  | `v-analyzer` |
 | vala | ✓ | ✓ |  |  |  | `vala-language-server` |
