@@ -1442,6 +1442,9 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 ;; ```
 (define register-lsp-call-handler helix.register-lsp-call-handler)
 
+
+;;@doc
+;; Set a configuration option by key name.
 (provide set-option!)
 (define (set-option! key value)
     (helix.set-option! *helix.config* key value))
@@ -3490,7 +3493,7 @@ impl HelixConfiguration {
     }
 
     fn get_keybindings(&self) -> EmbeddedKeyMap {
-        EmbeddedKeyMap(self.load_config().keys.clone())
+        EmbeddedKeyMap(self.configuration.load().keys.clone())
     }
 
     fn scrolloff(&self, lines: usize) {

@@ -21,19 +21,14 @@
   (get-doc (trim-start-matches name ":")))
 
 (define (walk-leaves keybindings)
-  (if (hash? keybindings)
-      (map walk-leaves (hash-values->list keybindings))
-      keybindings))
+  (if (hash? keybindings) (map walk-leaves (hash-values->list keybindings)) keybindings))
 
 (define (keybindings->leaves keybindings)
   (flatten (walk-leaves keybindings)))
 
 (define (keybindings->docs keybindings)
   (define leaves
-    (map (lambda (key)
-           (if (symbol? key)
-               (symbol->string key)
-               key))
+    (map (lambda (key) (if (symbol? key) (symbol->string key) key))
          (keybindings->leaves keybindings)))
 
   ;; Filter out anything without values - so we only want strings
@@ -136,56 +131,46 @@
     [(_ conf) conf]
 
     [(_ conf (key (value ...)))
-     (hash (if (string? (quote key))
-               (quote key)
-               (symbol->string (quote key)))
+     (hash (if (string? (quote key)) (quote key) (symbol->string (quote key)))
            (#%keybindings (hash) (value ...)))]
 
     [(_ conf (key (value ...) rest ...) other ...)
 
      (hash-insert-or-merge (#%keybindings (hash) other ...)
-                           (if (string? (quote key))
-                               (quote key)
-                               (symbol->string (quote key)))
+                           (if (string? (quote key)) (quote key) (symbol->string (quote key)))
                            (#%keybindings (hash) (value ...) rest ...))]
 
     [(_ conf (key (value ...) rest ...))
 
      (hash-insert-or-merge conf
-                           (if (string? (quote key))
-                               (quote key)
-                               (symbol->string (quote key)))
+                           (if (string? (quote key)) (quote key) (symbol->string (quote key)))
                            (#%keybindings (hash) (value ...) rest ...))]
 
     [(_ conf (key value))
 
-     (hash-insert-or-merge conf
-                           (if (string? (quote key))
-                               (quote key)
-                               (symbol->string (quote key)))
-                           (if (string? value)
-                               value
-                               (~>> (quote value) symbol->string (string-append ":"))))]
+     (hash-insert-or-merge
+      conf
+      (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+      (if (string? value) value (~>> (quote value) symbol->string (string-append ":"))))]
 
     [(_ conf (key (value ...)) rest ...)
 
-     (#%keybindings (hash-insert-or-merge conf
-                                          (if (string? (quote key))
-                                              (quote key)
-                                              (symbol->string (quote key)))
-                                          (#%keybindings (hash) (value ...)))
-                    rest ...)]
+     (let ([inner (hash-insert-or-merge
+                   conf
+                   (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                   (#%keybindings (hash) (value ...)))])
+
+       (#%keybindings inner rest ...))]
 
     [(_ conf (key value) rest ...)
 
-     (#%keybindings (hash-insert-or-merge conf
-                                          (if (string? (quote key))
-                                              (quote key)
-                                              (symbol->string (quote key)))
-                                          (if (string? value)
-                                              value
-                                              (~>> (quote value) symbol->string (string-append ":"))))
-                    rest ...)]))
+     (let ([inner
+            (hash-insert-or-merge
+             conf
+             (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+             (if (string? value) value (~>> (quote value) symbol->string (string-append ":"))))])
+
+       (#%keybindings inner rest ...))]))
 
 (define-syntax keymap
   (syntax-rules (global insert normal select with-map inherit-from extension buffer)
