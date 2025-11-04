@@ -1149,14 +1149,13 @@ language-servers = [
   "vscode-html-language-server",
   "superhtml",
 ]
-grammar = "rshtml"
 roots = ["Cargo.lock", "Cargo.toml"]
 block-comment-tokens = { start = "@*", end = "*@" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "rshtml"
-source = { git = "https://github.com/rshtml/tree-sitter-rshtml", rev = "8379a7d67c67fca21d5a45c4329eb2f61743417e" }
+source = { git = "https://github.com/rshtml/tree-sitter-rshtml", rev = "30a6805924b3c5ffaff74e1cfd613a5b5985f0e8" }
 
 [[language]]
 name = "bash"
