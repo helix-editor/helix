@@ -24,8 +24,8 @@ use helix_view::{
     editor::{
         Action, AutoSave, BufferLine, ClippingConfiguration, ConfigEvent, CursorShapeConfig,
         FilePickerConfig, GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber,
-        LspConfig, SearchConfig, SmartTabConfig, StatusLineConfig, TerminalConfig,
-        WhitespaceConfig, WhitespaceRender, WhitespaceRenderValue,
+        SearchConfig, SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
+        WhitespaceRender, WhitespaceRenderValue,
     },
     events::{DocumentDidOpen, DocumentFocusLost, DocumentSaved, SelectionDidChange},
     extension::document_id_to_usize,
@@ -53,6 +53,7 @@ use std::{
     collections::HashMap,
     error::Error,
     io::Write,
+    num::NonZeroU8,
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -1403,6 +1404,128 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         let mut builtin_configuration_module =
             r#"(require-builtin helix/core/configuration as helix.)
 
+(provide lsp)
+
+;;@doc
+;; Blanket LSP configuration
+;; The options are provided in a hashmap, and provided options will be merged
+;; with the defaults. The options are as follows:
+;;
+;; Enables LSP
+;; * enable: bool
+;;
+;; Display LSP messagess from $/progress below statusline
+;; * display-progress-messages: bool
+;; 
+;; Display LSP messages from window/showMessage below statusline
+;; * display-messages: bool
+;;
+;; Enable automatic pop up of signature help (parameter hints)
+;; * auto-signature-help: bool
+;;
+;; Display docs under signature help popup
+;; * display-signature-help-docs: bool
+;; 
+;; Display inlay hints
+;; * display-inlay-hints: bool
+;; 
+;; Maximum displayed length of inlay hints (excluding the added trailing `…`).
+;; If it's `None`, there's no limit
+;; * inlay-hints-length-limit: Option<NonZeroU8>
+;;
+;; Display document color swatches
+;; * display-color-swatches: bool
+;;
+;; Whether to enable snippet support
+;; * snippets: bool
+;;
+;; Whether to include declaration in the goto reference query
+;; * goto_reference_include_declaration: bool
+;;
+;;```scheme
+;; (lsp (hash 'display-inlay-hints #t))
+;;```
+;;
+;; The defaults shown from the rust side are as follows:
+;; ```rust
+;;         LspConfig {
+;;            enable: true,
+;;            display_progress_messages: false,
+;;            display_messages: true,
+;;            auto_signature_help: true,
+;;            display_signature_help_docs: true,
+;;            display_inlay_hints: false,
+;;            inlay_hints_length_limit: None,
+;;            snippets: true,
+;;            goto_reference_include_declaration: true,
+;;            display_color_swatches: true,
+;;        }
+;;
+;; ```
+(define (lsp configuration)
+    (helix.lsp *helix.config* configuration))
+
+(provide search)
+
+;;@doc
+;; Search configuration
+;; Accepts two keywords, #:smart-case and #:wrap-around, both default to true.
+;;
+;; ```scheme
+;; (search #:smart-case #t #:wrap-around #t)
+;; (search #:smart-case #f #:wrap-around #f)
+;; ```
+(define (search #:smart-case [smart-case #t] #:wrap-around [wrap-around #true])
+    (helix.search *helix.config* smart-case wrap-around))
+
+(provide auto-pairs)
+
+;;@doc
+;; Automatic insertion of pairs to parentheses, brackets,
+;; etc. Optionally, this can be a list of pairs to specify a
+;; global list of characters to pair, or a hashmap of character to character.
+;; Defaults to true.
+;;
+;; ```scheme
+;; (auto-pairs #f)
+;; (auto-pairs #t)
+;; (auto-pairs (list '(#\{ . #\})))
+;; (auto-pairs (list '(#\{ #\})))
+;; (auto-pairs (list (cons #\{ #\})))
+;; (auto-pairs (hash #\{ #\}))
+;; ```
+(define (auto-pairs bool-or-map-or-pairs)
+    (when (hash? bool-or-map-or-pairs)
+        (helix.auto-pairs *helix.config* (helix.auto-pairs-map bool-or-map-or-pairs)))
+
+    (when (bool? bool-or-map-or-pairs)
+        (helix.auto-pairs *helix.config* (helix.auto-pairs-default bool-or-map-or-pairs)))
+
+    (when (list? bool-or-map-or-pairs)
+        (helix.auto-pairs *helix.config*
+            (helix.auto-pairs-map
+                (#%prim.transduce bool-or-map-or-pairs
+                    (into-hashmap))))))
+
+(provide continue-comments)
+
+;;@doc
+;; Whether comments should be continued.
+(define (continue-comments bool)
+    (set-option! 'continue-comments bool))
+
+(provide popup-border)
+
+;;@doc
+;; Set the popup border.
+;; Valid options are:
+;; * "none"
+;; * "all"
+;; * "popup"
+;; * "menu"
+(define (popup-border option)
+    (set-option! 'popup-border option))
+
 (provide register-lsp-notification-handler)
 
 ;;@doc
@@ -2065,10 +2188,6 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             ("cursorline", "Highlight the lines cursors are currently on. Defaults to false"),
             ("cursorcolumn", "Highlight the columns cursors are currently on. Defaults to false"),
             ("middle-click-paste", "Middle click paste support. Defaults to true"),
-            ("auto-pairs", r#"
-Automatic insertion of pairs to parentheses, brackets,
-etc. Optionally, this can be a list of 2-tuples to specify a
-global list of characters to pair. Defaults to true."#),
             ("auto-completion", "Automatic auto-completion, automatically pop up without user trigger. Defaults to true."),
             // TODO: Put in path_completion
             ("auto-format", "Automatic formatting on save. Defaults to true."),
@@ -2096,8 +2215,6 @@ are shown, set to 5 for instant. Defaults to 250ms.
             ("gutters", "Gutter configuration"),
             ("statusline", "Configuration of the statusline elements"),
             ("undercurl", "Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`."),
-            ("search", "Search configuration"),
-            ("lsp", "Lsp config"),
             ("terminal", "Terminal config"),
             ("rulers", "Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers"),
             ("bufferline", "Persistently display open buffers along the top"),
@@ -3785,16 +3902,66 @@ impl HelixConfiguration {
         self.store_config(app_config);
     }
 
-    fn search(&self, config: SearchConfig) {
+    fn search(&self, smart_case: bool, wrap_around: bool) {
         let mut app_config = self.load_config();
-        app_config.editor.search = config;
+        app_config.editor.search = SearchConfig {
+            smart_case,
+            wrap_around,
+        };
         self.store_config(app_config);
     }
 
-    fn lsp(&self, config: LspConfig) {
+    fn lsp(&self, config: HashMap<String, SteelVal>) -> anyhow::Result<()> {
         let mut app_config = self.load_config();
-        app_config.editor.lsp = config;
+
+        if let Some(enabled) = config.get("enable") {
+            app_config.editor.lsp.enable = bool::from_steelval(enabled)?;
+        }
+
+        if let Some(display) = config.get("display-progress-messages") {
+            app_config.editor.lsp.display_progress_messages = bool::from_steelval(display)?;
+        }
+
+        if let Some(display) = config.get("display-messages") {
+            app_config.editor.lsp.display_messages = bool::from_steelval(display)?;
+        }
+
+        if let Some(auto) = config.get("auto-signature-help") {
+            app_config.editor.lsp.auto_signature_help = bool::from_steelval(auto)?;
+        }
+
+        if let Some(display) = config.get("display-signature-help") {
+            app_config.editor.lsp.display_signature_help_docs = bool::from_steelval(display)?;
+        }
+
+        if let Some(display) = config.get("display-inlay-hints") {
+            app_config.editor.lsp.display_inlay_hints = bool::from_steelval(display)?;
+        }
+
+        if let Some(limit) = config.get("inlay-hints-length-limit") {
+            let n = NonZeroU8::new(u8::from_steelval(limit)?);
+
+            if let Some(n) = n {
+                app_config.editor.lsp.inlay_hints_length_limit = Some(n)
+            } else {
+                anyhow::bail!("inlay hints length limit provided was zero")
+            }
+        }
+
+        if let Some(display) = config.get("display-color-swatches") {
+            app_config.editor.lsp.display_color_swatches = bool::from_steelval(display)?;
+        }
+
+        if let Some(snippets) = config.get("snippets") {
+            app_config.editor.lsp.snippets = bool::from_steelval(snippets)?;
+        }
+
+        if let Some(goto) = config.get("goto-reference-include-declaration") {
+            app_config.editor.lsp.goto_reference_include_declaration = bool::from_steelval(goto)?;
+        }
+
         self.store_config(app_config);
+        Ok(())
     }
 
     fn terminal(&self, config: Option<TerminalConfig>) {
