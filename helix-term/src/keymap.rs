@@ -2,10 +2,7 @@ pub mod default;
 pub mod macros;
 
 pub use crate::commands::MappableCommand;
-use arc_swap::{
-    access::{DynAccess, DynGuard},
-    ArcSwap,
-};
+use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
 use std::{
@@ -304,7 +301,34 @@ pub enum KeymapResult {
 pub type ReverseKeymap = HashMap<String, Vec<Vec<KeyEvent>>>;
 
 pub struct Keymaps {
-    pub map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
+    // Note: this used to be:
+    //
+    // pub map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
+    //
+    // However, I noticed that this would not consistently view
+    // updates on the underlying configuration. Specifically this
+    // would manifest itself when changing keybindings on the config.
+    //
+    // When running the following command in steel:
+    //
+    // (add-global-keybinding (hash "normal" (hash "a" ":echo hi")))
+    //
+    // The update would persist itself on the configuration object, i.e.
+    // querying the global config would yield the keybinding:
+    //
+    // (query-global-keymap "normal" (list "a")) ;; => ":echo hi"
+    //
+    // Only after a call to update a global buffer or extension keybinding
+    // which did _not_ involve touching the config object, but rather
+    // a global static that lives in the steel module would the new keybinding
+    // be manifest in the DynAccess struct for the key map. This lead me
+    // to believe that there is some kind of undefined behavior at play (or
+    // at least, something odd with caching on a per thread level that I
+    // could not understand). As a result, in order to get consistent behavior,
+    // I removed the DynAccess struct in favor of directly reading the keymap
+    // off of the configuration, and provide the below `config_keymap` macro
+    // to access a reference to the underlying value.
+    pub config: Arc<ArcSwap<crate::config::Config>>,
     /// Stores pending keys waiting for the next key. This is relative to a
     /// sticky node if one is in use.
     state: Vec<KeyEvent>,
@@ -312,17 +336,20 @@ pub struct Keymaps {
     pub sticky: Option<KeyTrieNode>,
 }
 
+#[macro_export]
+macro_rules! config_keymap {
+    ($keymaps:expr) => {
+        arc_swap::ArcSwapAny::load(&$keymaps.config).keys
+    };
+}
+
 impl Keymaps {
-    pub fn new(map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>) -> Self {
+    pub fn new(config: Arc<ArcSwapAny<Arc<crate::config::Config>>>) -> Self {
         Self {
-            map,
+            config,
             state: Vec::new(),
             sticky: None,
         }
-    }
-
-    pub fn map(&self) -> DynGuard<HashMap<Mode, KeyTrie>> {
-        self.map.load()
     }
 
     /// Returns list of keys waiting to be disambiguated in current mode.
@@ -335,7 +362,7 @@ impl Keymaps {
     }
 
     pub fn contains_key(&self, mode: Mode, key: KeyEvent) -> bool {
-        let keymaps = &*self.map();
+        let keymaps = &config_keymap!(self);
         let keymap = &keymaps[&mode];
         keymap
             .search(self.pending())
@@ -403,13 +430,13 @@ impl Keymaps {
     /// key cancels pending keystrokes. If there are no pending keystrokes but a
     /// sticky node is in use, it will be cleared.
     pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
-        self.get_with_map(&self.map(), mode, key)
+        self.get_with_map(&config_keymap!(self), mode, key)
     }
 }
 
 impl Default for Keymaps {
     fn default() -> Self {
-        Self::new(Box::new(ArcSwap::new(Arc::new(default()))))
+        Self::new(Arc::new(ArcSwap::new(Arc::new(Default::default()))))
     }
 }
 
@@ -428,7 +455,6 @@ pub fn merge_keys(dst: &mut HashMap<Mode, KeyTrie>, mut delta: HashMap<Mode, Key
 mod tests {
     use super::macros::keymap;
     use super::*;
-    use arc_swap::access::Constant;
     use helix_core::hashmap;
 
     #[test]
@@ -463,7 +489,8 @@ mod tests {
         merge_keys(&mut merged_keyamp, keymap.clone());
         assert_ne!(keymap, merged_keyamp);
 
-        let mut keymap = Keymaps::new(Box::new(Constant(merged_keyamp.clone())));
+        let mut keymap = Keymaps::new(Arc::new(ArcSwap::new(Arc::new(Default::default()))));
+
         assert_eq!(
             keymap.get(Mode::Normal, key!('i')),
             KeymapResult::Matched(MappableCommand::normal_mode),
@@ -548,7 +575,7 @@ mod tests {
 
     #[test]
     fn aliased_modes_are_same_in_default_keymap() {
-        let keymaps = Keymaps::default().map();
+        let keymaps = &config_keymap!(Keymaps::default());
         let root = keymaps.get(&Mode::Normal).unwrap();
         assert_eq!(
             root.search(&[key!(' '), key!('w')]).unwrap(),

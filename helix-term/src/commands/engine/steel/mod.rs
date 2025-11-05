@@ -3472,7 +3472,7 @@ impl HelixConfiguration {
     }
 
     fn load_config(&self) -> Config {
-        (*self.configuration.load().clone()).clone()
+        (*self.configuration.load_full().clone()).clone()
     }
 
     fn store_config(&self, config: Config) {
@@ -3493,7 +3493,7 @@ impl HelixConfiguration {
     }
 
     fn get_keybindings(&self) -> EmbeddedKeyMap {
-        EmbeddedKeyMap(self.configuration.load().keys.clone())
+        EmbeddedKeyMap(self.configuration.load_full().keys.clone())
     }
 
     fn scrolloff(&self, lines: usize) {
