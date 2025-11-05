@@ -131,20 +131,26 @@
     [(_ conf) conf]
 
     [(_ conf (key (value ...)))
-     (hash (if (string? (quote key)) (quote key) (symbol->string (quote key)))
-           (#%keybindings (hash) (value ...)))]
+     (let ([rhs (#%keybindings (hash) (value ...))])
+       (hash-insert-or-merge conf
+                             (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                             rhs))]
 
     [(_ conf (key (value ...) rest ...) other ...)
 
-     (hash-insert-or-merge (#%keybindings (hash) other ...)
-                           (if (string? (quote key)) (quote key) (symbol->string (quote key)))
-                           (#%keybindings (hash) (value ...) rest ...))]
+     (let ([left (#%keybindings (hash) other ...)]
+           [right (#%keybindings (hash) (value ...) rest ...)])
+
+       (hash-insert-or-merge left
+                             (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                             right))]
 
     [(_ conf (key (value ...) rest ...))
 
-     (hash-insert-or-merge conf
-                           (if (string? (quote key)) (quote key) (symbol->string (quote key)))
-                           (#%keybindings (hash) (value ...) rest ...))]
+     (let ([right (#%keybindings (hash) (value ...) rest ...)])
+       (hash-insert-or-merge conf
+                             (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                             right))]
 
     [(_ conf (key value))
 
@@ -155,10 +161,11 @@
 
     [(_ conf (key (value ...)) rest ...)
 
-     (let ([inner (hash-insert-or-merge
+     (let ([first (#%keybindings (hash) (value ...))]
+           [inner (hash-insert-or-merge
                    conf
                    (if (string? (quote key)) (quote key) (symbol->string (quote key)))
-                   (#%keybindings (hash) (value ...)))])
+                   first)])
 
        (#%keybindings inner rest ...))]
 
