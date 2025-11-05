@@ -1211,6 +1211,11 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         );
 
     module.register_fn(
+        "get-lsp-config",
+        HelixConfiguration::get_language_server_config,
+    );
+
+    module.register_fn(
         "set-lsp-config!",
         HelixConfiguration::update_language_server_config,
     );
@@ -1583,6 +1588,19 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 (define (set-configuration-for-file! path config)
     (helix.set-configuration-for-file! *helix.cx* path config))
 "#,
+        );
+
+        builtin_configuration_module.push_str(
+            r#"
+(provide get-lsp-config)
+
+;;@doc
+;; Get the lsp configuration for a language server.
+;;
+;; Returns a hashmap which can be passed to `set-lsp-config!`
+(define (get-lsp-config lsp)
+    (helix.get-lsp-config *helix.config* lsp))
+            "#,
         );
 
         builtin_configuration_module.push_str(
@@ -3159,6 +3177,37 @@ fn set_configuration_for_file(
     }
 }
 
+fn filter_null_values(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            map.retain(|_, v| {
+                if v.is_null() {
+                    false
+                } else {
+                    filter_null_values(v);
+                    true
+                }
+            });
+        }
+        Value::Array(arr) => {
+            arr.retain_mut(|v| {
+                if v.is_null() {
+                    false
+                } else {
+                    filter_null_values(v);
+                    true
+                }
+            });
+        }
+        Value::Number(n) => {
+            if let Some(f) = n.as_f64() {
+                *n = (f.round() as i64).into();
+            }
+        }
+        _ => {}
+    }
+}
+
 impl HelixConfiguration {
     fn _store_language_configuration(&self, language_config: syntax::Loader) {
         self.language_configuration.store(Arc::new(language_config))
@@ -3183,37 +3232,6 @@ impl HelixConfiguration {
     ) -> anyhow::Result<()> {
         // Do some gross json -> toml conversion
         let mut value = serde_json::Value::try_from(config)?;
-
-        fn filter_null_values(value: &mut Value) {
-            match value {
-                Value::Object(map) => {
-                    map.retain(|_, v| {
-                        if v.is_null() {
-                            false
-                        } else {
-                            filter_null_values(v);
-                            true
-                        }
-                    });
-                }
-                Value::Array(arr) => {
-                    arr.retain_mut(|v| {
-                        if v.is_null() {
-                            false
-                        } else {
-                            filter_null_values(v);
-                            true
-                        }
-                    });
-                }
-                Value::Number(n) => {
-                    if let Some(f) = n.as_f64() {
-                        *n = (f.round() as i64).into();
-                    }
-                }
-                _ => {}
-            }
-        }
 
         filter_null_values(&mut value);
 
@@ -3350,6 +3368,21 @@ impl HelixConfiguration {
         Ok(())
     }
 
+    fn get_language_server_config(&self, lsp: SteelString) -> Option<SteelVal> {
+        let loader = (*(*self.language_configuration.load())).clone();
+        let lsp_configs = loader.language_server_configs();
+        let individual_config = lsp_configs.get(lsp.as_str())?;
+        let mut json = serde_json::json!(individual_config);
+
+        if let Some(config) = individual_config.config.clone() {
+            json["config"] = config;
+        }
+
+        let hash = SteelVal::try_from(json);
+
+        hash.ok()
+    }
+
     fn update_language_server_config(
         &mut self,
         lsp: SteelString,
@@ -3374,12 +3407,19 @@ impl HelixConfiguration {
             }
 
             if let Some(config_json) = map.get("config") {
-                let serialized = serde_json::Value::try_from(config_json.clone())?;
+                let mut serialized = serde_json::Value::try_from(config_json.clone())?;
+
+                filter_null_values(&mut serialized);
+
                 config.config = Some(serialized);
             }
 
             if let Some(timeout) = map.get("timeout") {
-                config.timeout = u64::from_steelval(timeout)?;
+                config.timeout = match timeout {
+                    SteelVal::IntV(i) => *i as u64,
+                    SteelVal::NumV(n) if n.fract() == 0.0 => n.round() as u64,
+                    _ => anyhow::bail!("Unable to convert timeout to integer, found: {}", timeout),
+                };
             }
 
             if let Some(required_root_patterns) = map.get("required-root-patterns") {
