@@ -24,7 +24,7 @@ use helix_view::{
     editor::{
         Action, AutoSave, BufferLine, ClippingConfiguration, ConfigEvent, CursorShapeConfig,
         FilePickerConfig, GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber,
-        SearchConfig, SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
+        SearchConfig, SmartTabConfig, StatusLineElement, TerminalConfig, WhitespaceConfig,
         WhitespaceRender, WhitespaceRenderValue,
     },
     events::{DocumentDidOpen, DocumentFocusLost, DocumentSaved, SelectionDidChange},
@@ -1374,7 +1374,6 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         )
         .register_fn("color-modes", HelixConfiguration::color_modes)
         .register_fn("gutters", HelixConfiguration::gutters)
-        // .register_fn("file-picker", HelixConfiguration::file_picker)
         .register_fn("statusline", HelixConfiguration::statusline)
         .register_fn("undercurl", HelixConfiguration::undercurl)
         .register_fn("search", HelixConfiguration::search)
@@ -1404,6 +1403,30 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         let mut builtin_configuration_module =
             r#"(require-builtin helix/core/configuration as helix.)
 
+(provide statusline)
+
+;;@doc
+;; Configuration of the statusline elements
+(define (statusline #:left [left (list "mode" "spinner" "file-name" "read-only-indicator" "file-modification-indicator")]
+                    #:center [center '()]
+                    #:right [right (list "diagnostics" "selections" "register" "position" "file-encoding")]
+                    #:separator [separator "|"]
+                    #:mode-normal [mode-normal "NOR"]
+                    #:mode-insert [mode-insert "INS"]
+                    #:mode-select [mode-select "SEL"]
+                    #:diagnostics [diagnostics (list "warning" "error")]
+                    #:workspace-diagnostics [workspace-diagnostics (list "warning" "error")])
+        (helix.statusline *helix.config*
+            (hash 'left left
+                  'center center
+                  'right right
+                  'separator separator
+                  'mode-normal mode-normal
+                  'mode-insert mode-insert
+                  'mode-select mode-select
+                  'diagnostics diagnostics
+                  'workspace-diagnostics)))
+
 (provide indent-heuristic)
 ;;@doc
 ;; Which indent heuristic to use when a new line is inserted
@@ -1422,7 +1445,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 ;; This prevents data loss if the editor is interrupted while writing the file, but may
 ;; confuse some file watching/hot reloading programs. Defaults to `#true`.
 (define (atomic-save bool-opt)
-    (set-option! 'atomic-save opt))
+    (set-option! 'atomic-save bool-opt))
 
 (provide lsp)
 
@@ -2233,7 +2256,6 @@ are shown, set to 5 for instant. Defaults to 250ms.
             ("insert-final-newline", "Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`"),
             ("color-modes", "Whether to color modes with different colors. Defaults to `false`."),
             ("gutters", "Gutter configuration"),
-            ("statusline", "Configuration of the statusline elements"),
             ("undercurl", "Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`."),
             ("terminal", "Terminal config"),
             ("rulers", "Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers"),
@@ -3910,10 +3932,100 @@ impl HelixConfiguration {
         self.store_config(app_config);
     }
 
-    fn statusline(&self, config: StatusLineConfig) {
+    fn statusline(&self, config: HashMap<String, SteelVal>) -> anyhow::Result<()> {
         let mut app_config = self.load_config();
-        app_config.editor.statusline = config;
+        // app_config.editor.statusline;
+
+        fn steel_to_elements(val: &SteelVal) -> anyhow::Result<StatusLineElement> {
+            if let SteelVal::StringV(s) = val {
+                return Ok(serde_json::from_str(s.as_str())?);
+            } else {
+                anyhow::bail!("Cannot convert value to status line element: {}", val)
+            }
+        }
+
+        fn steel_list_to_elements(val: &SteelVal) -> anyhow::Result<Vec<StatusLineElement>> {
+            if let SteelVal::ListV(l) = val {
+                return l.iter().map(steel_to_elements).collect();
+            } else {
+                anyhow::bail!(
+                    "Cannot convert value to vec of status line element: {}",
+                    val
+                )
+            }
+        }
+
+        fn steel_to_severity(val: &SteelVal) -> anyhow::Result<Severity> {
+            if let SteelVal::StringV(s) = val {
+                return Ok(serde_json::from_str(s.as_str())?);
+            } else {
+                anyhow::bail!("Cannot convert value to severity: {}", val)
+            }
+        }
+
+        fn steel_list_to_severity_vec(val: &SteelVal) -> anyhow::Result<Vec<Severity>> {
+            if let SteelVal::ListV(l) = val {
+                return l.iter().map(steel_to_severity).collect();
+            } else {
+                anyhow::bail!(
+                    "Cannot convert value to vec of status line element: {}",
+                    val
+                )
+            }
+        }
+
+        if let Some(left) = config.get("left") {
+            app_config.editor.statusline.left = steel_list_to_elements(left)?;
+        }
+
+        if let Some(center) = config.get("center") {
+            app_config.editor.statusline.center = steel_list_to_elements(center)?;
+        }
+
+        if let Some(right) = config.get("right") {
+            app_config.editor.statusline.right = steel_list_to_elements(right)?;
+        }
+
+        if let Some(separator) = config.get("separator") {
+            app_config.editor.statusline.separator = String::from_steelval(separator)?;
+        }
+
+        if let Some(normal_mode) = config.get("mode-normal") {
+            if let SteelVal::StringV(s) = normal_mode {
+                app_config.editor.statusline.mode.normal = serde_json::from_str(s.as_str())?;
+            } else {
+                anyhow::bail!("mode normal expects a string, found: {}", normal_mode);
+            }
+        }
+
+        if let Some(insert_mode) = config.get("mode-insert") {
+            if let SteelVal::StringV(s) = insert_mode {
+                app_config.editor.statusline.mode.insert = serde_json::from_str(s.as_str())?;
+            } else {
+                anyhow::bail!("mode insert expects a string, found: {}", insert_mode);
+            }
+        }
+
+        if let Some(select_mode) = config.get("mode-select") {
+            if let SteelVal::StringV(s) = select_mode {
+                app_config.editor.statusline.mode.select = serde_json::from_str(s.as_str())?;
+            } else {
+                anyhow::bail!("mode normal expects a string, found: {}", select_mode);
+            }
+        }
+
+        if let Some(diagnostics) = config.get("diagnostics") {
+            app_config.editor.statusline.diagnostics = steel_list_to_severity_vec(diagnostics)?;
+        }
+
+        if let Some(diagnostics) = config.get("workspace-diagnostics") {
+            app_config.editor.statusline.workspace_diagnostics =
+                steel_list_to_severity_vec(diagnostics)?;
+        }
+
         self.store_config(app_config);
+
+        Ok(())
     }
 
     fn undercurl(&self, undercurl: bool) {
