@@ -141,9 +141,11 @@
      (let ([left (#%keybindings (hash) other ...)]
            [right (#%keybindings (hash) (value ...) rest ...)])
 
-       (hash-insert-or-merge left
-                             (if (string? (quote key)) (quote key) (symbol->string (quote key)))
-                             right))]
+       (hash-union conf
+                   (hash-insert-or-merge
+                    left
+                    (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                    right)))]
 
     [(_ conf (key (value ...) rest ...))
 
