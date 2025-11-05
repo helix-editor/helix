@@ -1404,6 +1404,26 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         let mut builtin_configuration_module =
             r#"(require-builtin helix/core/configuration as helix.)
 
+(provide indent-heuristic)
+;;@doc
+;; Which indent heuristic to use when a new line is inserted
+;; Defaults to `"hybrid"`
+;; Valid options are:
+;; * "simple"
+;; * "tree-sitter"
+;; * "hybrid"
+(define (indent-heuristic kind)
+    (set-option! 'indent-heuristic kind))
+
+(provide atomic-save)
+
+;;@doc
+;; Whether to use atomic operations to write documents to disk.
+;; This prevents data loss if the editor is interrupted while writing the file, but may
+;; confuse some file watching/hot reloading programs. Defaults to `#true`.
+(define (atomic-save bool-opt)
+    (set-option! 'atomic-save opt))
+
 (provide lsp)
 
 ;;@doc
