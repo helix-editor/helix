@@ -11,10 +11,10 @@
 
 ; Info level tags
 ((tag (name) @info)
- (#any-of? @info "INFO" "NOTE" "TODO" "PERF" "OPTIMIZE" "PERFORMANCE" "QUESTION" "ASK"))
+ (#any-of? @info "INFO" "NOTE" "TODO" "TO-DO" "PERF" "OPTIMIZE" "PERFORMANCE" "QUESTION" "ASK"))
 
 ("text" @info
- (#any-of? @info "INFO" "NOTE" "TODO" "PERF" "OPTIMIZE" "PERFORMANCE" "QUESTION" "ASK"))
+ (#any-of? @info "INFO" "NOTE" "TODO" "TO-DO" "PERF" "OPTIMIZE" "PERFORMANCE" "QUESTION" "ASK"))
 
 ; Warning level tags
 ((tag (name) @warning)
