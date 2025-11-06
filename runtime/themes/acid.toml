@@ -1,3 +1,5 @@
+# Author: zyrafal
+
 # Syntax highlighting
 "attribute" = "yellow"
 "type" = "cyan"
@@ -101,4 +103,3 @@ magenta = "#f0b0ff"
 purple = "#b090ff"
 
 unknown = "#ff00ff"
-
