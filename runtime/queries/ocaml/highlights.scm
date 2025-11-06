@@ -23,7 +23,8 @@
 ; Modules
 ;--------
 
-[(module_name) (module_type_name)] @namespace
+[(module_name)] @type.structure
+[(module_type_name)] @type.interface
 
 ; Types
 ;------
@@ -33,7 +34,7 @@
   (#match? @type.builtin "^(int|char|bytes|string|float|bool|unit|exn|array|list|option|int32|int64|nativeint|format6|lazy_t)$")
 )
 
-[(class_name) (class_type_name) (type_constructor)] @type
+[(class_name) (class_type_name) (type_constructor)] @type.structure
 
 [(constructor_name) (tag)] @constructor
 
@@ -44,43 +45,44 @@
 
 (value_pattern) @variable.parameter
 
+(type_variable) @type.parameter
+
 ; Functions
 ;----------
 
 (let_binding
-  pattern: (value_name) @function
+  pattern: (value_name) @variable
   (parameter))
 
 (let_binding
-  pattern: (value_name) @function
+  pattern: (value_name) @variable
   body: [(fun_expression) (function_expression)])
 
-(value_specification (value_name) @function)
+(value_specification (value_name) @variable)
 
-(external (value_name) @function)
+(external (value_name) @variable)
 
 (method_name) @function.method
 
 ; Application
 ;------------
 
-(
-  (value_name) @function.builtin
-  (#match? @function.builtin "^(raise(_notrace)?|failwith|invalid_arg)$")
-)
-
 (infix_expression
-  left: (value_path (value_name) @function)
+  left: (value_path (value_name) @variable)
   operator: (concat_operator) @operator
   (#eq? @operator "@@"))
 
 (infix_expression
   operator: (rel_operator) @operator
-  right: (value_path (value_name) @function)
+  right: (value_path (value_name) @variable)
   (#eq? @operator "|>"))
 
 (application_expression
-  function: (value_path (value_name) @function))
+  function: (value_path (value_name) @variable))
+
+((value_name) @function.builtin
+  (#match? @function.builtin "^(raise(_notrace)?|failwith|invalid_arg)$")
+)
 
 ; Properties
 ;-----------
