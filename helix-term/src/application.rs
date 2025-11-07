@@ -1,6 +1,7 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
+use helix_loader::trust_db::{self, Trust};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -410,45 +411,113 @@ impl Application {
         }
     }
 
-    fn refresh_config(&mut self) {
-        let mut refresh_config = || -> Result<(), Error> {
-            let default_config = Config::load_default()
-                .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
-
-            let use_local_lang = doc!(self.editor).is_trusted.unwrap_or_default();
-            // Update the syntax language loader before setting the theme. Setting the theme will
-            // call `Loader::set_scopes` which must be done before the documents are re-parsed for
-            // the sake of locals highlighting.
-            let lang_loader = helix_core::config::user_lang_loader(use_local_lang)?;
-            self.editor.syn_loader.store(Arc::new(lang_loader));
-            Self::load_configured_theme(
-                &mut self.editor,
-                &default_config,
-                self.terminal.backend().supports_true_color(),
-                self.theme_mode,
-            );
-
-            // Re-parse any open documents with the new language config.
-            let lang_loader = self.editor.syn_loader.load();
-            for document in self.editor.documents.values_mut() {
-                // Re-detect .editorconfig
-                document.detect_editor_config();
-                document.detect_language(&lang_loader);
-                let diagnostics = Editor::doc_diagnostics(
-                    &self.editor.language_servers,
-                    &self.editor.diagnostics,
-                    document,
-                );
-                document.replace_diagnostics(diagnostics, &[], None);
-            }
-
-            self.terminal.reconfigure((&default_config.editor).into())?;
-            // Store new config
-            self.config.store(Arc::new(default_config));
-            Ok(())
+    fn set_trust(&mut self, workspace: impl AsRef<Path>, trust: Trust) {
+        // we need to canonicalize since doc paths are canonicalized by default
+        let Ok(workspace) = workspace.as_ref().canonicalize() else {
+            self.editor.set_error(format!(
+                "Cannot change the trust of '{}' since it does not exist",
+                workspace.as_ref().display()
+            ));
+            return;
         };
+        match trust_db::set_trust(&workspace, trust) {
+            Err(e) => {
+                self.editor
+                    .set_error(format!("Couldn't edit trust database: {e}"));
+            }
+            Ok(is_new_entry) => {
+                let trust = trust == Trust::Trusted;
+                if is_new_entry {
+                    log::debug!(
+                        "Workspace '{}' newly set to: {trust:?}",
+                        workspace.display()
+                    );
+                    let restrict = if trust { "unrestricted" } else { "restricted" };
+                    let available = if trust { "available" } else { "do not work" };
+                    let use_lsp_stop = if doc!(self.editor)
+                        .language_servers()
+                        .into_iter()
+                        .next()
+                        .is_some()
+                    {
+                        "Use :lsp-stop to stop running language servers."
+                    } else {
+                        ""
+                    };
 
-        match refresh_config() {
+                    let docs = self
+                        .editor
+                        .documents_mut()
+                        .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
+                        .map(|d| {
+                            d.is_trusted = Some(trust);
+                            d.id()
+                        })
+                        .collect::<Vec<_>>();
+                    let refresh_config_msg = if self.refresh_config_impl().is_err() {
+                        "Use :config-reload to reload the config."
+                    } else {
+                        ""
+                    };
+                    if trust {
+                        for doc_id in docs {
+                            self.editor.refresh_language_servers(doc_id);
+                        }
+                    }
+                    self.editor.set_status(format!(
+                        "Workspace '{}' {restrict}; LSPs, debuggers and formatters {available}. {use_lsp_stop} {refresh_config_msg}",
+                        workspace.display()
+                    ));
+                } else {
+                    let trust_str = if trust { "trusted" } else { "untrusted" };
+                    self.editor.set_status(format!(
+                        "Workspace '{}' is already {trust_str}",
+                        workspace.display()
+                    ));
+                }
+            }
+        }
+    }
+
+    fn refresh_config_impl(&mut self) -> Result<(), Error> {
+        let default_config = Config::load_default()
+            .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
+
+        let use_local_lang = doc!(self.editor).is_trusted.unwrap_or_default();
+        // Update the syntax language loader before setting the theme. Setting the theme will
+        // call `Loader::set_scopes` which must be done before the documents are re-parsed for
+        // the sake of locals highlighting.
+        let lang_loader = helix_core::config::user_lang_loader(use_local_lang)?;
+        self.editor.syn_loader.store(Arc::new(lang_loader));
+        Self::load_configured_theme(
+            &mut self.editor,
+            &default_config,
+            self.terminal.backend().supports_true_color(),
+            self.theme_mode,
+        );
+
+        // Re-parse any open documents with the new language config.
+        let lang_loader = self.editor.syn_loader.load();
+        for document in self.editor.documents.values_mut() {
+            // Re-detect .editorconfig
+            document.detect_editor_config();
+            document.detect_language(&lang_loader);
+            let diagnostics = Editor::doc_diagnostics(
+                &self.editor.language_servers,
+                &self.editor.diagnostics,
+                document,
+            );
+            document.replace_diagnostics(diagnostics, &[], None);
+        }
+
+        self.terminal.reconfigure((&default_config.editor).into())?;
+        // Store new config
+        self.config.store(Arc::new(default_config));
+        Ok(())
+    }
+
+    fn refresh_config(&mut self) {
+        match self.refresh_config_impl() {
             Ok(_) => {
                 self.editor.set_status("Config refreshed");
             }
@@ -665,6 +734,10 @@ impl Application {
             }
             EditorEvent::ConfigEvent(event) => {
                 self.handle_config_events(event);
+                self.render().await;
+            }
+            EditorEvent::Trust((workspace, trust)) => {
+                self.set_trust(workspace, trust);
                 self.render().await;
             }
             EditorEvent::LanguageServerMessage((id, call)) => {

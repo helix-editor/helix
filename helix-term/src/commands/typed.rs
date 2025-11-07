@@ -10,6 +10,7 @@ use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
+use helix_loader::trust_db::Trust;
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
@@ -2729,6 +2730,14 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+fn trust_impl(cx: &mut compositor::Context, trust: Trust) -> anyhow::Result<()> {
+    let Some(path) = doc!(cx.editor).path() else {
+        bail!("Document needs a path in order to be trusted/untrusted")
+    };
+    let workspace = helix_loader::find_workspace_in(path).0;
+    cx.editor.set_trust(workspace, trust)?;
+    Ok(())
+}
 fn trust_workspace(
     cx: &mut compositor::Context,
     _args: Args,
@@ -2737,7 +2746,7 @@ fn trust_workspace(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    cx.editor.trust_current_workspace()
+    trust_impl(cx, Trust::Trusted)
 }
 
 fn untrust_workspace(
@@ -2748,8 +2757,7 @@ fn untrust_workspace(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    cx.editor.untrust_current_workspace()
+    trust_impl(cx, Trust::Untrusted)
 }
 
 fn trust_dialog(

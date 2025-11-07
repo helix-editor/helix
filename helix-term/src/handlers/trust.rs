@@ -5,6 +5,7 @@ use crate::compositor::Component;
 use crate::ui;
 use crate::ui::PromptEvent;
 use anyhow::anyhow;
+use helix_loader::trust_db::Trust;
 use helix_stdx::env::set_current_working_dir;
 use helix_view::editor::WorkspaceTrust;
 use helix_view::events::DocumentDidOpen;
@@ -79,8 +80,8 @@ Ensure you trust the source of the {file_or_workspace} before trusting it.");
             }
 
             let maybe_err = match option {
-                TrustOptions::Trust => editor.trust_workspace(&path_clone),
-                TrustOptions::DoNotTrust => editor.untrust_workspace(&path_clone),
+                TrustOptions::Trust => editor.set_trust(&path_clone, Trust::Trusted),
+                TrustOptions::DoNotTrust => editor.set_trust(&path_clone, Trust::Untrusted),
                 TrustOptions::DistrustParent | TrustOptions::TrustParent => {
                     let path = path_clone.clone();
                     let option = option.clone();
@@ -123,9 +124,9 @@ fn choose_parent_dialog(path: impl AsRef<Path>, trust: bool) -> impl Component +
                 path.display()
             ))
         } else if trust {
-            cx.editor.trust_workspace(path)
+            cx.editor.set_trust(path, Trust::Trusted)
         } else {
-            cx.editor.untrust_workspace(path)
+            cx.editor.set_trust(path, Trust::Untrusted)
         };
         if let Err(e) = result {
             cx.editor.set_error(e.to_string());
@@ -167,7 +168,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         }
         if let Some(doc) = event.editor.document(event.doc) {
             if doc.is_trusted.is_none() {
-                if let Err(e) = event.editor.trust_workspace(&event.path) {
+                if let Err(e) = event.editor.set_trust(&event.path, Trust::Trusted) {
                     event.editor.set_error(format!(
                         "Couldn't trust file: {e}; use :trust-workspace to trust it"
                     ))

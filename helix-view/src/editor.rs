@@ -1220,6 +1220,10 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+    pub trust_events: (
+        UnboundedSender<(PathBuf, trust_db::Trust)>,
+        UnboundedReceiver<(PathBuf, trust_db::Trust)>,
+    ),
     pub needs_redraw: bool,
     /// Cached position of the cursor calculated during rendering.
     /// The content of `cursor_cache` is returned by `Editor::cursor` if
@@ -1245,6 +1249,7 @@ pub type Motion = Box<dyn Fn(&mut Editor)>;
 pub enum EditorEvent {
     DocumentSaved(DocumentSavedEventResult),
     ConfigEvent(ConfigEvent),
+    Trust((PathBuf, trust_db::Trust)),
     LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent((DebugAdapterId, dap::Payload)),
     IdleTimer,
@@ -1354,6 +1359,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
+            trust_events: unbounded_channel(),
             needs_redraw: false,
             handlers,
             mouse_down_range: None,
@@ -2265,6 +2271,9 @@ impl Editor {
                 Some(config_event) = self.config_events.1.recv() => {
                     return EditorEvent::ConfigEvent(config_event)
                 }
+                Some(trust_event) = self.trust_events.1.recv() => {
+                    return EditorEvent::Trust(trust_event)
+                }
                 Some(message) = self.language_servers.incoming.next() => {
                     return EditorEvent::LanguageServerMessage(message)
                 }
@@ -2382,89 +2391,14 @@ impl Editor {
         self.last_cwd.as_deref()
     }
 
-    pub fn trust_current_workspace(&mut self) -> anyhow::Result<()> {
-        let Some(path) = doc!(self).path() else {
-            bail!("Document does not have a path; you need to add a path to trust it.")
-        };
-        let workspace = helix_loader::find_workspace_in(path).0;
-        self.trust_workspace(workspace)
-    }
-
-    pub fn trust_workspace(&mut self, workspace: impl AsRef<Path>) -> anyhow::Result<()> {
-        // we need to canonicalize since doc paths are canonicalized by default
-        let Ok(workspace) = workspace.as_ref().canonicalize() else {
-            bail!(
-                "Cannot trust '{}' since it does not exist",
-                workspace.as_ref().display()
-            )
-        };
-        match trust_db::trust_path(&workspace) {
-            Err(e) => bail!("Couldn't edit trust database: {e}"),
-            Ok(is_new_entry) => {
-                if is_new_entry {
-                    self.set_status(format!(
-                        "Workspace '{}' unrestricted; LSPs, debuggers and formatters available.",
-                        workspace.display()
-                    ));
-
-                    let docs = self
-                        .documents_mut()
-                        .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
-                        .map(|d| {
-                            d.is_trusted = Some(true);
-                            d.id
-                        })
-                        .collect::<Vec<_>>();
-                    for doc_id in docs {
-                        self.launch_language_servers(doc_id);
-                    }
-                    self.config_events.0.send(ConfigEvent::Refresh)?;
-                } else {
-                    self.set_status(format!(
-                        "Workspace '{}' is already trusted.",
-                        workspace.display()
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-
-    pub fn untrust_current_workspace(&mut self) -> anyhow::Result<()> {
-        let Some(path) = doc!(self).path() else {
-            bail!("Document does not have a path; it is already untrusted.")
-        };
-        let workspace = helix_loader::find_workspace_in(path).0;
-        self.untrust_workspace(workspace)
-    }
-
-    pub fn untrust_workspace(&mut self, workspace: impl AsRef<Path>) -> anyhow::Result<()> {
-        // we need to canonicalize since doc paths are canonicalized by default
-        let Ok(workspace) = workspace.as_ref().canonicalize() else {
-            bail!(
-                "Cannot trust '{}' since it does not exist",
-                workspace.as_ref().display()
-            )
-        };
-        match trust_db::untrust_path(&workspace) {
-            Err(e) => bail!("Couldn't edit trust database: {e}"),
-            Ok(was_removed) => {
-                if was_removed {
-                    self.set_status(format!(
-                        "Workspace '{}' restricted; LSPs, formatters and debuggers do not work.",
-                        workspace.display()
-                    ));
-                    self.documents_mut()
-                        .filter(|d| d.path().is_some_and(|p| p.starts_with(&workspace)))
-                        .for_each(|d| d.is_trusted = Some(false));
-                } else {
-                    self.set_status(format!(
-                        "Workspace '{}' was already untrusted.",
-                        workspace.display()
-                    ));
-                }
-            }
-        }
+    pub fn set_trust(
+        &mut self,
+        workspace: impl AsRef<Path>,
+        trust: trust_db::Trust,
+    ) -> anyhow::Result<()> {
+        self.trust_events
+            .0
+            .send((workspace.as_ref().to_path_buf(), trust))?;
         Ok(())
     }
 }

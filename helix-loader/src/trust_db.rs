@@ -116,7 +116,7 @@ struct TrustDb {
     trust: Option<HashMap<PathBuf, Trust>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum Trust {
     Trusted,
     Untrusted,
@@ -136,20 +136,9 @@ impl TrustDb {
         })
     }
 
-    fn trust_path(&mut self, path: impl AsRef<Path>) -> bool {
+    fn set_trust(&mut self, path: impl AsRef<Path>, trust: Trust) -> bool {
         let path = helix_stdx::path::canonicalize(path);
-        self.trust
-            .get_or_insert(HashMap::new())
-            .insert(path, Trust::Trusted)
-            != Some(Trust::Trusted)
-    }
-
-    fn untrust_path(&mut self, path: impl AsRef<Path>) -> bool {
-        let path = helix_stdx::path::canonicalize(path);
-        self.trust
-            .get_or_insert(HashMap::new())
-            .insert(path, Trust::Untrusted)
-            != Some(Trust::Untrusted)
+        self.trust.get_or_insert(HashMap::new()).insert(path, trust) != Some(trust)
     }
 }
 
@@ -162,14 +151,9 @@ pub fn is_workspace_trusted(path: impl AsRef<Path>) -> Result<Option<bool>> {
     TRUST_DB.inspect(|db| db.is_workspace_trusted(path))
 }
 
-/// Trust a path. If the result is Ok, it returns true if the path was not trusted before.
-pub fn trust_path(path: impl AsRef<Path>) -> Result<bool> {
-    TRUST_DB.modify(|db| db.trust_path(path))
-}
-
-/// Trust a path. If the result is Ok, it returns true if the path was not untrusted before.
-pub fn untrust_path(path: impl AsRef<Path>) -> Result<bool> {
-    TRUST_DB.modify(|db| db.untrust_path(path))
+/// Set the trust of a path. If the result is Ok, it returns true if the path was newly changed to the value of trust.
+pub fn set_trust(path: impl AsRef<Path>, trust: Trust) -> Result<bool> {
+    TRUST_DB.modify(|db| db.set_trust(path, trust))
 }
 
 #[cfg(test)]
@@ -190,11 +174,13 @@ mod test {
             None
         );
         assert_eq!(
-            db.modify(|db| { db.untrust_path(&some_path) }).unwrap(),
+            db.modify(|db| { db.set_trust(&some_path, Trust::Untrusted) })
+                .unwrap(),
             true
         );
         assert_eq!(
-            db.modify(|db| { db.untrust_path(&some_path) }).unwrap(),
+            db.modify(|db| { db.set_trust(&some_path, Trust::Untrusted) })
+                .unwrap(),
             false,
         );
         assert_eq!(
@@ -202,7 +188,11 @@ mod test {
                 .unwrap(),
             Some(false)
         );
-        assert_eq!(db.modify(|db| db.trust_path(&some_path)).unwrap(), true);
+        assert_eq!(
+            db.modify(|db| db.set_trust(&some_path, Trust::Trusted))
+                .unwrap(),
+            true
+        );
         assert_eq!(
             db.inspect(|db| db.is_workspace_trusted(&some_path))
                 .unwrap(),
