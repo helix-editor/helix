@@ -9,7 +9,7 @@ In Helix, a workspace is defined as either a singular file or a folder which its
 
 ### Trust
 When a workspace is trusted, LSPs, formatters, debuggers and workspace config are allowed.
-> [!WARNING]
+> ⚠️
 > Any of the above can lead to remote code execution. Ensure you trust the source of a workspace before trusting it.
 
 Conversely, all of these are not allowed to be used when the workspace is untrusted.
