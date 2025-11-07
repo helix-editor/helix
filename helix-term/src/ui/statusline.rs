@@ -196,7 +196,7 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let visible = !context.doc.is_trusted.unwrap_or_default();
-    let content = if visible { "[Untrusted]" } else { "" };
+    let content = if visible { "[untrusted]" } else { "" };
     write(context, content.into());
 }
 
