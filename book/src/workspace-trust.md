@@ -17,6 +17,7 @@ Conversely, all of these are not allowed to be used when the workspace is untrus
 ### Default behavior
 By default, you will see a `[untrusted]` indicator on documents which are untrusted. All documents which haven't been trusted are untrusted.
 Each time you open a new folder/file Helix will ask you if to trust it or not. See `Configuration` if you wish to adjust this behavior.
+> Files created by Helix outside of a workspace are automatically trusted.
 
 ## Configuration
 There are 4 options for workspace trust:
