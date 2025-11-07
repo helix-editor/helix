@@ -8,7 +8,6 @@ use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
 use crate::surround::FindType;
 use crate::syntax;
-use crate::syntax::LanguageConfiguration;
 use crate::Range;
 use crate::{surround, Syntax};
 

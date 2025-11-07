@@ -742,12 +742,22 @@ impl PartialEq for MappableCommand {
 }
 
 // TODO: this is mostly a copy of MappableCommand. Fold this into MappableCommand?
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct FallbackCommand {
     name: &'static str,
     fun: fn(cx: &mut Context, ch: char),
     doc: &'static str,
 }
+
+impl PartialEq for FallbackCommand {
+    fn eq(&self, other: &Self) -> bool {
+        // Ignore `fun` as function pointer comparisons do not produce meaningful results.
+        // See <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
+        self.name == other.name && self.doc == other.doc
+    }
+}
+
+impl Eq for FallbackCommand {}
 
 macro_rules! static_fallback_commands {
     ( $($name:ident, $doc:literal,)* ) => {
@@ -6111,13 +6121,11 @@ fn textobject_treesitter(
     let count = cx.count();
     let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
-        let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
-            Some(t) => t,
-            None => {
-                editor.set_status("Syntax information is not available in current buffer");
-                return;
-            }
+        let Some(syntax) = doc.syntax() else {
+            editor.set_status("Syntax information is not available in current buffer");
+            return;
         };
+        let loader = editor.syn_loader.load();
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id).clone().transform(|range| {
             textobject::textobject_treesitter(
@@ -6125,8 +6133,8 @@ fn textobject_treesitter(
                 range,
                 obj_type,
                 object_name,
-                syntax.tree().root_node(),
-                lang_config,
+                syntax,
+                &loader,
                 count,
             )
         });
