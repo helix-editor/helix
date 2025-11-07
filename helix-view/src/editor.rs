@@ -1219,6 +1219,7 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+    pub kitty_multi_cursor_support: bool,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1340,6 +1341,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            kitty_multi_cursor_support: false,
         }
     }
 

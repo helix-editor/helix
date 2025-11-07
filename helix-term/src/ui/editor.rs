@@ -25,7 +25,7 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::CompleteAction,
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -146,11 +146,10 @@ impl EditorView {
                 overlays.push(tabstops);
             }
             overlays.push(Self::doc_selection_highlights(
-                editor.mode(),
+                editor,
                 doc,
                 view,
                 theme,
-                &config.cursor_shape,
                 self.terminal_focused,
             ));
             if let Some(overlay) = Self::highlight_focused_view_elements(view, doc, theme) {
@@ -461,19 +460,23 @@ impl EditorView {
 
     /// Get highlight spans for selections in a document view.
     pub fn doc_selection_highlights(
-        mode: Mode,
+        editor: &Editor,
         doc: &Document,
         view: &View,
         theme: &Theme,
-        cursor_shape_config: &CursorShapeConfig,
         is_terminal_focused: bool,
     ) -> OverlayHighlights {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
 
+        let mode = editor.mode();
+        let cursor_shape_config = &editor.config().cursor_shape;
         let cursorkind = cursor_shape_config.from_mode(mode);
         let cursor_is_block = cursorkind == CursorKind::Block;
+
+        // Skip rendering secondary cursors when kitty protocol handles them
+        let skip_secondary_cursors = editor.kitty_multi_cursor_support && !cursor_is_block;
 
         let selection_scope = theme
             .find_highlight_exact("ui.selection")
@@ -514,13 +517,10 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
-                    // Bar and underline cursors are drawn by the terminal
-                    // BUG: If the editor area loses focus while having a bar or
-                    // underline cursor (eg. when a regex prompt has focus) then
-                    // the primary cursor will be invisible. This doesn't happen
-                    // with block cursors since we manually draw *all* cursors.
-                    spans.push((cursor_scope, range.head..range.head + 1));
+                if selection_is_primary || !skip_secondary_cursors {
+                    if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
+                        spans.push((cursor_scope, range.head..range.head + 1));
+                    }
                 }
                 continue;
             }
@@ -537,17 +537,17 @@ impl EditorView {
                         cursor_start
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
+                if (selection_is_primary || !skip_secondary_cursors)
+                    && (!selection_is_primary || (cursor_is_block && is_terminal_focused))
+                {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
+                if (selection_is_primary || !skip_secondary_cursors)
+                    && (!selection_is_primary || (cursor_is_block && is_terminal_focused))
+                {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 // non block cursors look like they exclude the cursor
