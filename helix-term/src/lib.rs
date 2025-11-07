@@ -12,7 +12,9 @@ pub mod job;
 pub mod keymap;
 pub mod ui;
 
+#[cfg(not(windows))]
 use std::env::var_os;
+
 use std::path::Path;
 
 use futures_util::Future;
