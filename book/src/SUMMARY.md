@@ -24,7 +24,7 @@
   - [Themes](./themes.md)
   - [Key remapping](./remapping.md)
   - [Languages](./languages.md)
-  - [Workspace Trust](./workspace-trust.md)Added documentation for workspace trust feature, including definitions, trust behavior, and configuration options.
+  - [Workspace Trust](./workspace-trust.md)
 - [Guides](./guides/README.md)
   - [Adding languages](./guides/adding_languages.md)
   - [Adding textobject queries](./guides/textobject.md)
