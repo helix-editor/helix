@@ -171,8 +171,8 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             if doc.is_trusted.is_some() {
                 return Ok(());
             }
-            let (workspace, is_in_workspace) = find_workspace_in(&event.path);
-            if is_in_workspace {
+            let (workspace, is_file) = find_workspace_in(&event.path);
+            if !is_file {
                 let doc = event.editor.document_mut(event.doc).unwrap();
                 doc.is_trusted = helix_loader::trust_db::is_workspace_trusted(workspace)?;
 
