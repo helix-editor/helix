@@ -5,6 +5,7 @@ use crate::compositor::Component;
 use crate::ui;
 use crate::ui::PromptEvent;
 use anyhow::anyhow;
+use helix_loader::find_workspace_in;
 use helix_loader::trust_db::Trust;
 use helix_stdx::env::set_current_working_dir;
 use helix_view::editor::WorkspaceTrust;
@@ -167,7 +168,16 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             return Ok(());
         }
         if let Some(doc) = event.editor.document(event.doc) {
-            if doc.is_trusted.is_none() {
+            if doc.is_trusted.is_some() {
+                return Ok(());
+            }
+            let (workspace, is_in_workspace) = find_workspace_in(&event.path);
+            if is_in_workspace {
+                let doc = event.editor.document_mut(event.doc).unwrap();
+                doc.is_trusted = helix_loader::trust_db::is_workspace_trusted(workspace)?;
+
+                event.editor.refresh_language_servers(event.doc);
+            } else {
                 if let Err(e) = event.editor.set_trust(&event.path, Trust::Trusted) {
                     event.editor.set_error(format!(
                         "Couldn't trust file: {e}; use :trust-workspace to trust it"
