@@ -33,7 +33,7 @@
 "markup.heading" = "green"
 "markup.list" = "red"
 "markup.bold" = { fg = "yellow", modifiers = ["bold"] }
-"markup.italic" = { fg = "yelow", modifiers = ["italic"] }
+"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = "cyan"
 "markup.link.text" = "yellow"
