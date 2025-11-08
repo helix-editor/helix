@@ -1647,6 +1647,20 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     (helix.set-option! *helix.config* key value))
                 
 (provide define-lsp)
+
+;;@doc
+;; Syntax:
+;;
+;; Registers an lsp configuration. This is a thin wrapper around passing
+;; a hashmap manually to `set-lsp-config!`, and has a slightly more elegant
+;; API.
+;;
+;; Examples:
+;; ```scheme
+;; (define-lsp "steel-language-server" (command steel-language-server) (args '()))
+;; (define-lsp "rust-analyzer" (config (experimental (hash 'testExplorer #t 'runnables '("cargo")))))
+;; (define-lsp "tinymist" (config (exportPdf "onType") (outputPath "$root/$dir/$name")))
+;; ```
 (define-syntax define-lsp
   (syntax-rules (#%crunch #%name #%conf)
     ;; Other generic keys
@@ -1684,6 +1698,21 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     [(_ name (key value) ...) (define-lsp #%crunch #%name name #%conf (hash "name" name) (key value) ...)]))
 
 (provide define-language)
+
+;;@doc
+;; Syntax:
+;; 
+;; Defines a language configuration.
+;; This is a thin wrapper around calling `update-language-config!` with a hash
+;; of arguments, and has a slightly more elegant syntax.
+;;
+;; ```scheme
+;; (define-language "scheme"
+;;                 (formatter (command "raco") (args '("fmt" "-i")))
+;;                 (auto-format #true)
+;;                 (language-servers '("steel-language-server")))
+;;
+;; ```
 (define-syntax define-language
   (syntax-rules (#%crunch #%name #%conf)
 
