@@ -1,4 +1,146 @@
+# /home/matt/.steel/cogs/helix/keymaps.scm
+### ***reverse-buffer-map-insert***
+Insert a value into the reverse buffer map
+### **set-global-buffer-or-extension-keymap**
+Check that the types on this map check out, otherwise we don't need to consistently do these checks
+### **query-global-keymap**
+Query the global keybindings.
+
+```scheme
+(query-global-keymap "normal" '("space" "f")) ;; => "file_picker"
+```
+### **add-global-keybinding**
+Add keybinding to the global default
+### **deep-copy-global-keybindings**
+Deep copy the global keymap
+### **keymap**
 # /home/matt/.steel/cogs/helix/configuration.scm
+### **statusline**
+Configuration of the statusline elements.
+The following status line elements can be configured:
+
+Key	                        Description
+-------------------------------------------------------------------------------------------
+mode	                        The current editor mode (mode.normal/mode.insert/mode.select)
+spinner	                    A progress spinner indicating LSP activity
+file-name	                The path/name of the opened file
+file-absolute-path	        The absolute path/name of the opened file
+file-base-name	            The basename of the opened file
+file-modification-indicator	The indicator to show whether the file is modified (a [+] appears when there are unsaved changes)
+file-encoding	            The encoding of the opened file if it differs from UTF-8
+file-line-ending	            The file line endings (CRLF or LF)
+file-indent-style	        The file indentation style
+read-only-indicator	        An indicator that shows [readonly] when a file cannot be written
+total-line-numbers	        The total line numbers of the opened file
+file-type	                The type of the opened file
+diagnostics	                The number of warnings and/or errors
+workspace-diagnostics	    The number of warnings and/or errors on workspace
+selections	                The primary selection index out of the number of active selections
+primary-selection-length	    The number of characters currently in primary selection
+position	                    The cursor position
+position-percentage	        The cursor position as a percentage of the total number of lines
+separator	                The string defined in editor.statusline.separator (defaults to "│")
+spacer	                    Inserts a space between elements (multiple/contiguous spacers may be specified)
+version-control	            The current branch name or detached commit hash of the opened workspace
+register	                    The current selected register
+### **indent-heuristic**
+Which indent heuristic to use when a new line is inserted
+Defaults to `"hybrid"`
+Valid options are:
+* "simple"
+* "tree-sitter"
+* "hybrid"
+### **atomic-save**
+Whether to use atomic operations to write documents to disk.
+This prevents data loss if the editor is interrupted while writing the file, but may
+confuse some file watching/hot reloading programs. Defaults to `#true`.
+### **lsp**
+Blanket LSP configuration
+The options are provided in a hashmap, and provided options will be merged
+with the defaults. The options are as follows:
+
+Enables LSP
+* enable: bool
+
+Display LSP messagess from $/progress below statusline
+* display-progress-messages: bool
+
+Display LSP messages from window/showMessage below statusline
+* display-messages: bool
+
+Enable automatic pop up of signature help (parameter hints)
+* auto-signature-help: bool
+
+Display docs under signature help popup
+* display-signature-help-docs: bool
+
+Display inlay hints
+* display-inlay-hints: bool
+
+Maximum displayed length of inlay hints (excluding the added trailing `…`).
+If it's `None`, there's no limit
+* inlay-hints-length-limit: Option<NonZeroU8>
+
+Display document color swatches
+* display-color-swatches: bool
+
+Whether to enable snippet support
+* snippets: bool
+
+Whether to include declaration in the goto reference query
+* goto_reference_include_declaration: bool
+
+```scheme
+(lsp (hash 'display-inlay-hints #t))
+```
+
+The defaults shown from the rust side are as follows:
+```rust
+        LspConfig {
+           enable: true,
+           display_progress_messages: false,
+           display_messages: true,
+           auto_signature_help: true,
+           display_signature_help_docs: true,
+           display_inlay_hints: false,
+           inlay_hints_length_limit: None,
+           snippets: true,
+           goto_reference_include_declaration: true,
+           display_color_swatches: true,
+       }
+
+```
+### **search**
+Search configuration
+Accepts two keywords, #:smart-case and #:wrap-around, both default to true.
+
+```scheme
+(search #:smart-case #t #:wrap-around #t)
+(search #:smart-case #f #:wrap-around #f)
+```
+### **auto-pairs**
+Automatic insertion of pairs to parentheses, brackets,
+etc. Optionally, this can be a list of pairs to specify a
+global list of characters to pair, or a hashmap of character to character.
+Defaults to true.
+
+```scheme
+(auto-pairs #f)
+(auto-pairs #t)
+(auto-pairs (list '(#\{ . #\})))
+(auto-pairs (list '(#\{ #\})))
+(auto-pairs (list (cons #\{ #\})))
+(auto-pairs (hash #\{ #\}))
+```
+### **continue-comments**
+Whether comments should be continued.
+### **popup-border**
+Set the popup border.
+Valid options are:
+* "none"
+* "all"
+* "popup"
+* "menu"
 ### **register-lsp-notification-handler**
 Register a callback to be called on LSP notifications sent from the server -> client
 that aren't currently handled by Helix as a built in.
@@ -17,6 +159,37 @@ that aren't currently handled by Helix as a built in.
                                    "dart/textDocument/publishClosingLabels"
                                    (lambda (args) (displayln args)))
 ```
+### **register-lsp-call-handler**
+Register a callback to be called on LSP calls sent from the server -> client
+that aren't currently handled by Helix as a built in.
+
+```scheme
+(register-lsp-call-handler lsp-name event-name handler)
+```
+
+* lsp-name : string?
+* event-name : string?
+* function : (-> hash? any?) ;; Function where the first argument is the parameters
+
+# Examples
+```
+(register-lsp-call-handler "dart"
+                                   "dart/textDocument/publishClosingLabels"
+                                   (lambda (call-id args) (displayln args)))
+```
+### **define-lsp**
+Syntax:
+
+Registers an lsp configuration. This is a thin wrapper around passing
+a hashmap manually to `set-lsp-config!`, and has a slightly more elegant
+API.
+
+Examples:
+```scheme
+(define-lsp "steel-language-server" (command steel-language-server) (args '()))
+(define-lsp "rust-analyzer" (config (experimental (hash 'testExplorer #t 'runnables '("cargo")))))
+(define-lsp "tinymist" (config (exportPdf "onType") (outputPath "$root/$dir/$name")))
+```
 ### **cursor-shape**
 Shape for cursor in each mode
 
@@ -29,6 +202,10 @@ Shape for cursor in each mode
 ```scheme
 (cursor-shape #:normal 'block #:select 'underline #:insert 'bar)
 ```
+### **get-lsp-config**
+Get the lsp configuration for a language server.
+
+Returns a hashmap which can be passed to `set-lsp-config!`
 ### **set-lsp-config!**
 Sets the language server config for a specific language server.
 
@@ -194,6 +371,73 @@ The options are as follows:
 ```scheme
 (soft-wrap (sw-enable #t))
 ```
+### **whitespace**
+Sets the configuration for whitespace using var args.
+
+```scheme
+(whitespace . args)
+```
+
+The args are expected to be something of the value:
+```scheme
+(-> WhitespaceConfiguration? bool?)    
+```
+The options are as follows:
+
+* ws-visible:
+  Show all visible whitespace, defaults to false
+* ws-render:
+  manually disable or enable characters
+  render options (specified in hashmap):
+```scheme
+  (hash
+    'space #f
+    'nbsp #f
+    'nnbsp #f
+    'tab #f
+    'newline #f)
+```
+* ws-chars:
+  manually set visible whitespace characters with a hashmap
+  character options (specified in hashmap):
+```scheme
+  (hash
+    'space #\·
+    'nbsp #\⍽
+    'nnbsp #\␣
+    'tab #\→
+    'newline #\⏎
+    ; Tabs will look like "→···" (depending on tab width)
+    'tabpad #\·)
+```
+# Examples
+```scheme
+(whitespace (ws-visible #t) (ws-chars (hash 'space #\·)) (ws-render (hash 'tab #f)))
+```
+### **indent-guides**
+Sets the configuration for indent-guides using args
+
+```scheme
+(indent-guides . args)
+```
+
+The args are expected to be something of the value:
+```scheme
+(-> IndentGuidesConfig? bool?)
+```
+The options are as follows:
+
+* ig-render:
+  Show indent guides, defaults to false
+* ig-character:
+  character used for indent guides, defaults to "╎"
+* ig-skip-levels:
+  amount of levels to skip, defaults to 1
+
+# Examples
+```scheme
+(indent-guides (ig-render #t) (ig-character #\|) (ig-skip-levels 1))
+```
 ### **scrolloff**
 Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
 ### **scroll_lines**
@@ -202,19 +446,16 @@ Number of lines to scroll at once. Defaults to 3
 Mouse support. Defaults to true.
 ### **shell**
 Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
+### **jump-label-alphabet**
+The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. Defaults to "abcdefghijklmnopqrstuvwxyz"
 ### **line-number**
-Line number mode.
+Line number mode. Defaults to 'absolute, set to 'relative for relative line numbers
 ### **cursorline**
 Highlight the lines cursors are currently on. Defaults to false
 ### **cursorcolumn**
 Highlight the columns cursors are currently on. Defaults to false
 ### **middle-click-paste**
 Middle click paste support. Defaults to true
-### **auto-pairs**
-
-Automatic insertion of pairs to parentheses, brackets,
-etc. Optionally, this can be a list of 2-tuples to specify a
-global list of characters to pair. Defaults to true.
 ### **auto-completion**
 Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
 ### **auto-format**
@@ -251,36 +492,40 @@ Whether to automatically insert a trailing line-ending on write if missing. Defa
 Whether to color modes with different colors. Defaults to `false`.
 ### **gutters**
 Gutter configuration
-### **statusline**
-Configuration of the statusline elements
 ### **undercurl**
 Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`.
-### **search**
-Search configuration
-### **lsp**
-Lsp config
 ### **terminal**
 Terminal config
 ### **rulers**
 Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers
-### **whitespace**
-Whitespace config
 ### **bufferline**
 Persistently display open buffers along the top
-### **indent-guides**
-Vertical indent width guides
 ### **workspace-lsp-roots**
 Workspace specific lsp ceiling dirs
 ### **default-line-ending**
 Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
 ### **smart-tab**
 Enables smart tab
+### **rainbow-brackets**
+Enabled rainbow brackets
 ### **keybindings**
 Keybindings config
+### **set-keybindings!**
+Override the global keybindings with the provided keymap
 ### **inline-diagnostics-cursor-line-enable**
 Inline diagnostics cursor line
+### **inline-diagnostics-other-lines-enable**
+Inline diagnostics other lines
 ### **inline-diagnostics-end-of-line-enable**
 Inline diagnostics end of line
+### **inline-diagnostics-min-diagnostics-width**
+Inline diagnostics min diagnostics width
+### **inline-diagnostics-prefix-len**
+Inline diagnostics prefix length
+### **inline-diagnostics-max-wrap**
+Inline diagnostics maximum wrap
+### **inline-diagnostics-max-diagnostics**
+Inline diagnostics max diagnostics
 ### **get-language-config**
 Get the configuration for a specific language
 ### **set-language-config!**
@@ -466,11 +711,27 @@ Load a file into buffer
 Prints the given arguments to the statusline.
 ### **noop**
 Does nothing.
+### **goto-column**
+Move the cursor to the given character index within the same line
+### **goto-line**
+Move the cursor to the given line
 # /home/matt/.steel/cogs/helix/misc.scm
 ### **hx.cx->pos**
 DEPRECATED: Please use `cursor-position`
 ### **cursor-position**
 Returns the cursor position within the current buffer as an integer
+### **get-active-lsp-clients**
+Get all language servers, that are attached to the current buffer
+### **mode-switch-old**
+Return the old mode from the event payload
+### **mode-switch-new**
+Return the new mode from the event payload
+### **lsp-client-initialized?**
+Return if the lsp client is initialized
+### **lsp-client-name**
+Get the name of the lsp client
+### **lsp-client-offset-encoding**
+Get the offset encoding of the lsp client
 ### **hx.custom-insert-newline**
 DEPRECATED: Please use `insert-newline-hook`
 ### **insert-newline-hook**
@@ -544,6 +805,38 @@ deserialized from json to a steel value.
                     (hash "full" #f)
                     ;; Callback to run with the result
                     (lambda (result) (displayln result))))
+```
+### **send-lsp-notification**
+Send an LSP notification. The `lsp-name` must correspond to an active LSP.
+The method name corresponds to the method name that you'd expect to see
+with the LSP, and the params can be passed as a hash table. Unlike
+`send-lsp-command`, this does not expect a response and is used for
+fire-and-forget notifications.
+
+# Example
+```scheme
+(send-lsp-notification "copilot"
+                       "textDocument/didShowCompletion"
+                       (hash "item"
+                             (hash "insertText" "a helpful suggestion"
+                                   "range" (hash "start" (hash "line" 1 "character" 0)
+                                                 "end" (hash "line" 1 "character" 2)))))
+```
+### **lsp-reply-ok**
+Send a successful reply to an LSP request with the given result.
+
+```scheme
+(lsp-reply-ok lsp-name request-id result)
+```
+
+* lsp-name : string? - Name of the language server
+* request-id : string? - ID of the request to respond to  
+* result : any? - The result value to send back
+
+# Examples
+```scheme
+;; Reply to a request with id "123" from rust-analyzer
+(lsp-reply-ok "rust-analyzer" "123" (hash "result" "value"))
 ```
 ### **acquire-context-lock**
 
@@ -654,6 +947,15 @@ Get the current mode of the editor
 
 ```scheme
 (editor-mode) -> Mode?
+```
+       
+### **string->editor-mode**
+
+Create an editor mode from a string, or false if it string was not one of
+"normal", "insert", or "select"
+
+```scheme
+(string->editor-mode "normal") -> (or Mode? #f)
 ```
        
 ### **cx->themes**
@@ -1258,12 +1560,20 @@ Open buffer picker
 Open jumplist picker
 ### **symbol_picker**
 Open symbol picker
+### **syntax_symbol_picker**
+Open symbol picker from syntax information
+### **lsp_or_syntax_symbol_picker**
+Open symbol picker from LSP or syntax information
 ### **changed_file_picker**
 Open changed file picker
 ### **select_references_to_symbol_under_cursor**
 Select symbol references
 ### **workspace_symbol_picker**
 Open workspace symbol picker
+### **syntax_workspace_symbol_picker**
+Open workspace symbol picker from syntax information
+### **lsp_or_syntax_workspace_symbol_picker**
+Open workspace symbol picker from LSP or syntax information
 ### **diagnostics_picker**
 Open diagnostic picker
 ### **workspace_diagnostics_picker**
@@ -1380,6 +1690,10 @@ Insert tab if all cursors have all whitespace to their left; otherwise, run a se
 Insert tab char
 ### **insert_newline**
 Insert newline char
+### **insert_char_interactive**
+Insert an interactively-chosen char
+### **append_char_interactive**
+Append an interactively-chosen char
 ### **delete_char_backward**
 Delete previous char
 ### **delete_char_forward**
@@ -1677,9 +1991,13 @@ Replace the existing selection with the given string
 ### **enqueue-expression-in-engine**
 Enqueue an expression to run at the top level context, 
        after the existing function context has exited.
+### **get-current-line-character**
+Returns the current column number with the given position encoding
 ### **cx->current-file**
 Get the currently focused file path
 ### **current_selection**
+Returns the current selection as a string
+### **current-selection->string**
 Returns the current selection as a string
 ### **load-buffer!**
 Evaluates the current buffer
@@ -1687,6 +2005,8 @@ Evaluates the current buffer
 Returns the currently highlighted text as a string
 ### **get-current-line-number**
 Returns the current line number
+### **get-current-column-number**
+Returns the visual current column number of unicode graphemes
 ### **current-selection-object**
 Returns the current selection object
 ### **get-helix-cwd**
@@ -2535,6 +2855,10 @@ Checks if the given event is a key event.
 
 * event : Event?
        
+### **string->key-event**
+Get a key event from a string
+### **event->key-event**
+Return the key event from an event, if it is one
 ### **key-event-char**
 Get the character off of the event, if there is one.
 
@@ -2829,6 +3153,8 @@ event: Event?
 To use, you can include with `(require-builtin helix/core/text)`
 ### **Rope?**
 Check if the given value is a rope
+### **RopeRegex?**
+Check if the given value is a rope regex
 ### **rope->byte-slice**
 Take a slice of this rope using byte offsets
 
@@ -2920,6 +3246,63 @@ Convert the given line index to a character offset for a given rope
 * rope : Rope?
 * line-offset: int?
             
+### **rope-regex**
+Build a new RopeRegex? with a string
+
+```scheme
+(rope-regex string) -> RopeRegex?
+```
+
+* string: string?
+            
+### **rope-regex-find**
+Find the first match in a given rope
+
+```scheme
+(rope-regex-find regex rope) -> Rope?
+```
+
+* regex: RopeRegex?
+* rope: Rope?
+            
+### **rope-regex-find\***
+Find and return all matches in a given rope
+
+```scheme
+(rope-regex-find* regex rope) -> '(Rope?)
+```
+* regex: RopeRegex?
+* rope: Rope?
+            
+### **rope-regex-match?**
+Returns if a regex is matching on a given rope
+
+```scheme
+(rope-regex->match? regex rope) -> bool?
+```
+
+* regex: RopeRegex?
+* rope: Rope?
+            
+### **rope-regex-split**
+Split on the match in a given rope
+
+```scheme
+(rope-regex-split regex rope) -> '(Rope?)
+```
+
+* regex: RopeRegex?
+* rope: Rope?
+### **rope-regex-splitn**
+Split n times on the match in a given rope, return the rest
+
+```scheme
+(rope-regex-splitn regex rope n) -> '(Rope?)
+```
+
+* regex: RopeRegex?
+* rope: Rope?
+* n: (and positive? int?)
 ### **rope-starts-with?**
 Check if the rope starts with a given pattern
 ### **rope-trim-start**
