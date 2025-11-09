@@ -4344,6 +4344,8 @@ fn run_initialization_script(
         }
     });
 
+    patch_callbacks(cx);
+
     log::info!("Steel init time: {:?}", now.elapsed());
 }
 
