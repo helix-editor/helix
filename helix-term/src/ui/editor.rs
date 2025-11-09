@@ -517,10 +517,10 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                if selection_is_primary || !skip_secondary_cursors {
-                    if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
-                        spans.push((cursor_scope, range.head..range.head + 1));
-                    }
+                if (selection_is_primary || !skip_secondary_cursors)
+                    && (!selection_is_primary || (cursor_is_block && is_terminal_focused))
+                {
+                    spans.push((cursor_scope, range.head..range.head + 1));
                 }
                 continue;
             }
