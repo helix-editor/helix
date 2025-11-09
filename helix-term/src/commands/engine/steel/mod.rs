@@ -2896,7 +2896,7 @@ impl super::PluginSystem for SteelScriptingEngine {
 
                         // Install interrupt handler here during the duration
                         // of the function call
-                        match with_interrupt_handler(|| {
+                        let res = match with_interrupt_handler(|| {
                             guard
                                 .with_mut_reference(&mut ctx)
                                 .consume(move |engine, arguments| {
@@ -2910,17 +2910,21 @@ impl super::PluginSystem for SteelScriptingEngine {
                                 match &res {
                                     SteelVal::Void => {}
                                     SteelVal::StringV(s) => {
-                                        cx.editor.set_status(s.as_str().to_owned());
+                                        ctx.editor.set_status(s.as_str().to_owned());
                                     }
                                     _ => {
-                                        cx.editor.set_status(res.to_string());
+                                        ctx.editor.set_status(res.to_string());
                                     }
                                 }
 
                                 Ok(res)
                             }
                             Err(e) => Err(e),
-                        }
+                        };
+
+                        patch_callbacks(&mut ctx);
+
+                        res
                     };
 
                     res
@@ -3116,6 +3120,8 @@ impl super::PluginSystem for SteelScriptingEngine {
             Ok(SteelVal::Void)
         };
 
+        patch_callbacks(&mut ctx);
+
         let value = match result {
             Err(e) => {
                 cx.editor.set_error(format!("{}", e));
@@ -3137,6 +3143,28 @@ impl super::PluginSystem for SteelScriptingEngine {
                 }
             }
         }
+    }
+}
+
+fn patch_callbacks(ctx: &mut Context<'_>) {
+    for callback in std::mem::take(&mut ctx.callback) {
+        let callback = async move {
+            let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor, jobs| {
+                    callback(
+                        compositor,
+                        &mut compositor::Context {
+                            editor,
+                            scroll: None,
+                            jobs,
+                        },
+                    )
+                },
+            );
+            Ok(call)
+        };
+
+        ctx.jobs.local_callback(callback);
     }
 }
 
@@ -4249,6 +4277,7 @@ fn run_initialization_script(
     language_configuration: Arc<ArcSwap<syntax::Loader>>,
     event_reader: TerminalEventReaderHandle,
 ) {
+    let now = std::time::Instant::now();
     install_event_reader(event_reader);
 
     // Hack:
@@ -4314,6 +4343,8 @@ fn run_initialization_script(
             std::fs::write(helix_module_path, "").ok();
         }
     });
+
+    log::info!("Steel init time: {:?}", now.elapsed());
 }
 
 impl Custom for PromptEvent {}
@@ -4524,7 +4555,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         on_next_key_callback: None,
                         jobs,
                     };
-                    enter_engine(|guard| {
+                    let res = enter_engine(|guard| {
                         if !is_current_generation(generation) {
                             return;
                         }
@@ -4545,7 +4576,11 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         {
                             present_error_inside_engine_context(&mut ctx, guard, e);
                         }
-                    })
+                    });
+
+                    patch_callbacks(&mut ctx);
+
+                    res
                 };
                 job::dispatch_blocking_jobs(callback);
 
@@ -4574,7 +4609,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         on_next_key_callback: None,
                         jobs,
                     };
-                    enter_engine(|guard| {
+                    let res = enter_engine(|guard| {
                         if !is_current_generation(generation) {
                             return;
                         }
@@ -4594,7 +4629,11 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         {
                             present_error_inside_engine_context(&mut ctx, guard, e);
                         }
-                    })
+                    });
+
+                    patch_callbacks(&mut ctx);
+
+                    res
                 };
                 job::dispatch_blocking_jobs(callback);
 
@@ -4622,7 +4661,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         on_next_key_callback: None,
                         jobs,
                     };
-                    enter_engine(|guard| {
+                    let res = enter_engine(|guard| {
                         if !is_current_generation(generation) {
                             return;
                         }
@@ -4642,7 +4681,11 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         {
                             present_error_inside_engine_context(&mut ctx, guard, e);
                         }
-                    })
+                    });
+
+                    patch_callbacks(&mut ctx);
+
+                    res
                 };
                 job::dispatch_blocking_jobs(callback);
 
@@ -4670,7 +4713,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         on_next_key_callback: None,
                         jobs,
                     };
-                    enter_engine(|guard| {
+                    let res = enter_engine(|guard| {
                         if !is_current_generation(generation) {
                             return;
                         }
@@ -4690,7 +4733,11 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         {
                             present_error_inside_engine_context(&mut ctx, guard, e);
                         }
-                    })
+                    });
+
+                    patch_callbacks(&mut ctx);
+
+                    res
                 };
                 job::dispatch_blocking_jobs(callback);
 
@@ -5480,7 +5527,7 @@ fn acquire_context_lock(
         let cloned_func = rooted.value();
         let cloned_place = rooted_place.as_ref().map(|x| x.value());
 
-        enter_engine(|guard| {
+        let res = enter_engine(|guard| {
             if let Err(e) = guard
                 .with_mut_reference::<Context, Context>(&mut ctx)
                 // Block until the other thread is finished in its critical
@@ -5523,7 +5570,11 @@ fn acquire_context_lock(
             {
                 present_error_inside_engine_context(&mut ctx, guard, e);
             }
-        })
+        });
+
+        patch_callbacks(&mut ctx);
+
+        res
     };
     job::dispatch_blocking_jobs(callback);
 
@@ -5630,7 +5681,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
                     let cloned_func = callback_fn_guard.value();
 
-                    with_interrupt_handler(|| {
+                    let res = with_interrupt_handler(|| {
                         enter_engine(|guard| {
                             if let Err(e) = guard
                                 .with_mut_reference::<Context, Context>(&mut ctx)
@@ -5648,7 +5699,11 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                                 present_error_inside_engine_context(&mut ctx, guard, e);
                             }
                         })
-                    })
+                    });
+
+                    patch_callbacks(&mut ctx);
+
+                    res
                 },
             );
 
@@ -5735,7 +5790,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
                         let cloned_func = rooted.value();
 
-                        enter_engine(|guard| {
+                        let res = enter_engine(|guard| {
                             if let Err(e) = guard
                                 .with_mut_reference::<Context, Context>(&mut ctx)
                                 .consume(move |engine, args| {
@@ -5746,7 +5801,11 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                             {
                                 present_error_inside_engine_context(&mut ctx, guard, e);
                             }
-                        })
+                        });
+
+                        patch_callbacks(&mut ctx);
+
+                        res
                     }
                 }
             })
@@ -5899,6 +5958,8 @@ pub fn run_expression_in_engine(cx: &mut Context, text: String) -> anyhow::Resul
                         })
                 });
 
+                patch_callbacks(&mut ctx);
+
                 match output {
                     Ok(output) => {
                         let (output, _success) = (Tendril::from(format!("{:?}", output)), true);
@@ -5962,6 +6023,8 @@ pub fn load_buffer(cx: &mut Context) -> anyhow::Result<()> {
                             }
                         })
                 });
+
+                patch_callbacks(&mut ctx);
 
                 match output {
                     Ok(output) => {
@@ -6184,7 +6247,7 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
 
                 let cloned_func = rooted.value();
 
-                enter_engine(|guard| {
+                let res = enter_engine(|guard| {
                     if !is_current_generation(current_gen) {
                         return;
                     }
@@ -6200,7 +6263,11 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
                     {
                         present_error_inside_engine_context(&mut ctx, guard, e);
                     }
-                })
+                });
+
+                patch_callbacks(&mut ctx);
+
+                res
             },
         );
         Ok(call)
@@ -6231,7 +6298,7 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
 
                 let cloned_func = rooted.value();
 
-                enter_engine(|guard| {
+                let res = enter_engine(|guard| {
                     if !is_current_generation(current_gen) {
                         return;
                     }
@@ -6247,7 +6314,11 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
                     {
                         present_error_inside_engine_context(&mut ctx, guard, e);
                     }
-                })
+                });
+
+                patch_callbacks(&mut ctx);
+
+                res
             },
         );
         Ok(call)
@@ -6288,7 +6359,7 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                             engine.call_function_with_args(cloned_func.clone(), vec![inner])
                         };
 
-                        enter_engine(|guard| {
+                        let res = enter_engine(|guard| {
                             if !is_current_generation(current_gen) {
                                 return;
                             }
@@ -6299,7 +6370,11 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                             {
                                 present_error_inside_engine_context(&mut ctx, guard, e);
                             }
-                        })
+                        });
+
+                        patch_callbacks(&mut ctx);
+
+                        res
                     }
                     Err(e) => enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e)),
                 }
@@ -6632,7 +6707,7 @@ fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
 
                 enter_engine(move |guard| match TryInto::<SteelVal>::try_into(res) {
                     Ok(result) => {
-                        if let Err(e) = guard
+                        let res = guard
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
                                 let context = args[0].clone();
@@ -6642,10 +6717,13 @@ fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
                                     cloned_func.clone(),
                                     vec![result.clone()],
                                 )
-                            })
-                        {
+                            });
+
+                        patch_callbacks(&mut ctx);
+
+                        if let Err(e) = res {
                             present_error_inside_engine_context(&mut ctx, guard, e);
-                        }
+                        };
                     }
                     Err(e) => {
                         present_error_inside_engine_context(&mut ctx, guard, e);
