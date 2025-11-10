@@ -1,5 +1,3 @@
-
-
        .
        ###x.        .|
        d#####x,   ,v||
@@ -37,11 +35,6 @@
 
 
 
-
-
-
-
-
 =================================================================
 =                  1.1 BASIC CURSOR MOVEMENT                    =
 =================================================================
@@ -57,10 +50,6 @@
  to use the hjkl keys as they are closer to the other keys you
  will be using. Try moving around to get a feel for hjkl.
  Once you're ready, hold j to continue to the next lesson.
-
-
-
-
 
 
 
@@ -82,10 +71,6 @@
 
 
 
-
-
-
-
 =================================================================
 =                         1.3 DELETION                          =
 =================================================================
@@ -100,11 +85,6 @@
      This sentence has extra characters.
 
  Once the sentence is correct, move on to the next lesson.
-
-
-
-
-
 
 
 
@@ -126,7 +106,6 @@
 
  Note: The status bar will display your current mode.
        Notice that when you type i, 'NOR' changes to 'INS'.
-
 
 
 
@@ -174,6 +153,8 @@
 
 
 
+
+
 =================================================================
 =                   2.1 MORE INSERT COMMANDS                    =
 =================================================================
@@ -196,6 +177,8 @@
  --> This sentence is miss
      This sentence is missing some text.
 
+
+
 =================================================================
 =                      2.2 OPENING LINES                        =
 =================================================================
@@ -207,14 +190,6 @@
  2. Type o to open a line below and type your answer.
 
  --> What is the best editor?
-
-
-
-
-
-
-
-
 
 
 
@@ -230,9 +205,6 @@
  * Type A to enter Insert mode at the end of a line.
 
  * Use o and O to open lines below and above the cursor respectively.
-
-
-
 
 
 
@@ -261,7 +233,6 @@
 
 
 
-
 =================================================================
 =                     3.2 MORE MOTIONS                          =
 =================================================================
@@ -283,6 +254,8 @@
  4. Type b to select the rest.
 
 --> The Middle Kingdom.
+
+
 
 =================================================================
 =                     3.3 WORDS AND words                       =
@@ -306,6 +279,7 @@
 --> Helix is a one-of-a-kind "modal" text editor
 
 
+
 =================================================================
 =                    3.4 THE CHANGE COMMAND                     =
 =================================================================
@@ -327,7 +301,6 @@
 
 
 
-
 =================================================================
 =                   3.5 COUNTS WITH MOTIONS                     =
 =================================================================
@@ -341,12 +314,6 @@
  5. Try the above with different numbers.
 
  --> This is just a line with words you can move around in.
-
-
-
-
-
-
 
 
 
@@ -366,9 +333,6 @@
  4. Move to the B of BAZ and repeat the sequence to delete them.
 
  --> Remove the FOO BAR distracting words BAZ BIZ from this line.
-
-
-
 
 
 
@@ -393,6 +357,8 @@
 
  Note: X works similarly to x although it doesn't extend to
        subsequent lines. X on an empty line does nothing.
+
+
 
 =================================================================
 =                   3.8 COLLAPSING SELECTIONS                   =
@@ -438,6 +404,12 @@
 
  * Type semicolon ( ; ) to collapse selection.
 
+
+
+
+
+
+
 =================================================================
 =                         4.1 UNDOING                           =
 =================================================================
@@ -452,11 +424,6 @@
  6. Type U (Shift-u) several times to redo your fixes.
 
  --> Fiix the errors on thhis line and reeplace them witth undo.
-
-
-
-
-
 
 
 
@@ -481,6 +448,8 @@
        altered text. Use Alt-d / Alt-c instead to avoid this.
  Note: Helix doesn't share the system clipboard by default. Type
        Space + y / p to yank / paste on the system's clipboard.
+
+
 
 =================================================================
 =                     4.3 SEARCHING IN FILE                     =
@@ -523,9 +492,6 @@
 
 
 
-
-
-
 =================================================================
 =                     5.1 MULTIPLE CURSORS                      =
 =================================================================
@@ -548,6 +514,8 @@
 
  Note: Press Alt-C to do the same above the cursor.
 
+
+
 =================================================================
 =                    5.2 THE SELECT COMMAND                     =
 =================================================================
@@ -566,7 +534,6 @@
 
  --> I like to eat apples since my favorite fruit is apples.
      I like to eat oranges since my favorite fruit is oranges.
-
 
 
 
@@ -592,6 +559,7 @@
        then perform the steps explained above.
 
 
+
 =================================================================
 =                      5.4 ALIGN SELECTIONS                     =
 =================================================================
@@ -614,6 +582,8 @@
        selections - the end that moves. The other end is called
        the "anchor".
 
+
+
 =================================================================
 =                 5.5 SPLIT SELECTION INTO LINES                =
 =================================================================
@@ -634,8 +604,6 @@
 
 
 
-
-
 =================================================================
 =                        CHAPTER 5 RECAP                        =
 =================================================================
@@ -649,8 +617,6 @@
  * Type & to align selections.
 
  * Press Alt-s to split the selection into lines.
-
-
 
 
 
@@ -680,6 +646,8 @@
  Note: Unlike Vim, Helix doesn't limit these commands to the
        current line. It searches for the character in the file.
 
+
+
 =================================================================
 =                    6.2 THE REPLACE COMMAND                    =
 =================================================================
@@ -701,7 +669,6 @@
 
 
 
-
 =================================================================
 =                         6.3 REPETITION                        =
 =================================================================
@@ -720,10 +687,6 @@
 
 
 
-
-
-
-
 =================================================================
 =                        CHAPTER 6 RECAP                        =
 =================================================================
@@ -735,10 +698,6 @@
 
  * Type . to repeat the last insertion.
    * Press Alt-. to repeat the last f / t selection.
-
-
-
-
 
 
 
@@ -763,11 +722,6 @@
 
 
 
-
-
-
-
-
 =================================================================
 =                       7.2 JOINING LINES                       =
 =================================================================
@@ -787,9 +741,6 @@ lines.
 
 
 
-
-
-
 =================================================================
 =                      7.3 INDENTING LINES                      =
 =================================================================
@@ -801,14 +752,12 @@ lines.
  3. Move to the third line and type < to unindent it.
 
  --> These lines
-    are indented
+   are indented
          very poorly.
 
      These lines
      are indented
      much better.
-
-
 
 
 
@@ -832,8 +781,6 @@ lines.
 
 
 
-
-
 =================================================================
 =                        CHAPTER 7 RECAP                        =
 =================================================================
@@ -846,9 +793,6 @@ lines.
 
  * Press Ctrl-a to increment the selected number.
    * Press Ctrl-x to decrement the selected number.
-
-
-
 
 
 
@@ -878,6 +822,7 @@ lines.
      are mangoes and pineapples.
 
 
+
 =================================================================
 =                          8.2 MACROS                           =
 =================================================================
@@ -900,6 +845,8 @@ lines.
  --> ... sentence doesn't have its first and last ... .
      This sentence doesn't have its first and last word.
 
+
+
 =================================================================
 =                        CHAPTER 8 RECAP                        =
 =================================================================
@@ -910,11 +857,6 @@ lines.
    the default being @.
 
  * Type q to replay a macro from @ or the selected register.
-
-
-
-
-
 
 
 
@@ -944,6 +886,8 @@ lines.
  Note: * is like a shorthand for "/y as all it really does is
        copy the selection into the / register.
 
+
+
 =================================================================
 =           9.2 ADDING SELECTION ON NEXT SEARCH MATCH           =
 =================================================================
@@ -964,8 +908,6 @@ lines.
 
 
 
-
-
 =================================================================
 =                     9.3 USING THE JUMPLIST                    =
 =================================================================
@@ -983,8 +925,6 @@ lines.
  1. Press Ctrl-s somewhere.
  2. Move far away in the file.
  3. Press Ctrl-o (just once!) to come back to where you saved.
-
-
 
 
 
@@ -1009,6 +949,8 @@ lines.
      There may be many such lines
      But you really want to jump here!
      This is fast with the 2-character labels.
+
+
 
 =================================================================
 =                        CHAPTER 9 RECAP                        =
@@ -1053,7 +995,6 @@ lines.
 
 
 
-
 =================================================================
 =             10.2 CYCLING THE CONTENT OF SELECTIONS            =
 =================================================================
@@ -1068,11 +1009,6 @@ lines.
 
  --> Jumping through the water,
  --> daring to know.
-
-
-
-
-
 
 
 
@@ -1097,6 +1033,8 @@ lines.
  --> thIs sENtencE hAs MIS-cApitalIsed leTTerS.
  --> this SENTENCE SHOULD all be in LOWERCASE.
  --> THIS sentence should ALL BE IN uppercase!
+
+
 
 =================================================================
 =                   10.4 SPLITTING SELECTIONS                   =
@@ -1141,7 +1079,6 @@ letters! that is not good grammar. you can fix this.
 
 
 
-
 =================================================================
 =                     11.1 COMMENTING A LINE                    =
 =================================================================
@@ -1154,13 +1091,6 @@ letters! that is not good grammar. you can fix this.
  3. Now try uncommenting the line.
 
  --> Comment me please
-
-
-
-
-
-
-
 
 
 
@@ -1186,6 +1116,8 @@ letters! that is not good grammar. you can fix this.
  Note: If there are already commented lines under selections or
  multiple cursors, they won't be uncommented but commented again.
 
+
+
 =================================================================
 =                       CHAPTER 11 RECAP                        =
 =================================================================
@@ -1195,12 +1127,6 @@ letters! that is not good grammar. you can fix this.
  * To comment multiple lines, use the selections
    and multi-cursors before typing Ctrl-c.
    * Commented lines cannot be uncommented but commented again.
-
-
-
-
-
-
 
 
 
@@ -1229,7 +1155,6 @@ letters! that is not good grammar. you can fix this.
 
 
 
-
 =================================================================
 =              12.2 USING MATCH MODE SELECT INSIDE              =
 =================================================================
@@ -1252,6 +1177,8 @@ letters! that is not good grammar. you can fix this.
  --> test [ with square brackets ] !
  --> try ( with nested [ pairs of ( parentheses) and "brackets" ])
 
+
+
 =================================================================
 =               12.3 USING MATCH MODE SELECT AROUND             =
 =================================================================
@@ -1269,8 +1196,6 @@ letters! that is not good grammar. you can fix this.
  This naturally works with other delimiters too:
 
  --> try [ with 'square' brackets ] too!
-
-
 
 
 
@@ -1318,6 +1243,8 @@ letters! that is not good grammar. you can fix this.
  Trying to delete nonexistent surrounding delimiters prints an error
  at the bottom bar and does nothing.
 
+
+
 =================================================================
 =             12.6 USING MATCH MODE REPLACE SURROUND            =
 =================================================================
@@ -1338,6 +1265,7 @@ letters! that is not good grammar. you can fix this.
 
  You can try to replace a nonexistent pair: this will show
  an error warning at the bottom bar and do nothing.
+
 
 
 =================================================================
@@ -1362,8 +1290,11 @@ letters! that is not good grammar. you can fix this.
 
 
 
+
+
+
 =================================================================
-=                CHAPTER 13.1 CREATE NEW SPLIT                  =
+=                     13.1 CREATE NEW SPLIT                     =
 =================================================================
 
  In Normal mode, press Ctrl-w to open the Window menu, which displays
@@ -1383,9 +1314,8 @@ letters! that is not good grammar. you can fix this.
 
 
 
-
 =================================================================
-=                CHAPTER 13.2 MOVE BETWEEN SPLITS               =
+=                    13.2 MOVE BETWEEN SPLITS                   =
 =================================================================
 
  Use Ctrl-w k to move to the split above your current split. Use
@@ -1406,8 +1336,9 @@ letters! that is not good grammar. you can fix this.
  the left press Ctrl-w o to close all except this split.
 
 
+
 =================================================================
-=               CHAPTER 13.3 SPLIT CURRENT BUFFER               =
+=                   13.3 SPLIT CURRENT BUFFER                   =
 =================================================================
 
  Use Ctrl-w s to split the view of the current buffer horizontally
@@ -1418,18 +1349,8 @@ letters! that is not good grammar. you can fix this.
 
 
 
-
-
-
-
-
-
-
-
-
-
 =================================================================
-=               CHAPTER 13.4 USE COMMANDS TO SPLIT              =
+=                   13.4 USE COMMANDS TO SPLIT                  =
 =================================================================
 
  The :vsplit (or :vs for short) and :hsplit (or :hs) commands can
@@ -1450,8 +1371,9 @@ letters! that is not good grammar. you can fix this.
  or path instead of a new empty buffer.
 
 
+
 =================================================================
-=                  CHAPTER 13.5 SWAPPING SPLITS                 =
+=                      13.5 SWAPPING SPLITS                     =
 =================================================================
 
  Open a split on the left with :vs hello1 and then a split below
@@ -1470,10 +1392,8 @@ letters! that is not good grammar. you can fix this.
 
 
 
-
-
 =================================================================
-=                CHAPTER 13.6 TRANSPOSE SPLITS                  =
+=                    13.6 TRANSPOSE SPLITS                      =
 =================================================================
 
  Open a split on the left with :vs hello1 and then a split below
@@ -1495,7 +1415,7 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
-=             CHAPTER 13.7 OPEN SPLIT FROM FILEPICKER           =
+=                 13.7 OPEN SPLIT FROM FILEPICKER               =
 =================================================================
 
  Splits can also be opened directly from the file picker. Press
@@ -1532,6 +1452,7 @@ letters! that is not good grammar. you can fix this.
  Splits can also be used directly from the file pickers, by using
  Ctrl-v to open the file selected in a new vertical split, and
  Ctrl-s in a horizontal split.
+
 
 
 
