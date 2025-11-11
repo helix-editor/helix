@@ -113,6 +113,7 @@ racket = { command = "racket", args = ["-l", "racket-langserver"] }
 regols = { command = "regols" }
 rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
+ron-lsp = { command = "ron-lsp" }
 ruff = { command = "ruff", args = ["server"] }
 ruby-lsp = { command = "ruby-lsp" }
 rshtml-analyzer = { command = "rshtml-analyzer", args = ["--stdio"] }
@@ -181,7 +182,6 @@ paramName = "All"
 paramType = true
 await = true
 
-
 [language-server.gopls]
 command = "gopls"
 
@@ -198,7 +198,6 @@ command = "golangci-lint-langserver"
 
 [language-server.golangci-lint-lsp.config]
 command = ["golangci-lint", "run", "--output.json.path=stdout", "--show-stats=false", "--issues-exit-code=1"]
-
 
 [language-server.rust-analyzer]
 command = "rust-analyzer"
@@ -1062,7 +1061,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "python"
-source = { git = "https://github.com/tree-sitter/tree-sitter-python", rev = "4bfdd9033a2225cc95032ce77066b7aeca9e2efc" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-python", rev = "293fdc02038ee2bf0e2e206711b69c90ac0d413f" }
 
 [[language]]
 name = "nickel"
@@ -1351,7 +1350,6 @@ text-width = 100
 name = "lean"
 source = { git = "https://github.com/Julian/tree-sitter-lean", rev = "d98426109258b266e1e92358c5f11716d2e8f638" }
 
-
 [[language]]
 name = "lpf"
 comment-token = "#"
@@ -1620,6 +1618,22 @@ name = "haskell-persistent"
 source = { git = "https://github.com/MercuryTechnologies/tree-sitter-haskell-persistent", rev = "58a6ccfd56d9f1de8fb9f77e6c42151f8f0d0f3d" }
 
 [[language]]
+name = "haskell-literate"
+scope = "source.haskell-literate"
+injection-regex = "lhs"
+file-types = ["lhs"]
+roots = ["Setup.hs", "stack.yaml", "cabal.project", "hie.yaml"]
+shebangs = ["runhaskell", "stack"]
+comment-token = "--"
+block-comment-tokens = { start = "{-", end = "-}" }
+language-servers = [ "haskell-language-server" ]
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "haskell-literate"
+source = { git = "https://github.com/LaurentRDC/tree-sitter-haskell-literate", rev = "8ad7bd1b1595f4cc1a4ccc775d4a3c460f43a596" }
+
+[[language]]
 name = "purescript"
 scope = "source.purescript"
 injection-regex = "purescript"
@@ -1800,7 +1814,7 @@ grammar = "scheme"
 [[language]]
 name = "common-lisp"
 scope = "source.lisp"
-file-types = ["lisp", "asd", "cl", "l", "lsp", "ny", "podsl", "sexp"]
+file-types = ["lisp", "asd", "cl", "l", "lsp", "ny", "podsl", "ros", "sexp"]
 shebangs = ["lisp", "sbcl", "ccl", "clisp", "ecl"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
@@ -2299,6 +2313,8 @@ file-types = ["ron"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "    " }
+roots = [ "Cargo.toml" ]
+language-servers = [ "ron-lsp" ]
 
 [[grammar]]
 name = "ron"
@@ -2930,7 +2946,6 @@ comment-token = "--"
 indent = { tab-width = 3, unit = "   " }
 language-servers = ["ada-language-server"]
 
-
 [[grammar]]
 name = "ada"
 source = { git = "https://github.com/briot/tree-sitter-ada", rev = "ba0894efa03beb70780156b91e28c716b7a4764d" }
@@ -3128,7 +3143,6 @@ indent = { tab-width = 2, unit = "  " }
 name = "xml"
 source = { git = "https://github.com/RenjiSann/tree-sitter-xml", rev = "48a7c2b6fb9d515577e115e6788937e837815651" }
 
-
 [[language]]
 name = "dtd"
 scope = "source.dtd"
@@ -3298,7 +3312,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "matlab"
-source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "585b52b9b16d8e626299a76360ef6ab4f9731aed" }
+source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "55d89cb322c9bc49bfd953b2a9d29ff03b072eac" }
 
 [[language]]
 name = "ponylang"
@@ -4624,7 +4638,6 @@ language-servers = ["sourcepawn-studio"]
 name = "sourcepawn"
 source = { git = "https://github.com/nilshelmig/tree-sitter-sourcepawn", rev = "f2af8d0dc14c6790130cceb2a20027eb41a8297c" }
 
-
 [[grammar]]
 name = "vim"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-vim", rev = "f3cd62d8bd043ef20507e84bb6b4b53731ccf3a7" }
@@ -4981,3 +4994,24 @@ indent = {tab-width = 2, unit = "  "}
 [[grammar]]
 name = "bovex"
 source = { git = "https://github.com/mi2ebi/tree-sitter-bovex", rev = "de7657a9cc3525b9b77c6d268da09dad5b1346b0" }
+
+[[language]]
+name = "haxe"
+scope = "source.haxe"
+injection-regex = "hx|haxe"
+file-types = ["hx"]
+roots = ["haxelib.json", "project.xml", "build.hxml"]
+shebangs = []
+auto-format = true
+comment-tokens = ["//", "///"]
+block-comment-tokens = [
+  { start = "/*", end = "*/" },
+  { start = "/**", end = "*/" },
+]
+language-servers = ["haxe-language-server"]
+indent = { tab-width = 4, unit = "    " }
+persistent-diagnostic-sources = ["haxe"]
+
+[[grammar]]
+name = "haxe"
+source = { git = "https://github.com/vantreeseba/tree-sitter-haxe", rev = "a55f3e2cf1e4449200fd089a80d3af642bcf5f94" }
