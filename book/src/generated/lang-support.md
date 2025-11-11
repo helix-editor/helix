@@ -109,6 +109,7 @@
 | haskell | ✓ | ✓ |  |  |  | `haskell-language-server-wrapper` |
 | haskell-literate | ✓ |  |  |  |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |  |  |
+| haxe | ✓ |  |  | ✓ |  |  |
 | hcl | ✓ | ✓ | ✓ |  |  | `terraform-ls` |
 | hdl | ✓ |  |  |  |  | `hdls` |
 | heex | ✓ | ✓ |  |  |  | `elixir-ls`, `expert` |

@@ -4976,3 +4976,24 @@ indent = {tab-width = 2, unit = "  "}
 [[grammar]]
 name = "bovex"
 source = { git = "https://github.com/mi2ebi/tree-sitter-bovex", rev = "de7657a9cc3525b9b77c6d268da09dad5b1346b0" }
+
+[[language]]
+name = "haxe"
+scope = "source.haxe"
+injection-regex = "hx|haxe"
+file-types = ["hx"]
+roots = ["haxelib.json", "project.xml", "build.hxml"]
+shebangs = []
+auto-format = true
+comment-tokens = ["//", "///"]
+block-comment-tokens = [
+  { start = "/*", end = "*/" },
+  { start = "/**", end = "*/" },
+]
+language-servers = ["haxe-language-server"]
+indent = { tab-width = 4, unit = "    " }
+persistent-diagnostic-sources = ["haxe"]
+
+[[grammar]]
+name = "haxe"
+source = { git = "https://github.com/vantreeseba/tree-sitter-haxe", rev = "a55f3e2cf1e4449200fd089a80d3af642bcf5f94" }
