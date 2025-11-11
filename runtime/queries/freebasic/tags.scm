@@ -1,3 +1,3 @@
-(sub_declaration name: (identifier) @name) @definition.function
+(sub_declaration name: (identifier) @definition.function)
 
-(function_declaration name: (identifier) @name) @definition.function
+(function_declaration name: (identifier) @definition.function)

@@ -1,5 +1,5 @@
 (for_statement
-  variable: (identifier) @name.definition.variable)
+   variable: (identifier) @definition.variable)
 
 (let_statement
-  variable: (identifier) @name.definition.variable)
+  variable: (identifier) @definition.variable)
