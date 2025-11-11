@@ -5021,7 +5021,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "basic"
-source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-basic", rev = "ab991e0986759e86b2d7d67347b6676cdfd018dd" }
+source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-basic", rev = "a98449c11d6c688b54c1ca132148a62d7e586a2a" }
 
 [[language]]
 name = "freebasic"
@@ -5033,4 +5033,4 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "freebasic"
-source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-freebasic", rev = "d885938e6fd826cedb61e64814625e9cbc655ec4" }
+source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-freebasic", rev = "dbf696adb4c0b9c020074e75043c90592981ee7f" }
