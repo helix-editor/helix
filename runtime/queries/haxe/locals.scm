@@ -2,11 +2,11 @@
 [
  (block)
  (function_declaration)
-] @scope @local.scope
+] @local.scope
 
 ; Definitions
-(function_arg name: (identifier) @definition.parameter)
-(variable_declaration name: (identifier) @local.definition) 
+(function_arg name: (identifier) @local.definition.variable.parameter)
+(variable_declaration name: (identifier) @local.definition.variable)
 
 ; References
 (block (identifier)) @local.reference

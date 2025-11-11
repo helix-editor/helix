@@ -48,12 +48,13 @@
 ; [(keyword) (null)] @keyword
 ; (type) @type
 (type_name) @type
-(package_name) @module
+(package_name) @namespace
 (type (identifier) !built_in) @type
 (type built_in: (identifier)) @type.builtin
-[(integer) (float)] @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 (string) @string
-(bool) @boolean
+(bool) @constant.builtin.boolean
 (operator) @operator
 (escape_sequence) @punctuation
 (null) @constant.builtin
