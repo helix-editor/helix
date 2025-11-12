@@ -249,13 +249,13 @@ Set options for buffer picker.
 
 | Key | Description | Default |
 |--|--|---------|
-|`start-position` | Controls behavior for which buffer is initially selected | `previous` |
+|`start-position` | Controls behavior for which buffer is initially selected | `current` |
 
 Example
 
 ```toml
 [editor.buffer-picker]
-start-position = "current"
+start-position = "previous"
 ```
 
 ### `[editor.auto-pairs]` Section

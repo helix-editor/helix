@@ -439,8 +439,8 @@ pub struct BufferPickerConfig {
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
 pub enum BufferPickerStartPosition {
-    Current,
     #[default]
+    Current,
     Previous,
 }
 
