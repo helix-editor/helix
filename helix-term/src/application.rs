@@ -147,7 +147,11 @@ impl Application {
             theme_mode,
         );
 
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(config.clone())));
+        let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+            &config.keys
+        }));
+        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+
         compositor.push(editor_view);
 
         let mut jobs = Jobs::new();

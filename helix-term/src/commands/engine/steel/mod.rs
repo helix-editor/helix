@@ -3199,14 +3199,26 @@ impl SteelScriptingEngine {
             let keymap = map.get_extension(extension);
 
             if let Some(keymap) = keymap {
-                return Some(editor.keymaps.get_with_map(&keymap.0, mode, event));
+                let res = editor.keymaps.get_with_map(&keymap.0, mode, event);
+
+                if let KeymapResult::NotFound = res {
+                    return None;
+                }
+
+                return Some(res);
             }
         }
 
         let map = get_extension_keymap();
 
         if let Some(keymap) = map.get_doc_id(document_id_to_usize(doc_id)) {
-            return Some(editor.keymaps.get_with_map(&keymap.0, mode, event));
+            let res = editor.keymaps.get_with_map(&keymap.0, mode, event);
+
+            if let KeymapResult::NotFound = res {
+                return None;
+            }
+
+            return Some(res);
         }
 
         None

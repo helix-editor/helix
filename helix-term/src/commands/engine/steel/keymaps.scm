@@ -21,19 +21,14 @@
   (get-doc (trim-start-matches name ":")))
 
 (define (walk-leaves keybindings)
-  (if (hash? keybindings)
-      (map walk-leaves (hash-values->list keybindings))
-      keybindings))
+  (if (hash? keybindings) (map walk-leaves (hash-values->list keybindings)) keybindings))
 
 (define (keybindings->leaves keybindings)
   (flatten (walk-leaves keybindings)))
 
 (define (keybindings->docs keybindings)
   (define leaves
-    (map (lambda (key)
-           (if (symbol? key)
-               (symbol->string key)
-               key))
+    (map (lambda (key) (if (symbol? key) (symbol->string key) key))
          (keybindings->leaves keybindings)))
 
   ;; Filter out anything without values - so we only want strings
@@ -86,11 +81,8 @@
 
   ;; Copy the global ones
   (define global-bindings (get-keybindings))
-  (helix.keymaps.helix-merge-keybindings
-   global-bindings
-   (~> map (value->jsexpr-string) (helix.keymaps.helix-string->keymap)))
 
-  (helix.keymaps.keymap-update-documentation! global-bindings (keybindings->docs map))
+  (merge-keybindings global-bindings map)
 
   (keybindings global-bindings))
 
@@ -138,9 +130,7 @@
     [(_ conf (key (value ...)))
      (let ([rhs (#%keybindings (hash) (value ...))])
        (hash-insert-or-merge conf
-                             (if (string? (quote key))
-                                 (quote key)
-                                 (symbol->string (quote key)))
+                             (if (string? (quote key)) (quote key) (symbol->string (quote key)))
                              rhs))]
 
     [(_ conf (key (value ...) rest ...) other ...)
@@ -149,53 +139,51 @@
            [right (#%keybindings (hash) (value ...) rest ...)])
 
        (hash-union conf
-                   (hash-insert-or-merge left
-                                         (if (string? (quote key))
-                                             (quote key)
-                                             (symbol->string (quote key)))
-                                         right)))]
+                   (hash-insert-or-merge
+                    left
+                    (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                    right)))]
 
     [(_ conf (key (value ...) rest ...))
 
      (let ([right (#%keybindings (hash) (value ...) rest ...)])
        (hash-insert-or-merge conf
-                             (if (string? (quote key))
-                                 (quote key)
-                                 (symbol->string (quote key)))
+                             (if (string? (quote key)) (quote key) (symbol->string (quote key)))
                              right))]
 
     [(_ conf (key value))
 
-     (hash-insert-or-merge conf
-                           (if (string? (quote key))
-                               (quote key)
-                               (symbol->string (quote key)))
-                           (if (string? value)
-                               value
-                               (~>> (quote value) symbol->string (string-append ":"))))]
+     (hash-insert-or-merge
+      conf
+      (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+      (if (string? value) value (~>> (quote value) symbol->string (string-append ":"))))]
 
     [(_ conf (key (value ...)) rest ...)
 
      (let ([first (#%keybindings (hash) (value ...))]
-           [inner (hash-insert-or-merge conf
-                                        (if (string? (quote key))
-                                            (quote key)
-                                            (symbol->string (quote key)))
-                                        first)])
+           [inner (hash-insert-or-merge
+                   conf
+                   (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+                   first)])
 
        (#%keybindings inner rest ...))]
 
     [(_ conf (key value) rest ...)
 
-     (let ([inner (hash-insert-or-merge conf
-                                        (if (string? (quote key))
-                                            (quote key)
-                                            (symbol->string (quote key)))
-                                        (if (string? value)
-                                            value
-                                            (~>> (quote value) symbol->string (string-append ":"))))])
+     (let ([inner
+            (hash-insert-or-merge
+             conf
+             (if (string? (quote key)) (quote key) (symbol->string (quote key)))
+             (if (string? value) value (~>> (quote value) symbol->string (string-append ":"))))])
 
        (#%keybindings inner rest ...))]))
+
+(define (empty-map)
+  (define the-empty-keymap (hash 'normal (hash) 'insert (hash) 'select (hash)))
+  (define (hash->keymap steel-key-map)
+    (~> steel-key-map (value->jsexpr-string) (helix.keymaps.helix-string->keymap)))
+
+  (hash->keymap the-empty-keymap))
 
 ;;@doc
 ;; Syntax:
@@ -231,15 +219,12 @@
 
     ;; Add option to not inherit explicitly
     [(_ (extension name) (with-map bindings))
-     (helix.keymaps.#%add-extension-or-labeled-keymap
-      name
-      (merge-keybindings (deep-copy-global-keybindings) bindings))]
+     (helix.keymaps.#%add-extension-or-labeled-keymap name (merge-keybindings (empty-map) bindings))]
 
     [(_ (extension name) args ...)
-
-     (helix.keymaps.#%add-extension-or-labeled-keymap
-      name
-      (merge-keybindings (deep-copy-global-keybindings) (keymap args ...)))]
+     (helix.keymaps.#%add-extension-or-labeled-keymap name
+                                                      (merge-keybindings (empty-map)
+                                                                         (keymap args ...)))]
 
     ;; Expand to the same thing since the underlying
     ;; infrastructure is the same
