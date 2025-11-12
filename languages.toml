@@ -60,6 +60,7 @@ harper-ls = { command = "harper-ls", args = ["--stdio"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 hdls = { command = "hdls" }
 hyprls = { command = "hyprls" }
+hyuga = { command = "hyuga" }
 idris2-lsp = { command = "idris2-lsp" }
 intelephense = { command = "intelephense", args = ["--stdio"] }
 jdtls = { command = "jdtls" }
@@ -4078,6 +4079,22 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "ld"
 source = { git = "https://github.com/mtoohey31/tree-sitter-ld", rev = "0e9695ae0ede47b8744a8e2ad44d4d40c5d4e4c9" }
+
+[[language]]
+name = "hy"
+scope = "source.hy"
+roots = ["pyproject.toml"]
+file-types = ["hy"]
+comment-token = ";"
+indent = { tab-width = 1, unit = " " }
+grammar = "scheme"
+language-servers = ["hyuga"]
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
 
 [[language]]
 name = "hyprlang"
