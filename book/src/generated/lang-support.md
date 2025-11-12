@@ -8,6 +8,7 @@
 | astro | ✓ |  |  |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  |  |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | ✓ | ✓ | `bash-language-server` |
+| basic | ✓ | ✓ | ✓ | ✓ |  |  |
 | bass | ✓ |  |  |  |  | `bass` |
 | beancount | ✓ |  |  |  |  | `beancount-language-server` |
 | bibtex | ✓ |  |  |  |  | `texlab` |
@@ -75,6 +76,7 @@
 | flatbuffers | ✓ |  |  |  |  |  |
 | forth | ✓ |  |  |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ |  |  | `fortls` |
+| freebasic | ✓ | ✓ | ✓ | ✓ |  |  |
 | fsharp | ✓ |  |  |  |  | `fsautocomplete` |
 | gas | ✓ | ✓ |  |  |  | `asm-lsp` |
 | gdscript | ✓ | ✓ | ✓ | ✓ |  |  |

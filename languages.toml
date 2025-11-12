@@ -5010,3 +5010,27 @@ persistent-diagnostic-sources = ["haxe"]
 [[grammar]]
 name = "haxe"
 source = { git = "https://github.com/vantreeseba/tree-sitter-haxe", rev = "a55f3e2cf1e4449200fd089a80d3af642bcf5f94" }
+
+[[language]]
+name = "basic"
+scope = "source.basic"
+injection-regex = "basic"
+file-types = ["bas"]
+comment-token = "REM"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "basic"
+source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-basic", rev = "a98449c11d6c688b54c1ca132148a62d7e586a2a" }
+
+[[language]]
+name = "freebasic"
+scope = "source.freebasic"
+injection-regex = "freebasic"
+file-types = ["bas", "bi"]
+comment-tokens = ["'", "REM"]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "freebasic"
+source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-freebasic", rev = "dbf696adb4c0b9c020074e75043c90592981ee7f" }
