@@ -433,20 +433,26 @@ pub struct Config {
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
 pub struct BufferPickerConfig {
-    pub start_position: BufferPickerStartPosition,
+    pub start_position: PickerStartPosition,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
-pub enum BufferPickerStartPosition {
+pub enum PickerStartPosition {
     #[default]
     Current,
     Previous,
 }
 
-impl BufferPickerStartPosition {
+impl PickerStartPosition {
+    #[must_use]
     pub fn is_previous(self) -> bool {
         matches!(self, Self::Previous)
+    }
+
+    #[must_use]
+    pub fn is_current(self) -> bool {
+        matches!(self, Self::Current)
     }
 }
 
