@@ -25,6 +25,14 @@ The following [captures][tree-sitter-captures] are recognized:
 | `definition.module`    |
 | `definition.struct`    |
 | `definition.type`      |
+| `reference.class`      |
+| `reference.constant`   |
+| `reference.function`   |
+| `reference.interface`  |
+| `reference.macro`      |
+| `reference.module`     |
+| `reference.struct`     |
+| `reference.type`       |
 
 [Example query files][example-queries] can be found in the Helix GitHub
 repository.
