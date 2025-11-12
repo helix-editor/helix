@@ -496,3 +496,4 @@ Keys to use within prompt, Remapping currently not supported.
 | `Tab`                                       | Select next completion item                                             |
 | `BackTab`                                   | Select previous completion item                                         |
 | `Enter`                                     | Open selected                                                           |
+| `Alt-o`                                     | Open using prompt as a raw input instead of selected item               |
