@@ -726,3 +726,149 @@ async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn indent_textobject_inside() -> anyhow::Result<()> {
+    // mii: Select inside indentation level
+    test((
+        indoc! {"\
+            fn main() {
+                let #[x|]# = 1;
+                let y = 2;
+            }
+        "},
+        "mii",
+        indoc! {"\
+            fn main() {
+                #[let x = 1;
+                let y = 2;|]#
+            }
+        "},
+    ))
+    .await?;
+
+    // mii: Nested indentation
+    test((
+        indoc! {"\
+            fn main() {
+                if true {
+                    pr#[i|]#nt();
+                    call();
+                }
+            }
+        "},
+        "mii",
+        indoc! {"\
+            fn main() {
+                if true {
+                    #[print();
+                    call();|]#
+                }
+            }
+        "},
+    ))
+    .await?;
+
+    // mii: Cursor on opening boundary - selects inner level
+    test((
+        indoc! {"\
+            fn main#[() {|]#
+                let x = 1;
+                let y = 2;
+            }
+        "},
+        "mii",
+        indoc! {"\
+            fn main() {
+                #[let x = 1;
+                let y = 2;|]#
+            }
+        "},
+    ))
+    .await?;
+
+    // miI: Select inside with full lines
+    test((
+        indoc! {"\
+            fn main() {
+                let #[x|]# = 1;
+                let y = 2;
+            }
+        "},
+        "miI",
+        indoc! {"\
+            fn main() {
+            #[    let x = 1;
+                let y = 2;
+            |]#}
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn indent_textobject_around() -> anyhow::Result<()> {
+    // mai: Select around indentation level
+    test((
+        indoc! {"\
+            fn main() {
+                let #[x|]# = 1;
+                let y = 2;
+            }
+        "},
+        "mai",
+        indoc! {"\
+            #[fn main() {
+                let x = 1;
+                let y = 2;
+            }|]#
+        "},
+    ))
+    .await?;
+
+    // mai: Nested - includes opening and closing lines
+    test((
+        indoc! {"\
+            fn main() {
+                if true {
+                    pr#[i|]#nt();
+                    call();
+                }
+            }
+        "},
+        "mai",
+        indoc! {"\
+            fn main() {
+                #[if true {
+                    print();
+                    call();
+                }|]#
+            }
+        "},
+    ))
+    .await?;
+
+    // maI: Select around with full lines
+    test((
+        indoc! {"\
+            fn main() {
+                let #[x|]# = 1;
+                let y = 2;
+            }
+            print();
+        "},
+        "maI",
+        indoc! {"\
+            #[fn main() {
+                let x = 1;
+                let y = 2;
+            }
+            |]#print();
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
