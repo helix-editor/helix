@@ -612,6 +612,7 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
+        add_cursor_to_word, "Add a cursor to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
@@ -6731,14 +6732,18 @@ fn replay_macro(cx: &mut Context) {
 }
 
 fn goto_word(cx: &mut Context) {
-    jump_to_word(cx, Movement::Move)
+    jump_to_word(cx, Movement::Move, false)
 }
 
 fn extend_to_word(cx: &mut Context) {
-    jump_to_word(cx, Movement::Extend)
+    jump_to_word(cx, Movement::Extend, false)
 }
 
-fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
+fn add_cursor_to_word(cx: &mut Context) {
+    jump_to_word(cx, Movement::Move, true)
+}
+
+fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement, add_cursor: bool) {
     let doc = doc!(cx.editor);
     let alphabet = &cx.editor.config().jump_label_alphabet;
     if labels.is_empty() {
@@ -6821,13 +6826,24 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                 } else {
                     range.with_direction(Direction::Forward)
                 };
-                doc_mut!(cx.editor, &doc).set_selection(view, range.into());
+
+                if add_cursor {
+                    range.anchor = range.head;
+                    let new_selection = doc_mut!(cx.editor, &doc)
+                        .selection(view)
+                        .clone()
+                        .push(range);
+
+                    doc_mut!(cx.editor, &doc).set_selection(view, new_selection);
+                } else {
+                    doc_mut!(cx.editor, &doc).set_selection(view, range.into());
+                }
             }
         });
     });
 }
 
-fn jump_to_word(cx: &mut Context, behaviour: Movement) {
+fn jump_to_word(cx: &mut Context, behaviour: Movement, add_cursor: bool) {
     // Calculate the jump candidates: ranges for any visible words with two or
     // more characters.
     let alphabet = &cx.editor.config().jump_label_alphabet;
@@ -6922,7 +6938,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             break;
         }
     }
-    jump_to_label(cx, words, behaviour)
+    jump_to_label(cx, words, behaviour, add_cursor)
 }
 
 fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
