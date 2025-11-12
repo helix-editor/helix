@@ -441,6 +441,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "futures-core"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1428,13 +1438,16 @@ name = "helix-loader"
 version = "25.7.1"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "cc",
  "etcetera",
+ "fs2",
  "helix-stdx",
  "log",
  "once_cell",
  "serde",
  "tempfile",
+ "thiserror",
  "threadpool",
  "toml",
  "tree-house",
