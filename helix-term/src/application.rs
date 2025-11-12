@@ -124,6 +124,12 @@ impl Application {
         let backend = TestBackend::new(120, 150);
 
         let theme_mode = backend.get_theme_mode();
+
+        #[cfg(all(not(windows), not(feature = "integration")))]
+        let kitty_multi_cursor_support = backend.supports_kitty_multi_cursor();
+        #[cfg(any(windows, feature = "integration"))]
+        let kitty_multi_cursor_support = false;
+
         let terminal = Terminal::new(backend)?;
         let area = terminal.size();
         let mut compositor = Compositor::new(area);
@@ -138,6 +144,8 @@ impl Application {
             })),
             handlers,
         );
+        editor.kitty_multi_cursor_support = kitty_multi_cursor_support;
+
         Self::load_configured_theme(
             &mut editor,
             &config.load(),
@@ -300,7 +308,43 @@ impl Application {
         self.editor.cursor_cache.reset();
 
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
+
+        use helix_view::graphics::CursorKind;
+        let secondary_cursors = if !matches!(kind, CursorKind::Block | CursorKind::Hidden) {
+            self.get_secondary_cursor_positions()
+        } else {
+            Vec::new()
+        };
+
         self.terminal.draw(pos, kind).unwrap();
+        // Always update kitty cursors (clears if empty, sets if not)
+        self.terminal
+            .set_multiple_cursors(&secondary_cursors)
+            .unwrap();
+    }
+
+    fn get_secondary_cursor_positions(&self) -> Vec<(u16, u16)> {
+        use helix_view::current_ref;
+
+        let (view, doc) = current_ref!(&self.editor);
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id);
+        let primary_idx = selection.primary_index();
+        let inner = view.inner_area(doc);
+
+        selection
+            .iter()
+            .enumerate()
+            .filter(|(idx, _)| *idx != primary_idx)
+            .filter_map(|(_, range)| {
+                let cursor = range.cursor(text);
+                view.screen_coords_at_pos(doc, text, cursor).map(|pos| {
+                    let x = (pos.col + inner.x as usize) as u16;
+                    let y = (pos.row + inner.y as usize) as u16;
+                    (x, y)
+                })
+            })
+            .collect()
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)

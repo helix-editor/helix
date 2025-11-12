@@ -5,11 +5,12 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
 #[serde(rename_all = "lowercase")]
 /// UNSTABLE
 pub enum CursorKind {
     /// █
+    #[default]
     Block,
     /// |
     Bar,
@@ -17,12 +18,6 @@ pub enum CursorKind {
     Underline,
     /// Hidden cursor, can set cursor position with this to let IME have correct cursor position.
     Hidden,
-}
-
-impl Default for CursorKind {
-    fn default() -> Self {
-        Self::Block
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

@@ -49,6 +49,7 @@ fn vte_version() -> Option<usize> {
 #[derive(Debug, Default, Clone, Copy)]
 struct Capabilities {
     kitty_keyboard: KittyKeyboardSupport,
+    kitty_multi_cursor: bool,
     synchronized_output: bool,
     true_color: bool,
     extended_underlines: bool,
@@ -125,7 +126,6 @@ impl TerminaBackend {
     ) -> io::Result<(Capabilities, String)> {
         use std::time::{Duration, Instant};
 
-        // Colibri "midnight"
         const TEST_COLOR: RgbColor = RgbColor::new(59, 34, 76);
 
         terminal.enter_raw_mode()?;
@@ -236,6 +236,15 @@ impl TerminaBackend {
             );
         } else {
             log::debug!("terminfo could not be read, using default cursor reset escape sequence: {reset_cursor_command:?}");
+        }
+
+        // Detect kitty multi-cursor support (available in kitty >= 0.43.0)
+        if matches!(
+            term_program().as_deref(),
+            Some("kitty") | Some("xterm-kitty")
+        ) {
+            capabilities.kitty_multi_cursor = true;
+            log::debug!("Detected kitty terminal - enabling multi-cursor protocol support");
         }
 
         terminal.enter_cooked_mode()?;
@@ -544,6 +553,25 @@ impl Backend for TerminaBackend {
         self.flush()
     }
 
+    fn set_multiple_cursors(&mut self, cursors: &[(u16, u16)]) -> io::Result<()> {
+        if !self.capabilities.kitty_multi_cursor {
+            return Ok(());
+        }
+
+        // Always clear existing cursors first
+        write!(self.terminal, "\x1b[>0;4 q")?;
+
+        if !cursors.is_empty() {
+            write!(self.terminal, "\x1b[>29")?; // Shape 29 = follow main cursor
+            for (x, y) in cursors {
+                write!(self.terminal, ";2:{}:{}", y + 1, x + 1)?; // 1-indexed coords
+            }
+            write!(self.terminal, " q")?;
+        }
+
+        self.flush()
+    }
+
     fn clear(&mut self) -> io::Result<()> {
         self.start_synchronized_render()?;
         write!(
@@ -569,6 +597,12 @@ impl Backend for TerminaBackend {
 
     fn get_theme_mode(&self) -> Option<theme::Mode> {
         self.capabilities.theme_mode
+    }
+}
+
+impl TerminaBackend {
+    pub fn supports_kitty_multi_cursor(&self) -> bool {
+        self.capabilities.kitty_multi_cursor
     }
 }
 
