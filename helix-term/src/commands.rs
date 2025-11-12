@@ -6052,6 +6052,32 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'e' => textobject_treesitter("entry", range),
                         'x' => textobject_treesitter("xml-element", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
+                        'i' => {
+                            let tab_width = doc.tab_width();
+                            let indent_width = doc.indent_width();
+                            textobject::textobject_indent(
+                                text,
+                                range,
+                                objtype,
+                                count,
+                                false,
+                                tab_width,
+                                indent_width,
+                            )
+                        }
+                        'I' => {
+                            let tab_width = doc.tab_width();
+                            let indent_width = doc.indent_width();
+                            textobject::textobject_indent(
+                                text,
+                                range,
+                                objtype,
+                                count,
+                                true,
+                                tab_width,
+                                indent_width,
+                            )
+                        }
                         'm' => textobject::textobject_pair_surround_closest(
                             doc.syntax(),
                             text,
@@ -6087,6 +6113,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("w", "Word"),
         ("W", "WORD"),
         ("p", "Paragraph"),
+        ("i", "Indentation level"),
+        ("I", "Indentation level (+ surrounding lines)"),
         ("t", "Type definition (tree-sitter)"),
         ("f", "Function (tree-sitter)"),
         ("a", "Argument/parameter (tree-sitter)"),
