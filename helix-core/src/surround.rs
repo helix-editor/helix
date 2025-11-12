@@ -59,7 +59,7 @@ fn find_nth_closest_pairs_ts(
     let mut opening = range.from();
     // We want to expand the selection if we are already on the found pair,
     // otherwise we would need to subtract "-1" from "range.to()".
-    let mut closing = range.to();
+    let mut closing = range.cursor(text);
 
     while skip > 0 {
         closing = find_matching_bracket_fuzzy(syntax, text, closing).ok_or(Error::PairNotFound)?;
@@ -70,14 +70,9 @@ fn find_nth_closest_pairs_ts(
             (opening, closing) = (closing, opening);
         }
 
-        // In case found brackets are partially inside current selection.
-        if range.from() < opening || closing < range.to() - 1 {
+        skip -= 1;
+        if skip != 0 {
             closing = next_grapheme_boundary(text, closing);
-        } else {
-            skip -= 1;
-            if skip != 0 {
-                closing = next_grapheme_boundary(text, closing);
-            }
         }
     }
 
@@ -95,7 +90,7 @@ fn find_nth_closest_pairs_plain(
     mut skip: usize,
 ) -> Result<(usize, usize)> {
     let mut stack = Vec::with_capacity(2);
-    let pos = range.from();
+    let pos = range.cursor(text);
     let mut close_pos = pos.saturating_sub(1);
 
     for ch in text.chars_at(pos) {
@@ -127,12 +122,7 @@ fn find_nth_closest_pairs_plain(
         }
 
         match find_nth_open_pair(text, open, close, close_pos, 1) {
-            // Before we accept this pair, we want to ensure that the
-            // pair encloses the range rather than just the cursor.
-            Some(open_pos)
-                if open_pos <= pos.saturating_add(1)
-                    && close_pos >= range.to().saturating_sub(1) =>
-            {
+            Some(open_pos) => {
                 // Since we have special conditions for when to
                 // accept, we can't just pass the skip parameter on
                 // through to the find_nth_*_pair methods, so we
