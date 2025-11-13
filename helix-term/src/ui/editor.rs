@@ -1499,7 +1499,24 @@ impl Component for EditorView {
                 EventResult::Consumed(callback)
             }
 
-            Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
+            Event::Mouse(mouse_event) => {
+                // let completion swallow the event if necessary
+                if let Some(completion) = &mut self.completion {
+                    // use a fake context here
+                    let mut cx = Context {
+                        editor: cx.editor,
+                        jobs: cx.jobs,
+                        scroll: None,
+                    };
+
+                    if let EventResult::Consumed(callback) = completion.handle_event(event, &mut cx)
+                    {
+                        return EventResult::Consumed(callback);
+                    }
+                }
+
+                self.handle_mouse_event(mouse_event, &mut cx)
+            }
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained => {
                 self.terminal_focused = true;
