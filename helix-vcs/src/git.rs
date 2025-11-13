@@ -22,22 +22,12 @@ use crate::FileChange;
 #[cfg(test)]
 mod test;
 
-#[inline]
-fn get_repo_dir(file: &Path) -> Result<&Path> {
-    file.parent().context("file has no parent directory")
-}
-
-pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
+pub fn get_diff_base(repo: &ThreadSafeRepository, file: &Path) -> Result<Vec<u8>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
-    let file = gix::path::realpath(file).context("resolve symlinks")?;
+    let file = gix::path::realpath(file).context("resolve symlink")?;
 
-    // TODO cache repository lookup
-
-    let repo_dir = get_repo_dir(&file)?;
-    let repo = open_repo(repo_dir)
-        .context("failed to open git repo")?
-        .to_thread_local();
+    let repo = repo.to_thread_local();
     let head = repo.head_commit()?;
     let file_oid = find_file_in_commit(&repo, &head, &file)?;
 
@@ -59,15 +49,8 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     }
 }
 
-pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
-    debug_assert!(!file.exists() || file.is_file());
-    debug_assert!(file.is_absolute());
-    let file = gix::path::realpath(file).context("resolve symlinks")?;
-
-    let repo_dir = get_repo_dir(&file)?;
-    let repo = open_repo(repo_dir)
-        .context("failed to open git repo")?
-        .to_thread_local();
+pub fn get_current_head_name(repo: &ThreadSafeRepository) -> Result<Arc<ArcSwap<Box<str>>>> {
+    let repo = repo.to_thread_local();
     let head_ref = repo.head_ref()?;
     let head_commit = repo.head_commit()?;
 
@@ -79,11 +62,17 @@ pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
     Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
 }
 
-pub fn for_each_changed_file(cwd: &Path, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
-    status(&open_repo(cwd)?.to_thread_local(), f)
+pub fn for_each_changed_file(
+    repo: &ThreadSafeRepository,
+    f: impl Fn(Result<FileChange>) -> bool,
+) -> Result<()> {
+    status(&repo.to_thread_local(), f)
 }
 
-fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
+pub(super) fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
+    // Ensure the repo itself is an absolute real path, else we'll not match prefixes with
+    // symlink-resolved files in `get_diff_base()` above.
+    let path = gix::path::realpath(path)?;
     // custom open options
     let mut git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
 
