@@ -1,6 +1,7 @@
 use crate::{auto_pairs::AutoPairs, diagnostic::Severity, Language};
 
 use globset::GlobSet;
+use helix_loader::grammar;
 use helix_stdx::rope;
 use serde::{ser::SerializeSeq as _, Deserialize, Serialize};
 
@@ -13,11 +14,14 @@ use std::{
 };
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
     #[serde(default)]
     pub language_server: HashMap<String, LanguageServerConfiguration>,
+    #[serde(rename = "use-grammars")]
+    grammar_selection: Option<grammar::GrammarSelection>,
+    grammar: Vec<grammar::GrammarConfiguration>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
