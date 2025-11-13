@@ -5068,6 +5068,16 @@ name : string?
     );
 
     register_1!(
+        "on-key-callback",
+        enqueue_on_next_key,
+        r#"
+Enqueue a function to be run on the next keypress. The function must accept
+a key event as an argument. This currently will only will work if the command is
+called via a keybinding.
+        "#
+    );
+
+    register_1!(
         "enqueue-thread-local-callback",
         enqueue_command,
         r#"
@@ -6275,6 +6285,37 @@ fn set_error(cx: &mut Context, value: SteelVal) {
         SteelVal::StringV(s) => cx.editor.set_error(s.as_ref().to_owned()),
         _ => cx.editor.set_error(value.to_string()),
     }
+}
+
+fn enqueue_on_next_key(cx: &mut Context, callback_fn: SteelVal) {
+    let rooted = callback_fn.as_rooted();
+    let current_gen = load_generation();
+
+    cx.on_next_key(move |ctx, key| {
+        let cloned_func = rooted.value();
+
+        enter_engine(|guard| {
+            if !is_current_generation(current_gen) {
+                return;
+            }
+
+            if let Err(e) =
+                guard
+                    .with_mut_reference::<Context, Context>(ctx)
+                    .consume(move |engine, args| {
+                        let context = args[0].clone();
+                        engine.update_value("*helix.cx*", context);
+
+                        engine.call_function_with_args_from_mut_slice(
+                            cloned_func.clone(),
+                            &mut [key.into_steelval().unwrap()],
+                        )
+                    })
+            {
+                present_error_inside_engine_context(ctx, guard, e);
+            }
+        });
+    });
 }
 
 fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
