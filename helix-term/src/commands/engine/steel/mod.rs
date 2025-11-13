@@ -1451,7 +1451,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
                   'mode-insert mode-insert
                   'mode-select mode-select
                   'diagnostics diagnostics
-                  'workspace-diagnostics)))
+                  'workspace-diagnostics workspace-diagnostics)))
 
 (provide indent-heuristic)
 ;;@doc
@@ -4029,11 +4029,37 @@ impl HelixConfiguration {
 
     fn statusline(&self, config: HashMap<String, SteelVal>) -> anyhow::Result<()> {
         let mut app_config = self.load_config();
-        // app_config.editor.statusline;
 
         fn steel_to_elements(val: &SteelVal) -> anyhow::Result<StatusLineElement> {
             if let SteelVal::StringV(s) = val {
-                return Ok(serde_json::from_str(s.as_str())?);
+                let value = match s.as_str() {
+                    "mode" => StatusLineElement::Mode,
+                    "spinner" => StatusLineElement::Spinner,
+                    "file-base-name" => StatusLineElement::FileBaseName,
+                    "file-name" => StatusLineElement::FileName,
+                    "file-absolute-path" => StatusLineElement::FileAbsolutePath,
+                    "file-modification-indicator" => StatusLineElement::FileModificationIndicator,
+                    "read-only-indicator" => StatusLineElement::ReadOnlyIndicator,
+                    "file-encoding" => StatusLineElement::FileEncoding,
+                    "file-line-ending" => StatusLineElement::FileLineEnding,
+                    "file-indent-style" => StatusLineElement::FileIndentStyle,
+                    "file-type" => StatusLineElement::FileType,
+                    "diagnostics" => StatusLineElement::Diagnostics,
+                    "workspace-diagnostics" => StatusLineElement::WorkspaceDiagnostics,
+                    "selections" => StatusLineElement::Selections,
+                    "primary-selection-length" => StatusLineElement::PrimarySelectionLength,
+                    "position" => StatusLineElement::Position,
+                    "separator" => StatusLineElement::Separator,
+                    "position-percentage" => StatusLineElement::PositionPercentage,
+                    "total-line-numbers" => StatusLineElement::TotalLineNumbers,
+                    "spacer" => StatusLineElement::Spacer,
+                    "version-control" => StatusLineElement::VersionControl,
+                    "register" => StatusLineElement::Register,
+                    "current-working-directory" => StatusLineElement::CurrentWorkingDirectory,
+                    _ => anyhow::bail!("Unknown status line element: {}", s),
+                };
+
+                return Ok(value);
             } else {
                 anyhow::bail!("Cannot convert value to status line element: {}", val)
             }
@@ -4052,7 +4078,15 @@ impl HelixConfiguration {
 
         fn steel_to_severity(val: &SteelVal) -> anyhow::Result<Severity> {
             if let SteelVal::StringV(s) = val {
-                return Ok(serde_json::from_str(s.as_str())?);
+                let value = match s.as_str() {
+                    "hint" => Severity::Hint,
+                    "info" => Severity::Info,
+                    "warning" => Severity::Warning,
+                    "error" => Severity::Error,
+                    _ => anyhow::bail!("Unknown severity label: {}", s),
+                };
+
+                return Ok(value);
             } else {
                 anyhow::bail!("Cannot convert value to severity: {}", val)
             }
@@ -4087,7 +4121,7 @@ impl HelixConfiguration {
 
         if let Some(normal_mode) = config.get("mode-normal") {
             if let SteelVal::StringV(s) = normal_mode {
-                app_config.editor.statusline.mode.normal = serde_json::from_str(s.as_str())?;
+                app_config.editor.statusline.mode.normal = s.as_str().to_owned();
             } else {
                 anyhow::bail!("mode normal expects a string, found: {}", normal_mode);
             }
@@ -4095,7 +4129,7 @@ impl HelixConfiguration {
 
         if let Some(insert_mode) = config.get("mode-insert") {
             if let SteelVal::StringV(s) = insert_mode {
-                app_config.editor.statusline.mode.insert = serde_json::from_str(s.as_str())?;
+                app_config.editor.statusline.mode.insert = s.as_str().to_owned();
             } else {
                 anyhow::bail!("mode insert expects a string, found: {}", insert_mode);
             }
@@ -4103,7 +4137,7 @@ impl HelixConfiguration {
 
         if let Some(select_mode) = config.get("mode-select") {
             if let SteelVal::StringV(s) = select_mode {
-                app_config.editor.statusline.mode.select = serde_json::from_str(s.as_str())?;
+                app_config.editor.statusline.mode.select = s.as_str().to_owned();
             } else {
                 anyhow::bail!("mode normal expects a string, found: {}", select_mode);
             }
