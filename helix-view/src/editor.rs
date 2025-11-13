@@ -221,6 +221,49 @@ impl Default for FilePickerConfig {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct FileExplorerConfig {
+    /// IgnoreOptions
+    /// Enables ignoring hidden files.
+    /// Whether to hide hidden files in file explorer and global search results. Defaults to false.
+    pub hidden: bool,
+    /// Enables following symlinks.
+    /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to false.
+    pub follow_symlinks: bool,
+    /// Enables reading ignore files from parent directories. Defaults to false.
+    pub parents: bool,
+    /// Enables reading `.ignore` files.
+    /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to false.
+    pub ignore: bool,
+    /// Enables reading `.gitignore` files.
+    /// Whether to hide files listed in .gitignore in file picker and global search results. Defaults to false.
+    pub git_ignore: bool,
+    /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
+    /// Whether to hide files listed in global .gitignore in file picker and global search results. Defaults to false.
+    pub git_global: bool,
+    /// Enables reading `.git/info/exclude` files.
+    /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to false.
+    pub git_exclude: bool,
+    /// Whether to flatten single-child directories in file explorer. Defaults to true.
+    pub flatten_dirs: bool,
+}
+
+impl Default for FileExplorerConfig {
+    fn default() -> Self {
+        Self {
+            hidden: false,
+            follow_symlinks: false,
+            parents: false,
+            ignore: false,
+            git_ignore: false,
+            git_global: false,
+            git_exclude: false,
+            flatten_dirs: true,
+        }
+    }
+}
+
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -318,6 +361,7 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    pub file_explorer: FileExplorerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
@@ -381,6 +425,17 @@ pub struct Config {
     pub editor_config: bool,
     /// Whether to render rainbow colors for matching brackets. Defaults to `false`.
     pub rainbow_brackets: bool,
+    /// Whether to enable Kitty Keyboard Protocol
+    pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum KittyKeyboardProtocolConfig {
+    #[default]
+    Auto,
+    Disabled,
+    Enabled,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1027,6 +1082,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
@@ -1061,6 +1117,7 @@ impl Default for Config {
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
             rainbow_brackets: false,
+            kitty_keyboard_protocol: Default::default(),
         }
     }
 }
@@ -1587,7 +1644,7 @@ impl Editor {
             doc.language_servers.iter().filter(|(name, doc_ls)| {
                 language_servers
                     .get(*name)
-                    .map_or(true, |ls| ls.id() != doc_ls.id())
+                    .is_none_or(|ls| ls.id() != doc_ls.id())
             });
 
         for (_, language_server) in doc_language_servers_not_in_registry {
@@ -1597,7 +1654,7 @@ impl Editor {
         let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
             doc.language_servers
                 .get(*name)
-                .map_or(true, |doc_ls| ls.id() != doc_ls.id())
+                .is_none_or(|doc_ls| ls.id() != doc_ls.id())
         });
 
         for (_, language_server) in language_servers_not_in_doc {

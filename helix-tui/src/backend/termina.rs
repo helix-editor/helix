@@ -1,8 +1,9 @@
 use std::io::{self, Write as _};
 
 use helix_view::{
+    editor::KittyKeyboardProtocolConfig,
     graphics::{CursorKind, Rect, UnderlineStyle},
-    theme::{Color, Modifier},
+    theme::{self, Color, Modifier},
 };
 use termina::{
     escape::{
@@ -12,7 +13,6 @@ use termina::{
     style::{CursorStyle, RgbColor},
     Event, OneBased, PlatformTerminal, Terminal as _, WindowSize,
 };
-use termini::TermInfo;
 
 use crate::{buffer::Cell, terminal::Config};
 
@@ -45,21 +45,6 @@ fn term_program() -> Option<String> {
 fn vte_version() -> Option<usize> {
     std::env::var("VTE_VERSION").ok()?.parse().ok()
 }
-fn reset_cursor_approach(terminfo: TermInfo) -> String {
-    let mut reset_str = Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string();
-
-    if let Some(termini::Value::Utf8String(se_str)) = terminfo.extended_cap("Se") {
-        reset_str.push_str(se_str);
-    };
-
-    reset_str.push_str(
-        terminfo
-            .utf8_string_cap(termini::StringCapability::CursorNormal)
-            .unwrap_or(""),
-    );
-
-    reset_str
-}
 
 #[derive(Debug, Default, Clone, Copy)]
 struct Capabilities {
@@ -67,6 +52,7 @@ struct Capabilities {
     synchronized_output: bool,
     true_color: bool,
     extended_underlines: bool,
+    theme_mode: Option<theme::Mode>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -147,6 +133,15 @@ impl TerminaBackend {
         let mut capabilities = Capabilities::default();
         let start = Instant::now();
 
+        capabilities.kitty_keyboard = match config.kitty_keyboard_protocol {
+            KittyKeyboardProtocolConfig::Disabled => KittyKeyboardSupport::None,
+            KittyKeyboardProtocolConfig::Enabled => KittyKeyboardSupport::Full,
+            KittyKeyboardProtocolConfig::Auto => {
+                write!(terminal, "{}", Csi::Keyboard(csi::Keyboard::QueryFlags))?;
+                KittyKeyboardSupport::None
+            }
+        };
+
         // Many terminal extensions can be detected by querying the terminal for the state of the
         // extension and then sending a request for the primary device attributes (which is
         // consistently supported by all terminals). If we receive the status of the feature (for
@@ -155,12 +150,12 @@ impl TerminaBackend {
         write!(
             terminal,
             "{}{}{}{}{}{}{}",
-            // Kitty keyboard
-            Csi::Keyboard(csi::Keyboard::QueryFlags),
             // Synchronized output
             Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
                 csi::DecPrivateModeCode::SynchronizedOutput
             ))),
+            // Mode 2031 theme updates. Query the current theme.
+            Csi::Mode(csi::Mode::QueryTheme),
             // True color and while we're at it, extended underlines:
             // <https://github.com/termstandard/colors?tab=readme-ov-file#querying-the-terminal>
             Csi::Sgr(csi::Sgr::Background(TEST_COLOR.into())),
@@ -192,6 +187,9 @@ impl TerminaBackend {
                     })) => {
                         capabilities.synchronized_output = true;
                     }
+                    Event::Csi(Csi::Mode(csi::Mode::ReportTheme(mode))) => {
+                        capabilities.theme_mode = Some(mode.into());
+                    }
                     Event::Dcs(dcs::Dcs::Response {
                         value: dcs::DcsResponse::GraphicRendition(sgrs),
                         ..
@@ -216,7 +214,9 @@ impl TerminaBackend {
 
         capabilities.extended_underlines |= config.force_enable_extended_underlines;
 
-        let reset_cursor_approach = if let Ok(t) = termini::TermInfo::from_env() {
+        let mut reset_cursor_command =
+            Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string();
+        if let Ok(t) = termini::TermInfo::from_env() {
             capabilities.extended_underlines |= t.extended_cap("Smulx").is_some()
                 || t.extended_cap("Su").is_some()
                 || vte_version() >= Some(5102)
@@ -224,14 +224,23 @@ impl TerminaBackend {
                 // <https://github.com/wezterm/wezterm/pull/6856>
                 || matches!(term_program().as_deref(), Some("WezTerm"));
 
-            reset_cursor_approach(t)
+            if let Some(termini::Value::Utf8String(se_str)) = t.extended_cap("Se") {
+                reset_cursor_command.push_str(se_str);
+            };
+            reset_cursor_command.push_str(
+                t.utf8_string_cap(termini::StringCapability::CursorNormal)
+                    .unwrap_or(""),
+            );
+            log::debug!(
+                "Cursor reset escape sequence detected from terminfo: {reset_cursor_command:?}"
+            );
         } else {
-            Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string()
-        };
+            log::debug!("terminfo could not be read, using default cursor reset escape sequence: {reset_cursor_command:?}");
+        }
 
         terminal.enter_cooked_mode()?;
 
-        Ok((capabilities, reset_cursor_approach))
+        Ok((capabilities, reset_cursor_command))
     }
 
     fn enable_mouse_capture(&mut self) -> io::Result<()> {
@@ -317,6 +326,11 @@ impl TerminaBackend {
             }
         }
 
+        if self.capabilities.theme_mode.is_some() {
+            // Enable mode 2031 theme mode notifications:
+            write!(self.terminal, "{}", decset!(Theme))?;
+        }
+
         Ok(())
     }
 
@@ -327,6 +341,11 @@ impl TerminaBackend {
                 "{}",
                 Csi::Keyboard(csi::Keyboard::PopFlags(1))
             )?;
+        }
+
+        if self.capabilities.theme_mode.is_some() {
+            // Mode 2031 theme notifications.
+            write!(self.terminal, "{}", decreset!(Theme))?;
         }
 
         Ok(())
@@ -546,6 +565,10 @@ impl Backend for TerminaBackend {
 
     fn supports_true_color(&self) -> bool {
         self.capabilities.true_color
+    }
+
+    fn get_theme_mode(&self) -> Option<theme::Mode> {
+        self.capabilities.theme_mode
     }
 }
 

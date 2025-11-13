@@ -36,6 +36,7 @@ use std::{
     sync::Arc,
 };
 
+#[cfg_attr(windows, allow(unused_imports))]
 use anyhow::{Context, Error};
 
 #[cfg(not(windows))]
@@ -43,17 +44,26 @@ use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(all(not(windows), not(feature = "integration")))]
 use tui::backend::TerminaBackend;
+
+#[cfg(all(windows, not(feature = "integration")))]
+use tui::backend::CrosstermBackend;
 
 #[cfg(feature = "integration")]
 use tui::backend::TestBackend;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(all(not(windows), not(feature = "integration")))]
 type TerminalBackend = TerminaBackend;
-
+#[cfg(all(windows, not(feature = "integration")))]
+type TerminalBackend = CrosstermBackend<std::io::Stdout>;
 #[cfg(feature = "integration")]
 type TerminalBackend = TestBackend;
+
+#[cfg(not(windows))]
+type TerminalEvent = termina::Event;
+#[cfg(windows)]
+type TerminalEvent = crossterm::event::Event;
 
 type Terminal = tui::terminal::Terminal<TerminalBackend>;
 
@@ -67,6 +77,8 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+
+    theme_mode: Option<theme::Mode>,
 }
 
 #[cfg(feature = "integration")]
@@ -102,15 +114,18 @@ impl Application {
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
-        #[cfg(not(feature = "integration"))]
+        #[cfg(all(not(windows), not(feature = "integration")))]
         let backend = TerminaBackend::new((&config.editor).into())
             .context("failed to create terminal backend")?;
+        #[cfg(all(windows, not(feature = "integration")))]
+        let backend = CrosstermBackend::new(std::io::stdout(), (&config.editor).into());
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
 
+        let theme_mode = backend.get_theme_mode();
         let terminal = Terminal::new(backend)?;
-        let area = terminal.size().expect("couldn't get terminal size");
+        let area = terminal.size();
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
@@ -127,6 +142,7 @@ impl Application {
             &mut editor,
             &config.load(),
             terminal.backend().supports_true_color(),
+            theme_mode,
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -134,6 +150,8 @@ impl Application {
         }));
         let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
         compositor.push(editor_view);
+
+        let jobs = Jobs::new();
 
         if args.load_tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
@@ -244,8 +262,9 @@ impl Application {
             editor,
             config,
             signals,
-            jobs: Jobs::new(),
+            jobs,
             lsp_progress: LspProgressMap::new(),
+            theme_mode,
         };
 
         Ok(app)
@@ -286,7 +305,7 @@ impl Application {
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
     where
-        S: Stream<Item = std::io::Result<termina::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         self.render().await;
 
@@ -299,7 +318,7 @@ impl Application {
 
     pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
     where
-        S: Stream<Item = std::io::Result<termina::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -404,6 +423,7 @@ impl Application {
                 &mut self.editor,
                 &default_config,
                 self.terminal.backend().supports_true_color(),
+                self.theme_mode,
             );
 
             // Re-parse any open documents with the new language config.
@@ -437,12 +457,18 @@ impl Application {
     }
 
     /// Load the theme set in configuration
-    fn load_configured_theme(editor: &mut Editor, config: &Config, terminal_true_color: bool) {
+    fn load_configured_theme(
+        editor: &mut Editor,
+        config: &Config,
+        terminal_true_color: bool,
+        mode: Option<theme::Mode>,
+    ) {
         let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
         let theme = config
             .theme
             .as_ref()
-            .and_then(|theme| {
+            .and_then(|theme_config| {
+                let theme = theme_config.choose(mode);
                 editor
                     .theme_loader
                     .load(theme)
@@ -518,7 +544,7 @@ impl Application {
                 }
 
                 // redraw the terminal
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
                 self.compositor.resize(area);
                 self.terminal.clear().expect("couldn't clear terminal");
 
@@ -659,7 +685,10 @@ impl Application {
         false
     }
 
-    pub async fn handle_terminal_events(&mut self, event: std::io::Result<termina::Event>) {
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<TerminalEvent>) {
+        #[cfg(not(windows))]
+        use termina::escape::csi;
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -667,21 +696,52 @@ impl Application {
         };
         // Handle key events
         let should_redraw = match event.unwrap() {
+            #[cfg(not(windows))]
             termina::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
                 self.terminal
                     .resize(Rect::new(0, 0, cols, rows))
                     .expect("Unable to resize terminal");
 
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
 
                 self.compositor.resize(area);
 
                 self.compositor
                     .handle_event(&Event::Resize(cols, rows), &mut cx)
             }
+            #[cfg(not(windows))]
             // Ignore keyboard release events.
             termina::Event::Key(termina::event::KeyEvent {
                 kind: termina::event::KeyEventKind::Release,
+                ..
+            }) => false,
+            #[cfg(not(windows))]
+            termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
+                Self::load_configured_theme(
+                    &mut self.editor,
+                    &self.config.load(),
+                    self.terminal.backend().supports_true_color(),
+                    Some(mode.into()),
+                );
+                true
+            }
+            #[cfg(windows)]
+            TerminalEvent::Resize(width, height) => {
+                self.terminal
+                    .resize(Rect::new(0, 0, width, height))
+                    .expect("Unable to resize terminal");
+
+                let area = self.terminal.size();
+
+                self.compositor.resize(area);
+
+                self.compositor
+                    .handle_event(&Event::Resize(width, height), &mut cx)
+            }
+            #[cfg(windows)]
+            // Ignore keyboard release events.
+            crossterm::event::Event::Key(crossterm::event::KeyEvent {
+                kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
             event => self.compositor.handle_event(&event.into(), &mut cx),
@@ -1045,6 +1105,26 @@ impl Application {
                         let result = self.handle_show_document(params, offset_encoding);
                         Ok(json!(result))
                     }
+                    Ok(MethodCall::WorkspaceDiagnosticRefresh) => {
+                        let language_server = language_server!().id();
+
+                        let documents: Vec<_> = self
+                            .editor
+                            .documents
+                            .values()
+                            .filter(|x| x.supports_language_server(language_server))
+                            .map(|x| x.id())
+                            .collect();
+
+                        for document in documents {
+                            handlers::diagnostics::request_document_diagnostics(
+                                &mut self.editor,
+                                document,
+                            );
+                        }
+
+                        Ok(serde_json::Value::Null)
+                    }
                 };
 
                 let language_server = language_server!();
@@ -1132,15 +1212,27 @@ impl Application {
         self.terminal.restore()
     }
 
-    #[cfg(not(feature = "integration"))]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<termina::Event>> + Unpin {
-        use termina::Terminal as _;
+    #[cfg(all(not(feature = "integration"), not(windows)))]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+        use termina::{escape::csi, Terminal as _};
         let reader = self.terminal.backend().terminal().event_reader();
-        termina::EventStream::new(reader, |event| !event.is_escape())
+        termina::EventStream::new(reader, |event| {
+            // Accept either non-escape sequences or theme mode updates.
+            !event.is_escape()
+                || matches!(
+                    event,
+                    termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(_)))
+                )
+        })
+    }
+
+    #[cfg(all(not(feature = "integration"), windows))]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+        crossterm::event::EventStream::new()
     }
 
     #[cfg(feature = "integration")]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<termina::Event>> + Unpin {
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
         use std::{
             pin::Pin,
             task::{Context, Poll},
@@ -1150,7 +1242,7 @@ impl Application {
         pub struct DummyEventStream;
 
         impl Stream for DummyEventStream {
-            type Item = std::io::Result<termina::Event>;
+            type Item = std::io::Result<TerminalEvent>;
 
             fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
                 Poll::Pending
@@ -1162,7 +1254,7 @@ impl Application {
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
-        S: Stream<Item = std::io::Result<termina::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         self.terminal.claim()?;
 

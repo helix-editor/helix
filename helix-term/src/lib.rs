@@ -12,6 +12,9 @@ pub mod job;
 pub mod keymap;
 pub mod ui;
 
+#[cfg(not(windows))]
+use std::env::var_os;
+
 use std::path::Path;
 
 use futures_util::Future;
@@ -27,10 +30,9 @@ fn true_color() -> bool {
 
 #[cfg(not(windows))]
 fn true_color() -> bool {
-    if matches!(
-        std::env::var("COLORTERM").map(|v| matches!(v.as_str(), "truecolor" | "24bit")),
-        Ok(true)
-    ) {
+    if var_os("COLORTERM").is_some_and(|v| v == "truecolor" || v == "24bit")
+        || var_os("WSL_DISTRO_NAME").is_some()
+    {
         return true;
     }
 
