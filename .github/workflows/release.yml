@@ -6,9 +6,6 @@ on:
     - '[0-9]+.[0-9]+.[0-9]+'
     branches:
     - 'patch/ci-release-*'
-  pull_request:
-    paths:
-    - '.github/workflows/release.yml'
 
 env:
   # Preview mode: Publishes the build output as a CI artifact instead of creating
