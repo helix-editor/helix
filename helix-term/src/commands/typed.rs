@@ -7,6 +7,7 @@ use crate::job::Job;
 use super::*;
 
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
+use helix_core::doc_formatter::ReflowOpts;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
@@ -2320,14 +2321,24 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
         .unwrap_or_else(|| doc.text_width());
 
     let rope = doc.text();
+    let opts = ReflowOpts {
+        width: text_width,
+        line_ending: doc.line_ending,
+        comment_tokens: doc
+            .language_config()
+            .and_then(|config| config.comment_tokens.as_deref())
+            .unwrap_or(&[]),
+    };
 
-    let selection = doc.selection(view.id);
-    let transaction = Transaction::change_by_selection(rope, selection, |range| {
-        let fragment = range.fragment(rope.slice(..));
-        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, text_width);
-
-        (range.from(), range.to(), Some(reflowed_text))
-    });
+    let mut changes = Vec::new();
+    for selection in doc.selection(view.id) {
+        changes.append(&mut helix_core::doc_formatter::reflow(
+            rope.slice(..selection.to()),
+            selection.from(),
+            &opts,
+        ));
+    }
+    let transaction = Transaction::change(rope, changes.into_iter());
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
