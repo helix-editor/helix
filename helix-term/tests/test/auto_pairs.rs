@@ -444,7 +444,10 @@ async fn append_multi_character_pairs() -> anyhow::Result<()> {
             (
                 format!("#[{}{}|]#", LINE_END, open_but_last),
                 format!("a{}", open_last),
-                format!("#[{eol}{open}{close_head}|]#{close_tail}{eol}", eol = LINE_END),
+                format!(
+                    "#[{eol}{open}{close_head}|]#{close_tail}{eol}",
+                    eol = LINE_END
+                ),
                 LineFeedHandling::AsIs,
             ),
         )
