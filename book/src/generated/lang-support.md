@@ -229,6 +229,7 @@
 | robot | ✓ |  |  |  |  | `robotframework_ls` |
 | robots.txt | ✓ | ✓ |  | ✓ |  |  |
 | ron | ✓ |  | ✓ | ✓ | ✓ | `ron-lsp` |
+| rpmspec | ✓ |  |  |  |  |  |
 | rshtml | ✓ | ✓ |  |  |  | `rshtml-analyzer`, `vscode-html-language-server`, `superhtml` |
 | rst | ✓ |  |  |  |  |  |
 | ruby | ✓ | ✓ | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
