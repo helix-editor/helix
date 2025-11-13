@@ -125,7 +125,7 @@ fn setup() -> Engine {
     fn is_event_available() -> std::io::Result<bool> {
         #[cfg(windows)]
         {
-            crossterm::event::poll(Duration::from_millis(10))
+            crossterm::event::poll(Duration::from_millis(1))
         }
 
         #[cfg(unix)]
@@ -133,7 +133,7 @@ fn setup() -> Engine {
             EVENT_READER
                 .get()
                 .unwrap()
-                .poll(Some(Duration::from_millis(10)), |_| true)
+                .poll(Some(Duration::from_millis(0)), |_| true)
         }
     }
 
