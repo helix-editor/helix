@@ -6,6 +6,7 @@
 - [`[editor.lsp]` Section](#editorlsp-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
+- [`[editor.buffer-picker]` Section](#editorbuffer-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
 - [`[editor.auto-save]` Section](#editorauto-save-section)
 - [`[editor.search]` Section](#editorsearch-section)
@@ -244,6 +245,20 @@ Note that the ignore files consulted by the file explorer when `ignore` is set t
 |`git-exclude` | Enables reading `.git/info/exclude` files | `false`
 |`flatten-dirs` | Enables flattening single child directories | `true`
 
+### `[editor.buffer-picker]` Section
+
+Set options for buffer picker.
+
+| Key | Description | Default |
+|--|--|---------|
+|`start-position` | Controls behavior for which buffer is initially selected | `current` |
+
+Example
+
+```toml
+[editor.buffer-picker]
+start-position = "previous"
+```
 
 ### `[editor.auto-pairs]` Section
 
