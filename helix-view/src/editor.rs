@@ -1,5 +1,5 @@
 use crate::{
-    annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
+    annotations::diagnostics::{DiagnosticFilter, DiagnosticIcons, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
@@ -427,6 +427,8 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+    /// Icons used for diagnostics in the UI
+    pub diagnostic_icons: DiagnosticIcons,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1118,6 +1120,7 @@ impl Default for Config {
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
+            diagnostic_icons: DiagnosticIcons::default(),
         }
     }
 }
