@@ -5078,6 +5078,14 @@ called via a keybinding.
     );
 
     register_1!(
+        "trigger-on-key-callback",
+        trigger_callback,
+        r#"
+Trigger an on key callback if it exists with the specified key event.
+        "#
+    );
+
+    register_1!(
         "enqueue-thread-local-callback",
         enqueue_command,
         r#"
@@ -6284,6 +6292,12 @@ fn set_error(cx: &mut Context, value: SteelVal) {
     match value {
         SteelVal::StringV(s) => cx.editor.set_error(s.as_ref().to_owned()),
         _ => cx.editor.set_error(value.to_string()),
+    }
+}
+
+fn trigger_callback(cx: &mut Context, key: KeyEvent) {
+    if let Some(callback) = cx.on_next_key_callback.take() {
+        (callback.0)(cx, key);
     }
 }
 
