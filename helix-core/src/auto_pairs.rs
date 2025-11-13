@@ -452,8 +452,8 @@ fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: 
 
         // If we are inserting for a regular one-width cursor, the anchor
         // moves with the head. This is the fast path for ASCII.
-        (1, Direction::Forward) => end_head - 1,
-        (1, Direction::Backward) => end_head + 1,
+        (1, Direction::Forward) => end_head - (len_inserted - 1),
+        (1, Direction::Backward) => end_head + (len_inserted - 1),
         (_, Direction::Forward) => {
             if single_grapheme {
                 graphemes::prev_grapheme_boundary(doc.slice(..), start_range.head) + 1
