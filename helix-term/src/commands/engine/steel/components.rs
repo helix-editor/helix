@@ -1453,6 +1453,18 @@ event : Event?
     );
 
     register!(
+        "on-key-event-char",
+        |event: KeyEvent| { event.char() },
+        r#"Get the character off of the key event, if there is one.
+
+```scheme
+(on-key-event-char event) -> (or char? #false)
+```
+event : KeyEvent?
+        "#
+    );
+
+    register!(
         "key-event-modifier",
         |event: Event| {
             if let Event::Key(KeyEvent { modifiers, .. }) = event {
