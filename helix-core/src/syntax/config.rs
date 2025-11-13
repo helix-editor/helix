@@ -515,7 +515,7 @@ pub enum AutoPairConfig {
     Enable(bool),
 
     /// The mappings of pairs.
-    Pairs(HashMap<char, char>),
+    Pairs(HashMap<String, String>),
 }
 
 impl Default for AutoPairConfig {
