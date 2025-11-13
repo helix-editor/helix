@@ -5034,3 +5034,21 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "freebasic"
 source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-freebasic", rev = "dbf696adb4c0b9c020074e75043c90592981ee7f" }
+
+[[language]]
+name = "cangjie"
+scope = "source.cangjie"
+injection-regex = "cangjie"
+file-types = ["cj"]
+roots = ["cjpm.toml", "cjpm.lock"]
+auto-format = true
+comment-tokens = ["//"]
+block-comment-tokens = [
+  { start = "/*", end = "*/"},
+  { start = "/**", end = "*/"}
+]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cangjie"
+source = { git = "https://gitcode.com/Cangjie-SIG/tree-sitter-cangjie", rev = "ff447b577b45e12a350398a672308174baa1c8ad"}
