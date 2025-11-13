@@ -175,7 +175,30 @@ fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
         let editor_view = compositor.find::<ui::EditorView>().unwrap();
         if let Some(completion) = &mut editor_view.completion {
             completion.update_filter(c);
-            if completion.is_empty() || c.is_some_and(|c| !char_is_word(c)) {
+            let keep_non_word = c.is_some_and(|c| {
+                let trigger = c.to_string();
+                cx.editor
+                    .handlers
+                    .completions
+                    .active_completions
+                    .keys()
+                    .any(|provider| match provider {
+                        CompletionProvider::Lsp(language_server_id) => cx
+                            .editor
+                            .language_servers
+                            .get_by_id(*language_server_id)
+                            .and_then(|ls| {
+                                ls.capabilities()
+                                    .completion_provider
+                                    .as_ref()
+                                    .and_then(|provider| provider.trigger_characters.as_deref())
+                            })
+                            .is_some_and(|chars| chars.iter().any(|ch| ch == &trigger)),
+                        _ => false,
+                    })
+            });
+
+            if completion.is_empty() || c.is_some_and(|c| !char_is_word(c) && !keep_non_word) {
                 editor_view.clear_completion(cx.editor);
                 // clearing completions might mean we want to immediately rerequest them (usually
                 // this occurs if typing a trigger char)
@@ -184,7 +207,8 @@ fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
                 }
             } else {
                 let handle = cx.editor.handlers.completions.request_controller.restart();
-                request_incomplete_completion_list(cx.editor, handle)
+                let trigger_char = if keep_non_word { c } else { None };
+                request_incomplete_completion_list(cx.editor, handle, trigger_char)
             }
         }
     }))
