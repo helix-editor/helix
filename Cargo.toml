@@ -2,6 +2,9 @@
 resolver = "2"
 members = [
   "helix-core",
+  "helix-graphics",
+  "helix-input",
+  "helix-integrated-terminal",
   "helix-view",
   "helix-term",
   "helix-tui",
