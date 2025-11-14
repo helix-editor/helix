@@ -46,6 +46,11 @@ to be used as typed commands. For example:
 
 (provide shell git-add open-helix-scm open-init-scm)
 
+(define (current-path)
+  (let* ([focus (editor-focus)]
+         [focus-doc-id (editor->doc-id focus)])
+    (editor-document->path focus-doc-id)))
+
 ;;@doc
 ;; Specialized shell implementation, where % is a wildcard for the current file
 (define (shell . args)
