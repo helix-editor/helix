@@ -154,7 +154,7 @@ pub struct Document {
     /// update from the LSP
     pub inlay_hints_oudated: bool,
 
-    path: Option<PathBuf>,
+    pub path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
     encoding: &'static encoding::Encoding,
     has_bom: bool,
