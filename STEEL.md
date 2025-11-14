@@ -48,15 +48,17 @@ to be used as typed commands. For example:
 
 ;;@doc
 ;; Specialized shell implementation, where % is a wildcard for the current file
-(define (shell cx . args)
-  ;; Replace the % with the current file
-  (define expanded (map (lambda (x) (if (equal? x "%") (current-path cx) x)) args))
-  (apply helix.run-shell-command expanded))
+(define (shell . args)
+  (helix.run-shell-command
+    (string-join
+      ;; Replace the % with the current file
+      (map (lambda (x) (if (equal? x "%") (current-path) x)) args)
+      " ")))
 
 ;;@doc
 ;; Adds the current file to git	
-(define (git-add cx)
-  (shell cx "git" "add" "%"))
+(define (git-add)
+  (shell "git" "add" "%"))
 
 (define (current-path)
   (let* ([focus (editor-focus)]
