@@ -74,7 +74,6 @@
 (string) @string
 (number) @constant.numeric.float
 (unary_operator ["+" "-"] @constant.numeric.float)
-(boolean) @constant.builtin.boolean
 
 ; Comments
 

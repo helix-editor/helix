@@ -6555,11 +6555,12 @@ pub fn custom_insert_newline(cx: &mut Context, indent: String) {
 
                 (line_start, line_start, new_text.chars().count())
             } else {
+                let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
                 // If we are between pairs (such as brackets), we want to
                 // insert an additional line which is indented one level
                 // more and place the cursor there
                 let on_auto_pair = doc
-                    .auto_pairs(cx.editor)
+                    .auto_pairs(cx.editor, loader, view)
                     .and_then(|pairs| pairs.get(prev))
                     .map_or(false, |pair| pair.open == prev && pair.close == curr);
 
