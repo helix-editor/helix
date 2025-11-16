@@ -112,6 +112,7 @@ r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
 racket = { command = "racket", args = ["-l", "racket-langserver"] }
 regols = { command = "regols" }
 rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
+ripple-lsp = { command = "ripple-language-server", args = ["--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
 ron-lsp = { command = "ron-lsp" }
 ruff = { command = "ruff", args = ["server"] }
@@ -5034,3 +5035,17 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "freebasic"
 source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-freebasic", rev = "dbf696adb4c0b9c020074e75043c90592981ee7f" }
+
+[[language]]
+name = "ripple"
+scope = "source.ripple"
+file-types = [ "ripple" ]
+roots = [ "package.json" ]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit="    "}
+language-servers = [ "ripple-lsp" ]
+
+[[grammar]]
+name = "ripple"
+source = { git = "https://github.com/Ripple-TS/ripple", rev = "49762f0a63de0d1845fcd2e6632639c095995336", subpath = "packages/tree-sitter" }
