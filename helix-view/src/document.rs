@@ -40,7 +40,8 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, config::LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
+    ChangeSet, Diagnostic, Lens, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax,
+    Transaction,
 };
 
 use crate::{
@@ -197,6 +198,7 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     pub(crate) diagnostics: Vec<Diagnostic>,
+    pub(crate) lenses: Vec<Lens>,
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
     diff_handle: Option<DiffHandle>,
@@ -339,6 +341,7 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
+            .field("lenses", &self.lenses)
             // .field("language_server", &self.language_server)
             .finish()
     }
@@ -742,6 +745,7 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
+            lenses: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
@@ -2225,6 +2229,11 @@ impl Document {
     pub fn clear_diagnostics_for_language_server(&mut self, id: LanguageServerId) {
         self.diagnostics
             .retain(|d| d.provider.language_server_id() != Some(id));
+    }
+
+    #[inline]
+    pub fn lenses(&self) -> &[Lens] {
+        &self.lenses
     }
 
     /// Get the document's auto pairs. If the document has a recognized
