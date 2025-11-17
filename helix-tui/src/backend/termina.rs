@@ -562,14 +562,27 @@ impl Backend for TerminaBackend {
         }
 
         // Always clear existing cursors first
-        write!(self.terminal, "\x1b[>0;4 q")?;
+        write!(
+            self.terminal,
+            "{}",
+            Csi::Cursor(csi::Cursor::ClearSecondaryCursors)
+        )?;
 
         if !cursors.is_empty() {
-            write!(self.terminal, "\x1b[>29")?; // Shape 29 = follow main cursor
-            for (x, y) in cursors {
-                write!(self.terminal, ";2:{}:{}", y + 1, x + 1)?; // 1-indexed coords
-            }
-            write!(self.terminal, " q")?;
+            // Convert to 1-indexed positions (helix uses 0-indexed)
+            let positions: Vec<(u16, u16)> = cursors
+                .iter()
+                .map(|(x, y)| (y + 1, x + 1)) // (line, col) both 1-indexed
+                .collect();
+
+            write!(
+                self.terminal,
+                "{}",
+                Csi::Cursor(csi::Cursor::SetMultipleCursors {
+                    shape: 29, // Follow main cursor shape
+                    positions,
+                })
+            )?;
         }
 
         self.flush()
