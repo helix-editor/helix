@@ -407,6 +407,7 @@ impl Client {
                         | CallHierarchyServerCapability::Options(_)
                 )
             ),
+            LanguageServerFeature::CodeLens => capabilities.code_lens_provider.is_some(),
         }
     }
 
@@ -740,6 +741,9 @@ impl Client {
                             value_set: Some(lsp::SymbolKind::all()),
                         }),
                         hierarchical_document_symbol_support: Some(false),
+                        ..Default::default()
+                    }),
+                    code_lens: Some(lsp::CodeLensClientCapabilities {
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -1812,5 +1816,23 @@ impl Client {
         self.notify::<lsp::notification::DidChangeWatchedFiles>(lsp::DidChangeWatchedFilesParams {
             changes,
         })
+    }
+
+    pub fn code_lens(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CodeLens>>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support code lens.
+        capabilities.code_lens_provider.as_ref()?;
+
+        let params = lsp::CodeLensParams {
+            text_document,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::CodeLensRequest>(params))
     }
 }
