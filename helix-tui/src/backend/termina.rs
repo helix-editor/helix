@@ -149,7 +149,7 @@ impl TerminaBackend {
         // If we only receive the device attributes then we know it is not.
         write!(
             terminal,
-            "{}{}{}{}{}{}{}",
+            "{}{}\x1b[> q{}{}{}{}{}",
             // Synchronized output
             Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
                 csi::DecPrivateModeCode::SynchronizedOutput
@@ -199,7 +199,19 @@ impl TerminaBackend {
                         capabilities.extended_underlines =
                             sgrs.contains(&csi::Sgr::UnderlineColor(TEST_COLOR.into()));
                     }
-                    _ => (),
+                    Event::Csi(Csi::Cursor(csi::Cursor::CursorShapeQueryResponse(shapes))) => {
+                        // Any numbers in the response means the protocol is supported
+                        if !shapes.is_empty() {
+                            capabilities.kitty_multi_cursor = true;
+                            log::debug!(
+                                "Detected kitty multi-cursor support via protocol query. Supported shapes: {:?}",
+                                shapes
+                            );
+                        }
+                    }
+                    event => {
+                        log::trace!("Unhandled capability detection event: {event:?}");
+                    }
                 }
             }
 
@@ -236,15 +248,6 @@ impl TerminaBackend {
             );
         } else {
             log::debug!("terminfo could not be read, using default cursor reset escape sequence: {reset_cursor_command:?}");
-        }
-
-        // Detect kitty multi-cursor support (available in kitty >= 0.43.0)
-        if matches!(
-            term_program().as_deref(),
-            Some("kitty") | Some("xterm-kitty")
-        ) {
-            capabilities.kitty_multi_cursor = true;
-            log::debug!("Detected kitty terminal - enabling multi-cursor protocol support");
         }
 
         terminal.enter_cooked_mode()?;
