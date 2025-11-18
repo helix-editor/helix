@@ -9,6 +9,7 @@ use crate::{
     handlers::Handlers,
     info::Info,
     input::KeyEvent,
+    make,
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
@@ -427,6 +428,8 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+    /// list of shell command to run when using the :make typed command
+    pub make_cmds: HashMap<PathBuf, make::Command>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1118,6 +1121,7 @@ impl Default for Config {
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
+            make_cmds: HashMap::default(),
         }
     }
 }
@@ -1219,6 +1223,9 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    pub make_cmd: Option<make::Command>,
+    pub make_list: make::List,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1340,6 +1347,8 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            make_cmd: None,
+            make_list: make::List::new(),
         }
     }
 
