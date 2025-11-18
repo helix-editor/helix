@@ -147,7 +147,6 @@ pub struct TextFormat {
     pub tab_width: u16,
     pub max_wrap: u16,
     pub max_indent_retain: u16,
-    pub wrap_indicator: Box<str>,
     pub wrap_indicator_highlight: Option<Highlight>,
     pub viewport_width: u16,
     pub soft_wrap_at_text_width: bool,
@@ -161,7 +160,6 @@ impl Default for TextFormat {
             tab_width: 4,
             max_wrap: 3,
             max_indent_retain: 4,
-            wrap_indicator: Box::from(" "),
             viewport_width: 17,
             wrap_indicator_highlight: None,
             soft_wrap_at_text_width: false,
@@ -310,25 +308,8 @@ impl<'t> DocumentFormatter<'t> {
                 .virtual_lines_at(self.char_pos, self.visual_pos, self.line_pos);
         self.visual_pos.col = indent_carry_over as usize;
         self.visual_pos.row += 1 + virtual_lines;
-        let mut i = 0;
         let mut word_width = 0;
-        let wrap_indicator = UnicodeSegmentation::graphemes(&*self.text_fmt.wrap_indicator, true)
-            .map(|g| {
-                i += 1;
-                let grapheme = GraphemeWithSource::new(
-                    g.into(),
-                    self.visual_pos.col + word_width,
-                    self.text_fmt.tab_width,
-                    GraphemeSource::VirtualText {
-                        highlight: self.text_fmt.wrap_indicator_highlight,
-                    },
-                );
-                word_width += grapheme.width();
-                grapheme
-            });
-        self.word_buf.splice(0..0, wrap_indicator);
-
-        for grapheme in &mut self.word_buf[i..] {
+        for grapheme in &mut self.word_buf {
             let visual_x = self.visual_pos.col + word_width;
             grapheme
                 .grapheme
