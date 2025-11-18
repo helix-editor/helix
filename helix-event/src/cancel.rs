@@ -34,8 +34,8 @@ struct Shared {
     //
     // if we only cared about async code then we could also only use a notify
     // (without the generation count), this would be equivalent (or maybe more
-    // correct if we want to allow cloning the TX) but it would be extremly slow
-    // to frequently check for cancelation from sync code
+    // correct if we want to allow cloning the TX) but it would be extremely slow
+    // to frequently check for cancellation from sync code
     notify: Notify,
 }
 
@@ -114,7 +114,7 @@ impl Shared {
 }
 
 // This intentionally doesn't implement `Clone` and requires a mutable reference
-// for cancelation to avoid races (in inc_generation).
+// for cancellation to avoid races (in inc_generation).
 
 /// A task controller allows managing a single subtask enabling the controller
 /// to cancel the subtask and to check whether it is still running.
@@ -134,7 +134,7 @@ impl TaskController {
     }
     /// Cancels the active task (handle).
     ///
-    /// Returns whether any tasks were still running before the cancelation.
+    /// Returns whether any tasks were still running before the cancellation.
     pub fn cancel(&mut self) -> bool {
         self.shared.inc_generation(0).1 != 0
     }
@@ -163,7 +163,7 @@ impl Drop for TaskController {
 /// A handle that is used to link a task with a task controller.
 ///
 /// It can be used to cancel async futures very efficiently but can also be checked for
-/// cancelation very quickly (single atomic read) in blocking code.
+/// cancellation very quickly (single atomic read) in blocking code.
 /// The handle can be cheaply cloned (reference counted).
 ///
 /// The TaskController can check whether a task is "running" by inspecting the
