@@ -26,7 +26,8 @@ There are three possible locations for a `languages.toml` file:
    auto-format = false
    ```
 
-3. In a `.helix` folder in your project. Language configuration may also be
+3. If `load-workspace-config = "always"` in your global `config.toml` file, 
+   it can also be in a `.helix` folder in your project. Language configuration may also be
    overridden local to a project by creating a `languages.toml` file in a
    `.helix` folder. Its settings will be merged with the language configuration
    in the configuration directory and the built-in configuration.
