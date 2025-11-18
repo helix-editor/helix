@@ -16,7 +16,6 @@ pub mod graphemes;
 pub mod history;
 pub mod increment;
 pub mod indent;
-pub mod lens;
 pub mod line_ending;
 pub mod macros;
 pub mod match_brackets;
@@ -69,7 +68,6 @@ pub use syntax::Syntax;
 
 pub use completion::CompletionItem;
 pub use diagnostic::Diagnostic;
-pub use lens::Lens;
 
 pub use line_ending::{LineEnding, NATIVE_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Deletion, Operation, Transaction};

@@ -15,7 +15,7 @@ use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
-    text_annotations::InlineAnnotation, Selection, Uri,
+    text_annotations::InlineAnnotation, CodeLens, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -1455,4 +1455,86 @@ fn compute_inlay_hints_for_view(
     );
 
     Some(callback)
+}
+
+impl ui::menu::Item for lsp::CodeLens {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> Row<'_> {
+        match &self.command {
+            Some(cmd) => cmd.title.as_str().into(),
+            None => "needs resolve".into(),
+        }
+    }
+}
+
+// TODO: should be run the same way as diagnostic - shouldn't require manual
+// trigger to set lenses.
+pub fn request_code_lenses(cx: &mut Context) {
+    let (_view, doc) = current!(cx.editor);
+    let doc_id = doc.id();
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::DocumentHighlight);
+    let language_server_id = language_server.id();
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::Hover)
+        .count()
+        == 0
+    {
+        cx.editor
+            .set_error("No configured language server supports hover");
+        return;
+    }
+
+    let request = match language_server.code_lens(doc.identifier()) {
+        Some(future) => future,
+        None => {
+            // TODO: error log?
+            return;
+        }
+    };
+
+    cx.jobs.callback(async move {
+        let mut lenses = Vec::new();
+
+        match request.await {
+            Ok(Some(resp)) => lenses = resp,
+            Ok(None) => {}
+            Err(err) => log::error!("while fetching code lenses: {err}"),
+        }
+
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if lenses.is_empty() {
+                editor.set_error("No code lenses available");
+                return;
+            }
+
+            if let Some(doc) = editor.documents.get_mut(&doc_id) {
+                doc.set_code_lenses(lenses.clone());
+            }
+
+            let mut picker = ui::Menu::new(lenses, (), move |editor, lens, event| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
+
+                // always present here
+                let lens = lens.unwrap();
+
+                if let Some(cmd) = lens.command.clone() {
+                    log::debug!("code lens command: {:?}", cmd);
+                    editor.execute_lsp_command(cmd, language_server_id);
+                };
+            });
+            picker.move_down(); // pre-select the first item
+
+            let popup = Popup::new("code-lens", picker)
+                .with_scrollbar(false)
+                .auto_close(true);
+
+            compositor.replace_or_push("code-lens", popup);
+        };
+
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }
