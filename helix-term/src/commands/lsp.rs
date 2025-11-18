@@ -1467,9 +1467,7 @@ impl ui::menu::Item for lsp::CodeLens {
     }
 }
 
-// TODO: should be run the same way as diagnostic - shouldn't require manual
-// trigger to set lenses.
-pub fn request_code_lenses(cx: &mut Context) {
+pub fn show_code_lenses_under_cursor(cx: &mut Context) {
     let (_view, doc) = current!(cx.editor);
     let doc_id = doc.id();
     let language_server =
