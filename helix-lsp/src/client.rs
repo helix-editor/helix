@@ -1594,10 +1594,9 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
     ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CodeLens>>>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the server does not support code lens.
-        capabilities.code_lens_provider.as_ref()?;
+        if !self.supports_feature(LanguageServerFeature::CodeLens) {
+            return None;
+        }
 
         let params = lsp::CodeLensParams {
             text_document,
@@ -1606,5 +1605,16 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::CodeLensRequest>(params))
+    }
+
+    pub fn resolve_code_lens(
+        &self,
+        params: lsp::CodeLens,
+    ) -> Option<impl Future<Output = Result<lsp::CodeLens>>> {
+        if !self.supports_feature(LanguageServerFeature::CodeLens) {
+            return None;
+        }
+
+        Some(self.call::<lsp::request::CodeLensResolve>(params))
     }
 }
