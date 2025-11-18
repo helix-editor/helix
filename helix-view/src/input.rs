@@ -569,6 +569,113 @@ impl From<KeyEvent> for termina::event::KeyEvent {
     }
 }
 
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::Event> for Event {
+    fn from(event: crossterm::event::Event) -> Self {
+        match event {
+            crossterm::event::Event::Key(key) => Self::Key(key.into()),
+            crossterm::event::Event::Mouse(mouse) => Self::Mouse(mouse.into()),
+            crossterm::event::Event::Resize(w, h) => Self::Resize(w, h),
+            crossterm::event::Event::FocusGained => Self::FocusGained,
+            crossterm::event::Event::FocusLost => Self::FocusLost,
+            crossterm::event::Event::Paste(s) => Self::Paste(s),
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::MouseEvent> for MouseEvent {
+    fn from(
+        crossterm::event::MouseEvent {
+            kind,
+            column,
+            row,
+            modifiers,
+        }: crossterm::event::MouseEvent,
+    ) -> Self {
+        Self {
+            kind: kind.into(),
+            column,
+            row,
+            modifiers: modifiers.into(),
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::MouseEventKind> for MouseEventKind {
+    fn from(kind: crossterm::event::MouseEventKind) -> Self {
+        match kind {
+            crossterm::event::MouseEventKind::Down(button) => Self::Down(button.into()),
+            crossterm::event::MouseEventKind::Up(button) => Self::Up(button.into()),
+            crossterm::event::MouseEventKind::Drag(button) => Self::Drag(button.into()),
+            crossterm::event::MouseEventKind::Moved => Self::Moved,
+            crossterm::event::MouseEventKind::ScrollDown => Self::ScrollDown,
+            crossterm::event::MouseEventKind::ScrollUp => Self::ScrollUp,
+            crossterm::event::MouseEventKind::ScrollLeft => Self::ScrollLeft,
+            crossterm::event::MouseEventKind::ScrollRight => Self::ScrollRight,
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::MouseButton> for MouseButton {
+    fn from(button: crossterm::event::MouseButton) -> Self {
+        match button {
+            crossterm::event::MouseButton::Left => MouseButton::Left,
+            crossterm::event::MouseButton::Right => MouseButton::Right,
+            crossterm::event::MouseButton::Middle => MouseButton::Middle,
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<crossterm::event::KeyEvent> for KeyEvent {
+    fn from(
+        crossterm::event::KeyEvent {
+            code, modifiers, ..
+        }: crossterm::event::KeyEvent,
+    ) -> Self {
+        if code == crossterm::event::KeyCode::BackTab {
+            // special case for BackTab -> Shift-Tab
+            let mut modifiers: KeyModifiers = modifiers.into();
+            modifiers.insert(KeyModifiers::SHIFT);
+            Self {
+                code: KeyCode::Tab,
+                modifiers,
+            }
+        } else {
+            Self {
+                code: code.into(),
+                modifiers: modifiers.into(),
+            }
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
+impl From<KeyEvent> for crossterm::event::KeyEvent {
+    fn from(KeyEvent { code, modifiers }: KeyEvent) -> Self {
+        if code == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
+            // special case for Shift-Tab -> BackTab
+            let mut modifiers = modifiers;
+            modifiers.remove(KeyModifiers::SHIFT);
+            crossterm::event::KeyEvent {
+                code: crossterm::event::KeyCode::BackTab,
+                modifiers: modifiers.into(),
+                kind: crossterm::event::KeyEventKind::Press,
+                state: crossterm::event::KeyEventState::NONE,
+            }
+        } else {
+            crossterm::event::KeyEvent {
+                code: code.into(),
+                modifiers: modifiers.into(),
+                kind: crossterm::event::KeyEventKind::Press,
+                state: crossterm::event::KeyEventState::NONE,
+            }
+        }
+    }
+}
 pub fn parse_macro(keys_str: &str) -> anyhow::Result<Vec<KeyEvent>> {
     use anyhow::Context;
     let mut keys_res: anyhow::Result<_> = Ok(Vec::new());

@@ -193,7 +193,7 @@ mod external {
                 Self::Wayland => builtin_name("wayland", &WL_CLIPBOARD),
                 Self::XClip => builtin_name("x-clip", &XCLIP),
                 Self::XSel => builtin_name("x-sel", &XSEL),
-                Self::Win32Yank => builtin_name("win-32-yank", &WIN32),
+                Self::Win32Yank => builtin_name("win32-yank", &WIN32),
                 Self::Tmux => builtin_name("tmux", &TMUX),
                 Self::Termux => builtin_name("termux", &TERMUX),
                 #[cfg(windows)]

@@ -23,10 +23,10 @@ regex-automata = "0.4.10"
 unicode-segmentation.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
 
 [target.'cfg(unix)'.dependencies]
-rustix = { version = "1.0", features = ["fs"] }
+rustix = { version = "1.1", features = ["fs"] }
 
 [dev-dependencies]
 tempfile.workspace = true
