@@ -8,7 +8,6 @@ impl TextFormat {
             tab_width: 2,
             max_wrap: 3,
             max_indent_retain: 4,
-            wrap_indicator: ".".into(),
             wrap_indicator_highlight: None,
             // use a prime number to allow lining up too often with repeat
             viewport_width: 17,
@@ -59,11 +58,11 @@ fn softwrap_text(text: &str) -> String {
 fn basic_softwrap() {
     assert_eq!(
         softwrap_text(&"foo ".repeat(10)),
-        "foo foo foo foo \n.foo foo foo foo \n.foo foo  "
+        "foo foo foo foo \nfoo foo foo foo \nfoo foo  "
     );
     assert_eq!(
         softwrap_text(&"fooo ".repeat(10)),
-        "fooo fooo fooo \n.fooo fooo fooo \n.fooo fooo fooo \n.fooo  "
+        "fooo fooo fooo \nfooo fooo fooo \nfooo fooo fooo \nfooo  "
     );
 
     // check that we don't wrap unnecessarily
@@ -74,31 +73,31 @@ fn basic_softwrap() {
 fn softwrap_indentation() {
     assert_eq!(
         softwrap_text("\t\tfoo1 foo2 foo3 foo4 foo5 foo6\n"),
-        "    foo1 foo2 \n.....foo3 foo4 \n.....foo5 foo6 \n "
+        "    foo1 foo2 \n....foo3 foo4 \n....foo5 foo6 \n "
     );
     assert_eq!(
         softwrap_text("\t\t\tfoo1 foo2 foo3 foo4 foo5 foo6\n"),
-        "      foo1 foo2 \n.foo3 foo4 foo5 \n.foo6 \n "
+        "      foo1 foo2 \nfoo3 foo4 foo5 \nfoo6 \n "
     );
 }
 
 #[test]
 fn long_word_softwrap() {
     assert_eq!(
-        softwrap_text("\t\txxxx1xxxx2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n"),
-        "    xxxx1xxxx2xxx\n.....x3xxxx4xxxx5\n.....xxxx6xxxx7xx\n.....xx8xxxx9xxx \n "
+        softwrap_text("\t\txxxx1xxxx2xxxx3xxxx4xxxxx5xxxx6xxxx7xxx8xxxx9xxx\n"),
+        "    xxxx1xxxx2xxx\n....x3xxxx4xxxxx5\n....xxxx6xxxx7xxx\n....8xxxx9xxx \n "
     );
     assert_eq!(
         softwrap_text("xxxxxxxx1xxxx2xxx\n"),
-        "xxxxxxxx1xxxx2xxx\n. \n "
+        "xxxxxxxx1xxxx2xxx\n \n "
     );
     assert_eq!(
-        softwrap_text("\t\txxxx1xxxx 2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n"),
-        "    xxxx1xxxx \n.....2xxxx3xxxx4x\n.....xxx5xxxx6xxx\n.....x7xxxx8xxxx9\n.....xxx \n "
+        softwrap_text("\t\txxxx1xxxx 2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxxxxx9xxx\n"),
+        "    xxxx1xxxx \n....2xxxx3xxxx4xx\n....xx5xxxx6xxxx7\n....xxxx8xxxxxxx9\n....xxx \n "
     );
     assert_eq!(
-        softwrap_text("\t\txxxx1xxx 2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n"),
-        "    xxxx1xxx 2xxx\n.....x3xxxx4xxxx5\n.....xxxx6xxxx7xx\n.....xx8xxxx9xxx \n "
+        softwrap_text("\t\txxxx1xxx 2xxxx3xxxx4xxxxx5xxxx6xxxx7xxxxx8xxxx9xx\n"),
+        "    xxxx1xxx 2xxx\n....x3xxxx4xxxxx5\n....xxxx6xxxx7xxx\n....xx8xxxx9xx \n "
     );
 }
 
@@ -106,7 +105,7 @@ fn long_word_softwrap() {
 fn softwrap_multichar_grapheme() {
     assert_eq!(
         softwrap_text("xxxx xxxx xxx a\u{0301}bc\n"),
-        "xxxx xxxx xxx \n.ábc \n "
+        "xxxx xxxx xxx \nábc \n "
     )
 }
 
@@ -158,7 +157,7 @@ fn overlay() {
                 Overlay::new(16, "X"),
             ]
         ),
-        "fo   f  o foo \n.foo Xoo foo foo \n.foo foo foo  "
+        "fo   f  o foo \nfoo Xoo foo foo \nfoo foo foo  "
     );
 }
 
@@ -184,7 +183,7 @@ fn annotation() {
             true,
             &[InlineAnnotation::new(0, "foo ")]
         ),
-        "foo foo foo foo \n.foo foo foo foo \n.foo foo foo  "
+        "foo foo foo foo \nfoo foo foo foo \nfoo foo foo  "
     );
 }
 
