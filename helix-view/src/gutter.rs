@@ -94,14 +94,15 @@ pub fn lens<'doc>(
     _is_focused: bool,
 ) -> GutterFn<'doc> {
     let info = theme.get("info");
-    let lenses = &doc.lenses;
+    let lenses = &doc.code_lenses;
+    log::error!("lenses: {:?}", lenses);
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
             if !first_visual_line {
                 return None;
             }
-            if lenses.iter().any(|l| l.line == line) {
+            if lenses.iter().any(|l| l.range.start.line as usize == line) {
                 write!(out, "▶").ok();
                 Some(info)
             } else {

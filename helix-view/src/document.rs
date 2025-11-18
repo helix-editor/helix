@@ -40,7 +40,7 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, config::LanguageConfiguration},
-    ChangeSet, Diagnostic, Lens, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax,
+    ChangeSet, CodeLens, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax,
     Transaction,
 };
 
@@ -198,7 +198,6 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     pub(crate) diagnostics: Vec<Diagnostic>,
-    pub(crate) lenses: Vec<Lens>,
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
     diff_handle: Option<DiffHandle>,
@@ -215,6 +214,7 @@ pub struct Document {
     pub color_swatches: Option<DocumentColorSwatches>,
     /// Cached LSP document links for navigation (e.g. goto_file).
     pub document_links: Vec<DocumentLink>,
+    pub code_lenses: Vec<lsp::CodeLens>,
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
@@ -341,7 +341,7 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
-            .field("lenses", &self.lenses)
+            .field("lenses", &self.code_lenses)
             // .field("language_server", &self.language_server)
             .finish()
     }
@@ -741,7 +741,7 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
-            lenses: Vec::new(),
+            code_lenses: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
@@ -2228,8 +2228,12 @@ impl Document {
     }
 
     #[inline]
-    pub fn lenses(&self) -> &[Lens] {
-        &self.lenses
+    pub fn code_lenses(&self) -> &[lsp::CodeLens] {
+        &self.code_lenses
+    }
+
+    pub fn set_code_lenses(&mut self, lenses: Vec<lsp::CodeLens>) {
+        self.code_lenses = lenses;
     }
 
     /// Get the document's auto pairs. If the document has a recognized
