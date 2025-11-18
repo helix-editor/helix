@@ -1541,6 +1541,8 @@ pub fn show_code_lenses_under_cursor(cx: &mut Context) {
         return;
     }
 
+    // TODO(matoous): this needs to support multiple language servers and resolving the code lens
+    // via the right one
     let mut futures: FuturesUnordered<_> = doc
         .code_lenses()
         .iter()
@@ -1549,6 +1551,8 @@ pub fn show_code_lenses_under_cursor(cx: &mut Context) {
                 let cloned = c.clone();
                 Some(Either::Left(ready(Ok(cloned))))
             } else {
+                // Safety: the command is empty only if the code lens is unresolved and we assume
+                // that if the code lens is unresolved the language server support resolution.
                 language_server
                     .resolve_code_lens(c.clone())
                     .map(Either::Right)

@@ -12,14 +12,14 @@ use tokio::time::Instant;
 
 use crate::job;
 
-// TODO: use to update code lenses positions on document changes
+// TODO(matoous): use to update code lenses positions on document changes
 #[derive(Default)]
 #[allow(dead_code)]
 pub(super) struct DocumentCodeLensesHandler {
     docs: HashSet<DocumentId>,
 }
 
-// TODO: use to update debounce document changes when udpating positions of code lenses
+// TODO(matoous): use to update debounce document changes when udpating positions of code lenses
 // TODO: share with color swatches and possibly other annotations
 #[allow(dead_code)]
 const DOCUMENT_CHANGE_DEBOUNCE: Duration = Duration::from_millis(250);
