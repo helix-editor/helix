@@ -3828,43 +3828,42 @@ fn execute_command_line(
         return execute_command(cx, cmd, command, event);
     }
 
-    match typed::TYPABLE_COMMAND_MAP.get(command) {
-        Some(cmd) => execute_command(cx, cmd, rest, event),
-        None if event == PromptEvent::Validate => {
-            let parts = rest.split_whitespace().collect::<Vec<_>>();
+    if event == PromptEvent::Validate {
+        let parts = rest.split_whitespace().collect::<Vec<_>>();
+        if ScriptingEngine::call_typed_command(cx, command, &parts, event) {
+            // Engine handles the other cases
+            if event == PromptEvent::Validate {
+                let mappable_command = MappableCommand::Typable {
+                    name: command.to_string(),
+                    args: parts.join(" "),
+                    doc: "".to_string(),
+                };
 
-            if ScriptingEngine::call_typed_command(cx, command, &parts, event) {
-                // Engine handles the other cases
-                if event == PromptEvent::Validate {
-                    let mappable_command = MappableCommand::Typable {
-                        name: command.to_string(),
-                        args: parts.join(" "),
-                        doc: "".to_string(),
-                    };
+                let mut ctx = Context {
+                    register: None,
+                    count: None,
+                    editor: cx.editor,
+                    callback: Vec::new(),
+                    on_next_key_callback: None,
+                    jobs: cx.jobs,
+                };
 
-                    let mut ctx = Context {
-                        register: None,
-                        count: None,
-                        editor: cx.editor,
-                        callback: Vec::new(),
-                        on_next_key_callback: None,
-                        jobs: cx.jobs,
-                    };
+                helix_event::dispatch(crate::events::PostCommand {
+                    command: &mappable_command,
+                    cx: &mut ctx,
+                });
 
-                    helix_event::dispatch(crate::events::PostCommand {
-                        command: &mappable_command,
-                        cx: &mut ctx,
-                    });
-
-                    Ok(())
-                } else {
-                    Ok(())
-                }
+                return Ok(());
             } else {
-                Err(anyhow!("no such command: '{command}'"))
+                return Ok(());
             }
         }
-        None => Ok(()),
+    }
+
+    if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
+        execute_command(cx, cmd, rest, event)
+    } else {
+        Err(anyhow!("no such command: '{command}'"))
     }
 }
 
@@ -3931,11 +3930,12 @@ pub(super) fn command_mode(cx: &mut Context) {
 
 fn command_line_doc(input: &str) -> Option<Cow<str>> {
     let (command_name, _, _) = command_line::split(input);
-    let command = TYPABLE_COMMAND_MAP.get(command_name);
 
-    if command.is_none() {
-        return ScriptingEngine::get_doc_for_identifier(command_name).map(|x| x.into());
+    if let Some(doc) = ScriptingEngine::get_doc_for_identifier(command_name).map(|x| x.into()) {
+        return Some(doc);
     }
+
+    let command = TYPABLE_COMMAND_MAP.get(command_name);
 
     let command = command?;
 
