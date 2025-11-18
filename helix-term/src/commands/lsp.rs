@@ -1,4 +1,8 @@
-use futures_util::{stream::FuturesOrdered, FutureExt};
+use futures_util::{
+    future::{ready, Either},
+    stream::FuturesOrdered,
+    FutureExt,
+};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -1460,10 +1464,8 @@ fn compute_inlay_hints_for_view(
 impl ui::menu::Item for lsp::CodeLens {
     type Data = ();
     fn format(&self, _data: &Self::Data) -> Row<'_> {
-        match &self.command {
-            Some(cmd) => cmd.title.as_str().into(),
-            None => "needs resolve".into(),
-        }
+        // Safety: assumes that only resolved code lenses are passed to the menu
+        self.command.as_ref().unwrap().title.as_str().into()
     }
 }
 
@@ -1475,7 +1477,7 @@ pub fn show_code_lenses_under_cursor(cx: &mut Context) {
     let language_server_id = language_server.id();
 
     if doc
-        .language_servers_with_feature(LanguageServerFeature::Hover)
+        .language_servers_with_feature(LanguageServerFeature::CodeLens)
         .count()
         == 0
     {
@@ -1484,21 +1486,28 @@ pub fn show_code_lenses_under_cursor(cx: &mut Context) {
         return;
     }
 
-    let request = match language_server.code_lens(doc.identifier()) {
-        Some(future) => future,
-        None => {
-            // TODO: error log?
-            return;
-        }
-    };
+    let mut futures: FuturesOrdered<_> = doc
+        .code_lenses()
+        .iter()
+        .filter_map(|c| {
+            if c.command.is_some() {
+                let cloned = c.clone();
+                Some(Either::Left(ready(Ok(cloned))))
+            } else {
+                language_server
+                    .resolve_code_lens(c.clone())
+                    .map(Either::Right)
+            }
+        })
+        .collect();
 
     cx.jobs.callback(async move {
         let mut lenses = Vec::new();
-
-        match request.await {
-            Ok(Some(resp)) => lenses = resp,
-            Ok(None) => {}
-            Err(err) => log::error!("while fetching code lenses: {err}"),
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok(item) => lenses.push(item),
+                Err(err) => log::error!("Error requesting document symbols: {err}"),
+            }
         }
 
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
