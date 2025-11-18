@@ -40,8 +40,7 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, config::LanguageConfiguration},
-    ChangeSet, CodeLens, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax,
-    Transaction,
+    ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
 use crate::{
