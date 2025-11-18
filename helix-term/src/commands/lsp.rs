@@ -1476,16 +1476,8 @@ pub fn show_code_lenses_under_cursor(cx: &mut Context) {
         language_server_with_feature!(cx.editor, doc, LanguageServerFeature::DocumentHighlight);
     let language_server_id = language_server.id();
 
-    if doc
-        .language_servers_with_feature(LanguageServerFeature::CodeLens)
-        .count()
-        == 0
-    {
-        cx.editor
-            .set_error("No configured language server supports hover");
-        return;
-    }
-
+    // TODO(matoous): this needs to support multiple language servers and resolving the code lens
+    // via the right one
     let mut futures: FuturesOrdered<_> = doc
         .code_lenses()
         .iter()
@@ -1494,6 +1486,8 @@ pub fn show_code_lenses_under_cursor(cx: &mut Context) {
                 let cloned = c.clone();
                 Some(Either::Left(ready(Ok(cloned))))
             } else {
+                // Safety: the command is empty only if the code lens is unresolved and we assume
+                // that if the code lens is unresolved the language server support resolution.
                 language_server
                     .resolve_code_lens(c.clone())
                     .map(Either::Right)
