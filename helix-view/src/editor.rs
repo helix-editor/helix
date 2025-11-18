@@ -15,6 +15,7 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 use helix_event::dispatch;
+use helix_loader::trust_db::{self};
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -264,6 +265,16 @@ impl Default for FileExplorerConfig {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WorkspaceTrust {
+    Always,
+    #[default]
+    Ask,
+    Manual,
+    Never,
+}
+
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -427,6 +438,8 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+
+    pub workspace_trust: WorkspaceTrust,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -581,6 +594,7 @@ impl Default for StatusLineConfig {
                 E::Spinner,
                 E::FileName,
                 E::ReadOnlyIndicator,
+                E::Untrusted,
                 E::FileModificationIndicator,
             ],
             center: vec![],
@@ -622,6 +636,9 @@ impl Default for ModeConfig {
 pub enum StatusLineElement {
     /// The editor mode (Normal, Insert, Visual/Selection)
     Mode,
+
+    /// Whether the current doc is untrusted or not
+    Untrusted,
 
     /// The LSP activity spinner
     Spinner,
@@ -1118,6 +1135,7 @@ impl Default for Config {
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
+            workspace_trust: WorkspaceTrust::default(),
         }
     }
 }
@@ -1202,6 +1220,10 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+    pub trust_events: (
+        UnboundedSender<(PathBuf, trust_db::Trust)>,
+        UnboundedReceiver<(PathBuf, trust_db::Trust)>,
+    ),
     pub needs_redraw: bool,
     /// Cached position of the cursor calculated during rendering.
     /// The content of `cursor_cache` is returned by `Editor::cursor` if
@@ -1227,6 +1249,7 @@ pub type Motion = Box<dyn Fn(&mut Editor)>;
 pub enum EditorEvent {
     DocumentSaved(DocumentSavedEventResult),
     ConfigEvent(ConfigEvent),
+    Trust((PathBuf, trust_db::Trust)),
     LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent((DebugAdapterId, dap::Payload)),
     IdleTimer,
@@ -1336,6 +1359,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
+            trust_events: unbounded_channel(),
             needs_redraw: false,
             handlers,
             mouse_down_range: None,
@@ -1603,6 +1627,11 @@ impl Editor {
         let Some(doc_url) = doc.url() else {
             return;
         };
+
+        if !doc.is_trusted.unwrap_or_default() {
+            return;
+        }
+
         let (lang, path) = (doc.language.clone(), doc.path().cloned());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
@@ -2242,6 +2271,9 @@ impl Editor {
                 Some(config_event) = self.config_events.1.recv() => {
                     return EditorEvent::ConfigEvent(config_event)
                 }
+                Some(trust_event) = self.trust_events.1.recv() => {
+                    return EditorEvent::Trust(trust_event)
+                }
                 Some(message) = self.language_servers.incoming.next() => {
                     return EditorEvent::LanguageServerMessage(message)
                 }
@@ -2357,6 +2389,17 @@ impl Editor {
 
     pub fn get_last_cwd(&mut self) -> Option<&Path> {
         self.last_cwd.as_deref()
+    }
+
+    pub fn set_trust(
+        &mut self,
+        workspace: impl AsRef<Path>,
+        trust: trust_db::Trust,
+    ) -> anyhow::Result<()> {
+        self.trust_events
+            .0
+            .send((workspace.as_ref().to_path_buf(), trust))?;
+        Ok(())
     }
 }
 

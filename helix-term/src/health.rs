@@ -150,20 +150,20 @@ pub fn clipboard() -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn languages_all() -> std::io::Result<()> {
-    languages(None)
+pub fn languages_all(use_local_config: bool) -> std::io::Result<()> {
+    languages(None, use_local_config)
 }
 
-pub fn languages_selection() -> std::io::Result<()> {
-    let selection = helix_loader::grammar::get_grammar_names().unwrap_or_default();
-    languages(selection)
+pub fn languages_selection(use_local_config: bool) -> std::io::Result<()> {
+    let selection = helix_loader::grammar::get_grammar_names(use_local_config).unwrap_or_default();
+    languages(selection, use_local_config)
 }
 
-fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
+fn languages(selection: Option<HashSet<String>>, use_local_config: bool) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let mut syn_loader_conf = match user_lang_config() {
+    let mut syn_loader_conf = match user_lang_config(use_local_config) {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -279,11 +279,11 @@ fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
 
 /// Display diagnostics pertaining to a particular language (LSP,
 /// highlight queries, etc).
-pub fn language(lang_str: String) -> std::io::Result<()> {
+pub fn language(lang_str: String, use_local_config: bool) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let syn_loader_conf = match user_lang_config() {
+    let syn_loader_conf = match user_lang_config(use_local_config) {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -433,24 +433,24 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
     Ok(())
 }
 
-pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
+pub fn print_health(health_arg: Option<String>, use_local_config: bool) -> std::io::Result<()> {
     match health_arg.as_deref() {
-        Some("languages") => languages_selection()?,
-        Some("all-languages") => languages_all()?,
+        Some("languages") => languages_selection(use_local_config)?,
+        Some("all-languages") => languages_all(use_local_config)?,
         Some("clipboard") => clipboard()?,
         None => {
             general()?;
             clipboard()?;
             writeln!(std::io::stdout().lock())?;
-            languages_selection()?;
+            languages_selection(use_local_config)?;
         }
         Some("all") => {
             general()?;
             clipboard()?;
             writeln!(std::io::stdout().lock())?;
-            languages_all()?;
+            languages_all(use_local_config)?;
         }
-        Some(lang) => language(lang.to_string())?,
+        Some(lang) => language(lang.to_string(), use_local_config)?,
     }
     Ok(())
 }
