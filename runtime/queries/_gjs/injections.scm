@@ -9,7 +9,8 @@
 
 ; e.g.: <template><SomeComponent @arg={{double @value}} /></template>
 ((glimmer_template) @injection.content
- (#set! injection.language "hbs"))
+ (#set! injection.language "glimmer")
+ (#set! injection.include-children))
 
 ; Parse Ember/Glimmer/Handlebars/HTMLBars/etc. template literals
 ; e.g.: await render(hbs`<SomeComponent />`)
