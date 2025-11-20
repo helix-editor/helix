@@ -15,7 +15,7 @@ pub use helix_view::handlers::{word_index, Handlers};
 use self::document_colors::DocumentColorsHandler;
 
 mod auto_save;
-mod code_lenses;
+pub mod code_lenses;
 pub mod completion;
 pub mod diagnostics;
 mod document_colors;

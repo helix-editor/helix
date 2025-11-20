@@ -44,7 +44,7 @@ impl helix_event::AsyncHook for DocumentCodeLensesHandler {
     }
 }
 
-fn request_document_code_lenses(editor: &mut Editor, doc_id: DocumentId) {
+pub fn request_document_code_lenses(editor: &mut Editor, doc_id: DocumentId) {
     if !editor.config().lsp.display_code_lenses {
         return;
     }

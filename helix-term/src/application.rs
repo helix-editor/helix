@@ -1125,6 +1125,26 @@ impl Application {
 
                         Ok(serde_json::Value::Null)
                     }
+                    Ok(MethodCall::CodeLensRefresh) => {
+                        let language_server = language_server!().id();
+
+                        let documents: Vec<_> = self
+                            .editor
+                            .documents
+                            .values()
+                            .filter(|x| x.supports_language_server(language_server))
+                            .map(|x| x.id())
+                            .collect();
+
+                        for document in documents {
+                            handlers::code_lenses::request_document_code_lenses(
+                                &mut self.editor,
+                                document,
+                            );
+                        }
+
+                        Ok(serde_json::Value::Null)
+                    }
                 };
 
                 let language_server = language_server!();
