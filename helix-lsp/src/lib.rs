@@ -479,6 +479,7 @@ pub enum MethodCall {
     ShowDocument(lsp::ShowDocumentParams),
     WorkspaceDiagnosticRefresh,
     ShowMessageRequest(lsp::ShowMessageRequestParams),
+    CodeLensRefresh,
 }
 
 impl MethodCall {
@@ -515,6 +516,7 @@ impl MethodCall {
                 let params: lsp::ShowMessageRequestParams = params.parse()?;
                 Self::ShowMessageRequest(params)
             }
+            lsp::request::CodeLensRefresh::METHOD => Self::CodeLensRefresh,
             _ => {
                 return Err(Error::Unhandled);
             }

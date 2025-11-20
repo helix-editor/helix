@@ -16,7 +16,7 @@ use self::document_colors::DocumentColorsHandler;
 use self::document_links::DocumentLinksHandler;
 
 mod auto_save;
-mod code_lenses;
+pub mod code_lenses;
 pub mod completion;
 pub mod diagnostics;
 mod document_colors;
