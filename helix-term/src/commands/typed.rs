@@ -3832,38 +3832,36 @@ fn execute_command_line(
         let parts = rest.split_whitespace().collect::<Vec<_>>();
         if ScriptingEngine::call_typed_command(cx, command, &parts, event) {
             // Engine handles the other cases
-            if event == PromptEvent::Validate {
-                let mappable_command = MappableCommand::Typable {
-                    name: command.to_string(),
-                    args: parts.join(" "),
-                    doc: "".to_string(),
-                };
+            let mappable_command = MappableCommand::Typable {
+                name: command.to_string(),
+                args: parts.join(" "),
+                doc: "".to_string(),
+            };
 
-                let mut ctx = Context {
-                    register: None,
-                    count: None,
-                    editor: cx.editor,
-                    callback: Vec::new(),
-                    on_next_key_callback: None,
-                    jobs: cx.jobs,
-                };
+            let mut ctx = Context {
+                register: None,
+                count: None,
+                editor: cx.editor,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs: cx.jobs,
+            };
 
-                helix_event::dispatch(crate::events::PostCommand {
-                    command: &mappable_command,
-                    cx: &mut ctx,
-                });
+            helix_event::dispatch(crate::events::PostCommand {
+                command: &mappable_command,
+                cx: &mut ctx,
+            });
 
-                return Ok(());
-            } else {
-                return Ok(());
-            }
+            return Ok(());
+        } else if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
+            execute_command(cx, cmd, rest, event)
+        } else {
+            Err(anyhow!("1 no such command: '{command}'"))
         }
-    }
-
-    if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
+    } else if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
         execute_command(cx, cmd, rest, event)
     } else {
-        Err(anyhow!("no such command: '{command}'"))
+        Ok(())
     }
 }
 
