@@ -42,6 +42,8 @@ pub enum Variable {
     CurrentWorkingDirectoryName,
     /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
     WorkspaceDirectory,
+    /// Basename of the workspace directory
+    WorkspaceDirectoryName,
     /// The name of current buffers language as set in `languages.toml`
     Language,
     /// Primary selection
@@ -62,6 +64,7 @@ impl Variable {
         Self::CurrentWorkingDirectory,
         Self::CurrentWorkingDirectoryName,
         Self::WorkspaceDirectory,
+        Self::WorkspaceDirectoryName,
         Self::Language,
         Self::Selection,
         Self::SelectionLineStart,
@@ -78,6 +81,7 @@ impl Variable {
             Self::CurrentWorkingDirectory => "current_working_directory",
             Self::CurrentWorkingDirectoryName => "current_working_directory_name",
             Self::WorkspaceDirectory => "workspace_directory",
+            Self::WorkspaceDirectoryName => "workspace_directory_name",
             Self::Language => "language",
             Self::Selection => "selection",
             Self::SelectionLineStart => "selection_line_start",
@@ -93,6 +97,7 @@ impl Variable {
             "file_path_absolute" => Some(Self::FilePathAbsolute),
             "line_ending" => Some(Self::LineEnding),
             "workspace_directory" => Some(Self::WorkspaceDirectory),
+            "workspace_directory_name" => Some(Self::WorkspaceDirectoryName),
             "current_working_directory" => Some(Self::CurrentWorkingDirectory),
             "current_working_directory_name" => Some(Self::CurrentWorkingDirectoryName),
             "language" => Some(Self::Language),
@@ -280,6 +285,14 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
         Variable::WorkspaceDirectory => Ok(std::borrow::Cow::Owned(
             helix_loader::find_workspace()
                 .0
+                .to_string_lossy()
+                .to_string(),
+        )),
+        Variable::WorkspaceDirectoryName => Ok(std::borrow::Cow::Owned(
+            helix_loader::find_workspace()
+                .0
+                .file_name()
+                .unwrap_or_default()
                 .to_string_lossy()
                 .to_string(),
         )),
