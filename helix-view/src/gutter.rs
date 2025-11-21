@@ -95,7 +95,6 @@ pub fn lens<'doc>(
 ) -> GutterFn<'doc> {
     let info = theme.get("info");
     let lenses = &doc.code_lenses;
-    log::error!("lenses: {:?}", lenses);
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
