@@ -799,8 +799,11 @@ pub enum StatusLineElement {
     /// Indicator for selected register
     Register,
 
-    /// The base of current working directory
+    /// The path of current working directory
     CurrentWorkingDirectory,
+
+    /// The basename of current working directory
+    CurrentWorkingDirectoryName,
 
     /// Indicator for when code actions are available
     CodeActionHint,
