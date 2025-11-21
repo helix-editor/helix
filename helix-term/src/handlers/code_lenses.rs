@@ -63,10 +63,6 @@ pub fn request_document_code_lenses(editor: &mut Editor, doc_id: DocumentId) {
     let language_server = match language_server {
         Some(language_server) => language_server,
         None => {
-            editor.set_error(format!(
-                "No configured language server supports {}",
-                LanguageServerFeature::CodeLens
-            ));
             return;
         }
     };
@@ -87,7 +83,7 @@ pub fn request_document_code_lenses(editor: &mut Editor, doc_id: DocumentId) {
                 .collect(),
             Some(Ok(None)) => Vec::new(),
             Some(Err(err)) => {
-                log::error!("document color request failed: {err}");
+                log::error!("code lenses request failed: {err}");
                 return;
             }
             None => return,
@@ -109,15 +105,32 @@ pub fn request_document_code_lenses(editor: &mut Editor, doc_id: DocumentId) {
     });
 }
 
-pub(super) fn register_hooks(_handlers: &Handlers) {
+pub(super) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
         // when a document is initially opened, request code lenses for it
         request_document_code_lenses(event.editor, event.doc);
         Ok(())
     });
 
-    register_hook!(move |_event: &mut DocumentDidChange<'_>| {
-        // TODO(matoous): use to update code lenses positions on document changes
+    let tx = handlers.code_lenses.clone();
+    register_hook!(move |event: &mut DocumentDidChange<'_>| {
+        event.changes.update_positions(
+            event
+                .doc
+                .code_lenses
+                .iter_mut()
+                .map(|lens| (&mut lens.char_idx, helix_core::Assoc::After)),
+        );
+
+        // Avoid re-requesting code lenses if the change is a ghost transaction (completion)
+        // because the language server will not know about the updates to the document and will
+        // give out-of-date locations.
+        if !event.ghost_transaction {
+            // Cancel the ongoing request, if present.
+            event.doc.code_lenses_controller.cancel();
+            helix_event::send_blocking(&tx, CodeLensesEvent(event.doc.id()));
+        }
+
         Ok(())
     });
 
