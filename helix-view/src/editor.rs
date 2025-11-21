@@ -713,8 +713,11 @@ pub enum StatusLineElement {
     /// Indicator for selected register
     Register,
 
-    /// The base of current working directory
+    /// The path of current working directory
     CurrentWorkingDirectory,
+
+    /// The basename of current working directory
+    CurrentWorkingDirectoryName,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
