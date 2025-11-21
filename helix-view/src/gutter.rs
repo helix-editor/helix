@@ -104,7 +104,7 @@ pub fn lens<'doc>(
             if !first_visual_line {
                 return None;
             }
-            if lenses.iter().any(|l| l.range.start.line as usize == line) {
+            if lenses.iter().any(|l| l.line == line) {
                 write!(out, "▶").ok();
                 Some(info)
             } else {

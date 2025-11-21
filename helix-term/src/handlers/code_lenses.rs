@@ -1,6 +1,5 @@
 use std::{collections::HashSet, time::Duration};
 
-use futures_util::{stream::FuturesOrdered, StreamExt};
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{cancelable_future, register_hook};
 use helix_view::{
@@ -12,7 +11,6 @@ use tokio::time::Instant;
 
 use crate::job;
 
-// TODO(matoous): use to update code lenses positions on document changes
 #[derive(Default)]
 #[allow(dead_code)]
 pub(super) struct DocumentCodeLensesHandler {
@@ -44,6 +42,10 @@ impl helix_event::AsyncHook for DocumentCodeLensesHandler {
     }
 }
 
+/// Requests code lenses for a specific document.
+///
+/// NOTE: currently supports only a single language server, the first one supporting
+/// code lenses is used.
 pub fn request_document_code_lenses(editor: &mut Editor, doc_id: DocumentId) {
     if !editor.config().lsp.display_code_lenses {
         return;
@@ -53,62 +55,55 @@ pub fn request_document_code_lenses(editor: &mut Editor, doc_id: DocumentId) {
         return;
     };
 
-    let cancel = doc.color_swatch_controller.restart();
+    let cancel = doc.code_lenses_controller.restart();
 
-    let mut seen_language_servers = HashSet::new();
-    let mut futures: FuturesOrdered<_> = doc
+    let language_server = doc
         .language_servers_with_feature(LanguageServerFeature::CodeLens)
-        .filter(|ls| seen_language_servers.insert(ls.id()))
-        .map(|language_server| {
-            let text = doc.text().clone();
-            let offset_encoding = language_server.offset_encoding();
-            let future = language_server.code_lens(doc.identifier()).unwrap();
+        .next();
+    let language_server = match language_server {
+        Some(language_server) => language_server,
+        None => {
+            editor.set_error(format!(
+                "No configured language server supports {}",
+                LanguageServerFeature::CodeLens
+            ));
+            return;
+        }
+    };
 
-            async move {
-                let lenses: Vec<_> = future
-                    .await?
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter_map(|lens| {
-                        let _pos = helix_lsp::util::lsp_pos_to_pos(
-                            &text,
-                            lens.range.start,
-                            offset_encoding,
-                        )?;
-                        Some(lens)
-                    })
-                    .collect();
-                anyhow::Ok(lenses)
-            }
-        })
-        .collect();
-
-    if futures.is_empty() {
-        return;
-    }
+    let text = doc.text().clone();
+    let offset_encoding = language_server.offset_encoding();
+    let future = language_server.code_lens(doc.identifier()).unwrap();
 
     tokio::spawn(async move {
-        let mut code_lenses = Vec::new();
-        loop {
-            match cancelable_future(futures.next(), &cancel).await {
-                Some(Some(Ok(items))) => code_lenses.extend(items),
-                Some(Some(Err(err))) => log::error!("document color request failed: {err}"),
-                Some(None) => break,
-                // The request was cancelled.
-                None => return,
+        let lenses: Vec<_> = match cancelable_future(future, &cancel).await {
+            Some(Ok(Some(items))) => items
+                .into_iter()
+                .filter_map(|lens| {
+                    let _pos =
+                        helix_lsp::util::lsp_pos_to_pos(&text, lens.range.start, offset_encoding)?;
+                    Some(lens)
+                })
+                .collect(),
+            Some(Ok(None)) => Vec::new(),
+            Some(Err(err)) => {
+                log::error!("document color request failed: {err}");
+                return;
             }
-        }
+            None => return,
+        };
+
         job::dispatch(move |editor, _| {
             let Some(doc) = editor.documents.get_mut(&doc_id) else {
                 return;
             };
 
-            if code_lenses.is_empty() {
+            if lenses.is_empty() {
                 doc.code_lenses.clear();
                 return;
             }
 
-            doc.code_lenses = code_lenses;
+            doc.set_code_lenses(lenses);
         })
         .await;
     });
@@ -116,14 +111,13 @@ pub fn request_document_code_lenses(editor: &mut Editor, doc_id: DocumentId) {
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
-        // when a document is initially opened, request colors for it
+        // when a document is initially opened, request code lenses for it
         request_document_code_lenses(event.editor, event.doc);
-
         Ok(())
     });
 
     register_hook!(move |_event: &mut DocumentDidChange<'_>| {
-        // TODO: update code lenses positions, same as with e.g. document colors
+        // TODO(matoous): use to update code lenses positions on document changes
         Ok(())
     });
 
@@ -138,7 +132,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
     });
 
     register_hook!(move |event: &mut LanguageServerExited<'_>| {
-        // Clear and re-request all color swatches when a server exits.
+        // Clear and re-request all code lenses when a server exits.
         for doc in event.editor.documents_mut() {
             if doc.supports_language_server(event.server_id) {
                 doc.code_lenses.clear();
