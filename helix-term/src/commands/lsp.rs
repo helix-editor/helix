@@ -1470,26 +1470,27 @@ impl ui::menu::Item for lsp::CodeLens {
 }
 
 pub fn show_code_lenses_under_cursor(cx: &mut Context) {
-    let (_view, doc) = current!(cx.editor);
+    let (view, doc) = current!(cx.editor);
     let doc_id = doc.id();
     let language_server =
         language_server_with_feature!(cx.editor, doc, LanguageServerFeature::DocumentHighlight);
     let language_server_id = language_server.id();
+    let offset_encoding = language_server.offset_encoding();
+    let pos = doc.position(view.id, offset_encoding);
 
-    // TODO(matoous): this needs to support multiple language servers and resolving the code lens
-    // via the right one
+    // TODO(matoous): this should eventually support multiple language servers
     let mut futures: FuturesOrdered<_> = doc
         .code_lenses()
         .iter()
+        .filter(|c| c.line == pos.line as usize)
         .filter_map(|c| {
-            if c.command.is_some() {
-                let cloned = c.clone();
-                Some(Either::Left(ready(Ok(cloned))))
+            if c.lens.command.is_some() {
+                Some(Either::Left(ready(Ok(c.lens.clone()))))
             } else {
                 // Safety: the command is empty only if the code lens is unresolved and we assume
                 // that if the code lens is unresolved the language server support resolution.
                 language_server
-                    .resolve_code_lens(c.clone())
+                    .resolve_code_lens(c.lens.clone())
                     .map(Either::Right)
             }
         })

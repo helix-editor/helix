@@ -208,17 +208,24 @@ pub struct Document {
 
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
-    pub code_lenses: Vec<lsp::CodeLens>,
+    pub code_lenses: Vec<CodeLens>,
 
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
     pub pull_diagnostic_controller: TaskController,
+    pub code_lenses_controller: TaskController,
 
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CodeLens {
+    pub line: usize,
+    pub lens: lsp::CodeLens,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -734,9 +741,10 @@ impl Document {
             jump_labels: HashMap::new(),
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
+            pull_diagnostic_controller: TaskController::new(),
+            code_lenses_controller: TaskController::new(),
             syn_loader,
             previous_diagnostic_id: None,
-            pull_diagnostic_controller: TaskController::new(),
         }
     }
 
@@ -2171,12 +2179,18 @@ impl Document {
     }
 
     #[inline]
-    pub fn code_lenses(&self) -> &[lsp::CodeLens] {
+    pub fn code_lenses(&self) -> &[CodeLens] {
         &self.code_lenses
     }
 
     pub fn set_code_lenses(&mut self, lenses: Vec<lsp::CodeLens>) {
-        self.code_lenses = lenses;
+        self.code_lenses = lenses
+            .into_iter()
+            .map(|l| CodeLens {
+                line: l.range.start.line as usize,
+                lens: l,
+            })
+            .collect();
     }
 
     /// Get the document's auto pairs. If the document has a recognized
