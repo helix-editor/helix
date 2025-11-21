@@ -1473,7 +1473,7 @@ pub fn show_code_lenses_under_cursor(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let doc_id = doc.id();
     let language_server =
-        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::DocumentHighlight);
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::CodeLens);
     let language_server_id = language_server.id();
     let offset_encoding = language_server.offset_encoding();
     let pos = doc.position(view.id, offset_encoding);

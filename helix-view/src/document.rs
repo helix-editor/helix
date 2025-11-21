@@ -224,6 +224,7 @@ pub struct Document {
 
 #[derive(Debug, Clone)]
 pub struct CodeLens {
+    pub char_idx: usize,
     pub line: usize,
     pub lens: lsp::CodeLens,
 }
@@ -2184,11 +2185,26 @@ impl Document {
     }
 
     pub fn set_code_lenses(&mut self, lenses: Vec<lsp::CodeLens>) {
+        let text = self.text().clone();
+        let Some(language_server) = self
+            .language_servers_with_feature(LanguageServerFeature::CodeLens)
+            .next()
+        else {
+            return;
+        };
+        let offset_encoding = language_server.offset_encoding();
         self.code_lenses = lenses
             .into_iter()
-            .map(|l| CodeLens {
-                line: l.range.start.line as usize,
-                lens: l,
+            .filter_map(|l| {
+                if let Some(char_idx) = lsp_pos_to_pos(&text, l.range.start, offset_encoding) {
+                    Some(CodeLens {
+                        line: self.text.char_to_line(char_idx),
+                        char_idx,
+                        lens: l,
+                    })
+                } else {
+                    None
+                }
             })
             .collect();
     }
