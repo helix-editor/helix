@@ -42,13 +42,13 @@ pub enum Variable {
     CurrentWorkingDirectoryName,
     /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
     WorkspaceDirectory,
-    // The name of current buffers language as set in `languages.toml`
+    /// The name of current buffers language as set in `languages.toml`
     Language,
-    // Primary selection
+    /// Primary selection
     Selection,
-    // The one-indexed line number of the start of the primary selection in the currently focused document.
+    /// The one-indexed line number of the start of the primary selection in the currently focused document.
     SelectionLineStart,
-    // The one-indexed line number of the end of the primary selection in the currently focused document.
+    /// The one-indexed line number of the end of the primary selection in the currently focused document.
     SelectionLineEnd,
 }
 
