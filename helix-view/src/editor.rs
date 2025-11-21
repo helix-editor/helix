@@ -807,6 +807,11 @@ pub enum StatusLineElement {
 
     /// Indicator for when code actions are available
     CodeActionHint,
+    /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
+    WorkspaceDirectory,
+
+    /// Basename of the workspace directory
+    WorkspaceDirectoryName,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs

@@ -159,6 +159,8 @@ where
         helix_view::editor::StatusLineElement::CurrentWorkingDirectory => render_cwd,
         helix_view::editor::StatusLineElement::CurrentWorkingDirectoryName => render_cwd_name,
         helix_view::editor::StatusLineElement::CodeActionHint => render_code_action_hint,
+        helix_view::editor::StatusLineElement::WorkspaceDirectory => render_workspace,
+        helix_view::editor::StatusLineElement::WorkspaceDirectoryName => render_workspace_name,
     }
 }
 
@@ -602,4 +604,28 @@ where
     if context.focused && context.doc.code_action_hints(context.view.id) {
         write(context, " ⋮ ".into())
     }
+}
+
+fn render_workspace<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let workspace = helix_loader::find_workspace()
+        .0
+        .to_string_lossy()
+        .to_string();
+    write(context, workspace.into())
+}
+
+fn render_workspace_name<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let workspace = helix_loader::find_workspace()
+        .0
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+    write(context, workspace.into())
 }
