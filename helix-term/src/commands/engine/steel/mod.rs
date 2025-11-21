@@ -1309,6 +1309,12 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn("cursorcolumn", HelixConfiguration::cursorcolumn)
         .register_fn("middle-click-paste", HelixConfiguration::middle_click_paste)
         .register_fn("auto-pairs", HelixConfiguration::auto_pairs)
+        .register_fn(
+            "#%editor-auto-pairs",
+            |ctx: &mut Context, auto_pairs: AutoPairConfig| {
+                ctx.editor.auto_pairs = auto_pairs.into();
+            },
+        )
         // Specific constructors for the auto pairs configuration
         .register_fn("auto-pairs-default", |enabled: bool| {
             AutoPairConfig::Enable(enabled)
@@ -1565,13 +1571,20 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 ;; ```
 (define (auto-pairs bool-or-map-or-pairs)
     (when (hash? bool-or-map-or-pairs)
-        (helix.auto-pairs *helix.config* (helix.auto-pairs-map bool-or-map-or-pairs)))
+        (helix.auto-pairs *helix.config* (helix.auto-pairs-map bool-or-map-or-pairs))
+        (helix.#%editor-auto-pairs *helix.cx* (helix.auto-pairs-map bool-or-map-or-pairs)))
 
     (when (bool? bool-or-map-or-pairs)
-        (helix.auto-pairs *helix.config* (helix.auto-pairs-default bool-or-map-or-pairs)))
+        (helix.auto-pairs *helix.config* (helix.auto-pairs-default bool-or-map-or-pairs))
+        (helix.#%editor-auto-pairs *helix.cx* (helix.auto-pairs-default bool-or-map-or-pairs)))
 
     (when (list? bool-or-map-or-pairs)
         (helix.auto-pairs *helix.config*
+            (helix.auto-pairs-map
+                (#%prim.transduce bool-or-map-or-pairs
+                    (into-hashmap))))
+
+        (helix.#%editor-auto-pairs *helix.cx*
             (helix.auto-pairs-map
                 (#%prim.transduce bool-or-map-or-pairs
                     (into-hashmap))))))
@@ -4334,6 +4347,7 @@ fn run_initialization_script(
     log::info!("Loading init.scm...");
 
     let helix_module_path = helix_module_file();
+    let helix_init_path = steel_init_file();
 
     // TODO: Report the error from requiring the file!
     enter_engine(|guard| {
@@ -4351,10 +4365,12 @@ fn run_initialization_script(
         );
 
         if helix_module_path.exists() {
-            let res = guard.run_with_reference(
+            log::info!("Loading helix.scm from context: {:?}", helix_init_path);
+            let res = guard.run_with_reference_from_path(
                 cx,
                 "*helix.cx*",
                 &format!(r#"(require {:?})"#, helix_module_path.to_str().unwrap()),
+                helix_init_path,
             );
 
             // Present the error in the helix.scm loading
