@@ -140,6 +140,8 @@ The following statusline elements can be configured:
 | `file-base-name` | The basename of the opened file |
 | `current-working-directory` | The path of the current working directory  |
 | `current-working-directory-name` | The basename of current working directory  |
+| `workspace-directory` | Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix` |
+| `workspace-directory-name` | Basename of the workspace directory |
 | `file-modification-indicator` | The indicator to show whether the file is modified (a `[+]` appears when there are unsaved changes) |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
 | `file-line-ending` | The file line endings (CRLF or LF) |

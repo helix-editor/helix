@@ -158,6 +158,8 @@ where
         helix_view::editor::StatusLineElement::Register => render_register,
         helix_view::editor::StatusLineElement::CurrentWorkingDirectory => render_cwd,
         helix_view::editor::StatusLineElement::CurrentWorkingDirectoryName => render_cwd_name,
+        helix_view::editor::StatusLineElement::WorkspaceDirectory => render_workspace,
+        helix_view::editor::StatusLineElement::WorkspaceDirectoryName => render_workspace_name,
     }
 }
 
@@ -592,4 +594,28 @@ where
         .to_string_lossy()
         .to_string();
     write(context, cwd.into())
+}
+
+fn render_workspace<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let workspace = helix_loader::find_workspace()
+        .0
+        .to_string_lossy()
+        .to_string();
+    write(context, workspace.into())
+}
+
+fn render_workspace_name<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let workspace = helix_loader::find_workspace()
+        .0
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+    write(context, workspace.into())
 }
