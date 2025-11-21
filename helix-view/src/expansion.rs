@@ -36,8 +36,10 @@ pub enum Variable {
     FilePathAbsolute,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
-    /// Curreng working directory
+    /// Current working directory
     CurrentWorkingDirectory,
+    /// Basename of the current working directory
+    CurrentWorkingDirectoryName,
     /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
     WorkspaceDirectory,
     // The name of current buffers language as set in `languages.toml`
@@ -58,6 +60,7 @@ impl Variable {
         Self::FilePathAbsolute,
         Self::LineEnding,
         Self::CurrentWorkingDirectory,
+        Self::CurrentWorkingDirectoryName,
         Self::WorkspaceDirectory,
         Self::Language,
         Self::Selection,
@@ -73,6 +76,7 @@ impl Variable {
             Self::FilePathAbsolute => "file_path_absolute",
             Self::LineEnding => "line_ending",
             Self::CurrentWorkingDirectory => "current_working_directory",
+            Self::CurrentWorkingDirectoryName => "current_working_directory_name",
             Self::WorkspaceDirectory => "workspace_directory",
             Self::Language => "language",
             Self::Selection => "selection",
@@ -90,6 +94,7 @@ impl Variable {
             "line_ending" => Some(Self::LineEnding),
             "workspace_directory" => Some(Self::WorkspaceDirectory),
             "current_working_directory" => Some(Self::CurrentWorkingDirectory),
+            "current_working_directory_name" => Some(Self::CurrentWorkingDirectoryName),
             "language" => Some(Self::Language),
             "selection" => Some(Self::Selection),
             "selection_line_start" => Some(Self::SelectionLineStart),
@@ -262,6 +267,13 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
         Variable::CurrentWorkingDirectory => Ok(std::borrow::Cow::Owned(
             helix_stdx::env::current_working_dir()
+                .to_string_lossy()
+                .to_string(),
+        )),
+        Variable::CurrentWorkingDirectoryName => Ok(std::borrow::Cow::Owned(
+            helix_stdx::env::current_working_dir()
+                .file_name()
+                .unwrap_or_default()
                 .to_string_lossy()
                 .to_string(),
         )),
