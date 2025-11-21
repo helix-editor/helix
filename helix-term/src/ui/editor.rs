@@ -592,7 +592,7 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
-    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+    pub fn render_bufferline(&mut self, editor: &Editor, viewport: Rect, surface: &mut Surface) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
             viewport,
@@ -611,37 +611,91 @@ impl EditorView {
             .theme
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
-
-        let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+        // Build buffer entries: " filename[+] " with is_active flag
+        let entries: Vec<(String, bool)> = editor
+            .documents()
+            .map(|doc| {
+                let filename = doc
+                    .path()
+                    .unwrap_or(&scratch)
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("scratch");
 
-            let style = if current_doc == doc.id() {
-                bufferline_active
-            } else {
-                bufferline_inactive
-            };
+                let modified = if doc.is_modified() { "[+]" } else { "" };
+                let label = format!(" {filename}{modified} ");
+                (label, doc.id() == current_doc)
+            })
+            .collect();
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
+        let total_width: u16 = entries.iter().map(|(label, _)| label.width() as u16).sum();
 
-            x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
-                .0;
+        // No scrolling when all buffers fit
+        if total_width <= viewport.width {
+            let spans: Vec<Span> = entries
+                .iter()
+                .map(|(label, is_active)| {
+                    if *is_active {
+                        Span::styled(label.clone(), bufferline_active)
+                    } else {
+                        Span::styled(label.clone(), bufferline_inactive)
+                    }
+                })
+                .collect();
 
-            if x >= surface.area.right() {
+            surface.set_spans(viewport.x, viewport.y, &spans.into(), viewport.width);
+            return;
+        }
+
+        // Find active buffer position for scrolling
+        let mut offset_before_active = 0;
+
+        for (label, is_active) in &entries {
+            let w = label.width() as u16;
+            if *is_active {
                 break;
             }
+            offset_before_active += w;
         }
+
+        // Scrollactive buffer to center
+        let ideal_scroll = offset_before_active.saturating_sub(viewport.width / 2);
+        let max_scroll = total_width.saturating_sub(viewport.width);
+        let scroll = ideal_scroll.min(max_scroll);
+
+        // Render visible part
+        let mut spans = Vec::new();
+        let mut pos = 0;
+
+        for (label, is_active) in entries {
+            let label_width = label.width() as u16;
+
+            // Skip entries completely left of viewport
+            if pos + label_width <= scroll {
+                pos += label_width;
+                continue;
+            }
+
+            // Stop when past the viewport
+            if pos >= scroll + viewport.width {
+                break;
+            }
+
+            let skip_chars = scroll.saturating_sub(pos) as usize;
+            let visible_text = label.chars().skip(skip_chars).collect::<String>();
+
+            if is_active {
+                spans.push(Span::styled(visible_text, bufferline_active));
+            } else {
+                spans.push(Span::styled(visible_text, bufferline_inactive));
+            }
+
+            pos += label_width;
+        }
+
+        surface.set_spans(viewport.x, viewport.y, &spans.into(), viewport.width);
     }
 
     pub fn render_gutter<'d>(
@@ -1545,7 +1599,7 @@ impl Component for EditorView {
         cx.editor.resize(editor_area);
 
         if use_bufferline {
-            Self::render_bufferline(cx.editor, area.with_height(1), surface);
+            self.render_bufferline(cx.editor, area.with_height(1), surface);
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
