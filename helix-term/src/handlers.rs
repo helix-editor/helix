@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
+use code_lenses::DocumentCodeLensesHandler;
 use diagnostics::PullAllDocumentsDiagnosticHandler;
 use helix_event::AsyncHook;
 
@@ -35,6 +36,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     let auto_save = AutoSaveHandler::new().spawn();
     let document_colors = DocumentColorsHandler::default().spawn();
     let document_links = DocumentLinksHandler::default().spawn();
+    let code_lenses = DocumentCodeLensesHandler::default().spawn();
     let word_index = word_index::Handler::spawn();
     let pull_diagnostics = PullDiagnosticsHandler::default().spawn();
     let pull_all_documents_diagnostics = PullAllDocumentsDiagnosticHandler::default().spawn();
@@ -45,6 +47,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
         auto_save,
         document_colors,
         document_links,
+        code_lenses,
         word_index,
         pull_diagnostics,
         pull_all_documents_diagnostics,
