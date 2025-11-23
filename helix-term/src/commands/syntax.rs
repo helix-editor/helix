@@ -1,6 +1,5 @@
 use std::{
     collections::HashSet,
-    iter,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -9,10 +8,7 @@ use dashmap::DashMap;
 use futures_util::FutureExt;
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
-use helix_core::{
-    syntax::{Loader, QueryIterEvent},
-    Rope, RopeSlice, Selection, Syntax, Uri,
-};
+use helix_core::{syntax::Loader, syntax::TagCategory, Rope, RopeSlice, Selection, Syntax, Uri};
 use helix_stdx::{
     path,
     rope::{self, RopeSliceExt},
@@ -110,53 +106,26 @@ fn tags_iter<'a>(
     doc: UriOrDocumentId,
     pattern: Option<&'a rope::Regex>,
 ) -> impl Iterator<Item = Tag> + 'a {
-    let mut tags_iter = syntax.tags(text, loader, ..);
+    let Some(tag_query) = loader.tag_query(syntax.root_language()) else {
+        return None.into_iter().flatten();
+    };
 
-    iter::from_fn(move || loop {
-        let QueryIterEvent::Match(mat) = tags_iter.next()? else {
-            continue;
-        };
-        let query = &loader
-            .tag_query(tags_iter.current_language())
-            .expect("must have a tags query to emit matches")
-            .query;
-        let Some(kind) = query
-            .capture_name(mat.capture)
-            .strip_prefix("definition.")
-            .and_then(TagKind::from_name)
-        else {
-            continue;
+    let root = syntax.tree().root_node();
+    let iter = tag_query.tags(root, text).filter_map(move |tag| {
+        let kind = match tag.category {
+            TagCategory::Definition(definition) => TagKind::from_name(definition)?,
         };
 
-        let start = text.byte_to_char(mat.node.start_byte() as usize);
-        let end = text.byte_to_char(mat.node.end_byte() as usize);
+        let start = text.byte_to_char(tag.range.start as usize);
+        let end = text.byte_to_char(tag.range.end as usize);
 
-        let mut inner_iter = syntax.tags(text, loader, mat.node.byte_range());
-        let name = iter::from_fn(move || loop {
-            let QueryIterEvent::Match(mat) = inner_iter.next()? else {
-                continue;
-            };
-
-            let query = &loader
-                .tag_query(inner_iter.current_language())
-                .expect("must have a tags query to emit matches")
-                .query;
-            if query.capture_name(mat.capture) == "name" {
-                let start = text.byte_to_char(mat.node.start_byte() as usize);
-                let end = text.byte_to_char(mat.node.end_byte() as usize);
-                return Some(text.slice(start..end));
-            } else {
-                continue;
-            }
-        })
-        .next()
-        .unwrap_or_else(|| text.slice(start..end));
+        let name = tag.name.unwrap_or_else(|| text.slice(start..end));
 
         if pattern.is_some_and(|pattern| !pattern.is_match(name.regex_input())) {
-            continue;
+            return None;
         }
 
-        return Some(Tag {
+        Some(Tag {
             kind,
             name: name.to_string(),
             start,
@@ -164,8 +133,10 @@ fn tags_iter<'a>(
             start_line: text.char_to_line(start),
             end_line: text.char_to_line(end),
             doc: doc.clone(),
-        });
-    })
+        })
+    });
+
+    Some(iter).into_iter().flatten()
 }
 
 pub fn syntax_symbol_picker(cx: &mut Context) {
