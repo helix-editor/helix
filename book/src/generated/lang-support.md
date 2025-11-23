@@ -246,7 +246,7 @@
 | sage | ✓ | ✓ |  |  |  |  |
 | scala | ✓ | ✓ | ✓ |  |  | `metals` |
 | scfg | ✓ |  |  |  |  |  |
-| scheme | ✓ | ✓ | ✓ |  | ✓ |  |
+| scheme | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | scss | ✓ |  |  |  | ✓ | `vscode-css-language-server` |
 | shellcheckrc | ✓ | ✓ |  |  |  |  |
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
