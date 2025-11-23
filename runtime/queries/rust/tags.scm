@@ -19,6 +19,9 @@
 (enum_variant
   name: (identifier) @definition.struct)
 
+(type_item
+  name: (type_identifier) @definition.type)
+
 (mod_item
   name: (identifier) @definition.module)
 
