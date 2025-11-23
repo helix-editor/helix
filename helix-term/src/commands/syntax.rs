@@ -127,17 +127,38 @@ fn tags_iter<'a>(
         else {
             continue;
         };
-        let range = mat.node.byte_range();
-        if pattern.is_some_and(|pattern| {
-            !pattern.is_match(text.regex_input_at_bytes(range.start as usize..range.end as usize))
-        }) {
+
+        let start = text.byte_to_char(mat.node.start_byte() as usize);
+        let end = text.byte_to_char(mat.node.end_byte() as usize);
+
+        let mut inner_iter = syntax.tags(text, loader, mat.node.byte_range());
+        let name = iter::from_fn(move || loop {
+            let QueryIterEvent::Match(mat) = inner_iter.next()? else {
+                continue;
+            };
+
+            let query = &loader
+                .tag_query(inner_iter.current_language())
+                .expect("must have a tags query to emit matches")
+                .query;
+            if query.capture_name(mat.capture) == "name" {
+                let start = text.byte_to_char(mat.node.start_byte() as usize);
+                let end = text.byte_to_char(mat.node.end_byte() as usize);
+                return Some(text.slice(start..end));
+            } else {
+                continue;
+            }
+        })
+        .next()
+        .unwrap_or_else(|| text.slice(start..end));
+
+        if pattern.is_some_and(|pattern| !pattern.is_match(name.regex_input())) {
             continue;
         }
-        let start = text.byte_to_char(range.start as usize);
-        let end = text.byte_to_char(range.end as usize);
+
         return Some(Tag {
             kind,
-            name: text.slice(start..end).to_string(),
+            name: name.to_string(),
             start,
             end,
             start_line: text.char_to_line(start),
