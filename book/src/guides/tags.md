@@ -26,6 +26,9 @@ The following [captures][tree-sitter-captures] are recognized:
 | `definition.struct`    |
 | `definition.type`      |
 
+If you want to specify a name for the capture, you can use a nested `name` capture,
+otherwise helix will fall back to displaying the entire match.
+
 [Example query files][example-queries] can be found in the Helix GitHub
 repository.
 
