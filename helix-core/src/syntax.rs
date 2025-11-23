@@ -21,6 +21,7 @@ use ropey::RopeSlice;
 use tree_house::{
     highlighter,
     query_iter::QueryIter,
+    tags::TagQuery,
     tree_sitter::{
         query::{InvalidPredicateError, UserPredicate},
         Capture, Grammar, InactiveQueryCursor, InputEdit, Node, Pattern, Query, RopeInput, Tree,
@@ -33,6 +34,7 @@ use crate::{indent::IndentQuery, tree_sitter, ChangeSet, Language};
 pub use tree_house::{
     highlighter::{Highlight, HighlightEvent},
     query_iter::QueryIterEvent,
+    tags::TagCategory,
     Error as HighlighterError, LanguageLoader, TreeCursor, TREE_SITTER_MATCH_LIMIT,
 };
 
@@ -1066,11 +1068,6 @@ impl TextObjectQuery {
         });
         Some(capture_node)
     }
-}
-
-#[derive(Debug)]
-pub struct TagQuery {
-    pub query: Query,
 }
 
 pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
