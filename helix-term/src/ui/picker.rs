@@ -56,7 +56,9 @@ use self::handlers::{DynamicQueryChange, DynamicQueryHandler, PreviewHighlightHa
 
 pub const ID: &str = "picker";
 
+/// Narrowest preview width before switching to a stack layout instead of side-by-side
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
+/// Shortest preview height before preview is hidden entirely
 pub const MIN_AREA_HEIGHT_FOR_PREVIEW: u16 = 24;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
@@ -990,11 +992,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     fn get_layout(&self, area: Rect) -> (bool, bool) {
+        let stack_vertically = area.width / 2 < MIN_AREA_WIDTH_FOR_PREVIEW;
         let render_preview = self.show_preview
             && self.file_fn.is_some()
-            && area.width >= MIN_AREA_WIDTH_FOR_PREVIEW
-            && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW;
-        let stack_vertically = area.width / 2 < MIN_AREA_WIDTH_FOR_PREVIEW;
+            && ((stack_vertically && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW * 3 / 2)
+                || (!stack_vertically && area.height >= MIN_AREA_HEIGHT_FOR_PREVIEW));
         (render_preview, stack_vertically)
     }
 }
