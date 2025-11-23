@@ -32,23 +32,21 @@ unicode-segmentation.workspace = true
 unicode-width = "=0.1.12"
 unicode-general-category = "1.0"
 slotmap.workspace = true
-tree-sitter.workspace = true
+tree-house.workspace = true
 once_cell = "1.21"
 arc-swap = "1"
 regex = "1"
 bitflags.workspace = true
-ahash = "0.8.11"
-hashbrown = { version = "0.14.5", features = ["raw"] }
+foldhash.workspace = true
 url = "2.5.4"
 
 log = "0.4"
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.8"
+toml.workspace = true
 
-imara-diff = "0.1.8"
-
+imara-diff =  "0.2.0"
 encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }

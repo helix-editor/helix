@@ -1,5 +1,19 @@
-([(line_comment) (block_comment)] @injection.content
+([(line_comment !doc) (block_comment !doc)] @injection.content
  (#set! injection.language "comment"))
+
+((doc_comment) @injection.content
+ (#set! injection.language "markdown-rustdoc")
+ (#set! injection.combined))
+
+((macro_invocation
+  (token_tree) @injection.content)
+ (#set! injection.language "rust")
+ (#set! injection.include-children))
+
+((macro_rule
+  (token_tree) @injection.content)
+ (#set! injection.language "rust")
+ (#set! injection.include-children))
 
 ((macro_invocation
    macro:
@@ -23,16 +37,6 @@
    (token_tree) @injection.content)
  (#eq? @_macro_name "slint")
  (#set! injection.language "slint")
- (#set! injection.include-children))
-
-((macro_invocation
-  (token_tree) @injection.content)
- (#set! injection.language "rust")
- (#set! injection.include-children))
-
-((macro_rule
-  (token_tree) @injection.content)
- (#set! injection.language "rust")
  (#set! injection.include-children))
 
 ((macro_invocation
@@ -93,3 +97,84 @@
     ]
   )
   (#set! injection.language "sql"))
+
+; Special language `tree-sitter-rust-format-args` for Rust macros,
+; which use `format_args!` under the hood and therefore have
+; the `format_args!` syntax.
+;
+; This language is injected into a hard-coded set of macros.
+(
+  (macro_invocation
+    macro:
+      [
+        (scoped_identifier
+          name: (_) @_macro_name)
+        (identifier) @_macro_name
+      ]
+    (token_tree) @injection.content
+  )
+  (#any-of? @_macro_name
+    ; 1st argument is `format_args!`
+
+    ; std
+    "print" "println" "eprint" "eprintln"
+    "format" "format_args" "todo" "panic"
+    "unreachable" "unimplemented" "compile_error"
+    ; log
+    "crit" "trace" "debug" "info" "warn" "error"
+    ; anyhow
+    "anyhow" "bail"
+    ; syn
+    "format_ident"
+    ; indoc
+    "formatdoc" "printdoc" "eprintdoc" "writedoc"
+    ; iced
+    "text"
+    ; ratatui
+    "span"
+    ; eyre
+    "eyre"
+    ; miette
+    "miette"
+
+    ; 2nd argument is `format_args!`
+
+    ; std
+    "write" "writeln" "assert" "debug_assert"
+    ; defmt
+    "expect" "unwrap"
+    ; ratatui
+    "span"
+
+    ; 3rd argument is `format_args!`
+
+    ; std
+    "assert_eq" "debug_assert_eq" "assert_ne" "debug_assert_ne"
+  )
+  (#set! injection.language "rust-format-args-macro")
+  (#set! injection.include-children)
+)
+
+; Dioxus' "rsx!" macro relies heavily on string interpolation as well. The strings can be nested very deeply
+(
+  (macro_invocation
+    macro: [
+        (scoped_identifier
+          name: (_) @_macro_name)
+        (identifier) @_macro_name
+    ]
+    ; TODO: This only captures 1 level of string literals. But in dioxus you can have
+    ; nested string literals. For instance:
+    ; 
+    ; rsx! { "{hello} world" }:
+    ; -> (token_tree (string_literal))
+    ; rsx! { div { "{hello} world" } }
+    ; -> (token_tree (token_tree (string_literal)))
+    ; rsx! { div { div { "{hello} world" } } }
+    ; -> (token_tree (token_tree (token_tree (string_literal))))
+    (token_tree (string_literal) @injection.content)
+  )
+  (#eq? @_macro_name "rsx")
+  (#set! injection.language "rust-format-args")
+  (#set! injection.include-children)
+)

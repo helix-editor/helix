@@ -1,14 +1,18 @@
 use std::{borrow::Cow, collections::HashMap, iter};
 
 use helix_stdx::rope::RopeSliceExt;
-use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
+use tree_house::TREE_SITTER_MATCH_LIMIT;
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
     graphemes::{grapheme_width, tab_width_at},
-    syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
-    tree_sitter::Node,
-    Position, Rope, RopeSlice, Tendril,
+    syntax::{self, config::IndentationHeuristic},
+    tree_sitter::{
+        self,
+        query::{InvalidPredicateError, UserPredicate},
+        Capture, Grammar, InactiveQueryCursor, Node, Pattern, Query, QueryMatch, RopeInput,
+    },
+    Position, Rope, RopeSlice, Syntax, Tendril,
 };
 
 /// Enum representing indentation style.
@@ -149,6 +153,12 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
         // Give more weight to tabs, because their presence is a very
         // strong indicator.
         histogram[0] *= 2;
+        // Gives less weight to single indent, as single spaces are
+        // often used in certain languages' comment systems and rarely
+        // used as the actual document indentation.
+        if histogram[1] > 1 {
+            histogram[1] /= 2;
+        }
 
         histogram
     };
@@ -279,16 +289,162 @@ fn add_indent_level(
 
 /// Return true if only whitespace comes before the node on its line.
 /// If given, new_line_byte_pos is treated the same way as any existing newline.
-fn is_first_in_line(node: Node, text: RopeSlice, new_line_byte_pos: Option<usize>) -> bool {
-    let mut line_start_byte_pos = text.line_to_byte(node.start_position().row);
+fn is_first_in_line(node: &Node, text: RopeSlice, new_line_byte_pos: Option<u32>) -> bool {
+    let line = text.byte_to_line(node.start_byte() as usize);
+    let mut line_start_byte_pos = text.line_to_byte(line) as u32;
     if let Some(pos) = new_line_byte_pos {
         if line_start_byte_pos < pos && pos <= node.start_byte() {
             line_start_byte_pos = pos;
         }
     }
-    text.byte_slice(line_start_byte_pos..node.start_byte())
+    text.byte_slice(line_start_byte_pos as usize..node.start_byte() as usize)
         .chars()
         .all(|c| c.is_whitespace())
+}
+
+#[derive(Debug, Default)]
+pub struct IndentQueryPredicates {
+    not_kind_eq: Vec<(Capture, Box<str>)>,
+    same_line: Option<(Capture, Capture, bool)>,
+    one_line: Option<(Capture, bool)>,
+}
+
+impl IndentQueryPredicates {
+    fn are_satisfied(
+        &self,
+        match_: &QueryMatch,
+        text: RopeSlice,
+        new_line_byte_pos: Option<u32>,
+    ) -> bool {
+        for (capture, not_expected_kind) in self.not_kind_eq.iter() {
+            let node = match_.nodes_for_capture(*capture).next();
+            if node.is_some_and(|n| n.kind() == not_expected_kind.as_ref()) {
+                return false;
+            }
+        }
+
+        if let Some((capture1, capture2, negated)) = self.same_line {
+            let n1 = match_.nodes_for_capture(capture1).next();
+            let n2 = match_.nodes_for_capture(capture2).next();
+            let satisfied = n1.zip(n2).is_some_and(|(n1, n2)| {
+                let n1_line = get_node_start_line(text, n1, new_line_byte_pos);
+                let n2_line = get_node_start_line(text, n2, new_line_byte_pos);
+                let same_line = n1_line == n2_line;
+                same_line != negated
+            });
+
+            if !satisfied {
+                return false;
+            }
+        }
+
+        if let Some((capture, negated)) = self.one_line {
+            let node = match_.nodes_for_capture(capture).next();
+            let satisfied = node.is_some_and(|node| {
+                let start_line = get_node_start_line(text, node, new_line_byte_pos);
+                let end_line = get_node_end_line(text, node, new_line_byte_pos);
+                let one_line = end_line == start_line;
+                one_line != negated
+            });
+
+            if !satisfied {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+#[derive(Debug)]
+pub struct IndentQuery {
+    query: Query,
+    properties: HashMap<Pattern, IndentScope>,
+    predicates: HashMap<Pattern, IndentQueryPredicates>,
+    indent_capture: Option<Capture>,
+    indent_always_capture: Option<Capture>,
+    outdent_capture: Option<Capture>,
+    outdent_always_capture: Option<Capture>,
+    align_capture: Option<Capture>,
+    anchor_capture: Option<Capture>,
+    extend_capture: Option<Capture>,
+    extend_prevent_once_capture: Option<Capture>,
+}
+
+impl IndentQuery {
+    pub fn new(grammar: Grammar, source: &str) -> Result<Self, tree_sitter::query::ParseError> {
+        let mut properties = HashMap::new();
+        let mut predicates: HashMap<Pattern, IndentQueryPredicates> = HashMap::new();
+        let query = Query::new(grammar, source, |pattern, predicate| match predicate {
+            UserPredicate::SetProperty { key: "scope", val } => {
+                let scope = match val {
+                    Some("all") => IndentScope::All,
+                    Some("tail") => IndentScope::Tail,
+                    Some(other) => {
+                        return Err(format!("unknown scope (#set! scope \"{other}\")").into())
+                    }
+                    None => return Err("missing scope value (#set! scope ...)".into()),
+                };
+
+                properties.insert(pattern, scope);
+
+                Ok(())
+            }
+            UserPredicate::Other(predicate) => {
+                let name = predicate.name();
+                match name {
+                    "not-kind-eq?" => {
+                        predicate.check_arg_count(2)?;
+                        let capture = predicate.capture_arg(0)?;
+                        let not_expected_kind = predicate.str_arg(1)?;
+
+                        predicates
+                            .entry(pattern)
+                            .or_default()
+                            .not_kind_eq
+                            .push((capture, not_expected_kind.into()));
+                        Ok(())
+                    }
+                    "same-line?" | "not-same-line?" => {
+                        predicate.check_arg_count(2)?;
+                        let capture1 = predicate.capture_arg(0)?;
+                        let capture2 = predicate.capture_arg(1)?;
+                        let negated = name == "not-same-line?";
+
+                        predicates.entry(pattern).or_default().same_line =
+                            Some((capture1, capture2, negated));
+                        Ok(())
+                    }
+                    "one-line?" | "not-one-line?" => {
+                        predicate.check_arg_count(1)?;
+                        let capture = predicate.capture_arg(0)?;
+                        let negated = name == "not-one-line?";
+
+                        predicates.entry(pattern).or_default().one_line = Some((capture, negated));
+                        Ok(())
+                    }
+                    _ => Err(InvalidPredicateError::unknown(UserPredicate::Other(
+                        predicate,
+                    ))),
+                }
+            }
+            _ => Err(InvalidPredicateError::unknown(predicate)),
+        })?;
+
+        Ok(Self {
+            properties,
+            predicates,
+            indent_capture: query.get_capture("indent"),
+            indent_always_capture: query.get_capture("indent.always"),
+            outdent_capture: query.get_capture("outdent"),
+            outdent_always_capture: query.get_capture("outdent.always"),
+            align_capture: query.get_capture("align"),
+            anchor_capture: query.get_capture("anchor"),
+            extend_capture: query.get_capture("extend"),
+            extend_prevent_once_capture: query.get_capture("extend.prevent-once"),
+            query,
+        })
+    }
 }
 
 /// The total indent for some line of code.
@@ -453,16 +609,16 @@ struct IndentQueryResult<'a> {
     extend_captures: HashMap<usize, Vec<ExtendCapture>>,
 }
 
-fn get_node_start_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
-    let mut node_line = node.start_position().row;
+fn get_node_start_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u32>) -> usize {
+    let mut node_line = text.byte_to_line(node.start_byte() as usize);
     // Adjust for the new line that will be inserted
     if new_line_byte_pos.is_some_and(|pos| node.start_byte() >= pos) {
         node_line += 1;
     }
     node_line
 }
-fn get_node_end_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
-    let mut node_line = node.end_position().row;
+fn get_node_end_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u32>) -> usize {
+    let mut node_line = text.byte_to_line(node.end_byte() as usize);
     // Adjust for the new line that will be inserted (with a strict inequality since end_byte is exclusive)
     if new_line_byte_pos.is_some_and(|pos| node.end_byte() > pos) {
         node_line += 1;
@@ -471,175 +627,96 @@ fn get_node_end_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
 }
 
 fn query_indents<'a>(
-    query: &Query,
+    query: &IndentQuery,
     syntax: &Syntax,
-    cursor: &mut QueryCursor,
     text: RopeSlice<'a>,
-    range: std::ops::Range<usize>,
-    new_line_byte_pos: Option<usize>,
+    range: std::ops::Range<u32>,
+    new_line_byte_pos: Option<u32>,
 ) -> IndentQueryResult<'a> {
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
     let mut extend_captures: HashMap<usize, Vec<ExtendCapture>> = HashMap::new();
-    cursor.set_byte_range(range);
+
+    let mut cursor = InactiveQueryCursor::new(range, TREE_SITTER_MATCH_LIMIT).execute_query(
+        &query.query,
+        &syntax.tree().root_node(),
+        RopeInput::new(text),
+    );
 
     // Iterate over all captures from the query
-    for m in cursor.matches(query, syntax.tree().root_node(), RopeProvider(text)) {
+    while let Some(m) = cursor.next_match() {
         // Skip matches where not all custom predicates are fulfilled
-        if !query.general_predicates(m.pattern_index).iter().all(|pred| {
-            match pred.operator.as_ref() {
-                "not-kind-eq?" => match (pred.args.first(), pred.args.get(1)) {
-                    (
-                        Some(QueryPredicateArg::Capture(capture_idx)),
-                        Some(QueryPredicateArg::String(kind)),
-                    ) => {
-                        let node = m.nodes_for_capture_index(*capture_idx).next();
-                        match node {
-                            Some(node) => node.kind()!=kind.as_ref(),
-                            _ => true,
-                        }
-                    }
-                    _ => {
-                        panic!("Invalid indent query: Arguments to \"not-kind-eq?\" must be a capture and a string");
-                    }
-                },
-                "same-line?" | "not-same-line?" => {
-                    match (pred.args.first(), pred.args.get(1)) {
-                        (
-                            Some(QueryPredicateArg::Capture(capt1)),
-                            Some(QueryPredicateArg::Capture(capt2))
-                        ) => {
-                            let n1 = m.nodes_for_capture_index(*capt1).next();
-                            let n2 = m.nodes_for_capture_index(*capt2).next();
-                            match (n1, n2) {
-                                (Some(n1), Some(n2)) => {
-                                    let n1_line = get_node_start_line(n1, new_line_byte_pos);
-                                    let n2_line = get_node_start_line(n2, new_line_byte_pos);
-                                    let same_line = n1_line == n2_line;
-                                    same_line==(pred.operator.as_ref()=="same-line?")
-                                }
-                                _ => true,
-                            }
-                        }
-                        _ => {
-                            panic!("Invalid indent query: Arguments to \"{}\" must be 2 captures", pred.operator);
-                        }
-                    }
-                }
-                "one-line?" | "not-one-line?" => match pred.args.first() {
-                    Some(QueryPredicateArg::Capture(capture_idx)) => {
-                        let node = m.nodes_for_capture_index(*capture_idx).next();
-
-                        match node {
-                            Some(node) => {
-                                let (start_line, end_line) = (get_node_start_line(node,new_line_byte_pos), get_node_end_line(node, new_line_byte_pos));
-                                let one_line = end_line == start_line;
-                                one_line != (pred.operator.as_ref() == "not-one-line?")
-                            },
-                            _ => true,
-                        }
-                    }
-                    _ => {
-                        panic!("Invalid indent query: Arguments to \"not-kind-eq?\" must be a capture and a string");
-                    }
-                },
-                _ => {
-                    panic!(
-                        "Invalid indent query: Unknown predicate (\"{}\")",
-                        pred.operator
-                    );
-                }
-            }
-        }) {
+        if query
+            .predicates
+            .get(&m.pattern())
+            .is_some_and(|preds| !preds.are_satisfied(&m, text, new_line_byte_pos))
+        {
             continue;
         }
         // A list of pairs (node_id, indent_capture) that are added by this match.
         // They cannot be added to indent_captures immediately since they may depend on other captures (such as an @anchor).
         let mut added_indent_captures: Vec<(usize, IndentCapture)> = Vec::new();
         // The row/column position of the optional anchor in this query
-        let mut anchor: Option<tree_sitter::Node> = None;
-        for capture in m.captures {
-            let capture_name = query.capture_names()[capture.index as usize];
-            let capture_type = match capture_name {
-                "indent" => IndentCaptureType::Indent,
-                "indent.always" => IndentCaptureType::IndentAlways,
-                "outdent" => IndentCaptureType::Outdent,
-                "outdent.always" => IndentCaptureType::OutdentAlways,
-                // The alignment will be updated to the correct value at the end, when the anchor is known.
-                "align" => IndentCaptureType::Align(RopeSlice::from("")),
-                "anchor" => {
-                    if anchor.is_some() {
-                        log::error!("Invalid indent query: Encountered more than one @anchor in the same match.")
-                    } else {
-                        anchor = Some(capture.node);
-                    }
-                    continue;
+        let mut anchor: Option<&Node> = None;
+        for matched_node in m.matched_nodes() {
+            let node_id = matched_node.node.id();
+            let capture = Some(matched_node.capture);
+            let capture_type = if capture == query.indent_capture {
+                IndentCaptureType::Indent
+            } else if capture == query.indent_always_capture {
+                IndentCaptureType::IndentAlways
+            } else if capture == query.outdent_capture {
+                IndentCaptureType::Outdent
+            } else if capture == query.outdent_always_capture {
+                IndentCaptureType::OutdentAlways
+            } else if capture == query.align_capture {
+                IndentCaptureType::Align(RopeSlice::from(""))
+            } else if capture == query.anchor_capture {
+                if anchor.is_some() {
+                    log::error!("Invalid indent query: Encountered more than one @anchor in the same match.")
+                } else {
+                    anchor = Some(&matched_node.node);
                 }
-                "extend" => {
-                    extend_captures
-                        .entry(capture.node.id())
-                        .or_insert_with(|| Vec::with_capacity(1))
-                        .push(ExtendCapture::Extend);
-                    continue;
-                }
-                "extend.prevent-once" => {
-                    extend_captures
-                        .entry(capture.node.id())
-                        .or_insert_with(|| Vec::with_capacity(1))
-                        .push(ExtendCapture::PreventOnce);
-                    continue;
-                }
-                _ => {
-                    // Ignore any unknown captures (these may be needed for predicates such as #match?)
-                    continue;
-                }
+                continue;
+            } else if capture == query.extend_capture {
+                extend_captures
+                    .entry(node_id)
+                    .or_insert_with(|| Vec::with_capacity(1))
+                    .push(ExtendCapture::Extend);
+                continue;
+            } else if capture == query.extend_prevent_once_capture {
+                extend_captures
+                    .entry(node_id)
+                    .or_insert_with(|| Vec::with_capacity(1))
+                    .push(ExtendCapture::PreventOnce);
+                continue;
+            } else {
+                // Ignore any unknown captures (these may be needed for predicates such as #match?)
+                continue;
             };
-            let scope = capture_type.default_scope();
-            let mut indent_capture = IndentCapture {
+
+            // Apply additional settings for this capture
+            let scope = query
+                .properties
+                .get(&m.pattern())
+                .copied()
+                .unwrap_or_else(|| capture_type.default_scope());
+            let indent_capture = IndentCapture {
                 capture_type,
                 scope,
             };
-            // Apply additional settings for this capture
-            for property in query.property_settings(m.pattern_index) {
-                match property.key.as_ref() {
-                    "scope" => {
-                        indent_capture.scope = match property.value.as_deref() {
-                            Some("all") => IndentScope::All,
-                            Some("tail") => IndentScope::Tail,
-                            Some(s) => {
-                                panic!("Invalid indent query: Unknown value for \"scope\" property (\"{}\")", s);
-                            }
-                            None => {
-                                panic!(
-                                    "Invalid indent query: Missing value for \"scope\" property"
-                                );
-                            }
-                        }
-                    }
-                    _ => {
-                        panic!(
-                            "Invalid indent query: Unknown property \"{}\"",
-                            property.key
-                        );
-                    }
-                }
-            }
-            added_indent_captures.push((capture.node.id(), indent_capture))
+            added_indent_captures.push((node_id, indent_capture))
         }
         for (node_id, mut capture) in added_indent_captures {
             // Set the anchor for all align queries.
             if let IndentCaptureType::Align(_) = capture.capture_type {
-                let anchor = match anchor {
-                    None => {
-                        log::error!(
-                            "Invalid indent query: @align requires an accompanying @anchor."
-                        );
-                        continue;
-                    }
-                    Some(anchor) => anchor,
+                let Some(anchor) = anchor else {
+                    log::error!("Invalid indent query: @align requires an accompanying @anchor.");
+                    continue;
                 };
+                let line = text.byte_to_line(anchor.start_byte() as usize);
+                let line_start = text.line_to_byte(line);
                 capture.capture_type = IndentCaptureType::Align(
-                    text.line(anchor.start_position().row)
-                        .byte_slice(0..anchor.start_position().column),
+                    text.byte_slice(line_start..anchor.start_byte() as usize),
                 );
             }
             indent_captures
@@ -691,13 +768,15 @@ fn extend_nodes<'a>(
                         // - the cursor is on the same line as the end of the node OR
                         // - the line that the cursor is on is more indented than the
                         //   first line of the node
-                        if deepest_preceding.end_position().row == line {
+                        if text.byte_to_line(deepest_preceding.end_byte() as usize) == line {
                             extend_node = true;
                         } else {
                             let cursor_indent =
                                 indent_level_for_line(text.line(line), tab_width, indent_width);
                             let node_indent = indent_level_for_line(
-                                text.line(deepest_preceding.start_position().row),
+                                text.line(
+                                    text.byte_to_line(deepest_preceding.start_byte() as usize),
+                                ),
                                 tab_width,
                                 indent_width,
                             );
@@ -714,7 +793,7 @@ fn extend_nodes<'a>(
         if node_captured && stop_extend {
             stop_extend = false;
         } else if extend_node && !stop_extend {
-            *node = deepest_preceding;
+            *node = deepest_preceding.clone();
             break;
         }
         // If the tree contains a syntax error, `deepest_preceding` may not
@@ -731,17 +810,17 @@ fn extend_nodes<'a>(
 /// - The indent captures for all relevant nodes.
 #[allow(clippy::too_many_arguments)]
 fn init_indent_query<'a, 'b>(
-    query: &Query,
+    query: &IndentQuery,
     syntax: &'a Syntax,
     text: RopeSlice<'b>,
     tab_width: usize,
     indent_width: usize,
     line: usize,
-    byte_pos: usize,
-    new_line_byte_pos: Option<usize>,
+    byte_pos: u32,
+    new_line_byte_pos: Option<u32>,
 ) -> Option<(Node<'a>, HashMap<usize, Vec<IndentCapture<'b>>>)> {
     // The innermost tree-sitter node which is considered for the indent
-    // computation. It may change if some predeceding node is extended
+    // computation. It may change if some preceding node is extended
     let mut node = syntax
         .tree()
         .root_node()
@@ -751,37 +830,25 @@ fn init_indent_query<'a, 'b>(
         // The query range should intersect with all nodes directly preceding
         // the position of the indent query in case one of them is extended.
         let mut deepest_preceding = None; // The deepest node preceding the indent query position
-        let mut tree_cursor = node.walk();
-        for child in node.children(&mut tree_cursor) {
+        for child in node.children() {
             if child.byte_range().end <= byte_pos {
-                deepest_preceding = Some(child);
+                deepest_preceding = Some(child.clone());
             }
         }
         deepest_preceding = deepest_preceding.map(|mut prec| {
             // Get the deepest directly preceding node
             while prec.child_count() > 0 {
-                prec = prec.child(prec.child_count() - 1).unwrap();
+                prec = prec.child(prec.child_count() - 1).unwrap().clone();
             }
             prec
         });
         let query_range = deepest_preceding
+            .as_ref()
             .map(|prec| prec.byte_range().end - 1..byte_pos + 1)
             .unwrap_or(byte_pos..byte_pos + 1);
 
-        crate::syntax::PARSER.with(|ts_parser| {
-            let mut ts_parser = ts_parser.borrow_mut();
-            let mut cursor = ts_parser.cursors.pop().unwrap_or_default();
-            let query_result = query_indents(
-                query,
-                syntax,
-                &mut cursor,
-                text,
-                query_range,
-                new_line_byte_pos,
-            );
-            ts_parser.cursors.push(cursor);
-            (query_result, deepest_preceding)
-        })
+        let query_result = query_indents(query, syntax, text, query_range, new_line_byte_pos);
+        (query_result, deepest_preceding)
     };
     let extend_captures = query_result.extend_captures;
 
@@ -839,7 +906,7 @@ fn init_indent_query<'a, 'b>(
 /// ```
 #[allow(clippy::too_many_arguments)]
 pub fn treesitter_indent_for_pos<'a>(
-    query: &Query,
+    query: &IndentQuery,
     syntax: &Syntax,
     tab_width: usize,
     indent_width: usize,
@@ -848,7 +915,7 @@ pub fn treesitter_indent_for_pos<'a>(
     pos: usize,
     new_line: bool,
 ) -> Option<Indentation<'a>> {
-    let byte_pos = text.char_to_byte(pos);
+    let byte_pos = text.char_to_byte(pos) as u32;
     let new_line_byte_pos = new_line.then_some(byte_pos);
     let (mut node, mut indent_captures) = init_indent_query(
         query,
@@ -868,7 +935,7 @@ pub fn treesitter_indent_for_pos<'a>(
     let mut indent_for_line_below = Indentation::default();
 
     loop {
-        let is_first = is_first_in_line(node, text, new_line_byte_pos);
+        let is_first = is_first_in_line(&node, text, new_line_byte_pos);
 
         // Apply all indent definitions for this node.
         // Since we only iterate over each node once, we can remove the
@@ -891,8 +958,8 @@ pub fn treesitter_indent_for_pos<'a>(
         }
 
         if let Some(parent) = node.parent() {
-            let node_line = get_node_start_line(node, new_line_byte_pos);
-            let parent_line = get_node_start_line(parent, new_line_byte_pos);
+            let node_line = get_node_start_line(text, &node, new_line_byte_pos);
+            let parent_line = get_node_start_line(text, &parent, new_line_byte_pos);
 
             if node_line != parent_line {
                 // Don't add indent for the line below the line of the query
@@ -914,8 +981,9 @@ pub fn treesitter_indent_for_pos<'a>(
         } else {
             // Only add the indentation for the line below if that line
             // is not after the line that the indentation is calculated for.
-            if (node.start_position().row < line)
-                || (new_line && node.start_position().row == line && node.start_byte() < byte_pos)
+            let node_start_line = text.byte_to_line(node.start_byte() as usize);
+            if node_start_line < line
+                || (new_line && node_start_line == line && node.start_byte() < byte_pos)
             {
                 result.add_line(indent_for_line_below);
             }
@@ -930,7 +998,7 @@ pub fn treesitter_indent_for_pos<'a>(
 /// This is done either using treesitter, or if that's not available by copying the indentation from the current line
 #[allow(clippy::too_many_arguments)]
 pub fn indent_for_newline(
-    language_config: Option<&LanguageConfiguration>,
+    loader: &syntax::Loader,
     syntax: Option<&Syntax>,
     indent_heuristic: &IndentationHeuristic,
     indent_style: &IndentStyle,
@@ -947,7 +1015,7 @@ pub fn indent_for_newline(
         Some(syntax),
     ) = (
         indent_heuristic,
-        language_config.and_then(|config| config.indent_query()),
+        syntax.and_then(|syntax| loader.indent_query(syntax.root_language())),
         syntax,
     ) {
         if let Some(indent) = treesitter_indent_for_pos(
@@ -1015,10 +1083,10 @@ pub fn indent_for_newline(
     indent_style.as_str().repeat(indent_level)
 }
 
-pub fn get_scopes(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> Vec<&'static str> {
+pub fn get_scopes<'a>(syntax: Option<&'a Syntax>, text: RopeSlice, pos: usize) -> Vec<&'a str> {
     let mut scopes = Vec::new();
     if let Some(syntax) = syntax {
-        let pos = text.char_to_byte(pos);
+        let pos = text.char_to_byte(pos) as u32;
         let mut node = match syntax
             .tree()
             .root_node()

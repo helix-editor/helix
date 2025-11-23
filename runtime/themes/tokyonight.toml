@@ -3,6 +3,7 @@
 attribute = { fg = "cyan" }
 comment = { fg = "comment", modifiers = ["italic"] }
 "comment.block.documentation" = { fg = "yellow" }
+"comment.line.documentation" = { fg = "yellow" }
 constant = { fg = "orange" }
 "constant.builtin" = { fg = "aqua" }
 "constant.character" = { fg = "light-green" }
