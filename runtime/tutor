@@ -337,7 +337,7 @@
  1. Move the cursor to the line marked '-->' below.
  2. Type 2w to move 2 words forward.
  3. Type 3e to move to the end of the third word forward.
- 4. Type 2b to move 2 words backwards
+ 4. Type 2b to move 2 words backwards.
  5. Try the above with different numbers.
 
  --> This is just a line with words you can move around in.
@@ -755,7 +755,7 @@
  1. Move the cursor to the line marked '-->' below.
  2. Type w to select "watermelons" and then y to yank it.
  3. Select "oranges" with w.
- 4. Type R to replace "oranges" with "watermelons"
+ 4. Type R to replace "oranges" with "watermelons".
 
 
  --> I like watermelons because oranges are refreshing.
@@ -956,12 +956,12 @@ lines.
  2. Select the first "bat" and type * to set it to search.
  3. Type v to enter Select mode.
  4. Type n to select the other "bat".
- 5. Use c or r to change the "bat"s to "cat".
+ 5. Use c (or r after selecting the "b"s) to change the "bat"s to
+    "cat".
 
  --> Everybody wants to be a bat,
  --> because a cat's the only bat
  --> who knows where it's at.
-
 
 
 
@@ -1002,8 +1002,8 @@ lines.
 
  1. Move the cursor to the start of the line marked '-->' below.
  2. Press gw to enable the 2-character labels, and then the two
-    characters that replace the two letters he at the start of
-    here to jump to the corresponding word.
+    characters that replace the two letters 'he' at the start of
+    'here' to jump to the corresponding word.
 
  --> This is just a simple line of text.
      There may be many such lines
@@ -1170,20 +1170,20 @@ letters! that is not good grammar. you can fix this.
 
  Using the selections and multi-cursor functionality, you can
  comment multiple lines as long as they are under the selection or
- cursors.
+ cursors. To uncomment the lines, press Ctrl-c again.
 
  1. Move your cursor to the line marked with '-->' below.
  2. Now try to select or add more cursors to the other lines marked
     with '-->'.
  3. Comment those lines.
+ 4. Uncomment those lines.
 
- --> How many are you going to comment?
- --> Is this enough for a comment?
  --> What are you doing?!
  --> Stop commenting me!
  --> AAAAaargh!!!
+ --> Enough! Uncomment me now!
 
- Note: If there are already commented lines under selections or
+ Note: If there are only some commented lines under selections or
  multiple cursors, they won't be uncommented but commented again.
 
 =================================================================
@@ -1192,9 +1192,9 @@ letters! that is not good grammar. you can fix this.
 
  * Use Ctrl-c to comment a line under your cursor. Press Ctrl-c
    again to uncomment.
- * To comment multiple lines, use the selections
-   and multi-cursors before typing Ctrl-c.
-   * Commented lines cannot be uncommented but commented again.
+ * To comment multiple lines, use the selections or multi-cursors
+   before typing Ctrl-c. Press Ctrl-c again to uncomment.
+
 
 
 
@@ -1454,7 +1454,7 @@ letters! that is not good grammar. you can fix this.
 =                  CHAPTER 13.5 SWAPPING SPLITS                 =
 =================================================================
 
- Open a split on the left with :vs hello1 and then a split below
+ Open a split on the right with :vs hello1 and then a split below
  with :hs hello2.
 
  From hello2, press Ctrl-w K to swap it with the split above. Now
@@ -1476,7 +1476,7 @@ letters! that is not good grammar. you can fix this.
 =                CHAPTER 13.6 TRANSPOSE SPLITS                  =
 =================================================================
 
- Open a split on the left with :vs hello1 and then a split below
+ Open a split on the right with :vs hello1 and then a split below
  with :hs hello2.
 
  Move to the tutor split, then press Ctrl-w t to transpose the

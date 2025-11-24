@@ -30,7 +30,7 @@
   (identifier) @variable)
 
 (alias
-  name: (identifier) @variable)
+  alias_name: (identifier) @variable)
 
 (assignment
   name: (identifier) @variable)

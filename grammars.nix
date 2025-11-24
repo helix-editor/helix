@@ -87,8 +87,6 @@
         $CC -c src/parser.c -o parser.o $FLAGS
         $CXX -shared -o $NAME.so *.o
 
-        ls -al
-
         runHook postBuild
       '';
 

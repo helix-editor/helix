@@ -7,7 +7,8 @@
 | amber | ✓ |  |  |  |  | `amber-lsp` |
 | astro | ✓ |  |  |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  |  |  | `awk-language-server` |
-| bash | ✓ | ✓ | ✓ |  | ✓ | `bash-language-server` |
+| bash | ✓ | ✓ | ✓ | ✓ | ✓ | `bash-language-server` |
+| basic | ✓ | ✓ | ✓ | ✓ |  |  |
 | bass | ✓ |  |  |  |  | `bass` |
 | beancount | ✓ |  |  |  |  | `beancount-language-server` |
 | bibtex | ✓ |  |  |  |  | `texlab` |
@@ -15,6 +16,7 @@
 | bitbake | ✓ |  |  |  |  | `bitbake-language-server` |
 | blade | ✓ | ✓ |  |  | ✓ |  |
 | blueprint | ✓ |  |  |  |  | `blueprint-compiler` |
+| bovex | ✓ |  |  |  | ✓ |  |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp` |
 | cabal |  |  |  |  |  | `haskell-language-server-wrapper` |
@@ -24,18 +26,20 @@
 | cel | ✓ |  |  |  |  |  |
 | circom | ✓ |  |  |  |  | `circom-lsp` |
 | clarity | ✓ |  |  |  |  | `clarinet` |
-| clojure | ✓ |  |  |  | ✓ | `clojure-lsp` |
+| clojure | ✓ | ✓ | ✓ |  | ✓ | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ |  |  | `neocmakelsp`, `cmake-language-server` |
 | codeql | ✓ | ✓ |  |  |  | `codeql` |
 | comment | ✓ |  |  |  |  |  |
 | common-lisp | ✓ |  | ✓ |  | ✓ | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
+| cross-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
 | crystal | ✓ | ✓ | ✓ | ✓ |  | `crystalline`, `ameba-ls` |
 | css | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
 | csv | ✓ |  |  |  |  |  |
 | cue | ✓ |  |  |  |  | `cuelsp` |
 | cylc | ✓ | ✓ | ✓ |  |  |  |
+| cython | ✓ |  | ✓ | ✓ |  |  |
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
 | dart | ✓ | ✓ | ✓ |  |  | `dart` |
 | dbml | ✓ |  |  |  |  |  |
@@ -44,30 +48,35 @@
 | dhall | ✓ | ✓ |  |  |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |  |  |
 | djot | ✓ |  |  |  |  |  |
-| docker-compose | ✓ | ✓ | ✓ |  |  | `docker-compose-langserver`, `yaml-language-server` |
-| dockerfile | ✓ | ✓ |  |  |  | `docker-langserver` |
+| docker-bake | ✓ | ✓ | ✓ | ✓ | ✓ | `docker-language-server` |
+| docker-compose | ✓ | ✓ | ✓ |  |  | `docker-compose-langserver`, `yaml-language-server`, `docker-language-server` |
+| dockerfile | ✓ | ✓ |  |  |  | `docker-langserver`, `docker-language-server` |
 | dot | ✓ |  |  |  |  | `dot-language-server` |
+| doxyfile | ✓ | ✓ | ✓ | ✓ |  |  |
 | dtd | ✓ |  |  |  |  |  |
 | dune | ✓ |  |  |  |  |  |
 | dunstrc | ✓ |  |  |  |  |  |
 | earthfile | ✓ | ✓ | ✓ |  |  | `earthlyls` |
 | edoc | ✓ |  |  |  |  |  |
 | eex | ✓ |  |  |  |  |  |
+| eiffel | ✓ | ✓ | ✓ |  |  | `eiffel-language-server` |
 | ejs | ✓ |  |  |  |  |  |
 | elisp | ✓ |  |  | ✓ |  |  |
-| elixir | ✓ | ✓ | ✓ | ✓ | ✓ | `elixir-ls` |
+| elixir | ✓ | ✓ | ✓ | ✓ | ✓ | `elixir-ls`, `expert` |
 | elm | ✓ | ✓ |  | ✓ |  | `elm-language-server` |
 | elvish | ✓ |  |  |  |  | `elvish` |
 | env | ✓ | ✓ |  |  |  |  |
 | erb | ✓ |  |  |  |  |  |
 | erlang | ✓ | ✓ |  | ✓ | ✓ | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |  |  |
-| fennel | ✓ |  |  |  |  | `fennel-ls` |
+| fennel | ✓ |  |  |  | ✓ | `fennel-ls` |
 | fga | ✓ | ✓ | ✓ |  |  |  |
 | fidl | ✓ |  |  |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |  | `fish-lsp` |
+| flatbuffers | ✓ |  |  |  |  |  |
 | forth | ✓ |  |  |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ |  |  | `fortls` |
+| freebasic | ✓ | ✓ | ✓ | ✓ |  |  |
 | fsharp | ✓ |  |  |  |  | `fsautocomplete` |
 | gas | ✓ | ✓ |  |  |  | `asm-lsp` |
 | gdscript | ✓ | ✓ | ✓ | ✓ |  |  |
@@ -75,11 +84,13 @@
 | gherkin | ✓ |  |  |  |  |  |
 | ghostty | ✓ |  |  |  |  |  |
 | git-attributes | ✓ |  |  |  |  |  |
-| git-commit | ✓ | ✓ |  |  |  |  |
+| git-cliff-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
+| git-commit | ✓ | ✓ |  |  |  | `commit-lsp` |
 | git-config | ✓ | ✓ |  |  |  |  |
 | git-ignore | ✓ |  |  |  |  |  |
 | git-notes | ✓ |  |  |  |  |  |
 | git-rebase | ✓ |  |  |  |  |  |
+| gitlab-ci | ✓ | ✓ | ✓ | ✓ | ✓ | `yaml-language-server`, `gitlab-ci-ls` |
 | gjs | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | gleam | ✓ | ✓ |  |  | ✓ | `gleam` |
 | glimmer | ✓ |  |  |  |  | `ember-language-server` |
@@ -98,10 +109,12 @@
 | gts | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | hare | ✓ |  |  |  |  |  |
 | haskell | ✓ | ✓ |  |  |  | `haskell-language-server-wrapper` |
+| haskell-literate | ✓ |  |  |  |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |  |  |
+| haxe | ✓ |  |  | ✓ |  |  |
 | hcl | ✓ | ✓ | ✓ |  |  | `terraform-ls` |
-| hdl | ✓ |  |  |  |  |  |
-| heex | ✓ | ✓ |  |  |  | `elixir-ls` |
+| hdl | ✓ |  |  |  |  | `hdls` |
+| heex | ✓ | ✓ |  |  |  | `elixir-ls`, `expert` |
 | helm | ✓ |  |  |  |  | `helm_ls` |
 | hocon | ✓ | ✓ | ✓ |  |  |  |
 | hoon | ✓ |  |  |  |  |  |
@@ -115,8 +128,8 @@
 | ini | ✓ |  |  |  |  |  |
 | ink | ✓ |  |  |  |  |  |
 | inko | ✓ | ✓ | ✓ | ✓ |  |  |
-| janet | ✓ |  | ✓ |  |  |  |
-| java | ✓ | ✓ | ✓ |  | ✓ | `jdtls` |
+| janet | ✓ |  | ✓ |  | ✓ |  |
+| java | ✓ | ✓ | ✓ | ✓ | ✓ | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jinja | ✓ |  |  |  |  |  |
 | jjconfig | ✓ | ✓ | ✓ |  |  | `taplo`, `tombi` |
@@ -128,48 +141,52 @@
 | json | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
 | json-ld | ✓ | ✓ | ✓ |  |  | `vscode-json-language-server` |
 | json5 | ✓ |  |  |  |  |  |
-| jsonc | ✓ |  | ✓ |  |  | `vscode-json-language-server` |
+| jsonc | ✓ |  | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ |  |  | `julia` |
-| just | ✓ | ✓ | ✓ |  |  | `just-lsp` |
-| kdl | ✓ | ✓ | ✓ |  |  |  |
+| just | ✓ | ✓ | ✓ | ✓ |  | `just-lsp` |
+| kcl | ✓ |  |  |  |  | `kcl-language-server` |
+| kconfig | ✓ |  | ✓ |  |  |  |
+| kdl | ✓ | ✓ | ✓ | ✓ |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
-| kotlin | ✓ | ✓ | ✓ |  |  | `kotlin-language-server` |
-| koto | ✓ | ✓ | ✓ |  |  | `koto-ls` |
+| kotlin | ✓ | ✓ | ✓ | ✓ |  | `kotlin-language-server` |
+| koto | ✓ | ✓ | ✓ |  | ✓ | `koto-ls` |
 | latex | ✓ | ✓ |  |  |  | `texlab` |
 | ld | ✓ |  | ✓ |  |  |  |
 | ldif | ✓ |  |  |  |  |  |
-| lean | ✓ |  |  |  |  | `lean` |
+| lean | ✓ |  |  |  |  | `lake` |
 | ledger | ✓ |  |  |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |  |  |
 | log | ✓ |  |  |  |  |  |
 | lpf | ✓ |  |  |  |  |  |
-| lua | ✓ | ✓ | ✓ |  |  | `lua-language-server` |
+| lua | ✓ | ✓ | ✓ |  | ✓ | `lua-language-server` |
 | luap | ✓ |  |  |  |  |  |
 | luau | ✓ | ✓ | ✓ |  |  | `luau-lsp` |
 | mail | ✓ | ✓ |  |  |  |  |
 | make | ✓ |  | ✓ |  |  |  |
 | markdoc | ✓ |  |  |  |  | `markdoc-ls` |
-| markdown | ✓ |  |  | ✓ |  | `marksman`, `markdown-oxide` |
+| markdown | ✓ |  |  | ✓ |  | `marksman`, `markdown-oxide`, `rumdl` |
 | markdown-rustdoc | ✓ |  |  |  |  |  |
 | markdown.inline | ✓ |  |  |  |  |  |
 | matlab | ✓ | ✓ | ✓ |  |  |  |
 | mermaid | ✓ |  |  |  |  |  |
 | meson | ✓ |  | ✓ |  |  | `mesonlsp` |
 | mint |  |  |  |  |  | `mint` |
+| miseconfig | ✓ | ✓ | ✓ |  |  | `taplo`, `tombi` |
 | mojo | ✓ | ✓ | ✓ |  |  | `pixi` |
 | move | ✓ |  |  |  |  |  |
 | msbuild | ✓ |  | ✓ |  |  |  |
 | nasm | ✓ | ✓ |  |  |  | `asm-lsp` |
+| nearley | ✓ |  |  |  | ✓ |  |
 | nestedtext | ✓ | ✓ | ✓ |  |  |  |
 | nginx | ✓ |  |  |  |  |  |
 | nickel | ✓ |  | ✓ |  |  | `nls` |
 | nim | ✓ | ✓ | ✓ |  |  | `nimlangserver` |
 | nix | ✓ | ✓ | ✓ |  | ✓ | `nil`, `nixd` |
-| nu | ✓ |  |  |  |  | `nu` |
+| nu | ✓ | ✓ | ✓ |  |  | `nu` |
 | nunjucks | ✓ |  |  |  |  |  |
 | ocaml | ✓ |  | ✓ |  |  | `ocamllsp` |
 | ocaml-interface | ✓ |  |  |  |  | `ocamllsp` |
@@ -183,8 +200,9 @@
 | pem | ✓ |  |  |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |  | `perlnavigator` |
 | pest | ✓ | ✓ | ✓ |  |  | `pest-language-server` |
-| php | ✓ | ✓ | ✓ | ✓ |  | `intelephense` |
+| php | ✓ | ✓ | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  | ✓ |  |  |
+| pip-requirements | ✓ |  |  |  |  |  |
 | pkgbuild | ✓ | ✓ | ✓ |  |  | `termux-language-server`, `bash-language-server` |
 | pkl | ✓ |  | ✓ |  |  | `pkl-lsp` |
 | po | ✓ | ✓ |  |  |  |  |
@@ -194,7 +212,7 @@
 | prisma | ✓ | ✓ |  |  |  | `prisma-language-server` |
 | prolog | ✓ |  | ✓ |  |  | `swipl` |
 | properties | ✓ | ✓ |  |  |  |  |
-| protobuf | ✓ | ✓ | ✓ |  |  | `buf`, `pb`, `protols` |
+| protobuf | ✓ | ✓ | ✓ | ✓ |  | `buf`, `pb`, `protols` |
 | prql | ✓ |  |  |  |  |  |
 | pug | ✓ |  |  |  |  |  |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
@@ -210,7 +228,9 @@
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
 | robot | ✓ |  |  |  |  | `robotframework_ls` |
 | robots.txt | ✓ | ✓ |  | ✓ |  |  |
-| ron | ✓ |  | ✓ |  |  |  |
+| ron | ✓ |  | ✓ | ✓ | ✓ | `ron-lsp` |
+| rpmspec | ✓ |  |  |  |  |  |
+| rshtml | ✓ | ✓ |  |  |  | `rshtml-analyzer`, `vscode-html-language-server`, `superhtml` |
 | rst | ✓ |  |  |  |  |  |
 | ruby | ✓ | ✓ | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
 | rust | ✓ | ✓ | ✓ | ✓ | ✓ | `rust-analyzer` |
@@ -218,10 +238,13 @@
 | rust-format-args-macro | ✓ | ✓ | ✓ |  | ✓ |  |
 | sage | ✓ | ✓ |  |  |  |  |
 | scala | ✓ | ✓ | ✓ |  |  | `metals` |
-| scheme | ✓ |  | ✓ |  | ✓ |  |
+| scfg | ✓ |  |  |  |  |  |
+| scheme | ✓ | ✓ | ✓ |  | ✓ |  |
 | scss | ✓ |  |  |  | ✓ | `vscode-css-language-server` |
+| shellcheckrc | ✓ | ✓ |  |  |  |  |
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
 | slint | ✓ | ✓ | ✓ |  |  | `slint-lsp` |
+| slisp | ✓ |  |  | ✓ |  |  |
 | smali | ✓ |  | ✓ |  |  |  |
 | smithy | ✓ |  |  |  |  | `cs` |
 | sml | ✓ |  |  |  |  |  |
@@ -234,11 +257,13 @@
 | sshclientconfig | ✓ |  |  |  |  |  |
 | starlark | ✓ | ✓ | ✓ |  | ✓ | `starpls` |
 | strace | ✓ |  |  |  |  |  |
+| strictdoc | ✓ |  |  | ✓ |  |  |
 | supercollider | ✓ |  |  |  |  |  |
 | svelte | ✓ |  | ✓ |  |  | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
-| swift | ✓ | ✓ |  |  |  | `sourcekit-lsp` |
+| swift | ✓ | ✓ |  |  | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  |  |  | `systemd-lsp` |
+| systemverilog | ✓ |  |  |  |  |  |
 | t32 | ✓ |  |  |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |  |  |
 | tact | ✓ | ✓ | ✓ |  |  |  |
@@ -253,14 +278,14 @@
 | tlaplus | ✓ |  |  |  |  |  |
 | todotxt | ✓ |  |  |  |  |  |
 | toml | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
-| tsq | ✓ |  |  |  |  | `ts_query_ls` |
+| tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |  |  |
 | typescript | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | typespec | ✓ | ✓ | ✓ |  |  | `tsp-server` |
 | typst | ✓ |  |  | ✓ |  | `tinymist` |
 | ungrammar | ✓ |  |  |  |  |  |
-| unison | ✓ | ✓ | ✓ |  |  |  |
+| unison | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | uxntal | ✓ |  |  |  |  |  |
 | v | ✓ | ✓ | ✓ |  |  | `v-analyzer` |
 | vala | ✓ | ✓ |  |  |  | `vala-language-server` |
@@ -275,7 +300,8 @@
 | webc | ✓ |  |  |  |  |  |
 | werk | ✓ |  |  |  |  |  |
 | wesl | ✓ | ✓ |  |  |  |  |
-| wgsl | ✓ |  |  |  |  | `wgsl-analyzer` |
+| wgsl | ✓ | ✓ | ✓ | ✓ | ✓ | `wgsl-analyzer` |
+| wikitext | ✓ |  |  |  |  | `wikitext-lsp` |
 | wit | ✓ |  | ✓ |  |  |  |
 | wren | ✓ | ✓ | ✓ |  |  |  |
 | xit | ✓ |  |  |  |  |  |

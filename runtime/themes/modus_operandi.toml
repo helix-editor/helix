@@ -83,8 +83,8 @@ punctuation = "fg-dim"
 "ui.virtual.inlay-hint" = { fg = "fg-dim", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "yellow-cooler", modifiers = ["bold"] }
 
-"ui.selection" = { fg = "fg-main", bg = "bg-inactive" }
-"ui.selection.primary" = { fg = "fg-main", bg = "bg-active" }
+"ui.selection" = { bg = "bg-inactive" }
+"ui.selection.primary" = { bg = "bg-active" }
 
 "ui.cursor" = { fg = "bg-main", bg = "fg-main" }
 "ui.cursor.primary" = { fg = "bg-main", bg = "fg-dim" }

@@ -29,15 +29,6 @@ pub struct TypableCommand {
     pub signature: Signature,
 }
 
-impl TypableCommand {
-    fn completer_for_argument_number(&self, n: usize) -> &Completer {
-        match self.completer.positional_args.get(n) {
-            Some(completer) => completer,
-            _ => &self.completer.var_args,
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct CommandCompleter {
     // Arguments with specific completion methods based on their position.
@@ -68,6 +59,51 @@ impl CommandCompleter {
             var_args: completer,
         }
     }
+
+    fn for_argument_number(&self, n: usize) -> &Completer {
+        match self.positional_args.get(n) {
+            Some(completer) => completer,
+            _ => &self.var_args,
+        }
+    }
+}
+
+fn exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if doc!(cx.editor).is_modified() {
+        write_impl(
+            cx,
+            args.first(),
+            WriteOptions {
+                force: false,
+                auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            },
+        )?;
+    }
+    cx.block_try_flush_writes()?;
+    quit(cx, Args::default(), event)
+}
+
+fn force_exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if doc!(cx.editor).is_modified() {
+        write_impl(
+            cx,
+            args.first(),
+            WriteOptions {
+                force: true,
+                auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            },
+        )?;
+    }
+    cx.block_try_flush_writes()?;
+    quit(cx, Args::default(), event)
 }
 
 fn quit(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -104,6 +140,10 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
+    open_impl(cx, args, Action::Replace)
+}
+
+fn open_impl(cx: &mut compositor::Context, args: Args, action: Action) -> anyhow::Result<()> {
     for arg in args {
         let (path, pos) = crate::args::parse_file(&arg);
         let path = helix_stdx::path::expand_tilde(path);
@@ -113,7 +153,8 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(editor, path.into_owned());
+                        let picker =
+                            ui::file_picker(editor, path.into_owned()).with_default_action(action);
                         compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
@@ -122,7 +163,7 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
             cx.jobs.callback(callback);
         } else {
             // Otherwise, just open the file
-            let _ = cx.editor.open(&path, Action::Replace)?;
+            let _ = cx.editor.open(&path, action)?;
             let (view, doc) = current!(cx.editor);
             let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
             doc.set_selection(view.id, pos);
@@ -1807,6 +1848,56 @@ fn tree_sitter_highlight_name(
     Ok(())
 }
 
+fn tree_sitter_layers(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current_ref!(cx.editor);
+    let Some(syntax) = doc.syntax() else {
+        bail!("Syntax information is not available");
+    };
+
+    let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let byte = text.char_to_byte(cursor) as u32;
+    let languages =
+        syntax
+            .layers_for_byte_range(byte, byte)
+            .fold(String::new(), |mut acc, layer| {
+                if !acc.is_empty() {
+                    acc.push_str(", ");
+                }
+                acc.push_str(
+                    &loader
+                        .language(syntax.layer(layer).language)
+                        .config()
+                        .language_id,
+                );
+                acc
+            });
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let content = ui::Markdown::new(languages, editor.syn_loader.clone());
+                let popup = Popup::new("hover", content).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn vsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -1815,10 +1906,7 @@ fn vsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     if args.is_empty() {
         split(cx.editor, Action::VerticalSplit);
     } else {
-        for arg in args {
-            cx.editor
-                .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
-        }
+        open_impl(cx, args, Action::VerticalSplit)?;
     }
 
     Ok(())
@@ -1832,10 +1920,7 @@ fn hsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     if args.is_empty() {
         split(cx.editor, Action::HorizontalSplit);
     } else {
-        for arg in args {
-            cx.editor
-                .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
-        }
+        open_impl(cx, args, Action::HorizontalSplit)?;
     }
 
     Ok(())
@@ -2659,13 +2744,13 @@ const BUFFER_CLOSE_OTHERS_SIGNATURE: Signature = Signature {
 // but Signature does not yet allow for var args.
 
 /// This command handles all of its input as-is with no quoting or flags.
-const SHELL_SIGNATURE: Signature = Signature {
+pub const SHELL_SIGNATURE: Signature = Signature {
     positionals: (1, Some(2)),
     raw_after: Some(1),
     ..Signature::DEFAULT
 };
 
-const SHELL_COMPLETER: CommandCompleter = CommandCompleter::positional(&[
+pub const SHELL_COMPLETER: CommandCompleter = CommandCompleter::positional(&[
     // Command name
     completers::program,
     // Shell argument(s)
@@ -2679,6 +2764,30 @@ const WRITE_NO_FORMAT_FLAG: Flag = Flag {
 };
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
+    TypableCommand {
+        name: "exit",
+        aliases: &["x", "xit"],
+        doc: "Write changes to disk if the buffer is modified and then quit. Accepts an optional path (:exit some/path.txt).",
+        fun: exit,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[WRITE_NO_FORMAT_FLAG],
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "exit!",
+        aliases: &["x!", "xit!"],
+        doc: "Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit. Accepts an optional path (:exit! some/path.txt).",
+        fun: force_exit,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[WRITE_NO_FORMAT_FLAG],
+            ..Signature::DEFAULT
+        },
+    },
     TypableCommand {
         name: "quit",
         aliases: &["q"],
@@ -2913,7 +3022,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "write-quit",
-        aliases: &["wq", "x"],
+        aliases: &["wq"],
         doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
         fun: write_quit,
         completer: CommandCompleter::positional(&[completers::filename]),
@@ -2925,7 +3034,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "write-quit!",
-        aliases: &["wq!", "x!"],
+        aliases: &["wq!"],
         doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
         fun: force_write_quit,
         completer: CommandCompleter::positional(&[completers::filename]),
@@ -2974,7 +3083,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit-all!",
         aliases: &["wqa!", "xa!"],
-        doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
+        doc: "Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes).",
         fun: force_write_all_quit,
         completer: CommandCompleter::none(),
         signature: Signature {
@@ -3298,6 +3407,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Display name of tree-sitter highlight scope under the cursor.",
         fun: tree_sitter_highlight_name,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "tree-sitter-layers",
+        aliases: &[],
+        doc: "Display language names of tree-sitter injection layers under the cursor.",
+        fun: tree_sitter_layers,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
@@ -3743,7 +3863,7 @@ pub(super) fn command_mode(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 
-fn command_line_doc(input: &str) -> Option<Cow<str>> {
+fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
     let (command, _, _) = command_line::split(input);
     let command = TYPABLE_COMMAND_MAP.get(command)?;
 
@@ -3832,14 +3952,15 @@ fn complete_command_line(editor: &Editor, input: &str) -> Vec<ui::prompt::Comple
             .get(command)
             .map_or_else(Vec::new, |cmd| {
                 let args_offset = command.len() + 1;
-                complete_command_args(editor, cmd, rest, args_offset)
+                complete_command_args(editor, cmd.signature, &cmd.completer, rest, args_offset)
             })
     }
 }
 
-fn complete_command_args(
+pub fn complete_command_args(
     editor: &Editor,
-    command: &TypableCommand,
+    signature: Signature,
+    completer: &CommandCompleter,
     input: &str,
     offset: usize,
 ) -> Vec<ui::prompt::Completion> {
@@ -3851,7 +3972,7 @@ fn complete_command_args(
     let cursor = input.len();
     let prefix = &input[..cursor];
     let mut tokenizer = Tokenizer::new(prefix, false);
-    let mut args = Args::new(command.signature, false);
+    let mut args = Args::new(signature, false);
     let mut final_token = None;
     let mut is_last_token = true;
 
@@ -3895,7 +4016,7 @@ fn complete_command_args(
                         .len()
                         .checked_sub(1)
                         .expect("completion state to be positional");
-                    let completer = command.completer_for_argument_number(n);
+                    let completer = completer.for_argument_number(n);
 
                     completer(editor, &token.content)
                         .into_iter()
@@ -3904,7 +4025,7 @@ fn complete_command_args(
                 }
                 CompletionState::Flag(_) => fuzzy_match(
                     token.content.trim_start_matches('-'),
-                    command.signature.flags.iter().map(|flag| flag.name),
+                    signature.flags.iter().map(|flag| flag.name),
                     false,
                 )
                 .into_iter()
@@ -3929,7 +4050,7 @@ fn complete_command_args(
                         .len()
                         .checked_sub(1)
                         .expect("completion state to be positional");
-                    command.completer_for_argument_number(n)
+                    completer.for_argument_number(n)
                 });
             complete_expand(editor, &token, arg_completer, offset + token.content_start)
         }

@@ -23,7 +23,7 @@ warning = "magenta-faint"
 info = "cyan"
 hint = "blue"
 
-rainbow = ["red", "yellow-intense", "green-intense", "cyan-cooler", "blue", "magenta-intense"]
+rainbow = ["red", "yellow-intense", "green-intense", "cyan", "blue", "magenta-intense"]
 
 [palette]
 # Basic values

@@ -13,6 +13,7 @@
   (comment) @injection.content . (comment)* . [
     (package_clause) ; `package`
     (type_declaration) ; `type`
+    (function_declaration) ; `func`
     (method_declaration) ; `func`
     (var_declaration) ; `var`
     (const_declaration) ; `const`
@@ -28,6 +29,10 @@
     (var_spec)
   ]
   (#set! injection.language "markdown"))
+
+((comment) @injection.content
+ (#match? @injection.content "^//go:generate")
+ (#set! injection.language "bash"))
 
 (call_expression
   (selector_expression) @_function

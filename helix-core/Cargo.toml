@@ -30,7 +30,7 @@ unicode-segmentation.workspace = true
 # For now lets lock the version to avoid rendering glitches
 # when installing without `--locked`
 unicode-width = "=0.1.12"
-unicode-general-category = "1.0"
+unicode-general-category = "1.1"
 slotmap.workspace = true
 tree-house.workspace = true
 once_cell = "1.21"
@@ -55,7 +55,7 @@ textwrap = "0.16.2"
 
 nucleo.workspace = true
 parking_lot.workspace = true
-globset = "0.4.16"
+globset.workspace = true
 regex-cursor = "0.1.5"
 
 [dev-dependencies]
