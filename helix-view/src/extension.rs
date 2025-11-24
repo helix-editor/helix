@@ -118,5 +118,13 @@ mod steel_implementations {
     impl Custom for SmartTabConfig {}
     impl Custom for AutoSave {}
 
-    impl Custom for KeyEvent {}
+    impl Custom for KeyEvent {
+        fn equality_hint(&self, other: &dyn steel::rvals::CustomType) -> bool {
+            if let Some(other) = as_underlying_type::<KeyEvent>(other) {
+                self == other
+            } else {
+                false
+            }
+        }
+    }
 }
