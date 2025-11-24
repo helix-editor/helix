@@ -238,6 +238,7 @@
 | rust-format-args-macro | ✓ | ✓ | ✓ |  | ✓ |  |
 | sage | ✓ | ✓ |  |  |  |  |
 | scala | ✓ | ✓ | ✓ |  |  | `metals` |
+| scfg | ✓ |  |  |  |  |  |
 | scheme | ✓ | ✓ | ✓ |  | ✓ |  |
 | scss | ✓ |  |  |  | ✓ | `vscode-css-language-server` |
 | shellcheckrc | ✓ | ✓ |  |  |  |  |

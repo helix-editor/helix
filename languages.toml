@@ -5044,3 +5044,13 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "freebasic"
 source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-freebasic", rev = "dbf696adb4c0b9c020074e75043c90592981ee7f" }
+
+[[language]]
+name = "scfg"
+scope = "source.scfg"
+file-types = [{ glob = "kanshi/config" }]
+comment-token = "#"
+
+[[grammar]]
+name = "scfg"
+source = { git = "https://github.com/rockorager/tree-sitter-scfg", rev = "d850fd470445d73de318a21d734d1e09e29b773c" }
