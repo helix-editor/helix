@@ -168,6 +168,7 @@
 <li><a href="#editorlsp-section"><code>[editor.lsp]</code> Section</a></li>
 <li><a href="#editorcursor-shape-section"><code>[editor.cursor-shape]</code> Section</a></li>
 <li><a href="#editorfile-picker-section"><code>[editor.file-picker]</code> Section</a></li>
+<li><a href="#editorbuffer-picker-section"><code>[editor.buffer-picker]</code> Section</a></li>
 <li><a href="#editorauto-pairs-section"><code>[editor.auto-pairs]</code> Section</a></li>
 <li><a href="#editorauto-save-section"><code>[editor.auto-save]</code> Section</a></li>
 <li><a href="#editorsearch-section"><code>[editor.search]</code> Section</a></li>
@@ -379,6 +380,16 @@ not visible in the Helix file picker and global search.</p>
 <tr><td><code>flatten-dirs</code></td><td>Enables flattening single child directories</td><td><code>true</code></td></tr>
 </tbody></table>
 </div>
+<h3 id="editorbuffer-picker-section"><a class="header" href="#editorbuffer-picker-section"><code>[editor.buffer-picker]</code> Section</a></h3>
+<p>Set options for buffer picker.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>start-position</code></td><td>Controls behavior for which buffer is initially selected</td><td><code>current</code></td></tr>
+</tbody></table>
+</div>
+<p>Example</p>
+<pre><code class="language-toml">[editor.buffer-picker]
+start-position = "previous"
+</code></pre>
 <h3 id="editorauto-pairs-section"><a class="header" href="#editorauto-pairs-section"><code>[editor.auto-pairs]</code> Section</a></h3>
 <p>Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
 simple boolean value, or a specific mapping of pairs of single characters.</p>
