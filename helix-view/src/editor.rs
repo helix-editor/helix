@@ -264,6 +264,21 @@ impl Default for FileExplorerConfig {
     }
 }
 
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PickerConfig {
+    /// Start pickers in navigation mode (j/k motions) instead of search mode. Defaults to false.
+    pub default_navigation_mode: bool
+}
+impl Default for PickerConfig {
+    fn default() -> Self {
+        Self {
+            default_navigation_mode: false
+        }
+    }
+}
+
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -427,6 +442,8 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+    /// Picker navigation configurations
+    pub picker: PickerConfig
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1118,6 +1135,7 @@ impl Default for Config {
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
+            picker: PickerConfig::default(),
         }
     }
 }
