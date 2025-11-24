@@ -72,9 +72,9 @@
   (dependency_tag)
 ] @type.definition
 
-(integer) @number
-(float) @number.float
-(version) @number.float
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
+(version) @constant.numeric.float
 
 (comment) @comment
 ;(string) @string
