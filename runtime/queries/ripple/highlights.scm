@@ -267,19 +267,19 @@
 
 ; Properties
 (property_signature
-  name: (property_name) @property)
+  name: (property_name) @variable.other.member)
 
 (pair
-  key: (property_name) @property)
+  key: (property_name) @variable.other.member)
 
 (member_expression
-  property: (identifier) @property)
+  property: (identifier) @variable.other.member)
 
-(shorthand_property_identifier) @property
-(shorthand_property_identifier_pattern) @property
+(shorthand_property_identifier) @variable.other.member
+(shorthand_property_identifier_pattern) @variable.other.member
 
 ; Private properties
-(private_property_identifier) @property.private
+(private_property_identifier) @variable.other.member
 
 ; Punctuation
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
