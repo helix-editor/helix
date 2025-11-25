@@ -6518,6 +6518,14 @@ fn shell_prompt_for_behavior(cx: &mut Context, prompt: Cow<'static, str>, behavi
 fn suspend(_cx: &mut Context) {
     #[cfg(not(windows))]
     {
+        // SAFETY: These are calls to standard POSIX functions.
+        // Unsafe is necessary since we are calling outside of Rust.
+        let is_session_leader = unsafe { libc::getpid() == libc::getsid(0) };
+
+        // If helix is the session leader, there is nothing to suspend to, so skip
+        if is_session_leader {
+            return;
+        }
         _cx.block_try_flush_writes().ok();
         signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
     }
