@@ -427,6 +427,33 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+    pub buffer_picker: BufferPickerConfig,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub struct BufferPickerConfig {
+    pub start_position: PickerStartPosition,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum PickerStartPosition {
+    #[default]
+    Current,
+    Previous,
+}
+
+impl PickerStartPosition {
+    #[must_use]
+    pub fn is_previous(self) -> bool {
+        matches!(self, Self::Previous)
+    }
+
+    #[must_use]
+    pub fn is_current(self) -> bool {
+        matches!(self, Self::Current)
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1118,6 +1145,7 @@ impl Default for Config {
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
+            buffer_picker: BufferPickerConfig::default(),
         }
     }
 }
@@ -1823,7 +1851,7 @@ impl Editor {
     /// Generate an id for a new document and register it.
     fn new_document(&mut self, mut doc: Document) -> DocumentId {
         let id = self.next_document_id;
-        // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
+        // Safety: adding 1 from 1 is fine, practically impossible to reach usize max
         self.next_document_id =
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;

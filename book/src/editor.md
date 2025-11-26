@@ -6,6 +6,7 @@
 - [`[editor.lsp]` Section](#editorlsp-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
+- [`[editor.buffer-picker]` Section](#editorbuffer-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
 - [`[editor.auto-save]` Section](#editorauto-save-section)
 - [`[editor.search]` Section](#editorsearch-section)
@@ -38,7 +39,7 @@
 | `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
 | `path-completion` | Enable filepath completion. Show files and directories if an existing path at the cursor was recognized, either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved). Defaults to true. | `true` |
-| `auto-format` | Enable automatic formatting on save | `true` |
+| `auto-format` | Enable automatic formatting on save[^3] | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. | `250` |
 | `completion-timeout` | Time in milliseconds after typing a word character before completions are shown, set to 5 for instant.  | `250` |
 | `preview-completion-insert` | Whether to apply completion item instantly when selected | `true` |
@@ -65,6 +66,8 @@
 | `editor-config` | Whether to read settings from [EditorConfig](https://editorconfig.org) files | `true` |
 | `rainbow-brackets` | Whether to render rainbow colors for matching brackets. Requires tree-sitter `rainbows.scm` queries for the language. | `false` |
 | `kitty-keyboard-protocol` | Whether to enable Kitty Keyboard Protocol. Can be `enabled`, `disabled` or `auto` | `"auto"` |
+
+[^3]: In most cases, you also need to enable the `auto-format` setting under `languages.toml`. You can find the reasoning [here](https://github.com/helix-editor/helix/discussions/9043#discussioncomment-7811497).
 
 ### `[editor.clipboard-provider]` Section
 
@@ -242,6 +245,20 @@ Note that the ignore files consulted by the file explorer when `ignore` is set t
 |`git-exclude` | Enables reading `.git/info/exclude` files | `false`
 |`flatten-dirs` | Enables flattening single child directories | `true`
 
+### `[editor.buffer-picker]` Section
+
+Set options for buffer picker.
+
+| Key | Description | Default |
+|--|--|---------|
+|`start-position` | Controls behavior for which buffer is initially selected | `current` |
+
+Example
+
+```toml
+[editor.buffer-picker]
+start-position = "previous"
+```
 
 ### `[editor.auto-pairs]` Section
 
