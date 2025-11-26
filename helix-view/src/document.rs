@@ -154,6 +154,9 @@ pub struct Document {
     /// update from the LSP
     pub inlay_hints_oudated: bool,
 
+    /// Current inline completion (ghost text) for the document.
+    pub inline_completion: Option<InlineAnnotation>,
+
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
     encoding: &'static encoding::Encoding,
@@ -705,6 +708,7 @@ impl Document {
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
+            inline_completion: None,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             editor_config: EditorConfig::default(),

@@ -213,6 +213,8 @@
 | `keep_primary_selection` | Keep primary selection | normal: `` , ``, select: `` , `` |
 | `remove_primary_selection` | Remove primary selection | normal: `` <A-,> ``, select: `` <A-,> `` |
 | `completion` | Invoke completion popup | insert: `` <C-x> `` |
+| `inline_completion_accept` | Accept inline completion |  |
+| `inline_completion_dismiss` | Dismiss inline completion |  |
 | `hover` | Show docs for item under cursor | normal: `` <space>k ``, select: `` <space>k `` |
 | `toggle_comments` | Comment/uncomment selections | normal: `` <C-c> ``, `` <space>c ``, select: `` <C-c> ``, `` <space>c `` |
 | `toggle_line_comments` | Line comment/uncomment selections | normal: `` <space><A-c> ``, select: `` <space><A-c> `` |

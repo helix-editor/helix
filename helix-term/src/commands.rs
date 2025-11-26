@@ -516,6 +516,8 @@ impl MappableCommand {
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
+        inline_completion_accept, "Accept inline completion",
+        inline_completion_dismiss, "Dismiss inline completion",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
         toggle_line_comments, "Line comment/uncomment selections",
@@ -5260,6 +5262,20 @@ pub fn completion(cx: &mut Context) {
     cx.editor
         .handlers
         .trigger_completions(cursor, doc.id(), view.id);
+}
+
+pub fn inline_completion_accept(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    if let Some(c) = doc.inline_completion.take() {
+        let t = Transaction::insert(doc.text(), doc.selection(view.id), c.text);
+        doc.apply(&t, view.id);
+    }
+}
+
+pub fn inline_completion_dismiss(cx: &mut Context) {
+    if doc_mut!(cx.editor).inline_completion.take().is_none() {
+        normal_mode(cx);
+    }
 }
 
 // comments

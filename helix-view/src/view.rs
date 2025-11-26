@@ -491,6 +491,11 @@ impl View {
             }
         }
 
+        if let Some(completion) = doc.inline_completion.as_ref() {
+            let style = theme.and_then(|t| t.find_highlight("ui.virtual.inline-completion"));
+            text_annotations.add_inline_annotations(std::slice::from_ref(completion), style);
+        }
+
         let width = self.inner_width(doc);
         let enable_cursor_line = self
             .diagnostics_handler
