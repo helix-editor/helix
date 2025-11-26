@@ -976,7 +976,11 @@ impl EditorView {
                                 let (view, doc) = current!(cxt.editor);
 
                                 if let Some(last_savepoint) = last_savepoint.as_deref() {
-                                    doc.restore(view, last_savepoint, true);
+                                    doc.restore(
+                                        view,
+                                        last_savepoint,
+                                        Some(helix_view::document::EmitLspNotification::Async),
+                                    );
                                 }
 
                                 let text = doc.text().slice(..);
@@ -1082,7 +1086,7 @@ impl EditorView {
                 }
                 CompleteAction::Selected { savepoint } => {
                     let (view, doc) = current!(editor);
-                    doc.restore(view, &savepoint, false);
+                    doc.restore(view, &savepoint, None);
                 }
             }
         }
@@ -1511,6 +1515,7 @@ impl Component for EditorView {
                         force: false,
                         write_scratch: false,
                         auto_format: false,
+                        code_actions: false,
                     };
                     if let Err(e) = commands::typed::write_all_impl(context, options) {
                         context.editor.set_error(format!("{}", e));
