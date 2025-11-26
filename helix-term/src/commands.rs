@@ -5267,7 +5267,18 @@ pub fn completion(cx: &mut Context) {
 pub fn inline_completion_accept(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     if let Some(c) = doc.inline_completion.take() {
-        let t = Transaction::insert(doc.text(), doc.selection(view.id), c.text);
+        let text = doc.text();
+        let t = if let Some(r) = c.replace_range {
+            // Position cursor at end of inserted text
+            let cursor = r.from() + c.insert_text.chars().count();
+            Transaction::change(
+                text,
+                std::iter::once((r.from(), r.to(), Some(c.insert_text.into()))),
+            )
+            .with_selection(Selection::point(cursor))
+        } else {
+            Transaction::insert(text, doc.selection(view.id), c.insert_text.into())
+        };
         doc.apply(&t, view.id);
     }
 }

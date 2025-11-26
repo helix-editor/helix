@@ -110,6 +110,35 @@ impl Serialize for Mode {
         serializer.collect_str(self)
     }
 }
+
+/// Inline completion data for ghost text display and acceptance.
+#[derive(Debug, Clone)]
+pub struct InlineCompletion {
+    /// The annotation for displaying ghost text (position + display text).
+    pub annotation: InlineAnnotation,
+    /// The full text to insert when accepting.
+    pub insert_text: String,
+    /// Character range to replace. If None, insert at cursor.
+    pub replace_range: Option<Range>,
+}
+
+impl InlineCompletion {
+    pub fn new(
+        cursor: usize,
+        insert_text: String,
+        offset: usize,
+        replace_range: Option<Range>,
+    ) -> Self {
+        let annotation =
+            InlineAnnotation::new(cursor, insert_text.get(offset..).unwrap_or_default());
+        Self {
+            annotation,
+            insert_text,
+            replace_range,
+        }
+    }
+}
+
 /// A snapshot of the text of a document that we want to write out to disk
 #[derive(Debug, Clone)]
 pub struct DocumentSavedEvent {
@@ -155,7 +184,7 @@ pub struct Document {
     pub inlay_hints_oudated: bool,
 
     /// Current inline completion (ghost text) for the document.
-    pub inline_completion: Option<InlineAnnotation>,
+    pub inline_completion: Option<InlineCompletion>,
 
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,

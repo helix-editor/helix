@@ -1,10 +1,14 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use helix_core::{syntax::config::LanguageServerFeature, text_annotations::InlineAnnotation};
+use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{register_hook, send_blocking};
-use helix_lsp::lsp;
-use helix_view::{events::DocumentDidChange, handlers::Handlers};
+use helix_lsp::{lsp, util::lsp_range_to_range};
+use helix_view::{
+    document::{InlineCompletion, Mode},
+    events::DocumentDidChange,
+    handlers::Handlers,
+};
 use tokio::time::Instant;
 
 use crate::{config::Config, job};
@@ -28,6 +32,10 @@ impl helix_event::AsyncHook for InlineCompletionHandler {
 
     fn finish_debounce(&mut self) {
         job::dispatch_blocking(move |editor, _| {
+            // User may have left insert mode before debounce fired
+            if editor.mode != Mode::Insert {
+                return;
+            }
             let (view, doc) = current!(editor);
             let cursor = doc
                 .selection(view.id)
@@ -51,6 +59,7 @@ impl helix_event::AsyncHook for InlineCompletionHandler {
                 return;
             };
 
+            let offset_encoding = ls.offset_encoding();
             tokio::spawn(async move {
                 let Ok(Some(resp)) = fut.await else { return };
                 let items = match resp {
@@ -62,10 +71,27 @@ impl helix_event::AsyncHook for InlineCompletionHandler {
                 };
 
                 job::dispatch(move |editor, _| {
+                    // User may have left insert mode while request was in flight
+                    if editor.mode != Mode::Insert {
+                        return;
+                    }
                     let Some(doc) = editor.documents.get_mut(&doc_id) else {
                         return;
                     };
-                    doc.inline_completion = Some(InlineAnnotation::new(cursor, item.insert_text));
+                    let text = doc.text();
+
+                    let replace_range = item
+                        .range
+                        .and_then(|r| lsp_range_to_range(text, r, offset_encoding));
+                    let offset = replace_range.map_or(0, |r| cursor.saturating_sub(r.from()));
+
+                    doc.inline_completion = item
+                        .insert_text
+                        .get(offset..)
+                        .is_some_and(|s| !s.is_empty())
+                        .then(|| {
+                            InlineCompletion::new(cursor, item.insert_text, offset, replace_range)
+                        });
                 })
                 .await;
             });
