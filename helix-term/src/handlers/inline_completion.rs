@@ -83,7 +83,21 @@ impl helix_event::AsyncHook for InlineCompletionHandler {
                     let replace_range = item
                         .range
                         .and_then(|r| lsp_range_to_range(text, r, offset_encoding));
-                    let offset = replace_range.map_or(0, |r| cursor.saturating_sub(r.from()));
+
+                    // Only use offset if typed text matches insert_text prefix
+                    let offset = replace_range.map_or(0, |r| {
+                        let typed_len = cursor.saturating_sub(r.from());
+                        let Some(typed_slice) = text.get_slice(r.from()..cursor) else {
+                            return 0;
+                        };
+                        let typed_text: String = typed_slice.into();
+                        let prefix = item.insert_text.get(..typed_len).unwrap_or_default();
+                        if typed_text == prefix {
+                            typed_len
+                        } else {
+                            0
+                        }
+                    });
 
                     doc.inline_completion = item
                         .insert_text

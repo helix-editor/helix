@@ -208,6 +208,20 @@ impl EditorView {
             decorations,
         );
 
+        // Render ghost text at cursor position
+        if let Some(completion) = doc.inline_completion.as_ref() {
+            if let Some(cursor_pos) = editor.cursor_cache.get(view, doc) {
+                let style = theme.get("ui.virtual.inline-completion");
+                let x = inner.x + cursor_pos.col as u16;
+                let y = inner.y + cursor_pos.row as u16;
+                for (i, line) in completion.annotation.text.split('\n').enumerate() {
+                    // First line starts at cursor, subsequent lines at viewport left edge
+                    let line_x = if i == 0 { x } else { inner.x };
+                    surface.set_string(line_x, y + i as u16, line, style);
+                }
+            }
+        }
+
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
             let x = area.right();
