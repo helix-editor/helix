@@ -155,9 +155,9 @@ jobs:
         shell: bash
         if: matrix.build == 'x86_64-linux'
         run: |
-          # Required as of 22.x https://github.com/AppImage/AppImageKit/wiki/FUSE
+          export APPIMAGE_EXTRACT_AND_RUN=1
           sudo add-apt-repository universe
-          sudo apt install libfuse2
+          sudo apt install desktop-file-utils zsync
 
           mkdir dist
 
@@ -180,21 +180,32 @@ jobs:
           rm -rf runtime/grammars/sources
           cp -r runtime "$APP.AppDir/usr/lib/helix/runtime"
 
+          # Bundle libc and all dependencies
+          ldd "$APP.AppDir"/usr/bin/hx | awk -F"[> ]" '{print $4}' \
+              | xargs -I {} cp -vf {} "$APP.AppDir"/usr/lib
+          cp -v /lib64/ld-linux-x86-64.so.2 "$APP.AppDir"
+          rm -f "$APP.AppDir"/usr/lib/ld-linux-x86-64.so.2 2>/dev/null || true
+
           cat << 'EOF' > "$APP.AppDir/AppRun"
           #!/bin/sh
-
           APPDIR="$(dirname "$(readlink -f "${0}")")"
-          HELIX_RUNTIME="$APPDIR/usr/lib/helix/runtime" exec "$APPDIR/usr/bin/hx" "$@"
+          unset ARGV0
+          export HELIX_RUNTIME="$APPDIR/usr/lib/helix/runtime"
+          exec "$APPDIR/ld-linux-x86-64.so.2" \
+              --library-path "$APPDIR/usr/lib" "$APPDIR/usr/bin/hx" "$@"
           EOF
           chmod 755 "$APP.AppDir/AppRun"
 
-          curl -Lo linuxdeploy-x86_64.AppImage \
-              https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          chmod +x linuxdeploy-x86_64.AppImage
+          cp contrib/Helix.desktop "$APP.AppDir"
+          cp contrib/helix.png "$APP.AppDir"
+          ln -s helix.png "$APP.AppDir"/.DirIcon
 
-          ./linuxdeploy-x86_64.AppImage \
-              --appdir "$APP.AppDir" -d contrib/Helix.desktop \
-              -i contrib/helix.png --output appimage
+          curl -Lo appimagetool \
+              "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+
+          ./appimagetool -n -u "$UPDATE_INFORMATION" ./"$APP.AppDir" \
+             ./"$APP-$VERSION-$ARCH.AppImage"
 
           mv "$APP-$VERSION-$ARCH.AppImage" \
               "$APP-$VERSION-$ARCH.AppImage.zsync" dist
