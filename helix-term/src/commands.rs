@@ -5060,15 +5060,31 @@ fn format_selections(cx: &mut Context) {
         )
         .unwrap();
 
-    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future))
-        .ok()
-        .flatten()
-        .unwrap_or_default();
+    let text = doc.text().clone();
+    let doc_id = doc.id();
+    let doc_version = doc.version();
 
-    let transaction =
-        helix_lsp::util::generate_transaction_from_edits(doc.text(), edits, offset_encoding);
-
-    doc.apply(&transaction, view_id);
+    tokio::spawn(async move {
+        match future.await {
+            Ok(Some(res)) => {
+                let transaction =
+                    helix_lsp::util::generate_transaction_from_edits(&text, res, offset_encoding);
+                job::dispatch(move |editor, _compositor| {
+                    let Some(doc) = editor.document_mut(doc_id) else {
+                        return;
+                    };
+                    // Updating a desynced document causes problems with applying the transaction
+                    if doc.version() != doc_version {
+                        return;
+                    }
+                    doc.apply(&transaction, view_id);
+                })
+                .await
+            }
+            Err(err) => log::error!("format sections failed: {err}"),
+            Ok(None) => (),
+        }
+    });
 }
 
 fn join_selections_impl(cx: &mut Context, select_space: bool) {
