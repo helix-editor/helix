@@ -18,6 +18,36 @@ pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
     #[serde(default)]
     pub language_server: HashMap<String, LanguageServerConfiguration>,
+    #[serde(default)]
+    pub global_language_servers: Vec<String>,
+}
+
+impl Configuration {
+    pub fn apply_global_language_servers(&mut self) {
+        for lang_config in &mut self.language {
+            if lang_config.ignore_global_language_servers {
+                continue;
+            }
+
+            // Collect existing language server names for the current language
+            let existing_server_names: HashSet<String> = lang_config
+                .language_servers
+                .iter()
+                .map(|lsf| lsf.name.clone())
+                .collect();
+
+            for global_server_name in &self.global_language_servers {
+                // Only add if it's not already in the language's specific list
+                if !existing_server_names.contains(global_server_name) {
+                    lang_config.language_servers.push(LanguageServerFeatures {
+                        name: global_server_name.clone(),
+                        only: HashSet::new(),
+                        excluded: HashSet::new(),
+                    });
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,6 +67,8 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     #[serde(default)]
     pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
+    #[serde(default)]
+    pub ignore_global_language_servers: bool, // if global language servers are applied to this language
     #[serde(
         default,
         skip_serializing,
