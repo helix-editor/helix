@@ -130,6 +130,7 @@ pub fn dap_start_impl(
         .debug_adapters
         .start_client(socket, config)
         .map_err(|e| anyhow!("Failed to start debug client: {}", e))?;
+    cx.editor.debug_adapters.set_active_client(id);
 
     // TODO: avoid refetching all of this... pass a config in
     let template = match name {
