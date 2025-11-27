@@ -1,3 +1,10 @@
+# Author: F.Nomeniavo Joe <24nomeniavo@gmail.com>
+# Ported Theme: Night Rider
+#
+# Original Author Credit:
+# This color scheme is based on the original VS Code theme by trustfall.
+# Repository: https://github.com/trustfall/vscode-night-rider# 
+
 # SYNTAX
 "attribute" = "#7b79b5"
 "comment" = { fg = "#5C588A", modifiers = ["italic"] }
