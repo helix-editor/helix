@@ -37,78 +37,67 @@ impl helix_event::AsyncHook for InlineCompletionHandler {
                 return;
             }
             let (view, doc) = current!(editor);
-            let cursor = doc
-                .selection(view.id)
-                .primary()
-                .cursor(doc.text().slice(..));
-
-            let Some(ls) = doc
-                .language_servers_with_feature(LanguageServerFeature::InlineCompletion)
-                .next()
-            else {
-                return;
-            };
-
-            let pos = doc.position(view.id, ls.offset_encoding());
             let doc_id = doc.id();
-            let context = lsp::InlineCompletionContext {
-                trigger_kind: lsp::InlineCompletionTriggerKind::Automatic,
-                selected_completion_info: None,
-            };
-            let Some(fut) = ls.inline_completion(doc.identifier(), pos, context, None) else {
-                return;
-            };
+            let view_id = view.id;
 
-            let offset_encoding = ls.offset_encoding();
-            tokio::spawn(async move {
-                let Ok(Some(resp)) = fut.await else { return };
-                let items = match resp {
-                    lsp::InlineCompletionResponse::Array(v) => v,
-                    lsp::InlineCompletionResponse::List(l) => l.items,
+            for ls in doc.language_servers_with_feature(LanguageServerFeature::InlineCompletion) {
+                let pos = doc.position(view.id, ls.offset_encoding());
+                let context = lsp::InlineCompletionContext {
+                    trigger_kind: lsp::InlineCompletionTriggerKind::Automatic,
+                    selected_completion_info: None,
                 };
-                let Some(item) = items.into_iter().next() else {
-                    return;
+                let Some(fut) = ls.inline_completion(doc.identifier(), pos, context, None) else {
+                    continue;
                 };
 
-                job::dispatch(move |editor, _| {
-                    // User may have left insert mode while request was in flight
-                    if editor.mode != Mode::Insert {
-                        return;
-                    }
-                    let Some(doc) = editor.documents.get_mut(&doc_id) else {
+                let offset_encoding = ls.offset_encoding();
+                tokio::spawn(async move {
+                    let Ok(Some(resp)) = fut.await else { return };
+                    let items = match resp {
+                        lsp::InlineCompletionResponse::Array(v) => v,
+                        lsp::InlineCompletionResponse::List(l) => l.items,
+                    };
+                    let Some(item) = items.into_iter().next() else {
                         return;
                     };
-                    let text = doc.text();
 
-                    let replace_range = item
-                        .range
-                        .and_then(|r| lsp_range_to_range(text, r, offset_encoding));
-
-                    // Only use offset if typed text matches insert_text prefix
-                    let offset = replace_range.map_or(0, |r| {
-                        let typed_len = cursor.saturating_sub(r.from());
-                        let Some(typed_slice) = text.get_slice(r.from()..cursor) else {
-                            return 0;
-                        };
-                        let typed_text: String = typed_slice.into();
-                        let prefix = item.insert_text.get(..typed_len).unwrap_or_default();
-                        if typed_text == prefix {
-                            typed_len
-                        } else {
-                            0
+                    job::dispatch(move |editor, _| {
+                        // User may have left insert mode while request was in flight
+                        if editor.mode != Mode::Insert {
+                            return;
                         }
-                    });
+                        let Some(doc) = editor.documents.get_mut(&doc_id) else {
+                            return;
+                        };
+                        let text = doc.text();
+                        let cursor = doc.selection(view_id).primary().cursor(text.slice(..));
 
-                    doc.inline_completion = item
-                        .insert_text
-                        .get(offset..)
-                        .is_some_and(|s| !s.is_empty())
-                        .then(|| {
-                            InlineCompletion::new(cursor, item.insert_text, offset, replace_range)
-                        });
-                })
-                .await;
-            });
+                        let replace_range = item
+                            .range
+                            .and_then(|r| lsp_range_to_range(text, r, offset_encoding));
+
+                        let offset = match replace_range {
+                            Some(r) if cursor > r.to() => return, // stale
+                            Some(r) => cursor.saturating_sub(r.from()),
+                            None => 0,
+                        };
+
+                        if item
+                            .insert_text
+                            .get(offset..)
+                            .is_some_and(|s| !s.is_empty())
+                        {
+                            doc.inline_completions.push(InlineCompletion::new(
+                                cursor,
+                                item.insert_text,
+                                offset,
+                                replace_range,
+                            ));
+                        }
+                    })
+                    .await;
+                });
+            }
         });
     }
 }
@@ -118,7 +107,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
         // Clear stale completion: it was computed for the previous document state
-        event.doc.inline_completion = None;
+        event.doc.inline_completions.take_and_clear();
         // Ignore changes caused by a preview being displayed
         if event.ghost_transaction {
             return Ok(());

@@ -2355,7 +2355,7 @@ impl Editor {
             doc.restore_cursor = false;
         }
 
-        doc.inline_completion = None;
+        doc.inline_completions.take_and_clear();
     }
 
     pub fn current_stack_frame(&self) -> Option<&dap::StackFrame> {

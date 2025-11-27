@@ -518,6 +518,7 @@ impl MappableCommand {
         completion, "Invoke completion popup",
         inline_completion_accept, "Accept inline completion",
         inline_completion_dismiss, "Dismiss inline completion",
+        inline_completion_next, "Cycle to next inline completion",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
         toggle_line_comments, "Line comment/uncomment selections",
@@ -5266,27 +5267,36 @@ pub fn completion(cx: &mut Context) {
 
 pub fn inline_completion_accept(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    if let Some(c) = doc.inline_completion.take() {
+    if let Some(c) = doc.inline_completions.take_and_clear() {
         let text = doc.text();
-        let t = if let Some(r) = c.replace_range {
-            // Position cursor at end of inserted text
-            let cursor = r.from() + c.insert_text.chars().count();
-            Transaction::change(
-                text,
-                std::iter::once((r.from(), r.to(), Some(c.insert_text.into()))),
-            )
-            .with_selection(Selection::point(cursor))
+        let (from, to) = if let Some(r) = c.replace_range {
+            (r.from(), r.to())
         } else {
-            Transaction::insert(text, doc.selection(view.id), c.insert_text.into())
+            let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+            (cursor, cursor)
         };
+        let new_cursor = from + c.insert_text.chars().count();
+        let t = Transaction::change(
+            text,
+            std::iter::once((from, to, Some(c.insert_text.into()))),
+        )
+        .with_selection(Selection::point(new_cursor));
         doc.apply(&t, view.id);
     }
 }
 
 pub fn inline_completion_dismiss(cx: &mut Context) {
-    if doc_mut!(cx.editor).inline_completion.take().is_none() {
+    if doc_mut!(cx.editor)
+        .inline_completions
+        .take_and_clear()
+        .is_none()
+    {
         normal_mode(cx);
     }
+}
+
+pub fn inline_completion_next(cx: &mut Context) {
+    doc_mut!(cx.editor).inline_completions.next();
 }
 
 // comments

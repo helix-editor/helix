@@ -112,7 +112,6 @@ impl Serialize for Mode {
 }
 
 /// Inline completion data for ghost text display and acceptance.
-#[derive(Debug, Clone)]
 pub struct InlineCompletion {
     /// The annotation for displaying ghost text (position + display text).
     pub annotation: InlineAnnotation,
@@ -136,6 +135,39 @@ impl InlineCompletion {
             insert_text,
             replace_range,
         }
+    }
+}
+
+/// List of inline completions with cycling support.
+#[derive(Default)]
+pub struct InlineCompletions {
+    items: Vec<InlineCompletion>,
+    index: usize,
+}
+
+impl InlineCompletions {
+    pub fn push(&mut self, item: InlineCompletion) {
+        self.items.push(item);
+    }
+
+    pub fn current(&self) -> Option<&InlineCompletion> {
+        self.items.get(self.index)
+    }
+
+    pub fn next(&mut self) {
+        if !self.items.is_empty() {
+            self.index = (self.index + 1) % self.items.len();
+        }
+    }
+
+    pub fn take_and_clear(&mut self) -> Option<InlineCompletion> {
+        if self.items.is_empty() {
+            return None;
+        }
+        let item = self.items.swap_remove(self.index);
+        self.items.clear();
+        self.index = 0;
+        Some(item)
     }
 }
 
@@ -183,8 +215,8 @@ pub struct Document {
     /// update from the LSP
     pub inlay_hints_oudated: bool,
 
-    /// Current inline completion (ghost text) for the document.
-    pub inline_completion: Option<InlineCompletion>,
+    /// Inline completions (ghost text) for the document.
+    pub inline_completions: InlineCompletions,
 
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
@@ -737,7 +769,7 @@ impl Document {
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
-            inline_completion: None,
+            inline_completions: InlineCompletions::default(),
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             editor_config: EditorConfig::default(),

@@ -209,7 +209,7 @@ impl EditorView {
         );
 
         // Render ghost text at cursor position
-        if let Some(completion) = doc.inline_completion.as_ref() {
+        if let Some(completion) = doc.inline_completions.current() {
             if let Some(cursor_pos) = editor.cursor_cache.get(view, doc) {
                 let style = theme.get("ui.virtual.inline-completion");
                 let x = inner.x + cursor_pos.col as u16;
