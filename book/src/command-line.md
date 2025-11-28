@@ -15,7 +15,7 @@ By default, command arguments are split on tabs and space characters. `:open REA
 
 Double quotes may be used the same way, but double quotes _expand_ their inner content. `:echo "%{cursor_line}"` for example may print `1` because of the expansion for the `cursor_line` variable. `:echo '%{cursor_line}'` though prints `%{cursor_line}` literally: content within single quotes or backticks is interpreted as-is.
 
-On Unix systems the backslash character may be used to escape certain characters depending on where it is used. Within an argument which isn't surround in quotes, the backslash can be used to escape the space or tab characters: `:open a\ b.txt` is equivalent to `:open 'a b.txt'`. The backslash may also be used to escape quote characters (`'`, `` ` ``, `"`) or the percent token (`%`) when used at the beginning of an argument. `:echo \%%sh{foo}` for example prints `%sh{foo}` instead of invoking a `foo` shell command and `:echo \"quote` prints `"quote`. The backslash character is treated literally in any other situation on Unix systems and always on Windows: `:echo \n` always prints `\n`.
+On Unix systems the backslash character may be used to escape certain characters depending on where it is used. Within an argument which isn't surround in quotes, the backslash can be used to escape the space or tab characters: `:open a\ b.txt` is equivalent to `:open 'a b.txt'`. The backslash may also be used to escape quote characters (`'`, `` ` ``, `"`) or the percent token (`%`) when used at the beginning of an argument. `:echo \%sh{foo}` for example prints `%sh{foo}` instead of invoking a `foo` shell command and `:echo \"quote` prints `"quote`. The backslash character is treated literally in any other situation on Unix systems and always on Windows: `:echo \n` always prints `\n`.
 
 ## Flags
 
@@ -46,6 +46,7 @@ The following variables are supported:
 | `cursor_line` | The line number of the primary cursor in the currently focused document, starting at 1. |
 | `cursor_column` | The column number of the primary cursor in the currently focused document, starting at 1. This is counted as the number of grapheme clusters from the start of the line rather than bytes or codepoints. |
 | `buffer_name` | The relative path of the currently focused document. `[scratch]` is expanded instead for scratch buffers. |
+| `file_path_absolute` | The absolute path of the currently focused document. For scratch buffers this will default to the current working directory. |
 | `line_ending` | A string containing the line ending of the currently focused document. For example on Unix systems this is usually a line-feed character (`\n`) but on Windows systems this may be a carriage-return plus a line-feed (`\r\n`). The line ending kind of the currently focused document can be inspected with the `:line-ending` command. |
 | `current_working_directory` | Current working directory |
 | `workspace_directory` | Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix` |
