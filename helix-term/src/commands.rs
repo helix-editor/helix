@@ -464,6 +464,8 @@ impl MappableCommand {
         extend_to_column, "Extend to column",
         goto_next_buffer, "Goto next buffer",
         goto_previous_buffer, "Goto previous buffer",
+        goto_next_file, "Go to the next file alphabetically in the current file's directory",
+        goto_prev_file, "Go to the previous file alphabetically in the current file's directory",
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
         trim_selections, "Trim whitespace from selections",
@@ -3070,14 +3072,10 @@ fn file_picker(cx: &mut Context) {
 }
 
 fn file_picker_in_current_buffer_directory(cx: &mut Context) {
-    let doc_dir = doc!(cx.editor)
-        .path()
-        .and_then(|path| path.parent().map(|path| path.to_path_buf()));
-
-    let path = match doc_dir {
-        Some(path) => path,
-        None => {
-            cx.editor.set_error("current buffer has no path or parent");
+    let path = match parent_dir(cx.editor) {
+        Ok(value) => value,
+        Err(msg) => {
+            cx.editor.set_error(msg.to_string());
             return;
         }
     };
@@ -6991,4 +6989,52 @@ fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
     } else {
         syntax_workspace_symbol_picker(cx);
     }
+}
+
+fn goto_next_file(cx: &mut Context) {
+    if let Err(err) = goto_next_file_impl(cx.editor, Direction::Forward, cx.count()) {
+        cx.editor.set_error(err.to_string());
+    }
+}
+
+fn goto_prev_file(cx: &mut Context) {
+    if let Err(err) = goto_next_file_impl(cx.editor, Direction::Backward, cx.count()) {
+        cx.editor.set_error(err.to_string());
+    }
+}
+
+fn goto_next_file_impl(
+    editor: &mut Editor,
+    direction: Direction,
+    count: usize,
+) -> anyhow::Result<()> {
+    let path = parent_dir(editor)?;
+    let files: Vec<_> = WalkBuilder::new(path)
+        .sort_by_file_name(|name1, name2| name1.cmp(name2))
+        .max_depth(Some(1))
+        .build()
+        .flatten()
+        .map(|e| e.into_path())
+        .filter(|p| p.is_file())
+        .collect();
+    if let Some(path) = doc!(editor).path() {
+        let file = match direction {
+            Direction::Forward => files.iter().skip_while(|f| *f != path).nth(count),
+            Direction::Backward => files.iter().rev().skip_while(|f| *f != path).nth(count),
+        };
+
+        let file = file.ok_or_else(|| anyhow!("No more files"))?;
+        if let Err(e) = editor.open(file, Action::Replace) {
+            anyhow::bail!(format!("Open file failed: {:?}", e));
+        }
+    }
+    Ok(())
+}
+
+/// Get the parent dir if it exists.
+fn parent_dir(editor: &mut Editor) -> anyhow::Result<PathBuf> {
+    doc!(editor)
+        .path()
+        .and_then(|path| path.parent().map(|path| path.to_path_buf()))
+        .ok_or_else(|| anyhow!("current buffer has no path or parent"))
 }
