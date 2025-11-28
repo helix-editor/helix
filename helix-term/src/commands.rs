@@ -519,6 +519,8 @@ impl MappableCommand {
         inline_completion_accept, "Accept inline completion",
         inline_completion_dismiss, "Dismiss inline completion",
         inline_completion_next, "Cycle to next inline completion",
+        inline_completion_prev, "Cycle to previous inline completion",
+        inline_completion_trigger, "Trigger inline completion",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
         toggle_line_comments, "Line comment/uncomment selections",
@@ -5291,7 +5293,24 @@ pub fn inline_completion_dismiss(cx: &mut Context) {
 }
 
 pub fn inline_completion_next(cx: &mut Context) {
-    doc_mut!(cx.editor).inline_completions.next();
+    use helix_core::movement::Direction;
+    doc_mut!(cx.editor)
+        .inline_completions
+        .cycle(Direction::Forward);
+}
+
+pub fn inline_completion_prev(cx: &mut Context) {
+    use helix_core::movement::Direction;
+    doc_mut!(cx.editor)
+        .inline_completions
+        .cycle(Direction::Backward);
+}
+
+pub fn inline_completion_trigger(_cx: &mut Context) {
+    use helix_lsp::lsp;
+    crate::handlers::inline_completion::trigger_inline_completion(
+        lsp::InlineCompletionTriggerKind::Invoked,
+    );
 }
 
 // comments

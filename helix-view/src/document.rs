@@ -135,9 +135,13 @@ impl InlineCompletions {
         self.items.get(self.index)
     }
 
-    pub fn next(&mut self) {
+    pub fn cycle(&mut self, direction: helix_core::movement::Direction) {
         if !self.items.is_empty() {
-            self.index = (self.index + 1) % self.items.len();
+            let len = self.items.len();
+            self.index = match direction {
+                helix_core::movement::Direction::Forward => (self.index + 1) % len,
+                helix_core::movement::Direction::Backward => (self.index + len - 1) % len,
+            };
         }
     }
 

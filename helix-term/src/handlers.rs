@@ -19,7 +19,7 @@ mod auto_save;
 pub mod completion;
 pub mod diagnostics;
 mod document_colors;
-mod inline_completion;
+pub mod inline_completion;
 mod prompt;
 mod signature_help;
 mod snippet;

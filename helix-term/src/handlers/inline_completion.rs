@@ -31,78 +31,83 @@ impl helix_event::AsyncHook for InlineCompletionHandler {
     }
 
     fn finish_debounce(&mut self) {
-        job::dispatch_blocking(move |editor, _| {
-            // User may have left insert mode before debounce fired
-            if editor.mode != Mode::Insert {
-                return;
-            }
-            let (view, doc) = current!(editor);
-            // Capture state to verify nothing changed when response arrives.
-            // DocumentId is monotonic; ViewId uses slotmap versioning (reused slots get new version).
-            let doc_id = doc.id();
-            let view_id = view.id;
-            let doc_version = doc.version();
-
-            for ls in doc.language_servers_with_feature(LanguageServerFeature::InlineCompletion) {
-                let pos = doc.position(view.id, ls.offset_encoding());
-                let context = lsp::InlineCompletionContext {
-                    trigger_kind: lsp::InlineCompletionTriggerKind::Automatic,
-                    selected_completion_info: None,
-                };
-                let Some(fut) = ls.inline_completion(doc.identifier(), pos, context, None) else {
-                    continue;
-                };
-
-                let offset_encoding = ls.offset_encoding();
-                tokio::spawn(async move {
-                    let Ok(Some(resp)) = fut.await else { return };
-                    let items = match resp {
-                        lsp::InlineCompletionResponse::Array(v) => v,
-                        lsp::InlineCompletionResponse::List(l) => l.items,
-                    };
-                    let Some(item) = items.into_iter().next() else {
-                        return;
-                    };
-
-                    job::dispatch(move |editor, _| {
-                        // User may have left insert mode, switched view/doc, or edited the document
-                        let (view, doc) = current!(editor);
-                        if editor.mode != Mode::Insert
-                            || view.id != view_id
-                            || doc.id() != doc_id
-                            || doc.version() != doc_version
-                        {
-                            return;
-                        }
-                        let text = doc.text();
-                        let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
-
-                        let replace_range = item
-                            .range
-                            .and_then(|r| lsp_range_to_range(text, r, offset_encoding))
-                            .unwrap_or_else(|| Range::point(cursor));
-
-                        // Discard if cursor moved outside range (e.g., arrow keys don't change version)
-                        if !replace_range.contains_range(&Range::point(cursor)) {
-                            return;
-                        }
-
-                        // Skip already-typed chars
-                        let skip = cursor.saturating_sub(replace_range.from());
-                        let ghost_text: String = item.insert_text.chars().skip(skip).collect();
-
-                        if !ghost_text.is_empty() {
-                            doc.inline_completions.push(InlineCompletion {
-                                ghost_text,
-                                replace_range,
-                            });
-                        }
-                    })
-                    .await;
-                });
-            }
-        });
+        trigger_inline_completion(lsp::InlineCompletionTriggerKind::Automatic);
     }
+}
+
+/// Request inline completion from LSP servers. Called by debounce handler (auto)
+/// or directly by manual trigger command.
+pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind) {
+    job::dispatch_blocking(move |editor, _| {
+        // Only trigger in insert mode
+        if editor.mode != Mode::Insert {
+            return;
+        }
+        let (view, doc) = current!(editor);
+        // DocumentId is monotonic; ViewId uses slotmap versioning (reused slots get new version).
+        let doc_id = doc.id();
+        let view_id = view.id;
+        let doc_version = doc.version();
+
+        for ls in doc.language_servers_with_feature(LanguageServerFeature::InlineCompletion) {
+            let pos = doc.position(view.id, ls.offset_encoding());
+            let context = lsp::InlineCompletionContext {
+                trigger_kind,
+                selected_completion_info: None,
+            };
+            let Some(fut) = ls.inline_completion(doc.identifier(), pos, context, None) else {
+                continue;
+            };
+
+            let offset_encoding = ls.offset_encoding();
+            tokio::spawn(async move {
+                let Ok(Some(resp)) = fut.await else { return };
+                let items = match resp {
+                    lsp::InlineCompletionResponse::Array(v) => v,
+                    lsp::InlineCompletionResponse::List(l) => l.items,
+                };
+                let Some(item) = items.into_iter().next() else {
+                    return;
+                };
+
+                job::dispatch(move |editor, _| {
+                    // User may have left insert mode, switched view/doc, or edited the document
+                    let (view, doc) = current!(editor);
+                    if editor.mode != Mode::Insert
+                        || view.id != view_id
+                        || doc.id() != doc_id
+                        || doc.version() != doc_version
+                    {
+                        return;
+                    }
+                    let text = doc.text();
+                    let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+
+                    let replace_range = item
+                        .range
+                        .and_then(|r| lsp_range_to_range(text, r, offset_encoding))
+                        .unwrap_or_else(|| Range::point(cursor));
+
+                    // Discard if cursor moved outside range (e.g., arrow keys don't change version)
+                    if !replace_range.contains_range(&Range::point(cursor)) {
+                        return;
+                    }
+
+                    // Skip already-typed chars
+                    let skip = cursor.saturating_sub(replace_range.from());
+                    let ghost_text: String = item.insert_text.chars().skip(skip).collect();
+
+                    if !ghost_text.is_empty() {
+                        doc.inline_completions.push(InlineCompletion {
+                            ghost_text,
+                            replace_range,
+                        });
+                    }
+                })
+                .await;
+            });
+        }
+    });
 }
 
 pub(super) fn register_hooks(handlers: &Handlers) {
@@ -116,7 +121,9 @@ pub(super) fn register_hooks(handlers: &Handlers) {
             return Ok(());
         }
 
-        send_blocking(&tx, ());
+        if event.doc.config.load().inline_completion_auto_trigger {
+            send_blocking(&tx, ());
+        }
         Ok(())
     });
 }
