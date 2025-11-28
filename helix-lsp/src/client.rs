@@ -705,6 +705,7 @@ impl Client {
                 }),
                 window: Some(lsp::WindowClientCapabilities {
                     work_done_progress: Some(true),
+                    show_document: Some(lsp::ShowDocumentClientCapabilities { support: true }),
                     ..Default::default()
                 }),
                 general: Some(lsp::GeneralClientCapabilities {
