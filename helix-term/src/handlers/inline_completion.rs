@@ -37,8 +37,11 @@ impl helix_event::AsyncHook for InlineCompletionHandler {
                 return;
             }
             let (view, doc) = current!(editor);
+            // Capture state to verify nothing changed when response arrives.
+            // DocumentId is monotonic; ViewId uses slotmap versioning (reused slots get new version).
             let doc_id = doc.id();
             let view_id = view.id;
+            let doc_version = doc.version();
 
             for ls in doc.language_servers_with_feature(LanguageServerFeature::InlineCompletion) {
                 let pos = doc.position(view.id, ls.offset_encoding());
@@ -62,22 +65,24 @@ impl helix_event::AsyncHook for InlineCompletionHandler {
                     };
 
                     job::dispatch(move |editor, _| {
-                        // User may have left insert mode while request was in flight
-                        if editor.mode != Mode::Insert {
+                        // User may have left insert mode, switched view/doc, or edited the document
+                        let (view, doc) = current!(editor);
+                        if editor.mode != Mode::Insert
+                            || view.id != view_id
+                            || doc.id() != doc_id
+                            || doc.version() != doc_version
+                        {
                             return;
                         }
-                        let Some(doc) = editor.documents.get_mut(&doc_id) else {
-                            return;
-                        };
                         let text = doc.text();
-                        let cursor = doc.selection(view_id).primary().cursor(text.slice(..));
+                        let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
 
                         let replace_range = item
                             .range
                             .and_then(|r| lsp_range_to_range(text, r, offset_encoding))
                             .unwrap_or_else(|| Range::point(cursor));
 
-                        // Discard stale completions (cursor moved outside range)
+                        // Discard if cursor moved outside range (e.g., arrow keys don't change version)
                         if !replace_range.contains_range(&Range::point(cursor)) {
                             return;
                         }
