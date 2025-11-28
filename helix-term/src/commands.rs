@@ -5269,16 +5269,11 @@ pub fn inline_completion_accept(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     if let Some(c) = doc.inline_completions.take_and_clear() {
         let text = doc.text();
-        let (from, to) = if let Some(r) = c.replace_range {
-            (r.from(), r.to())
-        } else {
-            let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
-            (cursor, cursor)
-        };
-        let new_cursor = from + c.insert_text.chars().count();
+        let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+        let new_cursor = cursor + c.ghost_text.chars().count();
         let t = Transaction::change(
             text,
-            std::iter::once((from, to, Some(c.insert_text.into()))),
+            std::iter::once((cursor, c.replace_range.to(), Some(c.ghost_text.into()))),
         )
         .with_selection(Selection::point(new_cursor));
         doc.apply(&t, view.id);

@@ -113,29 +113,10 @@ impl Serialize for Mode {
 
 /// Inline completion data for ghost text display and acceptance.
 pub struct InlineCompletion {
-    /// The annotation for displaying ghost text (position + display text).
-    pub annotation: InlineAnnotation,
-    /// The full text to insert when accepting.
-    pub insert_text: String,
-    /// Character range to replace. If None, insert at cursor.
-    pub replace_range: Option<Range>,
-}
-
-impl InlineCompletion {
-    pub fn new(
-        cursor: usize,
-        insert_text: String,
-        offset: usize,
-        replace_range: Option<Range>,
-    ) -> Self {
-        let annotation =
-            InlineAnnotation::new(cursor, insert_text.get(offset..).unwrap_or_default());
-        Self {
-            annotation,
-            insert_text,
-            replace_range,
-        }
-    }
+    /// Ghost text to display/insert (typed prefix already removed).
+    pub ghost_text: String,
+    /// Range to replace: `from()` = prefix start, `to()` = replacement end.
+    pub replace_range: Range,
 }
 
 /// List of inline completions with cycling support.

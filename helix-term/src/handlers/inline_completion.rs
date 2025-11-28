@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use helix_core::syntax::config::LanguageServerFeature;
+use helix_core::{syntax::config::LanguageServerFeature, Range};
 use helix_event::{register_hook, send_blocking};
 use helix_lsp::{lsp, util::lsp_range_to_range};
 use helix_view::{
@@ -74,25 +74,23 @@ impl helix_event::AsyncHook for InlineCompletionHandler {
 
                         let replace_range = item
                             .range
-                            .and_then(|r| lsp_range_to_range(text, r, offset_encoding));
+                            .and_then(|r| lsp_range_to_range(text, r, offset_encoding))
+                            .unwrap_or_else(|| Range::point(cursor));
 
-                        let offset = match replace_range {
-                            Some(r) if cursor > r.to() => return, // stale
-                            Some(r) => cursor.saturating_sub(r.from()),
-                            None => 0,
-                        };
+                        // Discard stale completions (cursor moved outside range)
+                        if !replace_range.contains_range(&Range::point(cursor)) {
+                            return;
+                        }
 
-                        if item
-                            .insert_text
-                            .get(offset..)
-                            .is_some_and(|s| !s.is_empty())
-                        {
-                            doc.inline_completions.push(InlineCompletion::new(
-                                cursor,
-                                item.insert_text,
-                                offset,
+                        // Skip already-typed chars
+                        let skip = cursor.saturating_sub(replace_range.from());
+                        let ghost_text: String = item.insert_text.chars().skip(skip).collect();
+
+                        if !ghost_text.is_empty() {
+                            doc.inline_completions.push(InlineCompletion {
+                                ghost_text,
                                 replace_range,
-                            ));
+                            });
                         }
                     })
                     .await;
