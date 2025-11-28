@@ -66,9 +66,9 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
                     lsp::InlineCompletionResponse::Array(v) => v,
                     lsp::InlineCompletionResponse::List(l) => l.items,
                 };
-                let Some(item) = items.into_iter().next() else {
+                if items.is_empty() {
                     return;
-                };
+                }
 
                 job::dispatch(move |editor, _| {
                     // User may have left insert mode, switched view/doc, or edited the document
@@ -83,25 +83,36 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
                     let text = doc.text();
                     let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
 
-                    let replace_range = item
-                        .range
-                        .and_then(|r| lsp_range_to_range(text, r, offset_encoding))
-                        .unwrap_or_else(|| Range::point(cursor));
+                    let completions: Vec<_> = items
+                        .into_iter()
+                        .filter_map(|item| {
+                            let replace_range = item
+                                .range
+                                .and_then(|r| lsp_range_to_range(text, r, offset_encoding))
+                                .unwrap_or_else(|| Range::point(cursor));
 
-                    // Discard if cursor moved outside range (e.g., arrow keys don't change version)
-                    if !replace_range.contains_range(&Range::point(cursor)) {
-                        return;
-                    }
+                            // Discard if cursor moved outside range (e.g., arrow keys don't change version)
+                            if !replace_range.contains_range(&Range::point(cursor)) {
+                                return None;
+                            }
 
-                    // Skip already-typed chars
-                    let skip = cursor.saturating_sub(replace_range.from());
-                    let ghost_text: String = item.insert_text.chars().skip(skip).collect();
+                            // Skip already-typed chars
+                            let skip = cursor.saturating_sub(replace_range.from());
+                            let ghost_text: String = item.insert_text.chars().skip(skip).collect();
 
-                    if !ghost_text.is_empty() {
-                        doc.inline_completions.push(InlineCompletion {
-                            ghost_text,
-                            replace_range,
-                        });
+                            if ghost_text.is_empty() {
+                                return None;
+                            }
+
+                            Some(InlineCompletion {
+                                ghost_text,
+                                replace_range,
+                            })
+                        })
+                        .collect();
+
+                    for completion in completions {
+                        doc.inline_completions.push(completion);
                     }
                 })
                 .await;
