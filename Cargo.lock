@@ -1574,6 +1574,7 @@ dependencies = [
  "chardetng",
  "clipboard-win",
  "crossterm",
+ "filetime",
  "futures-util",
  "helix-core",
  "helix-dap",
