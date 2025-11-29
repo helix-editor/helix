@@ -38,6 +38,13 @@
   ">"
 ] @outdent
 
+; Make sure closing braces are correctly indented when we press return to create
+; a new line.
+(block
+  "{" @indent
+  "}" @outdent
+) @scope
+
 (assignment
   .
   (_) @expr-start
@@ -98,3 +105,4 @@
     "["
   ]
 ) @indent
+
