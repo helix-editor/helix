@@ -85,6 +85,12 @@ pub fn char_is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
 }
 
+/// Determine whether a character is a subword text object delimiter.
+#[inline]
+pub fn char_is_subword_textobj_delimiter(ch: char) -> bool {
+    ch == '_' || ch == '-' || ch == '/'
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
