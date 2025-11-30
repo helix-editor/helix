@@ -4779,7 +4779,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "alloy"
-source = { git = "https://github.com/mattsre/tree-sitter-alloy", rev = "3e18eb4e97f06c57a3925f3d20bef6329a6eaef3" }
+source = { git = "https://github.com/mattsre/tree-sitter-alloy", rev = "58d462b1cdb077682b130caa324f3822aeb00b8e" }
 
 [[language]]
 name = "luau"
