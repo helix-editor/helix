@@ -2534,19 +2534,6 @@ Get the current mode of the editor
     );
 
     register_0!(
-        "string->editor-mode",
-        string_to_mode,
-        r#"
-Create an editor mode from a string, or false if it string was not one of
-"normal", "insert", or "select"
-
-```scheme
-(string->editor-mode "normal") -> (or Mode? #f)
-```
-        "#
-    );
-
-    register_0!(
         "cx->themes",
         get_themes,
         "DEPRECATED: Please use `themes->list`"
@@ -2684,6 +2671,8 @@ Get the `Rect` associated with the currently focused buffer.
         },
     );
 
+    module.register_fn("string->editor-mode", string_to_mode);
+
     if generate_sources {
         let mut template_function_type_constructor = |name: &str| {
             builtin_editor_command_module.push_str(&format!(
@@ -2715,6 +2704,18 @@ Get the `Rect` associated with the currently focused buffer.
                 ));
             }
         };
+
+        template_function_arity_1(
+            "string->editor-mode",
+            r#"
+Create an editor mode from a string, or false if it string was not one of
+"normal", "insert", or "select"
+
+```scheme
+(string->editor-mode "normal") -> (or Mode? #f)
+```
+        "#,
+        );
 
         template_function_arity_1("editor->doc-id", "Get the document from a given view.");
         template_function_arity_1("editor-switch!", "Open the document in a vertical split.");
