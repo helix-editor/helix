@@ -1385,6 +1385,7 @@ dependencies = [
  "futures-executor",
  "futures-util",
  "helix-core",
+ "helix-dap-types",
  "helix-stdx",
  "log",
  "serde",
@@ -1394,6 +1395,14 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
+]
+
+[[package]]
+name = "helix-dap-types"
+version = "25.7.1"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

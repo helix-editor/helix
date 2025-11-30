@@ -1,11 +1,10 @@
 mod client;
 pub mod registry;
 mod transport;
-mod types;
 
 pub use client::Client;
+pub use helix_dap_types::*;
 pub use transport::{Payload, Response, Transport};
-pub use types::*;
 
 use serde::de::DeserializeOwned;
 
@@ -43,13 +42,13 @@ impl From<sonic_rs::Error> for Error {
 
 #[derive(Debug)]
 pub enum Request {
-    RunInTerminal(<requests::RunInTerminal as types::Request>::Arguments),
-    StartDebugging(<requests::StartDebugging as types::Request>::Arguments),
+    RunInTerminal(<requests::RunInTerminal as helix_dap_types::Request>::Arguments),
+    StartDebugging(<requests::StartDebugging as helix_dap_types::Request>::Arguments),
 }
 
 impl Request {
     pub fn parse(command: &str, arguments: Option<serde_json::Value>) -> Result<Self> {
-        use crate::types::Request as _;
+        use helix_dap_types::Request as _;
 
         let arguments = arguments.unwrap_or_default();
         let request = match command {
