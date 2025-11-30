@@ -269,6 +269,24 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
+    scroll: ScrollState,
+}
+
+struct ScrollState {
+    cursor_id: u32,
+    position: usize,
+}
+
+impl ScrollState {
+    fn get_position(&mut self, cursor: u32) -> usize {
+        if cursor == self.cursor_id {
+            self.position
+        } else {
+            self.cursor_id = cursor;
+            self.position = 0;
+            self.position
+        }
+    }
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -394,6 +412,10 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             file_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
+            scroll: ScrollState {
+                cursor_id: 0,
+                position: 0,
+            },
         }
     }
 
@@ -897,6 +919,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let inner = inner.inner(margin);
         BLOCK.render(area, surface);
 
+        let current_cursor = self.cursor;
+        let scroll_position = self.scroll.get_position(current_cursor);
+
         if let Some((preview, range)) = self.get_preview(cx.editor) {
             let doc = match preview.document() {
                 Some(doc)
@@ -957,6 +982,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     offset.anchor = start;
                 }
             }
+
+            let text = doc.text().slice(..);
+
+            let view_start = text.line_to_char(scroll_position);
+            offset.anchor = view_start;
 
             let loader = cx.editor.syn_loader.load();
 
@@ -1142,6 +1172,18 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             }
             ctrl!('t') => {
                 self.toggle_preview();
+            }
+            ctrl!('j') => {
+                if let Some((preview, _)) = self.get_preview(ctx.editor) {
+                    if let Some(doc) = preview.document() {
+                        let max_lines = doc.text().len_lines();
+                        self.scroll.position =
+                            (self.scroll.position.saturating_add(1)).min(max_lines);
+                    }
+                }
+            }
+            ctrl!('k') => {
+                self.scroll.position = self.scroll.position.saturating_sub(1);
             }
             _ => {
                 self.prompt_handle_event(event, ctx);
