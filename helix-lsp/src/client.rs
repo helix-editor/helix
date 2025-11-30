@@ -669,6 +669,7 @@ impl Client {
                                     lsp::CodeActionKind::REFACTOR_REWRITE,
                                     lsp::CodeActionKind::SOURCE,
                                     lsp::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                    lsp::CodeActionKind::SOURCE_FIX_ALL,
                                 ]
                                 .iter()
                                 .map(|kind| kind.as_str().to_string())
