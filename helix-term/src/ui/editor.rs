@@ -214,10 +214,13 @@ impl EditorView {
                 let style = theme.get("ui.virtual.inline-completion");
                 let x = inner.x + cursor_pos.col as u16;
                 let y = inner.y + cursor_pos.row as u16;
+                let tab_width = doc.tab_width();
+                let tab_spaces: String = " ".repeat(tab_width);
                 for (i, line) in completion.ghost_text.split('\n').enumerate() {
+                    let line = line.replace('\t', &tab_spaces);
                     // First line starts at cursor, subsequent lines at viewport left edge
                     let line_x = if i == 0 { x } else { inner.x };
-                    surface.set_string(line_x, y + i as u16, line, style);
+                    surface.set_string(line_x, y + i as u16, &line, style);
                 }
             }
         }
