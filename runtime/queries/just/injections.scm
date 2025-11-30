@@ -12,11 +12,14 @@
 
 ; ================ Global defaults ================
 
-; Default everything to be bash
+; Default recipe lines to be bash, but exclude interpolation nodes
+; This prevents bash's rainbow brackets from interfering with just's {{ }} markers
+; Use injection.combined to combine all recipe lines so bash can parse multi-line constructs
 (recipe_body
   !shebang
+  (recipe_line) @injection.content
   (#set! injection.language "bash")
-  (#set! injection.include-children)) @injection.content
+  (#set! injection.combined))
 
 (external_command
   (content) @injection.content
@@ -49,7 +52,8 @@
     (recipe
       (recipe_body
         !shebang
-        (#set! injection.include-children)) @injection.content)
+        (recipe_line) @injection.content
+        (#set! injection.combined)))
 
     (assignment
       (expression
@@ -65,7 +69,8 @@
     (recipe
       (recipe_body
         !shebang
-        (#set! injection.include-children)) @injection.content)
+        (recipe_line) @injection.content
+        (#set! injection.combined)))
 
     (assignment
       (expression
@@ -79,4 +84,5 @@
 ; Set highlighting for recipes that specify a language using builtin shebang matching
 (recipe_body
   (shebang_line) @injection.shebang
-  (#set! injection.include-children)) @injection.content
+  (recipe_line) @injection.content
+  (#set! injection.combined))
