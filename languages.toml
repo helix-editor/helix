@@ -2062,7 +2062,7 @@ source = { git = "https://github.com/gbprod/tree-sitter-gitcommit", rev = "a7166
 [[language]]
 name = "git-notes"
 scope = "git.notesmsg"
-file-types = [{ glob = "NOTES_EDITMSG" }]
+file-types = [{ glob = "NOTES_EDITMSG" }, { glob = "EDIT_DESCRIPTION" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 rulers = [73]
