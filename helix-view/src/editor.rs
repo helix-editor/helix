@@ -594,6 +594,7 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    pub merge_with_commandline: bool,
     pub diagnostics: Vec<Severity>,
     pub workspace_diagnostics: Vec<Severity>,
 }
@@ -620,6 +621,7 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            merge_with_commandline: false,
             diagnostics: vec![Severity::Warning, Severity::Error],
             workspace_diagnostics: vec![Severity::Warning, Severity::Error],
         }
