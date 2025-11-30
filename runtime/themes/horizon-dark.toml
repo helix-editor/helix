@@ -21,6 +21,8 @@ tag = "red"
 # User Interface
 "ui.background" = { bg = "bg", fg = "gray" }
 "ui.background.separator" = "light-gray"
+"ui.linenr" = { fg = "light-gray" }
+"ui.linenr.selected" = { fg = "white" }
 "ui.text" = "white"
 "ui.text.focus" = "green"
 "ui.text.inactive" = "selection"

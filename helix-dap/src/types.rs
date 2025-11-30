@@ -457,10 +457,13 @@ pub mod requests {
     pub enum ConfigurationDone {}
 
     impl Request for ConfigurationDone {
-        type Arguments = ();
+        type Arguments = Option<ConfigurationDoneArguments>;
         type Result = ();
         const COMMAND: &'static str = "configurationDone";
     }
+
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct ConfigurationDoneArguments {}
 
     #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]

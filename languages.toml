@@ -60,6 +60,7 @@ harper-ls = { command = "harper-ls", args = ["--stdio"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 hdls = { command = "hdls" }
 hyprls = { command = "hyprls" }
+hyuga = { command = "hyuga" }
 idris2-lsp = { command = "idris2-lsp" }
 intelephense = { command = "intelephense", args = ["--stdio"] }
 jdtls = { command = "jdtls" }
@@ -1944,7 +1945,7 @@ word-completion.trigger-length = 4
 
 [[grammar]]
 name = "markdown"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "62516e8c78380e3b51d5b55727995d2c511436d8", subpath = "tree-sitter-markdown" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "2dfd57f547f06ca5631a80f601e129d73fc8e9f0", subpath = "tree-sitter-markdown" }
 
 [[language]]
 name = "markdown-rustdoc"
@@ -1964,7 +1965,7 @@ grammar = "markdown_inline"
 
 [[grammar]]
 name = "markdown_inline"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "62516e8c78380e3b51d5b55727995d2c511436d8", subpath = "tree-sitter-markdown-inline" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "2dfd57f547f06ca5631a80f601e129d73fc8e9f0", subpath = "tree-sitter-markdown-inline" }
 
 [[language]]
 name = "djot"
@@ -2062,7 +2063,7 @@ source = { git = "https://github.com/gbprod/tree-sitter-gitcommit", rev = "a7166
 [[language]]
 name = "git-notes"
 scope = "git.notesmsg"
-file-types = [{ glob = "NOTES_EDITMSG" }]
+file-types = [{ glob = "NOTES_EDITMSG" }, { glob = "EDIT_DESCRIPTION" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 rulers = [73]
@@ -4081,6 +4082,22 @@ name = "ld"
 source = { git = "https://github.com/mtoohey31/tree-sitter-ld", rev = "0e9695ae0ede47b8744a8e2ad44d4d40c5d4e4c9" }
 
 [[language]]
+name = "hy"
+scope = "source.hy"
+roots = ["pyproject.toml"]
+file-types = ["hy"]
+comment-token = ";"
+indent = { tab-width = 1, unit = " " }
+grammar = "scheme"
+language-servers = ["hyuga"]
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
+[[language]]
 name = "hyprlang"
 scope = "source.hyprlang"
 roots = ["hyprland.conf"]
@@ -4116,6 +4133,16 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "supercollider"
 source = { git = "https://github.com/madskjeldgaard/tree-sitter-supercollider", rev = "3b35bd0fded4423c8fb30e9585c7bacbcd0e8095" }
+
+[[language]]
+name = "rpmspec"
+scope = "source.rpmspec"
+file-types = ["spec"]
+comment-token = "#"
+
+[[grammar]]
+name = "rpmspec"
+source = { git = "https://gitlab.com/cryptomilk/tree-sitter-rpmspec", rev = "d0275cd1316d9b7a2e0fae028ce95a5a18741e1d" }
 
 [[language]]
 name = "pkgbuild"
@@ -5035,6 +5062,16 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "freebasic"
 source = { git = "https://github.com/Ra77a3l3-jar/tree-sitter-freebasic", rev = "dbf696adb4c0b9c020074e75043c90592981ee7f" }
+
+[[language]]
+name = "scfg"
+scope = "source.scfg"
+file-types = [{ glob = "kanshi/config" }]
+comment-token = "#"
+
+[[grammar]]
+name = "scfg"
+source = { git = "https://github.com/rockorager/tree-sitter-scfg", rev = "d850fd470445d73de318a21d734d1e09e29b773c" }
 
 [[language]]
 name = "ripple"

@@ -424,7 +424,8 @@ impl Client {
     }
 
     pub async fn configuration_done(&self) -> Result<()> {
-        self.request::<requests::ConfigurationDone>(()).await
+        self.request::<requests::ConfigurationDone>(Some(requests::ConfigurationDoneArguments {}))
+            .await
     }
 
     pub fn continue_thread(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {

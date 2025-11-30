@@ -49,3 +49,24 @@
                  (single_quote_scalar)
                ] @injection.content)))
   (#set! injection.language "bash"))
+
+
+; https://docs.gitlab.com/ci/yaml/#specinputsregex
+; ```
+; spec:
+;   inputs:
+;     <input>:
+;       regex: <regex>
+; ---
+; <job>:
+;   coverage: <regex>
+; ```
+(block_mapping_pair
+  key: (flow_node) @_key (#any-of? @_key "regex" "coverage")
+  value: (flow_node
+           [
+             (single_quote_scalar) @injection.content
+             (double_quote_scalar) @injection.content
+             (plain_scalar (string_scalar) @injection.content)
+           ])
+  (#set! injection.language "regex"))
