@@ -117,6 +117,16 @@ pub struct InlineCompletion {
     pub ghost_text: String,
     /// Range to replace: `from()` = prefix start, `to()` = replacement end.
     pub replace_range: Range,
+    /// Char index where completion starts (cursor position when received).
+    pub cursor_char_idx: usize,
+    /// First char as Overlay (appears ON block cursor).
+    pub first_char_overlay: Option<Overlay>,
+    /// Rest of first line as InlineAnnotation (at cursor+1, shifts content).
+    pub rest_of_line_annotation: Option<InlineAnnotation>,
+    /// First line ghost text when at EOL (rendered via Decoration, not annotation).
+    pub eol_ghost_text: Option<String>,
+    /// Additional lines for multi-line ghost text.
+    pub additional_lines: Vec<String>,
 }
 
 /// List of inline completions with cycling support.
@@ -153,6 +163,25 @@ impl InlineCompletions {
         self.items.clear();
         self.index = 0;
         Some(item)
+    }
+
+    /// Rebuild the annotation caches from the current completion.
+    pub fn rebuild_annotations(
+        &self,
+        overlay: &mut Vec<Overlay>,
+        annotations: &mut Vec<InlineAnnotation>,
+    ) {
+        overlay.clear();
+        annotations.clear();
+
+        if let Some(completion) = self.current() {
+            if let Some(ref o) = completion.first_char_overlay {
+                overlay.push(o.clone());
+            }
+            if let Some(ref a) = completion.rest_of_line_annotation {
+                annotations.push(a.clone());
+            }
+        }
     }
 }
 
@@ -202,6 +231,10 @@ pub struct Document {
 
     /// Inline completions (ghost text) for the document.
     pub inline_completions: InlineCompletions,
+    /// Cached overlay for first ghost text character (appears ON block cursor).
+    pub inline_completion_overlay: Vec<Overlay>,
+    /// Cached inline annotation for rest of first line (shifts content).
+    pub inline_completion_annotations: Vec<InlineAnnotation>,
 
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
@@ -755,6 +788,8 @@ impl Document {
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
             inline_completions: InlineCompletions::default(),
+            inline_completion_overlay: Vec::new(),
+            inline_completion_annotations: Vec::new(),
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             editor_config: EditorConfig::default(),

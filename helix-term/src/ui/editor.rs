@@ -8,7 +8,9 @@ use crate::{
     ui::{
         document::{render_document, LinePos, TextRenderer},
         statusline,
-        text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
+        text_decorations::{
+            self, Decoration, DecorationManager, InlineCompletionDecoration, InlineDiagnostics,
+        },
         Completion, ProgressSpinners,
     },
 };
@@ -183,6 +185,22 @@ impl EditorView {
                 primary_cursor,
             });
         }
+        // Add inline completion decoration (renders EOL ghost text and additional lines)
+        if let Some(completion) = doc.inline_completions.current() {
+            let has_eol = completion.eol_ghost_text.is_some();
+            let has_additional = !completion.additional_lines.is_empty();
+            if has_eol || has_additional {
+                let cursor_line = doc.text().char_to_line(primary_cursor);
+                let style = theme.get("ui.virtual.inline-completion");
+                decorations.add_decoration(InlineCompletionDecoration::new(
+                    cursor_line,
+                    completion.eol_ghost_text.as_deref(),
+                    &completion.additional_lines,
+                    style,
+                ));
+            }
+        }
+
         let width = view.inner_width(doc);
         let config = doc.config.load();
         let enable_cursor_line = view
@@ -207,23 +225,6 @@ impl EditorView {
             theme,
             decorations,
         );
-
-        // Render ghost text at cursor position
-        if let Some(completion) = doc.inline_completions.current() {
-            if let Some(cursor_pos) = editor.cursor_cache.get(view, doc) {
-                let style = theme.get("ui.virtual.inline-completion");
-                let x = inner.x + cursor_pos.col as u16;
-                let y = inner.y + cursor_pos.row as u16;
-                let tab_width = doc.tab_width();
-                let tab_spaces: String = " ".repeat(tab_width);
-                for (i, line) in completion.ghost_text.split('\n').enumerate() {
-                    let line = line.replace('\t', &tab_spaces);
-                    // First line starts at cursor, subsequent lines at viewport left edge
-                    let line_x = if i == 0 { x } else { inner.x };
-                    surface.set_string(line_x, y + i as u16, &line, style);
-                }
-            }
-        }
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {

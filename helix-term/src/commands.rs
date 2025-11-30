@@ -5294,16 +5294,22 @@ pub fn inline_completion_dismiss(cx: &mut Context) {
 
 pub fn inline_completion_next(cx: &mut Context) {
     use helix_core::movement::Direction;
-    doc_mut!(cx.editor)
-        .inline_completions
-        .cycle(Direction::Forward);
+    let doc = doc_mut!(cx.editor);
+    doc.inline_completions.cycle(Direction::Forward);
+    doc.inline_completions.rebuild_annotations(
+        &mut doc.inline_completion_overlay,
+        &mut doc.inline_completion_annotations,
+    );
 }
 
 pub fn inline_completion_prev(cx: &mut Context) {
     use helix_core::movement::Direction;
-    doc_mut!(cx.editor)
-        .inline_completions
-        .cycle(Direction::Backward);
+    let doc = doc_mut!(cx.editor);
+    doc.inline_completions.cycle(Direction::Backward);
+    doc.inline_completions.rebuild_annotations(
+        &mut doc.inline_completion_overlay,
+        &mut doc.inline_completion_annotations,
+    );
 }
 
 pub fn inline_completion_trigger(_cx: &mut Context) {
