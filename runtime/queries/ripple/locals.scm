@@ -28,27 +28,27 @@
   name: (identifier) @local.definition.type)
 
 (method_definition
-  name: (property_name) @local.definition.method)
+  name: (property_name) @local.definition.function.method)
 
 (variable_declarator
-  name: (identifier) @local.definition.var)
+  name: (identifier) @local.definition.variable)
 
 (required_parameter
-  pattern: (identifier) @local.definition.parameter)
+  pattern: (identifier) @local.definition.variable.parameter)
 
 (rest_parameter
-  (identifier) @local.definition.parameter)
+  (identifier) @local.definition.variable.parameter)
 
 ; References
 (identifier) @local.reference
 
 ; Imports
 (import_specifier
-  name: (identifier) @local.definition.import)
+  name: (identifier) @local.definition.namespace)
 
 (namespace_import
   (identifier) @local.definition.namespace)
 
 ; Exports
 (export_specifier
-  name: (identifier) @local.definition.export)
+  name: (identifier) @local.definition.namespace)
