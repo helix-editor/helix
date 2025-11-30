@@ -208,15 +208,25 @@ pub struct Document {
 
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
+    pub code_lenses: Vec<CodeLens>,
+
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
     pub pull_diagnostic_controller: TaskController,
+    pub code_lenses_controller: TaskController,
 
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CodeLens {
+    pub char_idx: usize,
+    pub line: usize,
+    pub lens: lsp::CodeLens,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -316,6 +326,7 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
+            .field("lenses", &self.code_lenses)
             // .field("language_server", &self.language_server)
             .finish()
     }
@@ -715,6 +726,7 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
+            code_lenses: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
@@ -730,9 +742,10 @@ impl Document {
             jump_labels: HashMap::new(),
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
+            pull_diagnostic_controller: TaskController::new(),
+            code_lenses_controller: TaskController::new(),
             syn_loader,
             previous_diagnostic_id: None,
-            pull_diagnostic_controller: TaskController::new(),
         }
     }
 
@@ -2164,6 +2177,36 @@ impl Document {
     pub fn clear_diagnostics_for_language_server(&mut self, id: LanguageServerId) {
         self.diagnostics
             .retain(|d| d.provider.language_server_id() != Some(id));
+    }
+
+    #[inline]
+    pub fn code_lenses(&self) -> &[CodeLens] {
+        &self.code_lenses
+    }
+
+    pub fn set_code_lenses(&mut self, lenses: Vec<lsp::CodeLens>) {
+        let text = self.text().clone();
+        let Some(language_server) = self
+            .language_servers_with_feature(LanguageServerFeature::CodeLens)
+            .next()
+        else {
+            return;
+        };
+        let offset_encoding = language_server.offset_encoding();
+        self.code_lenses = lenses
+            .into_iter()
+            .filter_map(|l| {
+                if let Some(char_idx) = lsp_pos_to_pos(&text, l.range.start, offset_encoding) {
+                    Some(CodeLens {
+                        line: self.text.char_to_line(char_idx),
+                        char_idx,
+                        lens: l,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
     }
 
     /// Get the document's auto pairs. If the document has a recognized
