@@ -1,3 +1,4 @@
+use helix_core::unicode::segmentation::UnicodeSegmentation;
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_core::Position;
 use helix_view::theme::Style;
@@ -16,6 +17,8 @@ pub struct InlineCompletionDecoration<'a> {
     additional_lines: &'a [String],
     /// Style for ghost text.
     style: Style,
+    /// Cursor style for first grapheme at EOL (to appear "on" block cursor).
+    cursor_style: Option<Style>,
     /// Track if we've already rendered for this line.
     rendered: bool,
 }
@@ -26,12 +29,14 @@ impl<'a> InlineCompletionDecoration<'a> {
         eol_ghost_text: Option<&'a str>,
         additional_lines: &'a [String],
         style: Style,
+        cursor_style: Option<Style>,
     ) -> Self {
         Self {
             cursor_doc_line,
             eol_ghost_text,
             additional_lines,
             style,
+            cursor_style,
             rendered: false,
         }
     }
@@ -60,18 +65,45 @@ impl Decoration for InlineCompletionDecoration<'_> {
 
         // Render EOL first-line ghost text at end of current line
         if let Some(eol_text) = self.eol_ghost_text {
-            let col = renderer.viewport.x + virt_off.col as u16;
-            renderer.set_string_truncated(
-                col,
-                pos.visual_line,
-                eol_text,
-                renderer.viewport.width.saturating_sub(virt_off.col as u16) as usize,
-                |_| self.style,
-                true,
-                false,
-            );
-            // Return ghost text width so diagnostics shift
-            col_offset = eol_text.width();
+            // Subtract 1 because virt_off.col includes newline width, but cursor is ON the newline cell
+            let col_pos = virt_off.col.saturating_sub(1);
+            let mut col = renderer.viewport.x + col_pos as u16;
+            let max_width = renderer.viewport.width.saturating_sub(col_pos as u16) as usize;
+
+            let mut graphemes = eol_text.graphemes(true);
+
+            // First grapheme with cursor style (appears "on" block cursor)
+            if let Some(first_g) = graphemes.next() {
+                let first_style = self.cursor_style.unwrap_or(self.style);
+                let first_width = first_g.width();
+                renderer.set_string_truncated(
+                    col,
+                    pos.visual_line,
+                    first_g,
+                    max_width,
+                    |_| first_style,
+                    true,
+                    false,
+                );
+                col += first_width as u16;
+                col_offset += first_width;
+            }
+
+            // Rest of ghost text with normal ghost style
+            let rest: String = graphemes.collect();
+            if !rest.is_empty() {
+                let remaining_width = max_width.saturating_sub(col_offset);
+                renderer.set_string_truncated(
+                    col,
+                    pos.visual_line,
+                    &rest,
+                    remaining_width,
+                    |_| self.style,
+                    true,
+                    false,
+                );
+                col_offset += rest.width();
+            }
         }
 
         // Render each additional line in the virtual line space

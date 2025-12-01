@@ -137,9 +137,45 @@ After:  hello|GHOST  error    (first line + shifted diagnostic)
 
 ## Known Limitations
 
-1. **EOL first char**: At end-of-line, the first ghost character appears AT the cursor position but doesn't visually "overlay" the block cursor like it does mid-line. This is because there's no visible character to overlay at EOL.
+1. **Soft-wrapped lines**: Behavior with soft-wrapped lines not extensively tested.
 
-2. **Soft-wrapped lines**: Behavior with soft-wrapped lines not extensively tested.
+## EOL First Character Cursor Overlay Fix
+
+### Problem
+At EOL, the first ghost character was rendering ONE COLUMN TO THE RIGHT of the cursor instead of ON the cursor.
+
+### Root Cause
+Newlines are rendered as a space character with width 1 (see `document.rs:301: Grapheme::Newline => " "`). The `line_width` passed to decorations via `virt_off.col` includes this newline width.
+
+For line "im\n":
+- 'i' at col 0, 'm' at col 1, '\n' at col 2 (rendered as space)
+- Cursor is at col 2 (ON the newline space cell)
+- `virt_off.col = 3` (line_width after newline: col 2 + width 1)
+- Ghost text was rendering at col 3 → one column to the right of cursor
+
+### Solution
+In `helix-term/src/ui/text_decorations/inline_completion.rs`, subtract 1 from `virt_off.col` when rendering EOL ghost text:
+
+```rust
+// Render EOL first-line ghost text at end of current line
+if let Some(eol_text) = self.eol_ghost_text {
+    // Subtract 1 because virt_off.col includes newline width, but cursor is ON the newline cell
+    let col_pos = virt_off.col.saturating_sub(1);
+    let mut col = renderer.viewport.x + col_pos as u16;
+    // ...
+}
+```
+
+Additionally, to make the first ghost character visually appear "on" the block cursor, we:
+1. Pass cursor style from `editor.rs` to `InlineCompletionDecoration`
+2. Render the first grapheme with cursor style (typically inverted colors)
+3. Render remaining ghost text with normal ghost text style
+
+### Visual Result
+```
+Before (bug):  im[ ]p ort    (cursor on col 2, 'p' on col 3 - separated)
+After (fixed): im[p]ort      ('p' rendered ON cursor cell with cursor style)
+```
 
 ## Testing Checklist
 
