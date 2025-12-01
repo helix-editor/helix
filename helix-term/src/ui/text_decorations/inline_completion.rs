@@ -7,12 +7,14 @@ use crate::ui::document::{LinePos, TextRenderer};
 use crate::ui::text_decorations::Decoration;
 
 /// Decoration for rendering inline completion ghost text.
-/// Handles both EOL first-line ghost text and multi-line additional lines.
+/// Handles EOL first-line ghost text, mid-line overflow, and multi-line additional lines.
 pub struct InlineCompletionDecoration<'a> {
     /// Document line where the cursor is (where the completion starts).
     cursor_doc_line: usize,
     /// First line ghost text when at EOL (rendered at end of line).
     eol_ghost_text: Option<&'a str>,
+    /// Overflow text for mid-line (preview chars beyond original line length).
+    overflow_text: Option<&'a str>,
     /// Additional lines to render (after the first line).
     additional_lines: &'a [String],
     /// Style for ghost text.
@@ -27,6 +29,7 @@ impl<'a> InlineCompletionDecoration<'a> {
     pub fn new(
         cursor_doc_line: usize,
         eol_ghost_text: Option<&'a str>,
+        overflow_text: Option<&'a str>,
         additional_lines: &'a [String],
         style: Style,
         cursor_style: Option<Style>,
@@ -34,6 +37,7 @@ impl<'a> InlineCompletionDecoration<'a> {
         Self {
             cursor_doc_line,
             eol_ghost_text,
+            overflow_text,
             additional_lines,
             style,
             cursor_style,
@@ -104,6 +108,25 @@ impl Decoration for InlineCompletionDecoration<'_> {
                 );
                 col_offset += rest.width();
             }
+        }
+
+        // Render mid-line overflow at EOL (preview chars beyond original line length)
+        if let Some(overflow) = self.overflow_text {
+            // Render at end of line (virt_off.col - 1 for newline cell)
+            let col_pos = virt_off.col.saturating_sub(1);
+            let col = renderer.viewport.x + col_pos as u16;
+            let max_width = renderer.viewport.width.saturating_sub(col_pos as u16) as usize;
+
+            renderer.set_string_truncated(
+                col,
+                pos.visual_line,
+                overflow,
+                max_width,
+                |_| self.style,
+                true,
+                false,
+            );
+            col_offset += overflow.width();
         }
 
         // Render each additional line in the virtual line space

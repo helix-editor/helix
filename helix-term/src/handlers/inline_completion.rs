@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 use helix_core::{
     syntax::config::LanguageServerFeature,
-    text_annotations::{InlineAnnotation, Overlay},
+    text_annotations::Overlay,
     Range,
 };
 use helix_event::{register_hook, send_blocking};
@@ -14,7 +14,6 @@ use helix_view::{
     handlers::Handlers,
 };
 use crate::events::OnModeSwitch;
-use helix_core::unicode::segmentation::UnicodeSegmentation;
 use tokio::time::Instant;
 
 use crate::{config::Config, job};
@@ -112,6 +111,8 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
                                 return None;
                             }
 
+                            let at_eol = text.get_char(cursor).is_none_or(|c| c == '\n');
+
                             // Process ghost text: expand tabs and split into lines
                             let tab_spaces: String = " ".repeat(tab_width);
                             let mut lines: Vec<String> = ghost_text
@@ -121,43 +122,73 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
 
                             let first_line = lines.remove(0);
 
-                            // Check if cursor is at EOL (on newline or past end)
-                            let at_eol = text.get_char(cursor).is_none_or(|c| c == '\n');
-
-                            let (first_char_overlay, rest_of_line_annotation, eol_ghost_text) =
-                                if at_eol {
-                                    // At EOL: use Decoration to render first line (doesn't shift cursor)
-                                    let eol_text = if !first_line.is_empty() {
-                                        Some(first_line)
-                                    } else {
-                                        None
-                                    };
-                                    (None, None, eol_text)
+                            let (overlays, overflow_text, eol_ghost_text) = if at_eol {
+                                // At EOL: use Decoration to render first line (no overlays needed)
+                                let eol_text = if !first_line.is_empty() {
+                                    Some(first_line)
                                 } else {
-                                    // Mid-line: overlay first char, annotate rest
-                                    let mut graphemes = first_line.graphemes(true);
-
-                                    // First grapheme becomes Overlay (appears ON block cursor)
-                                    let first_char_overlay = graphemes
-                                        .next()
-                                        .map(|g| Overlay::new(cursor, g.to_string()));
-
-                                    // Rest of first line becomes InlineAnnotation (at cursor+1, shifts content)
-                                    let rest: String = graphemes.collect();
-                                    let rest_of_line_annotation = if !rest.is_empty() {
-                                        Some(InlineAnnotation::new(cursor + 1, rest))
-                                    } else {
-                                        None
-                                    };
-                                    (first_char_overlay, rest_of_line_annotation, None)
+                                    None
                                 };
+                                (Vec::new(), None, eol_text)
+                            } else {
+                                // Mid-line: use multiple overlays (no cursor shift)
+                                let line_end = text.line_to_char(text.char_to_line(cursor) + 1);
+                                let rest_of_line: String = text
+                                    .slice(cursor..line_end)
+                                    .chars()
+                                    .take_while(|c| *c != '\n')
+                                    .collect();
+
+                                // Text after the first character (used for suffix trimming and preview)
+                                let after_cursor: String =
+                                    rest_of_line.chars().skip(1).collect();
+
+                                // Trim matching suffix from first_line for DISPLAY only
+                                // This avoids showing duplicate chars that already exist in document
+                                // but keeps ghost_text intact for acceptance
+                                let mut display_first_line = first_line.clone();
+                                for suffix_len in (1..=after_cursor.len()).rev() {
+                                    if let Some(suffix) = after_cursor.get(..suffix_len) {
+                                        if display_first_line.ends_with(suffix) {
+                                            let new_len =
+                                                display_first_line.len() - suffix.len();
+                                            display_first_line.truncate(new_len);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                // Build preview: trimmed first line + rest after first char
+                                let preview = format!("{}{}", display_first_line, after_cursor);
+
+                                // Create overlay for each position (up to rest_of_line length)
+                                let mut overlays = Vec::new();
+                                for (i, preview_char) in preview.chars().enumerate() {
+                                    if i >= rest_of_line.chars().count() {
+                                        break;
+                                    }
+                                    overlays
+                                        .push(Overlay::new(cursor + i, preview_char.to_string()));
+                                }
+
+                                // Overflow: preview chars beyond rest_of_line
+                                let overflow: String =
+                                    preview.chars().skip(rest_of_line.chars().count()).collect();
+                                let overflow_text = if !overflow.is_empty() {
+                                    Some(overflow)
+                                } else {
+                                    None
+                                };
+
+                                (overlays, overflow_text, None)
+                            };
 
                             Some(InlineCompletion {
                                 ghost_text,
                                 replace_range,
                                 cursor_char_idx: cursor,
-                                first_char_overlay,
-                                rest_of_line_annotation,
+                                overlays,
+                                overflow_text,
                                 eol_ghost_text,
                                 additional_lines: lines,
                             })
@@ -168,11 +199,9 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
                         doc.inline_completions.push(completion);
                     }
 
-                    // Rebuild annotation caches
-                    doc.inline_completions.rebuild_annotations(
-                        &mut doc.inline_completion_overlay,
-                        &mut doc.inline_completion_annotations,
-                    );
+                    // Rebuild overlay cache
+                    doc.inline_completions
+                        .rebuild_overlays(&mut doc.inline_completion_overlays);
                 })
                 .await;
             });
@@ -186,9 +215,8 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
         // Clear stale completion: it was computed for the previous document state
         event.doc.inline_completions.take_and_clear();
-        // Also clear annotation caches
-        event.doc.inline_completion_overlay.clear();
-        event.doc.inline_completion_annotations.clear();
+        // Also clear overlay cache
+        event.doc.inline_completion_overlays.clear();
         // Ignore changes caused by a preview being displayed
         if event.ghost_transaction {
             return Ok(());
@@ -205,8 +233,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         if event.old_mode == Mode::Insert && event.new_mode != Mode::Insert {
             let (_, doc) = current!(event.cx.editor);
             doc.inline_completions.take_and_clear();
-            doc.inline_completion_overlay.clear();
-            doc.inline_completion_annotations.clear();
+            doc.inline_completion_overlays.clear();
         }
         Ok(())
     });

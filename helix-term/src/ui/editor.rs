@@ -185,11 +185,12 @@ impl EditorView {
                 primary_cursor,
             });
         }
-        // Add inline completion decoration (renders EOL ghost text and additional lines)
+        // Add inline completion decoration (renders EOL ghost text, overflow, and additional lines)
         if let Some(completion) = doc.inline_completions.current() {
             let has_eol = completion.eol_ghost_text.is_some();
+            let has_overflow = completion.overflow_text.is_some();
             let has_additional = !completion.additional_lines.is_empty();
-            if has_eol || has_additional {
+            if has_eol || has_overflow || has_additional {
                 let cursor_line = doc.text().char_to_line(primary_cursor);
                 let style = theme.get("ui.virtual.inline-completion");
 
@@ -215,6 +216,7 @@ impl EditorView {
                 decorations.add_decoration(InlineCompletionDecoration::new(
                     cursor_line,
                     completion.eol_ghost_text.as_deref(),
+                    completion.overflow_text.as_deref(),
                     &completion.additional_lines,
                     style,
                     Some(cursor_style),

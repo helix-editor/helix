@@ -492,19 +492,14 @@ impl View {
             }
         }
 
-        // Add inline completion ghost text
+        // Add inline completion ghost text overlays
         let inline_completion_style =
             theme.and_then(|t| t.find_highlight("ui.virtual.inline-completion"));
 
-        // First char overlay (appears ON block cursor, replaces cursor's char visually)
-        if !doc.inline_completion_overlay.is_empty() {
-            text_annotations.add_overlay(&doc.inline_completion_overlay, inline_completion_style);
-        }
-
-        // Rest of first line (inserted at cursor+1, shifts diagnostics)
-        if !doc.inline_completion_annotations.is_empty() {
+        // All overlays (replace chars in-place, no cursor shift)
+        if !doc.inline_completion_overlays.is_empty() {
             text_annotations
-                .add_inline_annotations(&doc.inline_completion_annotations, inline_completion_style);
+                .add_overlay(&doc.inline_completion_overlays, inline_completion_style);
         }
 
         // Multi-line ghost text: reserve virtual lines for additional lines

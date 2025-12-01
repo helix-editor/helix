@@ -5296,20 +5296,16 @@ pub fn inline_completion_next(cx: &mut Context) {
     use helix_core::movement::Direction;
     let doc = doc_mut!(cx.editor);
     doc.inline_completions.cycle(Direction::Forward);
-    doc.inline_completions.rebuild_annotations(
-        &mut doc.inline_completion_overlay,
-        &mut doc.inline_completion_annotations,
-    );
+    doc.inline_completions
+        .rebuild_overlays(&mut doc.inline_completion_overlays);
 }
 
 pub fn inline_completion_prev(cx: &mut Context) {
     use helix_core::movement::Direction;
     let doc = doc_mut!(cx.editor);
     doc.inline_completions.cycle(Direction::Backward);
-    doc.inline_completions.rebuild_annotations(
-        &mut doc.inline_completion_overlay,
-        &mut doc.inline_completion_annotations,
-    );
+    doc.inline_completions
+        .rebuild_overlays(&mut doc.inline_completion_overlays);
 }
 
 pub fn inline_completion_trigger(_cx: &mut Context) {
