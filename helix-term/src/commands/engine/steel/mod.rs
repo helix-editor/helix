@@ -2540,6 +2540,12 @@ Get the current mode of the editor
     );
 
     register_0!(
+        "editor-count",
+        |cx: &mut Context| { cx.editor.count.map(|x| x.get()).unwrap_or(1) },
+        "Get the count"
+    );
+
+    register_0!(
         "themes->list",
         get_themes,
         r#"
