@@ -10,7 +10,7 @@ use helix_event::{register_hook, send_blocking};
 use helix_lsp::{lsp, util::lsp_range_to_range};
 use helix_view::{
     document::{InlineCompletion, Mode},
-    events::DocumentDidChange,
+    events::{DocumentDidChange, SelectionDidChange},
     handlers::Handlers,
 };
 use crate::events::OnModeSwitch;
@@ -225,6 +225,13 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         if event.doc.config.load().inline_completion_auto_trigger {
             send_blocking(&tx, ());
         }
+        Ok(())
+    });
+
+    // Clear inline completions when cursor moves (e.g., arrow keys)
+    register_hook!(move |event: &mut SelectionDidChange<'_>| {
+        event.doc.inline_completions.take_and_clear();
+        event.doc.inline_completion_overlays.clear();
         Ok(())
     });
 
