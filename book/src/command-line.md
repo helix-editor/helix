@@ -59,6 +59,7 @@ Aside from editor variables, the following expansions may be used:
 
 * Unicode `%u{..}`. The contents may contain up to six hexadecimal numbers corresponding to a Unicode codepoint value. For example `:echo %u{25CF}` prints `●` to the statusline.
 * Shell `%sh{..}`. The contents are passed to the configured shell command. For example `:echo %sh{echo "20 * 5" | bc}` may print `100` on the statusline on when using a shell with `echo` and the `bc` calculator installed. Shell expansions are evaluated recursively. `%sh{echo '%{buffer_name}:%{cursor_line}'}` for example executes a command like `echo 'README.md:1'`: the variables within the `%sh{..}` expansion are evaluated before executing the shell command.
+* Quote `%quote{..}`. The contents are surrounded with double quotes(`"`), and escapes internal backslashes(`\`) and double quotes(`"`), so that the result is a valid string literal. For example, `:echo %quote{"'"="foo"}` will print `"\"'\"=\"foo\""` to the statusline.
 
 As mentioned above, double quotes can be used to surround arguments containing spaces but also support expansions within the quoted content unlike singe quotes or backticks. For example `:echo "circle: %u{25CF}"` prints `circle: ●` to the statusline while `:echo 'circle: %u{25CF}'` prints `circle: %u{25CF}`.
 
