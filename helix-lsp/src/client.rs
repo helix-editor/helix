@@ -62,6 +62,7 @@ pub struct Client {
     initialize_notify: Arc<Notify>,
     /// workspace folders added while the server is still initializing
     req_timeout: u64,
+    format_req_timeout: u64,
 }
 
 impl Client {
@@ -210,6 +211,7 @@ impl Client {
         id: LanguageServerId,
         name: String,
         req_timeout: u64,
+        format_req_timeout: u64,
     ) -> Result<(
         Self,
         UnboundedReceiver<(LanguageServerId, Call)>,
@@ -254,6 +256,7 @@ impl Client {
             file_operation_interest: OnceLock::new(),
             config,
             req_timeout,
+            format_req_timeout,
             root_path,
             root_uri,
             workspace_folders: Mutex::new(workspace_folders),
@@ -1209,7 +1212,7 @@ impl Client {
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
-        Some(self.call::<lsp::request::Formatting>(params))
+        Some(self.call_with_timeout::<lsp::request::Formatting>(&params, self.format_req_timeout))
     }
 
     pub fn text_document_range_formatting(
@@ -1236,7 +1239,12 @@ impl Client {
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
         };
 
-        Some(self.call::<lsp::request::RangeFormatting>(params))
+        Some(
+            self.call_with_timeout::<lsp::request::RangeFormatting>(
+                &params,
+                self.format_req_timeout,
+            ),
+        )
     }
 
     pub fn text_document_diagnostic(
