@@ -6310,20 +6310,73 @@ enum ShellBehavior {
     Append,
 }
 
+struct ShellOutput {
+    stdout: Tendril,
+    stderr: Tendril,
+    success: bool,
+}
+
+impl ShellOutput {
+    pub fn is_empty(&self) -> bool {
+        self.stdout.trim().is_empty() && self.stderr.trim().is_empty()
+    }
+
+    pub fn shell_popup(cx: &mut compositor::Context, msg: String) {
+        let callback = async move {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
+                    let contents = ui::Markdown::new(msg, editor.syn_loader.clone());
+                    let popup = Popup::new("shell", contents).position(Some(
+                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                    ));
+                    compositor.replace_or_push("shell", popup);
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+    }
+}
+
+impl fmt::Display for ShellOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let out = self.stdout.trim_end();
+        let err = self.stderr.trim_end();
+        match (err.is_empty(), out.is_empty()) {
+            (true, true) => Ok(()),
+            (false, true) => write!(f, "```sh\n{}\n```", err),
+            (true, false) => write!(f, "```sh\n{}\n```", out),
+            (false, false) => write!(f, "```sh\n{}\n```\n---\n```sh\n{}\n```", err, out),
+        }
+    }
+}
+
 fn shell_pipe(cx: &mut Context) {
-    shell_prompt_for_behavior(cx, "pipe:".into(), ShellBehavior::Replace);
+    shell_prompt_for_behavior(cx, "pipe:".into(), ShellBehavior::Replace, false, false);
 }
 
 fn shell_pipe_to(cx: &mut Context) {
-    shell_prompt_for_behavior(cx, "pipe-to:".into(), ShellBehavior::Ignore);
+    shell_prompt_for_behavior(cx, "pipe-to:".into(), ShellBehavior::Ignore, false, true);
 }
 
 fn shell_insert_output(cx: &mut Context) {
-    shell_prompt_for_behavior(cx, "insert-output:".into(), ShellBehavior::Insert);
+    shell_prompt_for_behavior(
+        cx,
+        "insert-output:".into(),
+        ShellBehavior::Insert,
+        false,
+        false,
+    );
 }
 
 fn shell_append_output(cx: &mut Context) {
-    shell_prompt_for_behavior(cx, "append-output:".into(), ShellBehavior::Append);
+    shell_prompt_for_behavior(
+        cx,
+        "append-output:".into(),
+        ShellBehavior::Append,
+        false,
+        false,
+    );
 }
 
 fn shell_keep_pipe(cx: &mut Context) {
@@ -6359,7 +6412,7 @@ fn shell_keep_pipe(cx: &mut Context) {
     });
 }
 
-fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<Tendril> {
+fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<ShellOutput> {
     tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
 }
 
@@ -6367,7 +6420,7 @@ async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
     input: Option<Rope>,
-) -> anyhow::Result<Tendril> {
+) -> anyhow::Result<ShellOutput> {
     use std::process::Stdio;
     use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
@@ -6410,27 +6463,27 @@ async fn shell_impl_async(
         process.wait_with_output().await?
     };
 
-    let output = if !output.status.success() {
-        if output.stderr.is_empty() {
-            match output.status.code() {
-                Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
-                None => bail!("Shell command failed"),
-            }
+    if !output.status.success() && output.stderr.is_empty() {
+        match output.status.code() {
+            Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
+            None => bail!("Shell command failed"),
         }
-        String::from_utf8_lossy(&output.stderr)
-        // Prioritize `stderr` output over `stdout`
-    } else if !output.stderr.is_empty() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        log::debug!("Command printed to stderr: {stderr}");
-        stderr
-    } else {
-        String::from_utf8_lossy(&output.stdout)
-    };
+    }
 
-    Ok(Tendril::from(output))
+    Ok(ShellOutput {
+        stdout: Tendril::from(String::from_utf8_lossy(&output.stdout)),
+        stderr: Tendril::from(String::from_utf8_lossy(&output.stderr)),
+        success: output.status.success(),
+    })
 }
 
-fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
+fn shell(
+    cx: &mut compositor::Context,
+    cmd: &str,
+    behavior: &ShellBehavior,
+    on_success: bool,
+    popup_stderr: bool,
+) {
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
@@ -6447,30 +6500,52 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
+    let mut popup_contents = Vec::new();
     for range in selection.ranges() {
         let output = if let Some(output) = shell_output.as_ref() {
-            output.clone()
+            Some(output.clone())
         } else {
             let input = range.slice(text);
             match shell_impl(shell, cmd, pipe.then(|| input.into())) {
-                Ok(mut output) => {
-                    if !input.ends_with("\n") && output.ends_with('\n') {
-                        output.pop();
-                        if output.ends_with('\r') {
-                            output.pop();
-                        }
+                Ok(ShellOutput {
+                    stdout,
+                    stderr,
+                    success,
+                }) => {
+                    if popup_stderr && !stderr.is_empty() {
+                        popup_contents.push(format!("```sh\n{}\n```", stderr));
                     }
 
-                    if !pipe {
-                        shell_output = Some(output.clone());
+                    if on_success && !success {
+                        None
+                    } else {
+                        // Prioritize `stderr` output over `stdout`
+                        let mut used_output = if !stderr.is_empty() { stderr } else { stdout };
+
+                        if !input.ends_with("\n") && used_output.ends_with('\n') {
+                            used_output.pop();
+                            if used_output.ends_with('\r') {
+                                used_output.pop();
+                            }
+                        }
+
+                        if !pipe {
+                            shell_output = Some(used_output.clone());
+                        }
+                        Some(used_output)
                     }
-                    output
                 }
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
                     return;
                 }
             }
+        };
+
+        let output = if let Some(output) = output {
+            output
+        } else {
+            Tendril::from(range.slice(text).to_string())
         };
 
         let output_len = output.chars().count();
@@ -6509,6 +6584,10 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     // after replace cursor may be out of bounds, do this to
     // make sure cursor is in view and update scroll as well
     view.ensure_cursor_in_view(doc, config.scrolloff);
+
+    if !popup_contents.is_empty() {
+        ShellOutput::shell_popup(cx, popup_contents.join("\n"));
+    }
 }
 
 fn shell_prompt<F>(cx: &mut Context, prompt: Cow<'static, str>, mut callback_fn: F)
@@ -6534,9 +6613,21 @@ where
     );
 }
 
-fn shell_prompt_for_behavior(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
+fn shell_prompt_for_behavior(
+    cx: &mut Context,
+    prompt: Cow<'static, str>,
+    behavior: ShellBehavior,
+    on_success: bool,
+    popup_stderr: bool,
+) {
     shell_prompt(cx, prompt, move |cx, args| {
-        shell(cx, args.join(" ").as_str(), &behavior)
+        shell(
+            cx,
+            args.join(" ").as_str(),
+            &behavior,
+            on_success,
+            popup_stderr,
+        )
     })
 }
 
