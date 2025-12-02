@@ -239,7 +239,9 @@ pub mod steel_implementations {
                     // Move the start range, to wherever this lines up
                     let index = slice.try_line_to_char(cursor)?;
 
-                    let line = slice.line(cursor);
+                    let line = slice.get_line(cursor).ok_or(RopeyError(
+                        ropey::Error::LineIndexOutOfBounds(cursor, slice.len_lines()),
+                    ))?;
 
                     self.start += index;
                     self.end = self.start + line.len_chars();
@@ -256,7 +258,10 @@ pub mod steel_implementations {
 
                     // Move the start range, to wherever this lines up
                     let index = slice.try_line_to_byte(cursor)?;
-                    let line = slice.line(cursor);
+
+                    let line = slice.get_line(cursor).ok_or(RopeyError(
+                        ropey::Error::LineIndexOutOfBounds(cursor, slice.len_lines()),
+                    ))?;
 
                     self.start += index;
                     self.end = self.start + line.len_bytes();
