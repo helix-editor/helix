@@ -31,7 +31,7 @@ use crate::{
 
 use log::{debug, error, info, warn};
 use std::{
-    io::{stdin, IsTerminal},
+    io::{stdin, IsTerminal, Write},
     path::Path,
     sync::Arc,
 };
@@ -1209,6 +1209,11 @@ impl Application {
             .backend_mut()
             .show_cursor(CursorKind::Block)
             .ok();
+
+        // reset terminal colors
+        let stdout = std::io::stdout();
+        let mut stdout = stdout.lock();
+        write!(stdout, "\x1B]111\x07")?;
         self.terminal.restore()
     }
 
