@@ -161,12 +161,14 @@
                 <div id="content" class="content">
                     <main>
                         <h2 id="adding-indent-queries"><a class="header" href="#adding-indent-queries">Adding indent queries</a></h2>
-<p>Helix uses tree-sitter to correctly indent new lines. This requires a tree-
-sitter grammar and an <code>indent.scm</code> query file placed in <code>runtime/queries/ {language}/indents.scm</code>. The indentation for a line is calculated by traversing
-the syntax tree from the lowest node at the beginning of the new line (see
-<a href="#indent-queries">Indent queries</a>). Each of these nodes contributes to the total
-indent when it is captured by the query (in what way depends on the name of
-the capture.</p>
+<p>Helix uses tree-sitter to correctly indent new lines. This requires a
+tree-sitter grammar and an <code>indent.scm</code> query file placed in
+<code>runtime/queries/{language}/indents.scm</code>. The indentation for a line is
+calculated by traversing the syntax tree from the lowest node at the
+beginning of the new line (see <a href="#indent-queries">Indent queries</a>).
+Each of these nodes contributes to the total indent when it is
+captured by the query (in what way depends on the name of
+the capture).</p>
 <p>Note that it matters where these added indents begin. For example,
 multiple indent level increases that start on the same line only increase
 the total indent level by 1. See <a href="#capture-types">Capture types</a>.</p>
