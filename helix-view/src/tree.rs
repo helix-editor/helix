@@ -1,5 +1,6 @@
 use crate::{graphics::Rect, View, ViewId};
 use slotmap::HopSlotMap;
+use std::collections::HashSet;
 
 // the dimensions are recomputed on window resize/tree change.
 //
@@ -362,6 +363,17 @@ impl Tree {
 
         self.stack.push((self.root, self.area));
 
+        // get nodes containing the focus view
+        let mut focus_nodes = HashSet::new();
+        let mut cur = self.focus;
+        loop {
+            focus_nodes.insert(cur);
+            if self.nodes[cur].parent == cur {
+                break;
+            }
+            cur = self.nodes[cur].parent
+        }
+
         // take the area
         // fetch the node
         // a) node is view, give it whole area
@@ -383,11 +395,20 @@ impl Tree {
                         Layout::Horizontal => {
                             let len = container.children.len();
 
-                            let height = area.height / len as u16;
+                            // let height = area.height / len as u16;
 
                             let mut child_y = area.y;
 
-                            for (i, child) in container.children.iter().enumerate() {
+                            for child in container.children.iter() {
+                                let focus_node = focus_nodes.contains(child);
+                                // WARN
+                                // Needs to account for children within containers
+                                // Crashes when maximizing above a vert. split with horz. children
+                                let height = if focus_node {
+                                    area.height - (len * 2) as u16
+                                } else {
+                                    2
+                                };
                                 let mut area = Rect::new(
                                     container.area.x,
                                     child_y,
@@ -398,7 +419,7 @@ impl Tree {
 
                                 // last child takes the remaining width because we can get uneven
                                 // space from rounding
-                                if i == len - 1 {
+                                if focus_node {
                                     area.height = container.area.y + container.area.height - area.y;
                                 }
 
