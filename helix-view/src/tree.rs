@@ -395,8 +395,6 @@ impl Tree {
                         Layout::Horizontal => {
                             let len = container.children.len();
 
-                            // let height = area.height / len as u16;
-
                             let mut child_y = area.y;
 
                             for child in container.children.iter() {
@@ -405,23 +403,17 @@ impl Tree {
                                 // Needs to account for children within containers
                                 // Crashes when maximizing above a vert. split with horz. children
                                 let height = if focus_node {
-                                    area.height - (len * 2) as u16
+                                    area.height - ((len - 1) * 2) as u16
                                 } else {
                                     2
                                 };
-                                let mut area = Rect::new(
+                                let area = Rect::new(
                                     container.area.x,
                                     child_y,
                                     container.area.width,
                                     height,
                                 );
                                 child_y += height;
-
-                                // last child takes the remaining width because we can get uneven
-                                // space from rounding
-                                if focus_node {
-                                    area.height = container.area.y + container.area.height - area.y;
-                                }
 
                                 self.stack.push((*child, area));
                             }
