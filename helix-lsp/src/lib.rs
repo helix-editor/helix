@@ -476,6 +476,7 @@ pub enum MethodCall {
     UnregisterCapability(lsp::UnregistrationParams),
     ShowDocument(lsp::ShowDocumentParams),
     WorkspaceDiagnosticRefresh,
+    CodeLensRefresh,
 }
 
 impl MethodCall {
@@ -508,6 +509,7 @@ impl MethodCall {
                 Self::ShowDocument(params)
             }
             lsp::request::WorkspaceDiagnosticRefresh::METHOD => Self::WorkspaceDiagnosticRefresh,
+            lsp::request::CodeLensRefresh::METHOD => Self::CodeLensRefresh,
             _ => {
                 return Err(Error::Unhandled);
             }
