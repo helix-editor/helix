@@ -587,7 +587,8 @@ file-types = [
   "sublime-project",
   "sublime-settings",
   "sublime-theme",
-  "sublime-workspace"
+  "sublime-workspace",
+  "code-workspace"
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
