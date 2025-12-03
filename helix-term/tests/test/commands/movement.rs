@@ -915,7 +915,7 @@ async fn match_bracket() -> anyhow::Result<()> {
 
     let python_tests = vec![
         // python quotes have a slightly more complex syntax tree
-        // that triggerd a bug in an old implementation so we test
+        // that triggered a bug in an old implementation so we test
         // them here
         (
             indoc! {r##"
@@ -948,3 +948,268 @@ async fn match_bracket() -> anyhow::Result<()> {
 
     Ok(())
 }
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_selection_lines_up() -> anyhow::Result<()> {
+    let tests = vec![
+        // Basic test: move a single line up
+        (
+            indoc! {r#"
+                1.
+                #[2.|]#
+                3.
+                4.
+            "#},
+            "<space>?move_selection_lines_up<ret>",
+            indoc! {r#"
+                #[2.|]#
+                1.
+                3.
+                4.
+            "#},
+        ),
+        // Move multiple lines up
+        (
+            indoc! {r#"
+                1.
+                #[2.
+                3.|]#
+                4.
+                5.
+            "#},
+            "<space>?move_selection_lines_up<ret>",
+            indoc! {r#"
+                #[2.
+                3.|]#
+                1.
+                4.
+                5.
+            "#},
+        ),
+        // Move lines up with a count
+        (
+            indoc! {r#"
+                1.
+                2.
+                #[3.
+                4.|]#
+                5.
+                6.
+            "#},
+            "2<space>?move_selection_lines_up<ret>",
+            indoc! {r#"
+                #[3.
+                4.|]#
+                1.
+                2.
+                5.
+                6.
+            "#},
+        ),
+        // Saturating upward motion
+        (
+            indoc! {r#"
+                1.
+                2.
+                #[3.
+                4.|]#
+                5.
+                6.
+                #(7.
+                8.|)#
+                9.
+            "#},
+            "5<space>?move_selection_lines_up<ret>",
+            indoc! {r#"
+                #[3.
+                4.|]#
+                1.
+                2.
+                #(7.
+                8.|)#
+                5.
+                6.
+                9.
+            "#},
+        ),
+        // Count greater than space between blocks with saturation
+        (
+            indoc! {r#"
+                1.
+                2.
+                #[3.
+                4.|]#
+                5.
+                #(6|)#.
+                7.
+                #(8.
+                9.|)#
+                a.
+            "#},
+            "4<space>?move_selection_lines_up<ret>",
+            indoc! {r#"
+                #[3.
+                4.|]#
+                1.
+                #(6|)#.
+                2.
+                #(8.
+                9.|)#
+                5.
+                7.
+                a.
+            "#},
+        ),
+    ];
+
+    for test in tests {
+        test_with_config(AppBuilder::new().with_file("foo.txt", None), test).await?;
+    }
+
+    Ok(())
+}
+
+// ...existing code...
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_move_selection_lines_down() -> anyhow::Result<()> {
+    let tests = vec![
+        // Basic: move a single line down
+        (
+            indoc! {r#"
+                1.
+                #[2.|]#
+                3.
+                4.
+            "#},
+            "<space>?move_selection_lines_down<ret>",
+            indoc! {r#"
+                1.
+                3.
+                #[2.|]#
+                4.
+            "#},
+        ),
+        // Move multiple lines down
+        (
+            indoc! {r#"
+                1.
+                #[2.
+                3.|]#
+                4.
+                5.
+            "#},
+            "<space>?move_selection_lines_down<ret>",
+            indoc! {r#"
+                1.
+                4.
+                #[2.
+                3.|]#
+                5.
+            "#},
+        ),
+        // Move lines down with a count
+        (
+            indoc! {r#"
+                1.
+                2.
+                #[3.
+                4.|]#
+                5.
+                6.
+            "#},
+            "2<space>?move_selection_lines_down<ret>",
+            indoc! {r#"
+                1.
+                2.
+                5.
+                6.
+                #[3.
+                4.|]#
+            "#},
+        ),
+        // Moving down past EOF inserts blank lines
+        (
+            indoc! {r#"
+                1.
+                2.
+                #[3.
+                4.|]#
+                5.
+            "#},
+            "3<space>?move_selection_lines_down<ret>",
+            indoc! {r#"
+                1.
+                2.
+                5.
+
+
+                #[3.
+                4.|]#
+            "#},
+        ),
+        // Count greater than space between blocks
+        (
+            indoc! {r#"
+                #[3.
+                4.|]#
+                1.
+                #(6|)#.
+                2.
+                #(8.
+                9.|)#
+                5.
+                7.
+                a.
+            "#},
+            "2<space>?move_selection_lines_down<ret>",
+            indoc! {r#"
+                1.
+                2.
+                #[3.
+                4.|]#
+                5.
+                #(6|)#.
+                7.
+                #(8.
+                9.|)#
+                a.
+            "#},
+        ),
+        // Count greater than space between blocks with padding
+        (
+            indoc! {r#"
+                1.
+                #[2.
+                3.|]#
+                4.
+                #(5|)#.
+                6.
+                #(7.
+                8.|)#
+                9.
+                a.
+            "#},
+            "3<space>?move_selection_lines_down<ret>",
+            indoc! {r#"
+                1.
+                4.
+                6.
+                9.
+                #[2.
+                3.|]#
+                a.
+                #(5|)#.
+
+                #(7.
+                8.|)#
+            "#},
+        ),
+    ];
+
+    for test in tests {
+        test_with_config(AppBuilder::new().with_file("foo.txt", None), test).await?;
+    }
+
+    Ok(())
+}
+// ...existing code...
