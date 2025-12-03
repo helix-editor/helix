@@ -13,12 +13,20 @@ static RUNTIME_DIRS: once_cell::sync::Lazy<Vec<PathBuf>> =
 
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
+static THEME_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+
 static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(default_config_file);
     ensure_parent_dir(&config_file);
     CONFIG_FILE.set(config_file).ok();
+}
+
+pub fn initialize_theme_file(specified_file: Option<PathBuf>) {
+    if let Some(theme_file) = specified_file {
+        THEME_FILE.set(theme_file).ok();
+    }
 }
 
 pub fn initialize_log_file(specified_file: Option<PathBuf>) {
@@ -134,6 +142,10 @@ pub fn cache_dir() -> PathBuf {
 
 pub fn config_file() -> PathBuf {
     CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
+}
+
+pub fn theme_file() -> Option<PathBuf> {
+    THEME_FILE.get().map(|path| path.to_path_buf())
 }
 
 pub fn log_file() -> PathBuf {
