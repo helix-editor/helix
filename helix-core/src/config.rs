@@ -2,9 +2,11 @@ use crate::syntax::{config::Configuration, Loader, LoaderError};
 
 /// Language configuration based on built-in languages.toml.
 pub fn default_lang_config() -> Configuration {
-    helix_loader::config::default_lang_config()
+    let mut config: Configuration = helix_loader::config::default_lang_config()
         .try_into()
-        .expect("Could not deserialize built-in languages.toml")
+        .expect("Could not deserialize built-in languages.toml");
+    config.apply_global_language_servers();
+    config
 }
 
 /// Language configuration loader based on built-in languages.toml.
@@ -31,15 +33,19 @@ impl std::error::Error for LanguageLoaderError {}
 
 /// Language configuration based on user configured languages.toml.
 pub fn user_lang_config() -> Result<Configuration, toml::de::Error> {
-    helix_loader::config::user_lang_config()?.try_into()
+    let mut config: Configuration = helix_loader::config::user_lang_config()?.try_into()?;
+    config.apply_global_language_servers();
+    Ok(config)
 }
 
 /// Language configuration loader based on user configured languages.toml.
 pub fn user_lang_loader() -> Result<Loader, LanguageLoaderError> {
-    let config: Configuration = helix_loader::config::user_lang_config()
+    let mut config: Configuration = helix_loader::config::user_lang_config()
         .map_err(LanguageLoaderError::DeserializeError)?
         .try_into()
         .map_err(LanguageLoaderError::DeserializeError)?;
+
+    config.apply_global_language_servers();
 
     Loader::new(config).map_err(LanguageLoaderError::LoaderError)
 }
