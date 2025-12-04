@@ -80,7 +80,9 @@ impl Registers {
     pub fn write(&mut self, name: char, mut values: Vec<String>) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
+            '#' | '.' | '%' | '&' | '1'..='9' => {
+                Err(anyhow::anyhow!("Register {name} does not support writing"))
+            }
             '*' | '+' => {
                 self.clipboard_provider.load().set_contents(
                     &values.join(NATIVE_LINE_ENDING.as_str()),
@@ -105,7 +107,9 @@ impl Registers {
     pub fn push(&mut self, name: char, mut value: String) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
+            '#' | '.' | '%' | '&' | '1'..='9' => {
+                Err(anyhow::anyhow!("Register {name} does not support pushing"))
+            }
             '*' | '+' => {
                 let clipboard_type = match name {
                     '+' => ClipboardType::Clipboard,
@@ -140,6 +144,44 @@ impl Registers {
         }
     }
 
+    pub fn write_search_results(&mut self, search_results: Vec<Vec<String>>) {
+        let len = search_results.len();
+        for (i, mut values) in search_results.into_iter().enumerate() {
+            values.reverse();
+            self.inner.insert(search_register_name(i), values);
+        }
+        for i in len..=9 {
+            self.inner.remove(&search_register_name(i));
+        }
+    }
+
+    pub fn insert_search_result(&mut self, idx: usize, search_results: Vec<String>) {
+        let idx = self.search_result_count() - idx;
+        let len = search_results.len();
+        for (i, value) in search_results.into_iter().enumerate() {
+            let entry = self.inner.entry(search_register_name(i)).or_default();
+            entry.insert(idx, value);
+        }
+        for i in len..=9 {
+            if let Some(entry) = self.inner.get_mut(&search_register_name(i)) {
+                entry.insert(idx, String::new());
+            }
+        }
+    }
+
+    pub fn remove_search_result(&mut self, idx: usize) {
+        let idx = self.search_result_count() - idx - 1;
+        for i in 0..=9 {
+            if let Some(entry) = self.inner.get_mut(&search_register_name(i)) {
+                entry.remove(idx);
+            }
+        }
+    }
+
+    pub fn search_result_count(&self) -> usize {
+        self.inner.get(&'&').map(|v| v.len()).unwrap_or(0)
+    }
+
     pub fn first<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
         self.read(name, editor).and_then(|mut values| values.next())
     }
@@ -169,6 +211,16 @@ impl Registers {
                     ('%', "<document path>"),
                     ('+', "<system clipboard>"),
                     ('*', "<primary clipboard>"),
+                    ('&', "<last regex match>"),
+                    ('1', "<last regex match group 1>"),
+                    ('2', "<last regex match group 2>"),
+                    ('3', "<last regex match group 3>"),
+                    ('4', "<last regex match group 4>"),
+                    ('5', "<last regex match group 5>"),
+                    ('6', "<last regex match group 6>"),
+                    ('7', "<last regex match group 7>"),
+                    ('8', "<last regex match group 8>"),
+                    ('9', "<last regex match group 9>"),
                 ]
                 .iter()
                 .copied(),
@@ -193,7 +245,7 @@ impl Registers {
 
                 true
             }
-            '_' | '#' | '.' | '%' => false,
+            '_' | '#' | '.' | '%' | '&' | '1'..='9' => false,
             _ => self.inner.remove(&name).is_some(),
         }
     }
@@ -216,6 +268,14 @@ impl Registers {
 
     pub fn clipboard_provider_name(&self) -> String {
         self.clipboard_provider.load().name().into_owned()
+    }
+}
+
+fn search_register_name(i: usize) -> char {
+    if i == 0 {
+        '&'
+    } else {
+        char::from(i as u8 + b'0')
     }
 }
 
