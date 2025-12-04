@@ -5649,6 +5649,9 @@ fn acquire_context_lock(
                             }
 
                             Err(e) => {
+                                s.set_index(3, e.clone().into_steelval().unwrap());
+                                s.set_index(1, (*TASK_DONE).clone());
+                                mutex_unlock(&lock.unwrap()).unwrap();
                                 return Err(e);
                             }
                         }
