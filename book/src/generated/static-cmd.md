@@ -261,8 +261,28 @@
 | `surround_add` | Surround add | normal: `` ms ``, select: `` ms `` |
 | `surround_replace` | Surround replace | normal: `` mr ``, select: `` mr `` |
 | `surround_delete` | Surround delete | normal: `` md ``, select: `` md `` |
-| `select_textobject_around` | Select around object | normal: `` ma ``, select: `` ma `` |
-| `select_textobject_inner` | Select inside object | normal: `` mi ``, select: `` mi `` |
+| `select_textobject_inside_type` | Select inside type definition (tree-sitter) | normal: `` mit ``, select: `` mit `` |
+| `select_textobject_around_type` | Select around type definition (tree-sitter) | normal: `` mat ``, select: `` mat `` |
+| `select_textobject_inside_function` | Select inside function (tree-sitter) | normal: `` mif ``, select: `` mif `` |
+| `select_textobject_around_function` | Select around function (tree-sitter) | normal: `` maf ``, select: `` maf `` |
+| `select_textobject_inside_parameter` | Select inside argument/parameter (tree-sitter) | normal: `` mia ``, select: `` mia `` |
+| `select_textobject_around_parameter` | Select around argument/parameter (tree-sitter) | normal: `` maa ``, select: `` maa `` |
+| `select_textobject_inside_comment` | Select inside comment (tree-sitter) | normal: `` mic ``, select: `` mic `` |
+| `select_textobject_around_comment` | Select around comment (tree-sitter) | normal: `` mac ``, select: `` mac `` |
+| `select_textobject_inside_test` | Select inside test (tree-sitter) | normal: `` miT ``, select: `` miT `` |
+| `select_textobject_around_test` | Select around test (tree-sitter) | normal: `` maT ``, select: `` maT `` |
+| `select_textobject_inside_entry` | Select inside data structure entry (tree-sitter) | normal: `` mie ``, select: `` mie `` |
+| `select_textobject_around_entry` | Select around data structure entry (tree-sitter) | normal: `` mae ``, select: `` mae `` |
+| `select_textobject_inside_paragraph` | Select inside paragraph | normal: `` mip ``, select: `` mip `` |
+| `select_textobject_around_paragraph` | Select around paragraph | normal: `` map ``, select: `` map `` |
+| `select_textobject_inside_closest_surrounding_pair` | Select inside closest surrounding pair (tree-sitter) | normal: `` mim ``, select: `` mim `` |
+| `select_textobject_around_closest_surrounding_pair` | Select around closest surrounding pair (tree-sitter) | normal: `` mam ``, select: `` mam `` |
+| `select_textobject_inside_word` | Select inside word | normal: `` miw ``, select: `` miw `` |
+| `select_textobject_around_word` | Select around word | normal: `` maw ``, select: `` maw `` |
+| `select_textobject_inside_WORD` | Select inside WORD | normal: `` miW ``, select: `` miW `` |
+| `select_textobject_around_WORD` | Select around WORD | normal: `` maW ``, select: `` maW `` |
+| `select_textobject_inside_change` | Select inside VCS change | normal: `` mig ``, select: `` mig `` |
+| `select_textobject_around_change` | Select around VCS change | normal: `` mag ``, select: `` mag `` |
 | `goto_next_function` | Goto next function | normal: `` ]f ``, select: `` ]f `` |
 | `goto_prev_function` | Goto previous function | normal: `` [f ``, select: `` [f `` |
 | `goto_next_class` | Goto next type definition | normal: `` ]t ``, select: `` ]t `` |
