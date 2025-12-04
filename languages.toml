@@ -4474,7 +4474,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "spade"
-source = { git = "https://gitlab.com/spade-lang/tree-sitter-spade", rev = "78bf09a88fc1d396f66b69879f908fc6bd2e6934" }
+source = { git = "https://gitlab.com/spade-lang/tree-sitter-spade", rev = "f5d0c9a8ee81a6c5f5ab254ba646587448a58692" }
 
 [[language]]
 name = "amber"
