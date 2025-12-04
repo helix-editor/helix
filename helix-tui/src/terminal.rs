@@ -234,6 +234,10 @@ where
         self.backend.set_cursor(x, y)
     }
 
+    pub fn set_multiple_cursors(&mut self, cursors: &[(u16, u16)]) -> io::Result<()> {
+        self.backend.set_multiple_cursors(cursors)
+    }
+
     /// Clear the terminal and force a full redraw on the next draw call.
     pub fn clear(&mut self) -> io::Result<()> {
         self.backend.clear()?;
