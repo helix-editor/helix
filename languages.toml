@@ -588,7 +588,8 @@ file-types = [
   "sublime-settings",
   "sublime-theme",
   "sublime-workspace",
-  "code-workspace"
+  "code-workspace",
+  { glob = ".pytest_cache/v/cache/*" }, # https://docs.pytest.org/en/latest/reference/reference.html#confval-cache_dir
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
