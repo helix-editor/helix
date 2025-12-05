@@ -2481,31 +2481,38 @@ fn run_shell_command(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     let shell = cx.editor.config().shell.clone();
+    let has_blocking = args.has_flag("blocking");
     let args = args.join(" ");
 
-    let callback = async move {
-        let output = shell_impl_async(&shell, &args, None).await?;
-        let call: job::Callback = Callback::EditorCompositor(Box::new(
-            move |editor: &mut Editor, compositor: &mut Compositor| {
-                if !output.is_empty() {
-                    let contents = ui::Markdown::new(
-                        format!("```sh\n{}\n```", output.trim_end()),
-                        editor.syn_loader.clone(),
-                    );
-                    let popup = Popup::new("shell", contents).position(Some(
-                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
-                    ));
-                    compositor.replace_or_push("shell", popup);
-                }
-                editor.set_status("Command run");
-            },
-        ));
-        Ok(call)
+    let show_output = |output: helix_core::Tendril| {
+        move |editor: &mut Editor, compositor: &mut Compositor| {
+            if !output.is_empty() {
+                let contents = ui::Markdown::new(
+                    format!("```sh\n{}\n```", output.trim_end()),
+                    editor.syn_loader.clone(),
+                );
+                let popup = Popup::new("shell", contents).position(Some(
+                    helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                ));
+                compositor.replace_or_push("shell", popup);
+            }
+            editor.set_status("Command run");
+        }
     };
-    cx.jobs.callback(callback);
 
+    if has_blocking {
+        let output = shell_impl(&shell, &args, None)?;
+        job::dispatch_blocking(show_output(output));
+    } else {
+        let callback = async move {
+            let output = shell_impl_async(&shell, &args, None).await?;
+            Ok(job::Callback::EditorCompositor(Box::new(show_output(
+                output,
+            ))))
+        };
+        cx.jobs.callback(callback);
+    }
     Ok(())
 }
 
@@ -3699,7 +3706,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Run a shell command",
         fun: run_shell_command,
         completer: SHELL_COMPLETER,
-        signature: SHELL_SIGNATURE,
+        signature: Signature {
+            positionals: (1, Some(2)),
+            raw_after: Some(1),
+            flags: &[Flag {
+                name: "blocking",
+                alias: Some('b'),
+                doc: "block Helix until the command has finished",
+                ..Flag::DEFAULT
+            }],
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "reset-diff-change",
