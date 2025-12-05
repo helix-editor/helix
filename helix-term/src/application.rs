@@ -151,6 +151,8 @@ impl Application {
         let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
         compositor.push(editor_view);
 
+        let jobs = Jobs::new();
+
         if args.load_tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
@@ -260,7 +262,7 @@ impl Application {
             editor,
             config,
             signals,
-            jobs: Jobs::new(),
+            jobs,
             lsp_progress: LspProgressMap::new(),
             theme_mode,
         };

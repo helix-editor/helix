@@ -40,7 +40,8 @@
 "ui.menu" = { bg = "popupmenu_bg", fg = "foreground" }
 "ui.menu.selected" = { bg = "selection_bg", fg = "selection_fg" }
 
-"warning" = "bright5"
+"warning" = "bright4"
+"hint" = "bright6"
 "error" = { bg = "error_bg", fg = "error_fg" }
 "info" = "todo_fg"
 

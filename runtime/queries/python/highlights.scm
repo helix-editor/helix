@@ -75,6 +75,9 @@
 (lambda_parameters
   (identifier) @variable.parameter)
 
+(keyword_argument
+  name: (identifier) @variable.parameter)
+
 ; - Builtin
 ((identifier) @variable.builtin
  (#any-of? @variable.builtin "self" "cls"))

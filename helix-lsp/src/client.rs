@@ -669,6 +669,7 @@ impl Client {
                                     lsp::CodeActionKind::REFACTOR_REWRITE,
                                     lsp::CodeActionKind::SOURCE,
                                     lsp::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                    lsp::CodeActionKind::SOURCE_FIX_ALL,
                                 ]
                                 .iter()
                                 .map(|kind| kind.as_str().to_string())
@@ -705,6 +706,7 @@ impl Client {
                 }),
                 window: Some(lsp::WindowClientCapabilities {
                     work_done_progress: Some(true),
+                    show_document: Some(lsp::ShowDocumentClientCapabilities { support: true }),
                     ..Default::default()
                 }),
                 general: Some(lsp::GeneralClientCapabilities {
