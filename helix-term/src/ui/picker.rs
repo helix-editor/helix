@@ -41,8 +41,9 @@ use std::{
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
-    char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
-    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
+    char_idx_at_visual_block_offset, char_idx_at_visual_offset, fuzzy::MATCHER,
+    movement::Direction, text_annotations::TextAnnotations,
+    unicode::segmentation::UnicodeSegmentation, Position,
 };
 use helix_view::{
     editor::Action,
@@ -269,6 +270,12 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
+    scroll: ScrollState,
+}
+
+struct ScrollState {
+    preview_scroll_id: u32,
+    vis_line_offset: u32,
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -394,6 +401,10 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             file_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
+            scroll: ScrollState {
+                preview_scroll_id: u32::MAX,
+                vis_line_offset: 0,
+            },
         }
     }
 
@@ -897,6 +908,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let inner = inner.inner(margin);
         BLOCK.render(area, surface);
 
+        let vis_line_offset = self.get_scroll_position();
+
         if let Some((preview, range)) = self.get_preview(cx.editor) {
             let doc = match preview.document() {
                 Some(doc)
@@ -958,6 +971,32 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
             }
 
+            let text = doc.text().slice(..);
+            let text_fmt = doc.text_format(inner.width, None);
+
+            offset.anchor = if text_fmt.soft_wrap {
+                let annotations = TextAnnotations::default();
+
+                let (char_pos, virtual_lines) = char_idx_at_visual_block_offset(
+                    text,
+                    0,
+                    vis_line_offset as usize,
+                    0,
+                    &text_fmt,
+                    &annotations,
+                );
+
+                if virtual_lines > 0 {
+                    text.len_chars().saturating_sub(1)
+                } else {
+                    char_pos
+                }
+            } else {
+                let max_line = text.len_lines().saturating_sub(1);
+                let clamped_line = (vis_line_offset as usize).min(max_line);
+                text.line_to_char(clamped_line)
+            };
+
             let loader = cx.editor.syn_loader.load();
 
             let syntax_highlighter =
@@ -1005,6 +1044,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 decorations,
             );
         }
+    }
+
+    fn get_scroll_position(&mut self) -> u32 {
+        if self.cursor != self.scroll.preview_scroll_id {
+            self.scroll.preview_scroll_id = self.cursor;
+            self.scroll.vis_line_offset = 0;
+        }
+        self.scroll.vis_line_offset
     }
 }
 
@@ -1142,6 +1189,12 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             }
             ctrl!('t') => {
                 self.toggle_preview();
+            }
+            ctrl!('j') => {
+                self.scroll.vis_line_offset = self.scroll.vis_line_offset.saturating_add(1);
+            }
+            ctrl!('k') => {
+                self.scroll.vis_line_offset = self.scroll.vis_line_offset.saturating_sub(1);
             }
             _ => {
                 self.prompt_handle_event(event, ctx);
