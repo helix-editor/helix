@@ -34,8 +34,6 @@ use crate::{
 
 use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
 
-use indexmap::IndexSet;
-
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
 /// Using this macro in a context where the editor automatically queries the LSP
@@ -85,9 +83,9 @@ fn lsp_location_to_location(
     })
 }
 
-fn deduplicate_locations(locations: Vec<Location>) -> Vec<Location> {
-    let set: IndexSet<Location> = IndexSet::from_iter(locations);
-    set.into_iter().collect()
+fn deduplicate_locations(locations: &mut Vec<Location>) {
+    let mut seen: HashSet<Location> = HashSet::new();
+    locations.retain(|l| seen.insert(l.clone()))
 }
 
 struct SymbolInformationItem {
@@ -940,7 +938,7 @@ where
                 Err(err) => log::error!("Error requesting locations: {err}"),
             }
 
-            locations = deduplicate_locations(locations);
+            deduplicate_locations(&mut locations)
         }
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if locations.is_empty() {
@@ -1478,7 +1476,7 @@ mod tests {
 
         // Vec with two locations with same uri and range, but with
         // different offset encodings
-        let locations: Vec<Location> = vec![
+        let mut locations: Vec<Location> = vec![
             Location {
                 uri: Uri::from(path.clone()),
                 range: lsp::Range {
@@ -1508,10 +1506,11 @@ mod tests {
                 offset_encoding: OffsetEncoding::Utf8,
             },
         ];
-        let dedup_locations = deduplicate_locations(locations);
+
+        deduplicate_locations(&mut locations);
 
         // should have 1 unique location
-        assert_eq!(dedup_locations.len(), 1);
+        assert_eq!(locations.len(), 1);
     }
 
     #[test]
@@ -1519,7 +1518,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().join("non-existent-file");
 
-        let locations: Vec<Location> = vec![
+        let mut locations: Vec<Location> = vec![
             Location {
                 uri: Uri::from(path.clone()),
                 range: lsp::Range {
@@ -1594,21 +1593,21 @@ mod tests {
             },
         ];
 
-        let dedup_locations = deduplicate_locations(locations);
+        deduplicate_locations(&mut locations);
 
         // should have 3 unique locations
-        assert_eq!(dedup_locations.len(), 4);
+        assert_eq!(locations.len(), 4);
 
         // check order is preserved: line1, line2, line3
-        assert_eq!(dedup_locations[0].range.start.line, 1);
-        assert_eq!(dedup_locations[1].range.start.line, 2);
-        assert_eq!(dedup_locations[2].range.start.line, 2);
-        assert_eq!(dedup_locations[3].range.start.line, 3);
+        assert_eq!(locations[0].range.start.line, 1);
+        assert_eq!(locations[1].range.start.line, 2);
+        assert_eq!(locations[2].range.start.line, 2);
+        assert_eq!(locations[3].range.start.line, 3);
 
         // check that higher offset_encoding was used for duplicates
-        assert_eq!(dedup_locations[0].offset_encoding, OffsetEncoding::Utf8);
-        assert_eq!(dedup_locations[1].offset_encoding, OffsetEncoding::Utf16);
-        assert_eq!(dedup_locations[2].offset_encoding, OffsetEncoding::Utf8);
-        assert_eq!(dedup_locations[2].offset_encoding, OffsetEncoding::Utf8);
+        assert_eq!(locations[0].offset_encoding, OffsetEncoding::Utf8);
+        assert_eq!(locations[1].offset_encoding, OffsetEncoding::Utf16);
+        assert_eq!(locations[2].offset_encoding, OffsetEncoding::Utf8);
+        assert_eq!(locations[2].offset_encoding, OffsetEncoding::Utf8);
     }
 }
