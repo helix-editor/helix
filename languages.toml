@@ -5087,3 +5087,20 @@ language-servers = [ "ripple-lsp" ]
 [[grammar]]
 name = "ripple"
 source = { git = "https://github.com/Ripple-TS/ripple", rev = "49762f0a63de0d1845fcd2e6632639c095995336", subpath = "packages/tree-sitter" }
+
+[[language]]
+name = "woodpecker-ci"
+scope = "source.woodpecker-ci"
+injection-regex = "^woodpecker-ci$"
+# https://woodpecker-ci.org/docs/usage/workflows
+file-types = [
+  { glob = ".woodpecker.yaml" },
+  { glob = ".woodpecker/*.yaml" },
+  { glob = ".woodpecker/*.yml" },
+]
+grammar = "yaml"
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["yaml-language-server"]
+comment-token = "#"
+formatter = { command = "yamlfmt", args = ['-'] }
+auto-format = true
