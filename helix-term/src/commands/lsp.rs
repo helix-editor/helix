@@ -15,7 +15,7 @@ use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
-    text_annotations::InlineAnnotation, Selection, Uri,
+    text_annotations::InlineAnnotation, Rope, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -81,6 +81,44 @@ fn lsp_location_to_location(
         range: location.range,
         offset_encoding,
     })
+}
+
+fn normalize_location_to_utf8(location: &Location, editor: &Editor) -> Location {
+    // Try to get the document text for this URI
+    let maybe_text = if let Some(doc) = editor
+        .documents
+        .values()
+        .find(|doc| doc.uri().as_ref() == Some(&location.uri))
+    {
+        // Document is already open
+        Some(doc.text().clone())
+    } else if let Some(path) = location.uri.as_path() {
+        // Try to open the file temporarily for conversion
+        match std::fs::read_to_string(path) {
+            Ok(content) => Some(Rope::from(content)),
+            Err(_) => {
+                log::warn!("Failed to read file for position conversion: {:?}", path);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    if let Some(text) = maybe_text {
+        // Convert from the location's offset encoding to UTF-8
+        if let Some(range) = lsp_range_to_range(&text, location.range, location.offset_encoding) {
+            let utf8_range = range_to_lsp_range(&text, range, OffsetEncoding::Utf8);
+            return Location {
+                uri: location.uri.clone(),
+                range: utf8_range,
+                offset_encoding: OffsetEncoding::Utf8,
+            };
+        }
+    }
+
+    // If we can't convert, return the original
+    location.clone()
 }
 
 fn deduplicate_locations(locations: &mut Vec<Location>) {
@@ -861,7 +899,14 @@ impl Display for ApplyEditErrorKind {
 fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Location>) {
     let cwdir = helix_stdx::env::current_working_dir();
 
-    match locations.as_slice() {
+    let mut normalized_locations: Vec<Location> = locations
+        .iter()
+        .map(|loc| normalize_location_to_utf8(loc, editor))
+        .collect();
+
+    deduplicate_locations(&mut normalized_locations);
+
+    match normalized_locations.as_slice() {
         [location] => {
             jump_to_location(editor, location, Action::Replace);
         }
@@ -880,9 +925,13 @@ fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Lo
                 },
             )];
 
-            let picker = Picker::new(columns, 0, locations, cwdir, |cx, location, action| {
-                jump_to_location(cx.editor, location, action)
-            })
+            let picker = Picker::new(
+                columns,
+                0,
+                normalized_locations,
+                cwdir,
+                |cx, location, action| jump_to_location(cx.editor, location, action),
+            )
             .with_preview(|_editor, location| location_to_file_location(location));
             compositor.push(Box::new(overlaid(picker)));
         }
