@@ -193,10 +193,16 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
                                     };
 
                                     // For multi-line, append rest_of_line to last line ("pushed down")
+                                    // But only if ghost text doesn't already contain rest_of_line
+                                    // (if it does, ghost text is replacing cursor position content)
                                     let additional_lines = if is_multiline {
                                         let mut result = lines;
-                                        if let Some(last) = result.last_mut() {
-                                            last.push_str(&rest_of_line);
+                                        let ghost_contains_rest = first_line.contains(&rest_of_line)
+                                            || result.iter().any(|l| l.contains(&rest_of_line));
+                                        if !ghost_contains_rest {
+                                            if let Some(last) = result.last_mut() {
+                                                last.push_str(&rest_of_line);
+                                            }
                                         }
                                         result
                                     } else {
