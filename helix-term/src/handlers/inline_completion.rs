@@ -122,66 +122,89 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
 
                             let first_line = lines.remove(0);
 
-                            let (overlays, overflow_text, eol_ghost_text) = if at_eol {
-                                // At EOL: use Decoration to render first line (no overlays needed)
-                                let eol_text = if !first_line.is_empty() {
-                                    Some(first_line)
+                            // Get rest of line for mid-line cases
+                            let line_end = text.line_to_char(text.char_to_line(cursor) + 1);
+                            let rest_of_line: String = text
+                                .slice(cursor..line_end)
+                                .chars()
+                                .take_while(|c| *c != '\n')
+                                .collect();
+
+                            let (overlays, overflow_text, eol_ghost_text, additional_lines) =
+                                if at_eol {
+                                    // At EOL: use Decoration to render first line
+                                    let eol_text = if !first_line.is_empty() {
+                                        Some(first_line)
+                                    } else {
+                                        None
+                                    };
+                                    (Vec::new(), None, eol_text, lines)
                                 } else {
-                                    None
-                                };
-                                (Vec::new(), None, eol_text)
-                            } else {
-                                // Mid-line: use multiple overlays (no cursor shift)
-                                let line_end = text.line_to_char(text.char_to_line(cursor) + 1);
-                                let rest_of_line: String = text
-                                    .slice(cursor..line_end)
-                                    .chars()
-                                    .take_while(|c| *c != '\n')
-                                    .collect();
+                                    // Mid-line: use overlays for first line (no cursor shift)
+                                    // Additional lines (if any) rendered as virtual lines below
+                                    let is_multiline = !lines.is_empty();
 
-                                // Text after the first character (used for suffix trimming and preview)
-                                let after_cursor: String =
-                                    rest_of_line.chars().skip(1).collect();
+                                    let after_cursor: String =
+                                        rest_of_line.chars().skip(1).collect();
 
-                                // Trim matching suffix from first_line for DISPLAY only
-                                // This avoids showing duplicate chars that already exist in document
-                                // but keeps ghost_text intact for acceptance
-                                let mut display_first_line = first_line.clone();
-                                for suffix_len in (1..=after_cursor.len()).rev() {
-                                    if let Some(suffix) = after_cursor.get(..suffix_len) {
-                                        if display_first_line.ends_with(suffix) {
-                                            let new_len =
-                                                display_first_line.len() - suffix.len();
-                                            display_first_line.truncate(new_len);
-                                            break;
+                                    // Trim matching suffix for display only (single-line only)
+                                    let mut display_first_line = first_line.clone();
+                                    if !is_multiline {
+                                        for suffix_len in (1..=after_cursor.len()).rev() {
+                                            if let Some(suffix) = after_cursor.get(..suffix_len) {
+                                                if display_first_line.ends_with(suffix) {
+                                                    let new_len =
+                                                        display_first_line.len() - suffix.len();
+                                                    display_first_line.truncate(new_len);
+                                                    break;
+                                                }
+                                            }
                                         }
                                     }
-                                }
 
-                                // Build preview: trimmed first line + rest after first char
-                                let preview = format!("{}{}", display_first_line, after_cursor);
+                                    // Build preview:
+                                    // - Single-line: first line + after_cursor (shows full result)
+                                    // - Multi-line: just first line (rest_of_line pushed to bottom)
+                                    let preview = if is_multiline {
+                                        display_first_line
+                                    } else {
+                                        format!("{}{}", display_first_line, after_cursor)
+                                    };
 
-                                // Create overlay for each position (up to rest_of_line length)
-                                let mut overlays = Vec::new();
-                                for (i, preview_char) in preview.chars().enumerate() {
-                                    if i >= rest_of_line.chars().count() {
-                                        break;
+                                    // Create overlay for each position
+                                    let mut overlays = Vec::new();
+                                    for (i, preview_char) in preview.chars().enumerate() {
+                                        if i >= rest_of_line.chars().count() {
+                                            break;
+                                        }
+                                        overlays.push(Overlay::new(
+                                            cursor + i,
+                                            preview_char.to_string(),
+                                        ));
                                     }
-                                    overlays
-                                        .push(Overlay::new(cursor + i, preview_char.to_string()));
-                                }
 
-                                // Overflow: preview chars beyond rest_of_line
-                                let overflow: String =
-                                    preview.chars().skip(rest_of_line.chars().count()).collect();
-                                let overflow_text = if !overflow.is_empty() {
-                                    Some(overflow)
-                                } else {
-                                    None
+                                    // Overflow: preview chars beyond rest_of_line
+                                    let overflow: String =
+                                        preview.chars().skip(rest_of_line.chars().count()).collect();
+                                    let overflow_text = if !overflow.is_empty() {
+                                        Some(overflow)
+                                    } else {
+                                        None
+                                    };
+
+                                    // For multi-line, append rest_of_line to last line ("pushed down")
+                                    let additional_lines = if is_multiline {
+                                        let mut result = lines;
+                                        if let Some(last) = result.last_mut() {
+                                            last.push_str(&rest_of_line);
+                                        }
+                                        result
+                                    } else {
+                                        lines
+                                    };
+
+                                    (overlays, overflow_text, None, additional_lines)
                                 };
-
-                                (overlays, overflow_text, None)
-                            };
 
                             Some(InlineCompletion {
                                 ghost_text,
@@ -190,7 +213,7 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
                                 overlays,
                                 overflow_text,
                                 eol_ghost_text,
-                                additional_lines: lines,
+                                additional_lines,
                             })
                         })
                         .collect();
