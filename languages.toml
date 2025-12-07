@@ -2049,7 +2049,7 @@ grammar = "yaml"
 [[language]]
 name = "git-commit"
 scope = "git.commitmsg"
-file-types = [{ glob = "COMMIT_EDITMSG" }, { glob = "MERGE_MSG" }]
+file-types = [{ glob = "COMMIT_EDITMSG" }, { glob = "MERGE_MSG" }, { glob = "TAG_EDITMSG" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 rulers = [51, 73]
