@@ -2434,7 +2434,7 @@ fn append_output(
         return Ok(());
     }
 
-    shell(cx, &args.join(" "), &ShellBehavior::Append);
+    shell(cx, &args.join(" "), &ShellBehavior::Append, false, false);
     Ok(())
 }
 
@@ -2447,16 +2447,24 @@ fn insert_output(
         return Ok(());
     }
 
-    shell(cx, &args.join(" "), &ShellBehavior::Insert);
+    shell(cx, &args.join(" "), &ShellBehavior::Insert, false, false);
     Ok(())
 }
 
 fn pipe_to(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
-    pipe_impl(cx, args, event, &ShellBehavior::Ignore)
+    pipe_impl(cx, args, event, &ShellBehavior::Ignore, false, true)
 }
 
 fn pipe(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
-    pipe_impl(cx, args, event, &ShellBehavior::Replace)
+    pipe_impl(cx, args, event, &ShellBehavior::Replace, false, false)
+}
+
+fn pipe_on_success(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Replace, true, true)
 }
 
 fn pipe_impl(
@@ -2464,12 +2472,14 @@ fn pipe_impl(
     args: Args,
     event: PromptEvent,
     behavior: &ShellBehavior,
+    on_success: bool,
+    popup_stderr: bool,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    shell(cx, &args.join(" "), behavior);
+    shell(cx, &args.join(" "), behavior, on_success, popup_stderr);
     Ok(())
 }
 
@@ -2490,10 +2500,7 @@ fn run_shell_command(
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.is_empty() {
-                    let contents = ui::Markdown::new(
-                        format!("```sh\n{}\n```", output.trim_end()),
-                        editor.syn_loader.clone(),
-                    );
+                    let contents = ui::Markdown::new(output.to_string(), editor.syn_loader.clone());
                     let popup = Popup::new("shell", contents).position(Some(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
@@ -3682,6 +3689,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["|"],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
+        completer: SHELL_COMPLETER,
+        signature: SHELL_SIGNATURE,
+    },
+    TypableCommand {
+        name: "pipe-on-success",
+        aliases: &[],
+        doc: "Pipe each selection to the shell command only if all exit successfully.",
+        fun: pipe_on_success,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
     },

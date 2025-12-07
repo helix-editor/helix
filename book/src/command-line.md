@@ -72,6 +72,7 @@ The following commands support expansions but otherwise pass the given argument 
 * `:append-output`
 * `:pipe`
 * `:pipe-to`
+* `:pipe-on-success`
 * `:run-shell-command`
 
 For example executing `:sh echo "%{buffer_name}:%{cursor_column}"` would pass text like `echo "README.md:1"` as an argument to the shell program: the expansions are evaluated but not the quotes. As mentioned above, percent characters can be used in shell commands by doubling the percent character. To insert the output of a command like `date -u +'%Y-%m-%d'` use `:insert-output date -u +'%%Y-%%m-%%d'`.
