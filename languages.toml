@@ -3192,7 +3192,16 @@ source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9a
 [[language]]
 name = "env"
 scope = "source.env"
-file-types = [{ glob = ".env" }, { glob = ".env.*" }, { glob = ".envrc" }, { glob = ".envrc.*" }]
+file-types = [
+  { glob = ".env" },
+  { glob = ".env.*" },
+  { glob = ".envrc" },
+  { glob = ".envrc.*" },
+  { glob = "_environment" }, # https://quarto.org/docs/projects/environment.html#environment-file
+  { glob = "_environment-*" }, # https://quarto.org/docs/projects/environment.html#profile-environments
+  { glob = "_environment.local" }, # https://quarto.org/docs/projects/environment.html#local-environment
+  { glob = "_environment.required" }, # https://quarto.org/docs/projects/environment.html#required-variables
+]
 injection-regex = "env"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
