@@ -25,7 +25,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use std::{
     borrow::Cow,
     cell::Cell,
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet, VecDeque},
     fs,
     io::{self, stdin},
     num::{NonZeroU8, NonZeroUsize},
@@ -62,6 +62,7 @@ use arc_swap::{
     ArcSwap,
 };
 
+pub const DIR_STACK_CAP: usize = 10;
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
@@ -1225,7 +1226,8 @@ pub struct Editor {
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
-    last_cwd: Option<PathBuf>,
+    pub last_cwd: Option<PathBuf>,
+    pub dir_stack: VecDeque<PathBuf>,
 
     pub exit_code: i32,
 
@@ -1368,6 +1370,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            dir_stack: VecDeque::with_capacity(DIR_STACK_CAP),
         }
     }
 
