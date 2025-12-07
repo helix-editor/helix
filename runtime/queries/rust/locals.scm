@@ -23,3 +23,6 @@
 
 ; References
 (identifier) @local.reference
+(scoped_identifier
+  path: (identifier)? @namespace
+  name: (identifier) @namespace)
