@@ -4503,7 +4503,7 @@ language-servers = ["amber-lsp"]
 
 [[grammar]]
 name = "amber"
-source = { git = "https://github.com/amber-lang/tree-sitter-amber", rev = "c6df3ec2ec243ed76550c525e7ac3d9a10c6c814" }
+source = { git = "https://github.com/amber-lang/tree-sitter-amber", rev = "dc69f42449fd3c807bacefa398263f62e581f755" }
 
 [[language]]
 name = "koto"
