@@ -590,6 +590,10 @@ file-types = [
   "sublime-workspace",
   "code-workspace",
   { glob = ".pytest_cache/v/cache/*" }, # https://docs.pytest.org/en/latest/reference/reference.html#confval-cache_dir
+  { glob = "devenv.lock" }, # https://devenv.sh/
+  { glob = "devbox.lock" }, # https://www.jetify.com/docs/devbox/
+  { glob = "manifest.lock" }, # https://flox.dev/docs/
+  { glob = "deno.lock" }, # https://deno.com/
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
