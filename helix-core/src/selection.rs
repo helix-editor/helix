@@ -783,7 +783,7 @@ pub fn keep_or_remove_matches(
     None
 }
 
-// TODO: support to split on capture #N instead of whole match
+// TODO: support to split on capture #N instead of last capture
 pub fn select_on_matches(
     text: RopeSlice,
     selection: &Selection,
@@ -792,11 +792,13 @@ pub fn select_on_matches(
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
-        for mat in regex.find_iter(text.regex_input_at(sel.from()..sel.to())) {
+        for cap in regex.captures_iter(text.regex_input_at(sel.from()..sel.to())) {
             // TODO: retain range direction
+            // Get last capture group which is always Some
+            let cap = cap.get_group(cap.group_len() - 1).unwrap();
 
-            let start = text.byte_to_char(mat.start());
-            let end = text.byte_to_char(mat.end());
+            let start = text.byte_to_char(cap.start);
+            let end = text.byte_to_char(cap.end);
 
             let range = Range::new(start, end);
             // Make sure the match is not right outside of the selection.
@@ -863,11 +865,13 @@ pub fn split_on_matches(text: RopeSlice, selection: &Selection, regex: &rope::Re
         let sel_end = sel.to();
         let mut start = sel_start;
 
-        for mat in regex.find_iter(text.regex_input_at(sel_start..sel_end)) {
+        for cap in regex.captures_iter(text.regex_input_at(sel_start..sel_end)) {
             // TODO: retain range direction
-            let end = text.byte_to_char(mat.start());
+            // Get last capture group which is always Some
+            let cap = cap.get_group(cap.group_len() - 1).unwrap();
+            let end = text.byte_to_char(cap.start);
             result.push(Range::new(start, end));
-            start = text.byte_to_char(mat.end());
+            start = text.byte_to_char(cap.end);
         }
 
         if start < sel_end {
@@ -1109,6 +1113,10 @@ mod test {
                 0
             ))
         );
+        assert_eq!(
+            select_on_matches(s, &selection, &rope::Regex::new(r"Spanish (\w*)").unwrap()),
+            Some(Selection::single(27, 38))
+        );
 
         let r = Rope::from_str("This\nString\n\ncontains multiple\nlines");
         let s = r.slice(..);
@@ -1313,6 +1321,24 @@ mod test {
         assert_eq!(
             result.fragments(text.slice(..)).collect::<Vec<_>>(),
             &["", "abcd", "efg", "rs", "xyz"]
+        );
+
+        let text = Rope::from("Range::new(0, 5), Range::new(6, 9), Range::new(11, 20)");
+
+        let result = split_on_matches(
+            text.slice(..),
+            &Selection::single(0, text.len_chars()),
+            &rope::Regex::new(r"(, )Range").unwrap(),
+        );
+
+        assert_eq!(
+            result.ranges(),
+            &[Range::new(0, 16), Range::new(18, 34), Range::new(36, 54)]
+        );
+
+        assert_eq!(
+            result.fragments(text.slice(..)).collect::<Vec<_>>(),
+            ["Range::new(0, 5)", "Range::new(6, 9)", "Range::new(11, 20)"]
         );
     }
 
