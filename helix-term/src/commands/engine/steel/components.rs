@@ -684,9 +684,9 @@ block: Block?
         r#"Clear a `Rect` in the `Buffer`
 
 ```scheme
-(buffer/clear area)
+(buffer/clear frame area)
 ```
-
+frame : Buffer?
 area : Rect?
         "#
     );
@@ -697,9 +697,9 @@ area : Rect?
         r#"Clear a `Rect` in the `Buffer` with a default `Style`
 
 ```scheme
-(buffer/clear-with area style)
+(buffer/clear-with frame area style)
 ```
-
+frame : Buffer?
 area : Rect?
 style : Style?
         "#
