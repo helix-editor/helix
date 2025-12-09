@@ -6984,7 +6984,6 @@ struct FlashMatch {
     label: char,
 }
 
-// fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
 #[allow(clippy::too_many_arguments)]
 fn flash_chunks(editor: &mut Editor, input: &str, forward: bool) -> Option<Vec<FlashMatch>> {
     // if no search string provided - return early
@@ -7060,6 +7059,7 @@ fn flash_chunks(editor: &mut Editor, input: &str, forward: bool) -> Option<Vec<F
     Some(results).filter(|ws| !ws.is_empty())
 }
 
+// fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
 fn flash_impl_rec(
     cx: &mut Context,
     movement: Movement,
@@ -7138,6 +7138,7 @@ fn flash_impl_rec(
                 goto_first_nonwhitespace(cx)
             }
 
+            doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
             return;
         }
 
