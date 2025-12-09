@@ -37,6 +37,10 @@ pub trait Backend {
     fn show_cursor(&mut self, kind: CursorKind) -> Result<(), io::Error>;
     /// Sets the cursor to the given position
     fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error>;
+    /// Sets multiple cursors using terminal-specific protocols (e.g., kitty)
+    fn set_multiple_cursors(&mut self, _cursors: &[(u16, u16)]) -> Result<(), io::Error> {
+        Ok(())
+    }
     /// Clears the terminal
     fn clear(&mut self) -> Result<(), io::Error>;
     /// Gets the size of the terminal in cells
