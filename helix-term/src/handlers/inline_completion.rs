@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
+use crate::events::OnModeSwitch;
 use arc_swap::ArcSwap;
-use helix_core::{
-    syntax::config::LanguageServerFeature,
-    text_annotations::Overlay,
-    Range,
-};
+use helix_core::{syntax::config::LanguageServerFeature, text_annotations::Overlay, Range};
 use helix_event::{register_hook, send_blocking};
 use helix_lsp::{lsp, util::lsp_range_to_range};
 use helix_view::{
@@ -13,7 +10,6 @@ use helix_view::{
     events::{DocumentDidChange, SelectionDidChange},
     handlers::Handlers,
 };
-use crate::events::OnModeSwitch;
 use tokio::time::Instant;
 
 use crate::{config::Config, job};
@@ -164,9 +160,21 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
 
                                     // Build preview:
                                     // - Single-line: first line + after_cursor (shows full result)
-                                    // - Multi-line: just first line (rest_of_line pushed to bottom)
+                                    // - Multi-line: first line padded with spaces to cover rest_of_line
+                                    //   (rest_of_line is pushed down to last ghost line, so blank it here)
                                     let preview = if is_multiline {
-                                        display_first_line
+                                        let rest_len = rest_of_line.chars().count();
+                                        let first_len = display_first_line.chars().count();
+                                        if first_len < rest_len {
+                                            // Pad with spaces to cover rest_of_line
+                                            format!(
+                                                "{}{}",
+                                                display_first_line,
+                                                " ".repeat(rest_len - first_len)
+                                            )
+                                        } else {
+                                            display_first_line
+                                        }
                                     } else {
                                         format!("{}{}", display_first_line, after_cursor)
                                     };
@@ -184,8 +192,10 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
                                     }
 
                                     // Overflow: preview chars beyond rest_of_line
-                                    let overflow: String =
-                                        preview.chars().skip(rest_of_line.chars().count()).collect();
+                                    let overflow: String = preview
+                                        .chars()
+                                        .skip(rest_of_line.chars().count())
+                                        .collect();
                                     let overflow_text = if !overflow.is_empty() {
                                         Some(overflow)
                                     } else {
@@ -197,7 +207,8 @@ pub fn trigger_inline_completion(trigger_kind: lsp::InlineCompletionTriggerKind)
                                     // (if it does, ghost text is replacing cursor position content)
                                     let additional_lines = if is_multiline {
                                         let mut result = lines;
-                                        let ghost_contains_rest = first_line.contains(&rest_of_line)
+                                        let ghost_contains_rest = first_line
+                                            .contains(&rest_of_line)
                                             || result.iter().any(|l| l.contains(&rest_of_line));
                                         if !ghost_contains_rest {
                                             if let Some(last) = result.last_mut() {

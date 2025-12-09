@@ -498,8 +498,7 @@ impl View {
 
         // All overlays (replace chars in-place, no cursor shift)
         if !doc.inline_completion_overlays.is_empty() {
-            text_annotations
-                .add_overlay(&doc.inline_completion_overlays, inline_completion_style);
+            text_annotations.add_overlay(&doc.inline_completion_overlays, inline_completion_style);
         }
 
         // Multi-line ghost text: reserve virtual lines for additional lines
