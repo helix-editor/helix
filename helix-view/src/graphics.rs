@@ -15,6 +15,20 @@ const fn from_nibble(h: u8) -> u8 {
     }
 }
 
+/// Decodes nibble, repeating its value on each half,
+/// i.e. the value is its own padding.
+///
+/// # Errors
+/// If `h` isn't a nibble
+#[must_use]
+const fn dupe_from_nibble(mut h: u8) -> Option<u8> {
+    h = from_nibble(h);
+    if h > 0xf {
+        return None;
+    }
+    Some((h << 4) | h)
+}
+
 /// Decodes big-endian nibble-pair.
 ///
 /// # Errors
@@ -291,7 +305,8 @@ pub enum Color {
 }
 
 impl Color {
-    /// Creates a `Color` from a hex string of the form "#RRGGBB"
+    /// Creates a `Color` from a hex string of the form
+    /// "#RRGGBB" or "#RGB"
     ///
     /// # Examples
     ///
@@ -302,17 +317,28 @@ impl Color {
     /// let color2 = Color::Rgb(192, 255, 238);
     ///
     /// assert_eq!(color1, color2);
+    ///
+    /// let color3 = Color::from_hex("#012").unwrap();
+    /// assert_eq!(color3, Color::Rgb(0, 17, 34));
     /// ```
     pub fn from_hex(h: &str) -> Option<Self> {
         let h = h.as_bytes();
-        if !(h.starts_with(b"#") && h.len() == 7) {
+        if !h.starts_with(b"#") {
             return None;
         }
-        Some(Self::Rgb(
-            byte_from_hex([h[1], h[2]])?,
-            byte_from_hex([h[3], h[4]])?,
-            byte_from_hex([h[5], h[6]])?,
-        ))
+
+        use byte_from_hex as pair;
+        use dupe_from_nibble as nibble;
+
+        match h.len() {
+            7 => Some(Self::Rgb(
+                pair([h[1], h[2]])?,
+                pair([h[3], h[4]])?,
+                pair([h[5], h[6]])?,
+            )),
+            4 => Some(Self::Rgb(nibble(h[1])?, nibble(h[2])?, nibble(h[3])?)),
+            _ => None,
+        }
     }
 }
 
@@ -812,6 +838,15 @@ mod tests {
     }
 
     #[test]
+    fn sanity_nibble2() {
+        assert_eq!(dupe_from_nibble(b'0'), Some(0));
+        assert_eq!(dupe_from_nibble(b'1'), Some(0x11));
+        assert_eq!(dupe_from_nibble(b'7'), Some(0x77));
+        assert_eq!(dupe_from_nibble(b'a'), Some(0xaa));
+        assert_eq!(dupe_from_nibble(b'f'), Some(0xff));
+    }
+
+    #[test]
     fn invalid_nibble() {
         for c in *b"gGzZ+-" {
             assert_eq!(from_nibble(c), 0xff);
@@ -843,6 +878,7 @@ mod tests {
             Color::from_hex("#01fe3a"),
             Some(Color::Rgb(0x01, 0xfe, 0x3a))
         );
+        assert_eq!(Color::from_hex("#abc"), Some(Color::Rgb(0xaa, 0xbb, 0xcc)));
     }
     #[test]
     fn hex_color_invalid_len() {
