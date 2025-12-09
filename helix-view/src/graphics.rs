@@ -5,6 +5,33 @@ use std::{
     str::FromStr,
 };
 
+#[must_use]
+const fn from_nibble(h: u8) -> u8 {
+    match h {
+        b'A'..=b'F' => h - b'A' + 10,
+        b'a'..=b'f' => h - b'a' + 10,
+        b'0'..=b'9' => h - b'0',
+        _ => 0xff, // Err
+    }
+}
+
+/// Decodes big-endian nibble-pair.
+///
+/// # Errors
+/// If any byte isn't a nibble
+const fn byte_from_hex(mut h: [u8; 2]) -> Option<u8> {
+    // reuse memory
+    h[0] = from_nibble(h[0]);
+    h[1] = from_nibble(h[1]);
+    // we could split this in 2 `if`s,
+    // to avoid calling `from_nibble`,
+    // but that might be slower
+    if h[0] > 0xf || h[1] > 0xf {
+        return None;
+    }
+    Some((h[0] << 4) | h[1])
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 /// UNSTABLE
@@ -264,7 +291,7 @@ pub enum Color {
 }
 
 impl Color {
-    /// Creates a `Color` from a hex string
+    /// Creates a `Color` from a hex string of the form "#RRGGBB"
     ///
     /// # Examples
     ///
@@ -276,15 +303,16 @@ impl Color {
     ///
     /// assert_eq!(color1, color2);
     /// ```
-    pub fn from_hex(hex: &str) -> Option<Self> {
-        if !(hex.starts_with('#') && hex.len() == 7) {
+    pub fn from_hex(h: &str) -> Option<Self> {
+        let h = h.as_bytes();
+        if !(h.starts_with(b"#") && h.len() == 7) {
             return None;
         }
-        match [1..=2, 3..=4, 5..=6].map(|i| hex.get(i).and_then(|c| u8::from_str_radix(c, 16).ok()))
-        {
-            [Some(r), Some(g), Some(b)] => Some(Self::Rgb(r, g, b)),
-            _ => None,
-        }
+        Some(Self::Rgb(
+            byte_from_hex([h[1], h[2]])?,
+            byte_from_hex([h[3], h[4]])?,
+            byte_from_hex([h[5], h[6]])?,
+        ))
     }
 }
 
@@ -757,6 +785,77 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn sanity_nibble_lowercase() {
+        for i in 0..0x10_u8 {
+            let c = format!("{:x}", i);
+            assert_eq!(c.len(), 1);
+            assert_eq!(
+                u8::from_str_radix(&c, 0x10).unwrap(),
+                from_nibble(c.as_bytes()[0])
+            );
+        }
+    }
+    #[test]
+    fn sanity_nibble_uppercase() {
+        for i in 0..0x10_u8 {
+            let c = format!("{:X}", i);
+            assert_eq!(c.len(), 1);
+            assert_eq!(
+                u8::from_str_radix(&c, 0x10).unwrap(),
+                from_nibble(c.as_bytes()[0])
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_nibble() {
+        for c in *b"gGzZ+-" {
+            assert_eq!(from_nibble(c), 0xff);
+        }
+    }
+
+    #[test]
+    fn pair_endian() {
+        assert_eq!(byte_from_hex(*b"00"), Some(0));
+        assert_eq!(byte_from_hex(*b"fF"), Some(0xff));
+        assert_eq!(byte_from_hex(*b"c3"), Some(0xc3));
+    }
+    #[test]
+    fn invalid_pair() {
+        assert!(byte_from_hex(*b"+1").is_none());
+        assert!(byte_from_hex(*b"-1").is_none());
+        assert!(byte_from_hex(*b"Gg").is_none());
+        assert!(byte_from_hex(*b"0x").is_none());
+    }
+
+    #[test]
+    fn hex_color_no_regress() {
+        assert!(Color::from_hex("#+a+b+c").is_none());
+        assert!(Color::from_hex("#+0+1+2").is_none());
+    }
+    #[test]
+    fn hex_color_sanity() {
+        assert_eq!(
+            Color::from_hex("#01fe3a"),
+            Some(Color::Rgb(0x01, 0xfe, 0x3a))
+        );
+    }
+    #[test]
+    fn hex_color_invalid_len() {
+        // should alpha channel be explicitly rejected?
+        for h in [
+            "#0",
+            "#00",
+            "#00000",
+            "#0000000",
+            "#000000000",
+            "#0000000000",
+        ] {
+            assert!(Color::from_hex(h).is_none());
         }
     }
 }
