@@ -563,8 +563,9 @@ impl ThemePalette {
         if s.starts_with('#') {
             match Color::from_hex(match s.len() {
                 // RGB
-                7 => s,
+                4 | 7 => s,
                 // RGBA (ignoring alpha)
+                5 => &s[0..4],
                 9 => &s[0..7],
                 // HACK: return None
                 _ => "",
