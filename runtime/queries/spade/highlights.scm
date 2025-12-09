@@ -52,7 +52,18 @@
     "where"
     "trait"
     "for"
+    "pub"
+    "unsafe"
+    "type"
+    "as"
+    "initial"
 ] @keyword
+
+[
+  "wire"
+    "super"
+    "lib"
+] @keyword.storage
 
 [
   "use"
