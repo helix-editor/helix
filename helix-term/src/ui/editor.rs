@@ -1194,9 +1194,8 @@ impl EditorView {
 
                     let (view, doc) = current!(cxt.editor);
 
-                    let path = match doc.path() {
-                        Some(path) => path.clone(),
-                        None => return EventResult::Ignored(None),
+                    let Some(path) = doc.pathbuf() else {
+                        return EventResult::Ignored(None);
                     };
 
                     if let Some(char_idx) =
