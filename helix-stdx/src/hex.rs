@@ -11,6 +11,20 @@ const fn from_nibble(h: u8) -> u8 {
     }
 }
 
+/// Decodes a nibble into an octet, repeating its value on each half.
+/// That is, the value is its own padding.
+///
+/// # Errors
+/// If the byte `h` is not an ASCII nibble
+#[must_use]
+pub const fn dupe_from_nibble(mut h: u8) -> Option<u8> {
+    h = from_nibble(h);
+    if h > 0xf {
+        return None;
+    }
+    Some((h << 4) | h)
+}
+
 /// Decodes a big-endian nibble-pair into an octet.
 ///
 /// # Errors
@@ -53,6 +67,15 @@ mod tests {
                 from_nibble(c.as_bytes()[0])
             );
         }
+    }
+
+    #[test]
+    fn sanity_nibble2() {
+        assert_eq!(dupe_from_nibble(b'0'), Some(0));
+        assert_eq!(dupe_from_nibble(b'1'), Some(0x11));
+        assert_eq!(dupe_from_nibble(b'7'), Some(0x77));
+        assert_eq!(dupe_from_nibble(b'a'), Some(0xaa));
+        assert_eq!(dupe_from_nibble(b'f'), Some(0xff));
     }
 
     #[test]

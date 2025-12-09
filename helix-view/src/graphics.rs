@@ -276,17 +276,27 @@ impl Color {
     /// let color2 = Color::Rgb(192, 255, 238);
     ///
     /// assert_eq!(color1, color2);
+    ///
+    /// let color3 = Color::from_hex("#012").unwrap();
+    /// assert_eq!(color3, Color::Rgb(0, 17, 34));
     /// ```
     pub fn from_hex(h: &str) -> Option<Self> {
         let h = h.as_bytes();
-        if !(h.starts_with(b"#") && h.len() == 7) {
+        if !h.starts_with(b"#") {
             return None;
         }
-        Some(Self::Rgb(
-            hex::byte_from_pair([h[1], h[2]])?,
-            hex::byte_from_pair([h[3], h[4]])?,
-            hex::byte_from_pair([h[5], h[6]])?,
-        ))
+
+        use hex::{byte_from_pair as pair, dupe_from_nibble as nibble};
+
+        match h.len() {
+            7 => Some(Self::Rgb(
+                pair([h[1], h[2]])?,
+                pair([h[3], h[4]])?,
+                pair([h[5], h[6]])?,
+            )),
+            4 => Some(Self::Rgb(nibble(h[1])?, nibble(h[2])?, nibble(h[3])?)),
+            _ => None,
+        }
     }
 }
 
@@ -773,6 +783,7 @@ mod tests {
             Color::from_hex("#01fe3a"),
             Some(Color::Rgb(0x01, 0xfe, 0x3a))
         );
+        assert_eq!(Color::from_hex("#abc"), Some(Color::Rgb(0xaa, 0xbb, 0xcc)));
     }
     #[test]
     fn hex_color_invalid_len() {
