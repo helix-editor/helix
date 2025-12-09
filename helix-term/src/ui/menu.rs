@@ -6,7 +6,12 @@ use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
-use helix_view::{editor::SmartTabConfig, graphics::Rect, Editor};
+use helix_view::{
+    editor::SmartTabConfig,
+    graphics::Rect,
+    input::{MouseEvent, MouseEventKind},
+    Editor,
+};
 use tui::layout::Constraint;
 
 pub trait Item: Sync + Send + 'static {
@@ -191,6 +196,26 @@ impl<T: Item> Menu<T> {
     pub fn len(&self) -> usize {
         self.matches.len()
     }
+
+    fn handle_mouse_event(
+        &mut self,
+        &MouseEvent { kind, .. }: &MouseEvent,
+        cx: &mut Context,
+    ) -> EventResult {
+        match kind {
+            MouseEventKind::ScrollDown => {
+                self.move_down();
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                EventResult::Consumed(None)
+            }
+            MouseEventKind::ScrollUp => {
+                self.move_up();
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                EventResult::Consumed(None)
+            }
+            _ => EventResult::Ignored(None),
+        }
+    }
 }
 
 impl<T: Item + PartialEq> Menu<T> {
@@ -210,6 +235,7 @@ impl<T: Item + 'static> Component for Menu<T> {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Key(event) => *event,
+            Event::Mouse(event) => return self.handle_mouse_event(event, cx),
             _ => return EventResult::Ignored(None),
         };
 
