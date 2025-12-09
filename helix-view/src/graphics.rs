@@ -1,4 +1,5 @@
 use bitflags::bitflags;
+use helix_stdx::hex;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::{max, min},
@@ -276,15 +277,16 @@ impl Color {
     ///
     /// assert_eq!(color1, color2);
     /// ```
-    pub fn from_hex(hex: &str) -> Option<Self> {
-        if !(hex.starts_with('#') && hex.len() == 7) {
+    pub fn from_hex(h: &str) -> Option<Self> {
+        let h = h.as_bytes();
+        if !(h.starts_with(b"#") && h.len() == 7) {
             return None;
         }
-        match [1..=2, 3..=4, 5..=6].map(|i| hex.get(i).and_then(|c| u8::from_str_radix(c, 16).ok()))
-        {
-            [Some(r), Some(g), Some(b)] => Some(Self::Rgb(r, g, b)),
-            _ => None,
-        }
+        Some(Self::Rgb(
+            hex::byte_from_pair([h[1], h[2]])?,
+            hex::byte_from_pair([h[3], h[4]])?,
+            hex::byte_from_pair([h[5], h[6]])?,
+        ))
     }
 }
 
@@ -757,6 +759,33 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn hex_color_no_regress() {
+        assert!(Color::from_hex("#+a+b+c").is_none());
+        assert!(Color::from_hex("#+0+1+2").is_none());
+    }
+    #[test]
+    fn hex_color_sanity() {
+        assert_eq!(
+            Color::from_hex("#01fe3a"),
+            Some(Color::Rgb(0x01, 0xfe, 0x3a))
+        );
+    }
+    #[test]
+    fn hex_color_invalid_len() {
+        // should alpha channel be explicitly rejected?
+        for h in [
+            "#0",
+            "#00",
+            "#00000",
+            "#0000000",
+            "#000000000",
+            "#0000000000",
+        ] {
+            assert!(Color::from_hex(h).is_none());
         }
     }
 }
