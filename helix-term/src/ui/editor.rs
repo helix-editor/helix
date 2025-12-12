@@ -1625,11 +1625,16 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        let config = editor.config();
         // Check if we should use the terminal's native cursor
         let use_native = {
-            // Only use native cursor with single selection
-            let (view, doc) = current_ref!(editor);
-            doc.selection(view.id).len() == 1
+            if config.cursor_shape[0] == CursorKind::Native {
+                // Only use native cursor with single selection
+                let (view, doc) = current_ref!(editor);
+                doc.selection(view.id).len() == 1
+            } else {
+                false
+            }
         };
 
         match editor.cursor() {

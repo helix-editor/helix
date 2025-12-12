@@ -522,6 +522,7 @@ impl Backend for TerminaBackend {
             CursorKind::Block => CursorStyle::SteadyBlock,
             CursorKind::Bar => CursorStyle::SteadyBar,
             CursorKind::Underline => CursorStyle::SteadyUnderline,
+            CursorKind::Native => CursorStyle::Default,
             CursorKind::Hidden => unreachable!(),
         };
         write!(
