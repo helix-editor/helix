@@ -297,6 +297,7 @@ where
             CursorKind::Block => SetCursorStyle::SteadyBlock,
             CursorKind::Bar => SetCursorStyle::SteadyBar,
             CursorKind::Underline => SetCursorStyle::SteadyUnderScore,
+            CursorKind::Native => SetCursorStyle::DefaultUserShape,
             CursorKind::Hidden => unreachable!(),
         };
         execute!(self.buffer, Show, shape)
