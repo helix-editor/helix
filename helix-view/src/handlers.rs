@@ -9,6 +9,7 @@ pub mod completion;
 pub mod dap;
 pub mod diagnostics;
 pub mod lsp;
+pub mod vte;
 pub mod word_index;
 
 #[derive(Debug)]
