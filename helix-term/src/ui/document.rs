@@ -179,6 +179,8 @@ pub struct TextRenderer<'a> {
     pub whitespace_style: Style,
     pub indent_guide_char: String,
     pub indent_guide_style: Style,
+    pub indent_guide_rainbow: bool,
+    pub theme: &'a Theme,
     pub newline: String,
     pub nbsp: String,
     pub nnbsp: String,
@@ -201,7 +203,7 @@ impl<'a> TextRenderer<'a> {
     pub fn new(
         surface: &'a mut Surface,
         doc: &Document,
-        theme: &Theme,
+        theme: &'a Theme,
         offset: Position,
         viewport: Rect,
     ) -> TextRenderer<'a> {
@@ -243,12 +245,19 @@ impl<'a> TextRenderer<'a> {
         };
 
         let text_style = theme.get("ui.text");
+        let indent_guide_style = text_style.patch(
+            theme
+                .try_get("ui.virtual.indent-guide")
+                .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
+        );
 
         let indent_width = doc.indent_style.indent_width(tab_width) as u16;
 
         TextRenderer {
             surface,
             indent_guide_char: editor_config.indent_guides.character.into(),
+            indent_guide_rainbow: editor_config.indent_guides.rainbow,
+            theme,
             newline,
             nbsp,
             nnbsp,
@@ -260,11 +269,7 @@ impl<'a> TextRenderer<'a> {
             starting_indent: offset.col / indent_width as usize
                 + (offset.col % indent_width as usize != 0) as usize
                 + editor_config.indent_guides.skip_levels as usize,
-            indent_guide_style: text_style.patch(
-                theme
-                    .try_get("ui.virtual.indent-guide")
-                    .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
-            ),
+            indent_guide_style,
             text_style,
             draw_indent_guides: editor_config.indent_guides.render,
             viewport,
@@ -409,8 +414,14 @@ impl<'a> TextRenderer<'a> {
                 as u16;
             let y = self.viewport.y + row;
             debug_assert!(self.surface.in_bounds(x, y));
+            let indent_guide_style = if self.indent_guide_rainbow {
+                self.indent_guide_style
+                    .patch(self.theme.get_indent_rainbow(i))
+            } else {
+                self.indent_guide_style
+            };
             self.surface
-                .set_string(x, y, &self.indent_guide_char, self.indent_guide_style);
+                .set_string(x, y, &self.indent_guide_char, indent_guide_style)
         }
     }
 
