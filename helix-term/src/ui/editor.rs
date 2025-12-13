@@ -647,9 +647,9 @@ impl EditorView {
     pub fn render_gutter<'d>(
         editor: &'d Editor,
         doc: &'d Document,
-        view: &View,
+        view: &'d View,
         viewport: Rect,
-        theme: &Theme,
+        theme: &'d Theme,
         is_focused: bool,
         decoration_manager: &mut DecorationManager<'d>,
     ) {
@@ -674,7 +674,6 @@ impl EditorView {
             let mut text = String::with_capacity(width);
             let cursors = cursors.clone();
             let gutter_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
-                // TODO handle softwrap in gutters
                 let selected = cursors.contains(&pos.doc_line);
                 let x = viewport.x + offset;
                 let y = pos.visual_line;
