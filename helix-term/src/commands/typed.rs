@@ -3818,6 +3818,9 @@ fn execute_command_line(
         return execute_command(cx, cmd, command, event);
     }
 
+    let lower = command.to_string().to_ascii_lowercase();
+    let command = lower.as_str();
+
     match typed::TYPABLE_COMMAND_MAP.get(command) {
         Some(cmd) => execute_command(cx, cmd, rest, event),
         None if event == PromptEvent::Validate => Err(anyhow!("no such command: '{command}'")),
