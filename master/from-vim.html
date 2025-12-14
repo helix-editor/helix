@@ -161,13 +161,148 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="migrating-from-vim"><a class="header" href="#migrating-from-vim">Migrating from Vim</a></h1>
+<ul>
+<li><a href="#Delete/Change%20Commands">Delete/Change Commands</a></li>
+<li><a href="#Navigation">Navigation</a></li>
+<li><a href="#Line%20Deletes">Line Deletes</a></li>
+<li><a href="#Comment%20lines,%20Completion,%20Search">Comment lines, Completion, Search</a></li>
+<li><a href="#File%20actions">File actions</a></li>
+</ul>
 <p>Helix's editing model is strongly inspired from Vim and Kakoune, and a notable
 difference from Vim (and the most striking similarity to Kakoune) is that Helix
 follows the <code>selection → action</code> model. This means that whatever you are
 going to act on (a word, a paragraph, a line, etc.) is selected first and the
 action itself (delete, change, yank, etc.) comes second. A cursor is simply a
 single width selection.</p>
-<p>See also Kakoune's <a href="https://github.com/mawww/kakoune/wiki/Migrating-from-Vim">Migrating from Vim</a> and Helix's <a href="https://github.com/helix-editor/helix/wiki/Migrating-from-Vim">Migrating from Vim</a>.</p>
+<p><em>Note:</em> As Helix is inspired by Vim and <a href="https://github.com/mawww/kakoune">Kakoune</a>, the keybindings are similar but also have some differences. The content of this page is inspired by <a href="https://github.com/mawww/kakoune/wiki/Migrating-from-Vim">Kakoune Wiki</a>.</p>
+<p>NOTE: Unlike vim, <code>f</code>, <code>F</code>, <code>t</code> and <code>T</code> are not confined to the current line.</p>
+<h2 id="deletechange-commands"><a class="header" href="#deletechange-commands">Delete/Change Commands</a></h2>
+<p>delete a word:</p>
+<ul>
+<li>vim: <code>dw</code></li>
+<li>helix: <code>wd</code></li>
+</ul>
+<p>change a word:</p>
+<ul>
+<li>vim: <code>cw</code></li>
+<li>helix: <code>ec</code> or <code>wc</code> (includes the whitespace after the word)</li>
+</ul>
+<p>delete a character:</p>
+<ul>
+<li>vim: <code>x</code></li>
+<li>helix: <code>d</code> or <code>;d</code> (<code>;</code> reduces the selection to a single char)</li>
+</ul>
+<p>copy a line:</p>
+<ul>
+<li>vim: <code>yy</code></li>
+<li>helix: <code>Xy</code> (<code>X</code> extends all selections to whole lines)</li>
+</ul>
+<p>global replace:</p>
+<ul>
+<li>vim: <code>:%s/word/replacement/g&lt;ret&gt;</code></li>
+<li>helix: <code>%sword&lt;ret&gt;creplacement&lt;esc&gt;</code></li>
+</ul>
+<p>Explanation: <code>%</code> selects the entire buffer, <code>s</code> opens a prompt for a regex, <code>&lt;ret&gt;</code> validates the regex and reduces the selection to each match (hence, all occurrences of word are selected). <code>c</code> deletes the selection contents and enter insert mode, replacement is typed and then <code>&lt;esc&gt;</code> goes back to normal mode.</p>
+<h2 id="navigation"><a class="header" href="#navigation">Navigation</a></h2>
+<p>go to first line:</p>
+<ul>
+<li>vim: <code>gg</code></li>
+<li>helix: <code>gg</code></li>
+</ul>
+<p>go to last line:</p>
+<ul>
+<li>vim: <code>G</code></li>
+<li>helix: <code>ge</code></li>
+</ul>
+<p>go to line start:</p>
+<ul>
+<li>vim: <code>0</code></li>
+<li>helix: <code>gh</code></li>
+</ul>
+<p>go to line first non-blank character:</p>
+<ul>
+<li>vim: <code>^</code></li>
+<li>helix: <code>gs</code></li>
+</ul>
+<p>go to line end:</p>
+<ul>
+<li>vim: <code>$</code></li>
+<li>helix: <code>gl</code></li>
+</ul>
+<p>jump to matching bracket:</p>
+<ul>
+<li>vim: <code>%</code></li>
+<li>helix: <code>mm</code></li>
+</ul>
+<h2 id="line-deletes"><a class="header" href="#line-deletes">Line Deletes</a></h2>
+<p>delete to line end:</p>
+<ul>
+<li>vim: <code>D</code></li>
+<li>helix: <code>vgld</code> or <code>t&lt;ret&gt;d</code></li>
+</ul>
+<p>Note: <code>v</code> is used along with <code>gl</code> (go to line end), because <a href="https://github.com/helix-editor/helix/issues/1630"><code>gl</code> does not select text</a>.
+<code>t&lt;ret&gt;</code> selects "'til" the newline represented by <code>&lt;ret&gt;</code>.</p>
+<p>delete entire line:</p>
+<ul>
+<li>vim: <code>dd</code></li>
+<li>helix: <code>xd</code></li>
+</ul>
+<p>Note: <code>x</code> selects the entire line under the cursor</p>
+<h2 id="comment-lines-completion-search"><a class="header" href="#comment-lines-completion-search">Comment lines, Completion, Search</a></h2>
+<p>auto complete:</p>
+<ul>
+<li>vim: <code>C-p</code></li>
+<li>helix: <code>C-x</code></li>
+</ul>
+<p>comment lines:</p>
+<ul>
+<li>vim: <code>gc</code></li>
+<li>helix: <code>Space-c</code></li>
+</ul>
+<p>search for the word under the cursor:</p>
+<ul>
+<li>vim: <code>*</code></li>
+<li>helix: <code>A-o*n</code> (if there's a tree-sitter grammar or LSP) or <code>be*n</code></li>
+</ul>
+<p>Explanation: if there's a grammar or LSP, <code>A-o</code> expands selection to the parent syntax node (which would be the word in our case). Then <code>*</code> uses the current selection as the search pattern, and <code>n</code> goes to the next occurrence. <code>b</code> selects to the beginning of the word, and <code>e</code> selects to the end of the word, effectively selecting the whole word.</p>
+<p>block selection:</p>
+<ul>
+<li>vim: <code>C-v</code>, then expand your selection vertically and horizontally</li>
+<li>helix: There's no "block selection" mode, so instead you'd use multiple cursors. Expand your block selection vertically by adding new cursors on the line below with <code>C</code>, and horizontally using standard movements</li>
+</ul>
+<p>search "foo" and replace with "bar" in the current selection:</p>
+<ul>
+<li>vim: <code>:s/foo/bar/g&lt;ret&gt;</code></li>
+<li>helix: <code>sfoo&lt;ret&gt;cbar&lt;esc&gt;,</code></li>
+</ul>
+<p>Explanation: <code>s</code> will open a prompt in the command line for a regex, and select all matches inside the selection (effectively adding a new cursor on each match). Pressing enter will then finalise this step, and allow the <code>c</code> to change the selections to "bar". When done, go back to normal mode with <code>&lt;esc&gt;</code>, and keep only the primary selection with <code>,</code> (remove all the additional cursors).</p>
+<h2 id="file-actions"><a class="header" href="#file-actions">File actions</a></h2>
+<p>select the whole file:</p>
+<ul>
+<li>vim: <code>ggVG</code></li>
+<li>helix: <code>%</code></li>
+</ul>
+<p>reload a file from disk:</p>
+<ul>
+<li>vim: <code>:e&lt;ret&gt;</code></li>
+<li>helix: <code>:reload&lt;ret&gt;</code> (or <code>:reload-all&lt;ret&gt;</code> to reload all the buffers)</li>
+</ul>
+<p>run shell command:</p>
+<ul>
+<li>vim: <code>:!command</code></li>
+<li>helix: <code>:sh command</code> (or <code>!command</code> to insert its output into the buffer)</li>
+</ul>
+<p>setting a bookmark (bookmarking a location):</p>
+<ul>
+<li>vim: <code>ma</code> to set bookmark with name a. Use <code>`a</code> to go back to this bookmarked location.</li>
+<li>helix: there are no named bookmarks, but you can save a location in the jumplist with <code>C-s</code>, then jump back to that location by opening the jumplist picker with <code>&lt;space&gt;-j</code>, or back in the jumplist with <code>C-o</code> and forward with <code>C-i</code></li>
+</ul>
+<p>Helix allows <a href="https://docs.helix-editor.com/keymap.html#insert-mode">some limited movement in <code>insert</code> mode</a> without switching to <code>normal</code> mode.</p>
+<p>Unlike Vim, under Helix, the cursor shape is the same (block) in insert mode and normal mode by default.
+This can be adjusted in configuration:</p>
+<pre><code class="language-toml">[editor.cursor-shape]
+insert = "bar"
+</code></pre>
 <blockquote>
 <p>TODO: Mention textobjects, surround, registers</p>
 </blockquote>
