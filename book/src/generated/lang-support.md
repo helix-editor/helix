@@ -253,7 +253,7 @@
 | snakemake | ✓ |  | ✓ |  |  | `pylsp` |
 | solidity | ✓ | ✓ |  |  |  | `solc` |
 | sourcepawn | ✓ | ✓ |  |  |  | `sourcepawn-studio` |
-| spade | ✓ |  | ✓ |  |  | `spade-language-server` |
+| spade | ✓ |  | ✓ |  | ✓ | `spade-language-server` |
 | spicedb | ✓ |  |  | ✓ |  |  |
 | sql | ✓ | ✓ |  |  |  |  |
 | sshclientconfig | ✓ |  |  |  |  |  |
