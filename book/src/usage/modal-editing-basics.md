@@ -103,6 +103,9 @@ will paste the contents of the selection *after* the cursor. To paste text
 To copy text into the register without deleting it, you can press `y`. This will
 **y**ank the contents of the current selection into the default register.
 
+To replace the current selection with the contents of the default register,
+you can press `R`.
+
 ## Undo and Redo
 
 The `u` command will undo our most recent action.
@@ -123,3 +126,6 @@ You can also directly start inserting content on a newline:
 
 - `o`: adds a newline below the cursor and enters insert mode on it.
 - `O`: adds a newline above the cursor and enters insert mode on it.
+
+You can also delete the current selection and immediately enter into insert
+mode to replace it with `c` (change).
