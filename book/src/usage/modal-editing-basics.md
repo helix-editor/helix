@@ -129,3 +129,13 @@ You can also directly start inserting content on a newline:
 
 You can also delete the current selection and immediately enter into insert
 mode to replace it with `c` (change).
+
+## Replace
+
+Type `r<character>` to replace all selected characters with `<ch>`.
+
+## Repetition
+
+Type `.` to repeat the last *insert* command.
+
+Type `Alt` + `.` to repeat the last `f` / `t` movement.
