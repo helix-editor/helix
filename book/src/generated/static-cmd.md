@@ -319,3 +319,4 @@
 | `terminal_next` | Switch to next terminal tab | normal: `` <space>t] ``, select: `` <space>t] `` |
 | `terminal_prev` | Switch to previous terminal tab | normal: `` <space>t[ ``, select: `` <space>t[ `` |
 | `terminal_focus` | Focus the terminal panel | normal: `` <space>tf ``, select: `` <space>tf `` |
+| `terminal_exit` | Exit terminal mode and return to editor |  |

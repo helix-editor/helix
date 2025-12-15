@@ -68,13 +68,29 @@ impl Terminal {
         let pty = Pty::new(cwd, shell, size)?;
         let emulator = TerminalEmulator::new(size.rows, size.cols);
 
-        Ok(Self {
+        let mut terminal = Self {
             id,
             title,
             pty,
             emulator,
             exited: false,
-        })
+        };
+
+        // Set up automatic title updating for zsh
+        // Send precmd hook that updates title to current directory name
+        let shell_cmd = shell.map(|s| s.to_vec()).unwrap_or_else(|| {
+            vec![std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string())]
+        });
+        let shell_name = shell_cmd[0].rsplit('/').next().unwrap_or(&shell_cmd[0]);
+
+        if shell_name == "zsh" {
+            // For zsh, define precmd function that updates title on each prompt
+            // We use a subshell and clear to hide the initialization
+            let init_cmd = r#"precmd() { printf "\033]0;%s\007" "${PWD##*/}" }; clear; precmd"#;
+            let _ = terminal.write(format!("{}\n", init_cmd).as_bytes());
+        }
+
+        Ok(terminal)
     }
 
     /// Resize the terminal

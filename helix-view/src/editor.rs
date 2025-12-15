@@ -1247,6 +1247,8 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+    /// Whether the terminal panel is currently focused
+    pub terminal_focused: bool,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1368,6 +1370,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            terminal_focused: false,
         }
     }
 
@@ -1395,8 +1398,13 @@ impl Editor {
         }
     }
     /// Current editing mode for the [`Editor`].
+    /// Returns `Mode::Terminal` if the terminal panel is focused.
     pub fn mode(&self) -> Mode {
-        self.mode
+        if self.terminal_focused {
+            Mode::Terminal
+        } else {
+            self.mode
+        }
     }
 
     pub fn config(&self) -> DynGuard<Config> {

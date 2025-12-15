@@ -171,6 +171,7 @@ where
         Mode::Insert => &modenames.insert,
         Mode::Select => &modenames.select,
         Mode::Normal => &modenames.normal,
+        Mode::Terminal => "TER",
     };
     let content = if visible {
         format!(" {mode_str} ")
@@ -183,6 +184,7 @@ where
             Mode::Insert => context.editor.theme.get("ui.statusline.insert"),
             Mode::Select => context.editor.theme.get("ui.statusline.select"),
             Mode::Normal => context.editor.theme.get("ui.statusline.normal"),
+            Mode::Terminal => context.editor.theme.get("ui.statusline.normal"),
         }
     } else {
         Style::default()

@@ -412,9 +412,20 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "home" => goto_line_start,
         "end" => goto_line_end_newline,
     });
+    let terminal = keymap!({ "Terminal mode"
+        "esc" => terminal_exit,
+        "C-\\" => terminal_exit,
+        "C-right" => terminal_next,
+        "C-left" => terminal_prev,
+        "C-n" => terminal_next,
+        "C-p" => terminal_prev,
+        "C-S-t" => terminal_open,
+        "C-w" => terminal_close,
+    });
     hashmap!(
         Mode::Normal => normal,
         Mode::Select => select,
         Mode::Insert => insert,
+        Mode::Terminal => terminal,
     )
 }

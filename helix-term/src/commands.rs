@@ -623,6 +623,7 @@ impl MappableCommand {
         terminal_next, "Switch to next terminal tab",
         terminal_prev, "Switch to previous terminal tab",
         terminal_focus, "Focus the terminal panel",
+        terminal_exit, "Exit terminal mode and return to editor",
     );
 }
 
@@ -4818,7 +4819,7 @@ fn paste_impl(
 pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
     let count = cx.count();
     let paste = match cx.editor.mode {
-        Mode::Insert | Mode::Select => Paste::Cursor,
+        Mode::Insert | Mode::Select | Mode::Terminal => Paste::Cursor,
         Mode::Normal => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
@@ -7082,7 +7083,7 @@ fn terminal_focus(cx: &mut Context) {
         .map(|p| p.to_path_buf())
         .or_else(|| std::env::current_dir().ok());
 
-    cx.callback.push(Box::new(move |compositor, _cx| {
+    cx.callback.push(Box::new(move |compositor, cx| {
         if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
             if editor_view.terminal_panel.terminals_count() == 0 {
                 if let Err(e) = editor_view.terminal_panel.new_terminal(cwd.clone(), None) {
@@ -7092,6 +7093,16 @@ fn terminal_focus(cx: &mut Context) {
             }
             editor_view.terminal_panel.show();
             editor_view.terminal_panel.set_focused(true);
+            cx.editor.terminal_focused = true;
+        }
+    }));
+}
+
+fn terminal_exit(cx: &mut Context) {
+    cx.callback.push(Box::new(|compositor, cx| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            editor_view.terminal_panel.set_focused(false);
+            cx.editor.terminal_focused = false;
         }
     }));
 }

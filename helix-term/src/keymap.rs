@@ -313,13 +313,20 @@ impl Keymaps {
         &self.state
     }
 
+    /// Clear pending state. Useful when switching modes.
+    pub fn reset_state(&mut self) {
+        self.state.clear();
+    }
+
     pub fn sticky(&self) -> Option<&KeyTrieNode> {
         self.sticky.as_ref()
     }
 
     pub fn contains_key(&self, mode: Mode, key: KeyEvent) -> bool {
         let keymaps = &*self.map();
-        let keymap = &keymaps[&mode];
+        let Some(keymap) = keymaps.get(&mode) else {
+            return false;
+        };
         keymap
             .search(self.pending())
             .and_then(KeyTrie::node)
@@ -332,7 +339,10 @@ impl Keymaps {
     pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
         // TODO: remove the sticky part and look up manually
         let keymaps = &*self.map();
-        let keymap = &keymaps[&mode];
+        let keymap = match keymaps.get(&mode) {
+            Some(km) => km,
+            None => return KeymapResult::NotFound,
+        };
 
         if key!(Esc) == key {
             if !self.state.is_empty() {
@@ -389,12 +399,16 @@ impl Default for Keymaps {
 
 /// Merge default config keys with user overwritten keys for custom user config.
 pub fn merge_keys(dst: &mut HashMap<Mode, KeyTrie>, mut delta: HashMap<Mode, KeyTrie>) {
-    for (mode, keys) in dst {
+    for (mode, keys) in dst.iter_mut() {
         keys.merge_nodes(
             delta
                 .remove(mode)
                 .unwrap_or_else(|| KeyTrie::Node(KeyTrieNode::default())),
         )
+    }
+    // Add any remaining modes from delta that weren't in dst
+    for (mode, keys) in delta {
+        dst.insert(mode, keys);
     }
 }
 
@@ -610,5 +624,21 @@ mod tests {
         ));
 
         assert_eq!(toml::from_str(keys), Ok(expectation));
+    }
+
+    #[test]
+    fn terminal_mode_exists_in_default_keymap() {
+        let keymaps = Keymaps::default().map();
+        assert!(
+            keymaps.contains_key(&Mode::Terminal),
+            "Terminal mode should exist in default keymap"
+        );
+        let terminal = keymaps.get(&Mode::Terminal).unwrap();
+        // Check that C-right mapping exists
+        let c_right = "C-right".parse::<KeyEvent>().unwrap();
+        assert!(
+            terminal.search(&[c_right]).is_some(),
+            "C-right should be mapped in Terminal mode"
+        );
     }
 }

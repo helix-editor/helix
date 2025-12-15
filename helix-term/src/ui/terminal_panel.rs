@@ -16,7 +16,6 @@ use helix_core::Position;
 use helix_view::{
     graphics::{CursorKind, Rect},
     input::MouseEventKind,
-    keyboard::{KeyCode, KeyModifiers},
     Editor,
 };
 
@@ -36,6 +35,10 @@ pub struct TerminalPanel {
     height_percent: u16,
     /// Whether the panel has focus
     focused: bool,
+    /// Last rendered area (for mouse click handling)
+    pub last_area: Option<Rect>,
+    /// Cached tab positions for click detection: (start_x, end_x) for each tab
+    tab_positions: Vec<(u16, u16)>,
 }
 
 pub const TERMINAL_PANEL_ID: &str = "terminal-panel";
@@ -57,6 +60,8 @@ impl TerminalPanel {
             visible: false,
             height_percent: DEFAULT_HEIGHT_PERCENT,
             focused: false,
+            last_area: None,
+            tab_positions: Vec::new(),
         }
     }
 
@@ -264,32 +269,44 @@ impl TerminalPanel {
         self.height_percent = (self.height_percent.saturating_sub(5)).max(10);
     }
 
-    /// Render the tab bar
-    fn render_tab_bar(&self, area: Rect, surface: &mut Surface, theme: &helix_view::Theme) {
-        let tab_style = theme.get("ui.statusline");
-        let active_style = theme.get("ui.statusline.select");
+    /// Render the tab bar and update tab positions for click detection
+    fn render_tab_bar(&mut self, area: Rect, surface: &mut Surface, theme: &helix_view::Theme) {
+        // Use bufferline styles for consistency with editor tabs
+        let background_style = theme.get("ui.bufferline");
+        let active_style = theme.get("ui.bufferline.active");
+        let inactive_style = theme.get("ui.bufferline.background");
 
-        // Clear the tab bar area
+        // Clear the tab bar area with background
         for x in area.x..area.x + area.width {
             if let Some(cell) = surface.get_mut(x, area.y) {
                 cell.reset();
-                cell.set_style(tab_style);
+                cell.set_style(background_style);
             }
         }
+
+        // Clear and rebuild tab positions
+        self.tab_positions.clear();
 
         if self.terminals.is_empty() {
             return;
         }
 
-        // Render tabs manually
+        // Render tabs manually and track positions
         let mut x_offset = area.x;
         for (i, term) in self.terminals.iter().enumerate() {
-            let title = format!(" {} ", term.title());
-            let style = if i == self.active_index {
+            let is_active = i == self.active_index;
+            let title = if is_active {
+                format!(" ● {} ", term.title()) // Active indicator
+            } else {
+                format!("   {} ", term.title()) // Inactive (dimmed)
+            };
+            let style = if is_active {
                 active_style
             } else {
-                tab_style
+                inactive_style
             };
+
+            let tab_start = x_offset;
 
             // Draw tab content
             for c in title.chars() {
@@ -303,15 +320,28 @@ impl TerminalPanel {
                 x_offset += 1;
             }
 
-            // Draw separator
+            // Store tab position (start_x, end_x exclusive)
+            self.tab_positions.push((tab_start, x_offset));
+
+            // Draw separator between tabs
             if i < self.terminals.len() - 1 && x_offset < area.x + area.width {
                 if let Some(cell) = surface.get_mut(x_offset, area.y) {
                     cell.set_char('│');
-                    cell.set_style(tab_style);
+                    cell.set_style(background_style);
                 }
                 x_offset += 1;
             }
         }
+    }
+
+    /// Find which tab was clicked based on x coordinate
+    fn find_tab_at_x(&self, x: u16) -> Option<usize> {
+        for (i, &(start, end)) in self.tab_positions.iter().enumerate() {
+            if x >= start && x < end {
+                return Some(i);
+            }
+        }
+        None
     }
 
     /// Process PTY events for all terminals
@@ -341,51 +371,15 @@ impl Component for TerminalPanel {
         // This improves typing responsiveness
 
         match event {
-            Event::Key(key) => {
+            Event::Key(_key) => {
                 if !self.focused {
                     return EventResult::Ignored(None);
                 }
 
-                // Handle panel-level keybindings
-                if key.modifiers.contains(KeyModifiers::CONTROL) {
-                    match key.code {
-                        // Ctrl-\ to return focus to editor
-                        KeyCode::Char('\\') => {
-                            self.focused = false;
-                            if let Some(terminal) = self.terminals.get_mut(self.active_index) {
-                                terminal.set_focused(false);
-                            }
-                            return EventResult::Consumed(None);
-                        }
-                        // Ctrl-PageDown for next tab
-                        KeyCode::PageDown => {
-                            self.next_tab();
-                            return EventResult::Consumed(None);
-                        }
-                        // Ctrl-PageUp for previous tab
-                        KeyCode::PageUp => {
-                            self.prev_tab();
-                            return EventResult::Consumed(None);
-                        }
-                        // Ctrl-Shift-T for new terminal (when Shift is also pressed)
-                        KeyCode::Char('t') | KeyCode::Char('T')
-                            if key.modifiers.contains(KeyModifiers::SHIFT) =>
-                        {
-                            if let Err(e) = self.new_terminal(None, None) {
-                                log::error!("Failed to create terminal: {}", e);
-                            }
-                            return EventResult::Consumed(None);
-                        }
-                        // Ctrl-W to close current terminal
-                        KeyCode::Char('w') | KeyCode::Char('W') => {
-                            self.close_current();
-                            return EventResult::Consumed(None);
-                        }
-                        _ => {}
-                    }
-                }
+                // Terminal-specific keybindings are now handled through [keys.terminal]
+                // in the keymap system. This just passes unhandled keys to the terminal.
 
-                // Pass to active terminal
+                // Pass to active terminal for input
                 if let Some(terminal) = self.terminals.get_mut(self.active_index) {
                     return terminal.handle_event(event, ctx);
                 }
@@ -393,19 +387,45 @@ impl Component for TerminalPanel {
                 EventResult::Consumed(None)
             }
             Event::Mouse(mouse) => {
-                // Handle mouse clicks on tabs
-                if mouse.row == 0 && matches!(mouse.kind, MouseEventKind::Down(_)) {
-                    // Calculate which tab was clicked
-                    // This is a simplified version - would need proper tab width calculation
-                    self.focused = true;
-                    return EventResult::Consumed(None);
+                // Check if we have a stored area for coordinate calculations
+                if let Some(area) = self.last_area {
+                    // Check if click is within our panel area
+                    if mouse.column >= area.x
+                        && mouse.column < area.x + area.width
+                        && mouse.row >= area.y
+                        && mouse.row < area.y + area.height
+                    {
+                        // Calculate relative row within panel
+                        let relative_row = mouse.row - area.y;
+
+                        // Tab bar is at row 1 (after the separator at row 0)
+                        if relative_row == 1 && matches!(mouse.kind, MouseEventKind::Down(_)) {
+                            // Find which tab was clicked
+                            if let Some(tab_index) = self.find_tab_at_x(mouse.column) {
+                                self.goto_tab(tab_index);
+                            }
+                            self.focused = true;
+                            return EventResult::Consumed(None);
+                        }
+
+                        // Click on content area - focus the terminal
+                        if relative_row > 1 && matches!(mouse.kind, MouseEventKind::Down(_)) {
+                            self.focused = true;
+                            if let Some(terminal) = self.terminals.get_mut(self.active_index) {
+                                terminal.set_focused(true);
+                            }
+                        }
+
+                        // Pass mouse event to active terminal
+                        if let Some(terminal) = self.terminals.get_mut(self.active_index) {
+                            return terminal.handle_event(event, ctx);
+                        }
+
+                        return EventResult::Consumed(None);
+                    }
                 }
 
-                if let Some(terminal) = self.terminals.get_mut(self.active_index) {
-                    return terminal.handle_event(event, ctx);
-                }
-
-                EventResult::Consumed(None)
+                EventResult::Ignored(None)
             }
             Event::Resize(_, _) => {
                 // Handled by render
@@ -424,6 +444,9 @@ impl Component for TerminalPanel {
         if !self.visible || area.height < 2 {
             return;
         }
+
+        // Store area for mouse event handling
+        self.last_area = Some(area);
 
         // Process PTY events before rendering
         self.process_pty_events();

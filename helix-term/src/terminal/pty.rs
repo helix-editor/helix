@@ -86,6 +86,22 @@ impl Pty {
         // Set TERM for proper terminal emulation
         cmd.env("TERM", "xterm-256color");
 
+        // Set up automatic title updating based on current directory
+        // This works by setting PROMPT_COMMAND for bash
+        // The escape sequence OSC 0 sets the terminal title
+        let shell_name = shell_cmd[0].rsplit('/').next().unwrap_or(&shell_cmd[0]);
+        if shell_name == "bash" {
+            // For bash, use PROMPT_COMMAND to update title to current directory name
+            let existing_prompt_cmd = std::env::var("PROMPT_COMMAND").unwrap_or_default();
+            let title_cmd = r#"printf "\033]0;%s\007" "${PWD##*/}""#;
+            let new_prompt_cmd = if existing_prompt_cmd.is_empty() {
+                title_cmd.to_string()
+            } else {
+                format!("{};{}", existing_prompt_cmd, title_cmd)
+            };
+            cmd.env("PROMPT_COMMAND", new_prompt_cmd);
+        }
+
         let child = pair
             .slave
             .spawn_command(cmd)

@@ -20,6 +20,17 @@ Updated languages and queries:
 Packaging:
 -->
 
+# Unreleased
+
+Features:
+
+* Add Terminal mode (`Mode::Terminal`) with dedicated keybindings for terminal panel
+* Add `[keys.terminal]` configuration section for customizing terminal keybindings
+* Add terminal tab click support to switch between terminal tabs
+* Add automatic terminal title update based on current working directory
+* Add visual distinction for active/inactive terminal tabs (colored tabs)
+* Default terminal keybindings: `Ctrl+N/P` for tab navigation, `Esc` to exit terminal mode, `Ctrl+Shift+T` to open new terminal, `Ctrl+W` to close terminal
+
 # 25.07.1 (2025-07-18)
 
 This is a patch release which lowers the GLIBC requirements of the release artifacts published to GitHub ([#13983](https://github.com/helix-editor/helix/pull/13983))

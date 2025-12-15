@@ -497,6 +497,7 @@ impl EditorView {
             Mode::Insert => theme.find_highlight_exact("ui.cursor.insert"),
             Mode::Select => theme.find_highlight_exact("ui.cursor.select"),
             Mode::Normal => theme.find_highlight_exact("ui.cursor.normal"),
+            Mode::Terminal => theme.find_highlight_exact("ui.cursor.normal"),
         }
         .unwrap_or(base_cursor_scope);
 
@@ -504,6 +505,7 @@ impl EditorView {
             Mode::Insert => theme.find_highlight_exact("ui.cursor.primary.insert"),
             Mode::Select => theme.find_highlight_exact("ui.cursor.primary.select"),
             Mode::Normal => theme.find_highlight_exact("ui.cursor.primary.normal"),
+            Mode::Terminal => theme.find_highlight_exact("ui.cursor.primary.normal"),
         }
         .unwrap_or(base_primary_cursor_scope);
 
@@ -1139,6 +1141,25 @@ impl EditorView {
             ..
         } = *event;
 
+        // Check if click is on terminal panel area - if so, focus terminal
+        if self.terminal_panel.is_visible() {
+            if let Some(area) = self.terminal_panel.last_area {
+                if column >= area.x
+                    && column < area.x + area.width
+                    && row >= area.y
+                    && row < area.y + area.height
+                {
+                    // Click is on terminal panel - focus it and enter terminal mode
+                    if matches!(kind, MouseEventKind::Down(_)) {
+                        self.terminal_panel.set_focused(true);
+                        cxt.editor.terminal_focused = true;
+                    }
+                    // Return Ignored so the event gets passed to terminal panel in handle_event
+                    return EventResult::Ignored(None);
+                }
+            }
+        }
+
         let pos_and_view = |editor: &Editor, row, column, ignore_virtual_text| {
             editor.tree.views().find_map(|(view, _focus)| {
                 view.pos_at_screen_coords(
@@ -1163,6 +1184,12 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
+                    // If terminal is focused and user clicks on editor, exit terminal mode
+                    if self.terminal_panel.is_visible() && self.terminal_panel.is_focused() {
+                        self.terminal_panel.set_focused(false);
+                        editor.terminal_focused = false;
+                    }
+
                     editor.focus(view_id);
 
                     let prev_view_id = view!(editor).id;
@@ -1364,24 +1391,83 @@ impl Component for EditorView {
         event: &Event,
         context: &mut crate::compositor::Context,
     ) -> EventResult {
-        // If terminal panel is focused, pass events to it first
-        if self.terminal_panel.is_visible() && self.terminal_panel.is_focused() {
-            // Handle Escape to unfocus terminal and return to editor
-            if let Event::Key(key) = event {
-                // Escape without modifiers returns to editor
-                if key.code == KeyCode::Esc && key.modifiers.is_empty() {
-                    self.terminal_panel.set_focused(false);
-                    return EventResult::Consumed(None);
-                }
-                // Ctrl+\ also returns to editor (alternative)
-                if key.code == KeyCode::Char('\\') && key.modifiers.contains(KeyModifiers::CONTROL)
-                {
-                    self.terminal_panel.set_focused(false);
-                    return EventResult::Consumed(None);
+        // If terminal panel is focused, handle terminal-specific keybindings first
+        let is_terminal_visible = self.terminal_panel.is_visible();
+        let is_terminal_focused = self.terminal_panel.is_focused();
+
+        if is_terminal_visible && is_terminal_focused {
+            if let Event::Key(mut key) = event.clone() {
+                canonicalize_key(&mut key);
+
+                // First, check for Terminal mode keybindings
+                let mut cx = commands::Context {
+                    editor: context.editor,
+                    count: None,
+                    register: None,
+                    callback: Vec::new(),
+                    on_next_key_callback: None,
+                    jobs: context.jobs,
+                };
+
+                // Reset keymap state before looking up terminal keybindings
+                // to avoid interference from other modes' pending keys
+                self.keymaps.reset_state();
+
+                // Try to find a keybinding for this key in Terminal mode
+                let key_result = self.keymaps.get(Mode::Terminal, key);
+
+                match key_result {
+                    KeymapResult::Matched(command) => {
+                        command.execute(&mut cx);
+                        let callbacks = std::mem::take(&mut cx.callback);
+                        let callback = if callbacks.is_empty() {
+                            None
+                        } else {
+                            let callback: crate::compositor::Callback =
+                                Box::new(move |compositor, cx| {
+                                    for callback in callbacks {
+                                        callback(compositor, cx)
+                                    }
+                                });
+                            Some(callback)
+                        };
+                        return EventResult::Consumed(callback);
+                    }
+                    KeymapResult::MatchedSequence(commands) => {
+                        for command in &commands {
+                            command.execute(&mut cx);
+                        }
+                        let callbacks = std::mem::take(&mut cx.callback);
+                        let callback = if callbacks.is_empty() {
+                            None
+                        } else {
+                            let callback: crate::compositor::Callback =
+                                Box::new(move |compositor, cx| {
+                                    for callback in callbacks {
+                                        callback(compositor, cx)
+                                    }
+                                });
+                            Some(callback)
+                        };
+                        return EventResult::Consumed(callback);
+                    }
+                    KeymapResult::Pending(node) => {
+                        context.editor.autoinfo = Some(node.infobox());
+                        return EventResult::Consumed(None);
+                    }
+                    KeymapResult::NotFound | KeymapResult::Cancelled(_) => {
+                        // No keybinding found, pass to terminal panel
+                        context.editor.autoinfo = None;
+                    }
                 }
             }
 
+            // Pass unhandled events to terminal panel
             let result = self.terminal_panel.handle_event(event, context);
+
+            // Sync terminal_focused state with editor
+            context.editor.terminal_focused = self.terminal_panel.is_focused();
+
             if matches!(result, EventResult::Consumed(_)) {
                 return result;
             }

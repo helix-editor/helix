@@ -2861,7 +2861,7 @@ fn terminal_focus(
         .map(|p| p.to_path_buf())
         .or_else(|| std::env::current_dir().ok());
 
-    crate::job::dispatch_blocking(move |_editor, compositor| {
+    crate::job::dispatch_blocking(move |editor, compositor| {
         if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
             if editor_view.terminal_panel.terminals_count() == 0 {
                 if let Err(e) = editor_view.terminal_panel.new_terminal(cwd.clone(), None) {
@@ -2871,6 +2871,7 @@ fn terminal_focus(
             }
             editor_view.terminal_panel.show();
             editor_view.terminal_panel.set_focused(true);
+            editor.terminal_focused = true;
         }
     });
     Ok(())

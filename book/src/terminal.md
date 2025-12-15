@@ -19,19 +19,38 @@ The terminal opens in a panel at the bottom of the screen. Multiple terminal tab
 
 ## Keybindings
 
-### Panel Controls
+When the terminal panel is focused, Helix enters **Terminal mode**. In this mode, special keybindings are available while other keys are sent directly to the shell.
 
-| Key | Description |
-|-----|-------------|
-| `Ctrl-\` | Return focus to the editor |
-| `Ctrl-PageDown` | Switch to next terminal tab |
-| `Ctrl-PageUp` | Switch to previous terminal tab |
-| `Ctrl-Shift-T` | Create new terminal tab |
-| `Ctrl-W` | Close current terminal tab |
+### Default Terminal Mode Keybindings
+
+| Key | Command | Description |
+|-----|---------|-------------|
+| `Escape` | `terminal_exit` | Return focus to the editor |
+| `Ctrl-\` | `terminal_exit` | Alternative: return focus to the editor |
+| `Ctrl-PageDown` | `terminal_next` | Switch to next terminal tab |
+| `Ctrl-PageUp` | `terminal_prev` | Switch to previous terminal tab |
+| `Ctrl-Shift-T` | `terminal_open` | Create new terminal tab |
+| `Ctrl-W` | `terminal_close` | Close current terminal tab |
+
+### Customizing Terminal Keybindings
+
+You can customize terminal keybindings in your `config.toml` using the `[keys.terminal]` section:
+
+```toml
+[keys.terminal]
+"esc" = "terminal_exit"
+"C-n" = "terminal_next"
+"C-p" = "terminal_prev"
+"C-t" = "terminal_open"
+```
+
+### Mouse Support
+
+You can switch between terminal tabs by clicking on the tab bar.
 
 ### Terminal Input
 
-When the terminal is focused, most keys are sent directly to the shell. This includes:
+When the terminal is focused and a key doesn't match any terminal keybinding, it is sent directly to the shell. This includes:
 
 - All printable characters
 - Arrow keys, Home, End, Page Up/Down
