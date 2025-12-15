@@ -2728,6 +2728,154 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+// Terminal commands
+
+fn terminal_open(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    // Get working directory - use current buffer's directory or CWD
+    let cwd = doc!(cx.editor)
+        .path()
+        .and_then(|p| p.parent())
+        .map(|p| p.to_path_buf())
+        .or_else(|| std::env::current_dir().ok());
+
+    // Get shell from args or use default
+    let shell: Option<Vec<String>> = if !args.is_empty() {
+        Some(args.into_iter().map(|s| s.to_string()).collect())
+    } else {
+        None
+    };
+
+    crate::job::dispatch_blocking(move |_editor, compositor| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            if let Err(e) = editor_view
+                .terminal_panel
+                .new_terminal(cwd.clone(), shell.as_deref())
+            {
+                log::error!("Failed to create terminal: {}", e);
+            }
+        }
+    });
+    Ok(())
+}
+
+fn terminal_toggle(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let cwd = doc!(cx.editor)
+        .path()
+        .and_then(|p| p.parent())
+        .map(|p| p.to_path_buf())
+        .or_else(|| std::env::current_dir().ok());
+
+    crate::job::dispatch_blocking(move |_editor, compositor| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            if editor_view.terminal_panel.terminals_count() == 0 {
+                if let Err(e) = editor_view.terminal_panel.new_terminal(cwd.clone(), None) {
+                    log::error!("Failed to create terminal: {}", e);
+                    return;
+                }
+            }
+            editor_view.terminal_panel.toggle();
+        }
+    });
+    Ok(())
+}
+
+fn terminal_close(
+    _cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    crate::job::dispatch_blocking(|_editor, compositor| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            editor_view.terminal_panel.close_current();
+        }
+    });
+    Ok(())
+}
+
+fn terminal_next(
+    _cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    crate::job::dispatch_blocking(|_editor, compositor| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            editor_view.terminal_panel.next_tab();
+        }
+    });
+    Ok(())
+}
+
+fn terminal_prev(
+    _cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    crate::job::dispatch_blocking(|_editor, compositor| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            editor_view.terminal_panel.prev_tab();
+        }
+    });
+    Ok(())
+}
+
+fn terminal_focus(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let cwd = doc!(cx.editor)
+        .path()
+        .and_then(|p| p.parent())
+        .map(|p| p.to_path_buf())
+        .or_else(|| std::env::current_dir().ok());
+
+    crate::job::dispatch_blocking(move |_editor, compositor| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            if editor_view.terminal_panel.terminals_count() == 0 {
+                if let Err(e) = editor_view.terminal_panel.new_terminal(cwd.clone(), None) {
+                    log::error!("Failed to create terminal: {}", e);
+                    return;
+                }
+            }
+            editor_view.terminal_panel.show();
+            editor_view.terminal_panel.set_focused(true);
+        }
+    });
+    Ok(())
+}
+
 /// This command accepts a single boolean --skip-visible flag and no positionals.
 const BUFFER_CLOSE_OTHERS_SIGNATURE: Signature = Signature {
     positionals: (0, Some(0)),
@@ -3786,6 +3934,73 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    // Terminal commands
+    TypableCommand {
+        name: "terminal",
+        aliases: &["term"],
+        doc: "Open a new terminal in the current working directory.",
+        fun: terminal_open,
+        completer: CommandCompleter::all(completers::program),
+        signature: Signature {
+            positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-toggle",
+        aliases: &["term-toggle", "tt"],
+        doc: "Toggle the terminal panel visibility.",
+        fun: terminal_toggle,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-close",
+        aliases: &["term-close", "tc"],
+        doc: "Close the current terminal tab.",
+        fun: terminal_close,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-next",
+        aliases: &["term-next", "tn"],
+        doc: "Switch to the next terminal tab.",
+        fun: terminal_next,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-prev",
+        aliases: &["term-prev", "tp"],
+        doc: "Switch to the previous terminal tab.",
+        fun: terminal_prev,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-focus",
+        aliases: &["term-focus", "tf"],
+        doc: "Focus the terminal panel (show if hidden).",
+        fun: terminal_focus,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
     },

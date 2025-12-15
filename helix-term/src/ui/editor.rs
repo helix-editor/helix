@@ -8,6 +8,7 @@ use crate::{
     ui::{
         document::{render_document, LinePos, TextRenderer},
         statusline,
+        terminal_panel::TerminalPanel,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
         Completion, ProgressSpinners,
     },
@@ -44,6 +45,8 @@ pub struct EditorView {
     spinners: ProgressSpinners,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
     terminal_focused: bool,
+    /// Terminal panel (bottom dock)
+    pub terminal_panel: TerminalPanel,
 }
 
 #[derive(Debug, Clone)]
@@ -67,6 +70,7 @@ impl EditorView {
             completion: None,
             spinners: ProgressSpinners::default(),
             terminal_focused: true,
+            terminal_panel: TerminalPanel::new(),
         }
     }
 
@@ -1360,6 +1364,29 @@ impl Component for EditorView {
         event: &Event,
         context: &mut crate::compositor::Context,
     ) -> EventResult {
+        // If terminal panel is focused, pass events to it first
+        if self.terminal_panel.is_visible() && self.terminal_panel.is_focused() {
+            // Handle Escape to unfocus terminal and return to editor
+            if let Event::Key(key) = event {
+                // Escape without modifiers returns to editor
+                if key.code == KeyCode::Esc && key.modifiers.is_empty() {
+                    self.terminal_panel.set_focused(false);
+                    return EventResult::Consumed(None);
+                }
+                // Ctrl+\ also returns to editor (alternative)
+                if key.code == KeyCode::Char('\\') && key.modifiers.contains(KeyModifiers::CONTROL)
+                {
+                    self.terminal_panel.set_focused(false);
+                    return EventResult::Consumed(None);
+                }
+            }
+
+            let result = self.terminal_panel.handle_event(event, context);
+            if matches!(result, EventResult::Consumed(_)) {
+                return result;
+            }
+        }
+
         let mut cx = commands::Context {
             editor: context.editor,
             count: None,
@@ -1500,7 +1527,13 @@ impl Component for EditorView {
             }
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
-            Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
+            Event::IdleTimeout => {
+                // Process terminal PTY events on idle for real-time output
+                if self.terminal_panel.is_visible() {
+                    self.terminal_panel.process_pty_events();
+                }
+                self.handle_idle_timeout(&mut cx)
+            }
             Event::FocusGained => {
                 self.terminal_focused = true;
                 EventResult::Consumed(None)
@@ -1535,8 +1568,17 @@ impl Component for EditorView {
             _ => false,
         };
 
+        // Calculate terminal panel height if visible
+        let terminal_height = if self.terminal_panel.is_visible() {
+            // 30% of screen height, minimum 5 lines, including separator and tab bar
+            let panel_height = (area.height as u32 * 30 / 100).max(5) as u16;
+            panel_height.min(area.height.saturating_sub(5)) // Leave at least 5 lines for editor
+        } else {
+            0
+        };
+
         // -1 for commandline and -1 for bufferline
-        let mut editor_area = area.clip_bottom(1);
+        let mut editor_area = area.clip_bottom(1 + terminal_height);
         if use_bufferline {
             editor_area = editor_area.clip_top(1);
         }
@@ -1550,7 +1592,18 @@ impl Component for EditorView {
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(cx.editor, doc, view, area, surface, is_focused);
+            self.render_view(cx.editor, doc, view, editor_area, surface, is_focused);
+        }
+
+        // Render terminal panel at bottom (above command line)
+        if self.terminal_panel.is_visible() && terminal_height > 0 {
+            let terminal_area = Rect::new(
+                area.x,
+                area.y + area.height - 1 - terminal_height, // -1 for command line
+                area.width,
+                terminal_height,
+            );
+            self.terminal_panel.render(terminal_area, surface, cx);
         }
 
         if config.auto_info {
@@ -1624,7 +1677,21 @@ impl Component for EditorView {
         }
     }
 
-    fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        // If terminal panel is focused, return its cursor
+        if self.terminal_panel.is_visible() && self.terminal_panel.is_focused() {
+            // Calculate terminal area
+            let terminal_height = (area.height as u32 * 30 / 100).max(5) as u16;
+            let terminal_height = terminal_height.min(area.height.saturating_sub(5));
+            let terminal_area = Rect::new(
+                area.x,
+                area.y + area.height - 1 - terminal_height,
+                area.width,
+                terminal_height,
+            );
+            return self.terminal_panel.cursor(terminal_area, editor);
+        }
+
         match editor.cursor() {
             // all block cursors are drawn manually
             (pos, CursorKind::Block) => {

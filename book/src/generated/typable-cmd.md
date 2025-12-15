@@ -92,3 +92,9 @@
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |
+| `:terminal`, `:term` | Open a new terminal in the current working directory. |
+| `:terminal-toggle`, `:term-toggle`, `:tt` | Toggle the terminal panel visibility. |
+| `:terminal-close`, `:term-close`, `:tc` | Close the current terminal tab. |
+| `:terminal-next`, `:term-next`, `:tn` | Switch to the next terminal tab. |
+| `:terminal-prev`, `:term-prev`, `:tp` | Switch to the previous terminal tab. |
+| `:terminal-focus`, `:term-focus`, `:tf` | Focus the terminal panel (show if hidden). |

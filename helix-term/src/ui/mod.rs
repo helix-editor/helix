@@ -11,6 +11,8 @@ pub mod popup;
 pub mod prompt;
 mod spinner;
 mod statusline;
+pub mod terminal_panel;
+pub mod terminal_view;
 mod text;
 mod text_decorations;
 
@@ -27,6 +29,8 @@ pub use picker::{Column as PickerColumn, FileLocation, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
+pub use terminal_panel::TerminalPanel;
+pub use terminal_view::TerminalView;
 pub use text::Text;
 
 use helix_view::Editor;

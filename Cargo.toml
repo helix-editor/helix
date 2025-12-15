@@ -56,6 +56,9 @@ termina = "0.1"
 sonic-rs = "0.5"
 # MSRV: update once the MSRV is >=1.85
 globset = "=0.4.16"
+# Terminal emulation
+portable-pty = "0.8"
+vt100 = "0.15"
 
 [workspace.package]
 version = "25.7.1"

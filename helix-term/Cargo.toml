@@ -93,6 +93,10 @@ serde = { version = "1.0", features = ["derive"] }
 
 dashmap = "6.0"
 
+# Terminal emulation
+portable-pty = { workspace = true }
+vt100 = { workspace = true }
+
 [target.'cfg(windows)'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream"] }
 

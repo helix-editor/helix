@@ -616,6 +616,13 @@ impl MappableCommand {
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
+        // Terminal commands
+        terminal_toggle, "Toggle terminal panel",
+        terminal_open, "Open a new terminal tab",
+        terminal_close, "Close the current terminal tab",
+        terminal_next, "Switch to next terminal tab",
+        terminal_prev, "Switch to previous terminal tab",
+        terminal_focus, "Focus the terminal panel",
     );
 }
 
@@ -7000,4 +7007,91 @@ fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
     } else {
         syntax_workspace_symbol_picker(cx);
     }
+}
+
+// Terminal commands
+
+fn terminal_toggle(cx: &mut Context) {
+    let cwd = doc!(cx.editor)
+        .path()
+        .and_then(|p| p.parent())
+        .map(|p| p.to_path_buf())
+        .or_else(|| std::env::current_dir().ok());
+
+    cx.callback.push(Box::new(move |compositor, _cx| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            if editor_view.terminal_panel.is_visible() {
+                editor_view.terminal_panel.toggle();
+            } else {
+                if editor_view.terminal_panel.terminals_count() == 0 {
+                    if let Err(e) = editor_view.terminal_panel.new_terminal(cwd.clone(), None) {
+                        log::error!("Failed to create terminal: {}", e);
+                        return;
+                    }
+                }
+                editor_view.terminal_panel.toggle();
+            }
+        }
+    }));
+}
+
+fn terminal_open(cx: &mut Context) {
+    let cwd = doc!(cx.editor)
+        .path()
+        .and_then(|p| p.parent())
+        .map(|p| p.to_path_buf())
+        .or_else(|| std::env::current_dir().ok());
+
+    cx.callback.push(Box::new(move |compositor, _cx| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            if let Err(e) = editor_view.terminal_panel.new_terminal(cwd.clone(), None) {
+                log::error!("Failed to create terminal: {}", e);
+            }
+        }
+    }));
+}
+
+fn terminal_close(cx: &mut Context) {
+    cx.callback.push(Box::new(|compositor, _cx| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            editor_view.terminal_panel.close_current();
+        }
+    }));
+}
+
+fn terminal_next(cx: &mut Context) {
+    cx.callback.push(Box::new(|compositor, _cx| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            editor_view.terminal_panel.next_tab();
+        }
+    }));
+}
+
+fn terminal_prev(cx: &mut Context) {
+    cx.callback.push(Box::new(|compositor, _cx| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            editor_view.terminal_panel.prev_tab();
+        }
+    }));
+}
+
+fn terminal_focus(cx: &mut Context) {
+    let cwd = doc!(cx.editor)
+        .path()
+        .and_then(|p| p.parent())
+        .map(|p| p.to_path_buf())
+        .or_else(|| std::env::current_dir().ok());
+
+    cx.callback.push(Box::new(move |compositor, _cx| {
+        if let Some(editor_view) = compositor.find::<crate::ui::EditorView>() {
+            if editor_view.terminal_panel.terminals_count() == 0 {
+                if let Err(e) = editor_view.terminal_panel.new_terminal(cwd.clone(), None) {
+                    log::error!("Failed to create terminal: {}", e);
+                    return;
+                }
+            }
+            editor_view.terminal_panel.show();
+            editor_view.terminal_panel.set_focused(true);
+        }
+    }));
 }

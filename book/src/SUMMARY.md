@@ -12,6 +12,7 @@
   - [Syntax aware motions](./syntax-aware-motions.md)
   - [Pickers](./pickers.md)
   - [Jumplist](./jumplist.md)
+  - [Integrated Terminal](./terminal.md)
   - [Keymap](./keymap.md)
   - [Command line](./command-line.md)
   - [Commands](./commands.md)

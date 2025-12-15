@@ -292,6 +292,14 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "C" => toggle_block_comments,
             "A-c" => toggle_line_comments,
             "?" => command_palette,
+            "t" => { "Terminal"
+                "t" => terminal_toggle,
+                "n" => terminal_open,
+                "c" => terminal_close,
+                "]" => terminal_next,
+                "[" => terminal_prev,
+                "f" => terminal_focus,
+            },
         },
         "z" => { "View"
             "z" | "c" => align_view_center,

@@ -313,3 +313,9 @@
 | `goto_prev_tabstop` | Goto next snippet placeholder |  |
 | `rotate_selections_first` | Make the first selection your primary one |  |
 | `rotate_selections_last` | Make the last selection your primary one |  |
+| `terminal_toggle` | Toggle terminal panel | normal: `` <space>tt ``, select: `` <space>tt `` |
+| `terminal_open` | Open a new terminal tab | normal: `` <space>tn ``, select: `` <space>tn `` |
+| `terminal_close` | Close the current terminal tab | normal: `` <space>tc ``, select: `` <space>tc `` |
+| `terminal_next` | Switch to next terminal tab | normal: `` <space>t] ``, select: `` <space>t] `` |
+| `terminal_prev` | Switch to previous terminal tab | normal: `` <space>t[ ``, select: `` <space>t[ `` |
+| `terminal_focus` | Focus the terminal panel | normal: `` <space>tf ``, select: `` <space>tf `` |
