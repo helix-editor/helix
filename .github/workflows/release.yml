@@ -107,7 +107,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download grammars
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
 
       - name: Move grammars under runtime
         if: "!startsWith(matrix.os, 'windows')"
@@ -237,7 +237,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
 
       - name: Build archive
         shell: bash
