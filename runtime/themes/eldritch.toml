@@ -1,0 +1,144 @@
+# Made with ♥ by Aurora (https://github.com/A-kly)
+# Theme format originates from pre-installed 'monokai-soda' theme, with modifications.
+# Colors from Eldritch theme: https://github.com/eldritch-theme/eldritch
+# Potentially includes redundancy or disfunctional sections. I will attempt to improve this over time!
+# Enjoy!
+
+## Constants
+"constant" = "white"
+"constant.builtin" = "magenta"
+"constant.character.escape" = "cyan"
+"constant.numeric" = "purple"
+
+## Functions
+"function" = { fg = "green" }
+"function.macro" = "orange"
+"function.builtin" = "magenta"
+
+## Keywords
+"keyword" = "magenta"
+"keyword.directive" = "magenta"
+
+## Punctuation
+"punctuation.delimiter" = "green" # change?
+"punctuation.bracket" = "green" # change?
+
+## Strings
+"string" = "yellow"
+
+## Types
+"type" = {fg = "cyan"  }
+"type.builtin" = {fg = "red", modifiers = [ "italic" ] }
+
+## Variables
+"variable"  = "white"
+"variable.builtin" = "magenta"
+"variable.other.member" = "white"
+"variable.parameter" = "orange"
+
+## Diffs
+"diff.plus" = "green"
+"diff.delta" = "orange"
+"diff.minus" = "magenta"
+"diff.delta.moved" = "orange"
+
+
+## Diagnostics
+"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "orange" } }
+"diagnostic.info" = { underline = { style = "curl", color = "white" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+
+## Markup
+"markup.list" = "cyan"
+"markup.link.label" = "cyan"
+
+
+"markup" = "orange"
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+# No underline
+"markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.raw" = { fg = "yellow"}
+"markup.link.url" = { fg = "yellow", modifiers = [ "underlined", "italic"] }
+"markup.link" = { fg = "orange", modifiers = [ "bold" ] }
+"markup.quote" = "green"
+
+## Misc
+"attribute" = "cyan"
+"comment" = { fg = "dark-purple", modifiers = ["italic" ] }
+"error" = "red"
+"hint" = "white"
+"info" = "white"
+"label" = "yellow"
+"module" = "orange"
+"namespace" = "magenta"
+"operator" = "magenta"
+"special" = "orange"
+"warning" = "orange"
+
+# Editor UI
+
+## Main
+"ui.background" = { bg = "black" }
+"ui.text" = "white"
+"ui.window" = { bg = "gray" }
+
+## Debug (TODO)
+
+## Menus
+"ui.menu" = { fg = "white", bg = "gray" }
+"ui.menu.selected" = { modifiers = ["reversed"] }
+"ui.popup" = { bg = "gray" }
+"ui.help" = { fg = "white", bg = "gray" }
+
+## Gutter
+"ui.linenr" = "gray"
+"ui.linenr.selected" = "orange"
+
+## Cursor
+"ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.select" = {fg = "white", bg = "purple"}
+"ui.selection" = { bg = "highlight" }
+"ui.cursorline.primary" = { bg = "gray" }
+
+## Statusline
+"ui.statusline" = { bg = "gray" }
+"ui.statusline.inactive" = { fg = "white", bg = "gray" }
+"ui.statusline.normal" = { fg = "white", bg = "cyan" }
+"ui.statusline.insert" = { fg = "white", bg = "green" }
+"ui.statusline.select" = { fg = "white", bg = "purple" }
+
+"ui.text.focus" = { fg = "yellow", modifiers = ["bold"] }
+"ui.virtual" = "gray"
+"ui.virtual.whitespace" = { fg = "gray" }
+"ui.virtual.ruler" = { bg = "gray" }
+"ui.virtual.jump-label" = { fg = "orange", modifiers = ["bold"] }
+
+## Brackets
+
+rainbow = ["dark-purple", "cyan", "green", { fg = "#00ff00", modifiers = ["bold"] }]
+
+
+[palette]
+
+black = "#171928" # Darker version of Sunken Depths Grey
+dark-gray= "#212337" # Sunken Depths Grey
+gray = "#323449" # Shallow Depths Grey
+white = "#ebfafa" # Lighthouse White
+dark-purple = "#7081d0" # The Old One Purple
+cyan = "#04d1f9" # Watery Tomb Blue
+bright-cyan = "#66e4fd"
+green = "#37f499" # Great Old One Green
+orange = "#f7c67f" # Dreaming Orange
+magenta = "#f265b5" # Pustule Pink
+purple = "#a48cf2" # Lovecraft Purple
+red = "#f16c75" # R'lyeh' Red
+bright-red = "#f9515d"
+yellow = "#f1fc79" # Gold of Yuggoth
+
+highlight = "#76639e"
