@@ -2489,7 +2489,7 @@ fn run_shell_command(
         let output = shell_impl_async(&shell, &args, None).await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
-                if !output.is_empty() {
+                if !output.trim().is_empty() {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output.trim_end()),
                         editor.syn_loader.clone(),
