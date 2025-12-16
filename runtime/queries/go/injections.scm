@@ -30,6 +30,10 @@
   ]
   (#set! injection.language "markdown"))
 
+((comment) @injection.content
+ (#match? @injection.content "^//go:generate")
+ (#set! injection.language "bash"))
+
 (call_expression
   (selector_expression) @_function
   (#any-of? @_function "regexp.Match" "regexp.MatchReader" "regexp.MatchString" "regexp.Compile" "regexp.CompilePOSIX" "regexp.MustCompile" "regexp.MustCompilePOSIX")

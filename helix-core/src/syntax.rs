@@ -1090,8 +1090,8 @@ fn node_is_visible(node: &Node) -> bool {
 }
 
 fn format_anonymous_node_kind(kind: &str) -> Cow<'_, str> {
-    if kind.contains('"') {
-        Cow::Owned(kind.replace('"', "\\\""))
+    if kind.contains('"') || kind.contains('\\') {
+        Cow::Owned(kind.replace('\\', "\\\\").replace('"', "\\\""))
     } else {
         Cow::Borrowed(kind)
     }

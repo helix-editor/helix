@@ -6,6 +6,7 @@
 - [`[editor.lsp]` Section](#editorlsp-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
+- [`[editor.buffer-picker]` Section](#editorbuffer-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
 - [`[editor.auto-save]` Section](#editorauto-save-section)
 - [`[editor.search]` Section](#editorsearch-section)
@@ -66,7 +67,7 @@
 | `rainbow-brackets` | Whether to render rainbow colors for matching brackets. Requires tree-sitter `rainbows.scm` queries for the language. | `false` |
 | `kitty-keyboard-protocol` | Whether to enable Kitty Keyboard Protocol. Can be `enabled`, `disabled` or `auto` | `"auto"` |
 
-[^3]: In most cases, you also need to enable the `auto-format` setting under `language.toml`. You can find the reasoning [here](https://github.com/helix-editor/helix/discussions/9043#discussioncomment-7811497).
+[^3]: In most cases, you also need to enable the `auto-format` setting under `languages.toml`. You can find the reasoning [here](https://github.com/helix-editor/helix/discussions/9043#discussioncomment-7811497).
 
 ### `[editor.clipboard-provider]` Section
 
@@ -244,6 +245,20 @@ Note that the ignore files consulted by the file explorer when `ignore` is set t
 |`git-exclude` | Enables reading `.git/info/exclude` files | `false`
 |`flatten-dirs` | Enables flattening single child directories | `true`
 
+### `[editor.buffer-picker]` Section
+
+Set options for buffer picker.
+
+| Key | Description | Default |
+|--|--|---------|
+|`start-position` | Controls behavior for which buffer is initially selected | `current` |
+
+Example
+
+```toml
+[editor.buffer-picker]
+start-position = "previous"
+```
 
 ### `[editor.auto-pairs]` Section
 
