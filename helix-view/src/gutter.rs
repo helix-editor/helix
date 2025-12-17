@@ -1,8 +1,9 @@
-use std::fmt::Write;
+use std::{fmt::Write, path::PathBuf};
 
 use helix_core::syntax::config::LanguageServerFeature;
 
 use crate::{
+    coverage,
     editor::GutterType,
     graphics::{Style, UnderlineStyle},
     Document, Editor, Theme, View,
@@ -32,6 +33,7 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
             GutterType::Diff => diff(editor, doc, view, theme, is_focused),
+            GutterType::Coverage => coverage(editor, doc, view, theme, is_focused),
         }
     }
 
@@ -41,6 +43,7 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
             GutterType::Diff => 1,
+            GutterType::Coverage => 1,
         }
     }
 }
@@ -137,6 +140,40 @@ pub fn diff<'doc>(
     } else {
         Box::new(move |_, _, _, _| None)
     }
+}
+
+pub fn coverage<'doc>(
+    _editor: &'doc Editor,
+    doc: &'doc Document,
+    _view: &View,
+    theme: &Theme,
+    _is_focused: bool,
+) -> GutterFn<'doc> {
+    let covered = theme.get("diff.plus.gutter");
+    let not_covered = theme.get("diff.minus.gutter");
+
+    if let Some(document_path) = &doc.path {
+        if let Some(file_coverage) = coverage::get_coverage(document_path) {
+            log::info!("return valid coverage gutter for {:?}", document_path);
+            return Box::new(
+                move |line: usize, _selected: bool, _first_visual_line: bool, out: &mut String| {
+                    if let Some(line_coverage) = file_coverage.lines.get(&(line as u32)) {
+                        let (icon, style) = if *line_coverage {
+                            ("┃", covered)
+                        } else {
+                            ("┃", not_covered)
+                        };
+                        write!(out, "{}", icon).unwrap();
+                        Some(style)
+                    } else {
+                        None
+                    }
+                },
+            );
+        }
+    }
+    log::info!("return empty coverage gutter");
+    return Box::new(move |_, _, _, _| None);
 }
 
 pub fn line_numbers<'doc>(
