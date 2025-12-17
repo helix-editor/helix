@@ -600,8 +600,11 @@ fn diff_modifiers(from: Modifier, to: Modifier) -> SgrModifiers {
     if removed.contains(Modifier::REVERSED) {
         modifiers |= SgrModifiers::NO_REVERSE;
     }
-    if removed.contains(Modifier::BOLD) && !to.contains(Modifier::DIM) {
+    if removed.contains(Modifier::BOLD) {
         modifiers |= SgrModifiers::INTENSITY_NORMAL;
+        if to.contains(Modifier::DIM) {
+            modifiers |= SgrModifiers::INTENSITY_DIM
+        }
     }
     if removed.contains(Modifier::DIM) {
         modifiers |= SgrModifiers::INTENSITY_NORMAL;
