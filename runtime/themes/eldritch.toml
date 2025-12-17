@@ -1,144 +1,177 @@
 # Made with ♥ by Aurora (https://github.com/A-kly)
-# Theme format originates from pre-installed 'monokai-soda' theme, with modifications.
 # Colors from Eldritch theme: https://github.com/eldritch-theme/eldritch
 # Potentially includes redundancy or disfunctional sections. I will attempt to improve this over time!
 # Enjoy!
 
 ## Constants
-"constant" = "white"
-"constant.builtin" = "magenta"
-"constant.character.escape" = "cyan"
-"constant.numeric" = "purple"
+"constant" = "bright_cyan"
+"constant.builtin" = "bright_cyan"
+"constant.builtin.boolean" = "Cyan"
+"constant.character.escape" = "Cyan"
+"constant.numeric" = "Green" 
+"constant.numeric.float" = "Pink"
+"constant.character" = "Pink"
 
 ## Functions
-"function" = { fg = "green" }
-"function.macro" = "orange"
-"function.builtin" = "magenta"
+"function" = "Purple"
+"function.macro" = "Purple"
+"function.builtin" = "Cyan"
+"function.method" = "Purple"
+
+## Constructor
+"constructor" = "Cyan"
 
 ## Keywords
-"keyword" = "magenta"
-"keyword.directive" = "magenta"
+"keyword" = "Green"
+"keyword.function" = "Cyan"
+"keyword.operator" = "Purple"
+"keyword.conditional" = "Purple"
+"keyword.repeat" = "Purple"
+"keyword.control.exception" = "Green"
+"keyword.control.import" = "Purple"
+"keyword.directive" = "Pink"
+"keyword.storage.type" = "Cyan"
+"keyword.storage.modifier" = "Cyan"
 
 ## Punctuation
-"punctuation.delimiter" = "green" # change?
-"punctuation.bracket" = "green" # change?
+"punctuation.delimiter" = "Foreground"
+"punctuation.bracket" = "Foreground"
 
 ## Strings
-"string" = "yellow"
+"string" = "Yellow"
 
 ## Types
-"type" = {fg = "cyan"  }
-"type.builtin" = {fg = "red", modifiers = [ "italic" ] }
+"type" = "bright_purple" # CAUSES ISSUES when following     ["@type"] = { fg = colors.bright_purple },
+"type.builtin" = {fg = "Cyan", modifiers = [ "italic" ] }
+"type.parameter" = "Cyan"
 
 ## Variables
-"variable"  = "white"
-"variable.builtin" = "magenta"
-"variable.other.member" = "white"
-"variable.parameter" = "orange"
+"variable"  = "Red"
+"variable.builtin" = "Green"
+"variable.other.member" = "Orange"
+"variable.parameter" = "Orange"
 
 ## Diffs
-"diff.plus" = "green"
-"diff.delta" = "orange"
-"diff.minus" = "magenta"
-"diff.delta.moved" = "orange"
+"diff.plus" = "Green"
+"diff.delta" = "Orange"
+"diff.minus" = "Red"
+"diff.delta.moved" = "Yellow"
 
 
 ## Diagnostics
 "diagnostic" = { modifiers = ["underlined"] }
-"diagnostic.error" = { underline = { style = "curl", color = "red" } }
-"diagnostic.warning" = { underline = { style = "curl", color = "orange" } }
-"diagnostic.info" = { underline = { style = "curl", color = "white" } }
+"diagnostic.error" = { underline = { style = "curl", color = "bright_red" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "Orange" } }
+"diagnostic.info" = { underline = { style = "curl", color = "Cyan" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "Cyan" } }
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 
 ## Markup
-"markup.list" = "cyan"
-"markup.link.label" = "cyan"
+"markup" = "Orange"
+"markup.list" = "Cyan"
+"markup.link.label" = "Cyan"
+"markup.bold" = { fg = "Orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "Yellow", modifiers = ["italic"] }
+"markup.heading" = { fg = "Purple", modifiers = ["bold"] }
+"markup.raw" = "Yellow"
+"markup.link.url" = { fg = "Yellow", modifiers = [ "underlined", "italic"] }
+"markup.link" = { fg = "Orange", modifiers = [ "bold" ] }
+"markup.quote" = { fg = "Yellow", modifiers = [ "italic"] }
 
+## Tags
+"tag" = "Cyan"
 
-"markup" = "orange"
-"markup.bold" = { fg = "orange", modifiers = ["bold"] }
-"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
-# No underline
-"markup.heading" = { fg = "purple", modifiers = ["bold"] }
-"markup.raw" = { fg = "yellow"}
-"markup.link.url" = { fg = "yellow", modifiers = [ "underlined", "italic"] }
-"markup.link" = { fg = "orange", modifiers = [ "bold" ] }
-"markup.quote" = "green"
 
 ## Misc
-"attribute" = "cyan"
-"comment" = { fg = "dark-purple", modifiers = ["italic" ] }
-"error" = "red"
-"hint" = "white"
-"info" = "white"
-"label" = "yellow"
-"module" = "orange"
-"namespace" = "magenta"
-"operator" = "magenta"
-"special" = "orange"
-"warning" = "orange"
+"attribute" = "Cyan"
+"comment" = { fg = "Comment", modifiers = ["italic" ] }
+"error" = "bright_red"
+"hint" = "Cyan"
+"info" = "Cyan"
+"label" = "Cyan"
+"module" = "Orange"
+"namespace" = "Orange"
+"operator" = "Purple"
+"special" = "Green"
+"warning" = "Orange"
 
-# Editor UI
+#############
+# Editor UI #
+#############
 
 ## Main
-"ui.background" = { bg = "black" }
-"ui.text" = "white"
-"ui.window" = { bg = "gray" }
-
-## Debug (TODO)
+"ui.background" = { bg = "Background" }
+"ui.text" = "Foreground"
+"ui.window" = { bg = "Gray" }
 
 ## Menus
-"ui.menu" = { fg = "white", bg = "gray" }
+"ui.menu" = { fg = "Foreground", bg = "Gray" }
 "ui.menu.selected" = { modifiers = ["reversed"] }
-"ui.popup" = { bg = "gray" }
-"ui.help" = { fg = "white", bg = "gray" }
+"ui.popup" = { bg = "Gray" }
+"ui.help" = { fg = "Foreground", bg = "Gray" }
 
 ## Gutter
-"ui.linenr" = "gray"
-"ui.linenr.selected" = "orange"
+"ui.linenr" = "Gray"
+"ui.linenr.selected" = "Green"
 
 ## Cursor
-"ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
-"ui.cursor.match" = { fg = "white", modifiers = ["reversed"] }
-"ui.cursor.select" = {fg = "white", bg = "purple"}
-"ui.selection" = { bg = "highlight" }
-"ui.cursorline.primary" = { bg = "gray" }
+"ui.cursor.insert" = "Foreground"
+"ui.cursor.primary" = { fg = "Foreground", modifiers = ["reversed"] }
+"ui.cursor.match" = { modifiers = ["reversed"] }
+"ui.cursor.select" = { bg = "visual"}
+"ui.selection" = { bg = "visual" }
+"ui.cursorline.primary" = { bg = "Gray" }
+
+## Bufferline
+"ui.bufferline" = "Foreground"
+"ui.bufferline.active" = {fg = "Green", modifiers = ["bold"]}
+"ui.bufferline.background" = {bg = "Background"}
 
 ## Statusline
-"ui.statusline" = { bg = "gray" }
-"ui.statusline.inactive" = { fg = "white", bg = "gray" }
-"ui.statusline.normal" = { fg = "white", bg = "cyan" }
-"ui.statusline.insert" = { fg = "white", bg = "green" }
-"ui.statusline.select" = { fg = "white", bg = "purple" }
+"ui.statusline" = { fg = "Foreground", bg = "Background" }
+"ui.statusline.inactive" = { fg = "Foreground", bg = "Gray" }
+"ui.statusline.normal" = { fg = "Foreground", bg = "Cyan" }
+"ui.statusline.insert" = { fg = "Foreground", bg = "Green" }
+"ui.statusline.select" = { fg = "Foreground", bg = "Purple" }
 
-"ui.text.focus" = { fg = "yellow", modifiers = ["bold"] }
-"ui.virtual" = "gray"
-"ui.virtual.whitespace" = { fg = "gray" }
-"ui.virtual.ruler" = { bg = "gray" }
-"ui.virtual.jump-label" = { fg = "orange", modifiers = ["bold"] }
+"ui.text.focus" = { fg = "Green", modifiers = ["bold"] }
+
+"ui.virtual" = "Gray"
+"ui.virtual.whitespace" = { fg = "Gray" } 
+"ui.virtual.indent-guide" = "Comment"
+"ui.virtual.ruler" = { bg = "Gray" }
+"ui.virtual.jump-label" = { fg = "Pink", modifiers = ["bold"] }
 
 ## Brackets
 
-rainbow = ["dark-purple", "cyan", "green", { fg = "#00ff00", modifiers = ["bold"] }]
-
+rainbow = ["Foreground",
+          "Purple",
+          "Cyan",
+          "Pink",
+          "Green",
+          "Orange",
+          "Foreground"]
 
 [palette]
+# From spec
+Background = "#212337" # Sunken Depths Grey
+Gray = "#323449"# Shallow Depths Grey
+Foreground = "#ebfafa"# Lighthouse White
+Comment="#7081d0"# The Old One Purple
+Cyan = "#04d1f9" # Watery Tomb Blue
+Green = "#37f499" # Great Old One Green
+Orange="#f7c67f"# Dreaming Orange
+Pink="#f265b5"# Pustule Pink
+Purple="#a48cf2"# Lovecraft Purple
+Red="#f16c75"# R'lyeh' Red
+Yellow="#f1fc79"# Gold of Yuggoth
 
-black = "#171928" # Darker version of Sunken Depths Grey
-dark-gray= "#212337" # Sunken Depths Grey
-gray = "#323449" # Shallow Depths Grey
-white = "#ebfafa" # Lighthouse White
-dark-purple = "#7081d0" # The Old One Purple
-cyan = "#04d1f9" # Watery Tomb Blue
-bright-cyan = "#66e4fd"
-green = "#37f499" # Great Old One Green
-orange = "#f7c67f" # Dreaming Orange
-magenta = "#f265b5" # Pustule Pink
-purple = "#a48cf2" # Lovecraft Purple
-red = "#f16c75" # R'lyeh' Red
-bright-red = "#f9515d"
-yellow = "#f1fc79" # Gold of Yuggoth
+# Supplimentary
 
-highlight = "#76639e"
+bright_red = "#f9515d"
+bright_cyan = "#66e4fd"
+bright_purple = "#ad8cff"
+visual = "#554971"
+
