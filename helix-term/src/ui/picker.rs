@@ -760,15 +760,30 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
         let scrolloff = cx.editor.config().picker.scrolloff as u32;
 
-        // Ensure the scrolloff is low enough so we won't scroll on every
-        // `move_by(1)`.
-        let max_scrolloff = (view_len / 2).saturating_sub(1);
+        let max_scrolloff = view_len / 2;
+        let is_scrolloff_truncated = max_scrolloff <= scrolloff;
         let scrolloff = std::cmp::min(scrolloff, max_scrolloff);
 
-        if self.cursor < self.scroll + scrolloff {
-            self.scroll = self.cursor.saturating_sub(scrolloff);
-        } else if view_end.saturating_sub(scrolloff + 1) < self.cursor {
-            let new_scroll = (self.cursor + scrolloff + 1).saturating_sub(view_len);
+        let is_view_len_even = view_len % 2 == 0;
+
+        // When we have an even amount of items and the scrolloff is half of
+        // the picker's view, we want to make sure to scroll on all moves
+        // (except when we are at the start or end of the list). In order to do
+        // that, we need to have different values for the bottom and top
+        // scrolloffs - one of them ought to be smaller by 1. We choose to make
+        // the top scrolloff the smaller one to be consistant with the editor's
+        // buffer scrolloff behavior.
+        let top_scrolloff = if is_view_len_even && is_scrolloff_truncated {
+            scrolloff.saturating_sub(1)
+        } else {
+            scrolloff
+        };
+        let bot_scrolloff = scrolloff;
+
+        if self.cursor < self.scroll + top_scrolloff {
+            self.scroll = self.cursor.saturating_sub(top_scrolloff);
+        } else if view_end.saturating_sub(bot_scrolloff) <= self.cursor {
+            let new_scroll = (self.cursor + bot_scrolloff + 1).saturating_sub(view_len);
             self.scroll = std::cmp::min(new_scroll, max_scroll);
         }
 
