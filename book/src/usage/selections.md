@@ -17,7 +17,7 @@ Pressing `x` again will extend the selection with the next line below the cursor
 
 To select everything in a buffer, press `%`.
 
-## Collapsing & Flip Selections
+## Collapsing & Flipping Selections
 
 To collapse a selection, press `;`.
 
