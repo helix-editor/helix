@@ -39,3 +39,15 @@ of the files as either vertical or horizontal splits. For example,
 ```sh
 hx --vsplit file1 file2
 ```
+
+Helix commands can also be used: the `:vsplit` and `:hsplit` commands will
+vertically or horizontally split the current buffer viewport.
+
+## Modifying Splits
+
+A split can be transposed with `Ctrl`-`w` + `t`. This will turn a vertical
+split into a horizontal split, and vice-versa.
+
+A window's position can also be swapped with its neighbours by using
+`Ctrl`-`w` + `h`, `j`, `k`, or `l`. This will switch it with its
+left, bottom, top or right neighbor respectively.
