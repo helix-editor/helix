@@ -125,3 +125,7 @@ selection to the "func" `identifier`.
 
 [lang-support]: ./lang-support.md
 
+## Match Mode Jump
+
+When in match mode (`m`), you can press `m` again to automatically jump to a
+matching bracket pair. This will work with pairs of `{`, `[`, `(` and `<`.
