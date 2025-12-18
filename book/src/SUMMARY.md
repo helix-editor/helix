@@ -14,7 +14,7 @@
   - [Search](./usage/search.md)
   - [Registers](./usage/registers.md)
   - [Macros](./usage/macros.md)
-  - [Textobjects](./usage/textobjects.md)
+  - [Text Objects](./usage/textobjects.md)
   - [Surround](./usage/surround.md)
   - [Commenting](./usage/comments.md)
   - [Buffers](./usage/buffers.md)
