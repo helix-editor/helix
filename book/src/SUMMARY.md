@@ -12,6 +12,7 @@
   - [Selections](./usage/selections.md)
   - [Multiple cursors](./usage/multiple-cursors.md)
   - [Search](./usage/search.md)
+  - [Jumplist](./usage/jumplist.md)
   - [Registers](./usage/registers.md)
   - [Macros](./usage/macros.md)
   - [Text Objects](./usage/textobjects.md)
