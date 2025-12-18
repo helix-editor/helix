@@ -60,7 +60,7 @@ Helix can open lines at specific line and column numbers. It uses
 the format:
 
 ```sh
-hx <filname>:<line_number>:<column_number>
+hx <filename>:<line_number>:<column_number>
 ```
 
 This can be combined with a variety of other CLI tooling to make some

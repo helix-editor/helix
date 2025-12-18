@@ -8,7 +8,7 @@ following keybinds are the most common of these:
 
 - `w`: move forward until the next word. The cursor will end on the character
   before the next word.
-- `e`: move fowrard to the end of the current word. The cursor will end on the
+- `e`: move forward to the end of the current word. The cursor will end on the
   last character.
 - `b`: move backward to the beginning of the current word.
 

@@ -48,6 +48,6 @@ vertically or horizontally split the current buffer viewport.
 A split can be transposed with `Ctrl`-`w` + `t`. This will turn a vertical
 split into a horizontal split, and vice-versa.
 
-A window's position can also be swapped with its neighbours by using
+A window's position can also be swapped with its neighbors by using
 `Ctrl`-`w` + `h`, `j`, `k`, or `l`. This will switch it with its
 left, bottom, top or right neighbor respectively.

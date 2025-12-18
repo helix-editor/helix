@@ -21,7 +21,7 @@ section.
 
 ## Checking LSP Status
 
-`hx --health <langage>` can be used to check the status of a particular language.
+`hx --health <language>` can be used to check the status of a particular language.
 This will show what features are configured for that language, and will
 display whether the configured language servers have been successfully found
 in the shell's `$PATH`. Certain language features (like syntax highlighting)
@@ -72,7 +72,7 @@ and [Configuration/Languages](./../configuration/languages.md)).
 
 ## Useful Keymaps
 
-Helix inludes default keymaps for a lot of language server functionality.
+Helix includes default keymaps for a lot of language server functionality.
 Some commonly used `NOR` mode keymaps are:
 
 - `Space` + `r`: renames the symbol under the cursor across the project.

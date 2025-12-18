@@ -10,7 +10,7 @@ primary cursor is a visual selection, the visual selection will be transferred
 over to the new cursor too.
 
 Of all cursors created, one cursor is the "primary" cursor. This is highlighted
-a slightly different colour in most color themes. It is also represented
+a slightly different color in most color themes. It is also represented
 in the bottom right of the default status bar, and looks like `[num1]/[num2]`.
 `num2` represents the total amount of cursors in the buffer. `num1` represents
 which of these cursors is currently the "primary" cursor.
