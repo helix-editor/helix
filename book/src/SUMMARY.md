@@ -22,7 +22,7 @@
   - [Splits](./usage/splits.md)
   - [Pickers](./usage/pickers.md)
   - [Command line](./usage/command-line.md)
-  - [Common LSP actions](./usage/common-lsp-actions.md)
+  - [Language Servers](./usage/language-servers.md)
 - [Reference](./reference/reference.md)
   - [Modes & Default Keymaps](./reference/modes-default-keymaps.md)
   - [Commands](./reference/commands.md)
