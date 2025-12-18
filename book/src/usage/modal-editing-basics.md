@@ -81,8 +81,8 @@ will extend the current selection, instead of just moving the cursor.
 
 To remove the current selection, press `;`.
 
-Certain movement commands will also highlight the content contained within the
-motion. This will be discussed more in TODO.
+Certain movement will also highlight the content contained within the
+motion. For example, see [Movements](./movements.md#word-based-movement).
 
 ## Deletion
 
@@ -91,7 +91,7 @@ selection is greater than a single character, all characters in the selection
 will be deleted.
 
 The deleted section will be saved to Helix's default clipboard. This is more commonly
-known as the default *register*. These are discussed in more detail at TODO.
+known as the default *register*. Registers are disussed in detail in the [Registers](./registers.md) chapter.
 
 ## Pasting and Copying Text
 

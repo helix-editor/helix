@@ -2,7 +2,7 @@
 
 ## Select / Extend Mode
 
-As a recap from the discussion in TODO:
+As a recap from the discussion in [Editor Basics](./modal-editing-basics.md#selection-first-approach):
 
 - Type `v` to enter `SEL` mode.
 - Type `v` or press `Esc` to return to `NOR` mode.
