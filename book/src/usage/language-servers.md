@@ -88,3 +88,5 @@ Some commonly used `INS` mode keymaps are:
   - `Ctrl`-`n` (or `Tab`) will move forward one suggestion.
   - `Ctrl`-`p` (or `Shift`-`Tab`) will move forward one suggestion.
   - `Enter` will select the currently-highlighted completion.
+  - `Ctrl`-`c` will cancel the auto-completion and close the popup.
+  
