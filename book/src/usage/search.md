@@ -28,4 +28,12 @@ in the open buffer with `n` and `N`.
 
 ## Adding Next Search Match to Selection
 
-TODO
+A property of `SEL` mode when using `n` and `N` is that instead of moving the
+selection to the next match, it will add a *new selection* on each match.
+This lets you simultaneously select the same word at multiple places
+throughout the document.
+
+## Searching a Workspace
+
+If Helix is open in a valid workspace, you can search the entire workspace
+for a regex string using `Space` + `/`.
