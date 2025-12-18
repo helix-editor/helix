@@ -1,4 +1,6 @@
-## Keymap
+# Keymap
+
+## Table of Contents
 
 - [Normal mode](#normal-mode)
   - [Movement](#movement)
