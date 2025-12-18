@@ -1,6 +1,10 @@
 ## Surround
 
-Helix includes built-in functionality similar to [vim-surround](https://github.com/tpope/vim-surround).
+Helix allows you to make changes directly to the elements surrounding the current
+selections. In particular, it allows adding characters, deleting characters, or
+replacing characters around the current selection.
+
+This built-in functionality is similar to [vim-surround](https://github.com/tpope/vim-surround).
 The keymappings have been inspired from [vim-sandwich](https://github.com/machakann/vim-sandwich):
 
 ![Surround demo](https://user-images.githubusercontent.com/23398472/122865801-97073180-d344-11eb-8142-8f43809982c6.gif)
@@ -8,8 +12,8 @@ The keymappings have been inspired from [vim-sandwich](https://github.com/machak
 | Key Sequence                      | Action                                  |
 | --------------------------------- | --------------------------------------- |
 | `ms<char>` (after selecting text) | Add surround characters to selection    |
-| `mr<char_to_replace><new_char>`   | Replace the closest surround characters |
-| `md<char_to_delete>`              | Delete the closest surround characters  |
+| `mr<char_to_replace><new_char>`   | Replace the *closest* surround characters |
+| `md<char_to_delete>`              | Delete the *closest* surround characters  |
 
 You can use counts to act on outer pairs.
 
