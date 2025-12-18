@@ -3,6 +3,21 @@ use super::*;
 use helix_core::diagnostic::Severity;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_smile() -> anyhow::Result<()> {
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(":smile<ret><esc>"),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn history_completion() -> anyhow::Result<()> {
     test_key_sequence(
         &mut AppBuilder::new().build()?,
