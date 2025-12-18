@@ -27,7 +27,7 @@
   - [Default Keymaps & Modes](./reference/keymap.md)
   - [Avaliable Commands](./reference/commands.md)
   - [Default Language Support](./reference/lang-support.md)
-  - [Default Language Server Configurations](./reference/language-server-configs.md)
+  - [Default Supported Language Servers](./reference/language-server-configs.md)
   - [Terminal Support](./reference/terminal-support.md)
 - [Configuration](./configuration/configuration.md)
   - [Editor](./configuration/editor.md)
