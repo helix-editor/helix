@@ -11,10 +11,10 @@
 
 ; Info level tags
 ((tag (name) @info)
- (#any-of? @info "INFO" "NOTE" "TODO" "PERF" "OPTIMIZE" "PERFORMANCE" "QUESTION" "ASK"))
+ (#any-of? @info "INFO" "NOTE" "TODO" "TO-DO" "PERF" "OPTIMIZE" "PERFORMANCE" "QUESTION" "ASK"))
 
 ("text" @info
- (#any-of? @info "INFO" "NOTE" "TODO" "PERF" "OPTIMIZE" "PERFORMANCE" "QUESTION" "ASK"))
+ (#any-of? @info "INFO" "NOTE" "TODO" "TO-DO" "PERF" "OPTIMIZE" "PERFORMANCE" "QUESTION" "ASK"))
 
 ; Warning level tags
 ((tag (name) @warning)
@@ -25,10 +25,10 @@
 
 ; Error level tags
 ((tag (name) @error)
- (#any-of? @error "BUG" "FIXME" "ISSUE" "XXX" "FIX" "SAFETY" "FIXIT" "FAILED" "DEBUG" "INVARIANT" "COMPLIANCE"))
+ (#any-of? @error "BUG" "FIXME" "ISSUE" "XXX" "FIX" "SAFETY" "FIXIT" "FAILED" "DEBUG" "INVARIANT" "COMPLIANCE" "PANIC"))
 
 ("text" @error
- (#any-of? @error "BUG" "FIXME" "ISSUE" "XXX" "FIX" "SAFETY" "FIXIT" "FAILED" "DEBUG" "INVARIANT" "COMPLIANCE"))
+ (#any-of? @error "BUG" "FIXME" "ISSUE" "XXX" "FIX" "SAFETY" "FIXIT" "FAILED" "DEBUG" "INVARIANT" "COMPLIANCE" "PANIC"))
 
 ; Issue number (#123)
 ("text" @constant.numeric
