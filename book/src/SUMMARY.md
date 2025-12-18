@@ -15,7 +15,6 @@
   - [Registers](./usage/registers.md)
   - [Macros](./usage/macros.md)
   - [Textobjects](./usage/textobjects.md)
-  - [Syntax-aware Motions](./usage/syntax-aware-motions.md)
   - [Surround](./usage/surround.md)
   - [Commenting](./usage/comments.md)
   - [Buffers](./usage/buffers.md)
