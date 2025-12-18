@@ -262,6 +262,15 @@ impl Notification for PublishDiagnostics {
     const METHOD: &'static str = "textDocument/publishDiagnostics";
 }
 
+/// inactiveRegion notifications are a clangd extension indicating sections in a file that are ignored based on preprocessor directives.
+#[derive(Debug)]
+pub enum InactiveRegions {}
+
+impl Notification for InactiveRegions {
+    type Params = InactiveRegionsParams;
+    const METHOD: &'static str = "textDocument/inactiveRegions";
+}
+
 /// The progress notification is sent from the server to the client to ask
 /// the client to indicate progress.
 #[derive(Debug)]

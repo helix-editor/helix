@@ -925,6 +925,44 @@ impl Application {
                     Notification::ProgressMessage(_params) => {
                         // do nothing
                     }
+                    Notification::InactiveRegions(params) => {
+                        let uri = match helix_core::Uri::try_from(params.text_document.uri) {
+                            Ok(uri) => uri,
+                            Err(err) => {
+                                log::error!("{err}");
+                                return;
+                            }
+                        };
+                        let language_server = language_server!();
+                        if !language_server.is_initialized() {
+                            log::error!("Discarding inactiveRegions notification sent by an uninitialized server: {}", language_server.name());
+                            return;
+                        }
+                        let provider = helix_core::diagnostic::DiagnosticProvider::Lsp {
+                            server_id,
+                            identifier: None,
+                        };
+                        self.editor.handle_lsp_diagnostics(
+                            &provider,
+                            uri,
+                            None,
+                            params
+                                .regions
+                                .iter()
+                                .map(|r| lsp::Diagnostic {
+                                    range: *r,
+                                    severity: None,
+                                    code: None,
+                                    code_description: None,
+                                    source: None,
+                                    message: String::new(),
+                                    related_information: None,
+                                    tags: Some(vec![lsp::DiagnosticTag::UNNECESSARY]),
+                                    data: None,
+                                })
+                                .collect(),
+                        );
+                    }
                     Notification::Exit => {
                         self.editor.set_status("Language server exited");
 

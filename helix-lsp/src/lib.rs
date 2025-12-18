@@ -526,6 +526,7 @@ pub enum Notification {
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
     ProgressMessage(lsp::ProgressParams),
+    InactiveRegions(lsp::InactiveRegionsParams),
 }
 
 impl Notification {
@@ -539,7 +540,10 @@ impl Notification {
                 let params: lsp::PublishDiagnosticsParams = params.parse()?;
                 Self::PublishDiagnostics(params)
             }
-
+            lsp::notification::InactiveRegions::METHOD => {
+                let params: lsp::InactiveRegionsParams = params.parse()?;
+                Self::InactiveRegions(params)
+            }
             lsp::notification::ShowMessage::METHOD => {
                 let params: lsp::ShowMessageParams = params.parse()?;
                 Self::ShowMessage(params)

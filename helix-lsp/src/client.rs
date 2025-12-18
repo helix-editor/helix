@@ -688,6 +688,9 @@ impl Client {
                         dynamic_registration: Some(false),
                         related_document_support: Some(true),
                     }),
+                    inactive_regions_capabilities: Some(lsp::InactiveRegionsCapabilities {
+                        inactive_regions: Some(true),
+                    }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
                         tag_support: Some(lsp::TagSupport {
