@@ -305,7 +305,11 @@ impl LineAnnotation for InlineDiagnostics<'_> {
             .drain(..)
             .map(|(diag, anchor)| {
                 let text_fmt = self.state.config.text_fmt(anchor, self.width);
-                softwrapped_dimensions(diag.message.as_str().trim().into(), &text_fmt).0
+                if !diag.message.is_empty() {
+                    softwrapped_dimensions(diag.message.as_str().trim().into(), &text_fmt).0
+                } else {
+                    0
+                }
             })
             .sum();
         Position::new(multi as usize + diagostic_height, 0)

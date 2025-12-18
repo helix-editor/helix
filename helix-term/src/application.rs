@@ -955,7 +955,7 @@ impl Application {
                                     code: None,
                                     code_description: None,
                                     source: None,
-                                    message: String::new(),
+                                    message: "".to_string(),
                                     related_information: None,
                                     tags: Some(vec![lsp::DiagnosticTag::UNNECESSARY]),
                                     data: None,

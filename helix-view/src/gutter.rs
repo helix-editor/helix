@@ -74,15 +74,21 @@ pub fn diagnostic<'doc>(
                                 .any(|ls| ls.id() == id)
                         })
                 });
-            diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
-                write!(out, "●").ok();
-                match d.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                }
-            })
+            diagnostics_on_line
+                .max_by_key(|d| d.severity)
+                .and_then(|d| {
+                    if let Some(sev) = d.severity {
+                        write!(out, "●").ok();
+                        match sev {
+                            Severity::Error => Some(error),
+                            Severity::Warning => Some(warning),
+                            Severity::Info => Some(info),
+                            Severity::Hint => Some(hint),
+                        }
+                    } else {
+                        None
+                    }
+                })
         },
     )
 }
