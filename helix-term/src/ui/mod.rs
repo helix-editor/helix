@@ -10,6 +10,7 @@ pub mod picker;
 pub mod popup;
 pub mod prompt;
 mod spinner;
+mod splash;
 mod statusline;
 mod text;
 mod text_decorations;
@@ -27,6 +28,7 @@ pub use picker::{Column as PickerColumn, FileLocation, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
+pub use splash::Splash;
 pub use text::Text;
 
 use helix_view::Editor;
