@@ -807,6 +807,23 @@ impl std::str::FromStr for LineNumber {
     }
 }
 
+impl helix_config::Ty for LineNumber {
+    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
+        let helix_config::Value::String(s) = val else {
+            anyhow::bail!("expected a string for line number mode");
+        };
+        s.parse()
+    }
+
+    fn to_value(&self) -> helix_config::Value {
+        let s = match self {
+            LineNumber::Absolute => "absolute",
+            LineNumber::Relative => "relative",
+        };
+        helix_config::Value::String(s.to_string())
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum GutterType {
@@ -833,6 +850,25 @@ impl std::str::FromStr for GutterType {
                 "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
             ),
         }
+    }
+}
+
+impl helix_config::Ty for GutterType {
+    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
+        let helix_config::Value::String(s) = val else {
+            anyhow::bail!("expected a string for gutter type");
+        };
+        s.parse()
+    }
+
+    fn to_value(&self) -> helix_config::Value {
+        let s = match self {
+            GutterType::Diagnostics => "diagnostics",
+            GutterType::LineNumbers => "line-numbers",
+            GutterType::Spacer => "spacer",
+            GutterType::Diff => "diff",
+        };
+        helix_config::Value::String(s.to_string())
     }
 }
 

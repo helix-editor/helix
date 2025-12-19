@@ -19,6 +19,7 @@ integration = []
 helix-stdx = { path = "../helix-stdx" }
 helix-loader = { path = "../helix-loader" }
 helix-parsec = { path = "../helix-parsec" }
+helix-config = { path = "../helix-config" }
 
 ropey.workspace = true
 smallvec = "1.15"

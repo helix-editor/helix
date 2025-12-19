@@ -18,6 +18,7 @@ unicode-lines = []
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
 helix-core = { path = "../helix-core" }
+helix-config = { path = "../helix-config" }
 helix-event = { path = "../helix-event" }
 helix-loader = { path = "../helix-loader" }
 helix-lsp = { path = "../helix-lsp" }

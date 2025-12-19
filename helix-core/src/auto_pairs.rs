@@ -22,7 +22,7 @@ pub const DEFAULT_PAIRS: &[(char, char)] = &[
 pub struct AutoPairs(HashMap<char, Pair>);
 
 /// Represents the config for a particular pairing.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Pair {
     pub open: char,
     pub close: char,
@@ -103,6 +103,62 @@ impl AutoPairs {
 impl Default for AutoPairs {
     fn default() -> Self {
         AutoPairs::new(DEFAULT_PAIRS.iter())
+    }
+}
+
+impl helix_config::Ty for AutoPairs {
+    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
+        use anyhow::bail;
+        use helix_config::Value;
+        match val {
+            Value::Bool(false) => Ok(Self(HashMap::default())),
+            Value::Bool(true) => Ok(Self::default()),
+            Value::Map(map) => {
+                let pairs: Result<Vec<_>, _> = map
+                    .iter()
+                    .map(|(open, close)| {
+                        let open = open.chars().next().ok_or_else(|| {
+                            anyhow::anyhow!("expected single character key, got empty string")
+                        })?;
+                        let Value::String(close) = close else {
+                            bail!("expected string value for auto pair close character");
+                        };
+                        let close = close.chars().next().ok_or_else(|| {
+                            anyhow::anyhow!("expected single character value, got empty string")
+                        })?;
+                        Ok((open, close))
+                    })
+                    .collect();
+                Ok(AutoPairs::new(pairs?.iter()))
+            }
+            _ => bail!("expected boolean or map of character pairs"),
+        }
+    }
+
+    fn to_value(&self) -> helix_config::Value {
+        use helix_config::Value;
+        if self.0.is_empty() {
+            return Value::Bool(false);
+        }
+        // Check if it matches the default pairs
+        let default = Self::default();
+        if self.0.len() == default.0.len()
+            && self.0.iter().all(|(k, v)| default.0.get(k) == Some(v))
+        {
+            return Value::Bool(true);
+        }
+        // Custom pairs - serialize as map
+        let mut map: helix_config::Map<Value> = helix_config::Map::default();
+        // Only include opener entries (avoid duplicating close entries)
+        for (ch, pair) in &self.0 {
+            if *ch == pair.open {
+                map.insert(
+                    pair.open.to_string().into_boxed_str(),
+                    Value::String(pair.close.to_string()),
+                );
+            }
+        }
+        Value::Map(Box::new(map))
     }
 }
 

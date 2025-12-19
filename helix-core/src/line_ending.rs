@@ -114,6 +114,49 @@ impl LineEnding {
     }
 }
 
+impl helix_config::Ty for LineEnding {
+    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
+        use anyhow::bail;
+        use helix_config::Value;
+        let Value::String(s) = val else {
+            bail!("expected a string for line ending");
+        };
+        match s.to_lowercase().as_str() {
+            "native" => Ok(NATIVE_LINE_ENDING),
+            "lf" | "unix" => Ok(LineEnding::LF),
+            "crlf" | "dos" | "windows" => Ok(LineEnding::Crlf),
+            #[cfg(feature = "unicode-lines")]
+            "cr" => Ok(LineEnding::CR),
+            #[cfg(feature = "unicode-lines")]
+            "ff" => Ok(LineEnding::FF),
+            #[cfg(feature = "unicode-lines")]
+            "nel" => Ok(LineEnding::Nel),
+            _ => bail!("unknown line ending: {s:?}"),
+        }
+    }
+
+    fn to_value(&self) -> helix_config::Value {
+        use helix_config::Value;
+        let s = match self {
+            LineEnding::LF => "lf",
+            LineEnding::Crlf => "crlf",
+            #[cfg(feature = "unicode-lines")]
+            LineEnding::CR => "cr",
+            #[cfg(feature = "unicode-lines")]
+            LineEnding::VT => "vt",
+            #[cfg(feature = "unicode-lines")]
+            LineEnding::FF => "ff",
+            #[cfg(feature = "unicode-lines")]
+            LineEnding::Nel => "nel",
+            #[cfg(feature = "unicode-lines")]
+            LineEnding::LS => "ls",
+            #[cfg(feature = "unicode-lines")]
+            LineEnding::PS => "ps",
+        };
+        Value::String(s.to_string())
+    }
+}
+
 #[inline]
 pub fn str_is_line_ending(s: &str) -> bool {
     LineEnding::from_str(s).is_some()
