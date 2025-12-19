@@ -18,8 +18,10 @@ integration = []
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
 helix-loader = { path = "../helix-loader" }
+helix-event = { path = "../helix-event" }
 helix-parsec = { path = "../helix-parsec" }
 
+ignore.workspace = true
 ropey.workspace = true
 smallvec = "1.15"
 smartstring = "1.0.1"
@@ -57,6 +59,8 @@ nucleo.workspace = true
 parking_lot.workspace = true
 globset.workspace = true
 regex-cursor = "0.1.5"
+
+filesentry = "0.2.2"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use gix::bstr::ByteSlice;
@@ -81,6 +81,18 @@ pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
 
 pub fn for_each_changed_file(cwd: &Path, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
     status(&open_repo(cwd)?.to_thread_local(), f)
+}
+
+/// Get the path to the HEAD file for the git repository containing the given path.
+/// This properly handles both regular repositories and worktrees.
+pub fn get_head_path(path: &Path) -> Option<PathBuf> {
+    let repo = open_repo(path).ok()?.to_thread_local();
+    // git_dir() returns the path to the actual git directory
+    // For regular repos: /path/to/repo/.git
+    // For worktrees: /path/to/main/.git/worktrees/<name>
+    let git_dir = repo.git_dir();
+    let head_path = git_dir.join("HEAD");
+    head_path.exists().then_some(head_path)
 }
 
 fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
