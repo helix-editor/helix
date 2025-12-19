@@ -2,6 +2,17 @@
 
 To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./configuration.md) file, or select it during runtime using `:theme <name>`.
 
+Separate themes can be configured for light and dark modes. On terminals supporting [mode 2031 dark/light detection](https://github.com/contour-terminal/contour/blob/master/docs/vt-extensions/color-palette-update-notifications.md), the theme mode is detected from the terminal.
+
+```toml
+[theme]
+dark = "catppuccin_frappe"
+light = "catppuccin_latte"
+## Optional. Used if the terminal doesn't declare a preference.
+## Defaults to the theme set for `dark` if not specified.
+# fallback = "catppuccin_frappe"
+```
+
 ## Creating a theme
 
 Create a file with the name of your theme as the file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes` or `%AppData%\helix\themes` on Windows). The directory might have to be created beforehand.
@@ -129,6 +140,17 @@ inherits = "boo_berry"
 [palette]
 berry = "#2A2A4D"
 ```
+
+### Rainbow
+
+The `rainbow` key is used for rainbow highlight for matching brackets.
+The key is a list of styles.
+
+```toml
+rainbow = ["#ff0000", "#ffa500", "#fff000", { fg = "#00ff00", modifiers = ["bold"] }]
+```
+
+Colors from the palette and modifiers may be used.
 
 ### Scopes
 

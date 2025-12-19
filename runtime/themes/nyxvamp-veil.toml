@@ -3,6 +3,9 @@
 
 inherits = "nyxvamp-radiance"
 
+# Rainbow parentheses colors
+rainbow = ["keyword_fg", "function_fg", "string_fg", "number_fg"]
+
 # Override specific styles for veil variant
 "function" = { fg = "function_fg", modifiers = ["bold"] }
 "function.builtin" = { fg = "function_builtin_fg", modifiers = ["bold"] }
@@ -22,15 +25,15 @@ line_nr_selected = "#D9E0EE"  # Foreground color for selected line number
 
 # Status line colors
 status_fg = "#D9E0EE"
-status_bg = "#302D41"
+status_bg = "#2E2E3E"
 status_inactive_fg = "#6E6A86"
 status_inactive_bg = "#1E1E2E"
 
 # Menu colors
 menu_fg = "#D9E0EE"
 menu_bg = "#1E1E2E"
-menu_sel_fg = "#1E1E2E"
-menu_sel_bg = "#F5C2E7"
+menu_sel_fg = "#D9E0EE"
+menu_sel_bg = "#494D64"
 menu_scroll_fg = "#6E6A86"
 menu_scroll_bg = "#1E1E2E"
 popup_fg = "#D9E0EE"
@@ -59,15 +62,15 @@ variable_builtin_fg = "#F28FAD"  # Pink built-in variables
 type_fg = "#C9CBFF"  # Lavender types
 type_builtin_fg = "#C9CBFF"  # Lavender built-in types
 attribute_fg = "#F5C2E7"  # Pink attributes
-namespace_fg = "#DDB6F2"  # Purple namespaces
+namespace_fg = "#C9CBFF"  # Lavender namespaces (Base16 base0E)
 punctuation_fg = "#D9E0EE"  # Foreground color for punctuation
 symbol_fg = "#F28FAD"  # Pink symbols (e.g., Elixir atoms)
 
 # Diagnostics
-error_fg = "#E78284"  # Red errors
-warning_fg = "#E5C890"  # Yellow warnings
-info_fg = "#8CAAEE"  # Blue info
-hint_fg = "#8BD5CA"  # Cyan hints
+error_fg = "#F28FAD"  # Base16 base08 - red errors
+warning_fg = "#F8BD96"  # Base16 base09 - orange warnings
+info_fg = "#96CDFB"  # Base16 base0B - blue info
+hint_fg = "#8BD5CA"  # Base16 base0C - cyan hints
 
 # Diff colors
 diff_add_fg = "#A6DA95"  # Green additions

@@ -1,3 +1,5 @@
+//! Common TUI symbols including blocks, bars, braille, lines
+
 pub mod block {
     pub const FULL: &str = "█";
     pub const SEVEN_EIGHTHS: &str = "▉";

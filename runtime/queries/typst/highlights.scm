@@ -1,11 +1,3 @@
-(call
-  item: (ident) @function)
-(call
-  item: (field field: (ident) @function.method))
-(tagged field: (ident) @tag)
-(field field: (ident) @tag)
-(comment) @comment
-
 ; CONTROL
 (let "let" @keyword.storage.type)
 (branch ["if" "else"] @keyword.control.conditional)
@@ -49,6 +41,15 @@
 (none) @constant.builtin
 (auto) @constant.builtin
 (ident) @variable
+
+; FUNCTIONS
+(call
+  item: (ident) @function)
+(call
+  item: (field field: (ident) @function.method))
+(tagged field: (ident) @tag)
+(field field: (ident) @tag)
+(comment) @comment
 
 ; MARKUP
 (item "-" @markup.list)

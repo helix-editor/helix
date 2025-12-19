@@ -1,22 +1,33 @@
 use crate::config::{Config, ConfigLoadError};
-use crossterm::{
-    style::{Color, StyledContent, Stylize},
-    tty::IsTty,
-};
 use helix_core::config::{default_lang_config, user_lang_config};
 use helix_loader::grammar::load_runtime_file;
-use std::io::Write;
+use std::{
+    collections::HashSet,
+    io::{IsTerminal, Write},
+};
+use termina::{
+    style::{ColorSpec, StyleExt as _, Stylized},
+    Terminal as _,
+};
 
 #[derive(Copy, Clone)]
 pub enum TsFeature {
     Highlight,
     TextObject,
     AutoIndent,
+    Tags,
+    RainbowBracket,
 }
 
 impl TsFeature {
     pub fn all() -> &'static [Self] {
-        &[Self::Highlight, Self::TextObject, Self::AutoIndent]
+        &[
+            Self::Highlight,
+            Self::TextObject,
+            Self::AutoIndent,
+            Self::Tags,
+            Self::RainbowBracket,
+        ]
     }
 
     pub fn runtime_filename(&self) -> &'static str {
@@ -24,6 +35,8 @@ impl TsFeature {
             Self::Highlight => "highlights.scm",
             Self::TextObject => "textobjects.scm",
             Self::AutoIndent => "indents.scm",
+            Self::Tags => "tags.scm",
+            Self::RainbowBracket => "rainbows.scm",
         }
     }
 
@@ -32,6 +45,8 @@ impl TsFeature {
             Self::Highlight => "Syntax Highlighting",
             Self::TextObject => "Treesitter Textobjects",
             Self::AutoIndent => "Auto Indent",
+            Self::Tags => "Code Navigation Tags",
+            Self::RainbowBracket => "Rainbow Brackets",
         }
     }
 
@@ -40,6 +55,8 @@ impl TsFeature {
             Self::Highlight => "Highlight",
             Self::TextObject => "Textobject",
             Self::AutoIndent => "Indent",
+            Self::Tags => "Tags",
+            Self::RainbowBracket => "Rainbow",
         }
     }
 }
@@ -134,6 +151,15 @@ pub fn clipboard() -> std::io::Result<()> {
 }
 
 pub fn languages_all() -> std::io::Result<()> {
+    languages(None)
+}
+
+pub fn languages_selection() -> std::io::Result<()> {
+    let selection = helix_loader::grammar::get_grammar_names().unwrap_or_default();
+    languages(selection)
+}
+
+fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
@@ -160,21 +186,24 @@ pub fn languages_all() -> std::io::Result<()> {
         headings.push(feat.short_title())
     }
 
-    let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
+    let terminal_cols = termina::PlatformTerminal::new()
+        .and_then(|terminal| terminal.get_dimensions())
+        .map(|size| size.cols)
+        .unwrap_or(80);
     let column_width = terminal_cols as usize / headings.len();
-    let is_terminal = std::io::stdout().is_tty();
+    let is_terminal = std::io::stdout().is_terminal();
 
-    let fit = |s: &str| -> StyledContent<String> {
+    let fit = |s: &str| -> Stylized<'static> {
         format!(
             "{:column_width$}",
             s.get(..column_width - 2)
                 .map(|s| format!("{}…", s))
                 .unwrap_or_else(|| s.to_string())
         )
-        .stylize()
+        .stylized()
     };
-    let color = |s: StyledContent<String>, c: Color| if is_terminal { s.with(c) } else { s };
-    let bold = |s: StyledContent<String>| if is_terminal { s.bold() } else { s };
+    let color = |s: Stylized<'static>, c: ColorSpec| if is_terminal { s.foreground(c) } else { s };
+    let bold = |s: Stylized<'static>| if is_terminal { s.bold() } else { s };
 
     for heading in headings {
         write!(stdout, "{}", bold(fit(heading)))?;
@@ -187,15 +216,22 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let check_binary_with_name = |cmd: Option<(&str, &str)>| match cmd {
         Some((name, cmd)) => match helix_stdx::env::which(cmd) {
-            Ok(_) => color(fit(&format!("✓ {}", name)), Color::Green),
-            Err(_) => color(fit(&format!("✘ {}", name)), Color::Red),
+            Ok(_) => color(fit(&format!("✓ {}", name)), ColorSpec::BRIGHT_GREEN),
+            Err(_) => color(fit(&format!("✘ {}", name)), ColorSpec::BRIGHT_RED),
         },
-        None => color(fit("None"), Color::Yellow),
+        None => color(fit("None"), ColorSpec::BRIGHT_YELLOW),
     };
 
     let check_binary = |cmd: Option<&str>| check_binary_with_name(cmd.map(|cmd| (cmd, cmd)));
 
     for lang in &syn_loader_conf.language {
+        if selection
+            .as_ref()
+            .is_some_and(|s| !s.contains(&lang.language_id))
+        {
+            continue;
+        }
+
         write!(stdout, "{}", fit(&lang.language_id))?;
 
         let mut cmds = lang.language_servers.iter().filter_map(|ls| {
@@ -217,8 +253,8 @@ pub fn languages_all() -> std::io::Result<()> {
 
         for ts_feat in TsFeature::all() {
             match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
-                true => write!(stdout, "{}", color(fit("✓"), Color::Green))?,
-                false => write!(stdout, "{}", color(fit("✘"), Color::Red))?,
+                true => write!(stdout, "{}", color(fit("✓"), ColorSpec::BRIGHT_GREEN))?,
+                false => write!(stdout, "{}", color(fit("✘"), ColorSpec::BRIGHT_RED))?,
             }
         }
 
@@ -228,6 +264,14 @@ pub fn languages_all() -> std::io::Result<()> {
             write!(stdout, "{}", fit(""))?;
             writeln!(stdout, "{}", check_binary_with_name(Some(cmd)))?;
         }
+    }
+
+    if selection.is_some() {
+        writeln!(
+            stdout,
+            "\nThis list is filtered according to the 'use-grammars' option in languages.toml file.\n\
+            To see the full list, use the '--health all' or '--health all-languages' option."
+        )?;
     }
 
     Ok(())
@@ -321,8 +365,8 @@ fn probe_parser(grammar_name: &str) -> std::io::Result<()> {
     write!(stdout, "Tree-sitter parser: ")?;
 
     match helix_loader::grammar::get_language(grammar_name) {
-        Ok(_) => writeln!(stdout, "{}", "✓".green()),
-        Err(_) => writeln!(stdout, "{}", "None".yellow()),
+        Ok(Some(_)) => writeln!(stdout, "{}", "✓".green()),
+        Ok(None) | Err(_) => writeln!(stdout, "{}", "None".yellow()),
     }
 }
 
@@ -391,9 +435,16 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
 
 pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
     match health_arg.as_deref() {
-        Some("languages") => languages_all()?,
+        Some("languages") => languages_selection()?,
+        Some("all-languages") => languages_all()?,
         Some("clipboard") => clipboard()?,
-        None | Some("all") => {
+        None => {
+            general()?;
+            clipboard()?;
+            writeln!(std::io::stdout().lock())?;
+            languages_selection()?;
+        }
+        Some("all") => {
             general()?;
             clipboard()?;
             writeln!(std::io::stdout().lock())?;
