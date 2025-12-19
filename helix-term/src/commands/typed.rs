@@ -3815,7 +3815,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "smile",
         aliases: &[],
-        doc: "Display a surprise.",
+        doc: "Makes the user happy.",
         fun: smile,
         completer: CommandCompleter::none(),
         signature: Signature {
