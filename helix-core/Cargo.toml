@@ -60,8 +60,7 @@ parking_lot.workspace = true
 globset.workspace = true
 regex-cursor = "0.1.5"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-filesentry = "0.2.1"
+filesentry = "0.2.2"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

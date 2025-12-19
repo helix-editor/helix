@@ -403,9 +403,9 @@ dependencies = [
 
 [[package]]
 name = "filesentry"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e78347b6abab87ab712230b933994b5611302f82d64747e681477adcf26dedbd"
+checksum = "1202358fd7d48c5d7a893bac4482ea89932f53e4b5b5c80071c8b5f16ae5d213"
 dependencies = [
  "bitflags",
  "ecow",

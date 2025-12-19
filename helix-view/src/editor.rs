@@ -473,13 +473,35 @@ pub enum KittyKeyboardProtocolConfig {
 pub struct AutoReloadConfig {
     pub enable: bool,
     pub prompt_if_modified: bool,
+    /// Poll for changes to files outside the watched workspace
+    pub poll: AutoReloadPoll,
 }
 
 impl Default for AutoReloadConfig {
     fn default() -> Self {
         AutoReloadConfig {
             enable: true,
-            prompt_if_modified: false,
+            prompt_if_modified: true,
+            poll: AutoReloadPoll::default(),
+        }
+    }
+}
+
+/// Configuration for polling unwatched files for external changes
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct AutoReloadPoll {
+    /// Enable polling for files outside the watched workspace
+    pub enable: bool,
+    /// Polling interval in milliseconds (default: 5000)
+    pub interval: u64,
+}
+
+impl Default for AutoReloadPoll {
+    fn default() -> Self {
+        AutoReloadPoll {
+            enable: true,
+            interval: 5000,
         }
     }
 }
@@ -1346,6 +1368,15 @@ impl Editor {
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
 
+        // Initialize file watcher and diff providers
+        let mut file_watcher = Watcher::new(&conf.file_watcher);
+        let diff_providers = DiffProviderRegistry::default();
+
+        // Set up extra watched paths from VCS providers (e.g., external HEAD files for worktrees)
+        let (workspace, _) = helix_loader::find_workspace();
+        let extra_paths = diff_providers.get_watched_paths(&workspace);
+        file_watcher.set_extra_watched_paths(extra_paths);
+
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
@@ -1364,7 +1395,7 @@ impl Editor {
             theme: theme_loader.default(),
             language_servers,
             diagnostics: Diagnostics::new(),
-            diff_providers: DiffProviderRegistry::default(),
+            diff_providers,
             debug_adapters: dap::registry::Registry::new(),
             breakpoints: HashMap::new(),
             syn_loader,
@@ -1390,7 +1421,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
-            file_watcher: Watcher::new(&conf.file_watcher),
+            file_watcher,
         }
     }
 
@@ -1596,10 +1627,12 @@ impl Editor {
             ls.did_rename(old_path, &new_path, is_dir);
         }
 
-        if !cfg!(any(target_os = "linux", target_os = "android")) {
+        if !self.file_watcher.is_watching(old_path) {
             self.language_servers
                 .file_event_handler
                 .file_changed(old_path.to_owned());
+        }
+        if !self.file_watcher.is_watching(&new_path) {
             self.language_servers
                 .file_event_handler
                 .file_changed(new_path);
@@ -2067,12 +2100,12 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         let doc_save_future = doc.save(path, force)?;
 
-        // When a file is written to, notify the file event handler.
-        // Note: This can be removed once proper file watching is implemented.
+        // When a file is written to, notify the file event handler if the watcher isn't active.
         let handler = self.language_servers.file_event_handler.clone();
+        let watcher_active = self.file_watcher.is_active();
         let future = async move {
             let res = doc_save_future.await;
-            if !cfg!(any(target_os = "linux", target_os = "android")) {
+            if !watcher_active {
                 if let Ok(event) = &res {
                     handler.file_changed(event.path.clone());
                 }

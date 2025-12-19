@@ -248,7 +248,7 @@ impl Editor {
                     }
 
                     fs::write(path, [])?;
-                    if !cfg!(any(target_os = "linux", target_os = "android")) {
+                    if !self.file_watcher.is_watching(path) {
                         self.language_servers
                             .file_event_handler
                             .file_changed(path.to_path_buf());
@@ -272,7 +272,7 @@ impl Editor {
                     }
                 } else if path.is_file() {
                     fs::remove_file(path)?;
-                    if !cfg!(any(target_os = "linux", target_os = "android")) {
+                    if !self.file_watcher.is_watching(path) {
                         self.language_servers
                             .file_event_handler
                             .file_changed(path.to_path_buf());

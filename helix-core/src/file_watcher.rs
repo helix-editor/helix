@@ -3,40 +3,11 @@ use std::mem::replace;
 use std::path::{Path, PathBuf};
 use std::slice;
 use std::sync::Arc;
+use std::time::SystemTime;
 
-// Re-export filesentry types on Linux
-#[cfg(target_os = "linux")]
-pub use filesentry::{Event, EventType, Events};
+// Re-export filesentry types (available on all platforms)
+pub use filesentry::{CanonicalPathBuf, Event, EventType, Events, Filter, ShutdownOnDrop};
 
-// Stub types for non-Linux platforms
-#[cfg(not(target_os = "linux"))]
-#[derive(Debug, Clone)]
-pub struct Event {
-    pub path: PathBuf,
-    pub ty: EventType,
-}
-
-#[cfg(not(target_os = "linux"))]
-impl Event {
-    pub fn as_std_path(&self) -> &Path {
-        &self.path
-    }
-}
-
-#[cfg(not(target_os = "linux"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EventType {
-    Create,
-    Delete,
-    Modified,
-    Tempfile,
-}
-
-#[cfg(not(target_os = "linux"))]
-pub type Events = std::sync::Arc<[Event]>;
-
-#[cfg(target_os = "linux")]
-use filesentry::{Filter, ShutdownOnDrop};
 use helix_event::{dispatch, events};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use serde::{Deserialize, Serialize};
@@ -45,6 +16,23 @@ events! {
     FileSystemDidChange {
         fs_events: Events
     }
+}
+
+/// Create an Events collection from an iterator of paths.
+/// All paths will have EventType::Modified.
+pub fn events_from_paths(paths: impl IntoIterator<Item = PathBuf>) -> Events {
+    use filesentry::CanonicalPathBuf;
+    let events: Vec<Event> = paths
+        .into_iter()
+        .filter_map(|path| {
+            let canonical = path.canonicalize().ok()?;
+            Some(Event {
+                path: CanonicalPathBuf::assert_canonicalized(&canonical),
+                ty: EventType::Modified,
+            })
+        })
+        .collect();
+    Events::from(events)
 }
 
 /// Config for file watching
@@ -93,16 +81,16 @@ impl Default for Config {
     }
 }
 
-// Linux implementation with actual file watching
-#[cfg(target_os = "linux")]
 pub struct Watcher {
     watcher: Option<(filesentry::Watcher, ShutdownOnDrop)>,
     filter: Arc<WatchFilter>,
     roots: Vec<(PathBuf, usize)>,
     config: Config,
+    /// Extra paths that need polling (e.g., VCS HEAD files outside workspace)
+    /// Stored with their last known mtime for change detection
+    extra_watched_paths: Vec<(PathBuf, Option<SystemTime>)>,
 }
 
-#[cfg(target_os = "linux")]
 impl Watcher {
     pub fn new(config: &Config) -> Watcher {
         let mut watcher = Watcher {
@@ -116,6 +104,7 @@ impl Watcher {
             }),
             roots: Vec::new(),
             config: config.clone(),
+            extra_watched_paths: Vec::new(),
         };
         watcher.reload(config);
         watcher
@@ -124,6 +113,7 @@ impl Watcher {
     pub fn reload(&mut self, config: &Config) {
         let old_config = replace(&mut self.config, config.clone());
         let (workspace, no_workspace) = helix_loader::find_workspace();
+
         if !config.enable || config.require_workspace && no_workspace {
             self.watcher = None;
             return;
@@ -150,7 +140,7 @@ impl Watcher {
                     &mut self.watcher.insert((watcher, shutdown_guard)).0
                 }
                 Err(err) => {
-                    log::error!("failed to start file-watcher: {err}");
+                    log::info!("file-watcher not available: {err}");
                     return;
                 }
             },
@@ -176,6 +166,79 @@ impl Watcher {
             self.roots.remove(i);
         } else {
             self.roots[i].1 -= 1;
+        }
+    }
+
+    /// Returns true if the file watcher is active.
+    pub fn is_active(&self) -> bool {
+        self.watcher.is_some()
+    }
+
+    /// Check if a given path is being actively watched.
+    /// Returns true if the path is under a watched root and not filtered out.
+    pub fn is_watching(&self, path: &Path) -> bool {
+        if self.watcher.is_none() {
+            return false;
+        }
+        let path = match path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => return false,
+        };
+        let (workspace, _) = helix_loader::find_workspace();
+        // Check if under workspace and not filtered
+        if path.starts_with(&workspace) && !self.filter.ignore_path_rec(&path, Some(false)) {
+            return true;
+        }
+        // Check if under any explicitly added root and not filtered
+        for (root, _) in &self.roots {
+            if path.starts_with(root) && !self.filter.ignore_path_rec(&path, Some(false)) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Poll extra watched paths for changes and return paths that have changed.
+    /// Updates internal mtime tracking for the changed paths.
+    pub fn poll_extra_paths(&mut self) -> Vec<PathBuf> {
+        let mut changed = Vec::new();
+        for (path, last_mtime) in &mut self.extra_watched_paths {
+            let current_mtime = path.metadata().ok().and_then(|m| m.modified().ok());
+            if current_mtime != *last_mtime {
+                changed.push(path.clone());
+                *last_mtime = current_mtime;
+            }
+        }
+        changed
+    }
+
+    /// Returns true if there are extra paths that need polling.
+    pub fn has_extra_watched_paths(&self) -> bool {
+        !self.extra_watched_paths.is_empty()
+    }
+
+    /// Set extra paths to watch via polling.
+    /// These are paths outside the main watched workspace that need change detection.
+    /// Only paths outside the workspace are added (paths inside are already watched).
+    pub fn set_extra_watched_paths(&mut self, paths: Vec<PathBuf>) {
+        let (workspace, _) = helix_loader::find_workspace();
+        self.extra_watched_paths = paths
+            .into_iter()
+            .filter(|path| !path.starts_with(&workspace))
+            .map(|path| {
+                let mtime = path.metadata().ok().and_then(|m| m.modified().ok());
+                (path, mtime)
+            })
+            .collect();
+        if !self.extra_watched_paths.is_empty() {
+            log::info!(
+                "added {} extra paths for polling: {:?}",
+                self.extra_watched_paths.len(),
+                self.extra_watched_paths
+                    .iter()
+                    .map(|(p, _)| p)
+                    .collect::<Vec<_>>()
+            );
         }
     }
 
@@ -220,34 +283,6 @@ impl Watcher {
     }
 }
 
-// Stub implementation for non-Linux platforms
-#[cfg(not(target_os = "linux"))]
-pub struct Watcher {
-    config: Config,
-}
-
-#[cfg(not(target_os = "linux"))]
-impl Watcher {
-    pub fn new(config: &Config) -> Watcher {
-        Watcher {
-            config: config.clone(),
-        }
-    }
-
-    pub fn reload(&mut self, config: &Config) {
-        self.config = config.clone();
-    }
-
-    pub fn add_root(&mut self, _root: &Path) {
-        // No-op on non-Linux platforms
-    }
-
-    pub fn remove_root(&mut self, _root: PathBuf) {
-        // No-op on non-Linux platforms
-    }
-}
-
-#[cfg(target_os = "linux")]
 fn build_ignore(paths: impl IntoIterator<Item = PathBuf> + Clone, dir: &Path) -> Option<Gitignore> {
     let mut builder = GitignoreBuilder::new(dir);
     for path in paths.clone() {
@@ -271,13 +306,11 @@ fn build_ignore(paths: impl IntoIterator<Item = PathBuf> + Clone, dir: &Path) ->
     }
 }
 
-#[cfg(target_os = "linux")]
 struct IgnoreFiles {
     root: PathBuf,
     ignores: Vec<Arc<Gitignore>>,
 }
 
-#[cfg(target_os = "linux")]
 impl IgnoreFiles {
     fn new(
         workspace_ignore: Option<Arc<Gitignore>>,
@@ -408,7 +441,6 @@ impl IgnoreFiles {
 /// VCS files) so ignoring a file is a performance optimization.
 ///
 /// By default we ignore ignored
-#[cfg(target_os = "linux")]
 struct WatchFilter {
     filesentry_ignores: Gitignore,
     ignore_files: Vec<IgnoreFiles>,
@@ -417,7 +449,6 @@ struct WatchFilter {
     watch_vcs: bool,
 }
 
-#[cfg(target_os = "linux")]
 impl WatchFilter {
     fn new<'a>(
         config: &Config,
@@ -467,7 +498,6 @@ impl WatchFilter {
     }
 }
 
-#[cfg(target_os = "linux")]
 impl filesentry::Filter for WatchFilter {
     fn ignore_path(&self, path: &Path, is_dir: Option<bool>) -> bool {
         let i = self
@@ -511,7 +541,6 @@ impl filesentry::Filter for WatchFilter {
     }
 }
 
-#[cfg(target_os = "linux")]
 fn is_hidden(path: &Path) -> bool {
     path.file_name().is_some_and(|it| {
         it.as_encoded_bytes().first() == Some(&b'.')
@@ -521,7 +550,6 @@ fn is_hidden(path: &Path) -> bool {
 }
 
 // hidden directories we want to watch by default
-#[cfg(target_os = "linux")]
 fn is_hardcoded_whitelist(path: &Path) -> bool {
     path.ends_with(".helix")
         | path.ends_with(".github")
@@ -529,7 +557,6 @@ fn is_hardcoded_whitelist(path: &Path) -> bool {
         | path.ends_with(".envrc")
 }
 
-#[cfg(target_os = "linux")]
 fn is_hardcoded_blacklist(path: &Path, is_dir: bool) -> bool {
     // don't descend into the cargo regstiry and similar
     path.parent()
@@ -537,12 +564,10 @@ fn is_hardcoded_blacklist(path: &Path, is_dir: bool) -> bool {
         && is_dir
 }
 
-#[cfg(target_os = "linux")]
 fn file_name(path: &Path) -> Option<&str> {
     path.file_name().and_then(|it| it.to_str())
 }
 
-#[cfg(target_os = "linux")]
 fn is_vcs_ignore(path: &Path, watch_vcs: bool) -> bool {
     // ignore .git directory contents except .git/HEAD (and .git itself)
     // Note: only checks immediate parent; recursive checking is done by ignore_path_rec
@@ -559,7 +584,7 @@ fn is_vcs_ignore(path: &Path, watch_vcs: bool) -> bool {
     }
 }
 
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(test)]
 mod tests {
     use std::path::Path;
 
