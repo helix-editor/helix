@@ -110,6 +110,54 @@ impl Serialize for Mode {
         serializer.collect_str(self)
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ConfigMode {
+    Mode(Mode),
+    All,
+}
+
+impl Display for ConfigMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::All => f.write_str("all_modes"),
+            Self::Mode(mode) => mode.fmt(f),
+        }
+    }
+}
+
+impl FromStr for ConfigMode {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "all_modes" => Ok(Self::All),
+            _ => match Mode::from_str(s) {
+                Ok(mode) => Ok(ConfigMode::Mode(mode)),
+                Err(e) => Err(e),
+            },
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ConfigMode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(de::Error::custom)
+    }
+}
+
+impl Serialize for ConfigMode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
+    }
+}
+
 /// A snapshot of the text of a document that we want to write out to disk
 #[derive(Debug, Clone)]
 pub struct DocumentSavedEvent {
