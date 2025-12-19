@@ -1581,17 +1581,27 @@ impl Editor {
         Ok(())
     }
 
+    /// Set the document path for a `doc_id`. The new path can also be the
+    /// old path, in which case the diff base and language will still be
+    /// updated.
+    ///
+    /// This method is called, for example, when executing the write command.
+    /// Among other necessary updates, it ensures that the correct path is
+    /// registered with the language server and that the vcs diff is w.r.t the
+    /// (potentially new) path.
     pub fn set_doc_path(&mut self, doc_id: DocumentId, path: &Path) {
         let doc = doc_mut!(self, &doc_id);
         let old_path = doc.path();
 
         if let Some(old_path) = old_path {
-            // sanity check, should not occur but some callers (like an LSP) may
-            // create bogus calls
             if old_path == path {
+                // Status of the file might have changed (new commit etc...)
+                self.refresh_diff_base(doc_id);
+                // Abort early
                 return;
             }
-            // if we are open in LSPs send did_close notification
+            // The old path and new path differ, so close the old path in the
+            // LS by sending did_close notification
             for language_server in doc.language_servers() {
                 language_server.text_document_did_close(doc.identifier());
             }
@@ -1603,7 +1613,12 @@ impl Editor {
         doc.language_servers.clear();
         doc.set_path(Some(path));
         doc.detect_editor_config();
-        self.refresh_doc_language(doc_id)
+        // Update the diff base to represent the base in the vcs on disk under
+        // the new path
+        self.refresh_diff_base(doc_id);
+        // The doc language might have changed because of a new file extension,
+        // or a new shebang.
+        self.refresh_doc_language(doc_id);
     }
 
     pub fn refresh_doc_language(&mut self, doc_id: DocumentId) {
@@ -1617,6 +1632,20 @@ impl Editor {
         let diagnostics = Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, doc);
         doc.replace_diagnostics(diagnostics, &[], None);
         doc.reset_all_inlay_hints();
+    }
+
+    fn refresh_diff_base(&mut self, doc_id: DocumentId) {
+        let doc = doc_mut!(self, &doc_id);
+
+        let (base, head) = {
+            let path = doc.path();
+            let base = path.and_then(|path| self.diff_providers.get_diff_base(path));
+            let head = path.and_then(|path| self.diff_providers.get_current_head_name(path));
+            (base, head)
+        };
+
+        doc.set_diff_base(base);
+        doc.set_version_control_head(head);
     }
 
     /// Launch a language server for a given document
@@ -1919,13 +1948,9 @@ impl Editor {
                 Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, &doc);
             doc.replace_diagnostics(diagnostics, &[], None);
 
-            if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
-                doc.set_diff_base(diff_base);
-            }
-            doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
-
             let id = self.new_document(doc);
             self.launch_language_servers(id);
+            self.refresh_diff_base(id);
 
             helix_event::dispatch(DocumentDidOpen {
                 editor: self,
