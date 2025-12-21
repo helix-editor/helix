@@ -1,3 +1,4 @@
+use helix_core::diagnostic::Severity;
 use serde::{Deserialize, Serialize};
 
 use crate::*;
@@ -168,6 +169,42 @@ pub enum PopupBorderConfig {
 
 config_serde_adapter!(PopupBorderConfig);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PickerStartPosition {
+    Current,
+    Previous,
+}
+
+impl Default for PickerStartPosition {
+    fn default() -> Self {
+        Self::Current
+    }
+}
+
+impl PickerStartPosition {
+    pub fn is_previous(self) -> bool {
+        matches!(self, Self::Previous)
+    }
+}
+
+config_serde_adapter!(PickerStartPosition);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FileExplorerPosition {
+    Left,
+    Right,
+}
+
+impl Default for FileExplorerPosition {
+    fn default() -> Self {
+        Self::Left
+    }
+}
+
+config_serde_adapter!(FileExplorerPosition);
+
 options! {
     struct UiConfig {
         /// Whether to display info boxes
@@ -201,6 +238,10 @@ options! {
         #[name = "rainbow-brackets"]
         #[read = copy]
         rainbow_brackets: bool = false,
+        /// Characters to use for jump labels
+        #[name = "jump-label-alphabet"]
+        #[read = deref]
+        jump_label_alphabet: String = "abcdefghijklmnopqrstuvwxyz",
     }
 
     struct WhiteSpaceRenderConfig {
@@ -373,5 +414,31 @@ options! {
         #[name = "statusline.mode.select"]
         #[read = deref]
         mode_indicator_select: String = "SEL",
+        /// Which diagnostic severity levels to display in the statusline
+        #[name = "statusline.diagnostics"]
+        #[read = deref]
+        diagnostics: List<Severity> = &[Severity::Warning, Severity::Error],
+        /// Which diagnostic severity levels to display for workspace diagnostics
+        #[name = "statusline.workspace-diagnostics"]
+        #[read = deref]
+        workspace_diagnostics: List<Severity> = &[Severity::Warning, Severity::Error],
+    }
+
+    struct BufferPickerConfig {
+        /// The initial position of the cursor in the buffer picker
+        #[name = "buffer-picker.start-position"]
+        #[read = copy]
+        start_position: PickerStartPosition = PickerStartPosition::Current,
+    }
+
+    struct FileExplorerConfig {
+        /// Position of file explorer (left or right)
+        #[name = "explorer.position"]
+        #[read = copy]
+        position: FileExplorerPosition = FileExplorerPosition::Left,
+        /// Column width of file explorer
+        #[name = "explorer.column-width"]
+        #[read = copy]
+        column_width: Option<usize> = None,
     }
 }

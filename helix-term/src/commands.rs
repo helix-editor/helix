@@ -19,6 +19,9 @@ use tui::{
 };
 pub use typed::*;
 
+use helix_config::definition::{
+    BufferPickerConfig, FilePickerConfig, MiscConfig, SearchConfig, SmartTabConfig, UiConfig,
+};
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
@@ -1129,7 +1132,6 @@ fn align_selections(cx: &mut Context) {
 
 fn goto_window(cx: &mut Context, align: Align) {
     let count = cx.count() - 1;
-    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let view_offset = doc.view_offset(view.id);
 
@@ -1139,7 +1141,7 @@ fn goto_window(cx: &mut Context, align: Align) {
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
     // as we type
-    let scrolloff = config.scrolloff.min(height.saturating_sub(1) / 2);
+    let scrolloff = cx.editor.config_store.editor().scrolloff().min(height.saturating_sub(1) / 2);
 
     let last_visual_line = view.last_visual_line(doc);
 
@@ -1822,7 +1824,6 @@ fn switch_to_lowercase(cx: &mut Context) {
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {
     use Direction::*;
-    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let mut view_offset = doc.view_offset(view.id);
 
@@ -1832,7 +1833,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     let cursor = range.cursor(text);
     let height = view.inner_height();
 
-    let scrolloff = config.scrolloff.min(height.saturating_sub(1) / 2);
+    let scrolloff = cx.editor.config_store.editor().scrolloff().min(height.saturating_sub(1) / 2);
     let offset = match direction {
         Forward => offset as isize,
         Backward => -(offset as isize),
@@ -2244,9 +2245,8 @@ fn rsearch(cx: &mut Context) {
 
 fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
-    let config = cx.editor.config();
-    let scrolloff = config.scrolloff;
-    let wrap_around = config.search.wrap_around;
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
+    let wrap_around = cx.editor.config_store.editor().wrap_round();
     let movement = if cx.editor.mode() == Mode::Select {
         Movement::Extend
     } else {
@@ -2291,16 +2291,15 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     let register = cx
         .register
         .unwrap_or(cx.editor.registers.last_search_register);
-    let config = cx.editor.config();
-    let scrolloff = config.scrolloff;
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
     if let Some(query) = cx.editor.registers.first(register, cx.editor) {
-        let search_config = &config.search;
-        let case_insensitive = if search_config.smart_case {
+        let smart_case = cx.editor.config_store.editor().smart_case();
+        let case_insensitive = if smart_case {
             !query.chars().any(char::is_uppercase)
         } else {
             false
         };
-        let wrap_around = search_config.wrap_around;
+        let wrap_around = cx.editor.config_store.editor().wrap_round();
         if let Ok(regex) = rope::RegexBuilder::new()
             .syntax(
                 rope::Config::new()
@@ -2470,16 +2469,32 @@ fn global_search(cx: &mut Context) {
 
     struct GlobalSearchConfig {
         smart_case: bool,
-        file_picker_config: helix_view::editor::FilePickerConfig,
+        hidden: bool,
+        follow_symlinks: bool,
+        deduplicate_links: bool,
+        parents: bool,
+        ignore: bool,
+        git_ignore: bool,
+        git_global: bool,
+        git_exclude: bool,
+        max_depth: Option<usize>,
         directory_style: Style,
         number_style: Style,
         colon_style: Style,
     }
 
-    let config = cx.editor.config();
+    let config_store = &cx.editor.config_store;
     let config = GlobalSearchConfig {
-        smart_case: config.search.smart_case,
-        file_picker_config: config.file_picker.clone(),
+        smart_case: config_store.editor().smart_case(),
+        hidden: config_store.editor().hidden(),
+        follow_symlinks: config_store.editor().follow_symlinks(),
+        deduplicate_links: config_store.editor().deduplicate_links(),
+        parents: config_store.editor().parents(),
+        ignore: config_store.editor().ignore(),
+        git_ignore: config_store.editor().git_ignore(),
+        git_global: config_store.editor().git_global(),
+        git_exclude: config_store.editor().git_exclude(),
+        max_depth: config_store.editor().max_depth(),
         directory_style: cx.editor.theme.get("ui.text.directory"),
         number_style: cx.editor.theme.get("constant.numeric.integer"),
         colon_style: cx.editor.theme.get("punctuation"),
@@ -2545,7 +2560,7 @@ fn global_search(cx: &mut Context) {
             }
         };
 
-        let dedup_symlinks = config.file_picker_config.deduplicate_links;
+        let dedup_symlinks = config.deduplicate_links;
         let absolute_root = search_root
             .canonicalize()
             .unwrap_or_else(|_| search_root.clone());
@@ -2556,14 +2571,14 @@ fn global_search(cx: &mut Context) {
                 .binary_detection(BinaryDetection::quit(b'\x00'))
                 .build();
             WalkBuilder::new(search_root)
-                .hidden(config.file_picker_config.hidden)
-                .parents(config.file_picker_config.parents)
-                .ignore(config.file_picker_config.ignore)
-                .follow_links(config.file_picker_config.follow_symlinks)
-                .git_ignore(config.file_picker_config.git_ignore)
-                .git_global(config.file_picker_config.git_global)
-                .git_exclude(config.file_picker_config.git_exclude)
-                .max_depth(config.file_picker_config.max_depth)
+                .hidden(config.hidden)
+                .parents(config.parents)
+                .ignore(config.ignore)
+                .follow_links(config.follow_symlinks)
+                .git_ignore(config.git_ignore)
+                .git_global(config.git_global)
+                .git_exclude(config.git_exclude)
+                .max_depth(config.max_depth)
                 .filter_entry(move |entry| {
                     filter_picker_entry(entry, &absolute_root, dedup_symlinks)
                 })
@@ -2884,7 +2899,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
         let reg_name = cx
             .register
-            .unwrap_or_else(|| cx.editor.config.load().default_yank_register);
+            .unwrap_or(cx.editor.config_store.editor().default_yank_register());
         if let Err(err) = cx.editor.registers.write(reg_name, values) {
             cx.editor.set_error(err.to_string());
             return;
@@ -3214,9 +3229,9 @@ fn buffer_picker(cx: &mut Context) {
 
     let initial_cursor = if cx
         .editor
-        .config()
-        .buffer_picker
-        .start_position
+        .config_store
+        .editor()
+        .start_position()
         .is_previous()
         && !items.is_empty()
     {
@@ -3315,11 +3330,11 @@ fn jumplist_picker(cx: &mut Context) {
         (),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
-            let config = cx.editor.config();
             let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));
             doc.set_selection(view.id, meta.selection.clone());
             if action.align_view(view, doc.id()) {
-                view.ensure_cursor_in_view_center(doc, config.scrolloff);
+                let scrolloff = cx.editor.config_store.editor().scrolloff();
+                view.ensure_cursor_in_view_center(doc, scrolloff);
             }
         },
     )
@@ -3490,12 +3505,12 @@ pub fn command_palette(cx: &mut Context) {
                 command.execute(&mut ctx);
 
                 if ctx.editor.tree.contains(focus) {
-                    let config = ctx.editor.config();
                     let mode = ctx.editor.mode();
                     let view = view_mut!(ctx.editor, focus);
                     let doc = doc_mut!(ctx.editor, &view.doc);
 
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
+                    let scrolloff = ctx.editor.config_store.editor().scrolloff();
+                    view.ensure_cursor_in_view(doc, scrolloff);
 
                     if mode != Mode::Insert {
                         doc.append_changes_to_history(view);
@@ -3550,6 +3565,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
 
     let syntax = doc.syntax();
     let tab_width = doc.tab_width();
+    let indent_heuristic = doc.config_store.editor().indent_heuristic();
 
     let mut ranges = SmallVec::with_capacity(selection.len());
     let mut offs = 0;
@@ -3565,7 +3581,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             let indent = indent::indent_for_newline(
                 &loader,
                 syntax,
-                &doc.config.load().indent_heuristic,
+                &indent_heuristic,
                 &doc.indent_style,
                 tab_width,
                 text,
@@ -3621,7 +3637,7 @@ async fn make_format_callback(
             return;
         }
 
-        let scrolloff = editor.config().scrolloff;
+        let scrolloff = editor.config_store.editor().scrolloff();
         let doc = doc_mut!(editor, &doc_id);
         let view = view_mut!(editor, view_id);
 
@@ -3671,8 +3687,8 @@ pub enum CommentContinuation {
 fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation) {
     let count = cx.count();
     enter_insert_mode(cx);
-    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
+    let indent_heuristic = doc.config_store.editor().indent_heuristic();
     let loader = cx.editor.syn_loader.load();
 
     let text = doc.text().slice(..);
@@ -3683,7 +3699,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
     let mut ranges = SmallVec::with_capacity(selection.len());
 
     let continue_comment_tokens =
-        if comment_continuation == CommentContinuation::Enabled && config.continue_comments {
+        if comment_continuation == CommentContinuation::Enabled && cx.editor.config_store.editor().continue_comments() {
             doc.language_config()
                 .and_then(|config| config.comment_tokens.as_ref())
         } else {
@@ -3725,7 +3741,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             _ => indent::indent_for_newline(
                 &loader,
                 doc.syntax(),
-                &config.indent_heuristic,
+                &indent_heuristic,
                 &doc.indent_style,
                 doc.tab_width(),
                 text,
@@ -4169,7 +4185,6 @@ pub mod insert {
     }
 
     use helix_core::auto_pairs;
-    use helix_view::editor::SmartTabConfig;
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current_ref!(cx.editor);
@@ -4196,10 +4211,7 @@ pub mod insert {
         let (view, doc) = current_ref!(cx.editor);
         let view_id = view.id;
 
-        if matches!(
-            cx.editor.config().smart_tab,
-            Some(SmartTabConfig { enable: true, .. })
-        ) {
+        if cx.editor.config_store.editor().enable() {
             let cursors_after_whitespace = doc.selection(view_id).ranges().iter().all(|range| {
                 let cursor = range.cursor(doc.text().slice(..));
                 let current_line_num = doc.text().char_to_line(cursor);
@@ -4283,8 +4295,8 @@ pub mod insert {
     }
 
     pub fn insert_newline(cx: &mut Context) {
-        let config = cx.editor.config();
         let (view, doc) = current_ref!(cx.editor);
+        let indent_heuristic = doc.config_store.editor().indent_heuristic();
         let loader = cx.editor.syn_loader.load();
         let text = doc.text().slice(..);
         let line_ending = doc.line_ending.as_str();
@@ -4297,7 +4309,7 @@ pub mod insert {
         let mut global_offs = 0;
         let mut new_text = String::new();
 
-        let continue_comment_tokens = if config.continue_comments {
+        let continue_comment_tokens = if cx.editor.config_store.editor().continue_comments() {
             doc.language_config()
                 .and_then(|config| config.comment_tokens.as_ref())
         } else {
@@ -4335,7 +4347,7 @@ pub mod insert {
                     _ => indent::indent_for_newline(
                         &loader,
                         doc.syntax(),
-                        &config.indent_heuristic,
+                        &indent_heuristic,
                         &doc.indent_style,
                         doc.tab_width(),
                         text,
@@ -4611,7 +4623,7 @@ fn yank(cx: &mut Context) {
     yank_impl(
         cx.editor,
         cx.register
-            .unwrap_or(cx.editor.config().default_yank_register),
+            .unwrap_or(cx.editor.config_store.editor().default_yank_register()),
     );
     exit_select_mode(cx);
 }
@@ -4677,7 +4689,7 @@ fn yank_joined(cx: &mut Context) {
         cx.editor,
         separator,
         cx.register
-            .unwrap_or(cx.editor.config().default_yank_register),
+            .unwrap_or(cx.editor.config_store.editor().default_yank_register()),
     );
     exit_select_mode(cx);
 }
@@ -4843,7 +4855,7 @@ fn replace_with_yanked(cx: &mut Context) {
     replace_with_yanked_impl(
         cx.editor,
         cx.register
-            .unwrap_or(cx.editor.config().default_yank_register),
+            .unwrap_or(cx.editor.config_store.editor().default_yank_register()),
         cx.count(),
     );
     exit_select_mode(cx);
@@ -4857,7 +4869,7 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
     else {
         return;
     };
-    let scrolloff = editor.config().scrolloff;
+    let scrolloff = editor.config_store.editor().scrolloff();
     let (view, doc) = current_ref!(editor);
 
     let map_value = |value: &Cow<str>| {
@@ -4916,7 +4928,7 @@ fn paste_after(cx: &mut Context) {
     paste(
         cx.editor,
         cx.register
-            .unwrap_or(cx.editor.config().default_yank_register),
+            .unwrap_or(cx.editor.config_store.editor().default_yank_register()),
         Paste::After,
         cx.count(),
     );
@@ -4927,7 +4939,7 @@ fn paste_before(cx: &mut Context) {
     paste(
         cx.editor,
         cx.register
-            .unwrap_or(cx.editor.config().default_yank_register),
+            .unwrap_or(cx.editor.config_store.editor().default_yank_register()),
         Paste::Before,
         cx.count(),
     );
@@ -5661,7 +5673,6 @@ fn match_brackets(cx: &mut Context) {
 
 fn jump_forward(cx: &mut Context) {
     let count = cx.count();
-    let config = cx.editor.config();
     let view = view_mut!(cx.editor);
     let doc_id = view.doc;
 
@@ -5677,13 +5688,13 @@ fn jump_forward(cx: &mut Context) {
         doc.set_selection(view.id, selection);
         // Document we switch to might not have been opened in the view before
         doc.ensure_view_init(view.id);
-        view.ensure_cursor_in_view_center(doc, config.scrolloff);
+        let scrolloff = cx.editor.config_store.editor().scrolloff();
+        view.ensure_cursor_in_view_center(doc, scrolloff);
     };
 }
 
 fn jump_backward(cx: &mut Context) {
     let count = cx.count();
-    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let doc_id = doc.id();
 
@@ -5699,7 +5710,8 @@ fn jump_backward(cx: &mut Context) {
         doc.set_selection(view.id, selection);
         // Document we switch to might not have been opened in the view before
         doc.ensure_view_init(view.id);
-        view.ensure_cursor_in_view_center(doc, config.scrolloff);
+        let scrolloff = cx.editor.config_store.editor().scrolloff();
+        view.ensure_cursor_in_view_center(doc, scrolloff);
     };
 }
 
@@ -5839,7 +5851,7 @@ fn insert_register(cx: &mut Context) {
             paste(
                 cx.editor,
                 cx.register
-                    .unwrap_or(cx.editor.config().default_yank_register),
+                    .unwrap_or(cx.editor.config_store.editor().default_yank_register()),
                 Paste::Cursor,
                 cx.count(),
             );
@@ -6328,7 +6340,7 @@ fn shell_append_output(cx: &mut Context) {
 
 fn shell_keep_pipe(cx: &mut Context) {
     shell_prompt(cx, "keep-pipe:".into(), |cx, args| {
-        let shell = &cx.editor.config().shell;
+        let shell: Vec<String> = cx.editor.config_store.editor().shell().iter().map(|s| s.to_string()).collect();
         let (view, doc) = current!(cx.editor);
         let selection = doc.selection(view.id);
 
@@ -6339,7 +6351,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 
         for (i, range) in selection.ranges().iter().enumerate() {
             let fragment = range.slice(text);
-            if let Err(err) = shell_impl(shell, args.join(" ").as_str(), Some(fragment.into())) {
+            if let Err(err) = shell_impl(&shell, args.join(" ").as_str(), Some(fragment.into())) {
                 log::debug!("Shell command failed: {}", err);
             } else {
                 ranges.push(*range);
@@ -6436,8 +6448,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
         ShellBehavior::Insert | ShellBehavior::Append => false,
     };
 
-    let config = cx.editor.config();
-    let shell = &config.shell;
+    let shell: Vec<String> = cx.editor.config_store.editor().shell().iter().map(|s| s.to_string()).collect();
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
 
@@ -6452,7 +6463,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             output.clone()
         } else {
             let input = range.slice(text);
-            match shell_impl(shell, cmd, pipe.then(|| input.into())) {
+            match shell_impl(&shell, cmd, pipe.then(|| input.into())) {
                 Ok(mut output) => {
                     if !input.ends_with("\n") && output.ends_with('\n') {
                         output.pop();
@@ -6508,7 +6519,8 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     // after replace cursor may be out of bounds, do this to
     // make sure cursor is in view and update scroll as well
-    view.ensure_cursor_in_view(doc, config.scrolloff);
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
+    view.ensure_cursor_in_view(doc, scrolloff);
 }
 
 fn shell_prompt<F>(cx: &mut Context, prompt: Cow<'static, str>, mut callback_fn: F)
@@ -6786,27 +6798,28 @@ fn extend_to_word(cx: &mut Context) {
 
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     let doc = doc!(cx.editor);
-    let alphabet = &cx.editor.config().jump_label_alphabet;
+    let alphabet = cx.editor.config_store.editor().jump_label_alphabet();
     if labels.is_empty() {
         return;
     }
     let alphabet_char = |i| {
         let mut res = Tendril::new();
-        res.push(alphabet[i]);
+        res.push(alphabet.chars().nth(i).unwrap());
         res
     };
 
     // Add label for each jump candidate to the View as virtual text.
     let text = doc.text().slice(..);
+    let alphabet_len = alphabet.chars().count();
     let mut overlays: Vec<_> = labels
         .iter()
         .enumerate()
         .flat_map(|(i, range)| {
             [
-                Overlay::new(range.from(), alphabet_char(i / alphabet.len())),
+                Overlay::new(range.from(), alphabet_char(i / alphabet_len)),
                 Overlay::new(
                     graphemes::next_grapheme_boundary(text, range.from()),
-                    alphabet_char(i % alphabet.len()),
+                    alphabet_char(i % alphabet_len),
                 ),
             ]
         })
@@ -6821,16 +6834,16 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     let view = view.id;
     let doc = doc.id();
     cx.on_next_key(move |cx, event| {
-        let alphabet = &cx.editor.config().jump_label_alphabet;
+        let alphabet = cx.editor.config_store.editor().jump_label_alphabet();
         let Some(i) = event
             .char()
             .filter(|_| event.modifiers.is_empty())
-            .and_then(|ch| alphabet.iter().position(|&it| it == ch))
+            .and_then(|ch| alphabet.chars().position(|it| it == ch))
         else {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
             return;
         };
-        let outer = i * alphabet.len();
+        let outer = i * alphabet.chars().count();
         // Bail if the given character cannot be a jump label.
         if outer > labels.len() {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
@@ -6838,11 +6851,11 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         }
         cx.on_next_key(move |cx, event| {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
-            let alphabet = &cx.editor.config().jump_label_alphabet;
+            let alphabet = cx.editor.config_store.editor().jump_label_alphabet();
             let Some(inner) = event
                 .char()
                 .filter(|_| event.modifiers.is_empty())
-                .and_then(|ch| alphabet.iter().position(|&it| it == ch))
+                .and_then(|ch| alphabet.chars().position(|it| it == ch))
             else {
                 return;
             };
@@ -6876,12 +6889,13 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
 fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     // Calculate the jump candidates: ranges for any visible words with two or
     // more characters.
-    let alphabet = &cx.editor.config().jump_label_alphabet;
+    let alphabet = cx.editor.config_store.editor().jump_label_alphabet();
     if alphabet.is_empty() {
         return;
     }
 
-    let jump_label_limit = alphabet.len() * alphabet.len();
+    let alphabet_len = alphabet.chars().count();
+    let jump_label_limit = alphabet_len * alphabet_len;
     let mut words = Vec::with_capacity(jump_label_limit);
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text().slice(..);

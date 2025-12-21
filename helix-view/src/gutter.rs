@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use helix_core::syntax::config::LanguageServerFeature;
-use helix_config::definition::{GutterConfig, GutterType};
+use helix_config::definition::{GutterConfig, GutterType, UiConfig};
 
 use crate::{
     graphics::{Style, UnderlineStyle},
@@ -160,7 +160,7 @@ pub fn line_numbers<'doc>(
         .text()
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
-    let line_number = editor.config().line_number;
+    let line_number = editor.config_store.editor().line_number();
     let mode = editor.mode;
 
     Box::new(
@@ -169,9 +169,9 @@ pub fn line_numbers<'doc>(
                 write!(out, "{:>1$}", '~', width).unwrap();
                 Some(linenr)
             } else {
-                use crate::{document::Mode, editor::LineNumber};
+                use crate::document::Mode;
 
-                let relative = line_number == LineNumber::Relative
+                let relative = line_number == helix_config::definition::LineNumber::Relative
                     && mode != Mode::Insert
                     && is_focused
                     && current_line != line;
@@ -367,11 +367,11 @@ mod tests {
 
         let layout = view.gutters();
         assert_eq!(layout.len(), 5);
-        assert_eq!(layout[0].width(&view, &doc), 1);
-        assert_eq!(layout[1].width(&view, &doc), 1);
-        assert_eq!(layout[2].width(&view, &doc), 3);
-        assert_eq!(layout[3].width(&view, &doc), 1);
-        assert_eq!(layout[4].width(&view, &doc), 1);
+        assert_eq!(gutter_width(layout[0], &view, &doc), 1);
+        assert_eq!(gutter_width(layout[1], &view, &doc), 1);
+        assert_eq!(gutter_width(layout[2], &view, &doc), 3);
+        assert_eq!(gutter_width(layout[3], &view, &doc), 1);
+        assert_eq!(gutter_width(layout[4], &view, &doc), 1);
     }
 
     #[test]
@@ -394,7 +394,7 @@ mod tests {
         // Test with default gutter configuration
         let layout = view.gutters();
         assert_eq!(layout.len(), 5);
-        assert_eq!(layout[0].width(&view, &doc), 1); // Diagnostics
+        assert_eq!(gutter_width(layout[0], &view, &doc), 1); // Diagnostics
     }
 
     #[test]
@@ -427,7 +427,7 @@ mod tests {
         let layout = view.gutters();
         assert_eq!(layout.len(), 5);
         // LineNumbers is at index 2 in default layout, with default min_width of 3
-        assert_eq!(layout[2].width(&view, &doc_short), 3);
-        assert_eq!(layout[2].width(&view, &doc_long), 3);
+        assert_eq!(gutter_width(layout[2], &view, &doc_short), 3);
+        assert_eq!(gutter_width(layout[2], &view, &doc_long), 3);
     }
 }

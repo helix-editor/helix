@@ -1,6 +1,7 @@
 use std::fmt::Write;
 use std::io::BufReader;
-use std::ops::{self, Deref};
+use std::ops::{self};
+use std::path::PathBuf;
 
 use crate::job::Job;
 
@@ -16,6 +17,7 @@ use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
 use ui::completers::{self, Completer};
+use helix_config::definition::{LspConfig, MiscConfig, TerminfoConfig};
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -380,14 +382,13 @@ fn write_impl(
     path: Option<&str>,
     options: WriteOptions,
 ) -> anyhow::Result<()> {
-    let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
 
     if doc.trim_trailing_whitespace() {
         trim_trailing_whitespace(doc, view.id);
     }
-    if config.trim_final_newlines {
+    if cx.editor.config_store.editor().trim_final_newlines() {
         trim_final_newlines(doc, view.id);
     }
     if doc.insert_final_newline() {
@@ -398,7 +399,7 @@ fn write_impl(
     doc.append_changes_to_history(view);
 
     let (view, doc) = current_ref!(cx.editor);
-    let fmt = if config.auto_format && options.auto_format {
+    let fmt = if cx.editor.config_store.editor().auto_format() && options.auto_format {
         doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -814,7 +815,6 @@ pub fn write_all_impl(
     options: WriteAllOptions,
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
-    let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let saves: Vec<_> = cx
         .editor
@@ -848,7 +848,7 @@ pub fn write_all_impl(
         if doc.trim_trailing_whitespace() {
             trim_trailing_whitespace(doc, target_view);
         }
-        if config.trim_final_newlines {
+        if cx.editor.config_store.editor().trim_final_newlines() {
             trim_final_newlines(doc, target_view);
         }
         if doc.insert_final_newline() {
@@ -858,7 +858,7 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let fmt = if options.auto_format && config.auto_format {
+        let fmt = if options.auto_format && cx.editor.config_store.editor().auto_format() {
             let doc = doc!(cx.editor, &doc_id);
             doc.auto_format(cx.editor).map(|fmt| {
                 let callback = make_format_callback(
@@ -1022,7 +1022,7 @@ fn force_cquit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
 }
 
 fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
-    let true_color = cx.editor.config.load().true_color || crate::true_color();
+    let true_color = cx.editor.config_store.editor().force_true_color() || crate::true_color();
     match event {
         PromptEvent::Abort => {
             cx.editor.unset_theme_preview();
@@ -1086,7 +1086,7 @@ fn yank_joined(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
     let register = cx
         .editor
         .selected_register
-        .unwrap_or(cx.editor.config().default_yank_register);
+        .unwrap_or(cx.editor.config_store.editor().default_yank_register());
     yank_joined_impl(cx.editor, separator, register);
     Ok(())
 }
@@ -1433,7 +1433,7 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
     let (view, doc) = current!(cx.editor);
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
@@ -1452,7 +1452,7 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
     let view_id = view!(cx.editor).id;
 
     let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = cx
@@ -1628,7 +1628,6 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         return Ok(());
     }
 
-    let editor_config = cx.editor.config.load();
     let doc = doc!(cx.editor);
     let config = doc
         .language_config()
@@ -1653,6 +1652,11 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         valid
     };
 
+    let workspace_roots_config = cx.editor.config_store.editor().workspace_roots();
+    let workspace_roots: Vec<PathBuf> = workspace_roots_config
+        .iter()
+        .map(|s| PathBuf::from(s.as_ref()))
+        .collect();
     let mut errors = Vec::new();
     for server in language_servers.iter() {
         match cx
@@ -1662,7 +1666,7 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
                 server,
                 config,
                 doc.path(),
-                &editor_config.workspace_lsp_roots,
+                &workspace_roots,
             )
             .transpose()
         {
@@ -2015,7 +2019,7 @@ fn tutor(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyho
 
 fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
     if let Some(last_selection) = cx.editor.last_selection.take() {
-        let scrolloff = cx.editor.config().scrolloff;
+        let scrolloff = cx.editor.config_store.editor().scrolloff();
 
         let (view, doc) = current!(cx.editor);
         doc.set_selection(view.id, last_selection);
@@ -2029,7 +2033,7 @@ fn update_goto_line_number_preview(cx: &mut compositor::Context, args: Args) -> 
         doc.selection(view.id).clone()
     });
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
     let line = args[0].parse::<usize>()?;
     goto_line_without_jumplist(
         cx.editor,
@@ -2080,57 +2084,90 @@ pub(super) fn goto_line_number(
     Ok(())
 }
 
+/// Check if an argument looks like a config scope prefix
+fn is_config_scope(arg: &str) -> bool {
+    arg == "editor"
+        || arg.split_once(':').map_or(false, |(prefix, _)| {
+            matches!(prefix, "language" | "lsp")
+        })
+}
+
 // Fetch the current value of a config option and output as status.
+// Supports optional scope: `:get [scope] key` where scope is "editor", "language:name", "lsp:name"
 fn get_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let key = &args[0].to_lowercase();
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+    // Parse scope and key from arguments
+    let (scope, key) = if args.len() >= 2 && is_config_scope(&args[0]) {
+        (args[0].as_ref(), args[1].as_ref())
+    } else {
+        ("", args[0].as_ref())
+    };
 
-    let config = serde_json::json!(cx.editor.config().deref());
-    let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer(&pointer).ok_or_else(key_error)?;
+    // Resolve the config scope
+    let config = cx.editor.config_store.resolve(scope)
+        .ok_or_else(|| anyhow::anyhow!("Unknown config scope `{}`", scope))?;
+    let registry = cx.editor.config_store.registry();
 
-    cx.editor.set_status(value.to_string());
+    let value = config.get_value(key, registry)
+        .map_err(|_| anyhow::anyhow!("Unknown key `{}`", key))?;
+
+    // Convert to JSON for display
+    let json_value: serde_json::Value = value.into();
+    cx.editor.set_status(json_value.to_string());
     Ok(())
 }
 
 /// Change config at runtime. Access nested values by dot syntax, for
 /// example to disable smart case search, use `:set search.smart-case false`.
+/// Supports optional scope: `:set [scope] key value` where scope is "editor", "language:name", "lsp:name"
 fn set_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let (key, arg) = (&args[0].to_lowercase(), args[1].trim());
-
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
-    let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
-
-    let mut config = serde_json::json!(&cx.editor.config().deref());
-    let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
-
-    *value = if value.is_string() {
-        // JSON strings require quotes, so we can't .parse() directly
-        Value::String(arg.to_string())
+    // Parse scope, key, and value from arguments
+    let (scope, key, arg): (&str, &str, &str) = if args.len() >= 3 && is_config_scope(&args[0]) {
+        (args[0].as_ref(), args[1].as_ref(), args[2].trim())
     } else {
-        arg.parse().map_err(field_error)?
+        ("", args[0].as_ref(), args[1].trim())
     };
-    let config = serde_json::from_value(config).map_err(field_error)?;
 
-    cx.editor
-        .config_events
-        .0
-        .send(ConfigEvent::Update(config))?;
+    // Resolve or create the config scope (creates language/lsp configs if they don't exist)
+    let config = cx.editor.config_store.resolve_or_create(scope)
+        .ok_or_else(|| anyhow::anyhow!("Unknown config scope `{}`", scope))?;
+    let registry = cx.editor.config_store.registry();
+
+    // Get the current value to determine its type
+    let current_value = config.get_value(key, registry)
+        .map_err(|_| anyhow::anyhow!("Unknown key `{}`", key))?;
+
+    // Parse the new value based on the type of the current value
+    let new_value: helix_config::Value = match current_value {
+        helix_config::Value::String(_) => {
+            // JSON strings require quotes, so we can't .parse() directly
+            helix_config::Value::String(arg.to_string())
+        }
+        _ => {
+            // Parse as JSON for other types (bool, number, array, object)
+            let json_value: serde_json::Value = arg.parse()
+                .map_err(|_| anyhow::anyhow!("Could not parse field `{}`", arg))?;
+            json_value.into()
+        }
+    };
+
+    // Set the value using the config store
+    config.set(key, new_value, registry)
+        .map_err(|e| anyhow::anyhow!("Failed to set option `{}`: {}", key, e))?;
+
     Ok(())
 }
 
 /// Toggle boolean config option at runtime. Access nested values by dot
-/// syntax, for example to toggle smart case search, use `:toggle search.smart-
-/// case`.
+/// syntax, for example to toggle smart case search, use `:toggle search.smart-case`.
+/// Supports optional scope: `:toggle [scope] key [values...]` where scope is "editor", "language:name", "lsp:name"
 fn toggle_option(
     cx: &mut compositor::Context,
     args: Args,
@@ -2140,86 +2177,103 @@ fn toggle_option(
         return Ok(());
     }
 
-    let key = &args[0].to_lowercase();
+    // Parse scope and remaining args
+    let (scope, key, values_str, arg_offset) = if !args.is_empty() && is_config_scope(&args[0]) {
+        let scope = args[0].as_ref();
+        let key = args.get(1).ok_or_else(|| anyhow::anyhow!("Missing key argument"))?.as_ref();
+        let values = args.get(2).map(|s| s.as_ref());
+        (scope, key, values, 1usize)
+    } else {
+        ensure!(!args.is_empty(), "Missing key argument");
+        let key = args[0].as_ref();
+        let values = args.get(1).map(|s| s.as_ref());
+        ("", key, values, 0usize)
+    };
 
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+    // Resolve or create the config scope
+    let config = cx.editor.config_store.resolve_or_create(scope)
+        .ok_or_else(|| anyhow::anyhow!("Unknown config scope `{}`", scope))?;
+    let registry = cx.editor.config_store.registry();
 
-    let mut config = serde_json::json!(&cx.editor.config().deref());
-    let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+    // Get the current value
+    let current_value = config.get_value(key, registry)
+        .map_err(|_| anyhow::anyhow!("Unknown key `{}`", key))?;
 
-    *value = match value {
-        Value::Bool(ref value) => {
+    // Convert to serde_json::Value for easier manipulation
+    let json_value: serde_json::Value = current_value.clone().into();
+
+    // Toggle based on type
+    let new_json_value = match json_value {
+        serde_json::Value::Bool(value) => {
             ensure!(
-                args.len() == 1,
+                args.len() == 1 + arg_offset,
                 "Bad arguments. For boolean configurations use: `:toggle {key}`"
             );
-            Value::Bool(!value)
+            serde_json::Value::Bool(!value)
         }
-        Value::String(ref value) => {
+        serde_json::Value::String(ref value) => {
             ensure!(
-                args.len() == 2,
+                args.len() == 2 + arg_offset,
                 "Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`",
             );
             // For string values, parse the input according to normal command line rules.
-            let values: Vec<_> = command_line::Tokenizer::new(&args[1], true)
+            let values: Vec<_> = command_line::Tokenizer::new(values_str.unwrap(), true)
                 .map(|res| res.map(|token| token.content))
                 .collect::<Result<_, _>>()
                 .map_err(|err| anyhow!("failed to parse values: {err}"))?;
 
-            Value::String(
+            serde_json::Value::String(
                 values
                     .iter()
-                    .skip_while(|e| *e != value)
+                    .skip_while(|e| e.as_ref() != value)
                     .nth(1)
                     .map(AsRef::as_ref)
                     .unwrap_or_else(|| &values[0])
                     .to_string(),
             )
         }
-        Value::Null => bail!("Configuration {key} cannot be toggled"),
-        Value::Number(_) | Value::Array(_) | Value::Object(_) => {
+        serde_json::Value::Null => bail!("Configuration {key} cannot be toggled"),
+        serde_json::Value::Number(_) | serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
             ensure!(
-                args.len() == 2,
+                args.len() == 2 + arg_offset,
                 "Bad arguments. For {kind} configurations use: `:toggle {key} val1 val2 ...`",
-                kind = match value {
-                    Value::Number(_) => "number",
-                    Value::Array(_) => "array",
-                    Value::Object(_) => "object",
+                kind = match json_value {
+                    serde_json::Value::Number(_) => "number",
+                    serde_json::Value::Array(_) => "array",
+                    serde_json::Value::Object(_) => "object",
                     _ => unreachable!(),
                 }
             );
             // For numbers, arrays and objects, parse each argument with
             // `serde_json::StreamDeserializer`.
-            let values: Vec<Value> = serde_json::Deserializer::from_str(&args[1])
+            let values: Vec<serde_json::Value> = serde_json::Deserializer::from_str(values_str.unwrap())
                 .into_iter()
                 .collect::<Result<_, _>>()
                 .map_err(|err| anyhow!("failed to parse value: {err}"))?;
 
             if let Some(wrongly_typed_value) = values
                 .iter()
-                .find(|v| std::mem::discriminant(*v) != std::mem::discriminant(&*value))
+                .find(|v| std::mem::discriminant(*v) != std::mem::discriminant(&json_value))
             {
-                bail!("value '{wrongly_typed_value}' has a different type than '{value}'");
+                bail!("value '{wrongly_typed_value}' has a different type than '{json_value}'");
             }
 
             values
                 .iter()
-                .skip_while(|e| *e != value)
+                .skip_while(|e| *e != &json_value)
                 .nth(1)
                 .unwrap_or(&values[0])
                 .clone()
         }
     };
 
-    let status = format!("'{key}' is now set to {value}");
-    let config = serde_json::from_value(config)
-        .map_err(|err| anyhow::anyhow!("Failed to parse config: {err}"))?;
+    let status = format!("'{key}' is now set to {new_json_value}");
 
-    cx.editor
-        .config_events
-        .0
-        .send(ConfigEvent::Update(config))?;
+    // Convert back to helix_config::Value and set it
+    let new_value: helix_config::Value = new_json_value.into();
+    config.set(key, new_value, registry)
+        .map_err(|e| anyhow::anyhow!("Failed to set option `{}`: {}", key, e))?;
+
     cx.editor.set_status(status);
     Ok(())
 }
@@ -2261,7 +2315,7 @@ fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -2305,7 +2359,7 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
     let (view, doc) = current!(cx.editor);
 
     // Find the text_width by checking the following sources in order:
@@ -2420,6 +2474,10 @@ fn refresh_config(
         return Ok(());
     }
 
+    // TODO(config-refactor): This still uses ConfigEvent::Refresh which will be removed
+    // in a future phase. The refresh_config method in application.rs is private and
+    // handles reloading config from disk, re-parsing documents, etc.
+    // For now, we keep the ConfigEvent channel for this command.
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     Ok(())
 }
@@ -2481,7 +2539,10 @@ fn run_shell_command(
         return Ok(());
     }
 
-    let shell = cx.editor.config().shell.clone();
+    let shell: Vec<String> = cx.editor.config_store.editor().shell()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     let args = args.join(" ");
 
     let callback = async move {
@@ -2517,7 +2578,7 @@ fn reset_diff_change(
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
 
     let (view, doc) = current!(cx.editor);
     let Some(handle) = doc.diff_handle() else {
@@ -2679,7 +2740,7 @@ fn read(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let scrolloff = cx.editor.config_store.editor().scrolloff();
     let (view, doc) = current!(cx.editor);
 
     let filename = args.first().unwrap();

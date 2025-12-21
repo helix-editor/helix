@@ -7,8 +7,8 @@ use std::{
 };
 
 use anyhow::Ok;
-use arc_swap::access::Access;
 
+use helix_config::definition::AutoSaveConfig;
 use helix_event::{register_hook, send_blocking};
 use helix_view::{
     document::Mode,
@@ -101,12 +101,11 @@ fn request_auto_save(editor: &mut Editor) {
 pub(super) fn register_hooks(handlers: &Handlers) {
     let tx = handlers.auto_save.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
-        let config = event.doc.config.load();
-        if config.auto_save.after_delay.enable {
+        if event.doc.config_store.editor().after_delay_enable() {
             send_blocking(
                 &tx,
                 AutoSaveEvent::DocumentChanged {
-                    save_after: config.auto_save.after_delay.timeout,
+                    save_after: event.doc.config_store.editor().after_delay_timeout(),
                 },
             );
         }

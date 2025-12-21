@@ -1,5 +1,6 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, num::NonZero, sync::Arc};
 
+use helix_config::definition::WordCompletionConfig;
 use helix_core::{
     self as core, chars::char_is_word, completion::CompletionProvider, movement, Transaction,
 };
@@ -22,13 +23,15 @@ pub(super) fn completion(
     if !doc!(editor).word_completion_enabled() {
         return None;
     }
-    let config = editor.config().word_completion;
     let doc_config = doc!(editor)
         .language_config()
         .and_then(|config| config.word_completion);
     let trigger_length = doc_config
         .and_then(|c| c.trigger_length)
-        .unwrap_or(config.trigger_length)
+        .unwrap_or_else(|| {
+            NonZero::new(editor.config_store.editor().trigger_length())
+                .expect("trigger_length must be non-zero")
+        })
         .get() as usize;
 
     let (view, doc) = current_ref!(editor);

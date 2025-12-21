@@ -98,7 +98,6 @@ pub fn raw_regex_prompt(
     let doc_id = view.doc;
     let snapshot = doc.selection(view.id).clone();
     let offset_snapshot = doc.view_offset(view.id);
-    let config = cx.editor.config();
 
     let mut prompt = Prompt::new(
         prompt,
@@ -117,7 +116,9 @@ pub fn raw_regex_prompt(
                         return;
                     }
 
-                    let case_insensitive = if config.search.smart_case {
+                    use helix_config::definition::SearchConfig;
+                    let smart_case = cx.editor.config_store.editor().smart_case();
+                    let case_insensitive = if smart_case {
                         !input.chars().any(char::is_uppercase)
                     } else {
                         false
@@ -145,7 +146,9 @@ pub fn raw_regex_prompt(
                             fun(cx, regex, input, event);
 
                             let (view, doc) = current!(cx.editor);
-                            view.ensure_cursor_in_view(doc, config.scrolloff);
+                            use helix_config::definition::MiscConfig;
+                            let scrolloff = cx.editor.config_store.editor().scrolloff();
+                            view.ensure_cursor_in_view(doc, scrolloff);
                         }
                         Err(err) => {
                             let (view, doc) = current!(cx.editor);
@@ -209,10 +212,10 @@ pub struct FilePickerData {
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
 pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
+    use helix_config::definition::FilePickerConfig;
     use ignore::WalkBuilder;
     use std::time::Instant;
 
-    let config = editor.config();
     let data = FilePickerData {
         root: root.clone(),
         directory_style: editor.theme.get("ui.text.directory"),
@@ -220,21 +223,22 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 
     let now = Instant::now();
 
-    let dedup_symlinks = config.file_picker.deduplicate_links;
+    let config = editor.config_store.editor();
+    let dedup_symlinks = config.deduplicate_links();
     let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
 
     let mut walk_builder = WalkBuilder::new(&root);
 
     let mut files = walk_builder
-        .hidden(config.file_picker.hidden)
-        .parents(config.file_picker.parents)
-        .ignore(config.file_picker.ignore)
-        .follow_links(config.file_picker.follow_symlinks)
-        .git_ignore(config.file_picker.git_ignore)
-        .git_global(config.file_picker.git_global)
-        .git_exclude(config.file_picker.git_exclude)
+        .hidden(config.hidden())
+        .parents(config.parents())
+        .ignore(config.ignore())
+        .follow_links(config.follow_symlinks())
+        .git_ignore(config.git_ignore())
+        .git_global(config.git_global())
+        .git_exclude(config.git_exclude())
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
-        .max_depth(config.file_picker.max_depth)
+        .max_depth(config.max_depth())
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks))
         .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
         .add_custom_ignore_filename(".helix/ignore")
@@ -356,19 +360,20 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
 
 fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
     use ignore::WalkBuilder;
+    use helix_config::definition::FilePickerConfig;
 
-    let config = editor.config();
+    let config = editor.config_store.editor();
 
     let mut walk_builder = WalkBuilder::new(root);
 
     let mut content: Vec<(PathBuf, bool)> = walk_builder
-        .hidden(config.file_explorer.hidden)
-        .parents(config.file_explorer.parents)
-        .ignore(config.file_explorer.ignore)
-        .follow_links(config.file_explorer.follow_symlinks)
-        .git_ignore(config.file_explorer.git_ignore)
-        .git_global(config.file_explorer.git_global)
-        .git_exclude(config.file_explorer.git_exclude)
+        .hidden(config.hidden())
+        .parents(config.parents())
+        .ignore(config.ignore())
+        .follow_links(config.follow_symlinks())
+        .git_ignore(config.git_ignore())
+        .git_global(config.git_global())
+        .git_exclude(config.git_exclude())
         .max_depth(Some(1))
         .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
         .add_custom_ignore_filename(".helix/ignore")
@@ -380,12 +385,7 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
                     let is_dir = entry
                         .file_type()
                         .is_some_and(|file_type| file_type.is_dir());
-                    let mut path = entry.path().to_path_buf();
-                    if is_dir && path != root && config.file_explorer.flatten_dirs {
-                        while let Some(single_child_directory) = get_child_if_single_dir(&path) {
-                            path = single_child_directory;
-                        }
-                    }
+                    let path = entry.path().to_path_buf();
                     (path, is_dir)
                 })
                 .ok()
@@ -400,16 +400,6 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
     }
 
     Ok(content)
-}
-
-fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
-    let mut entries = path.read_dir().ok()?;
-    let entry = entries.next()?.ok()?;
-    if entries.next().is_none() && entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
-        Some(entry.path())
-    } else {
-        None
-    }
 }
 
 pub mod completers {
@@ -782,6 +772,16 @@ pub mod completers {
         }
 
         completions
+    }
+}
+
+fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
+    let mut entries = path.read_dir().ok()?;
+    let entry = entries.next()?.ok()?;
+    if entries.next().is_none() && entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
+        Some(entry.path())
+    } else {
+        None
     }
 }
 

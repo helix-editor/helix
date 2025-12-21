@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use arc_swap::ArcSwap;
 use diagnostics::PullAllDocumentsDiagnosticHandler;
 use helix_event::AsyncHook;
 
-use crate::config::Config;
 use crate::events;
 use crate::handlers::auto_save::AutoSaveHandler;
 use crate::handlers::diagnostics::PullDiagnosticsHandler;
@@ -22,10 +20,10 @@ mod prompt;
 mod signature_help;
 mod snippet;
 
-pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
+pub fn setup(config_store: Arc<helix_config::ConfigStore>) -> Handlers {
     events::register();
 
-    let event_tx = completion::CompletionHandler::new(config).spawn();
+    let event_tx = completion::CompletionHandler::new(config_store).spawn();
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
     let document_colors = DocumentColorsHandler::default().spawn();

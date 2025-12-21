@@ -13,6 +13,7 @@ use tui::{text::Span, widgets::Row};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
+use helix_config::definition::LspConfig;
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
     text_annotations::InlineAnnotation, Selection, Uri,
@@ -983,7 +984,7 @@ pub fn goto_implementation(cx: &mut Context) {
 }
 
 pub fn goto_reference(cx: &mut Context) {
-    let config = cx.editor.config();
+    let include_declaration = cx.editor.config_store.editor().goto_reference_include_declaration();
     let (view, doc) = current_ref!(cx.editor);
 
     let mut futures: FuturesOrdered<_> = doc
@@ -995,7 +996,7 @@ pub fn goto_reference(cx: &mut Context) {
                 .goto_reference(
                     doc.identifier(),
                     pos,
-                    config.lsp.goto_reference_include_declaration,
+                    include_declaration,
                     None,
                 )
                 .unwrap();
@@ -1271,7 +1272,7 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
 }
 
 pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::job::Jobs) {
-    if !editor.config().lsp.display_inlay_hints {
+    if !editor.config_store.editor().display_inlay_hints() {
         return;
     }
 
@@ -1341,7 +1342,7 @@ fn compute_inlay_hints_for_view(
         language_server.text_document_range_inlay_hints(doc.identifier(), range, None)?,
         move |editor, _compositor, response: Option<Vec<lsp::InlayHint>>| {
             // The config was modified or the window was closed while the request was in flight
-            if !editor.config().lsp.display_inlay_hints || editor.tree.try_get(view_id).is_none() {
+            if !editor.config_store.editor().display_inlay_hints() || editor.tree.try_get(view_id).is_none() {
                 return;
             }
 
@@ -1375,7 +1376,7 @@ fn compute_inlay_hints_for_view(
             let mut padding_after_inlay_hints = Vec::new();
 
             let doc_text = doc.text();
-            let inlay_hints_length_limit = doc.config.load().lsp.inlay_hints_length_limit;
+            let inlay_hints_length_limit = doc.config_store.editor().inlay_hints_length_limit();
 
             for hint in hints {
                 let char_idx =
@@ -1402,7 +1403,6 @@ fn compute_inlay_hints_for_view(
                     };
 
                     let width = label.width();
-                    let limit = limit.get().into();
                     if width > limit {
                         let mut floor_boundary = 0;
                         let mut acc = 0;

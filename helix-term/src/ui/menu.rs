@@ -6,7 +6,8 @@ use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
-use helix_view::{editor::SmartTabConfig, graphics::Rect, Editor};
+use helix_view::graphics::Rect;
+use helix_view::Editor;
 use tui::layout::Constraint;
 
 pub trait Item: Sync + Send + 'static {
@@ -220,17 +221,12 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         // Ignore tab key when supertab is turned on in order not to interfere
         // with it. (Is there a better way to do this?)
-        if (event == key!(Tab) || event == shift!(Tab))
-            && cx.editor.config().auto_completion
-            && matches!(
-                cx.editor.config().smart_tab,
-                Some(SmartTabConfig {
-                    enable: true,
-                    supersede_menu: true,
-                })
-            )
-        {
-            return EventResult::Ignored(None);
+        if (event == key!(Tab) || event == shift!(Tab)) {
+            use helix_config::definition::{CompletionConfig, SmartTabConfig};
+            let config = cx.editor.config_store.editor();
+            if config.auto_completion() && config.enable() && config.supersede_menu() {
+                return EventResult::Ignored(None);
+            }
         }
 
         match event {

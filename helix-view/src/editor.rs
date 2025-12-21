@@ -1,5 +1,4 @@
 use crate::{
-    annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
@@ -17,8 +16,8 @@ use crate::{
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
 use helix_config::definition::{
-    CursorShapeConfig as CursorShapeConfigTrait, LspConfig as LspConfigTrait, MiscConfig, UiConfig,
-    PopupBorderConfig as NewPopupBorderConfig, CursorKind as ConfigCursorKind,
+    CursorShapeConfig as CursorShapeConfigTrait,
+    LspConfig as LspConfigTrait, MiscConfig, UiConfig,
 };
 
 use futures_util::stream::select_all::SelectAll;
@@ -59,7 +58,7 @@ use helix_dap::{self as dap, registry::DebugAdapterId};
 use helix_lsp::lsp;
 use helix_stdx::path::canonicalize;
 
-use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use arc_swap::{
     access::{DynAccess, DynGuard},
@@ -88,8 +87,23 @@ where
     )
 }
 
-// GutterType and GutterConfig are now defined in helix-config
-pub use helix_config::definition::GutterType;
+// Types now defined in helix-config, re-exported for backwards compatibility and runtime use.
+// These simple enum types are fully migrated to the new config system.
+pub use helix_config::definition::{
+    BufferLine, GutterType, PopupBorderConfig, StatusLineElement, WhitespaceRenderValue,
+};
+
+// NOTE: The following types (FilePickerConfig, SmartTabConfig, LspConfig, SearchConfig,
+// StatusLineConfig, WhitespaceConfig, WhitespaceRender, IndentGuidesConfig, AutoSave, etc.)
+// are DUPLICATED between helix-view and helix-config during the config system transition.
+//
+// THESE TYPES MUST STAY in helix-view for now because:
+// 1. The old Config struct (below) still uses serde to deserialize TOML files
+// 2. Some runtime code constructs these types as temporary bridges from config_store values
+// 3. The helix-config versions use the new Ty trait system, not serde
+//
+// Once TOML parsing is fully migrated to the new config system (helix-config), these
+// duplicate type definitions can be removed from helix-view.
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
@@ -279,8 +293,6 @@ pub struct Config {
     pub file_explorer: FileExplorerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
-    /// Shape for cursor in each mode
-    pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
     /// Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`.
@@ -330,9 +342,6 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
-    /// Display diagnostic below the line they occur.
-    pub inline_diagnostics: InlineDiagnosticsConfig,
-    pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
@@ -561,146 +570,6 @@ impl Default for ModeConfig {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum StatusLineElement {
-    /// The editor mode (Normal, Insert, Visual/Selection)
-    Mode,
-
-    /// The LSP activity spinner
-    Spinner,
-
-    /// The file basename (the leaf of the open file's path)
-    FileBaseName,
-
-    /// The relative file path
-    FileName,
-
-    /// The file absolute path
-    FileAbsolutePath,
-
-    // The file modification indicator
-    FileModificationIndicator,
-
-    /// An indicator that shows `"[readonly]"` when a file cannot be written
-    ReadOnlyIndicator,
-
-    /// The file encoding
-    FileEncoding,
-
-    /// The file line endings (CRLF or LF)
-    FileLineEnding,
-
-    /// The file indentation style
-    FileIndentStyle,
-
-    /// The file type (language ID or "text")
-    FileType,
-
-    /// A summary of the number of errors and warnings
-    Diagnostics,
-
-    /// A summary of the number of errors and warnings on file and workspace
-    WorkspaceDiagnostics,
-
-    /// The number of selections (cursors)
-    Selections,
-
-    /// The number of characters currently in primary selection
-    PrimarySelectionLength,
-
-    /// The cursor position
-    Position,
-
-    /// The separator string
-    Separator,
-
-    /// The cursor position as a percent of the total file
-    PositionPercentage,
-
-    /// The total line numbers of the current file
-    TotalLineNumbers,
-
-    /// A single space
-    Spacer,
-
-    /// Current version control information
-    VersionControl,
-
-    /// Indicator for selected register
-    Register,
-
-    /// The base of current working directory
-    CurrentWorkingDirectory,
-}
-
-// Cursor shape is read and used on every rendered frame and so needs
-// to be fast. Therefore we avoid a hashmap and use an enum indexed array.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CursorShapeConfig([CursorKind; 3]);
-
-impl CursorShapeConfig {
-    pub fn from_mode(&self, mode: Mode) -> CursorKind {
-        self.get(mode as usize).copied().unwrap_or_default()
-    }
-}
-
-impl<'de> Deserialize<'de> for CursorShapeConfig {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let m = HashMap::<Mode, CursorKind>::deserialize(deserializer)?;
-        let into_cursor = |mode: Mode| m.get(&mode).copied().unwrap_or_default();
-        Ok(CursorShapeConfig([
-            into_cursor(Mode::Normal),
-            into_cursor(Mode::Select),
-            into_cursor(Mode::Insert),
-        ]))
-    }
-}
-
-impl Serialize for CursorShapeConfig {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(self.len()))?;
-        let modes = [Mode::Normal, Mode::Select, Mode::Insert];
-        for mode in modes {
-            map.serialize_entry(&mode, &self.from_mode(mode))?;
-        }
-        map.end()
-    }
-}
-
-impl std::ops::Deref for CursorShapeConfig {
-    type Target = [CursorKind; 3];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Default for CursorShapeConfig {
-    fn default() -> Self {
-        Self([CursorKind::Block; 3])
-    }
-}
-
-/// bufferline render modes
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum BufferLine {
-    /// Don't render bufferline
-    #[default]
-    Never,
-    /// Always render
-    Always,
-    /// Only if multiple buffers are open
-    Multiple,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
     /// Show absolute line number
     Absolute,
@@ -768,15 +637,6 @@ pub enum WhitespaceRender {
         tab: Option<WhitespaceRenderValue>,
         newline: Option<WhitespaceRenderValue>,
     },
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum WhitespaceRenderValue {
-    None,
-    // TODO
-    // Selection,
-    All,
 }
 
 impl WhitespaceRender {
@@ -959,13 +819,19 @@ impl From<LineEndingConfig> for LineEnding {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum PopupBorderConfig {
-    None,
-    All,
-    Popup,
-    Menu,
+/// Convert new config system's LineEndingConfig to LineEnding
+pub fn line_ending_from_config(line_ending: helix_config::definition::LineEndingConfig) -> LineEnding {
+    match line_ending {
+        helix_config::definition::LineEndingConfig::Native => NATIVE_LINE_ENDING,
+        helix_config::definition::LineEndingConfig::LF => LineEnding::LF,
+        helix_config::definition::LineEndingConfig::Crlf => LineEnding::Crlf,
+        #[cfg(feature = "unicode-lines")]
+        helix_config::definition::LineEndingConfig::FF => LineEnding::FF,
+        #[cfg(feature = "unicode-lines")]
+        helix_config::definition::LineEndingConfig::CR => LineEnding::CR,
+        #[cfg(feature = "unicode-lines")]
+        helix_config::definition::LineEndingConfig::Nel => LineEnding::Nel,
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1014,7 +880,6 @@ impl Default for Config {
             file_picker: FilePickerConfig::default(),
             file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
-            cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             undercurl: false,
             search: SearchConfig::default(),
@@ -1022,7 +887,7 @@ impl Default for Config {
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
-            bufferline: BufferLine::default(),
+            bufferline: BufferLine::Never,
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap {
@@ -1042,8 +907,6 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
-            inline_diagnostics: InlineDiagnosticsConfig::default(),
-            end_of_line_diagnostics: DiagnosticFilter::Enable(Severity::Hint),
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
             rainbow_brackets: false,
@@ -1282,12 +1145,12 @@ impl Editor {
 
     pub fn popup_border(&self) -> bool {
         let popup_border = self.config_store.editor().popup_border();
-        popup_border == NewPopupBorderConfig::All || popup_border == NewPopupBorderConfig::Popup
+        popup_border == PopupBorderConfig::All || popup_border == PopupBorderConfig::Popup
     }
 
     pub fn menu_border(&self) -> bool {
         let popup_border = self.config_store.editor().popup_border();
-        popup_border == NewPopupBorderConfig::All || popup_border == NewPopupBorderConfig::Menu
+        popup_border == PopupBorderConfig::All || popup_border == PopupBorderConfig::Menu
     }
 
     pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
@@ -2156,16 +2019,10 @@ impl Editor {
             let inner = view.inner_area(doc);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let config_cursor = match self.mode {
+            let cursorkind = match self.mode {
                 Mode::Normal => self.config_store.editor().normal_mode_cursor(),
                 Mode::Select => self.config_store.editor().select_mode_cursor(),
                 Mode::Insert => self.config_store.editor().insert_mode_cursor(),
-            };
-            let cursorkind = match config_cursor {
-                ConfigCursorKind::Block => CursorKind::Block,
-                ConfigCursorKind::Bar => CursorKind::Bar,
-                ConfigCursorKind::Underline => CursorKind::Underline,
-                ConfigCursorKind::Hidden => CursorKind::Hidden,
             };
             (Some(pos), cursorkind)
         } else {

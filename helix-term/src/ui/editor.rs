@@ -13,8 +13,14 @@ use crate::{
     },
 };
 
+use helix_config::definition::{
+    AutoSaveConfig, CursorShapeConfig, DiagnosticFilter as ConfigDiagnosticFilter,
+    EndOfLineDiagnosticsConfig, InlineDiagnosticsConfig as InlineDiagnosticsConfigTrait,
+    MiscConfig, MouseConfig, Severity as ConfigSeverity, UiConfig,
+};
+
 use helix_core::{
-    diagnostic::NumberOrString,
+    diagnostic::{NumberOrString, Severity},
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, OverlayHighlights},
@@ -23,9 +29,9 @@ use helix_core::{
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    annotations::diagnostics::DiagnosticFilter,
+    annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::CompleteAction,
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     gutter::{gutter_style as get_gutter_style, gutter_width},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
@@ -87,7 +93,6 @@ impl EditorView {
         let inner = view.inner_area(doc);
         let area = view.area;
         let theme = &editor.theme;
-        let config = editor.config();
         let loader = editor.syn_loader.load();
 
         let view_offset = doc.view_offset(view.id);
@@ -95,11 +100,11 @@ impl EditorView {
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
 
-        if is_focused && config.cursorline {
+        if is_focused && editor.config_store.editor().cursorline() {
             decorations.add_decoration(Self::cursorline(doc, view, theme));
         }
 
-        if is_focused && config.cursorcolumn {
+        if is_focused && editor.config_store.editor().cursorcolumn() {
             Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
         }
 
@@ -131,7 +136,7 @@ impl EditorView {
         if doc
             .language_config()
             .and_then(|config| config.rainbow_brackets)
-            .unwrap_or(config.rainbow_brackets)
+            .unwrap_or_else(|| editor.config_store.editor().rainbow_brackets())
         {
             if let Some(overlay) =
                 Self::doc_rainbow_highlights(doc, view_offset.anchor, inner.height, theme, &loader)
@@ -146,12 +151,17 @@ impl EditorView {
             if let Some(tabstops) = Self::tabstop_highlights(doc, theme) {
                 overlays.push(tabstops);
             }
+            let cursorkind = match editor.mode() {
+                Mode::Normal => editor.config_store.editor().normal_mode_cursor(),
+                Mode::Select => editor.config_store.editor().select_mode_cursor(),
+                Mode::Insert => editor.config_store.editor().insert_mode_cursor(),
+            };
             overlays.push(Self::doc_selection_highlights(
                 editor.mode(),
                 doc,
                 view,
                 theme,
-                &config.cursor_shape,
+                cursorkind,
                 self.terminal_focused,
             ));
             if let Some(overlay) = Self::highlight_focused_view_elements(view, doc, theme) {
@@ -185,17 +195,32 @@ impl EditorView {
             });
         }
         let width = view.inner_width(doc);
-        let config = doc.config.load();
         let enable_cursor_line = view
             .diagnostics_handler
             .show_cursorline_diagnostics(doc, view.id);
-        let inline_diagnostic_config = config.inline_diagnostics.prepare(width, enable_cursor_line);
+
+        // Build InlineDiagnosticsConfig from ConfigStore
+        let config_store = &editor.config_store.editor();
+        let inline_diagnostic_config = InlineDiagnosticsConfig {
+            cursor_line: config_store.cursor_line(),
+            other_lines: config_store.other_lines(),
+            min_diagnostic_width: config_store.min_diagnostic_width(),
+            prefix_len: config_store.prefix_len(),
+            max_wrap: config_store.max_wrap(),
+            max_diagnostics: config_store.max_diagnostics(),
+        }
+        .prepare(width, enable_cursor_line);
+
+        let end_of_line_diagnostics = config_store.end_of_line_diagnostics();
+        let diagnostics_disabled = inline_diagnostic_config.disabled()
+            && end_of_line_diagnostics == DiagnosticFilter::Disable;
+
         decorations.add_decoration(InlineDiagnostics::new(
             doc,
             theme,
             primary_cursor,
             inline_diagnostic_config,
-            config.end_of_line_diagnostics,
+            end_of_line_diagnostics,
         ));
         render_document(
             surface,
@@ -221,9 +246,7 @@ impl EditorView {
             }
         }
 
-        if config.inline_diagnostics.disabled()
-            && config.end_of_line_diagnostics == DiagnosticFilter::Disable
-        {
+        if diagnostics_disabled {
             Self::render_diagnostics(doc, view, inner, surface, theme);
         }
 
@@ -246,15 +269,15 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
     ) {
-        let editor_rulers = &editor.config().rulers;
+        let editor_rulers = editor.config_store.editor().rulers();
         let ruler_theme = theme
             .try_get("ui.virtual.ruler")
             .unwrap_or_else(|| Style::default().bg(Color::Red));
 
         let rulers = doc
             .language_config()
-            .and_then(|config| config.rulers.as_ref())
-            .unwrap_or(editor_rulers);
+            .and_then(|config| config.rulers.as_deref())
+            .unwrap_or(&*editor_rulers);
 
         let view_offset = doc.view_offset(view.id);
 
@@ -466,14 +489,13 @@ impl EditorView {
         doc: &Document,
         view: &View,
         theme: &Theme,
-        cursor_shape_config: &CursorShapeConfig,
+        cursorkind: CursorKind,
         is_terminal_focused: bool,
     ) -> OverlayHighlights {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
         let primary_idx = selection.primary_index();
 
-        let cursorkind = cursor_shape_config.from_mode(mode);
         let cursor_is_block = cursorkind == CursorKind::Block;
 
         let selection_scope = theme
@@ -1127,7 +1149,6 @@ impl EditorView {
             self.handle_non_key_input(cxt)
         }
 
-        let config = cxt.editor.config();
         let MouseEvent {
             kind,
             row,
@@ -1243,7 +1264,12 @@ impl EditorView {
                     None => return EventResult::Ignored(None),
                 }
 
-                let offset = config.scroll_lines.unsigned_abs();
+                let offset = cxt
+                    .editor
+                    .config_store
+                    .editor()
+                    .scroll_lines()
+                    .unsigned_abs();
                 commands::scroll(cxt, offset, direction, false);
 
                 cxt.editor.tree.focus = current_view;
@@ -1253,7 +1279,7 @@ impl EditorView {
             }
 
             MouseEventKind::Up(MouseButton::Left) => {
-                if !config.middle_click_paste {
+                if !cxt.editor.config_store.editor().middle_click_paste() {
                     return EventResult::Ignored(None);
                 }
 
@@ -1309,7 +1335,7 @@ impl EditorView {
 
             MouseEventKind::Up(MouseButton::Middle) => {
                 let editor = &mut cxt.editor;
-                if !config.middle_click_paste {
+                if !editor.config_store.editor().middle_click_paste() {
                     return EventResult::Ignored(None);
                 }
 
@@ -1377,10 +1403,9 @@ impl Component for EditorView {
                 commands::paste_bracketed_value(&mut cx, contents.clone());
                 cx.editor.count = None;
 
-                let config = cx.editor.config();
                 let mode = cx.editor.mode();
                 let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, config.scrolloff);
+                view.ensure_cursor_in_view(doc, cx.editor.config_store.editor().scrolloff());
 
                 // Store a history state if not in insert mode. Otherwise wait till we exit insert
                 // to include any edits to the paste in the history state.
@@ -1475,11 +1500,10 @@ impl Component for EditorView {
                     return EventResult::Ignored(None);
                 }
 
-                let config = cx.editor.config();
                 let mode = cx.editor.mode();
                 let (view, doc) = current!(cx.editor);
 
-                view.ensure_cursor_in_view(doc, config.scrolloff);
+                view.ensure_cursor_in_view(doc, cx.editor.config_store.editor().scrolloff());
 
                 // Store a history state if not in insert mode. This also takes care of
                 // committing changes when leaving insert mode.
@@ -1507,7 +1531,7 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::FocusLost => {
-                if context.editor.config().auto_save.focus_lost {
+                if context.editor.config_store.editor().focus_lost() {
                     let options = commands::WriteAllOptions {
                         force: false,
                         write_scratch: false,
@@ -1526,11 +1550,10 @@ impl Component for EditorView {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
-        let config = cx.editor.config();
 
         // check if bufferline should be rendered
         use helix_view::editor::BufferLine;
-        let use_bufferline = match config.bufferline {
+        let use_bufferline = match cx.editor.config_store.editor().bufferline() {
             BufferLine::Always => true,
             BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
             _ => false,
@@ -1554,7 +1577,7 @@ impl Component for EditorView {
             self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
-        if config.auto_info {
+        if cx.editor.config_store.editor().auto_info() {
             if let Some(mut info) = cx.editor.autoinfo.take() {
                 info.render(area, surface, cx);
                 cx.editor.autoinfo = Some(info)

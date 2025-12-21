@@ -8,8 +8,14 @@ mod language;
 mod lsp;
 mod ui;
 
-pub use lsp::init_language_server_config;
-pub use ui::{GutterType, LineNumber};
+pub use lsp::{init_language_server_config, DiagnosticFilter};
+pub use ui::{
+    BufferLine, CursorKind, FileExplorerPosition, GutterType, LineNumber, PickerStartPosition,
+    PopupBorderConfig, StatusLineElement, WhitespaceRenderValue,
+};
+// Re-export helix_core types used in config
+pub use helix_core::diagnostic::Severity;
+pub use helix_core::syntax::config::IndentationHeuristic;
 
 options! {
     use ui::*;
@@ -78,6 +84,23 @@ options! {
         wrap_round: bool = true,
     }
 
+    struct AutoSaveConfig {
+        /// Enable auto save on focus lost.
+        /// Requires [focus event support](https://github.com/helix-editor/
+        /// helix/wiki/Terminal-Support) from your terminal
+        #[name = "auto-save.focus-lost"]
+        #[read = copy]
+        focus_lost: bool = false,
+        /// Enable auto save after delay
+        #[name = "auto-save.after-delay.enable"]
+        #[read = copy]
+        after_delay_enable: bool = false,
+        /// Auto save delay in milliseconds
+        #[name = "auto-save.after-delay.timeout"]
+        #[read = copy]
+        after_delay_timeout: u64 = 3000,
+    }
+
     struct MiscConfig {
         /// Number of lines of padding around the edge of the screen when scrolling.
         #[read = copy]
@@ -133,6 +156,10 @@ options! {
         #[name = "continue-comments"]
         #[read = copy]
         continue_comments: bool = true,
+        /// How the indentation for a newly inserted line is computed
+        #[name = "indent-heuristic"]
+        #[read = copy]
+        indent_heuristic: IndentationHeuristic = IndentationHeuristic::Hybrid,
     }
 }
 

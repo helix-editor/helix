@@ -847,6 +847,20 @@ impl ConfigStore {
         None
     }
 
+    /// Clear all editor configuration values, resetting to defaults.
+    ///
+    /// This clears the global layer, effectively resetting all editor config
+    /// options to their default values (as specified in the OptionRegistry).
+    ///
+    /// This is useful when reloading config files, to ensure that options that
+    /// were previously set but are no longer in the config file are reset to defaults.
+    pub fn clear_editor_config(&self) {
+        let layers = self.layers.read();
+        if let Some(layer) = layers.get(self.global_layer) {
+            layer.write().values.clear();
+        }
+    }
+
     /// Load editor configuration from a TOML file (typically config.toml).
     ///
     /// This loads the global editor configuration. The TOML file can have config

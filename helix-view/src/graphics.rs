@@ -1,29 +1,11 @@
 use bitflags::bitflags;
-use serde::{Deserialize, Serialize};
 use std::{
     cmp::{max, min},
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-/// UNSTABLE
-pub enum CursorKind {
-    /// █
-    Block,
-    /// |
-    Bar,
-    /// _
-    Underline,
-    /// Hidden cursor, can set cursor position with this to let IME have correct cursor position.
-    Hidden,
-}
-
-impl Default for CursorKind {
-    fn default() -> Self {
-        Self::Block
-    }
-}
+// Re-export CursorKind from helix-config to avoid duplication
+pub use helix_config::definition::CursorKind;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Margin {

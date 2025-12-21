@@ -46,7 +46,7 @@ use helix_core::{
 };
 
 use crate::{
-    editor::Config,
+    editor::{Config, line_ending_from_config},
     events::{DocumentDidChange, SelectionDidChange},
     expansion,
     view::ViewPosition,
@@ -700,7 +700,7 @@ impl Document {
         config_store: Arc<helix_config::ConfigStore>,
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
-        let line_ending = config.load().default_line_ending.into();
+        let line_ending = line_ending_from_config(config_store.editor().default_line_ending());
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
@@ -754,7 +754,7 @@ impl Document {
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config_store: Arc<helix_config::ConfigStore>,
     ) -> Self {
-        let line_ending: LineEnding = config.load().default_line_ending.into();
+        let line_ending: LineEnding = line_ending_from_config(config_store.editor().default_line_ending());
         let text = Rope::from(line_ending.as_str());
         Self::from(text, None, config, syn_loader, config_store)
     }
@@ -775,7 +775,7 @@ impl Document {
             return Err(DocumentOpenError::IrregularFile);
         }
 
-        let editor_config = if config.load().editor_config {
+        let editor_config = if config_store.editor().editor_config() {
             EditorConfig::find(path)
         } else {
             EditorConfig::default()
@@ -789,7 +789,7 @@ impl Document {
         } else {
             let line_ending = editor_config
                 .line_ending
-                .unwrap_or_else(|| config.load().default_line_ending.into());
+                .unwrap_or_else(|| line_ending_from_config(config_store.editor().default_line_ending()));
             let encoding = encoding.unwrap_or(encoding::UTF_8);
             (Rope::from(line_ending.as_str()), encoding, false)
         };
@@ -2258,18 +2258,10 @@ impl Document {
     }
 
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
-        let config = self.config.load();
+        use helix_config::definition::WrapConfig;
+
         let text_width = self.text_width();
-        let mut soft_wrap_at_text_width = self
-            .language_config()
-            .and_then(|config| {
-                config
-                    .soft_wrap
-                    .as_ref()
-                    .and_then(|soft_wrap| soft_wrap.wrap_at_text_width)
-            })
-            .or(config.soft_wrap.wrap_at_text_width)
-            .unwrap_or(false);
+        let mut soft_wrap_at_text_width = self.config_store.editor().wrap_at_text_width();
         if soft_wrap_at_text_width {
             // if the viewport is smaller than the specified
             // width then this setting has no effcet
@@ -2279,26 +2271,10 @@ impl Document {
                 viewport_width = text_width as u16;
             }
         }
-        let language_soft_wrap = self
-            .language
-            .as_ref()
-            .and_then(|config| config.soft_wrap.as_ref());
-        let enable_soft_wrap = language_soft_wrap
-            .and_then(|soft_wrap| soft_wrap.enable)
-            .or(config.soft_wrap.enable)
-            .unwrap_or(false);
-        let max_wrap = language_soft_wrap
-            .and_then(|soft_wrap| soft_wrap.max_wrap)
-            .or(config.soft_wrap.max_wrap)
-            .unwrap_or(20);
-        let max_indent_retain = language_soft_wrap
-            .and_then(|soft_wrap| soft_wrap.max_indent_retain)
-            .or(config.soft_wrap.max_indent_retain)
-            .unwrap_or(40);
-        let wrap_indicator = language_soft_wrap
-            .and_then(|soft_wrap| soft_wrap.wrap_indicator.clone())
-            .or_else(|| config.soft_wrap.wrap_indicator.clone())
-            .unwrap_or_else(|| "↪ ".into());
+        let enable_soft_wrap = self.config_store.editor().enable();
+        let max_wrap = self.config_store.editor().max_wrap();
+        let max_indent_retain = self.config_store.editor().max_indent_retain();
+        let wrap_indicator = self.config_store.editor().wrap_indicator();
         let tab_width = self.tab_width() as u16;
         TextFormat {
             soft_wrap: enable_soft_wrap && viewport_width > 10,
@@ -2308,7 +2284,7 @@ impl Document {
             // avoid spinning forever when the window manager
             // sets the size to something tiny
             viewport_width,
-            wrap_indicator: wrap_indicator.into_boxed_str(),
+            wrap_indicator: wrap_indicator.into(),
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_highlight("ui.virtual.wrap")),
             soft_wrap_at_text_width,
@@ -2556,10 +2532,16 @@ mod test {
 
     #[test]
     fn test_line_ending() {
+        let mut registry = helix_config::OptionRegistry::new();
+        helix_config::init_config(&mut registry);
+        let lsp_registry = helix_config::OptionRegistry::new();
+        let config_store = Arc::new(helix_config::ConfigStore::new(registry, lsp_registry));
+
         assert_eq!(
             Document::default(
                 Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-                Arc::new(ArcSwap::from_pointee(syntax::Loader::default()))
+                Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+                config_store
             )
             .text()
             .to_string(),

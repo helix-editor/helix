@@ -1,6 +1,7 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_config::{ConfigStore, OptionRegistry, init_config};
+use helix_config::definition::{LspConfig, MiscConfig, MouseConfig, TerminfoConfig};
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
@@ -115,11 +116,32 @@ impl Application {
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
+        // Create the new config system first so we can use it to initialize the backend
+        let mut registry = OptionRegistry::new();
+        init_config(&mut registry);
+        let lsp_registry = OptionRegistry::new();
+        let config_store = Arc::new(ConfigStore::new(registry, lsp_registry));
+
+        // Load config files into the new config store
+        if let Err(e) = config_store.load_editor_config_if_exists(&helix_loader::config_file()) {
+            log::warn!("Failed to load global config into ConfigStore: {}", e);
+        }
+        if let Err(e) = config_store.load_editor_config_if_exists(&helix_loader::workspace_config_file()) {
+            log::warn!("Failed to load workspace config into ConfigStore: {}", e);
+        }
+
+        // Create terminal backend config from ConfigStore
+        let terminal_config = tui::terminal::Config {
+            enable_mouse_capture: config_store.editor().mouse(),
+            force_enable_extended_underlines: config_store.editor().force_undercurl(),
+            kitty_keyboard_protocol: config.editor.kitty_keyboard_protocol,
+        };
+
         #[cfg(all(not(windows), not(feature = "integration")))]
-        let backend = TerminaBackend::new((&config.editor).into())
+        let backend = TerminaBackend::new(terminal_config)
             .context("failed to create terminal backend")?;
         #[cfg(all(windows, not(feature = "integration")))]
-        let backend = CrosstermBackend::new(std::io::stdout(), (&config.editor).into());
+        let backend = CrosstermBackend::new(std::io::stdout(), terminal_config);
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -129,13 +151,8 @@ impl Application {
         let area = terminal.size();
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
-        let handlers = handlers::setup(config.clone());
 
-        // Create the new config system
-        let mut registry = OptionRegistry::new();
-        init_config(&mut registry);
-        let lsp_registry = OptionRegistry::new();
-        let config_store = Arc::new(ConfigStore::new(registry, lsp_registry));
+        let handlers = handlers::setup(config_store.clone());
 
         let mut editor = Editor::new(
             area,
@@ -399,7 +416,14 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
-                if let Err(err) = self.terminal.reconfigure((&app_config.editor).into()) {
+
+                // Reconfigure terminal backend using ConfigStore
+                let terminal_config = tui::terminal::Config {
+                    enable_mouse_capture: self.editor.config_store.editor().mouse(),
+                    force_enable_extended_underlines: self.editor.config_store.editor().force_undercurl(),
+                    kitty_keyboard_protocol: app_config.editor.kitty_keyboard_protocol,
+                };
+                if let Err(err) = self.terminal.reconfigure(terminal_config) {
                     self.editor.set_error(err.to_string());
                 };
                 self.config.store(Arc::new(app_config));
@@ -411,7 +435,7 @@ impl Application {
         self.editor.refresh_config(&old_editor_config);
 
         // reset view position in case softwrap was enabled/disabled
-        let scrolloff = self.editor.config().scrolloff;
+        let scrolloff = self.editor.config_store.editor().scrolloff();
         for (view, _) in self.editor.tree.views() {
             let doc = doc_mut!(self.editor, &view.doc);
             view.ensure_cursor_in_view(doc, scrolloff);
@@ -422,6 +446,16 @@ impl Application {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
+
+            // Reload config into the new ConfigStore
+            // First clear the editor config to defaults, then reload
+            self.editor.config_store.clear_editor_config();
+            if let Err(e) = self.editor.config_store.load_editor_config_if_exists(&helix_loader::config_file()) {
+                log::warn!("Failed to reload global config into ConfigStore: {}", e);
+            }
+            if let Err(e) = self.editor.config_store.load_editor_config_if_exists(&helix_loader::workspace_config_file()) {
+                log::warn!("Failed to reload workspace config into ConfigStore: {}", e);
+            }
 
             // Update the syntax language loader before setting the theme. Setting the theme will
             // call `Loader::set_scopes` which must be done before the documents are re-parsed for
@@ -449,7 +483,14 @@ impl Application {
                 document.replace_diagnostics(diagnostics, &[], None);
             }
 
-            self.terminal.reconfigure((&default_config.editor).into())?;
+            // Reconfigure terminal backend using ConfigStore
+            let terminal_config = tui::terminal::Config {
+                enable_mouse_capture: self.editor.config_store.editor().mouse(),
+                force_enable_extended_underlines: self.editor.config_store.editor().force_undercurl(),
+                kitty_keyboard_protocol: default_config.editor.kitty_keyboard_protocol,
+            };
+            self.terminal.reconfigure(terminal_config)?;
+
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -472,7 +513,7 @@ impl Application {
         terminal_true_color: bool,
         mode: Option<theme::Mode>,
     ) {
-        let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
+        let true_color = terminal_true_color || editor.config_store.editor().force_true_color() || crate::true_color();
         let theme = config
             .theme
             .as_ref()
@@ -838,7 +879,7 @@ impl Application {
                         );
                     }
                     Notification::ShowMessage(params) => {
-                        if self.config.load().editor.lsp.display_messages {
+                        if self.editor.config_store.editor().display_messages() {
                             match params.typ {
                                 lsp::MessageType::ERROR => self.editor.set_error(params.message),
                                 lsp::MessageType::WARNING => {
@@ -892,7 +933,7 @@ impl Application {
                             }
                         };
 
-                        if self.editor.config().lsp.display_progress_messages {
+                        if self.editor.config_store.editor().display_progress_messages() {
                             let title =
                                 title.or_else(|| self.lsp_progress.title(server_id, &token));
                             if title.is_some() || percentage.is_some() || message.is_some() {

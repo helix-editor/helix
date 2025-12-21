@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
-use arc_swap::ArcSwap;
 use futures_util::Future;
+use helix_config::definition::CompletionConfig;
 use helix_core::completion::CompletionProvider;
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{cancelable_future, TaskController, TaskHandle};
@@ -18,7 +18,6 @@ use tokio::task::JoinSet;
 use tokio::time::{timeout_at, Instant};
 
 use crate::compositor::Compositor;
-use crate::config::Config;
 use crate::handlers::completion::item::CompletionResponse;
 use crate::handlers::completion::path::path_completion;
 use crate::handlers::completion::{
@@ -51,13 +50,13 @@ pub struct CompletionHandler {
     trigger: Option<Trigger>,
     in_flight: Option<Trigger>,
     task_controller: TaskController,
-    config: Arc<ArcSwap<Config>>,
+    config_store: Arc<helix_config::ConfigStore>,
 }
 
 impl CompletionHandler {
-    pub fn new(config: Arc<ArcSwap<Config>>) -> CompletionHandler {
+    pub fn new(config_store: Arc<helix_config::ConfigStore>) -> CompletionHandler {
         Self {
-            config,
+            config_store,
             task_controller: TaskController::new(),
             trigger: None,
             in_flight: None,
@@ -136,7 +135,7 @@ impl helix_event::AsyncHook for CompletionHandler {
             // if the current request was closed forget about it
             // otherwise immediately restart the completion request
             let timeout = if trigger.kind == TriggerKind::Auto {
-                self.config.load().editor.completion_timeout
+                self.config_store.editor().completion_timeout()
             } else {
                 // we want almost instant completions for trigger chars
                 // and restarting completion requests. The small timeout here mainly

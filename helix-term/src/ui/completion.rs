@@ -130,8 +130,10 @@ impl Completion {
     pub const ID: &'static str = "completion";
 
     pub fn new(editor: &Editor, items: Vec<CompletionItem>, trigger_offset: usize) -> Self {
-        let preview_completion_insert = editor.config().preview_completion_insert;
-        let replace_mode = editor.config().completion_replace;
+        use helix_config::definition::CompletionConfig;
+        let config = editor.config_store.editor();
+        let preview_completion_insert = config.preview_completion_insert();
+        let replace_mode = config.completion_replace();
 
         let dir_style = editor.theme.get("ui.text.directory");
 

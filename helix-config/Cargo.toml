@@ -11,6 +11,9 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[features]
+unicode-lines = ["helix-core/unicode-lines"]
+
 [dependencies]
 ahash = "0.8.6"
 hashbrown = { version = "0.14.3", features = ["raw"] }
@@ -24,6 +27,7 @@ regex = "1.10.2"
 regex-syntax = "0.8.2"
 which = "5.0.0"
 toml = "0.8"
+helix-core = { path = "../helix-core" }
 
 [dev-dependencies]
 tempfile = "3.8"

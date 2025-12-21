@@ -1,6 +1,6 @@
 use crate::{
     align_view,
-    annotations::diagnostics::InlineDiagnostics,
+    annotations::diagnostics::{DiagnosticFilter, InlineDiagnostics, InlineDiagnosticsConfig},
     document::{DocumentColorSwatches, DocumentInlayHints},
     graphics::Rect,
     gutter::gutter_width,
@@ -8,7 +8,9 @@ use crate::{
     Align, Document, DocumentId, Theme, ViewId,
 };
 
-use helix_config::definition::{GutterConfig, GutterType, LspConfig};
+use helix_config::definition::{
+    GutterConfig, GutterType, InlineDiagnosticsConfig as InlineDiagnosticsConfigTrait, LspConfig,
+};
 use helix_core::{
     char_idx_at_visual_offset,
     doc_formatter::TextFormat,
@@ -494,8 +496,19 @@ impl View {
         let enable_cursor_line = self
             .diagnostics_handler
             .show_cursorline_diagnostics(doc, self.id);
-        let config = doc.config.load();
-        let config = config.inline_diagnostics.prepare(width, enable_cursor_line);
+
+        // Build InlineDiagnosticsConfig from ConfigStore
+        let config_store = &self.config_store.editor();
+        let config = InlineDiagnosticsConfig {
+            cursor_line: config_store.cursor_line(),
+            other_lines: config_store.other_lines(),
+            min_diagnostic_width: config_store.min_diagnostic_width(),
+            prefix_len: config_store.prefix_len(),
+            max_wrap: config_store.max_wrap(),
+            max_diagnostics: config_store.max_diagnostics(),
+        }
+        .prepare(width, enable_cursor_line);
+
         if !config.disabled() {
             let cursor = doc
                 .selection(self.id)
@@ -906,11 +919,12 @@ mod tests {
             config_store,
         );
         doc.ensure_view_init(view.id);
+        let gutter_offset = view.gutter_offset(&doc);
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
                 41,
-                40 + DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS + 1,
+                40 + gutter_offset + 1,
                 TextFormat::default(),
                 &TextAnnotations::default(),
                 true
@@ -935,11 +949,12 @@ mod tests {
             config_store,
         );
         doc.ensure_view_init(view.id);
+        let gutter_offset = view.gutter_offset(&doc);
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
                 41,
-                40 + 1,
+                40 + gutter_offset + 1,
                 TextFormat::default(),
                 &TextAnnotations::default(),
                 true

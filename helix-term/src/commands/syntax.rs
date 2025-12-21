@@ -9,6 +9,7 @@ use dashmap::DashMap;
 use futures_util::FutureExt;
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
+use helix_config::definition::{FilePickerConfig, SearchConfig};
 use helix_core::{
     syntax::{Loader, QueryIterEvent},
     Rope, RopeSlice, Selection, Syntax, Uri,
@@ -214,27 +215,27 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
         .canonicalize()
         .unwrap_or_else(|_| search_root.clone());
 
-    let config = cx.editor.config();
-    let dedup_symlinks = config.file_picker.deduplicate_links;
+    let config_store = &cx.editor.config_store;
+    let dedup_symlinks = config_store.editor().deduplicate_links();
 
     let mut walk_builder = WalkBuilder::new(&search_root);
     walk_builder
-        .hidden(config.file_picker.hidden)
-        .parents(config.file_picker.parents)
-        .ignore(config.file_picker.ignore)
-        .follow_links(config.file_picker.follow_symlinks)
-        .git_ignore(config.file_picker.git_ignore)
-        .git_global(config.file_picker.git_global)
-        .git_exclude(config.file_picker.git_exclude)
-        .max_depth(config.file_picker.max_depth)
+        .hidden(config_store.editor().hidden())
+        .parents(config_store.editor().parents())
+        .ignore(config_store.editor().ignore())
+        .follow_links(config_store.editor().follow_symlinks())
+        .git_ignore(config_store.editor().git_ignore())
+        .git_global(config_store.editor().git_global())
+        .git_exclude(config_store.editor().git_exclude())
+        .max_depth(config_store.editor().max_depth())
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks))
         .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
         .add_custom_ignore_filename(".helix/ignore");
 
     let mut regex_matcher_builder = RegexMatcherBuilder::new();
-    regex_matcher_builder.case_smart(config.search.smart_case);
+    regex_matcher_builder.case_smart(config_store.editor().smart_case());
     let mut rope_regex_builder = rope::RegexBuilder::new();
-    rope_regex_builder.syntax(rope::Config::new().case_insensitive(config.search.smart_case));
+    rope_regex_builder.syntax(rope::Config::new().case_insensitive(config_store.editor().smart_case()));
     let state = SearchState {
         searcher_builder,
         walk_builder,

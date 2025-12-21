@@ -95,8 +95,31 @@ impl AutoPairs {
         Self(auto_pairs)
     }
 
+    /// Creates an empty AutoPairs (auto-pairs disabled).
+    pub fn empty() -> Self {
+        Self(HashMap::new())
+    }
+
     pub fn get(&self, ch: char) -> Option<&Pair> {
         self.0.get(&ch)
+    }
+
+    /// Returns true if no auto pairs are configured.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns the number of entries in the auto pairs map.
+    /// Note: Both opener and closer characters are stored as separate entries,
+    /// so for symmetric pairs like quotes, the count equals the number of pairs,
+    /// while for asymmetric pairs like brackets, the count is double.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Iterates over all entries in the auto pairs map.
+    pub fn iter(&self) -> impl Iterator<Item = (char, &Pair)> {
+        self.0.iter().map(|(&ch, pair)| (ch, pair))
     }
 }
 
@@ -106,61 +129,6 @@ impl Default for AutoPairs {
     }
 }
 
-impl helix_config::Ty for AutoPairs {
-    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
-        use anyhow::bail;
-        use helix_config::Value;
-        match val {
-            Value::Bool(false) => Ok(Self(HashMap::default())),
-            Value::Bool(true) => Ok(Self::default()),
-            Value::Map(map) => {
-                let pairs: Result<Vec<_>, _> = map
-                    .iter()
-                    .map(|(open, close)| {
-                        let open = open.chars().next().ok_or_else(|| {
-                            anyhow::anyhow!("expected single character key, got empty string")
-                        })?;
-                        let Value::String(close) = close else {
-                            bail!("expected string value for auto pair close character");
-                        };
-                        let close = close.chars().next().ok_or_else(|| {
-                            anyhow::anyhow!("expected single character value, got empty string")
-                        })?;
-                        Ok((open, close))
-                    })
-                    .collect();
-                Ok(AutoPairs::new(pairs?.iter()))
-            }
-            _ => bail!("expected boolean or map of character pairs"),
-        }
-    }
-
-    fn to_value(&self) -> helix_config::Value {
-        use helix_config::Value;
-        if self.0.is_empty() {
-            return Value::Bool(false);
-        }
-        // Check if it matches the default pairs
-        let default = Self::default();
-        if self.0.len() == default.0.len()
-            && self.0.iter().all(|(k, v)| default.0.get(k) == Some(v))
-        {
-            return Value::Bool(true);
-        }
-        // Custom pairs - serialize as map
-        let mut map: helix_config::Map<Value> = helix_config::Map::default();
-        // Only include opener entries (avoid duplicating close entries)
-        for (ch, pair) in &self.0 {
-            if *ch == pair.open {
-                map.insert(
-                    pair.open.to_string().into_boxed_str(),
-                    Value::String(pair.close.to_string()),
-                );
-            }
-        }
-        Value::Map(Box::new(map))
-    }
-}
 
 // insert hook:
 // Fn(doc, selection, char) => Option<Transaction>

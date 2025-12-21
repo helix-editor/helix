@@ -11,6 +11,7 @@ use helix_view::{
 
 use crate::ui::ProgressSpinners;
 
+use helix_config::definition::{StatusLineConfig, UiConfig};
 use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
@@ -61,9 +62,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Left side of the status line.
 
-    let config = context.editor.config();
-
-    for element_id in &config.statusline.left {
+    for element_id in context.editor.config_store.editor().left().iter() {
         let render = get_render_function(*element_id);
         (render)(context, |context, span| {
             append(&mut context.parts.left, span, base_style)
@@ -79,7 +78,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Right side of the status line.
 
-    for element_id in &config.statusline.right {
+    for element_id in context.editor.config_store.editor().right().iter() {
         let render = get_render_function(*element_id);
         (render)(context, |context, span| {
             append(&mut context.parts.right, span, base_style)
@@ -98,7 +97,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Center of the status line.
 
-    for element_id in &config.statusline.center {
+    for element_id in context.editor.config_store.editor().center().iter() {
         let render = get_render_function(*element_id);
         (render)(context, |context, span| {
             append(&mut context.parts.center, span, base_style)
@@ -165,12 +164,10 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let visible = context.focused;
-    let config = context.editor.config();
-    let modenames = &config.statusline.mode;
     let mode_str = match context.editor.mode() {
-        Mode::Insert => &modenames.insert,
-        Mode::Select => &modenames.select,
-        Mode::Normal => &modenames.normal,
+        Mode::Insert => context.editor.config_store.editor().mode_indicator_insert(),
+        Mode::Select => context.editor.config_store.editor().mode_indicator_select(),
+        Mode::Normal => context.editor.config_store.editor().mode_indicator_normal(),
     };
     let content = if visible {
         format!(" {mode_str} ")
@@ -178,7 +175,7 @@ where
         // If not focused, explicitly leave an empty space instead of returning None.
         " ".repeat(mode_str.width() + 2)
     };
-    let style = if visible && config.color_modes {
+    let style = if visible && context.editor.config_store.editor().color_modes() {
         match context.editor.mode() {
             Mode::Insert => context.editor.theme.get("ui.statusline.insert"),
             Mode::Select => context.editor.theme.get("ui.statusline.select"),
@@ -231,7 +228,7 @@ where
                 counts
             });
 
-    for sev in &context.editor.config().statusline.diagnostics {
+    for sev in context.editor.config_store.editor().diagnostics().iter().copied() {
         match sev {
             Severity::Hint if hints > 0 => {
                 write(context, Span::styled("●", context.editor.theme.get("hint")));
@@ -284,7 +281,7 @@ where
         },
     );
 
-    let sevs_to_show = &context.editor.config().statusline.workspace_diagnostics;
+    let sevs_to_show = context.editor.config_store.editor().workspace_diagnostics();
 
     // Avoid showing the " W " if no diagnostic counts will be shown.
     if !sevs_to_show.iter().any(|sev| match sev {
@@ -519,7 +516,7 @@ fn render_separator<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let sep = &context.editor.config().statusline.separator;
+    let sep = context.editor.config_store.editor().separator();
     let style = context.editor.theme.get("ui.statusline.separator");
 
     write(context, Span::styled(sep.to_string(), style));

@@ -69,44 +69,6 @@ impl IndentStyle {
     }
 }
 
-impl helix_config::Ty for IndentStyle {
-    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
-        use anyhow::bail;
-        use helix_config::Value;
-        match val {
-            Value::String(s) => {
-                let s = s.to_lowercase();
-                if s == "tabs" || s == "tab" {
-                    Ok(IndentStyle::Tabs)
-                } else if let Some(n) = s.strip_prefix("spaces:") {
-                    let n: u8 = n.parse()?;
-                    if n == 0 || n > MAX_INDENT {
-                        bail!("spaces indent must be between 1 and {MAX_INDENT}");
-                    }
-                    Ok(IndentStyle::Spaces(n))
-                } else {
-                    bail!("expected 'tabs' or 'spaces:N' (got {s:?})")
-                }
-            }
-            Value::Int(n) => {
-                if n <= 0 || n > MAX_INDENT as isize {
-                    bail!("spaces indent must be between 1 and {MAX_INDENT}");
-                }
-                Ok(IndentStyle::Spaces(n as u8))
-            }
-            _ => bail!("expected string ('tabs' or 'spaces:N') or integer"),
-        }
-    }
-
-    fn to_value(&self) -> helix_config::Value {
-        use helix_config::Value;
-        match self {
-            IndentStyle::Tabs => Value::String("tabs".to_string()),
-            IndentStyle::Spaces(n) => Value::Int(*n as isize),
-        }
-    }
-}
-
 /// Attempts to detect the indentation style used in a document.
 ///
 /// Returns the indentation style if the auto-detect confidence is

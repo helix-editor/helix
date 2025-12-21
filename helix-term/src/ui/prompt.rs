@@ -1,8 +1,8 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use arc_swap::ArcSwap;
+use helix_config::definition::CursorShapeConfig;
 use helix_core::syntax;
-use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::sync::Arc;
@@ -786,7 +786,7 @@ impl Component for Prompt {
 
         (
             Some(Position::new(area.y as usize + line, col)),
-            editor.config().cursor_shape.from_mode(Mode::Insert),
+            editor.config_store.editor().insert_mode_cursor(),
         )
     }
 }

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use helix_config::definition::LspConfig;
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{cancelable_future, register_hook, send_blocking, TaskController, TaskHandle};
 use helix_lsp::lsp::{self, SignatureInformation};
@@ -168,9 +169,7 @@ pub fn show_signature_help(
     invoked: SignatureHelpInvoked,
     response: Option<lsp::SignatureHelp>,
 ) {
-    let config = &editor.config();
-
-    if !(config.lsp.auto_signature_help
+    if !(editor.config_store.editor().auto_signature_help()
         || SignatureHelp::visible_popup(compositor).is_some()
         || invoked == SignatureHelpInvoked::Manual)
     {
@@ -218,7 +217,7 @@ pub fn show_signature_help(
         .map(|s| {
             let active_param_range = active_param_range(&s, response.active_parameter);
 
-            let signature_doc = if config.lsp.display_signature_help_docs {
+            let signature_doc = if editor.config_store.editor().display_signature_help_docs() {
                 s.documentation.map(|doc| match doc {
                     lsp::Documentation::String(s) => s,
                     lsp::Documentation::MarkupContent(markup) => markup.value,
@@ -292,7 +291,7 @@ fn signature_help_post_insert_char_hook(
     tx: &Sender<SignatureHelpEvent>,
     PostInsertChar { cx, .. }: &mut PostInsertChar<'_, '_>,
 ) -> anyhow::Result<()> {
-    if !cx.editor.config().lsp.auto_signature_help {
+    if !cx.editor.config_store.editor().auto_signature_help() {
         return Ok(());
     }
     let (view, doc) = current!(cx.editor);
@@ -337,7 +336,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
                 }));
             }
             (_, Mode::Insert) => {
-                if event.cx.editor.config().lsp.auto_signature_help {
+                if event.cx.editor.config_store.editor().auto_signature_help() {
                     send_blocking(&tx, SignatureHelpEvent::Trigger);
                 }
             }
@@ -353,7 +352,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 
     let tx = handlers.signature_hints.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
-        if event.doc.config.load().lsp.auto_signature_help && !event.ghost_transaction {
+        if event.doc.config_store.editor().auto_signature_help() && !event.ghost_transaction {
             send_blocking(&tx, SignatureHelpEvent::ReTrigger);
         }
         Ok(())
@@ -361,7 +360,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 
     let tx = handlers.signature_hints.clone();
     register_hook!(move |event: &mut SelectionDidChange<'_>| {
-        if event.doc.config.load().lsp.auto_signature_help {
+        if event.doc.config_store.editor().auto_signature_help() {
             send_blocking(&tx, SignatureHelpEvent::ReTrigger);
         }
         Ok(())

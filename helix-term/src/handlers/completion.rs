@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use helix_config::definition::CompletionConfig;
 use helix_core::chars::char_is_word;
 use helix_core::completion::CompletionProvider;
 use helix_core::syntax::config::LanguageServerFeature;
@@ -116,8 +117,7 @@ fn show_completion(
 }
 
 pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
-    let config = editor.config.load();
-    if !config.auto_completion {
+    if !editor.config_store.editor().auto_completion() {
         return;
     }
     let (view, doc): (&helix_view::View, &helix_view::Document) = current_ref!(editor);
@@ -158,7 +158,7 @@ pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
             .text()
             .chars_at(cursor)
             .reversed()
-            .take(config.completion_trigger_len as usize)
+            .take(editor.config_store.editor().completion_trigger_len() as usize)
             .all(char_is_word);
 
     if is_auto_trigger {

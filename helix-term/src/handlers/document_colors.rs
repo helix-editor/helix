@@ -1,6 +1,7 @@
 use std::{collections::HashSet, time::Duration};
 
 use futures_util::{stream::FuturesOrdered, StreamExt};
+use helix_config::definition::LspConfig;
 use helix_core::{syntax::config::LanguageServerFeature, text_annotations::InlineAnnotation};
 use helix_event::{cancelable_future, register_hook};
 use helix_lsp::lsp;
@@ -42,7 +43,7 @@ impl helix_event::AsyncHook for DocumentColorsHandler {
 }
 
 fn request_document_colors(editor: &mut Editor, doc_id: DocumentId) {
-    if !editor.config().lsp.display_color_swatches {
+    if !editor.config_store.editor().display_color_swatches() {
         return;
     }
 
@@ -105,7 +106,7 @@ fn attach_document_colors(
     doc_id: DocumentId,
     mut doc_colors: Vec<(usize, lsp::Color)>,
 ) {
-    if !editor.config().lsp.display_color_swatches {
+    if !editor.config_store.editor().display_color_swatches() {
         return;
     }
 

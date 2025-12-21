@@ -81,3 +81,38 @@ fn scope_overwrite() {
     scope_2.set("line-number", "abs", &registry).unwrap();
     assert_eq!(*scope_3.get::<LineNumber>("line-number"), LineNumber::Absolute);
 }
+
+#[test]
+fn test_new_config_options() {
+    use crate::{init_config, ConfigStore};
+    use crate::definition::{UiConfig, PickerStartPosition, BufferPickerConfig};
+
+    let mut registry = OptionRegistry::new();
+    init_config(&mut registry);
+    let lsp_registry = OptionRegistry::new();
+    let store = ConfigStore::new(registry, lsp_registry);
+
+    // Test jump_label_alphabet default value
+    let jump_alphabet = store.editor().jump_label_alphabet();
+    assert_eq!(&*jump_alphabet, "abcdefghijklmnopqrstuvwxyz");
+
+    // Test buffer_picker.start_position default value
+    let start_pos = store.editor().start_position();
+    assert_eq!(start_pos, PickerStartPosition::Current);
+}
+
+#[test]
+fn test_auto_save_config() {
+    use crate::{init_config, ConfigStore};
+    use crate::definition::AutoSaveConfig;
+
+    let mut registry = OptionRegistry::new();
+    init_config(&mut registry);
+    let lsp_registry = OptionRegistry::new();
+    let store = ConfigStore::new(registry, lsp_registry);
+
+    // Test auto-save default values
+    assert_eq!(store.editor().focus_lost(), false);
+    assert_eq!(store.editor().after_delay_enable(), false);
+    assert_eq!(store.editor().after_delay_timeout(), 3000);
+}

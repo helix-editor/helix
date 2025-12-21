@@ -7,7 +7,7 @@ use helix_core::syntax::{self, HighlightEvent, Highlighter, OverlayHighlights};
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{visual_offset_from_block, Position, RopeSlice};
 use helix_stdx::rope::RopeSliceExt;
-use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
+use helix_view::editor::WhitespaceRenderValue;
 use helix_view::graphics::Rect;
 use helix_view::theme::Style;
 use helix_view::view::ViewPosition;
@@ -205,39 +205,45 @@ impl<'a> TextRenderer<'a> {
         offset: Position,
         viewport: Rect,
     ) -> TextRenderer<'a> {
-        let editor_config = doc.config.load();
-        let WhitespaceConfig {
-            render: ws_render,
-            characters: ws_chars,
-        } = &editor_config.whitespace;
+        use helix_config::definition::{WhiteSpaceRenderConfig, IndentGuidesConfig};
+
+        let config = doc.config_store.editor();
 
         let tab_width = doc.tab_width();
-        let tab = if ws_render.tab() == WhitespaceRenderValue::All {
-            std::iter::once(ws_chars.tab)
-                .chain(std::iter::repeat_n(ws_chars.tabpad, tab_width - 1))
+
+        // Get whitespace render settings
+        let default_render = WhiteSpaceRenderConfig::render(config.as_ref());
+        let render_tab = config.render_tab().unwrap_or(default_render);
+        let render_newline = config.render_newline().unwrap_or(default_render);
+        let render_space = config.render_space().unwrap_or(default_render);
+        let render_nbsp = config.render_nbsp().unwrap_or(default_render);
+
+        let tab = if render_tab == WhitespaceRenderValue::All {
+            std::iter::once(config.tab_char())
+                .chain(std::iter::repeat_n(config.tabpad_char(), tab_width - 1))
                 .collect()
         } else {
             " ".repeat(tab_width)
         };
         let virtual_tab = " ".repeat(tab_width);
-        let newline = if ws_render.newline() == WhitespaceRenderValue::All {
-            ws_chars.newline.into()
+        let newline = if render_newline == WhitespaceRenderValue::All {
+            config.newline_char().into()
         } else {
             " ".to_owned()
         };
 
-        let space = if ws_render.space() == WhitespaceRenderValue::All {
-            ws_chars.space.into()
+        let space = if render_space == WhitespaceRenderValue::All {
+            config.space_char().into()
         } else {
             " ".to_owned()
         };
-        let nbsp = if ws_render.nbsp() == WhitespaceRenderValue::All {
-            ws_chars.nbsp.into()
+        let nbsp = if render_nbsp == WhitespaceRenderValue::All {
+            config.nbsp_char().into()
         } else {
             " ".to_owned()
         };
-        let nnbsp = if ws_render.nnbsp() == WhitespaceRenderValue::All {
-            ws_chars.nnbsp.into()
+        let nnbsp = if render_nbsp == WhitespaceRenderValue::All {
+            config.nbsp_char().into()
         } else {
             " ".to_owned()
         };
@@ -248,7 +254,7 @@ impl<'a> TextRenderer<'a> {
 
         TextRenderer {
             surface,
-            indent_guide_char: editor_config.indent_guides.character.into(),
+            indent_guide_char: config.character().into(),
             newline,
             nbsp,
             nnbsp,
@@ -259,14 +265,14 @@ impl<'a> TextRenderer<'a> {
             indent_width,
             starting_indent: offset.col / indent_width as usize
                 + (offset.col % indent_width as usize != 0) as usize
-                + editor_config.indent_guides.skip_levels as usize,
+                + config.skip_levels() as usize,
             indent_guide_style: text_style.patch(
                 theme
                     .try_get("ui.virtual.indent-guide")
                     .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
             ),
             text_style,
-            draw_indent_guides: editor_config.indent_guides.render,
+            draw_indent_guides: IndentGuidesConfig::render(config.as_ref()),
             viewport,
             offset,
         }

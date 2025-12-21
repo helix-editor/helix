@@ -1,40 +1,9 @@
 use std::fmt::{self, Display};
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
+use helix_core::diagnostic::Severity;
 
 use crate::*;
-
-/// Describes the severity level of a Diagnostic.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Deserialize, Serialize)]
-pub enum Severity {
-    Hint,
-    Info,
-    Warning,
-    Error,
-}
-
-impl Ty for Severity {
-    fn from_value(val: Value) -> anyhow::Result<Self> {
-        let val: String = val.typed()?;
-        match &*val {
-            "hint" => Ok(Severity::Hint),
-            "info" => Ok(Severity::Info),
-            "warning" => Ok(Severity::Warning),
-            "error" => Ok(Severity::Error),
-            _ => bail!("expected one of 'hint', 'info', 'warning' or 'error' (got {val:?})"),
-        }
-    }
-
-    fn to_value(&self) -> Value {
-        match self {
-            Severity::Hint => "hint".into(),
-            Severity::Info => "info".into(),
-            Severity::Warning => "warning".into(),
-            Severity::Error => "error".into(),
-        }
-    }
-}
 
 // TODO: move to stdx
 /// Helper macro that automatically generates an array
@@ -176,6 +145,38 @@ impl Ty for LanguageServerFeature {
     }
 }
 
+/// Describes the diagnostic filter level for inline diagnostics.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+pub enum DiagnosticFilter {
+    Disable,
+    Enable(Severity),
+}
+
+impl Ty for DiagnosticFilter {
+    fn from_value(val: Value) -> anyhow::Result<Self> {
+        let val: String = val.typed()?;
+        match &*val {
+            "disable" => Ok(DiagnosticFilter::Disable),
+            "hint" => Ok(DiagnosticFilter::Enable(Severity::Hint)),
+            "info" => Ok(DiagnosticFilter::Enable(Severity::Info)),
+            "warning" => Ok(DiagnosticFilter::Enable(Severity::Warning)),
+            "error" => Ok(DiagnosticFilter::Enable(Severity::Error)),
+            _ => bail!("expected one of 'disable', 'hint', 'info', 'warning' or 'error' (got {val:?})"),
+        }
+    }
+
+    fn to_value(&self) -> Value {
+        match self {
+            DiagnosticFilter::Disable => "disable",
+            DiagnosticFilter::Enable(Severity::Hint) => "hint",
+            DiagnosticFilter::Enable(Severity::Info) => "info",
+            DiagnosticFilter::Enable(Severity::Warning) => "warning",
+            DiagnosticFilter::Enable(Severity::Error) => "error",
+        }
+        .into()
+    }
+}
+
 pub fn init_language_server_config(registry: &mut OptionRegistry, language_server: &str) {
     registry.register(
         &format!("language-servers.{language_server}.active"),
@@ -294,5 +295,39 @@ options! {
         #[name = "word-completion.trigger-length"]
         #[read = copy]
         trigger_length: u8 = 7,
+    }
+
+    struct InlineDiagnosticsConfig {
+        /// Minimum severity for diagnostics to be displayed inline on the cursor line
+        #[name = "inline-diagnostics.cursor-line"]
+        #[read = copy]
+        cursor_line: DiagnosticFilter = DiagnosticFilter::Enable(Severity::Warning),
+        /// Minimum severity for diagnostics to be displayed inline on lines other than the cursor line
+        #[name = "inline-diagnostics.other-lines"]
+        #[read = copy]
+        other_lines: DiagnosticFilter = DiagnosticFilter::Disable,
+        /// Minimum width for inline diagnostics to be displayed (space on line required)
+        #[name = "inline-diagnostics.min-diagnostic-width"]
+        #[read = copy]
+        min_diagnostic_width: u16 = 40,
+        /// Length of diagnostic prefix (spacing before diagnostic text)
+        #[name = "inline-diagnostics.prefix-len"]
+        #[read = copy]
+        prefix_len: u16 = 1,
+        /// Maximum number of lines to wrap inline diagnostic messages
+        #[name = "inline-diagnostics.max-wrap"]
+        #[read = copy]
+        max_wrap: u16 = 20,
+        /// Maximum number of diagnostics to display inline per line
+        #[name = "inline-diagnostics.max-diagnostics"]
+        #[read = copy]
+        max_diagnostics: usize = 10,
+    }
+
+    struct EndOfLineDiagnosticsConfig {
+        /// Minimum severity for diagnostics to be displayed at the end of lines
+        #[name = "end-of-line-diagnostics"]
+        #[read = copy]
+        end_of_line_diagnostics: DiagnosticFilter = DiagnosticFilter::Enable(Severity::Hint),
     }
 }
