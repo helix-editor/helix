@@ -1557,6 +1557,9 @@ impl Editor {
         }
 
         if old_path.exists() {
+            if let Some(parent) = new_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
             fs::rename(old_path, &new_path)?;
         }
 
