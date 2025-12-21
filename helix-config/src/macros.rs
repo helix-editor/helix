@@ -91,26 +91,26 @@ macro_rules! options {
         $ret_ty
     };
     (@ret_ty deref $ty: ty) => {
-        $crate::Guard<'_, <$ty as ::std::ops::Deref>::Target>
+        $ty
     };
     (@ret_ty $ty: ty) => {
-        $crate::Guard<'_, $ty>
+        $ty
     };
-    (@get map($fn: expr, $ret_ty: ty) $config: ident, $ty: ty, $name: ident) => {
-        let val = $config.get::<$ty>($name);
+    (@get map($fn: expr, $ret_ty: ty) $config: ident, $ty: ty, $name: ident) => {{
+        let val: $ty = $config.get_cloned($name);
         $fn(val)
-    };
+    }};
     (@get fold($init: expr, $fn: expr, $ret_ty: ty) $config: ident, $ty: ty, $name: ident) => {
         $config.get_folded::<$ty, $ret_ty>($name, $init, $fn)
     };
     (@get copy $config: ident, $ty: ty, $name: ident) => {
-        *$config.get::<$ty>($name)
+        $config.get_cloned::<$ty>($name)
     };
     (@get deref $config: ident, $ty: ty, $name: ident) => {
-        $config.get_deref::<$ty>($name)
+        $config.get_cloned::<$ty>($name)
     };
     (@get $config: ident, $ty: ty, $name: ident) => {
-        $config.get::<$ty>($name)
+        $config.get_cloned::<$ty>($name)
     };
 }
 

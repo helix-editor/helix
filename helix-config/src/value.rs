@@ -86,6 +86,16 @@ impl From<Value> for serde_json::Value {
     }
 }
 
+impl TryFrom<toml::Value> for Value {
+    type Error = serde_json::Error;
+
+    fn try_from(value: toml::Value) -> Result<Self> {
+        // Convert toml::Value to serde_json::Value first, then to our Value
+        let json_value: serde_json::Value = serde_json::to_value(&value)?;
+        to_value(json_value)
+    }
+}
+
 from_int!(isize, usize, u32, i32, i16, u16, i8, u8);
 
 pub fn to_value<T>(value: T) -> Result<Value>

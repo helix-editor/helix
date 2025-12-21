@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -47,15 +46,23 @@ fn setup_registry() -> OptionRegistry {
 fn default_values() {
     let registry = setup_registry();
     let global_scope = registry.global_scope();
-    let scrolloff: usize = *global_scope.get("scrolloff");
-    let shell_ = global_scope.get_deref::<Box<[_]>>("shell");
-    let shell: &[Box<str>] = &shell_;
-    let mouse: bool = *global_scope.get("mouse");
-    let line_number: LineNumber = *global_scope.get("line-number");
-    assert_eq!(scrolloff, 5);
-    assert!(shell.iter().map(Box::deref).eq(["sh", "-c"]));
-    assert!(mouse);
-    assert_eq!(line_number, LineNumber::Absolute);
+
+    // Test reference-returning get()
+    let scrolloff = global_scope.get::<usize>("scrolloff");
+    assert_eq!(*scrolloff, 5);
+
+    let shell = global_scope.get::<Box<[Box<str>]>>("shell");
+    assert!(shell.iter().map(|s| s.as_ref()).eq(["sh", "-c"]));
+
+    let mouse = global_scope.get::<bool>("mouse");
+    assert!(*mouse);
+
+    let line_number = global_scope.get::<LineNumber>("line-number");
+    assert_eq!(*line_number, LineNumber::Absolute);
+
+    // Test cloning get_cloned()
+    let scrolloff_cloned: usize = global_scope.get_cloned("scrolloff");
+    assert_eq!(scrolloff_cloned, 5);
 }
 
 #[test]
@@ -66,15 +73,11 @@ fn scope_overwrite() {
     let scope_2 = Arc::new(global_scope.create_scope());
     let mut scope_3 = scope_1.create_scope();
     scope_1.set("line-number", "rel", &registry).unwrap();
-    let line_number: LineNumber = *scope_3.get("line-number");
-    assert_eq!(line_number, LineNumber::Relative);
+    assert_eq!(*scope_3.get::<LineNumber>("line-number"), LineNumber::Relative);
     scope_3.set_parent_scope(scope_2.clone());
-    let line_number: LineNumber = *scope_3.get("line-number");
-    assert_eq!(line_number, LineNumber::Absolute);
+    assert_eq!(*scope_3.get::<LineNumber>("line-number"), LineNumber::Absolute);
     scope_2.set("line-number", "rel", &registry).unwrap();
-    let line_number: LineNumber = *scope_3.get("line-number");
-    assert_eq!(line_number, LineNumber::Relative);
+    assert_eq!(*scope_3.get::<LineNumber>("line-number"), LineNumber::Relative);
     scope_2.set("line-number", "abs", &registry).unwrap();
-    let line_number: LineNumber = *scope_3.get("line-number");
-    assert_eq!(line_number, LineNumber::Absolute);
+    assert_eq!(*scope_3.get::<LineNumber>("line-number"), LineNumber::Absolute);
 }

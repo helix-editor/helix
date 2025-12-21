@@ -36,6 +36,11 @@ impl ConfigData {
             &*data
         }
     }
+
+    /// Gets a cloned copy of the stored value.
+    pub fn get_cloned<T: Any + Clone>(&self) -> T {
+        self.get::<T>().clone()
+    }
     pub fn new<T: Any>(val: T) -> Self {
         let mut data = MaybeUninit::uninit();
         if store_inline::<T>() {

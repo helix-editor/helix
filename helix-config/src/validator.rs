@@ -8,7 +8,7 @@ use anyhow::{bail, ensure, Result};
 use crate::any::ConfigData;
 use crate::Value;
 
-pub trait Validator: 'static + Debug {
+pub trait Validator: 'static + Debug + Send + Sync {
     fn validate(&self, val: Value) -> Result<ConfigData>;
 }
 
@@ -67,7 +67,7 @@ where
 impl<E, T> Validator for IntegerRangeValidator<T>
 where
     E: Error + Sync + Send + 'static,
-    T: Any + TryFrom<isize, Error = E>,
+    T: Any + TryFrom<isize, Error = E> + Send + Sync,
 {
     fn validate(&self, val: Value) -> Result<ConfigData> {
         Ok(ConfigData::new(self.validate(val)))
@@ -172,8 +172,8 @@ impl Ty for std::string::String {
 impl<T: Ty> Ty for Option<T> {
     fn to_value(&self) -> Value {
         match self {
-            Some(_) => todo!(),
-            None => todo!(),
+            Some(val) => val.to_value(),
+            None => Value::Null,
         }
     }
 
@@ -271,7 +271,7 @@ impl<T: Ty, F> Debug for TyValidator<F, T> {
 impl<T, F> Validator for TyValidator<F, T>
 where
     T: Ty,
-    F: Fn(&T) -> anyhow::Result<()> + 'static,
+    F: Fn(&T) -> anyhow::Result<()> + 'static + Send + Sync,
 {
     fn validate(&self, val: Value) -> Result<ConfigData> {
         let val = <T as Ty>::from_value(val)?;
@@ -283,14 +283,16 @@ where
 pub fn ty_validator<T, F>(f: F) -> impl Validator
 where
     T: Ty,
-    F: Fn(&T) -> anyhow::Result<()> + 'static,
+    F: Fn(&T) -> anyhow::Result<()> + 'static + Send + Sync,
 {
     TyValidator { ty: PhantomData, f }
 }
 
 pub fn regex_str_validator() -> impl Validator {
-    ty_validator(|val: &crate::String| {
-        regex_syntax::parse(val)?;
+    ty_validator(|val: &Option<crate::String>| {
+        if let Some(regex) = val {
+            regex_syntax::parse(regex)?;
+        }
         Ok(())
     })
 }

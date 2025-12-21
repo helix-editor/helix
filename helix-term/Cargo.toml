@@ -43,6 +43,7 @@ path = "src/main.rs"
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
 helix-core = { path = "../helix-core" }
+helix-config = { path = "../helix-config" }
 helix-event = { path = "../helix-event" }
 helix-view = { path = "../helix-view" }
 helix-lsp = { path = "../helix-lsp" }

@@ -1,5 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
+use helix_config::{ConfigStore, OptionRegistry, init_config};
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
@@ -129,6 +130,13 @@ impl Application {
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
+
+        // Create the new config system
+        let mut registry = OptionRegistry::new();
+        init_config(&mut registry);
+        let lsp_registry = OptionRegistry::new();
+        let config_store = Arc::new(ConfigStore::new(registry, lsp_registry));
+
         let mut editor = Editor::new(
             area,
             Arc::new(theme_loader),
@@ -137,6 +145,7 @@ impl Application {
                 &config.editor
             })),
             handlers,
+            config_store,
         );
         Self::load_configured_theme(
             &mut editor,

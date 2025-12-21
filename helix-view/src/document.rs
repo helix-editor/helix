@@ -1,6 +1,8 @@
 use anyhow::{anyhow, bail, Error};
 use arc_swap::access::DynAccess;
 use arc_swap::ArcSwap;
+use helix_config::{LanguageId, LayerId};
+use helix_config::definition::{MiscConfig, WrapConfig, CompletionConfig};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
@@ -171,6 +173,10 @@ pub struct Document {
     pub syntax: Option<Syntax>,
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub language: Option<Arc<LanguageConfiguration>>,
+    /// Language identifier for config lookup in ConfigStore
+    language_id: LanguageId,
+    /// Optional per-document config layer
+    config_layer: Option<LayerId>,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
@@ -182,6 +188,9 @@ pub struct Document {
     // be more troublesome.
     pub history: Cell<History>,
     pub config: Arc<dyn DynAccess<Config>>,
+
+    /// New configuration system store
+    pub config_store: Arc<helix_config::ConfigStore>,
 
     savepoints: Vec<Weak<SavePoint>>,
 
@@ -688,6 +697,7 @@ impl Document {
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
+        config_store: Arc<helix_config::ConfigStore>,
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
         let line_ending = config.load().default_line_ending.into();
@@ -712,6 +722,8 @@ impl Document {
             restore_cursor: false,
             syntax: None,
             language: None,
+            language_id: LanguageId::NONE,
+            config_layer: None,
             changes,
             old_state,
             diagnostics: Vec::new(),
@@ -724,6 +736,7 @@ impl Document {
             language_servers: HashMap::new(),
             diff_handle: None,
             config,
+            config_store,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
@@ -739,10 +752,11 @@ impl Document {
     pub fn default(
         config: Arc<dyn DynAccess<Config>>,
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
+        config_store: Arc<helix_config::ConfigStore>,
     ) -> Self {
         let line_ending: LineEnding = config.load().default_line_ending.into();
         let text = Rope::from(line_ending.as_str());
-        Self::from(text, None, config, syn_loader)
+        Self::from(text, None, config, syn_loader, config_store)
     }
 
     // TODO: async fn?
@@ -754,6 +768,7 @@ impl Document {
         detect_language: bool,
         config: Arc<dyn DynAccess<Config>>,
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
+        config_store: Arc<helix_config::ConfigStore>,
     ) -> Result<Self, DocumentOpenError> {
         // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
         if path.metadata().is_ok_and(|metadata| !metadata.is_file()) {
@@ -780,7 +795,7 @@ impl Document {
         };
 
         let loader = syn_loader.load();
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config, syn_loader);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config, syn_loader.clone(), config_store);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
@@ -985,7 +1000,7 @@ impl Document {
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
         let doc_id = self.id();
-        let atomic_save = self.config.load().atomic_save;
+        let atomic_save = self.config_store.editor().atomic_save();
 
         let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
@@ -1179,7 +1194,7 @@ impl Document {
     }
 
     pub fn detect_editor_config(&mut self) {
-        if self.config.load().editor_config {
+        if self.config_store.editor().editor_config() {
             if let Some(path) = self.path.as_ref() {
                 self.editor_config = EditorConfig::find(path);
             }
@@ -1308,6 +1323,20 @@ impl Document {
                 })
                 .ok()
         });
+        // Reset language_id when language changes - caller should update via set_config_language_id
+        self.language_id = LanguageId::NONE;
+    }
+
+    /// Set the config language ID for config lookup.
+    /// This should be called after set_language to associate the document with a language
+    /// in the ConfigStore.
+    pub fn set_config_language_id(&mut self, language_id: LanguageId) {
+        self.language_id = language_id;
+    }
+
+    /// Set the per-document config layer.
+    pub fn set_config_layer(&mut self, layer: Option<LayerId>) {
+        self.config_layer = layer;
     }
 
     /// Set the programming language for the file if you know the language but don't have the
@@ -1810,6 +1839,16 @@ impl Document {
         self.language.as_deref()
     }
 
+    /// Returns the LanguageId for config lookup.
+    pub fn config_language_id(&self) -> LanguageId {
+        self.language_id
+    }
+
+    /// Returns the optional per-document config layer.
+    pub fn config_layer(&self) -> Option<LayerId> {
+        self.config_layer
+    }
+
     /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version
@@ -1818,13 +1857,13 @@ impl Document {
     pub fn word_completion_enabled(&self) -> bool {
         self.language_config()
             .and_then(|lang_config| lang_config.word_completion.and_then(|c| c.enable))
-            .unwrap_or_else(|| self.config.load().word_completion.enable)
+            .unwrap_or_else(|| self.config_store.editor().get_cloned::<bool>("word-completion.enable"))
     }
 
     pub fn path_completion_enabled(&self) -> bool {
         self.language_config()
             .and_then(|lang_config| lang_config.path_completion)
-            .unwrap_or_else(|| self.config.load().path_completion)
+            .unwrap_or_else(|| self.config_store.editor().path_completion())
     }
 
     /// maintains the order as configured in the language_servers TOML array
@@ -1923,14 +1962,14 @@ impl Document {
     pub fn insert_final_newline(&self) -> bool {
         self.editor_config
             .insert_final_newline
-            .unwrap_or_else(|| self.config.load().insert_final_newline)
+            .unwrap_or_else(|| self.config_store.editor().insert_final_newline())
     }
 
     /// Whether the document should trim whitespace preceding line endings on save.
     pub fn trim_trailing_whitespace(&self) -> bool {
         self.editor_config
             .trim_trailing_whitespace
-            .unwrap_or_else(|| self.config.load().trim_trailing_whitespace)
+            .unwrap_or_else(|| self.config_store.editor().trim_trailing_whitespace())
     }
 
     pub fn changes(&self) -> &ChangeSet {
@@ -2215,7 +2254,7 @@ impl Document {
             .max_line_length
             .map(|n| n.get() as usize)
             .or_else(|| self.language_config().and_then(|config| config.text_width))
-            .unwrap_or_else(|| self.config.load().text_width)
+            .unwrap_or_else(|| self.config_store.editor().text_width())
     }
 
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
@@ -2240,15 +2279,13 @@ impl Document {
                 viewport_width = text_width as u16;
             }
         }
-        let config = self.config.load();
-        let editor_soft_wrap = &config.soft_wrap;
         let language_soft_wrap = self
             .language
             .as_ref()
             .and_then(|config| config.soft_wrap.as_ref());
         let enable_soft_wrap = language_soft_wrap
             .and_then(|soft_wrap| soft_wrap.enable)
-            .or(editor_soft_wrap.enable)
+            .or(config.soft_wrap.enable)
             .unwrap_or(false);
         let max_wrap = language_soft_wrap
             .and_then(|soft_wrap| soft_wrap.max_wrap)
@@ -2256,7 +2293,7 @@ impl Document {
             .unwrap_or(20);
         let max_indent_retain = language_soft_wrap
             .and_then(|soft_wrap| soft_wrap.max_indent_retain)
-            .or(editor_soft_wrap.max_indent_retain)
+            .or(config.soft_wrap.max_indent_retain)
             .unwrap_or(40);
         let wrap_indicator = language_soft_wrap
             .and_then(|soft_wrap| soft_wrap.wrap_indicator.clone())
@@ -2353,11 +2390,16 @@ mod test {
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello\r\nworld");
+        let mut registry = helix_config::OptionRegistry::new();
+        helix_config::init_config(&mut registry);
+        let lsp_registry = helix_config::OptionRegistry::new();
+        let config_store = Arc::new(helix_config::ConfigStore::new(registry, lsp_registry));
         let mut doc = Document::from(
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+            config_store,
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
@@ -2392,11 +2434,16 @@ mod test {
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello");
+        let mut registry = helix_config::OptionRegistry::new();
+        helix_config::init_config(&mut registry);
+        let lsp_registry = helix_config::OptionRegistry::new();
+        let config_store = Arc::new(helix_config::ConfigStore::new(registry, lsp_registry));
         let mut doc = Document::from(
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+            config_store,
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));

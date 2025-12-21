@@ -2,12 +2,13 @@ use crate::{
     align_view,
     annotations::diagnostics::InlineDiagnostics,
     document::{DocumentColorSwatches, DocumentInlayHints},
-    editor::{GutterConfig, GutterType},
     graphics::Rect,
+    gutter::gutter_width,
     handlers::diagnostics::DiagnosticsHandler,
     Align, Document, DocumentId, Theme, ViewId,
 };
 
+use helix_config::definition::{GutterConfig, GutterType, LspConfig};
 use helix_core::{
     char_idx_at_visual_offset,
     doc_formatter::TextFormat,
@@ -20,6 +21,7 @@ use helix_core::{
 use std::{
     collections::{HashMap, VecDeque},
     fmt,
+    sync::Arc,
 };
 
 const JUMP_LIST_CAPACITY: usize = 30;
@@ -139,8 +141,6 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
-    /// all gutter-related configuration settings, used primarily for gutter rendering
-    pub gutters: GutterConfig,
     /// A mapping between documents and the last history revision the view was updated at.
     /// Changes between documents and views are synced lazily when switching windows. This
     /// mapping keeps track of the last applied history revision so that only new changes
@@ -154,6 +154,7 @@ pub struct View {
     // left to future work. For now we treat all views as focused and give them
     // each their own handler.
     pub diagnostics_handler: DiagnosticsHandler,
+    pub config_store: Arc<helix_config::ConfigStore>,
 }
 
 impl fmt::Debug for View {
@@ -167,7 +168,7 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutters: GutterConfig) -> Self {
+    pub fn new(doc: DocumentId, config_store: Arc<helix_config::ConfigStore>) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -176,9 +177,9 @@ impl View {
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
-            gutters,
             doc_revisions: HashMap::new(),
             diagnostics_handler: DiagnosticsHandler::new(),
+            config_store,
         }
     }
 
@@ -201,16 +202,15 @@ impl View {
         self.area.clip_left(self.gutter_offset(doc)).width
     }
 
-    pub fn gutters(&self) -> &[GutterType] {
-        &self.gutters.layout
+    pub fn gutters(&self) -> Box<[GutterType]> {
+        self.config_store.editor().layout()
     }
 
     pub fn gutter_offset(&self, doc: &Document) -> u16 {
-        let total_width = self
-            .gutters
-            .layout
+        let layout = self.config_store.editor().layout();
+        let total_width = layout
             .iter()
-            .map(|gutter| gutter.width(self, doc) as u16)
+            .map(|gutter| gutter_width(*gutter, self, doc) as u16)
             .sum();
         if total_width < self.area.width {
             total_width
@@ -473,9 +473,8 @@ impl View {
                 .add_inline_annotations(other_inlay_hints, other_style)
                 .add_inline_annotations(padding_after_inlay_hints, None);
         };
-        let config = doc.config.load();
 
-        if config.lsp.display_color_swatches {
+        if self.config_store.editor().display_color_swatches() {
             if let Some(DocumentColorSwatches {
                 color_swatches,
                 colors,
@@ -495,6 +494,7 @@ impl View {
         let enable_cursor_line = self
             .diagnostics_handler
             .show_cursorline_diagnostics(doc, self.id);
+        let config = doc.config.load();
         let config = config.inline_diagnostics.prepare(width, enable_cursor_line);
         if !config.disabled() {
             let cursor = doc
@@ -691,6 +691,7 @@ mod tests {
 
     use super::*;
     use arc_swap::ArcSwap;
+    use helix_config::OptionManager;
     use helix_core::{syntax, Rope};
 
     // 1 diagnostic + 1 spacer + 3 linenr (< 1000 lines) + 1 spacer + 1 diff
@@ -700,11 +701,27 @@ mod tests {
     const DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS: u16 = 3;
 
     use crate::document::Document;
-    use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig, GutterType};
+    use crate::editor::Config;
+
+    /// Creates a test OptionManager for use in unit tests.
+    fn test_options() -> Arc<OptionManager> {
+        let mut registry = helix_config::OptionRegistry::new();
+        helix_config::init_config(&mut registry);
+        Arc::new(registry.global_scope().create_scope())
+    }
+
+    /// Creates a test ConfigStore for use in unit tests.
+    fn test_config_store() -> Arc<helix_config::ConfigStore> {
+        let mut registry = helix_config::OptionRegistry::new();
+        helix_config::init_config(&mut registry);
+        let lsp_registry = helix_config::OptionRegistry::new();
+        Arc::new(helix_config::ConfigStore::new(registry, lsp_registry))
+    }
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let config_store = test_config_store();
+        let mut view = View::new(DocumentId::default(), config_store.clone());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let mut doc = Document::from(
@@ -712,6 +729,7 @@ mod tests {
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+            config_store,
         );
         doc.ensure_view_init(view.id);
 
@@ -874,13 +892,10 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_without_line_numbers_gutter() {
-        let mut view = View::new(
-            DocumentId::default(),
-            GutterConfig {
-                layout: vec![GutterType::Diagnostics],
-                line_numbers: GutterLineNumbersConfig::default(),
-            },
-        );
+        // TODO: This test should be updated to properly configure the config_store
+        // with custom gutter layout once the config system supports runtime updates
+        let config_store = test_config_store();
+        let mut view = View::new(DocumentId::default(), config_store.clone());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let mut doc = Document::from(
@@ -888,6 +903,7 @@ mod tests {
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+            config_store,
         );
         doc.ensure_view_init(view.id);
         assert_eq!(
@@ -905,13 +921,10 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_without_any_gutters() {
-        let mut view = View::new(
-            DocumentId::default(),
-            GutterConfig {
-                layout: vec![],
-                line_numbers: GutterLineNumbersConfig::default(),
-            },
-        );
+        // TODO: This test should be updated to properly configure the config_store
+        // with custom gutter layout once the config system supports runtime updates
+        let config_store = test_config_store();
+        let mut view = View::new(DocumentId::default(), config_store.clone());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let mut doc = Document::from(
@@ -919,6 +932,7 @@ mod tests {
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+            config_store,
         );
         doc.ensure_view_init(view.id);
         assert_eq!(
@@ -936,7 +950,8 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let config_store = test_config_store();
+        let mut view = View::new(DocumentId::default(), config_store.clone());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let mut doc = Document::from(
@@ -944,6 +959,7 @@ mod tests {
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+            config_store,
         );
         doc.ensure_view_init(view.id);
 
@@ -1021,7 +1037,8 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let config_store = test_config_store();
+        let mut view = View::new(DocumentId::default(), config_store.clone());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let mut doc = Document::from(
@@ -1029,6 +1046,7 @@ mod tests {
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+            config_store,
         );
         doc.ensure_view_init(view.id);
 

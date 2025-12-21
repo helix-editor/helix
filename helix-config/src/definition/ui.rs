@@ -4,6 +4,61 @@ use crate::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub enum GutterType {
+    /// Show diagnostics and other features like breakpoints
+    Diagnostics,
+    /// Show line numbers
+    LineNumbers,
+    /// Show one blank space
+    Spacer,
+    /// Highlight local changes
+    Diff,
+}
+
+impl std::str::FromStr for GutterType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "diagnostics" => Ok(Self::Diagnostics),
+            "spacer" => Ok(Self::Spacer),
+            "line-numbers" => Ok(Self::LineNumbers),
+            "diff" => Ok(Self::Diff),
+            _ => anyhow::bail!(
+                "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
+            ),
+        }
+    }
+}
+
+config_serde_adapter!(GutterType);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineNumber {
+    /// Show absolute line number
+    Absolute,
+    /// If focused and in normal/select mode, show relative line number to the primary cursor.
+    /// If unfocused or in insert mode, show absolute line number.
+    Relative,
+}
+
+impl std::str::FromStr for LineNumber {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "absolute" | "abs" => Ok(Self::Absolute),
+            "relative" | "rel" => Ok(Self::Relative),
+            _ => anyhow::bail!("Line number can only be `absolute` or `relative`."),
+        }
+    }
+}
+
+config_serde_adapter!(LineNumber);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum StatusLineElement {
     /// The editor mode (Normal, Insert, Visual/Selection)
     Mode,
@@ -13,6 +68,8 @@ pub enum StatusLineElement {
     FileBaseName,
     /// The relative file path
     FileName,
+    /// The absolute file path
+    FileAbsolutePath,
     // The file modification indicator
     FileModificationIndicator,
     /// An indicator that shows `"[readonly]"` when a file cannot be written
@@ -23,6 +80,8 @@ pub enum StatusLineElement {
     FileLineEnding,
     /// The file type (language ID or "text")
     FileType,
+    /// The file indent style (tabs or spaces and width)
+    FileIndentStyle,
     /// A summary of the number of errors and warnings
     Diagnostics,
     /// A summary of the number of errors and warnings on file and workspace
@@ -45,6 +104,8 @@ pub enum StatusLineElement {
     VersionControl,
     /// Indicator for selected register
     Register,
+    /// Current working directory
+    CurrentWorkingDirectory,
 }
 
 config_serde_adapter!(StatusLineElement);
@@ -96,7 +157,7 @@ pub enum BufferLine {
 
 config_serde_adapter!(BufferLine);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PopupBorderConfig {
     None,
@@ -126,12 +187,20 @@ options! {
         /// List of column positions at which to display the rulers.
         #[read = deref]
         rulers: List<u16> = List::default(),
-        /// Whether to color the mode indicator with different colors depending on the mode itself
+        /// Draw border around popup, menu, all, or none
         #[read = copy]
-        popup_border: bool = false,
+        popup_border: PopupBorderConfig = PopupBorderConfig::None,
         /// Whether to color the mode indicator with different colors depending on the mode itself
         #[read = copy]
         color_modes: bool = false,
+        /// Line number display mode (absolute or relative)
+        #[name = "line-number"]
+        #[read = copy]
+        line_number: LineNumber = LineNumber::Absolute,
+        /// Whether to render rainbow colors for matching brackets
+        #[name = "rainbow-brackets"]
+        #[read = copy]
+        rainbow_brackets: bool = false,
     }
 
     struct WhiteSpaceRenderConfig {
@@ -146,10 +215,10 @@ options! {
         tab_char: char =  '→',     // U+2192
         #[name = "whitespace.characters.tabpad"]
         #[read = copy]
-        tabpad_char: char =  '⏎', // U+23CE
+        tabpad_char: char =  ' ', // Space character for tab padding
         #[name = "whitespace.characters.newline"]
         #[read = copy]
-        newline_char: char =  ' ',
+        newline_char: char =  '⏎', // U+23CE
         #[name = "whitespace.render.default"]
         #[read = copy]
         render: WhitespaceRenderValue = WhitespaceRenderValue::None,
@@ -244,6 +313,23 @@ options! {
         #[name = "file-picker.max-depth"]
         #[read = copy]
         max_depth: Option<usize> = None,
+    }
+
+    struct GutterConfig {
+        /// Gutter Layout - list of gutter components to display
+        #[name = "gutters.layout"]
+        #[read = deref]
+        layout: List<GutterType> = &[
+            GutterType::Diagnostics,
+            GutterType::Spacer,
+            GutterType::LineNumbers,
+            GutterType::Spacer,
+            GutterType::Diff,
+        ],
+        /// Minimum number of characters to use for line number gutter
+        #[name = "gutters.line-numbers.min-width"]
+        #[read = copy]
+        line_numbers_min_width: usize = 3,
     }
 
     struct StatusLineConfig{

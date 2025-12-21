@@ -7,6 +7,7 @@ mod transport;
 use arc_swap::ArcSwap;
 pub use client::Client;
 pub use futures_executor::block_on;
+use helix_config::definition::LspConfig;
 pub use helix_lsp_types as lsp;
 pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
@@ -566,16 +567,21 @@ pub struct Registry {
     inner: SlotMap<LanguageServerId, Arc<Client>>,
     inner_by_name: HashMap<LanguageServerName, Vec<Arc<Client>>>,
     syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>,
+    config_store: Arc<helix_config::ConfigStore>,
     pub incoming: SelectAll<UnboundedReceiverStream<(LanguageServerId, Call)>>,
     pub file_event_handler: file_event::Handler,
 }
 
 impl Registry {
-    pub fn new(syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>) -> Self {
+    pub fn new(
+        syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>,
+        config_store: Arc<helix_config::ConfigStore>,
+    ) -> Self {
         Self {
             inner: SlotMap::with_key(),
             inner_by_name: HashMap::new(),
             syn_loader,
+            config_store,
             incoming: SelectAll::new(),
             file_event_handler: file_event::Handler::new(),
         }
@@ -607,8 +613,8 @@ impl Registry {
         ls_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
-        enable_snippets: bool,
     ) -> Result<Arc<Client>, StartupError> {
+        let enable_snippets = self.config_store.editor().snippets();
         let syn_loader = self.syn_loader.load();
         let config = syn_loader
             .language_server_configs()
@@ -640,7 +646,6 @@ impl Registry {
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
-        enable_snippets: bool,
     ) -> Option<Result<Arc<Client>>> {
         if let Some(old_clients) = self.inner_by_name.remove(name) {
             if old_clients.is_empty() {
@@ -661,7 +666,6 @@ impl Registry {
             language_config,
             doc_path,
             root_dirs,
-            enable_snippets,
         ) {
             Ok(client) => client,
             Err(StartupError::NoRequiredRootFound) => return None,
@@ -695,7 +699,6 @@ impl Registry {
         language_config: &'a LanguageConfiguration,
         doc_path: Option<&'a std::path::PathBuf>,
         root_dirs: &'a [PathBuf],
-        enable_snippets: bool,
     ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
         language_config.language_servers.iter().filter_map(
             move |LanguageServerFeatures { name, .. }| {
@@ -723,7 +726,6 @@ impl Registry {
                     language_config,
                     doc_path,
                     root_dirs,
-                    enable_snippets,
                 ) {
                     Ok(client) => {
                         self.inner_by_name

@@ -9,6 +9,7 @@ mod lsp;
 mod ui;
 
 pub use lsp::init_language_server_config;
+pub use ui::{GutterType, LineNumber};
 
 options! {
     use ui::*;
@@ -105,6 +106,33 @@ options! {
         /// Used for autocompletion, set to 0 for instant
         #[read = copy]
         idle_timeout: Duration = Duration::from_millis(250),
+        /// Whether to use atomic operations to write documents to disk.
+        /// This prevents data loss if the editor is interrupted while writing the file,
+        /// but may confuse some file watching/hot reloading programs.
+        #[read = copy]
+        atomic_save: bool = true,
+        /// Whether to automatically remove all trailing line-endings after the final one on write.
+        #[read = copy]
+        trim_final_newlines: bool = false,
+        /// Whether to automatically remove all whitespace characters preceding line-endings on write.
+        #[read = copy]
+        trim_trailing_whitespace: bool = false,
+        /// Whether to read settings from EditorConfig files.
+        #[read = copy]
+        editor_config: bool = true,
+        /// Automatic formatting on save
+        #[name = "auto-format"]
+        #[read = copy]
+        auto_format: bool = true,
+        /// Default register used for yank/paste
+        #[name = "default-yank-register"]
+        #[read = copy]
+        default_yank_register: char = '"',
+        /// Automatically add a line comment token if you're currently in a comment
+        /// and press enter
+        #[name = "continue-comments"]
+        #[read = copy]
+        continue_comments: bool = true,
     }
 }
 
@@ -125,12 +153,6 @@ pub enum LineEndingConfig {
     /// Use Form Feed (rare)
     #[cfg(feature = "unicode-lines")]
     FF,
-    /// Use Line Separator (rare)
-    #[cfg(feature = "unicode-lines")]
-    LS,
-    /// Use Paragraph Separator (rare)
-    #[cfg(feature = "unicode-lines")]
-    PS,
 }
 
 impl Ty for LineEndingConfig {
@@ -146,10 +168,6 @@ impl Ty for LineEndingConfig {
             "nel" => Ok(LineEndingConfig::Nel),
             #[cfg(feature = "unicode-lines")]
             "ff" => Ok(LineEndingConfig::FF),
-            #[cfg(feature = "unicode-lines")]
-            "ls" => Ok(LineEndingConfig::LS),
-            #[cfg(feature = "unicode-lines")]
-            "ps" => Ok(LineEndingConfig::PS),
             _ => bail!("invalid line ending config: {val}"),
         }
     }
@@ -165,11 +183,8 @@ impl Ty for LineEndingConfig {
             LineEndingConfig::Nel => "nel",
             #[cfg(feature = "unicode-lines")]
             LineEndingConfig::FF => "ff",
-            #[cfg(feature = "unicode-lines")]
-            LineEndingConfig::LS => "ls",
-            #[cfg(feature = "unicode-lines")]
-            LineEndingConfig::PS => "ps",
-        }.into()
+        }
+        .into()
     }
 }
 

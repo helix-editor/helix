@@ -4,6 +4,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::handlers::lsp::SignatureHelpInvoked;
 use crate::{DocumentId, Editor, ViewId};
+use helix_config::definition::LspConfig;
 
 pub mod completion;
 pub mod dap;
@@ -41,7 +42,7 @@ impl Handlers {
     pub fn trigger_signature_help(&self, invocation: SignatureHelpInvoked, editor: &Editor) {
         let event = match invocation {
             SignatureHelpInvoked::Automatic => {
-                if !editor.config().lsp.auto_signature_help {
+                if !editor.config_store.editor().auto_signature_help() {
                     return;
                 }
                 lsp::SignatureHelpEvent::Trigger

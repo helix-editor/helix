@@ -648,6 +648,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                                 false,
                                 editor.config.clone(),
                                 editor.syn_loader.clone(),
+                                editor.config_store.clone(),
                             )
                             .or(Err(std::io::Error::new(
                                 std::io::ErrorKind::NotFound,

@@ -197,10 +197,10 @@ options! {
         #[name = "lsp.enable"]
         #[read = copy]
         enable: bool = true,
-        /// Enables LSP integration. Setting to false will completely disable language servers.
+        /// Display LSP messages in the status line
         #[name = "lsp.display-messages"]
         #[read = copy]
-        display_messages: bool = false,
+        display_messages: bool = true,
         /// Display LSP progress messages below statusline
         #[name = "lsp.display-progress-messages"]
         #[read = copy]
@@ -213,6 +213,14 @@ options! {
         #[name = "lsp.display-inlay-hints"]
         #[read = copy]
         display_inlay_hints: bool = false,
+        /// Maximum length of inlay hints. Inlay hints that exceed this length will be truncated.
+        #[name = "lsp.inlay-hints-length-limit"]
+        #[read = copy]
+        inlay_hints_length_limit: Option<usize> = None,
+        /// Display color swatches for color values in the editor
+        #[name = "lsp.display-color-swatches"]
+        #[read = copy]
+        display_color_swatches: bool = false,
         /// Display docs under signature help popup
         #[name = "lsp.display-signature-help-docs"]
         #[read = copy]
@@ -275,5 +283,16 @@ options! {
         /// completions are shown, set to 5 for instant. Defaults to 250ms.
         #[read = copy]
         completion_timeout: Duration = Duration::from_millis(250),
+    }
+
+    struct WordCompletionConfig {
+        /// Enable word-based completion (completes words from open buffers)
+        #[name = "word-completion.enable"]
+        #[read = copy]
+        enable: bool = true,
+        /// Minimum word length to trigger word completion
+        #[name = "word-completion.trigger-length"]
+        #[read = copy]
+        trigger_length: u8 = 7,
     }
 }

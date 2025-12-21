@@ -27,6 +27,7 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
+    gutter::{gutter_style as get_gutter_style, gutter_width},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -667,9 +668,9 @@ impl EditorView {
         let gutter_style_virtual = theme.get("ui.gutter.virtual");
         let gutter_selected_style_virtual = theme.get("ui.gutter.selected.virtual");
 
-        for gutter_type in view.gutters() {
-            let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
-            let width = gutter_type.width(view, doc);
+        for gutter_type in view.gutters().iter() {
+            let mut gutter = get_gutter_style(*gutter_type, editor, doc, view, theme, is_focused);
+            let width = gutter_width(*gutter_type, view, doc);
             // avoid lots of small allocations by reusing a text buffer for each line
             let mut text = String::with_capacity(width);
             let cursors = cursors.clone();

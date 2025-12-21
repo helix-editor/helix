@@ -1663,7 +1663,6 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
                 config,
                 doc.path(),
                 &editor_config.workspace_lsp_roots,
-                editor_config.lsp.snippets,
             )
             .transpose()
         {
@@ -2518,10 +2517,9 @@ fn reset_diff_change(
         return Ok(());
     }
 
-    let editor = &mut cx.editor;
-    let scrolloff = editor.config().scrolloff;
+    let scrolloff = cx.editor.config().scrolloff;
 
-    let (view, doc) = current!(editor);
+    let (view, doc) = current!(cx.editor);
     let Some(handle) = doc.diff_handle() else {
         bail!("Diff is not available in the current buffer")
     };

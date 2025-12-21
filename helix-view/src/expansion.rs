@@ -5,6 +5,7 @@ use helix_core::command_line::{ExpansionKind, Token, TokenKind, Tokenizer};
 use anyhow::{anyhow, bail, Result};
 
 use crate::Editor;
+use helix_config::definition::MiscConfig;
 
 /// Variables that can be expanded in the command mode (`:`) via the expansion syntax.
 ///
@@ -142,11 +143,10 @@ pub fn expand_shell<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a
     // Recursively expand the expansion's content before executing the shell command.
     let content = expand_inner(editor, content)?;
 
-    let config = editor.config();
-    let shell = &config.shell;
-    let mut process = Command::new(&shell[0]);
+    let shell = editor.config_store.editor().shell();
+    let mut process = Command::new(shell[0].as_ref());
     process
-        .args(&shell[1..])
+        .args(shell[1..].iter().map(|s| s.as_ref()))
         .arg(content.as_ref())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

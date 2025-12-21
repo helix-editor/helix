@@ -23,3 +23,7 @@ globset = "0.4.14"
 regex = "1.10.2"
 regex-syntax = "0.8.2"
 which = "5.0.0"
+toml = "0.8"
+
+[dev-dependencies]
+tempfile = "3.8"

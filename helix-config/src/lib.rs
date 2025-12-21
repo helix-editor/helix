@@ -4,16 +4,18 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
+
 use anyhow::bail;
 use hashbrown::hash_map::Entry;
 use hashbrown::HashMap;
 use indexmap::IndexMap;
-use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 
 use any::ConfigData;
 use convert::ty_into_value;
 pub use convert::IntoTy;
 pub use definition::{init_config, init_language_server_config};
+pub use store::{ConfigStore, DocumentId, LayerId, ScopeId, LanguageId};
 pub use toml::read_toml_config;
 use validator::StaticValidator;
 pub use validator::{regex_str_validator, ty_validator, IntegerRangeValidator, Ty, Validator};
@@ -21,9 +23,10 @@ pub use value::{from_value, to_value, Value};
 
 mod any;
 mod convert;
-mod definition;
+pub mod definition;
 pub mod env;
 mod macros;
+pub mod store;
 mod toml;
 mod validator;
 mod value;
@@ -54,34 +57,64 @@ pub struct OptionInfo {
     pub into_value: fn(&ConfigData) -> Value,
 }
 
-#[derive(Debug)]
 pub struct OptionManager {
     vals: RwLock<HashMap<Arc<str>, ConfigData>>,
     parent: Option<Arc<OptionManager>>,
 }
 
+impl std::fmt::Debug for OptionManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OptionManager")
+            .field("vals", &"<RwLock>")
+            .field("parent", &self.parent.as_ref().map(|_| "..."))
+            .finish()
+    }
+}
+
 impl OptionManager {
+    /// Gets a reference to a config value, looking up the parent chain if not found.
+    /// Returns a guard that holds the read lock.
     pub fn get<T: Any>(&self, option: &str) -> Guard<'_, T> {
         Guard::map(self.get_data(option), ConfigData::get)
     }
 
+    /// Gets the raw ConfigData for an option, looking up the parent chain.
     pub fn get_data(&self, option: &str) -> Guard<'_, ConfigData> {
         let option = normalize_name(option);
         let mut current_scope = self;
         loop {
             let lock = current_scope.vals.read();
-            if let Ok(res) = RwLockReadGuard::try_map(lock, |options| options.get(option.as_ref())) {
+            if let Ok(res) = RwLockReadGuard::try_map(lock, |options| options.get(option.as_ref()))
+            {
                 return res;
             }
-            let Some(new_scope) = current_scope.parent.as_deref() else{
-                unreachable!("option must be atleast defined in the global scope")
+            let Some(new_scope) = current_scope.parent.as_deref() else {
+                unreachable!("option must be at least defined in the global scope")
             };
             current_scope = new_scope;
         }
     }
 
+    /// Gets a dereferenced config value. Useful for String -> &str, List<T> -> &[T].
     pub fn get_deref<T: Deref + Any>(&self, option: &str) -> Guard<'_, T::Target> {
         Guard::map(self.get::<T>(option), T::deref)
+    }
+
+    /// Gets a cloned config value, looking up the parent chain if not found.
+    pub fn get_cloned<T: Any + Clone>(&self, option: &str) -> T {
+        let option = normalize_name(option);
+        let mut current_scope = self;
+        loop {
+            let guard = current_scope.vals.read();
+            if let Some(data) = guard.get(option.as_ref()) {
+                return data.get::<T>().clone();
+            }
+            drop(guard);
+            let Some(new_scope) = current_scope.parent.as_deref() else {
+                unreachable!("option must be at least defined in the global scope")
+            };
+            current_scope = new_scope;
+        }
     }
 
     pub fn get_folded<T: Any, R>(
@@ -94,11 +127,13 @@ impl OptionManager {
         let mut res = init;
         let mut current_scope = self;
         loop {
-            let options = current_scope.vals.read();
-            if let Some(opt_val) = options.get(option.as_ref()).map(|val| val.get()) {
+            let guard = current_scope.vals.read();
+            if let Some(val) = guard.get(option.as_ref()) {
+                let opt_val: &T = val.get();
                 res = fold(opt_val, res);
             }
-            let Some(new_scope) = current_scope.parent.as_deref() else{
+            drop(guard);
+            let Some(new_scope) = current_scope.parent.as_deref() else {
                 break
             };
             current_scope = new_scope;
@@ -114,13 +149,12 @@ impl OptionManager {
         let option: Arc<str> = option.into();
         let Some(opt) = registry.get(&option) else { bail!("unknown option {option:?}") };
         let data = self.get_data(&option);
-        let val = (opt.into_value)(&data);
-        Ok(val)
+        Ok((opt.into_value)(&data))
     }
 
     pub fn create_scope(self: &Arc<OptionManager>) -> OptionManager {
         OptionManager {
-            vals: RwLock::default(),
+            vals: RwLock::new(HashMap::new()),
             parent: Some(self.clone()),
         }
     }
@@ -130,7 +164,8 @@ impl OptionManager {
     }
 
     pub fn set_unchecked(&self, option: Arc<str>, val: ConfigData) {
-        self.vals.write().insert(option, val);
+        let mut guard = self.vals.write();
+        guard.insert(option, val);
     }
 
     pub fn append(
@@ -143,8 +178,8 @@ impl OptionManager {
         let val = val.into();
         let option: Arc<str> = normalize_name(&option.into()).into_owned().into();
         let Some(opt) = registry.get(&option) else { bail!("unknown option {option:?}") };
-        let old_data = self.get_data(&option);
-        let mut old = (opt.into_value)(&old_data);
+        // Get old value by traversing parent chain
+        let mut old = self.get_value(option.clone(), registry)?;
         old.append(val, max_depth);
         let val = opt.validator.validate(old)?;
         self.set_unchecked(option, val);
@@ -171,7 +206,8 @@ impl OptionManager {
     /// the parent scope instead
     pub fn unset(&self, option: &str) {
         let option = normalize_name(option);
-        self.vals.write().remove(option.as_ref());
+        let mut guard = self.vals.write();
+        guard.remove(option.as_ref());
     }
 }
 
@@ -223,7 +259,8 @@ impl OptionRegistry {
             Entry::Vacant(e) => {
                 // make sure the validator is correct
                 if cfg!(debug_assertions) {
-                    validator.validate(T::Ty::to_value(&default)).unwrap();
+                    validator.validate(T::Ty::to_value(&default))
+                        .unwrap_or_else(|err| panic!("Failed to validate default value for option '{}': {}", name, err));
                 }
                 let opt = OptionInfo {
                     name: name.clone(),

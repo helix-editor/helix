@@ -16,6 +16,10 @@ use crate::{
 };
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
+use helix_config::definition::{
+    CursorShapeConfig as CursorShapeConfigTrait, LspConfig as LspConfigTrait, MiscConfig, UiConfig,
+    PopupBorderConfig as NewPopupBorderConfig, CursorKind as ConfigCursorKind,
+};
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
@@ -84,95 +88,8 @@ where
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct GutterConfig {
-    /// Gutter Layout
-    pub layout: Vec<GutterType>,
-    /// Options specific to the "line-numbers" gutter
-    pub line_numbers: GutterLineNumbersConfig,
-}
-
-impl Default for GutterConfig {
-    fn default() -> Self {
-        Self {
-            layout: vec![
-                GutterType::Diagnostics,
-                GutterType::Spacer,
-                GutterType::LineNumbers,
-                GutterType::Spacer,
-                GutterType::Diff,
-            ],
-            line_numbers: GutterLineNumbersConfig::default(),
-        }
-    }
-}
-
-impl From<Vec<GutterType>> for GutterConfig {
-    fn from(x: Vec<GutterType>) -> Self {
-        GutterConfig {
-            layout: x,
-            ..Default::default()
-        }
-    }
-}
-
-fn deserialize_gutter_seq_or_struct<'de, D>(deserializer: D) -> Result<GutterConfig, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct GutterVisitor;
-
-    impl<'de> serde::de::Visitor<'de> for GutterVisitor {
-        type Value = GutterConfig;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            write!(
-                formatter,
-                "an array of gutter names or a detailed gutter configuration"
-            )
-        }
-
-        fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
-        where
-            S: serde::de::SeqAccess<'de>,
-        {
-            let mut gutters = Vec::new();
-            while let Some(gutter) = seq.next_element::<String>()? {
-                gutters.push(
-                    gutter
-                        .parse::<GutterType>()
-                        .map_err(serde::de::Error::custom)?,
-                )
-            }
-
-            Ok(gutters.into())
-        }
-
-        fn visit_map<M>(self, map: M) -> Result<Self::Value, M::Error>
-        where
-            M: serde::de::MapAccess<'de>,
-        {
-            let deserializer = serde::de::value::MapAccessDeserializer::new(map);
-            Deserialize::deserialize(deserializer)
-        }
-    }
-
-    deserializer.deserialize_any(GutterVisitor)
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct GutterLineNumbersConfig {
-    /// Minimum number of characters to use for line number gutter. Defaults to 3.
-    pub min_width: usize,
-}
-
-impl Default for GutterLineNumbersConfig {
-    fn default() -> Self {
-        Self { min_width: 3 }
-    }
-}
+// GutterType and GutterConfig are now defined in helix-config
+pub use helix_config::definition::GutterType;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
@@ -306,8 +223,6 @@ pub struct Config {
     pub cursorline: bool,
     /// Highlight the columns cursors are currently on. Defaults to false.
     pub cursorcolumn: bool,
-    #[serde(deserialize_with = "deserialize_gutter_seq_or_struct")]
-    pub gutters: GutterConfig,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
@@ -824,53 +739,6 @@ impl helix_config::Ty for LineNumber {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum GutterType {
-    /// Show diagnostics and other features like breakpoints
-    Diagnostics,
-    /// Show line numbers
-    LineNumbers,
-    /// Show one blank space
-    Spacer,
-    /// Highlight local changes
-    Diff,
-}
-
-impl std::str::FromStr for GutterType {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "diagnostics" => Ok(Self::Diagnostics),
-            "spacer" => Ok(Self::Spacer),
-            "line-numbers" => Ok(Self::LineNumbers),
-            "diff" => Ok(Self::Diff),
-            _ => anyhow::bail!(
-                "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
-            ),
-        }
-    }
-}
-
-impl helix_config::Ty for GutterType {
-    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
-        let helix_config::Value::String(s) = val else {
-            anyhow::bail!("expected a string for gutter type");
-        };
-        s.parse()
-    }
-
-    fn to_value(&self) -> helix_config::Value {
-        let s = match self {
-            GutterType::Diagnostics => "diagnostics",
-            GutterType::LineNumbers => "line-numbers",
-            GutterType::Spacer => "spacer",
-            GutterType::Diff => "diff",
-        };
-        helix_config::Value::String(s.to_string())
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -1130,7 +998,6 @@ impl Default for Config {
             line_number: LineNumber::Absolute,
             cursorline: false,
             cursorcolumn: false,
-            gutters: GutterConfig::default(),
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
@@ -1257,6 +1124,9 @@ pub struct Editor {
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
+    /// The new configuration system store (running in parallel with the old config)
+    pub config_store: Arc<helix_config::ConfigStore>,
+
     pub idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
@@ -1355,10 +1225,12 @@ impl Editor {
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
         handlers: Handlers,
+        config_store: Arc<helix_config::ConfigStore>,
     ) -> Self {
-        let language_servers = helix_lsp::Registry::new(syn_loader.clone());
+        let language_servers = helix_lsp::Registry::new(syn_loader.clone(), config_store.clone());
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
+        let idle_timeout = config_store.editor().idle_timeout();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -1391,13 +1263,14 @@ impl Editor {
             ))),
             status_msg: None,
             autoinfo: None,
-            idle_timer: Box::pin(sleep(conf.idle_timeout)),
+            idle_timer: Box::pin(sleep(idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
             last_cwd: None,
             config,
             auto_pairs,
+            config_store,
             exit_code: 0,
             config_events: unbounded_channel(),
             needs_redraw: false,
@@ -1408,13 +1281,13 @@ impl Editor {
     }
 
     pub fn popup_border(&self) -> bool {
-        self.config().popup_border == PopupBorderConfig::All
-            || self.config().popup_border == PopupBorderConfig::Popup
+        let popup_border = self.config_store.editor().popup_border();
+        popup_border == NewPopupBorderConfig::All || popup_border == NewPopupBorderConfig::Popup
     }
 
     pub fn menu_border(&self) -> bool {
-        self.config().popup_border == PopupBorderConfig::All
-            || self.config().popup_border == PopupBorderConfig::Menu
+        let popup_border = self.config_store.editor().popup_border();
+        popup_border == NewPopupBorderConfig::All || popup_border == NewPopupBorderConfig::Menu
     }
 
     pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
@@ -1439,6 +1312,27 @@ impl Editor {
         self.config.load()
     }
 
+    /// Get a cloned config value from the new config system.
+    /// This is a convenience method that accesses the editor's config scope.
+    #[inline]
+    pub fn get_config<T: std::any::Any + Clone>(&self, option: &str) -> T {
+        self.config_store.editor().get_cloned::<T>(option)
+    }
+
+    /// Get a config value reference from the new config system.
+    /// Returns a guard that holds a read lock.
+    #[inline]
+    pub fn get_config_ref<T: std::any::Any>(&self, option: &str) -> helix_config::Guard<'_, T> {
+        self.config_store.editor().get::<T>(option)
+    }
+
+    /// Get a dereferenced config value from the new config system.
+    /// Useful for accessing the content of Box<str> or Box<[T]>.
+    #[inline]
+    pub fn get_config_deref<T: std::ops::Deref + std::any::Any>(&self, option: &str) -> helix_config::Guard<'_, T::Target> {
+        self.config_store.editor().get_deref::<T>(option)
+    }
+
     /// Call if the config has changed to let the editor update all
     /// relevant members.
     pub fn refresh_config(&mut self, old_config: &Config) {
@@ -1461,10 +1355,10 @@ impl Editor {
     }
 
     pub fn reset_idle_timer(&mut self) {
-        let config = self.config();
+        let idle_timeout = self.config_store.editor().idle_timeout();
         self.idle_timer
             .as_mut()
-            .reset(Instant::now() + config.idle_timeout);
+            .reset(Instant::now() + idle_timeout);
     }
 
     pub fn clear_status(&mut self) {
@@ -1657,7 +1551,8 @@ impl Editor {
 
     /// Launch a language server for a given document
     fn launch_language_servers(&mut self, doc_id: DocumentId) {
-        if !self.config().lsp.enable {
+        // Use new config system for lsp.enable
+        if !self.get_config::<bool>("lsp.enable") {
             return;
         }
         // if doc doesn't have a URL it's a scratch buffer, ignore it
@@ -1674,7 +1569,7 @@ impl Editor {
         // store only successfully started language servers
         let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
-                .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
+                .get(language, path.as_ref(), root_dirs)
                 .filter_map(|(lang, client)| match client {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
@@ -1735,7 +1630,7 @@ impl Editor {
     }
 
     fn _refresh(&mut self) {
-        let config = self.config();
+        let scrolloff = self.config_store.editor().scrolloff();
 
         // Reset the inlay hints annotations *before* updating the views, that way we ensure they
         // will disappear during the `.sync_change(doc)` call below.
@@ -1743,7 +1638,7 @@ impl Editor {
         // We can't simply check this config when rendering because inlay hints are only parts of
         // the possible annotations, and others could still be active, so we need to selectively
         // drop the inlay hints.
-        if !config.lsp.display_inlay_hints {
+        if !self.config_store.editor().display_inlay_hints() {
             for doc in self.documents_mut() {
                 doc.reset_all_inlay_hints();
             }
@@ -1752,13 +1647,12 @@ impl Editor {
         for (view, _) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
             view.sync_changes(doc);
-            view.gutters = config.gutters.clone();
-            view.ensure_cursor_in_view(doc, config.scrolloff)
+            view.ensure_cursor_in_view(doc, scrolloff)
         }
     }
 
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
-        let scrolloff = self.config().scrolloff;
+        let scrolloff = self.config_store.editor().scrolloff();
         let view = self.tree.get_mut(current_view);
 
         view.doc = doc_id;
@@ -1854,7 +1748,7 @@ impl Editor {
                     .try_get(self.tree.focus)
                     .filter(|v| id == v.doc) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
+                    .unwrap_or_else(|| View::new(id, self.config_store.clone()));
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -1907,7 +1801,7 @@ impl Editor {
     pub fn new_file(&mut self, action: Action) -> DocumentId {
         self.new_file_from_document(
             action,
-            Document::default(self.config.clone(), self.syn_loader.clone()),
+            Document::default(self.config.clone(), self.syn_loader.clone(), self.config_store.clone()),
         )
     }
 
@@ -1918,6 +1812,7 @@ impl Editor {
             Some((encoding, has_bom)),
             self.config.clone(),
             self.syn_loader.clone(),
+            self.config_store.clone(),
         );
         let doc_id = self.new_file_from_document(action, doc);
         let doc = doc_mut!(self, &doc_id);
@@ -1949,6 +1844,7 @@ impl Editor {
                 true,
                 self.config.clone(),
                 self.syn_loader.clone(),
+                self.config_store.clone(),
             )?;
 
             let diagnostics =
@@ -2048,9 +1944,10 @@ impl Editor {
                     self.new_document(Document::default(
                         self.config.clone(),
                         self.syn_loader.clone(),
+                        self.config_store.clone(),
                     ))
                 });
-            let view = View::new(doc_id, self.config().gutters.clone());
+            let view = View::new(doc_id, self.config_store.clone());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
@@ -2161,10 +2058,11 @@ impl Editor {
     }
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
-        let config = self.config();
+        // Use new config system for scrolloff
+        let scrolloff = self.get_config::<usize>("scrolloff");
         let view = self.tree.get(id);
         let doc = doc_mut!(self, &view.doc);
-        view.ensure_cursor_in_view(doc, config.scrolloff)
+        view.ensure_cursor_in_view(doc, scrolloff)
     }
 
     #[inline]
@@ -2253,13 +2151,22 @@ impl Editor {
     /// Gets the primary cursor position in screen coordinates,
     /// or `None` if the primary cursor is not visible on screen.
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
-        let config = self.config();
         let (view, doc) = current_ref!(self);
         if let Some(mut pos) = self.cursor_cache.get(view, doc) {
             let inner = view.inner_area(doc);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
-            let cursorkind = config.cursor_shape.from_mode(self.mode);
+            let config_cursor = match self.mode {
+                Mode::Normal => self.config_store.editor().normal_mode_cursor(),
+                Mode::Select => self.config_store.editor().select_mode_cursor(),
+                Mode::Insert => self.config_store.editor().insert_mode_cursor(),
+            };
+            let cursorkind = match config_cursor {
+                ConfigCursorKind::Block => CursorKind::Block,
+                ConfigCursorKind::Bar => CursorKind::Bar,
+                ConfigCursorKind::Underline => CursorKind::Underline,
+                ConfigCursorKind::Hidden => CursorKind::Hidden,
+            };
             (Some(pos), cursorkind)
         } else {
             (None, CursorKind::default())
