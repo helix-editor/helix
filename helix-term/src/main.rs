@@ -125,10 +125,10 @@ FLAGS:
         helix_stdx::env::set_current_working_dir(path)?;
     }
 
-    let config = match Config::load_default() {
-        Ok(config) => config,
+    let (config, _editor_toml) = match Config::load_default() {
+        Ok(result) => result,
         Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
-            Config::default()
+            (Config::default(), None)
         }
         Err(ConfigLoadError::Error(err)) => return Err(Error::new(err)),
         Err(ConfigLoadError::BadConfig(err)) => {
@@ -136,7 +136,7 @@ FLAGS:
             eprintln!("Press <ENTER> to continue with default config");
             use std::io::Read;
             let _ = std::io::stdin().read(&mut []);
-            Config::default()
+            (Config::default(), None)
         }
     };
 

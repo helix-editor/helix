@@ -965,10 +965,10 @@ fn start_client(
 /// * If no root marker and we stopped at a `root_dirs` entry, return the directory we stopped at
 /// * If we stopped at `workspace` instead and `workspace_is_cwd == false` return `None`
 /// * If we stopped at `workspace` instead and `workspace_is_cwd == true` return `workspace`
-pub fn find_lsp_workspace(
+pub fn find_lsp_workspace<P: AsRef<Path>>(
     file: &str,
     root_markers: &[String],
-    root_dirs: &[PathBuf],
+    root_dirs: &[P],
     workspace: &Path,
     workspace_is_cwd: bool,
 ) -> Option<PathBuf> {
@@ -996,7 +996,7 @@ pub fn find_lsp_workspace(
 
         if root_dirs
             .iter()
-            .any(|root_dir| path::normalize(workspace.join(root_dir)) == ancestor)
+            .any(|root_dir| path::normalize(workspace.join(root_dir.as_ref())) == ancestor)
         {
             // if the worskapce is the cwd do not search any higher for workspaces
             // but specify

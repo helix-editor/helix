@@ -2,6 +2,7 @@ use std::fmt::{self, Display};
 use std::time::Duration;
 
 use helix_core::diagnostic::Severity;
+use serde::{Deserialize, Serialize};
 
 use crate::*;
 
@@ -152,6 +153,41 @@ pub enum DiagnosticFilter {
     Enable(Severity),
 }
 
+impl<'de> Deserialize<'de> for DiagnosticFilter {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match &*std::string::String::deserialize(deserializer)? {
+            "disable" => Ok(DiagnosticFilter::Disable),
+            "hint" => Ok(DiagnosticFilter::Enable(Severity::Hint)),
+            "info" => Ok(DiagnosticFilter::Enable(Severity::Info)),
+            "warning" => Ok(DiagnosticFilter::Enable(Severity::Warning)),
+            "error" => Ok(DiagnosticFilter::Enable(Severity::Error)),
+            variant => Err(serde::de::Error::unknown_variant(
+                variant,
+                &["disable", "hint", "info", "warning", "error"],
+            )),
+        }
+    }
+}
+
+impl Serialize for DiagnosticFilter {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let filter = match self {
+            DiagnosticFilter::Disable => "disable",
+            DiagnosticFilter::Enable(Severity::Hint) => "hint",
+            DiagnosticFilter::Enable(Severity::Info) => "info",
+            DiagnosticFilter::Enable(Severity::Warning) => "warning",
+            DiagnosticFilter::Enable(Severity::Error) => "error",
+        };
+        filter.serialize(serializer)
+    }
+}
+
 impl Ty for DiagnosticFilter {
     fn from_value(val: Value) -> anyhow::Result<Self> {
         let val: String = val.typed()?;
@@ -252,7 +288,7 @@ options! {
         /// roots. The search for root markers (starting at the path of the
         /// file) will stop at these paths.
         #[name = "workspace-lsp-roots"]
-        workspace_roots: List<String> = List::default(),
+        workspace_roots: List<std::path::PathBuf> = List::default(),
         /// An array of LSP diagnostic sources assumed unchanged when the
         /// language server resends the same set of diagnostics. Helix can track
         /// the position for these diagnostics internally instead. Useful for

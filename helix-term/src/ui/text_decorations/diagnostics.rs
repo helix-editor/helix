@@ -1,13 +1,12 @@
 use std::cmp::Ordering;
 
+use helix_config::definition::DiagnosticFilter;
 use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::{DocumentFormatter, FormattedGrapheme};
 use helix_core::graphemes::Grapheme;
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{Diagnostic, Position};
-use helix_view::annotations::diagnostics::{
-    DiagnosticFilter, InlineDiagnosticAccumulator, InlineDiagnosticsConfig,
-};
+use helix_view::annotations::diagnostics::{InlineDiagnosticAccumulator, InlineDiagnosticsConfig};
 
 use helix_view::theme::Style;
 use helix_view::{Document, Theme};

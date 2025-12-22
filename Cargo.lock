@@ -1574,6 +1574,7 @@ dependencies = [
  "bitflags",
  "cassowary",
  "crossterm",
+ "helix-config",
  "helix-core",
  "helix-view",
  "log",

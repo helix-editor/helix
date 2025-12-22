@@ -8,7 +8,7 @@ use std::{
 use anyhow::bail;
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
-use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
+use helix_view::{current_ref, doc, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -282,18 +282,7 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
 /// Generates a config with defaults more suitable for integration tests
 pub fn test_config() -> Config {
     Config {
-        editor: test_editor_config(),
         keys: helix_term::keymap::default(),
-        ..Default::default()
-    }
-}
-
-pub fn test_editor_config() -> helix_view::editor::Config {
-    helix_view::editor::Config {
-        lsp: LspConfig {
-            enable: false,
-            ..Default::default()
-        },
         ..Default::default()
     }
 }

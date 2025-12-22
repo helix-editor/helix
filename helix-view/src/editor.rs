@@ -60,10 +60,7 @@ use helix_stdx::path::canonicalize;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use arc_swap::{
-    access::{DynAccess, DynGuard},
-    ArcSwap,
-};
+use arc_swap::ArcSwap;
 
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 
@@ -984,7 +981,6 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
-    pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
     /// The new configuration system store (running in parallel with the old config)
@@ -1086,13 +1082,10 @@ impl Editor {
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
-        config: Arc<dyn DynAccess<Config>>,
         handlers: Handlers,
         config_store: Arc<helix_config::ConfigStore>,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone(), config_store.clone());
-        let conf = config.load();
-        let auto_pairs = (&conf.auto_pairs).into();
         let idle_timeout = config_store.editor().idle_timeout();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
@@ -1120,10 +1113,7 @@ impl Editor {
             theme_loader,
             last_theme: None,
             last_selection: None,
-            registers: Registers::new(Box::new(arc_swap::access::Map::new(
-                Arc::clone(&config),
-                |config: &Config| &config.clipboard_provider,
-            ))),
+            registers: Registers::default(),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(idle_timeout)),
@@ -1131,8 +1121,7 @@ impl Editor {
             last_motion: None,
             last_completion: None,
             last_cwd: None,
-            config,
-            auto_pairs,
+            auto_pairs: None,
             config_store,
             exit_code: 0,
             config_events: unbounded_channel(),
@@ -1171,10 +1160,6 @@ impl Editor {
         self.mode
     }
 
-    pub fn config(&self) -> DynGuard<Config> {
-        self.config.load()
-    }
-
     /// Get a cloned config value from the new config system.
     /// This is a convenience method that accesses the editor's config scope.
     #[inline]
@@ -1198,16 +1183,11 @@ impl Editor {
 
     /// Call if the config has changed to let the editor update all
     /// relevant members.
-    pub fn refresh_config(&mut self, old_config: &Config) {
-        let config = self.config();
-        self.auto_pairs = (&config.auto_pairs).into();
+    pub fn refresh_config(&mut self) {
+        // Auto pairs are no longer configured through old Config system
+        // They should be configured through language config or new config system
         self.reset_idle_timer();
         self._refresh();
-        helix_event::dispatch(crate::events::ConfigDidChange {
-            editor: self,
-            old: old_config,
-            new: &config,
-        })
     }
 
     pub fn clear_idle_timer(&mut self) {
@@ -1426,13 +1406,12 @@ impl Editor {
             return;
         };
         let (lang, path) = (doc.language.clone(), doc.path().cloned());
-        let config = doc.config.load();
-        let root_dirs = &config.workspace_lsp_roots;
+        let root_dirs = self.config_store.editor().workspace_roots();
 
         // store only successfully started language servers
         let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
-                .get(language, path.as_ref(), root_dirs)
+                .get(language, path.as_ref(), &root_dirs)
                 .filter_map(|(lang, client)| match client {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
@@ -1664,7 +1643,7 @@ impl Editor {
     pub fn new_file(&mut self, action: Action) -> DocumentId {
         self.new_file_from_document(
             action,
-            Document::default(self.config.clone(), self.syn_loader.clone(), self.config_store.clone()),
+            Document::default(self.syn_loader.clone(), self.config_store.clone()),
         )
     }
 
@@ -1673,7 +1652,6 @@ impl Editor {
         let doc = Document::from(
             helix_core::Rope::default(),
             Some((encoding, has_bom)),
-            self.config.clone(),
             self.syn_loader.clone(),
             self.config_store.clone(),
         );
@@ -1705,7 +1683,6 @@ impl Editor {
                 &path,
                 None,
                 true,
-                self.config.clone(),
                 self.syn_loader.clone(),
                 self.config_store.clone(),
             )?;
@@ -1805,7 +1782,6 @@ impl Editor {
                 .next()
                 .unwrap_or_else(|| {
                     self.new_document(Document::default(
-                        self.config.clone(),
                         self.syn_loader.clone(),
                         self.config_store.clone(),
                     ))

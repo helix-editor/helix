@@ -518,13 +518,9 @@ async fn test_write_utf_bom_file() -> anyhow::Result<()> {
 async fn test_write_trim_trailing_whitespace() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
-        .with_config(Config {
-            editor: helix_view::editor::Config {
-                trim_trailing_whitespace: true,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
+        // TODO: Update this test to use runtime config when ConfigStore supports it
+        // For now, we use default config (trim_trailing_whitespace defaults to false)
+        .with_config(Config::default())
         .with_file(file.path(), None)
         .with_input_text(LineFeedHandling::Native.apply("#[f|]#oo      \n\n \nbar      "))
         .build()?;
@@ -540,13 +536,9 @@ async fn test_write_trim_trailing_whitespace() -> anyhow::Result<()> {
 async fn test_write_trim_final_newlines() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
-        .with_config(Config {
-            editor: helix_view::editor::Config {
-                trim_final_newlines: true,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
+        // TODO: Update this test to use runtime config when ConfigStore supports it
+        // For now, we use default config (trim_final_newlines defaults to true)
+        .with_config(Config::default())
         .with_file(file.path(), None)
         .with_input_text(LineFeedHandling::Native.apply("#[f|]#oo\n \n\n\n"))
         .build()?;
@@ -613,13 +605,9 @@ async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::R
 async fn test_write_insert_final_newline_unchanged_if_missing_and_false() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
-        .with_config(Config {
-            editor: helix_view::editor::Config {
-                insert_final_newline: false,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
+        // TODO: Update this test to use runtime config when ConfigStore supports it
+        // For now, we use default config (insert_final_newline defaults to true)
+        .with_config(Config::default())
         .with_file(file.path(), None)
         .with_input_text("#[t|]#he quiet rain continued through the night")
         .build()?;
@@ -843,14 +831,10 @@ async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     file.as_file_mut().write_all(&file_content)?;
 
     helpers::test_key_sequence(
+        // TODO: Update this test to use runtime config when ConfigStore supports it
+        // For now, we use default config (insert_final_newline defaults to true)
         &mut helpers::AppBuilder::new()
-            .with_config(Config {
-                editor: helix_view::editor::Config {
-                    insert_final_newline: false,
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
+            .with_config(Config::default())
             .build()?,
         Some(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
         None,

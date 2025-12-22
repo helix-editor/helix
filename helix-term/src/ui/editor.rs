@@ -14,13 +14,13 @@ use crate::{
 };
 
 use helix_config::definition::{
-    AutoSaveConfig, CursorShapeConfig, DiagnosticFilter as ConfigDiagnosticFilter,
+    AutoSaveConfig, CursorShapeConfig, DiagnosticFilter,
     EndOfLineDiagnosticsConfig, InlineDiagnosticsConfig as InlineDiagnosticsConfigTrait,
-    MiscConfig, MouseConfig, Severity as ConfigSeverity, UiConfig,
+    MiscConfig, MouseConfig, UiConfig,
 };
 
 use helix_core::{
-    diagnostic::{NumberOrString, Severity},
+    diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, OverlayHighlights},
@@ -29,7 +29,7 @@ use helix_core::{
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
+    annotations::diagnostics::InlineDiagnosticsConfig,
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::CompleteAction,
     graphics::{Color, CursorKind, Modifier, Rect, Style},

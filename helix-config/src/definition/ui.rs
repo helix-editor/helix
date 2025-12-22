@@ -205,6 +205,17 @@ impl Default for FileExplorerPosition {
 
 config_serde_adapter!(FileExplorerPosition);
 
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum KittyKeyboardProtocolConfig {
+    #[default]
+    Auto,
+    Disabled,
+    Enabled,
+}
+
+config_serde_adapter!(KittyKeyboardProtocolConfig);
+
 options! {
     struct UiConfig {
         /// Whether to display info boxes
@@ -288,6 +299,12 @@ options! {
         #[name = "undercurl"]
         #[read = copy]
         force_undercurl: bool = false,
+        /// Enable Kitty Keyboard Protocol to enable key combinations that are not
+        /// normally possible (e.g. Shift+Space or Ctrl+i separated from Tab).
+        /// Can be set to `auto`, `enabled`, or `disabled`
+        #[name = "kitty-keyboard-protocol"]
+        #[read = copy]
+        kitty_keyboard_protocol: KittyKeyboardProtocolConfig = KittyKeyboardProtocolConfig::Auto,
     }
 
     struct IndentGuidesConfig {
@@ -440,5 +457,9 @@ options! {
         #[name = "explorer.column-width"]
         #[read = copy]
         column_width: Option<usize> = None,
+        /// Whether to flatten directories that contain a single directory
+        #[name = "explorer.flatten-dirs"]
+        #[read = copy]
+        flatten_dirs: bool = true,
     }
 }

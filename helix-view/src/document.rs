@@ -46,7 +46,7 @@ use helix_core::{
 };
 
 use crate::{
-    editor::{Config, line_ending_from_config},
+    editor::line_ending_from_config,
     events::{DocumentDidChange, SelectionDidChange},
     expansion,
     view::ViewPosition,
@@ -187,7 +187,6 @@ pub struct Document {
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
     pub history: Cell<History>,
-    pub config: Arc<dyn DynAccess<Config>>,
 
     /// New configuration system store
     pub config_store: Arc<helix_config::ConfigStore>,
@@ -695,7 +694,6 @@ impl Document {
     pub fn from(
         text: Rope,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
-        config: Arc<dyn DynAccess<Config>>,
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config_store: Arc<helix_config::ConfigStore>,
     ) -> Self {
@@ -735,7 +733,6 @@ impl Document {
             modified_since_accessed: false,
             language_servers: HashMap::new(),
             diff_handle: None,
-            config,
             config_store,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
@@ -750,13 +747,12 @@ impl Document {
     }
 
     pub fn default(
-        config: Arc<dyn DynAccess<Config>>,
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config_store: Arc<helix_config::ConfigStore>,
     ) -> Self {
         let line_ending: LineEnding = line_ending_from_config(config_store.editor().default_line_ending());
         let text = Rope::from(line_ending.as_str());
-        Self::from(text, None, config, syn_loader, config_store)
+        Self::from(text, None, syn_loader, config_store)
     }
 
     // TODO: async fn?
@@ -766,7 +762,6 @@ impl Document {
         path: &Path,
         mut encoding: Option<&'static Encoding>,
         detect_language: bool,
-        config: Arc<dyn DynAccess<Config>>,
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config_store: Arc<helix_config::ConfigStore>,
     ) -> Result<Self, DocumentOpenError> {
@@ -795,7 +790,7 @@ impl Document {
         };
 
         let loader = syn_loader.load();
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config, syn_loader.clone(), config_store);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), syn_loader.clone(), config_store);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
@@ -2284,7 +2279,7 @@ impl Document {
             // avoid spinning forever when the window manager
             // sets the size to something tiny
             viewport_width,
-            wrap_indicator: wrap_indicator.into(),
+            wrap_indicator,
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_highlight("ui.virtual.wrap")),
             soft_wrap_at_text_width,
@@ -2373,7 +2368,6 @@ mod test {
         let mut doc = Document::from(
             text,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store,
         );
@@ -2417,7 +2411,6 @@ mod test {
         let mut doc = Document::from(
             text,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store,
         );
@@ -2539,7 +2532,6 @@ mod test {
 
         assert_eq!(
             Document::default(
-                Arc::new(ArcSwap::new(Arc::new(Config::default()))),
                 Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
                 config_store
             )

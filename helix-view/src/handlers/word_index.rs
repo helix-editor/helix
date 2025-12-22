@@ -415,20 +415,22 @@ pub(crate) fn register_hooks(handlers: &Handlers) {
 
     let coordinator = handlers.word_index.coordinator.clone();
     register_hook!(move |event: &mut ConfigDidChange<'_>| {
-        // The feature has been turned off. Clear the index and reclaim any used memory.
-        if event.old.word_completion.enable && !event.new.word_completion.enable {
-            coordinator.send(Event::Clear).unwrap();
-        }
+        // Check if word completion is globally disabled
+        let enabled = event.editor.config_store.editor()
+            .get_cloned::<bool>("word-completion.enable");
 
-        // The feature has been turned on. Index open documents.
-        if !event.old.word_completion.enable && event.new.word_completion.enable {
-            for doc in event.editor.documents() {
+        if !enabled {
+            // Word completion disabled - clear the index to reclaim memory
+            let _ = coordinator.send(Event::Clear);
+        } else {
+            // Word completion enabled - index any documents that aren't already indexed
+            // Documents will be indexed as they're opened/modified via other hooks
+            for doc in event.editor.documents.values() {
                 if doc.word_completion_enabled() {
-                    coordinator.send(Event::Insert(doc.text().clone())).unwrap();
+                    let _ = coordinator.send(Event::Insert(doc.text().clone()));
                 }
             }
         }
-
         Ok(())
     });
 }

@@ -1,6 +1,6 @@
 use crate::{
     align_view,
-    annotations::diagnostics::{DiagnosticFilter, InlineDiagnostics, InlineDiagnosticsConfig},
+    annotations::diagnostics::{InlineDiagnostics, InlineDiagnosticsConfig},
     document::{DocumentColorSwatches, DocumentInlayHints},
     graphics::Rect,
     gutter::gutter_width,
@@ -710,18 +710,7 @@ mod tests {
     // 1 diagnostic + 1 spacer + 3 linenr (< 1000 lines) + 1 spacer + 1 diff
     const DEFAULT_GUTTER_OFFSET: u16 = 7;
 
-    // 1 diagnostics + 1 spacer + 1 gutter
-    const DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS: u16 = 3;
-
     use crate::document::Document;
-    use crate::editor::Config;
-
-    /// Creates a test OptionManager for use in unit tests.
-    fn test_options() -> Arc<OptionManager> {
-        let mut registry = helix_config::OptionRegistry::new();
-        helix_config::init_config(&mut registry);
-        Arc::new(registry.global_scope().create_scope())
-    }
 
     /// Creates a test ConfigStore for use in unit tests.
     fn test_config_store() -> Arc<helix_config::ConfigStore> {
@@ -740,7 +729,6 @@ mod tests {
         let mut doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store,
         );
@@ -914,7 +902,6 @@ mod tests {
         let mut doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store,
         );
@@ -944,7 +931,6 @@ mod tests {
         let mut doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store,
         );
@@ -972,7 +958,6 @@ mod tests {
         let mut doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store,
         );
@@ -1059,7 +1044,6 @@ mod tests {
         let mut doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store,
         );

@@ -328,19 +328,11 @@ mod tests {
 
     use super::*;
     use crate::document::Document;
-    use crate::editor::Config;
     use crate::graphics::Rect;
     use crate::DocumentId;
     use arc_swap::ArcSwap;
     use helix_config::OptionManager;
     use helix_core::{syntax, Rope};
-
-    /// Creates a test OptionManager for use in unit tests.
-    fn test_options() -> Arc<OptionManager> {
-        let mut registry = helix_config::OptionRegistry::new();
-        helix_config::init_config(&mut registry);
-        Arc::new(registry.global_scope().create_scope())
-    }
 
     /// Creates a test ConfigStore for use in unit tests.
     fn test_config_store() -> Arc<helix_config::ConfigStore> {
@@ -360,7 +352,6 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store,
         );
@@ -386,7 +377,6 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store.clone(),
         );
@@ -409,7 +399,6 @@ mod tests {
         let doc_short = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store.clone(),
         );
@@ -418,7 +407,6 @@ mod tests {
         let doc_long = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
             Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
             config_store,
         );

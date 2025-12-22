@@ -1,4 +1,3 @@
-use crate::config::{Config, ConfigLoadError};
 use helix_core::config::{default_lang_config, user_lang_config};
 use helix_loader::grammar::load_runtime_file;
 use std::{
@@ -113,22 +112,15 @@ pub fn general() -> std::io::Result<()> {
 }
 
 pub fn clipboard() -> std::io::Result<()> {
+    use helix_view::clipboard::ClipboardProvider;
+
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let config = match Config::load_default() {
-        Ok(config) => config,
-        Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
-            Config::default()
-        }
-        Err(err) => {
-            writeln!(stdout, "{}", "Configuration file malformed".red())?;
-            writeln!(stdout, "{}", err)?;
-            return Ok(());
-        }
-    };
-
-    match config.editor.clipboard_provider.name().as_ref() {
+    // Clipboard provider is determined at runtime by the Default implementation,
+    // which checks what provider is actually available on the system.
+    let clipboard_provider = ClipboardProvider::default();
+    match clipboard_provider.name().as_ref() {
         "none" => {
             writeln!(
                 stdout,

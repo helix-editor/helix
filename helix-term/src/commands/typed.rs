@@ -7,6 +7,7 @@ use crate::job::Job;
 
 use super::*;
 
+use helix_config::definition::{LspConfig, MiscConfig, TerminfoConfig};
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
@@ -17,7 +18,6 @@ use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
 use ui::completers::{self, Completer};
-use helix_config::definition::{LspConfig, MiscConfig, TerminfoConfig};
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -1652,22 +1652,13 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         valid
     };
 
-    let workspace_roots_config = cx.editor.config_store.editor().workspace_roots();
-    let workspace_roots: Vec<PathBuf> = workspace_roots_config
-        .iter()
-        .map(|s| PathBuf::from(s.as_ref()))
-        .collect();
+    let workspace_roots = cx.editor.config_store.editor().workspace_roots();
     let mut errors = Vec::new();
     for server in language_servers.iter() {
         match cx
             .editor
             .language_servers
-            .restart_server(
-                server,
-                config,
-                doc.path(),
-                &workspace_roots,
-            )
+            .restart_server(server, config, doc.path(), &workspace_roots)
             .transpose()
         {
             // Ignore the executable-not-found error unless the server was explicitly requested
@@ -2087,9 +2078,9 @@ pub(super) fn goto_line_number(
 /// Check if an argument looks like a config scope prefix
 fn is_config_scope(arg: &str) -> bool {
     arg == "editor"
-        || arg.split_once(':').map_or(false, |(prefix, _)| {
-            matches!(prefix, "language" | "lsp")
-        })
+        || arg
+            .split_once(':')
+            .map_or(false, |(prefix, _)| matches!(prefix, "language" | "lsp"))
 }
 
 // Fetch the current value of a config option and output as status.
@@ -2107,11 +2098,15 @@ fn get_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     };
 
     // Resolve the config scope
-    let config = cx.editor.config_store.resolve(scope)
+    let config = cx
+        .editor
+        .config_store
+        .resolve(scope)
         .ok_or_else(|| anyhow::anyhow!("Unknown config scope `{}`", scope))?;
     let registry = cx.editor.config_store.registry();
 
-    let value = config.get_value(key, registry)
+    let value = config
+        .get_value(key, registry)
         .map_err(|_| anyhow::anyhow!("Unknown key `{}`", key))?;
 
     // Convert to JSON for display
@@ -2120,54 +2115,184 @@ fn get_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     Ok(())
 }
 
+/// Parse a config value from a string with enhanced syntax for lists and maps.
+///
+/// This function provides a more user-friendly syntax than strict JSON:
+/// - Strings: no quotes needed (just the raw text)
+/// - Lists: comma-separated values without brackets (e.g., "a, b, c" -> ["a", "b", "c"])
+/// - Maps: key=value pairs separated by commas (e.g., "x=y, a=b" -> {"x": "y", "a": "b"})
+/// - Other types: parsed as JSON (booleans, numbers, etc.)
+fn parse_config_value(input: &str, current_value: &helix_config::Value) -> anyhow::Result<helix_config::Value> {
+    let input = input.trim();
+
+    // Match the type of the current value to determine how to parse
+    match current_value {
+        helix_config::Value::String(_) => {
+            // For strings, just use the input as-is (no quotes needed)
+            Ok(helix_config::Value::String(input.to_string()))
+        }
+        helix_config::Value::List(_) => {
+            // Check if input looks like JSON array (starts with '[')
+            if input.starts_with('[') {
+                // Parse as JSON
+                let json_value: serde_json::Value = input
+                    .parse()
+                    .map_err(|e| anyhow::anyhow!("Could not parse list as JSON: {}", e))?;
+                Ok(json_value.into())
+            } else if input.contains(',') {
+                // Parse as comma-separated list of strings
+                let items: Vec<helix_config::Value> = input
+                    .split(',')
+                    .map(|s| helix_config::Value::String(s.trim().to_string()))
+                    .collect();
+                Ok(helix_config::Value::List(items))
+            } else {
+                // Single value - wrap in a list
+                Ok(helix_config::Value::List(vec![
+                    helix_config::Value::String(input.to_string())
+                ]))
+            }
+        }
+        helix_config::Value::Map(_) => {
+            // Check if input looks like JSON object (starts with '{')
+            if input.starts_with('{') {
+                // Parse as JSON
+                let json_value: serde_json::Value = input
+                    .parse()
+                    .map_err(|e| anyhow::anyhow!("Could not parse map as JSON: {}", e))?;
+                Ok(json_value.into())
+            } else if input.contains('=') {
+                // Parse as key=value pairs
+                let mut map: helix_config::Map<helix_config::Value> =
+                    helix_config::Map::default();
+                for pair in input.split(',') {
+                    let pair = pair.trim();
+                    if let Some((key, value)) = pair.split_once('=') {
+                        map.insert(
+                            key.trim().to_string().into_boxed_str(),
+                            helix_config::Value::String(value.trim().to_string())
+                        );
+                    } else {
+                        anyhow::bail!("Invalid map syntax: expected 'key=value', got '{}'", pair);
+                    }
+                }
+                Ok(helix_config::Value::Map(Box::new(map)))
+            } else {
+                anyhow::bail!("Map values require either JSON object syntax or 'key=value' pairs");
+            }
+        }
+        helix_config::Value::Bool(_) | helix_config::Value::Int(_) |
+        helix_config::Value::Float(_) | helix_config::Value::Null => {
+            // For other types, parse as JSON
+            let json_value: serde_json::Value = input
+                .parse()
+                .map_err(|e| anyhow::anyhow!("Could not parse value: {}", e))?;
+            Ok(json_value.into())
+        }
+    }
+}
+
 /// Change config at runtime. Access nested values by dot syntax, for
 /// example to disable smart case search, use `:set search.smart-case false`.
 /// Supports optional scope: `:set [scope] key value` where scope is "editor", "language:name", "lsp:name"
+/// Supports --append/-a and --prepend/-p flags for lists and maps.
 fn set_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    // Parse scope, key, and value from arguments
-    let (scope, key, arg): (&str, &str, &str) = if args.len() >= 3 && is_config_scope(&args[0]) {
-        (args[0].as_ref(), args[1].as_ref(), args[2].trim())
-    } else {
-        ("", args[0].as_ref(), args[1].trim())
-    };
+    // Check for flags
+    let append = args.has_flag(APPEND_FLAG.name);
+    let prepend = args.has_flag(PREPEND_FLAG.name);
+    let scope = args.get_flag(SCOPE_FLAG.name).unwrap_or("");
+
+    if append && prepend {
+        anyhow::bail!("Cannot use both --append and --prepend flags");
+    }
+
+    // Parse key and value from arguments
+    ensure!(args.len() >= 2, "Usage: :set <key> <value> [--scope <scope>]");
+    let key: &str = &args[0];
+    let arg: &str = args[1].trim();
 
     // Resolve or create the config scope (creates language/lsp configs if they don't exist)
-    let config = cx.editor.config_store.resolve_or_create(scope)
+    let config = cx
+        .editor
+        .config_store
+        .resolve_or_create(scope)
         .ok_or_else(|| anyhow::anyhow!("Unknown config scope `{}`", scope))?;
     let registry = cx.editor.config_store.registry();
 
     // Get the current value to determine its type
-    let current_value = config.get_value(key, registry)
+    let current_value = config
+        .get_value(key, registry)
         .map_err(|_| anyhow::anyhow!("Unknown key `{}`", key))?;
 
-    // Parse the new value based on the type of the current value
-    let new_value: helix_config::Value = match current_value {
-        helix_config::Value::String(_) => {
-            // JSON strings require quotes, so we can't .parse() directly
-            helix_config::Value::String(arg.to_string())
+    // Parse the new value using the enhanced parser
+    let parsed_value = parse_config_value(arg, &current_value)?;
+
+    // Handle append/prepend for lists and maps
+    let new_value = if append || prepend {
+        match (&current_value, &parsed_value) {
+            (helix_config::Value::List(current_list), helix_config::Value::List(new_list)) => {
+                let mut combined = if prepend {
+                    new_list.clone()
+                } else {
+                    current_list.clone()
+                };
+
+                if prepend {
+                    combined.extend(current_list.clone());
+                } else {
+                    combined.extend(new_list.clone());
+                }
+
+                helix_config::Value::List(combined)
+            }
+            (helix_config::Value::Map(current_map), helix_config::Value::Map(new_map)) => {
+                let mut combined = if prepend {
+                    (**new_map).clone()
+                } else {
+                    (**current_map).clone()
+                };
+
+                if prepend {
+                    // For prepend, add current entries after new ones (but indexmap maintains insertion order)
+                    for (k, v) in current_map.iter() {
+                        if !combined.contains_key(k) {
+                            combined.insert(k.clone(), v.clone());
+                        }
+                    }
+                } else {
+                    // For append, add new entries after current ones
+                    combined.extend(new_map.iter().map(|(k, v)| (k.clone(), v.clone())));
+                }
+
+                helix_config::Value::Map(Box::new(combined))
+            }
+            _ => {
+                anyhow::bail!("--append and --prepend flags can only be used with lists and maps");
+            }
         }
-        _ => {
-            // Parse as JSON for other types (bool, number, array, object)
-            let json_value: serde_json::Value = arg.parse()
-                .map_err(|_| anyhow::anyhow!("Could not parse field `{}`", arg))?;
-            json_value.into()
-        }
+    } else {
+        parsed_value
     };
 
     // Set the value using the config store
-    config.set(key, new_value, registry)
+    config
+        .set(key, new_value, registry)
         .map_err(|e| anyhow::anyhow!("Failed to set option `{}`: {}", key, e))?;
+
+    // Notify that config changed
+    helix_event::dispatch(helix_view::events::ConfigDidChange {
+        editor: cx.editor,
+    });
 
     Ok(())
 }
 
 /// Toggle boolean config option at runtime. Access nested values by dot
 /// syntax, for example to toggle smart case search, use `:toggle search.smart-case`.
-/// Supports optional scope: `:toggle [scope] key [values...]` where scope is "editor", "language:name", "lsp:name"
 fn toggle_option(
     cx: &mut compositor::Context,
     args: Args,
@@ -2177,26 +2302,23 @@ fn toggle_option(
         return Ok(());
     }
 
-    // Parse scope and remaining args
-    let (scope, key, values_str, arg_offset) = if !args.is_empty() && is_config_scope(&args[0]) {
-        let scope = args[0].as_ref();
-        let key = args.get(1).ok_or_else(|| anyhow::anyhow!("Missing key argument"))?.as_ref();
-        let values = args.get(2).map(|s| s.as_ref());
-        (scope, key, values, 1usize)
-    } else {
-        ensure!(!args.is_empty(), "Missing key argument");
-        let key = args[0].as_ref();
-        let values = args.get(1).map(|s| s.as_ref());
-        ("", key, values, 0usize)
-    };
+    // Parse scope flag and args
+    let scope = args.get_flag(SCOPE_FLAG.name).unwrap_or("");
+    ensure!(!args.is_empty(), "Missing key argument");
+    let key: &str = &args[0];
+    let values_str = args.get(1).map(|s| -> &str { s });
 
     // Resolve or create the config scope
-    let config = cx.editor.config_store.resolve_or_create(scope)
+    let config = cx
+        .editor
+        .config_store
+        .resolve_or_create(scope)
         .ok_or_else(|| anyhow::anyhow!("Unknown config scope `{}`", scope))?;
     let registry = cx.editor.config_store.registry();
 
     // Get the current value
-    let current_value = config.get_value(key, registry)
+    let current_value = config
+        .get_value(key, registry)
         .map_err(|_| anyhow::anyhow!("Unknown key `{}`", key))?;
 
     // Convert to serde_json::Value for easier manipulation
@@ -2206,14 +2328,14 @@ fn toggle_option(
     let new_json_value = match json_value {
         serde_json::Value::Bool(value) => {
             ensure!(
-                args.len() == 1 + arg_offset,
+                args.len() == 1,
                 "Bad arguments. For boolean configurations use: `:toggle {key}`"
             );
             serde_json::Value::Bool(!value)
         }
         serde_json::Value::String(ref value) => {
             ensure!(
-                args.len() == 2 + arg_offset,
+                args.len() == 2,
                 "Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`",
             );
             // For string values, parse the input according to normal command line rules.
@@ -2233,9 +2355,11 @@ fn toggle_option(
             )
         }
         serde_json::Value::Null => bail!("Configuration {key} cannot be toggled"),
-        serde_json::Value::Number(_) | serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+        serde_json::Value::Number(_)
+        | serde_json::Value::Array(_)
+        | serde_json::Value::Object(_) => {
             ensure!(
-                args.len() == 2 + arg_offset,
+                args.len() == 2,
                 "Bad arguments. For {kind} configurations use: `:toggle {key} val1 val2 ...`",
                 kind = match json_value {
                     serde_json::Value::Number(_) => "number",
@@ -2244,26 +2368,40 @@ fn toggle_option(
                     _ => unreachable!(),
                 }
             );
-            // For numbers, arrays and objects, parse each argument with
-            // `serde_json::StreamDeserializer`.
-            let values: Vec<serde_json::Value> = serde_json::Deserializer::from_str(values_str.unwrap())
-                .into_iter()
+            // Parse values using command line tokenizer (respects quotes)
+            let value_tokens: Vec<_> = command_line::Tokenizer::new(values_str.unwrap(), true)
+                .map(|res| res.map(|token| token.content))
                 .collect::<Result<_, _>>()
-                .map_err(|err| anyhow!("failed to parse value: {err}"))?;
+                .map_err(|err| anyhow!("failed to parse values: {err}"))?;
 
-            if let Some(wrongly_typed_value) = values
+            // Parse each value using the new config value syntax
+            let values: Vec<helix_config::Value> = value_tokens
                 .iter()
-                .find(|v| std::mem::discriminant(*v) != std::mem::discriminant(&json_value))
-            {
-                bail!("value '{wrongly_typed_value}' has a different type than '{json_value}'");
-            }
+                .map(|v| parse_config_value(v, &current_value))
+                .collect::<Result<_, _>>()?;
 
-            values
+            // Find current value and cycle to next
+            let next_value = values
                 .iter()
-                .skip_while(|e| *e != &json_value)
+                .skip_while(|e| *e != &current_value)
                 .nth(1)
                 .unwrap_or(&values[0])
-                .clone()
+                .clone();
+
+            // Set the value first (while registry is still borrowed)
+            config
+                .set(key, next_value.clone(), registry)
+                .map_err(|e| anyhow::anyhow!("Failed to set option `{}`: {}", key, e))?;
+
+            // Notify that config changed
+            helix_event::dispatch(helix_view::events::ConfigDidChange {
+                editor: cx.editor,
+            });
+
+            // Now set status (after registry borrow is done)
+            let next_json: serde_json::Value = next_value.into();
+            cx.editor.set_status(format!("'{key}' is now set to {next_json}"));
+            return Ok(());
         }
     };
 
@@ -2271,8 +2409,14 @@ fn toggle_option(
 
     // Convert back to helix_config::Value and set it
     let new_value: helix_config::Value = new_json_value.into();
-    config.set(key, new_value, registry)
+    config
+        .set(key, new_value, registry)
         .map_err(|e| anyhow::anyhow!("Failed to set option `{}`: {}", key, e))?;
+
+    // Notify that config changed
+    helix_event::dispatch(helix_view::events::ConfigDidChange {
+        editor: cx.editor,
+    });
 
     cx.editor.set_status(status);
     Ok(())
@@ -2539,7 +2683,11 @@ fn run_shell_command(
         return Ok(());
     }
 
-    let shell: Vec<String> = cx.editor.config_store.editor().shell()
+    let shell: Vec<String> = cx
+        .editor
+        .config_store
+        .editor()
+        .shell()
         .iter()
         .map(|s| s.to_string())
         .collect();
@@ -2820,6 +2968,27 @@ const WRITE_NO_FORMAT_FLAG: Flag = Flag {
     name: "no-format",
     doc: "skip auto-formatting",
     ..Flag::DEFAULT
+};
+
+const APPEND_FLAG: Flag = Flag {
+    name: "append",
+    alias: Some('a'),
+    doc: "append to existing list or map instead of replacing",
+    ..Flag::DEFAULT
+};
+
+const PREPEND_FLAG: Flag = Flag {
+    name: "prepend",
+    alias: Some('p'),
+    doc: "prepend to existing list or map instead of replacing",
+    ..Flag::DEFAULT
+};
+
+const SCOPE_FLAG: Flag = Flag {
+    name: "scope",
+    alias: Some('s'),
+    doc: "config scope: 'buffer', 'lang:name', or 'lsp:name'",
+    completions: Some(&["buffer"]),
 };
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
@@ -3596,25 +3765,27 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "set-option",
         aliases: &["set"],
-        doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
+        doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.\nFlags: --scope/-s (buffer, lang:rust, lsp:rust-analyzer), --append/-a, --prepend/-p.",
         fun: set_option,
         // TODO: Add support for completion of the options value(s), when appropriate.
         completer: CommandCompleter::positional(&[completers::setting]),
         signature: Signature {
             positionals: (2, Some(2)),
             raw_after: Some(1),
+            flags: &[APPEND_FLAG, PREPEND_FLAG, SCOPE_FLAG],
             ..Signature::DEFAULT
         },
     },
     TypableCommand {
         name: "toggle-option",
         aliases: &["toggle"],
-        doc: "Toggle a config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
+        doc: "Toggle a config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.\nUse --scope/-s to set scope (buffer, lang:rust, lsp:rust-analyzer).",
         fun: toggle_option,
         completer: CommandCompleter::positional(&[completers::setting]),
         signature: Signature {
             positionals: (1, None),
             raw_after: Some(1),
+            flags: &[SCOPE_FLAG],
             ..Signature::DEFAULT
         },
     },

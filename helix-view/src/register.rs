@@ -31,6 +31,16 @@ pub struct Registers {
     pub last_search_register: char,
 }
 
+impl Default for Registers {
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+            clipboard_provider: Box::new(arc_swap::access::Constant(ClipboardProvider::default())),
+            last_search_register: '/',
+        }
+    }
+}
+
 impl Registers {
     pub fn new(clipboard_provider: Box<dyn DynAccess<ClipboardProvider>>) -> Self {
         Self {

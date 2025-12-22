@@ -1,7 +1,7 @@
 use std::io::{self, Write as _};
 
+use helix_config::definition::KittyKeyboardProtocolConfig;
 use helix_view::{
-    editor::KittyKeyboardProtocolConfig,
     graphics::{CursorKind, Rect, UnderlineStyle},
     theme::{self, Color, Modifier},
 };

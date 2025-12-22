@@ -360,9 +360,10 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
 
 fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
     use ignore::WalkBuilder;
-    use helix_config::definition::FilePickerConfig;
+    use helix_config::definition::{FileExplorerConfig, FilePickerConfig};
 
     let config = editor.config_store.editor();
+    let flatten_dirs = config.flatten_dirs();
 
     let mut walk_builder = WalkBuilder::new(root);
 
@@ -385,7 +386,12 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
                     let is_dir = entry
                         .file_type()
                         .is_some_and(|file_type| file_type.is_dir());
-                    let path = entry.path().to_path_buf();
+                    let mut path = entry.path().to_path_buf();
+                    if is_dir && path != root && flatten_dirs {
+                        while let Some(single_child_directory) = get_child_if_single_dir(&path) {
+                            path = single_child_directory;
+                        }
+                    }
                     (path, is_dir)
                 })
                 .ok()

@@ -10,8 +10,9 @@ mod ui;
 
 pub use lsp::{init_language_server_config, DiagnosticFilter};
 pub use ui::{
-    BufferLine, CursorKind, FileExplorerPosition, GutterType, LineNumber, PickerStartPosition,
-    PopupBorderConfig, StatusLineElement, WhitespaceRenderValue,
+    BufferLine, CursorKind, FileExplorerPosition, GutterType, KittyKeyboardProtocolConfig,
+    LineNumber, PickerStartPosition, PopupBorderConfig, StatusLineElement,
+    WhitespaceRenderValue,
 };
 // Re-export helix_core types used in config
 pub use helix_core::diagnostic::Severity;

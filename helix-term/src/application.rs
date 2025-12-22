@@ -1,7 +1,7 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_config::{ConfigStore, OptionRegistry, init_config};
-use helix_config::definition::{LspConfig, MiscConfig, MouseConfig, TerminfoConfig};
+use helix_config::definition::{LspConfig, MiscConfig, TerminfoConfig};
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
@@ -131,11 +131,7 @@ impl Application {
         }
 
         // Create terminal backend config from ConfigStore
-        let terminal_config = tui::terminal::Config {
-            enable_mouse_capture: config_store.editor().mouse(),
-            force_enable_extended_underlines: config_store.editor().force_undercurl(),
-            kitty_keyboard_protocol: config.editor.kitty_keyboard_protocol,
-        };
+        let terminal_config = tui::terminal::Config::from_config(config_store.editor().as_ref());
 
         #[cfg(all(not(windows), not(feature = "integration")))]
         let backend = TerminaBackend::new(terminal_config)
@@ -158,9 +154,6 @@ impl Application {
             area,
             Arc::new(theme_loader),
             Arc::new(ArcSwap::from_pointee(lang_loader)),
-            Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
-                &config.editor
-            })),
             handlers,
             config_store,
         );
@@ -405,34 +398,24 @@ impl Application {
     }
 
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
-        let old_editor_config = self.editor.config();
-
         match config_event {
             ConfigEvent::Refresh => self.refresh_config(),
 
-            // Since only the Application can make changes to Editor's config,
-            // the Editor must send up a new copy of a modified config so that
-            // the Application can apply it.
-            ConfigEvent::Update(editor_config) => {
-                let mut app_config = (*self.config.load().clone()).clone();
-                app_config.editor = *editor_config;
-
+            // ConfigEvent::Update is sent when the editor modifies its own config.
+            // Since editor config is now in ConfigStore, we only need to reconfigure the terminal.
+            ConfigEvent::Update(_editor_config) => {
                 // Reconfigure terminal backend using ConfigStore
-                let terminal_config = tui::terminal::Config {
-                    enable_mouse_capture: self.editor.config_store.editor().mouse(),
-                    force_enable_extended_underlines: self.editor.config_store.editor().force_undercurl(),
-                    kitty_keyboard_protocol: app_config.editor.kitty_keyboard_protocol,
-                };
+                let terminal_config = tui::terminal::Config::from_config(self.editor.config_store.editor().as_ref());
                 if let Err(err) = self.terminal.reconfigure(terminal_config) {
                     self.editor.set_error(err.to_string());
                 };
-                self.config.store(Arc::new(app_config));
+                // Note: Config no longer stores editor config, so we don't update self.config here
             }
         }
 
         // Update all the relevant members in the editor after updating
         // the configuration.
-        self.editor.refresh_config(&old_editor_config);
+        self.editor.refresh_config();
 
         // reset view position in case softwrap was enabled/disabled
         let scrolloff = self.editor.config_store.editor().scrolloff();
@@ -444,7 +427,7 @@ impl Application {
 
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
-            let default_config = Config::load_default()
+            let (default_config, _editor_toml) = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
 
             // Reload config into the new ConfigStore
@@ -484,11 +467,7 @@ impl Application {
             }
 
             // Reconfigure terminal backend using ConfigStore
-            let terminal_config = tui::terminal::Config {
-                enable_mouse_capture: self.editor.config_store.editor().mouse(),
-                force_enable_extended_underlines: self.editor.config_store.editor().force_undercurl(),
-                kitty_keyboard_protocol: default_config.editor.kitty_keyboard_protocol,
-            };
+            let terminal_config = tui::terminal::Config::from_config(self.editor.config_store.editor().as_ref());
             self.terminal.reconfigure(terminal_config)?;
 
             // Store new config
@@ -498,6 +477,10 @@ impl Application {
 
         match refresh_config() {
             Ok(_) => {
+                // Notify that config changed
+                helix_event::dispatch(helix_view::events::ConfigDidChange {
+                    editor: &mut self.editor,
+                });
                 self.editor.set_status("Config refreshed");
             }
             Err(err) => {

@@ -29,7 +29,7 @@ impl Value {
         match (self, val) {
             (Value::List(dst), Value::List(ref mut val)) => dst.append(val),
             (Value::Map(dst), Value::Map(val)) if depth == 0 || dst.is_empty() => {
-                dst.extend(val.into_iter())
+                dst.extend(*val)
             }
             (Value::Map(dst), Value::Map(val)) => {
                 dst.reserve(val.len());

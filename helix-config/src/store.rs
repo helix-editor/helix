@@ -51,15 +51,15 @@
 //! let lsp_config = store.language_server("rust-analyzer");
 //! ```
 
-use std::sync::Arc;
-use std::path::Path;
 use std::marker::PhantomData;
+use std::path::Path;
+use std::sync::Arc;
 
 use hashbrown::HashMap;
 use parking_lot::RwLock;
 
-use crate::{OptionManager, OptionRegistry, Value, read_toml_config};
 use crate::any::ConfigData;
+use crate::{read_toml_config, OptionManager, OptionRegistry, Value};
 
 /// Unique identifier for a document.
 /// This is a stub type for now - will be replaced with the actual DocumentId type
@@ -125,33 +125,12 @@ impl<K, V> SlotMap<K, V> {
         K::from(index)
     }
 
-    fn remove(&mut self, key: K) -> Option<V>
-    where
-        K: Into<u32> + Copy,
-    {
-        let index = key.into() as usize;
-        if index >= self.slots.len() {
-            return None;
-        }
-        let value = self.slots[index].take()?;
-        self.free_list.push(index as u32);
-        Some(value)
-    }
-
     fn get(&self, key: K) -> Option<&V>
     where
         K: Into<u32> + Copy,
     {
         let index = key.into() as usize;
         self.slots.get(index)?.as_ref()
-    }
-
-    fn get_mut(&mut self, key: K) -> Option<&mut V>
-    where
-        K: Into<u32> + Copy,
-    {
-        let index = key.into() as usize;
-        self.slots.get_mut(index)?.as_mut()
     }
 }
 
@@ -228,7 +207,7 @@ impl std::fmt::Debug for Layer {
 /// ScopeNode defines the inheritance chain
 struct ScopeNode {
     layer: LayerId,
-    parent: ScopeId,  // NONE for root
+    parent: ScopeId, // NONE for root
 }
 
 impl std::fmt::Debug for ScopeNode {
@@ -439,7 +418,10 @@ impl ConfigStore {
     /// Get the scope for a language
     pub fn language_scope(&self, id: LanguageId) -> ScopeId {
         let guard = self.languages.read();
-        guard.get(id).map(|entry| entry.scope).unwrap_or(ScopeId::NONE)
+        guard
+            .get(id)
+            .map(|entry| entry.scope)
+            .unwrap_or(ScopeId::NONE)
     }
 
     /// Create a document layer for a specific language
@@ -494,9 +476,9 @@ impl ConfigStore {
             let layers = self.layers.read();
             if let Some(layer_lock) = layers.get(layer_id) {
                 let layer_guard = layer_lock.read();
-                if let Ok(mapped) = RwLockReadGuard::try_map(layer_guard, |layer| {
-                    layer.values.get(option)
-                }) {
+                if let Ok(mapped) =
+                    RwLockReadGuard::try_map(layer_guard, |layer| layer.values.get(option))
+                {
                     // We found the value - but we need to return it while keeping layers lock alive
                     // This is tricky, so for now we'll just check existence
                     drop(mapped);
@@ -717,11 +699,7 @@ impl ConfigStore {
     /// // Clone into Document
     /// document.config = Arc::clone(&doc_config);
     /// ```
-    pub fn create_document_config(
-        &self,
-        id: DocumentId,
-        language: &str,
-    ) -> Arc<OptionManager> {
+    pub fn create_document_config(&self, id: DocumentId, language: &str) -> Arc<OptionManager> {
         let language_config = self.get_or_create_language_legacy(language);
 
         let doc_config = Arc::new(language_config.create_scope());
@@ -893,11 +871,13 @@ impl ConfigStore {
         let contents = std::fs::read_to_string(path)
             .map_err(|e| anyhow::anyhow!("Failed to read config file {}: {}", path.display(), e))?;
 
-        let toml_value: toml::Value = toml::from_str(&contents)
-            .map_err(|e| anyhow::anyhow!("Failed to parse config file {}: {}", path.display(), e))?;
+        let toml_value: toml::Value = toml::from_str(&contents).map_err(|e| {
+            anyhow::anyhow!("Failed to parse config file {}: {}", path.display(), e)
+        })?;
 
         // Convert toml::Value to our Value type
-        let value: Value = toml_value.try_into()
+        let value: Value = toml_value
+            .try_into()
             .map_err(|e| anyhow::anyhow!("Failed to convert config: {}", e))?;
 
         let Value::Map(map_box) = value else {
@@ -957,14 +937,25 @@ impl ConfigStore {
     /// store.load_languages_config(Path::new("/path/to/languages.toml"))?;
     /// ```
     pub fn load_languages_config(&self, path: &Path) -> anyhow::Result<()> {
-        let contents = std::fs::read_to_string(path)
-            .map_err(|e| anyhow::anyhow!("Failed to read languages config file {}: {}", path.display(), e))?;
+        let contents = std::fs::read_to_string(path).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to read languages config file {}: {}",
+                path.display(),
+                e
+            )
+        })?;
 
-        let toml_value: toml::Value = toml::from_str(&contents)
-            .map_err(|e| anyhow::anyhow!("Failed to parse languages config file {}: {}", path.display(), e))?;
+        let toml_value: toml::Value = toml::from_str(&contents).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to parse languages config file {}: {}",
+                path.display(),
+                e
+            )
+        })?;
 
         // Convert toml::Value to our Value type
-        let value: Value = toml_value.try_into()
+        let value: Value = toml_value
+            .try_into()
             .map_err(|e| anyhow::anyhow!("Failed to convert languages config: {}", e))?;
 
         let Value::Map(map_box) = value else {
@@ -1000,7 +991,10 @@ impl ConfigStore {
         if let Some(Value::Map(lsp_servers_box)) = map.get("language-server") {
             for (server_name, server_value) in lsp_servers_box.iter() {
                 let Value::Map(server_map_box) = server_value else {
-                    anyhow::bail!("Language server config for '{}' must be a table", server_name);
+                    anyhow::bail!(
+                        "Language server config for '{}' must be a table",
+                        server_name
+                    );
                 };
                 let server_map = server_map_box.as_ref();
 
@@ -1213,13 +1207,19 @@ mod tests {
         assert!(store.language("python").is_none());
         let python_config = store.resolve_or_create("language:python").unwrap();
         assert!(store.language("python").is_some());
-        assert!(Arc::ptr_eq(&python_config, &store.language("python").unwrap()));
+        assert!(Arc::ptr_eq(
+            &python_config,
+            &store.language("python").unwrap()
+        ));
 
         // LSP should be created
         assert!(store.language_server("pylsp").is_none());
         let lsp_config = store.resolve_or_create("lsp:pylsp").unwrap();
         assert!(store.language_server("pylsp").is_some());
-        assert!(Arc::ptr_eq(&lsp_config, &store.language_server("pylsp").unwrap()));
+        assert!(Arc::ptr_eq(
+            &lsp_config,
+            &store.language_server("pylsp").unwrap()
+        ));
 
         // Document should NOT be created (requires language)
         assert!(store.resolve_or_create("document:999").is_none());

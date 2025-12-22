@@ -646,7 +646,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                                 &path,
                                 None,
                                 false,
-                                editor.config.clone(),
                                 editor.syn_loader.clone(),
                                 editor.config_store.clone(),
                             )

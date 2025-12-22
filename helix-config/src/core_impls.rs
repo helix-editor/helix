@@ -3,6 +3,7 @@
 //! This module contains the `Ty` trait implementations for types defined in helix-core.
 //! By having these implementations here, we avoid helix-core needing to depend on helix-config.
 
+use std::path::PathBuf;
 use crate::{Map, Ty, Value};
 use anyhow::bail;
 
@@ -204,5 +205,14 @@ impl Ty for Severity {
             Severity::Warning => "warning".into(),
             Severity::Error => "error".into(),
         }
+    }
+}
+impl Ty for PathBuf {
+    fn from_value(val: Value) -> anyhow::Result<Self> {
+        let val: String = val.typed()?;
+        Ok(PathBuf::from(&*val))
+    }
+    fn to_value(&self) -> Value {
+        Value::String(self.to_string_lossy().into_owned())
     }
 }

@@ -13,7 +13,6 @@ use toml::de::Error as TomlError;
 pub struct Config {
     pub theme: Option<theme::Config>,
     pub keys: HashMap<Mode, KeyTrie>,
-    pub editor: helix_view::editor::Config,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -29,7 +28,6 @@ impl Default for Config {
         Config {
             theme: None,
             keys: keymap::default(),
-            editor: helix_view::editor::Config::default(),
         }
     }
 }
@@ -59,7 +57,7 @@ impl Config {
     pub fn load(
         global: Result<String, ConfigLoadError>,
         local: Result<String, ConfigLoadError>,
-    ) -> Result<Config, ConfigLoadError> {
+    ) -> Result<(Config, Option<toml::Value>), ConfigLoadError> {
         let global_config: Result<ConfigRaw, ConfigLoadError> =
             global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let local_config: Result<ConfigRaw, ConfigLoadError> =
@@ -75,20 +73,15 @@ impl Config {
                 }
 
                 let editor = match (global.editor, local.editor) {
-                    (None, None) => helix_view::editor::Config::default(),
-                    (None, Some(val)) | (Some(val), None) => {
-                        val.try_into().map_err(ConfigLoadError::BadConfig)?
-                    }
-                    (Some(global), Some(local)) => merge_toml_values(global, local, 3)
-                        .try_into()
-                        .map_err(ConfigLoadError::BadConfig)?,
+                    (None, None) => None,
+                    (None, Some(val)) | (Some(val), None) => Some(val),
+                    (Some(global), Some(local)) => Some(merge_toml_values(global, local, 3)),
                 };
 
-                Config {
+                (Config {
                     theme: local.theme.or(global.theme),
                     keys,
-                    editor,
-                }
+                }, editor)
             }
             // if any configs are invalid return that first
             (_, Err(ConfigLoadError::BadConfig(err)))
@@ -100,14 +93,10 @@ impl Config {
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
-                Config {
+                (Config {
                     theme: config.theme,
                     keys,
-                    editor: config.editor.map_or_else(
-                        || Ok(helix_view::editor::Config::default()),
-                        |val| val.try_into().map_err(ConfigLoadError::BadConfig),
-                    )?,
-                }
+                }, config.editor)
             }
 
             // these are just two io errors return the one for the global config
@@ -117,7 +106,7 @@ impl Config {
         Ok(res)
     }
 
-    pub fn load_default() -> Result<Config, ConfigLoadError> {
+    pub fn load_default() -> Result<(Config, Option<toml::Value>), ConfigLoadError> {
         let global_config =
             fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
@@ -132,7 +121,8 @@ mod tests {
 
     impl Config {
         fn load_test(config: &str) -> Config {
-            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default())).unwrap()
+            let (config, _editor) = Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default())).unwrap();
+            config
         }
     }
 

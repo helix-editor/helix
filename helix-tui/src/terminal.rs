@@ -2,7 +2,9 @@
 //! Frontend for [Backend]
 
 use crate::{backend::Backend, buffer::Buffer};
-use helix_view::editor::{Config as EditorConfig, KittyKeyboardProtocolConfig};
+use helix_config::definition::{
+    KittyKeyboardProtocolConfig, MouseConfig, TerminfoConfig,
+};
 use helix_view::graphics::{CursorKind, Rect};
 use std::io;
 
@@ -28,12 +30,13 @@ pub struct Config {
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
 }
 
-impl From<&EditorConfig> for Config {
-    fn from(config: &EditorConfig) -> Self {
+impl Config {
+    /// Create terminal config from the new ConfigStore system
+    pub fn from_config(config: &(impl MouseConfig + TerminfoConfig)) -> Self {
         Self {
-            enable_mouse_capture: config.mouse,
-            force_enable_extended_underlines: config.undercurl,
-            kitty_keyboard_protocol: config.kitty_keyboard_protocol,
+            enable_mouse_capture: config.mouse(),
+            force_enable_extended_underlines: config.force_undercurl(),
+            kitty_keyboard_protocol: config.kitty_keyboard_protocol(),
         }
     }
 }
