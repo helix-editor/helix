@@ -232,6 +232,7 @@
   "return"
   "await"
   "yield"
+  "become"
 ] @keyword.control.return
 
 "use" @keyword.control.import
