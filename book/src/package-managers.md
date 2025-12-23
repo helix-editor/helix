@@ -1,10 +1,12 @@
 ## Package managers
 
+- [Package managers](#package-managers)
 - [Linux](#linux)
   - [Debian](#debian)
   - [Ubuntu/Mint](#ubuntumint)
   - [Fedora/RHEL](#fedorarhel)
   - [Arch Linux extra](#arch-linux-extra)
+  - [Mise-en-place](#mise-en-place)
   - [NixOS](#nixos)
   - [Flatpak](#flatpak)
   - [Snap](#snap)
@@ -12,10 +14,12 @@
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
   - [MacPorts](#macports)
+  - [Mise-en-place](#mise-en-place-1)
 - [Windows](#windows)
   - [Winget](#winget)
   - [Scoop](#scoop)
   - [Chocolatey](#chocolatey)
+  - [Mise-en-place](#mise-en-place-2)
   - [MSYS2](#msys2)
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg)](https://repology.org/project/helix-editor/versions)
@@ -64,6 +68,14 @@ sudo pacman -S helix
 
 Additionally, a [helix-git](https://aur.archlinux.org/packages/helix-git/) package is available
 in the AUR, which builds the master branch.
+
+### Mise-en-place
+
+Helix is able to be installed with [mise-en-place](https://github.com/jdx/mise), the polyglot tool version manager, with a command like:
+
+```sh
+mise use -g helix@latest
+```
 
 ### NixOS
 
@@ -131,6 +143,14 @@ brew install helix
 sudo port install helix
 ```
 
+### Mise-en-place
+
+Helix is able to be installed with [mise-en-place](https://github.com/jdx/mise), the polyglot tool version manager, with a command like:
+
+```sh
+mise use -g helix@latest
+```
+
 ## Windows
 
 Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
@@ -154,6 +174,14 @@ scoop install helix
 
 ```sh
 choco install helix
+```
+
+### Mise-en-place
+
+Helix is able to be installed with [mise-en-place](https://github.com/jdx/mise), the polyglot tool version manager, with a command like:
+
+```sh
+mise use -g helix@latest
 ```
 
 ### MSYS2
