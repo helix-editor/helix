@@ -2,6 +2,7 @@
 [
   (class_declaration)
   (function_declaration)
+  (lambda_literal)
 ] @local.scope
 
 ; Definitions
@@ -10,6 +11,11 @@
 
 (parameter
   (simple_identifier) @local.definition.variable.parameter)
+
+(lambda_literal
+  (lambda_parameters
+    (variable_declaration
+      (simple_identifier) @local.definition.variable.parameter)))
 
 ; References
 (simple_identifier) @local.reference
