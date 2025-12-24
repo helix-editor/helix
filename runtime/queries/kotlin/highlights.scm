@@ -211,7 +211,11 @@
 			
 (parameter
 	(simple_identifier) @variable.parameter)
-			
+
+; named arguments
+(value_argument
+  . (simple_identifier) @variable.parameter)
+
 (anonymous_initializer
 	("init") @constructor)
 
