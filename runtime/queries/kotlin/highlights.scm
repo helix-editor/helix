@@ -68,13 +68,21 @@
 	"->"
 ] @operator
 
+;;; String interpolation
+
 (string_literal
-	"$" @punctuation
+	"$" @punctuation.special
   (interpolated_identifier) @variable)
 (string_literal
-	"${" @punctuation
+	"${" @punctuation.special
 	(interpolated_expression) @none
-	"}" @punctuation)
+	"}" @punctuation.special)
+
+; `it` and `this` inside string interpolation
+((interpolated_identifier) @variable.builtin
+(#eq? @variable.builtin "it"))
+((interpolated_identifier) @variable.builtin
+(#eq? @variable.builtin "this"))
 
 ;;; Keywords
 
