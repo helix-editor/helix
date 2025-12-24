@@ -231,6 +231,10 @@
 (function_declaration
 	. (simple_identifier) @function)
 
+(function_declaration
+  receiver: (receiver_type)
+  (simple_identifier) @function)
+
 ; TODO: Separate labeled returns/breaks/continue/super/this
 ;       Must be implemented in the parser first
 (label) @label
