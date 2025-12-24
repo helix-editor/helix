@@ -299,6 +299,12 @@
 		(variable_declaration
 			(simple_identifier) @variable.other.member)))
 
+; Extension property
+(property_declaration
+  receiver: (receiver_type)
+  (variable_declaration
+    (simple_identifier) @variable.other.member))
+
 (class_parameter
 	(simple_identifier) @variable.other.member)
 
