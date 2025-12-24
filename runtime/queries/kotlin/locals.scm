@@ -20,3 +20,4 @@
 ; References
 (simple_identifier) @local.reference
 (type_identifier) @local.reference
+(interpolated_identifier) @local.reference

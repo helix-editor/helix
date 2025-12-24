@@ -70,7 +70,7 @@
 
 (string_literal
 	"$" @punctuation
-  (interpolated_identifier) @none)
+  (interpolated_identifier) @variable)
 (string_literal
 	"${" @punctuation
 	(interpolated_expression) @none
