@@ -232,12 +232,16 @@
 (setter
 	("set") @function.builtin)
 
+; normal function
 (function_declaration
-	. (simple_identifier) @function)
+	(modifiers)?
+	(type_parameters)?
+	(simple_identifier) @function)
 
+; extension function
 (function_declaration
-  receiver: (receiver_type)
-  (simple_identifier) @function)
+	receiver: (receiver_type)
+	(simple_identifier) @function)
 
 ; TODO: Separate labeled returns/breaks/continue/super/this
 ;       Must be implemented in the parser first
