@@ -191,26 +191,43 @@
 ((simple_identifier) @constant
 (#match? @constant "^[A-Z][A-Z0-9_]*$"))
 
-;;; Function calls
+;;; Navigation, Members & Function calls
 
+; generic property navigation (e.g. obj.property)
+(_
+	(navigation_suffix
+		(simple_identifier) @variable.other.member))
+
+; generic function call (e.g. foo())
 (call_expression
-	. (simple_identifier) @function.builtin
-    (#match? @function.builtin "^(arrayOf|arrayOfNulls|byteArrayOf|shortArrayOf|intArrayOf|longArrayOf|ubyteArrayOf|ushortArrayOf|uintArrayOf|ulongArrayOf|floatArrayOf|doubleArrayOf|booleanArrayOf|charArrayOf|emptyArray|mapOf|setOf|listOf|emptyMap|emptySet|emptyList|mutableMapOf|mutableSetOf|mutableListOf|print|println|error|TODO|run|runCatching|repeat|lazy|lazyOf|enumValues|enumValueOf|assert|check|checkNotNull|require|requireNotNull|with|suspend|synchronized)$"))
+	. (simple_identifier) @function)
 
-; object.function() or object.property.function()
+; method call via navigation (e.g. obj.method())
 (call_expression
 	(navigation_expression
 		(navigation_suffix
 			(simple_identifier) @function) . ))
 
-; function()
-(call_expression
-	. (simple_identifier) @function)
-
-; infix function call, e.g. 1 to 2
+; infix function call (e.g. 1 to 2)
 (infix_expression
   . (_) .
 	(simple_identifier) @function)
+
+; builtin function calls
+(call_expression
+	. (simple_identifier) @function.builtin
+    (#match? @function.builtin "^(arrayOf|arrayOfNulls|byteArrayOf|shortArrayOf|intArrayOf|longArrayOf|ubyteArrayOf|ushortArrayOf|uintArrayOf|ulongArrayOf|floatArrayOf|doubleArrayOf|booleanArrayOf|charArrayOf|emptyArray|mapOf|setOf|listOf|emptyMap|emptySet|emptyList|mutableMapOf|mutableSetOf|mutableListOf|print|println|error|TODO|run|runCatching|repeat|lazy|lazyOf|enumValues|enumValueOf|assert|check|checkNotNull|require|requireNotNull|with|suspend|synchronized)$"))
+
+; constant access via navigation (e.g. Foo.CONSTANT)
+(_
+	(navigation_suffix
+		(simple_identifier) @constant
+		(#match? @constant "^[A-Z][A-Z0-9_]*$")))
+
+; object or class reference (e.g. TextObjects.TEXT)
+((navigation_expression
+  . (simple_identifier) @type)
+  (#match? @type "^[A-Z]"))
 
 ;;; Function definitions
 
@@ -290,22 +307,6 @@
   (type_identifier) @type.parameter)
 
 (type_identifier) @type
-
-; id_1.id_2.id_3: `id_2` and `id_3` are assumed as object properties
-(_
-	(navigation_suffix
-		(simple_identifier) @variable.other.member))
-
-; SCREAMING CASE in navigation suffix (e.g. Foo.CONSTANT)
-(_
-	(navigation_suffix
-		(simple_identifier) @constant
-		(#match? @constant "^[A-Z][A-Z0-9_]*$")))
-
-; Reference to object attribute
-((navigation_expression
-  . (simple_identifier) @type)
-  (#match? @type "^[A-Z]"))
 
 ((class_body
 	(property_declaration
