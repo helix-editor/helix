@@ -198,6 +198,11 @@
 (call_expression
 	. (simple_identifier) @function)
 
+; infix function call, e.g. 1 to 2
+(infix_expression
+  . (_) .
+	(simple_identifier) @function)
+
 ;;; Function definitions
 
 ; lambda parameters
