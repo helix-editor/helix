@@ -285,11 +285,6 @@
 (enum_entry
 	(simple_identifier) @constant)
 
-(_
-	(navigation_suffix
-		(simple_identifier) @constant
-		(#match? @constant "^[A-Z][A-Z0-9_]*$")))
-
 ; SCREAMING CASE identifiers are assumed to be constants
 ((simple_identifier) @constant
 (#match? @constant "^[A-Z][A-Z0-9_]*$"))
@@ -298,6 +293,17 @@
 (_
 	(navigation_suffix
 		(simple_identifier) @variable.other.member))
+
+; SCREAMING CASE in navigation suffix (e.g. Foo.CONSTANT)
+(_
+	(navigation_suffix
+		(simple_identifier) @constant
+		(#match? @constant "^[A-Z][A-Z0-9_]*$")))
+
+; Reference to object attribute
+((navigation_expression
+  . (simple_identifier) @type)
+  (#match? @type "^[A-Z]"))
 
 (class_body
 	(property_declaration
