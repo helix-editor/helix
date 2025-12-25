@@ -182,6 +182,15 @@
 	(shebang_line)
 ] @comment
 
+;;; Constants
+
+(enum_entry
+	(simple_identifier) @constant)
+
+; SCREAMING CASE identifiers are assumed to be constants
+((simple_identifier) @constant
+(#match? @constant "^[A-Z][A-Z0-9_]*$"))
+
 ;;; Function calls
 
 (call_expression
@@ -282,13 +291,6 @@
 
 (type_identifier) @type
 
-(enum_entry
-	(simple_identifier) @constant)
-
-; SCREAMING CASE identifiers are assumed to be constants
-((simple_identifier) @constant
-(#match? @constant "^[A-Z][A-Z0-9_]*$"))
-
 ; id_1.id_2.id_3: `id_2` and `id_3` are assumed as object properties
 (_
 	(navigation_suffix
@@ -305,10 +307,11 @@
   . (simple_identifier) @type)
   (#match? @type "^[A-Z]"))
 
-(class_body
+((class_body
 	(property_declaration
 		(variable_declaration
 			(simple_identifier) @variable.other.member)))
+  (#not-match? @variable.other.member "^[A-Z][A-Z0-9_]*$"))
 
 ; Extension property
 (property_declaration
