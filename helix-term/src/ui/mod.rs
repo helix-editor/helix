@@ -304,6 +304,100 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     picker
 }
 
+// Only take the editor because the path for the recent files is saved in the config
+pub fn recent_picker(editor: &Editor, root: PathBuf) -> FilePicker {
+    use std::io::{BufRead, BufReader};
+    use std::path::PathBuf;
+
+    let config = editor.config();
+
+    let data = FilePickerData {
+        root: root.clone(),
+        directory_style: editor.theme.get("ui.text.directory"),
+    };
+
+    let mut files = {
+        let max_show_entries = config.recent_picker.max_show_entries;
+        let recents_path = config.recent_picker.recents_path.clone();
+
+        let entries: Vec<PathBuf> = if recents_path.exists() {
+            let file = std::fs::File::open(recents_path).ok();
+            if let Some(f) = file {
+                let reader = BufReader::new(f);
+                reader
+                    .lines()
+                    .flatten()
+                    .map(PathBuf::from)
+                    .filter(|p| p.exists())
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+
+        entries
+            .into_iter()
+            .take(max_show_entries)
+            .collect::<Vec<_>>()
+    };
+
+    let columns = [PickerColumn::new(
+        "path",
+        |item: &PathBuf, data: &FilePickerData| {
+            let path = item.strip_prefix(&data.root).unwrap_or(item);
+            let mut spans = Vec::with_capacity(3);
+            if let Some(dirs) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+                spans.extend([
+                    Span::styled(dirs.to_string_lossy(), data.directory_style),
+                    Span::styled(std::path::MAIN_SEPARATOR_STR, data.directory_style),
+                ]);
+            }
+            let filename = path
+                .file_name()
+                .expect("normalized paths can't end in `..`")
+                .to_string_lossy();
+            spans.push(Span::raw(filename));
+            Spans::from(spans).into()
+        },
+    )];
+    let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
+        if let Err(e) = cx.editor.open(path, action) {
+            let err = if let Some(err) = e.source() {
+                format!("{}", err)
+            } else {
+                format!("unable to open \"{}\"", path.display())
+            };
+            cx.editor.set_error(err);
+        }
+    })
+    .with_preview(|_editor, path| Some((path.as_path().into(), None)));
+    let injector = picker.injector();
+    let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
+
+    let mut hit_timeout = false;
+    for file in &mut files {
+        if injector.push(file.to_path_buf()).is_err() {
+            break;
+        }
+        if std::time::Instant::now() >= timeout {
+            hit_timeout = true;
+            break;
+        }
+    }
+    if hit_timeout {
+        std::thread::spawn(move || {
+            for file in files {
+                if injector.push(file).is_err() {
+                    break;
+                }
+            }
+        });
+    }
+    picker
+}
+
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
