@@ -70,6 +70,7 @@ jq-lsp = { command = "jq-lsp" }
 jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
 just-lsp = { command = "just-lsp" }
+kcl-language-server = { command = "kcl-language-server" }
 koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 koto-ls = { command = "koto-ls" }
 kotlin-lsp = { command = "kotlin-lsp", args = ["--stdio"] }
@@ -5027,6 +5028,17 @@ block-comment-tokens = { start = "/*", end = "*/"}
 [[grammar]]
 name = "kcl"
 source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "8905e0bdbf5870b50bc3f24345f1af27746f42e8"}
+
+[[language]]
+name = "kcl-lang"
+scope = "source.k"
+file-types = ["kcl", { glob = "*.k" } ]
+roots = ["kcl.mod", "kcl.yaml"]
+language-servers = ["kcl-language-server"]
+
+[[grammar]]
+name = "kcl-lang"
+source = { git = "https://github.com/kcl-lang/tree-sitter-kcl", rev = "b0b2eb38009e04035a6e266c7e11e541f3caab7c" }
 
 [[language]]
 name = "bovex"
