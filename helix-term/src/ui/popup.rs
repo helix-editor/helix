@@ -152,7 +152,7 @@ impl<T: Component> Popup<T> {
         // if there's a orientation preference, use that
         // if we're on the top part of the screen, do below
         // if we're on the bottom part, do above
-        let can_put_below = viewport.height > rel_y + MIN_HEIGHT;
+        let can_put_below = viewport.height > rel_y + MIN_HEIGHT + 2 * render_borders as u16;
         let can_put_above = rel_y.checked_sub(MIN_HEIGHT).is_some();
         let final_pos = match self.position_bias {
             Open::Below => match can_put_below {
@@ -185,12 +185,12 @@ impl<T: Component> Popup<T> {
             .expect("Component needs required_size implemented in order to be embedded in a popup");
 
         width = width.min(MAX_WIDTH);
-        let height = if render_borders {
+        let height = if render_borders && (is_menu || self.id == "dap-variables") {
             (child_height + 2).min(MAX_HEIGHT)
         } else {
             child_height.min(MAX_HEIGHT)
         };
-        if render_borders {
+        if render_borders && self.id == "dap-variables" {
             width += 2;
         }
         if viewport.width <= rel_x + width + 2 {
@@ -332,7 +332,9 @@ impl<T: Component> Component for Popup<T> {
 
         let mut inner = area;
         if render_borders {
-            inner = area.inner(Margin::all(1));
+            if is_menu || self.id == "dap-variables" {
+                inner = area.inner(Margin::all(1));
+            }
             Widget::render(Block::bordered(), area, surface);
         }
         let border = usize::from(render_borders);
@@ -354,14 +356,17 @@ impl<T: Component> Component for Popup<T> {
             let scroll_style = cx.editor.theme.get("ui.menu.scroll");
 
             if !fits {
-                let scroll_height = win_height.pow(2).div_ceil(len).min(win_height);
-                let scroll_line = (win_height - scroll_height) * scroll
+                let scrollbar_height = win_height.saturating_sub(2 * border);
+                let scroll_height = scrollbar_height
+                    .pow(2)
+                    .div_ceil(len)
+                    .min(scrollbar_height.saturating_sub(2 * border));
+                let scroll_line = (scrollbar_height - scroll_height) * scroll
                     / std::cmp::max(1, len.saturating_sub(win_height));
 
                 let mut cell;
-                for i in 0..win_height {
-                    cell =
-                        &mut surface[(inner.right() - 1 + border as u16, inner.top() + i as u16)];
+                for i in 0..scrollbar_height {
+                    cell = &mut surface[(inner.right() - 1, inner.top() + (border + i) as u16)];
 
                     let half_block = if render_borders { "▌" } else { "▐" };
 
