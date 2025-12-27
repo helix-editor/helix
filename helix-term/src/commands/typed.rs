@@ -2610,17 +2610,47 @@ fn redraw(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct MoveBufferOptions {
+    pub force: bool,
+}
+
 fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
+    let new_path: PathBuf = args.first().unwrap().into();
+    move_buffer_impl(
+        cx,
+        new_path,
+        MoveBufferOptions {
+            force: false,
+        }
+    )
+}
+
+fn force_move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let new_path: PathBuf = args.first().unwrap().into();
+    move_buffer_impl(
+        cx,
+        new_path,
+        MoveBufferOptions {
+            force: true,
+        }
+    )
+}
+
+fn move_buffer_impl(cx: &mut compositor::Context, new_path: PathBuf, options: MoveBufferOptions) -> anyhow::Result<()> {
     let doc = doc!(cx.editor);
     let old_path = doc
         .path()
         .context("Scratch buffer cannot be moved. Use :write instead")?
         .clone();
-    let new_path: PathBuf = args.first().unwrap().into();
 
     // if new_path is a directory, append the original file name
     // to move the file into that directory.
@@ -2630,11 +2660,12 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         .map(|old_file_name| new_path.join(old_file_name))
         .unwrap_or(new_path);
 
-    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
+    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref(), options.force) {
         bail!("Could not move file: {err}");
     }
     Ok(())
 }
+
 
 fn yank_diagnostic(
     cx: &mut compositor::Context,
@@ -3739,6 +3770,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["mv"],
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "move!",
+        aliases: &["mv!"],
+        doc: "Move the current buffer and its corresponding file to a different path creating necessary subdirectories",
+        fun: force_move_buffer,
         completer: CommandCompleter::positional(&[completers::filename]),
         signature: Signature {
             positionals: (1, Some(1)),
