@@ -18,7 +18,7 @@
 | blueprint | ✓ |  |  |  |  | `blueprint-compiler` |
 | bovex | ✓ |  |  |  | ✓ |  |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
-| c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp` |
+| c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp`, `csharp-ls` |
 | cabal |  |  |  |  |  | `haskell-language-server-wrapper` |
 | caddyfile | ✓ | ✓ | ✓ |  |  |  |
 | cairo | ✓ | ✓ | ✓ |  |  | `cairo-language-server` |

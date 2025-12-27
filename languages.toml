@@ -744,7 +744,7 @@ roots = ["sln", "csproj"]
 comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
-language-servers = [ "omnisharp" ]
+language-servers = [ "omnisharp", "csharp-ls" ]
 
 [language.debugger]
 name = "netcoredbg"
