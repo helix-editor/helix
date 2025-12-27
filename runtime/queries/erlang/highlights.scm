@@ -114,16 +114,6 @@
   ] @comment.block.documentation)
  (#any-of? @keyword "doc" "moduledoc"))
 
-; Macros
-(macro
-  "?"+ @keyword.directive
-  name: (_) @keyword.directive)
-
-(macro
-  "?"+ @constant
-  name: (_) @constant
-  !arguments)
-
 ; Parameters
 ; specs
 ((attribute
@@ -163,3 +153,13 @@
 ; Ignored variables
 ((variable) @comment.unused
  (#match? @comment.unused "^_"))
+
+; Macros
+(macro
+  "?"+ @keyword.directive
+  name: (_) @keyword.directive)
+
+(macro
+  "?"+ @constant
+  name: (_) @constant
+  !arguments)

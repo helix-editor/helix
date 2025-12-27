@@ -36,7 +36,8 @@ pub fn typable_commands() -> Result<String, DynError> {
         "Description".to_owned(),
     ]));
 
-    let cmdify = |s: &str| format!("`:{}`", s);
+    // escape | so it doesn't get rendered as a column separator
+    let cmdify = |s: &str| format!("`:{}`", s.replace('|', "\\|"));
 
     for cmd in TYPABLE_COMMAND_LIST {
         let names = std::iter::once(&cmd.name)
@@ -129,7 +130,7 @@ pub fn lang_features() -> Result<String, DynError> {
     cols.push("Default language servers".to_owned());
 
     md.push_str(&md_table_heading(&cols));
-    let config = helpers::lang_config();
+    let config = helix_core::config::default_lang_config();
 
     let mut langs = config
         .language

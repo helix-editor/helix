@@ -5,6 +5,8 @@ use super::*;
 mod insert;
 mod movement;
 mod paste_join;
+mod reverse_selection_contents;
+mod rotate_selection_contents;
 mod write;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -816,6 +818,28 @@ async fn macro_play_within_macro_record() -> anyhow::Result<()> {
         indoc! {"\
             hello world
             #[|]#"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
+    // Assert that `helix_term::commands::global_search` handles multibyte characters correctly.
+    test((
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
+        // start global search
+        " /«十分に長い マルチバイトキャラクター列» で検索<ret><esc>",
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
     ))
     .await?;
 

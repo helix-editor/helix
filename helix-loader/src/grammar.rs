@@ -213,6 +213,27 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
     Ok(grammars)
 }
 
+pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
+    let config: Configuration = crate::config::user_lang_config()
+        .context("Could not parse languages.toml")?
+        .try_into()?;
+
+    let grammars = match config.grammar_selection {
+        Some(GrammarSelection::Only { only: selections }) => Some(selections),
+        Some(GrammarSelection::Except { except: rejections }) => Some(
+            config
+                .grammar
+                .into_iter()
+                .map(|grammar| grammar.grammar_id)
+                .filter(|id| !rejections.contains(id))
+                .collect(),
+        ),
+        None => None,
+    };
+
+    Ok(grammars)
+}
+
 fn run_parallel<F, Res>(grammars: Vec<GrammarConfiguration>, job: F) -> Vec<(String, Result<Res>)>
 where
     F: Fn(GrammarConfiguration) -> Result<Res> + Send + 'static + Clone,
@@ -243,69 +264,104 @@ enum FetchStatus {
     NonGit,
 }
 
-fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
-    if let GrammarSource::Git {
-        remote, revision, ..
-    } = grammar.source
-    {
-        let grammar_dir = crate::runtime_dirs()
+struct VendoredGrammar {
+    dir: PathBuf,
+}
+
+impl VendoredGrammar {
+    fn new(grammar: &str) -> Self {
+        let dir = crate::runtime_dirs()
             .first()
             .expect("No runtime directories provided") // guaranteed by post-condition
             .join("grammars")
             .join("sources")
-            .join(&grammar.grammar_id);
+            .join(grammar);
 
-        fs::create_dir_all(&grammar_dir).context(format!(
+        Self { dir }
+    }
+
+    /// Gets the current revision of the repo.
+    fn revision(&self) -> Option<String> {
+        git(&self.dir, ["rev-parse", "HEAD"]).ok()
+    }
+
+    /// Fetches grammar at the given revision.
+    ///
+    /// To ensure clean state, existing grammar directory is removed and re-inited
+    /// before fetch operation.
+    fn fetch(&self, remote: &str, rev: &str) -> Result<()> {
+        self.reinit(remote)?;
+
+        git(&self.dir, ["fetch", "--depth", "1", REMOTE_NAME, rev])?;
+        git(&self.dir, ["checkout", rev])?;
+
+        Ok(())
+    }
+
+    /// Initializes the grammar directory.
+    ///
+    /// Creates directory and sets it up as a git repo, with remote set correctly.
+    fn init(&self, remote: &str) -> Result<()> {
+        // Create the grammar directory if needed.
+        fs::create_dir_all(&self.dir).context(format!(
             "Could not create grammar directory {:?}",
-            grammar_dir
+            &self.dir
         ))?;
 
-        // create the grammar dir contains a git directory
-        if !grammar_dir.join(".git").exists() {
-            git(&grammar_dir, ["init"])?;
+        // Ensure directory is git initialized.
+        if !self.dir.join(".git").exists() {
+            git(&self.dir, ["init"])?;
         }
 
-        // ensure the remote matches the configured remote
-        if get_remote_url(&grammar_dir).as_ref() != Some(&remote) {
-            set_remote(&grammar_dir, &remote)?;
+        // Ensure the remote matches the configured remote, setting if needed.
+        if self.remote().as_deref() != Some(remote) {
+            self.set_remote(remote)?;
         }
 
-        // ensure the revision matches the configured revision
-        if get_revision(&grammar_dir).as_ref() != Some(&revision) {
-            // Fetch the exact revision from the remote.
-            // Supported by server-side git since v2.5.0 (July 2015),
-            // enabled by default on major git hosts.
-            git(
-                &grammar_dir,
-                ["fetch", "--depth", "1", REMOTE_NAME, &revision],
-            )?;
-            git(&grammar_dir, ["checkout", &revision])?;
+        Ok(())
+    }
 
-            Ok(FetchStatus::GitUpdated { revision })
-        } else {
-            Ok(FetchStatus::GitUpToDate)
-        }
-    } else {
-        Ok(FetchStatus::NonGit)
+    /// Removes the grammar directory before initializing again.
+    fn reinit(&self, remote: &str) -> Result<()> {
+        fs::remove_dir_all(&self.dir)?;
+        self.init(remote)?;
+        Ok(())
+    }
+
+    /// Gets remote URL of grammar repo.
+    fn remote(&self) -> Option<String> {
+        git(&self.dir, ["remote", "get-url", REMOTE_NAME]).ok()
+    }
+
+    /// Sets remote URL of grammar repo.
+    fn set_remote(&self, remote: &str) -> Result<()> {
+        git(&self.dir, ["remote", "set-url", REMOTE_NAME, remote])
+            .or_else(|_| git(&self.dir, ["remote", "add", REMOTE_NAME, remote]))?;
+        Ok(())
     }
 }
 
-// Sets the remote for a repository to the given URL, creating the remote if
-// it does not yet exist.
-fn set_remote(repository_dir: &Path, remote_url: &str) -> Result<String> {
-    git(
-        repository_dir,
-        ["remote", "set-url", REMOTE_NAME, remote_url],
-    )
-    .or_else(|_| git(repository_dir, ["remote", "add", REMOTE_NAME, remote_url]))
-}
+fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
+    let GrammarSource::Git {
+        remote, revision, ..
+    } = grammar.source
+    else {
+        return Ok(FetchStatus::NonGit);
+    };
 
-fn get_remote_url(repository_dir: &Path) -> Option<String> {
-    git(repository_dir, ["remote", "get-url", REMOTE_NAME]).ok()
-}
+    let repo = VendoredGrammar::new(&grammar.grammar_id);
 
-fn get_revision(repository_dir: &Path) -> Option<String> {
-    git(repository_dir, ["rev-parse", "HEAD"]).ok()
+    // WARN: Must init before other operations are done.
+    repo.init(&remote)?;
+
+    if repo.revision().is_some_and(|rev| rev == revision) {
+        return Ok(FetchStatus::GitUpToDate);
+    }
+
+    // Fetch the grammar if the revision doesn't match.
+    repo.fetch(&remote, &revision)?;
+
+    Ok(FetchStatus::GitUpdated { revision })
 }
 
 // A wrapper around 'git' commands which returns stdout in success and a

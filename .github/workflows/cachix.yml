@@ -8,10 +8,13 @@ on:
 jobs:
   publish:
     name: Publish Flake
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Install nix
       uses: cachix/install-nix-action@v31

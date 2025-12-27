@@ -176,6 +176,29 @@ impl Client {
         self.did_change_workspace(vec![workspace_for_uri(root_uri)], Vec::new())
     }
 
+    /// Merge FormattingOptions with 'config.format' and return it
+    fn get_merged_formatting_options(
+        &self,
+        options: lsp::FormattingOptions,
+    ) -> lsp::FormattingOptions {
+        let config_format = self
+            .config
+            .as_ref()
+            .and_then(|cfg| cfg.get("format"))
+            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
+
+        if let Some(mut properties) = config_format {
+            // passed in options take precedence over 'config.format'
+            properties.extend(options.properties);
+            lsp::FormattingOptions {
+                properties,
+                ..options
+            }
+        } else {
+            options
+        }
+    }
+
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     pub fn start(
         cmd: &str,
@@ -201,6 +224,7 @@ impl Client {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .current_dir(&root_path)
             // make sure the process is reaped on drop
             .kill_on_drop(true)
             .spawn();
@@ -348,6 +372,7 @@ impl Client {
                 Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::Diagnostics => true, // there's no extra server capability
+            LanguageServerFeature::PullDiagnostics => capabilities.diagnostic_provider.is_some(),
             LanguageServerFeature::RenameSymbol => matches!(
                 capabilities.rename_provider,
                 Some(OneOf::Left(true)) | Some(OneOf::Right(_))
@@ -578,6 +603,9 @@ impl Client {
                         did_rename: Some(true),
                         ..Default::default()
                     }),
+                    diagnostic: Some(lsp::DiagnosticWorkspaceClientCapabilities {
+                        refresh_support: Some(true),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -641,6 +669,7 @@ impl Client {
                                     lsp::CodeActionKind::REFACTOR_REWRITE,
                                     lsp::CodeActionKind::SOURCE,
                                     lsp::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                    lsp::CodeActionKind::SOURCE_FIX_ALL,
                                 ]
                                 .iter()
                                 .map(|kind| kind.as_str().to_string())
@@ -654,6 +683,10 @@ impl Client {
                             properties: vec!["edit".to_owned(), "command".to_owned()],
                         }),
                         ..Default::default()
+                    }),
+                    diagnostic: Some(lsp::DiagnosticClientCapabilities {
+                        dynamic_registration: Some(false),
+                        related_document_support: Some(true),
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
@@ -673,6 +706,7 @@ impl Client {
                 }),
                 window: Some(lsp::WindowClientCapabilities {
                     work_done_progress: Some(true),
+                    show_document: Some(lsp::ShowDocumentClientCapabilities { support: true }),
                     ..Default::default()
                 }),
                 general: Some(lsp::GeneralClientCapabilities {
@@ -1167,23 +1201,7 @@ impl Client {
             _ => return None,
         };
 
-        // merge FormattingOptions with 'config.format'
-        let config_format = self
-            .config
-            .as_ref()
-            .and_then(|cfg| cfg.get("format"))
-            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
-
-        let options = if let Some(mut properties) = config_format {
-            // passed in options take precedence over 'config.format'
-            properties.extend(options.properties);
-            lsp::FormattingOptions {
-                properties,
-                ..options
-            }
-        } else {
-            options
-        };
+        let options = self.get_merged_formatting_options(options);
 
         let params = lsp::DocumentFormattingParams {
             text_document,
@@ -1209,6 +1227,8 @@ impl Client {
             _ => return None,
         };
 
+        let options = self.get_merged_formatting_options(options);
+
         let params = lsp::DocumentRangeFormattingParams {
             text_document,
             range,
@@ -1217,6 +1237,32 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::RangeFormatting>(params))
+    }
+
+    pub fn text_document_diagnostic(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        previous_result_id: Option<String>,
+    ) -> Option<impl Future<Output = Result<lsp::DocumentDiagnosticReportResult>>> {
+        let capabilities = self.capabilities();
+
+        // Return early if the server does not support pull diagnostic.
+        let identifier = match capabilities.diagnostic_provider.as_ref()? {
+            lsp::DiagnosticServerCapabilities::Options(cap) => cap.identifier.clone(),
+            lsp::DiagnosticServerCapabilities::RegistrationOptions(cap) => {
+                cap.diagnostic_options.identifier.clone()
+            }
+        };
+
+        let params = lsp::DocumentDiagnosticParams {
+            text_document,
+            identifier,
+            previous_result_id,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::DocumentDiagnosticRequest>(params))
     }
 
     pub fn text_document_document_highlight(
