@@ -108,7 +108,7 @@
 | gren | ✓ | ✓ |  |  |  |  |
 | groovy | ✓ |  |  |  |  |  |
 | gts | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
-| hare | ✓ |  |  |  |  |  |
+| hare | ✓ |  |  |  |  | `hare-lsp` |
 | haskell | ✓ | ✓ |  |  |  | `haskell-language-server-wrapper` |
 | haskell-literate | ✓ |  |  |  |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |  |  |

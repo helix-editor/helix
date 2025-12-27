@@ -56,6 +56,7 @@ gitlab-ci-ls = { command = "gitlab-ci-ls" }
 gleam = { command = "gleam", args = ["lsp"] }
 glsl_analyzer = { command = "glsl_analyzer" }
 graphql-language-service = { command = "graphql-lsp", args = ["server", "-m", "stream"] }
+hare-lsp = { command = "hare-lsp", args = ["-S"] }
 harper-ls = { command = "harper-ls", args = ["--stdio"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 hdls = { command = "hdls" }
@@ -2517,6 +2518,11 @@ injection-regex = "hare"
 file-types = ["ha"]
 comment-token = "//"
 indent = { tab-width = 8, unit = "\t" }
+language-servers = [
+  { except-features = [
+    "code-action", "completion", "format", "inlay-hints", "rename-symbol", "workspace-symbols",
+  ], name = "hare-lsp" },
+]
 
 [[grammar]]
 name = "hare"
