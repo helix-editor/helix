@@ -68,13 +68,21 @@
 	"->"
 ] @operator
 
+;;; String interpolation
+
 (string_literal
-	"$" @punctuation
-  (interpolated_identifier) @none)
+	"$" @punctuation.special
+  (interpolated_identifier) @variable)
 (string_literal
-	"${" @punctuation
+	"${" @punctuation.special
 	(interpolated_expression) @none
-	"}" @punctuation)
+	"}" @punctuation.special)
+
+; `it` and `this` inside string interpolation
+((interpolated_identifier) @variable.builtin
+(#eq? @variable.builtin "it"))
+((interpolated_identifier) @variable.builtin
+(#eq? @variable.builtin "this"))
 
 ;;; Keywords
 
@@ -174,21 +182,52 @@
 	(shebang_line)
 ] @comment
 
-;;; Function calls
+;;; Constants
 
+(enum_entry
+	(simple_identifier) @constant)
+
+; SCREAMING CASE identifiers are assumed to be constants
+((simple_identifier) @constant
+(#match? @constant "^[A-Z][A-Z0-9_]*$"))
+
+;;; Navigation, Members & Function calls
+
+; generic property navigation (e.g. obj.property)
+(_
+	(navigation_suffix
+		(simple_identifier) @variable.other.member))
+
+; generic function call (e.g. foo())
 (call_expression
-	. (simple_identifier) @function.builtin
-    (#match? @function.builtin "^(arrayOf|arrayOfNulls|byteArrayOf|shortArrayOf|intArrayOf|longArrayOf|ubyteArrayOf|ushortArrayOf|uintArrayOf|ulongArrayOf|floatArrayOf|doubleArrayOf|booleanArrayOf|charArrayOf|emptyArray|mapOf|setOf|listOf|emptyMap|emptySet|emptyList|mutableMapOf|mutableSetOf|mutableListOf|print|println|error|TODO|run|runCatching|repeat|lazy|lazyOf|enumValues|enumValueOf|assert|check|checkNotNull|require|requireNotNull|with|suspend|synchronized)$"))
+	. (simple_identifier) @function)
 
-; object.function() or object.property.function()
+; method call via navigation (e.g. obj.method())
 (call_expression
 	(navigation_expression
 		(navigation_suffix
 			(simple_identifier) @function) . ))
 
-; function()
+; infix function call (e.g. 1 to 2)
+(infix_expression
+  . (_) .
+	(simple_identifier) @function)
+
+; builtin function calls
 (call_expression
-	. (simple_identifier) @function)
+	. (simple_identifier) @function.builtin
+    (#match? @function.builtin "^(arrayOf|arrayOfNulls|byteArrayOf|shortArrayOf|intArrayOf|longArrayOf|ubyteArrayOf|ushortArrayOf|uintArrayOf|ulongArrayOf|floatArrayOf|doubleArrayOf|booleanArrayOf|charArrayOf|emptyArray|mapOf|setOf|listOf|emptyMap|emptySet|emptyList|mutableMapOf|mutableSetOf|mutableListOf|print|println|error|TODO|run|runCatching|repeat|lazy|lazyOf|enumValues|enumValueOf|assert|check|checkNotNull|require|requireNotNull|with|suspend|synchronized)$"))
+
+; constant access via navigation (e.g. Foo.CONSTANT)
+(_
+	(navigation_suffix
+		(simple_identifier) @constant
+		(#match? @constant "^[A-Z][A-Z0-9_]*$")))
+
+; object or class reference (e.g. TextObjects.TEXT)
+((navigation_expression
+  . (simple_identifier) @type)
+  (#match? @type "^[A-Z]"))
 
 ;;; Function definitions
 
@@ -203,7 +242,11 @@
 			
 (parameter
 	(simple_identifier) @variable.parameter)
-			
+
+; named arguments
+(value_argument
+  . (simple_identifier) @variable.parameter)
+
 (anonymous_initializer
 	("init") @constructor)
 
@@ -220,8 +263,16 @@
 (setter
 	("set") @function.builtin)
 
+; normal function
 (function_declaration
-	. (simple_identifier) @function)
+	(modifiers)?
+	(type_parameters)?
+	(simple_identifier) @function)
+
+; extension function
+(function_declaration
+	receiver: (receiver_type)
+	(simple_identifier) @function)
 
 ; TODO: Separate labeled returns/breaks/continue/super/this
 ;       Must be implemented in the parser first
@@ -249,35 +300,25 @@
 (package_header
 	. (identifier)) @namespace
 
+(type_identifier) @type
+
 ((type_identifier) @type.builtin
 	(#match? @type.builtin "^(Byte|Short|Int|Long|UByte|UShort|UInt|ULong|Float|Double|Boolean|Char|String|Array|ByteArray|ShortArray|IntArray|LongArray|UByteArray|UShortArray|UIntArray|ULongArray|FloatArray|DoubleArray|BooleanArray|CharArray|Map|Set|List|EmptyMap|EmptySet|EmptyList|MutableMap|MutableSet|MutableList)$"))
 
 (type_parameter
   (type_identifier) @type.parameter)
 
-(type_identifier) @type
-
-(enum_entry
-	(simple_identifier) @constant)
-
-(_
-	(navigation_suffix
-		(simple_identifier) @constant
-		(#match? @constant "^[A-Z][A-Z0-9_]*$")))
-
-; SCREAMING CASE identifiers are assumed to be constants
-((simple_identifier) @constant
-(#match? @constant "^[A-Z][A-Z0-9_]*$"))
-
-; id_1.id_2.id_3: `id_2` and `id_3` are assumed as object properties
-(_
-	(navigation_suffix
-		(simple_identifier) @variable.other.member))
-
-(class_body
+((class_body
 	(property_declaration
 		(variable_declaration
 			(simple_identifier) @variable.other.member)))
+  (#not-match? @variable.other.member "^[A-Z][A-Z0-9_]*$"))
+
+; Extension property
+(property_declaration
+  receiver: (receiver_type)
+  (variable_declaration
+    (simple_identifier) @variable.other.member))
 
 (class_parameter
 	(simple_identifier) @variable.other.member)
