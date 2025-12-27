@@ -289,6 +289,33 @@ impl Color {
 }
 
 #[cfg(feature = "term")]
+impl From<Color> for termina::style::ColorSpec {
+    fn from(color: Color) -> Self {
+        match color {
+            Color::Reset => Self::Reset,
+            Color::Black => Self::BLACK,
+            Color::Red => Self::RED,
+            Color::Green => Self::GREEN,
+            Color::Yellow => Self::YELLOW,
+            Color::Blue => Self::BLUE,
+            Color::Magenta => Self::MAGENTA,
+            Color::Cyan => Self::CYAN,
+            Color::Gray => Self::BRIGHT_BLACK,
+            Color::White => Self::BRIGHT_WHITE,
+            Color::LightRed => Self::BRIGHT_RED,
+            Color::LightGreen => Self::BRIGHT_GREEN,
+            Color::LightBlue => Self::BRIGHT_BLUE,
+            Color::LightYellow => Self::BRIGHT_YELLOW,
+            Color::LightMagenta => Self::BRIGHT_MAGENTA,
+            Color::LightCyan => Self::BRIGHT_CYAN,
+            Color::LightGray => Self::WHITE,
+            Color::Indexed(i) => Self::PaletteIndex(i),
+            Color::Rgb(r, g, b) => termina::style::RgbColor::new(r, g, b).into(),
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
 impl From<Color> for crossterm::style::Color {
     fn from(color: Color) -> Self {
         use crossterm::style::Color as CColor;
@@ -316,7 +343,6 @@ impl From<Color> for crossterm::style::Color {
         }
     }
 }
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnderlineStyle {
     Reset,
@@ -343,6 +369,20 @@ impl FromStr for UnderlineStyle {
 }
 
 #[cfg(feature = "term")]
+impl From<UnderlineStyle> for termina::style::Underline {
+    fn from(style: UnderlineStyle) -> Self {
+        match style {
+            UnderlineStyle::Reset => Self::None,
+            UnderlineStyle::Line => Self::Single,
+            UnderlineStyle::Curl => Self::Curly,
+            UnderlineStyle::Dotted => Self::Dotted,
+            UnderlineStyle::Dashed => Self::Dashed,
+            UnderlineStyle::DoubleLine => Self::Double,
+        }
+    }
+}
+
+#[cfg(all(feature = "term", windows))]
 impl From<UnderlineStyle> for crossterm::style::Attribute {
     fn from(style: UnderlineStyle) -> Self {
         match style {

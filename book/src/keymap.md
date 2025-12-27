@@ -35,6 +35,8 @@ Normal mode is the default mode when you launch helix. You can return to it from
 
 > NOTE: Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
 
+> Hereafter, `<n>` represents an integer by typing a sequence of digits.
+
 | Key                   | Description                                        | Command                     |
 | -----                 | -----------                                        | -------                     |
 | `h`, `Left`           | Move left                                          | `move_char_left`            |
@@ -51,7 +53,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `f`                   | Find next char                                     | `find_next_char`            |
 | `T`                   | Find till previous char                            | `till_prev_char`            |
 | `F`                   | Find previous char                                 | `find_prev_char`            |
-| `G`                   | Go to line number `<n>`                            | `goto_line`                 |
+| `<n>G`, `<n>gg`       | Go to line number `<n>`                            | `goto_line`                 |
 | `Alt-.`               | Repeat last motion (`f`, `t`, `m`, `[` or `]`)     | `repeat_last_motion`        |
 | `Home`                | Move to the start of the line                      | `goto_line_start`           |
 | `End`                 | Move to the end of the line                        | `goto_line_end`             |
@@ -212,8 +214,10 @@ Jumps to various locations.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
-| `g`   | Go to line number `<n>` else start of file       | `goto_file_start`          |
-| <code>&#124;</code>  | Go to column number `<n>` else start of line     | `goto_column`              |
+| `<n>g`| Go to line number `<n>`                          | `goto_file_start`          |
+| `g`   | Go to the start of the file                      | `goto_file_start`          |
+| <code>&lt;n&gt;&#124;</code>  | Go to column number `<n>`      | `goto_column`              |
+| <code>&#124;</code>     | Go to the start of line        | `goto_column`              |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
 | `f`   | Go to files in the selections                    | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |
@@ -291,9 +295,9 @@ This layer is a kludge of mappings, mostly pickers.
 | `g`     | Open changed file picker                                                | `changed_file_picker`                      |
 | `G`     | Debug (experimental)                                                    | N/A                                        |
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                                    |
-| `K`     | Go to documentation for item under cursor in a new buffer (**LSP**)      | `goto_hover`                                    |
-| `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                            |
-| `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`                  |
+| `K`     | Go to documentation for item under cursor in a new buffer (**LSP**)     | `goto_hover`                               |
+| `s`     | Open document symbol picker (**LSP** or **TS**)                         | `lsp_or_syntax_symbol_picker`              |
+| `S`     | Open workspace symbol picker (**LSP** or **TS**)                        | `lsp_or_syntax_workspace_symbol_picker`    |
 | `d`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                       |
 | `D`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`             |
 | `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                            |
@@ -349,30 +353,32 @@ Displays the signature of the selected completion item. Remapping currently not 
 
 These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
-| Key      | Description                                  | Command               |
-| -----    | -----------                                  | -------               |
-| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`      |
-| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
-| `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`      |
-| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
-| `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
-| `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
-| `]t`     | Go to next type definition (**TS**)          | `goto_next_class`     |
-| `[t`     | Go to previous type definition (**TS**)      | `goto_prev_class`     |
-| `]a`     | Go to next argument/parameter (**TS**)       | `goto_next_parameter` |
-| `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter` |
-| `]c`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
-| `[c`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
-| `]T`     | Go to next test (**TS**)                     | `goto_next_test`      |
-| `[T`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
-| `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
-| `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
-| `]g`     | Go to next change                            | `goto_next_change`    |
-| `[g`     | Go to previous change                        | `goto_prev_change`    |
-| `]G`     | Go to last change                            | `goto_last_change`    |
-| `[G`     | Go to first change                           | `goto_first_change`   |
-| `]Space` | Add newline below                            | `add_newline_below`   |
-| `[Space` | Add newline above                            | `add_newline_above`   |
+| Key      | Description                                  | Command                 |
+| -----    | -----------                                  | -------                 |
+| `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`        |
+| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`        |
+| `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`        |
+| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`       |
+| `]f`     | Go to next function (**TS**)                 | `goto_next_function`    |
+| `[f`     | Go to previous function (**TS**)             | `goto_prev_function`    |
+| `]t`     | Go to next type definition (**TS**)          | `goto_next_class`       |
+| `[t`     | Go to previous type definition (**TS**)      | `goto_prev_class`       |
+| `]a`     | Go to next argument/parameter (**TS**)       | `goto_next_parameter`   |
+| `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter`   |
+| `]c`     | Go to next comment (**TS**)                  | `goto_next_comment`     |
+| `[c`     | Go to previous comment (**TS**)              | `goto_prev_comment`     |
+| `]T`     | Go to next test (**TS**)                     | `goto_next_test`        |
+| `[T`     | Go to previous test (**TS**)                 | `goto_prev_test`        |
+| `]p`     | Go to next paragraph                         | `goto_next_paragraph`   |
+| `[p`     | Go to previous paragraph                     | `goto_prev_paragraph`   |
+| `]g`     | Go to next change                            | `goto_next_change`      |
+| `[g`     | Go to previous change                        | `goto_prev_change`      |
+| `]G`     | Go to last change                            | `goto_last_change`      |
+| `[G`     | Go to first change                           | `goto_first_change`     |
+| `[x`     | Go to next (X)HTML element                   | `goto_next_xml_element` |
+| `]x`     | Go to previous (X)HTML element               | `goto_prev_xml_element` |
+| `]Space` | Add newline below                            | `add_newline_below`     |
+| `[Space` | Add newline above                            | `add_newline_above`     |
 
 ## Insert mode
 

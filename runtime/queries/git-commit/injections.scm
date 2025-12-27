@@ -1,6 +1,4 @@
-(((scissors)
-  (message) @injection.content)
- (#set! injection.include-children)
+((diff) @injection.content
  (#set! injection.language "diff"))
 
 ((rebase_command) @injection.content

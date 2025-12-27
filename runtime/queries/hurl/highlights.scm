@@ -1,7 +1,10 @@
 [
   "[QueryStringParams]"
+  "[Query]"
   "[FormParams]"
+  "[Form]"
   "[MultipartFormData]"
+  "[Multipart]"
   "[Cookies]"
   "[Captures]"
   "[Asserts]"
@@ -116,6 +119,9 @@
   "isBoolean"
   "isString"
   "isCollection"
+  "isNumber"
+  "isIsoDate"
+  "isEmpty"
 ] @keyword.operator
 
 (integer) @constant.numeric.integer

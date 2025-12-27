@@ -1,0 +1,37 @@
+# name = "Ashokai Urple"
+# author = "TeriyakiBomb"
+# version = "1.0.0"
+
+inherits = "ashokai"
+
+[palette]
+bg0 = "#211D2A"
+bg1 = "#322750"
+bg2 = "#49385D"
+bg3 = "#4B3E64"
+fg0 = "#EFEAFF"
+helptext="#9485b9"
+helpbg="#130F1C"
+grey = "#70697D"
+grey1 = "#667E99"
+red = "#FF5D5D"
+yellow = "#FBC664"
+green = "#7AEA92"
+blue = "#7AC3FF"
+blue2 = "#4E6A97"
+lightblue = "#B0DDD2"
+aqua = "#5DB1B1"
+orange = "#FF9647"
+purple = "#9983D7"
+magenta = "#F94786"
+pink = "#E06798"
+
+diffgreen = "#5B7753"
+
+line_number = "#5D5E72"
+line_number_selected = "#7262A6E"
+comment =  "#565775"
+
+cursor = "#746F7F"
+cursorline = "#2B2437"
+selection = "#493A77"

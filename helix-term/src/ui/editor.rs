@@ -127,6 +127,18 @@ impl EditorView {
             &text_annotations,
         ));
 
+        if doc
+            .language_config()
+            .and_then(|config| config.rainbow_brackets)
+            .unwrap_or(config.rainbow_brackets)
+        {
+            if let Some(overlay) =
+                Self::doc_rainbow_highlights(doc, view_offset.anchor, inner.height, theme, &loader)
+            {
+                overlays.push(overlay);
+            }
+        }
+
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
 
         if is_focused {
@@ -302,6 +314,27 @@ impl EditorView {
         range = text.byte_to_char(range.start)..text.byte_to_char(range.end);
 
         text_annotations.collect_overlay_highlights(range)
+    }
+
+    pub fn doc_rainbow_highlights(
+        doc: &Document,
+        anchor: usize,
+        height: u16,
+        theme: &Theme,
+        loader: &syntax::Loader,
+    ) -> Option<OverlayHighlights> {
+        let syntax = doc.syntax()?;
+        let text = doc.text().slice(..);
+        let row = text.char_to_line(anchor.min(text.len_chars()));
+        let visible_range = Self::viewport_byte_range(text, row, height);
+        let start = syntax::child_for_byte_range(
+            &syntax.tree().root_node(),
+            visible_range.start as u32..visible_range.end as u32,
+        )
+        .map_or(visible_range.start as u32, |node| node.start_byte());
+        let range = start..visible_range.end as u32;
+
+        Some(syntax.rainbow_highlights(text, theme.rainbow_length(), loader, range))
     }
 
     /// Get highlight spans for document diagnostics
@@ -505,7 +538,7 @@ impl EditorView {
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
                 // add block cursors
-                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
+                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
                 if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
@@ -513,7 +546,7 @@ impl EditorView {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
                 // add block cursors
-                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
+                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
                 if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
@@ -1126,6 +1159,8 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
+                    editor.focus(view_id);
+
                     let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
@@ -1149,7 +1184,6 @@ impl EditorView {
                         self.clear_completion(editor);
                     }
 
-                    editor.focus(view_id);
                     editor.ensure_cursor_in_view(view_id);
 
                     return EventResult::Consumed(None);
@@ -1597,7 +1631,7 @@ impl Component for EditorView {
                 if self.terminal_focused {
                     (pos, CursorKind::Hidden)
                 } else {
-                    // use crossterm cursor when terminal loses focus
+                    // use terminal cursor when terminal loses focus
                     (pos, CursorKind::Underline)
                 }
             }

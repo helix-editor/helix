@@ -102,6 +102,9 @@
 "ui.virtual.indent-guide" = { fg = "bg4" }
 "ui.virtual.inlay-hint" = { fg = "grey0" }
 "ui.virtual.wrap" = { fg = "grey0" }
+"ui.virtual.jump-label" = { fg = "red", bg = "bg0", modifiers = [
+  "bold",
+] }
 
 "hint" = "green"
 "info" = "blue"
