@@ -1,0 +1,32 @@
+[package]
+name = "helix-graphics"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+term = ["termina", "crossterm"]
+
+[dependencies]
+helix-core = { path = "../helix-core" }
+helix-loader = { path = "../helix-loader" }
+bitflags.workspace = true
+anyhow = "1"
+
+termina = { workspace = true, optional = true }
+
+# Conversion traits
+once_cell = "1.21"
+
+serde = { version = "1.0", features = ["derive"] }
+toml.workspace = true
+log = "~0.4"
+
+[target.'cfg(windows)'.dependencies]
+crossterm = { version = "0.28", optional = true }
