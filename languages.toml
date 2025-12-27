@@ -4599,7 +4599,7 @@ source = { git = "https://github.com/MaeBrooks/tree-sitter-gren", rev = "76554f4
 [[language]]
 name = "ghostty"
 scope = "source.ghostty"
-file-types = [{ glob = "ghostty/config" }]
+file-types = ["ghostty", { glob = "ghostty/config" }]
 comment-tokens = "#"
 indent = { tab-width = 2, unit = "  " }
 
