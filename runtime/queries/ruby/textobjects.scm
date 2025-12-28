@@ -7,10 +7,10 @@
   (_)+ @class.inside) @class.around
 
 (call
-  receiver: (constant) @class_const
-  method: (identifier) @class_method
-  (#match? @class_const "Class")
-  (#match? @class_method "new")
+  receiver: (constant) @_class_const
+  method: (identifier) @_class_method
+  (#match? @_class_const "Class")
+  (#match? @_class_method "new")
   (do_block (_)+ @class.inside)) @class.around
   
 (module
