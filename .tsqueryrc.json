@@ -10,6 +10,12 @@
       "anchor": "Align with this node.",
       "extend": "Extend the range of this node to the end of the line and to lines that are indented more than the line that this node starts on. This is useful for languages like Python, where for the purpose of indentation some nodes (like functions or classes) should also contain indented lines that follow them.",
       "extend.prevent-once": "Prevents the first extension of an ancestor of this node. For example, in Python a return expression always ends the block that it is in. Note that this only stops the extension of the next `@extend` capture. If multiple ancestors are captured, only the extension of the innermost one is prevented. All other ancestors are unaffected (regardless of whether the innermost ancestor would actually have been extended)."
+    },
+    "injections": {
+      "injection.language": "(standard):\nThe captured node may contain the language name used to highlight the node captured by `@injection.content`.",
+      "injection.content": "(standard):\nMarks the content to be highlighted as the language captured with `@injection.language` _et al_.",
+      "injection.filename": "(extension):\nThe captured node may contain a filename with a file-extension known to Helix, highlighting `@injection.content` as that language. This uses the language extensions defined in both the default languages.toml distributed with Helix, as well as user defined languages.",
+      "injection.shebang": "(extension):\nThe captured node may contain a shebang used to choose a language to highlight as. This also uses the shebangs defined in the default and user `languages.toml`."
     }
   }
 }

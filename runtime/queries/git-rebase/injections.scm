@@ -1,5 +1,5 @@
-(((command) @attribute
+(((command) @_attribute
   (message)? @injection.content)
- (#match? @attribute "^(x|exec)$")
+ (#match? @_attribute "^(x|exec)$")
  (#set! injection.language "bash")
 )
