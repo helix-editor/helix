@@ -341,7 +341,7 @@ where
             // Fill the current selection index in such a way, that `rotate_selections_…` actions will never make the widget
             // decrease or increase in length.
             format!(
-                " {:>count_len$}/{count} sel ",
+                " {:>count_len$}/{count} sels ",
                 selection.primary_index() + 1,
                 count_len = count.to_string().len()
             )
