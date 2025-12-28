@@ -45,7 +45,6 @@
  "includes"
  "excludes"
  "todaymarker"
- "title"
  "section"
 
  "direction"

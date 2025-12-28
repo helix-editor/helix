@@ -16,7 +16,7 @@
 (primary_constr_args (_) @variable.parameter)
 
 ((identifier_pattern (long_identifier (identifier) @special))
- (#match? @special "^\_.*"))
+ (#match? @special "^_.*"))
 
 ((long_identifier
   (identifier)+

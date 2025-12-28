@@ -1,4 +1,4 @@
-; inherits html
+; inherits: html
 ((style_element
   (start_tag
     (attribute

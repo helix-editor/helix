@@ -7,7 +7,6 @@
   "assert_malformed"
   "assert_invalid"
   "assert_unlinkable"
-  "assert_trap"
 
   "invoke"
   "get"

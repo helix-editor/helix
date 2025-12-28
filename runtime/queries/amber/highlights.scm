@@ -18,7 +18,6 @@
     "main"
     "echo"
     "exit"
-    "fun"
     "import"
     "from"
     "as"
