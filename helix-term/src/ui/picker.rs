@@ -1088,10 +1088,16 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 self.to_end();
             }
             key!(Esc) | ctrl!('c') => return close_fn(self),
-            ctrl!(Enter) => {
-                if let (Some(selection), Some(file_fn)) = (&self.selection(), &self.file_fn) {
-                    if let Some((_, _, Some(notes))) = (file_fn.as_ref())(ctx.editor, selection) {
-                        /*let _ = ctx.editor.new_file(Action::Replace);
+            ctrl!(Enter) | shift!(Enter) => {
+                if let (Some(option), Some(file_fn)) = (&self.selection(), &self.file_fn) {
+                    if let Some((_, _, Some(notes))) = (file_fn.as_ref())(ctx.editor, option) {
+                        (self.callback_fn)(ctx, option, Action::Replace);
+                        let action = match key_event {
+                            ctrl!(Enter) => Action::Replace,
+                            shift!(Enter) => Action::HorizontalSplit,
+                            _ => unreachable!(),
+                        };
+                        /*let _ = ctx.editor.new_file(action);
                         let (view, document) = current!(ctx.editor);
 
                         let transaction = Transaction::insert(
@@ -1103,7 +1109,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                         document.readonly = true;
                         document.reset_modified();*/
                         let _ = ctx.editor.new_file_from_document(
-                            Action::Replace,
+                            action,
                             Document::from(
                                 Rope::from_str(&notes),
                                 Some((UTF_8, false)),
