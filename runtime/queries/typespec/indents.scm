@@ -8,11 +8,11 @@
   (template_arguments)
   (template_parameters)
   (operation_arguments)
-] @indent.begin
+] @indent
 
 [
   "}"
   ")"
   ">"
   "]"
-] @indent.end
+] @outdent
