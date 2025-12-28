@@ -39,6 +39,10 @@
       "xml-element.inside": "",
       "xml-element.around": "",
       "xml-element.movement": ""
+    },
+    "rainbows": {
+      "rainbow.scope": "Should capture any node that increases the nesting level.",
+      "rainbow.bracket": "Should capture any bracket nodes."
     }
   }
 }
