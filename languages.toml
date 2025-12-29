@@ -799,7 +799,7 @@ source = { git = "https://github.com/jzelinskie/tree-sitter-spicedb", rev = "a4e
 name = "go"
 scope = "source.go"
 injection-regex = "go"
-file-types = ["go"]
+file-types = ["go", { glob = "Android.bp" }]
 roots = ["go.work", "go.mod"]
 auto-format = true
 comment-token = "//"
