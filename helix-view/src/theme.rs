@@ -561,18 +561,7 @@ impl ThemePalette {
 
     pub fn string_to_rgb(s: &str) -> Result<Color, String> {
         if s.starts_with('#') {
-            match Color::from_hex(match s.len() {
-                // RGB
-                4 | 7 => s,
-                // RGBA (ignoring alpha)
-                5 => &s[0..4],
-                9 => &s[0..7],
-                // HACK: return None
-                _ => "",
-            }) {
-                Some(c) => Ok(c),
-                _ => Err(format!("Malformed hexcode: {}", s)),
-            }
+            Color::from_hex(s).map_err(|e| format!("{e}: {s}"))
         } else {
             Self::ansi_string_to_rgb(s)
         }
