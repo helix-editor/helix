@@ -2660,7 +2660,19 @@ fn move_buffer_impl(cx: &mut compositor::Context, new_path: PathBuf, options: Mo
         .map(|old_file_name| new_path.join(old_file_name))
         .unwrap_or(new_path);
 
-    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref(), options.force) {
+    if old_path.exists() {
+        if let Some(parent) = new_path.parent() {
+            if !parent.exists() {
+                if options.force {
+                    std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                } else {
+                    bail!("can't move file, parent directory does not exist (use :mv! to create it)")
+                }
+            }
+        }
+    }
+
+    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
         bail!("Could not move file: {err}");
     }
     Ok(())

@@ -284,7 +284,7 @@ impl Editor {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
                 if !ignore_if_exists || !to.exists() {
-                    self.move_path(from, to, false)?;
+                    self.move_path(from, to)?;
                 }
             }
         }

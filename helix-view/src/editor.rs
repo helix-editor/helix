@@ -1527,7 +1527,7 @@ impl Editor {
 
     /// moves/renames a path, invoking any event handlers (currently only lsp)
     /// and calling `set_doc_path` if the file is open in the editor
-    pub fn move_path(&mut self, old_path: &Path, new_path: &Path, force: bool) -> io::Result<()> {
+    pub fn move_path(&mut self, old_path: &Path, new_path: &Path) -> io::Result<()> {
         let new_path = canonicalize(new_path);
         // sanity check
         if old_path == new_path {
@@ -1557,11 +1557,6 @@ impl Editor {
         }
 
         if old_path.exists() {
-            if let Some(parent) = new_path.parent() {
-                if !parent.exists() && force {
-                    std::fs::DirBuilder::new().recursive(true).create(parent)?;
-                }
-            }
             fs::rename(old_path, &new_path)?;
         }
 
