@@ -66,7 +66,7 @@
 # "ui.cursor.insert" = { fg = "dark-blue" }
 
 "ui.selection" = { bg = "faint-gray" }
-"ui.selection.primary" = { bg = "#293b5bff" }
+"ui.selection.primary" = { bg = "#293b5b" }
 "ui.cursorline.primary" = { bg = "gray" }
 
 "ui.highlight" = { bg = "gray" }
@@ -94,21 +94,21 @@
 "ui.debug" = { fg = "red" }
 
 [palette]
-yellow = "#dfc184ff"
-orange = "#bf956aff"
-blue = "#73ade9ff"
-blue-gray = "#5a6f89ff"
-red = "#d07277ff"
-purple = "#b477cfff"
-green = "#a1c181ff"
-cyan = "#6eb4bfff"
-gray = "#2f343ebf"
-light-gray = "#5d636fff"
+yellow = "#dfc184"
+orange = "#bf956a"
+blue = "#73ade9"
+blue-gray = "#5a6f89"
+red = "#d07277"
+purple = "#b477cf"
+green = "#a1c181"
+cyan = "#6eb4bf"
+gray = "#2f343e"
+light-gray = "#5d636f"
 faint-gray = "#3B4048"
-linenr = "#5d636fff"
+linenr = "#5d636f"
 
-white = "#c8ccd4ff"
-black = "#282c33ff"
+white = "#c8ccd4"
+black = "#282c33"
 # black and white are used for a lot of the UI text
-ui-text = "#c8ccd4ff"          #white
-ui-text-reversed = "#282c33ff" #black
+ui-text = "#c8ccd4"          #white
+ui-text-reversed = "#282c33" #black
