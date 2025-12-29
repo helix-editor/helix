@@ -2621,31 +2621,27 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
     }
 
     let new_path: PathBuf = args.first().unwrap().into();
-    move_buffer_impl(
-        cx,
-        new_path,
-        MoveBufferOptions {
-            force: false,
-        }
-    )
+    move_buffer_impl(cx, new_path, MoveBufferOptions { force: false })
 }
 
-fn force_move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+fn force_move_buffer(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
     let new_path: PathBuf = args.first().unwrap().into();
-    move_buffer_impl(
-        cx,
-        new_path,
-        MoveBufferOptions {
-            force: true,
-        }
-    )
+    move_buffer_impl(cx, new_path, MoveBufferOptions { force: true })
 }
 
-fn move_buffer_impl(cx: &mut compositor::Context, new_path: PathBuf, options: MoveBufferOptions) -> anyhow::Result<()> {
+fn move_buffer_impl(
+    cx: &mut compositor::Context,
+    new_path: PathBuf,
+    options: MoveBufferOptions,
+) -> anyhow::Result<()> {
     let doc = doc!(cx.editor);
     let old_path = doc
         .path()
@@ -2666,7 +2662,9 @@ fn move_buffer_impl(cx: &mut compositor::Context, new_path: PathBuf, options: Mo
                 if options.force {
                     std::fs::DirBuilder::new().recursive(true).create(parent)?;
                 } else {
-                    bail!("can't move file, parent directory does not exist (use :mv! to create it)")
+                    bail!(
+                        "can't move file, parent directory does not exist (use :mv! to create it)"
+                    )
                 }
             }
         }
@@ -2677,7 +2675,6 @@ fn move_buffer_impl(cx: &mut compositor::Context, new_path: PathBuf, options: Mo
     }
     Ok(())
 }
-
 
 fn yank_diagnostic(
     cx: &mut compositor::Context,
