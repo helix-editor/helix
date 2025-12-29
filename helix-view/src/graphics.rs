@@ -2,6 +2,7 @@ use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::{max, min},
+    fmt,
     str::FromStr,
 };
 
@@ -304,6 +305,26 @@ pub enum Color {
     Indexed(u8),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MalformedHex {
+    NoHash,
+    LenOOB,
+    NotANibble,
+}
+impl fmt::Display for MalformedHex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Malformed hex color code: {}",
+            match self {
+                Self::NoHash => "Missing hash prefix",
+                Self::LenOOB => "Must be 12 or 24 bit RGB",
+                Self::NotANibble => "One or more chars is not hex digit (nibble)",
+            }
+        )
+    }
+}
+
 impl Color {
     /// Creates a `Color` from a hex string of the form
     /// "#RRGGBB" or "#RGB"
@@ -321,23 +342,31 @@ impl Color {
     /// let color3 = Color::from_hex("#012").unwrap();
     /// assert_eq!(color3, Color::Rgb(0, 17, 34));
     /// ```
-    pub fn from_hex(h: &str) -> Option<Self> {
+    pub fn from_hex(h: &str) -> Result<Self, MalformedHex> {
         let h = h.as_bytes();
         if !h.starts_with(b"#") {
-            return None;
+            return Err(MalformedHex::NoHash);
         }
 
         use byte_from_hex as pair;
         use dupe_from_nibble as nibble;
 
         match h.len() {
-            7 => Some(Self::Rgb(
-                pair([h[1], h[2]])?,
-                pair([h[3], h[4]])?,
-                pair([h[5], h[6]])?,
-            )),
-            4 => Some(Self::Rgb(nibble(h[1])?, nibble(h[2])?, nibble(h[3])?)),
-            _ => None,
+            7 => match (|| {
+                Some(Self::Rgb(
+                    pair([h[1], h[2]])?,
+                    pair([h[3], h[4]])?,
+                    pair([h[5], h[6]])?,
+                ))
+            })() {
+                Some(c) => Ok(c),
+                None => Err(MalformedHex::NotANibble),
+            },
+            4 => match (|| Some(Self::Rgb(nibble(h[1])?, nibble(h[2])?, nibble(h[3])?)))() {
+                Some(c) => Ok(c),
+                None => Err(MalformedHex::NotANibble),
+            },
+            _ => Err(MalformedHex::LenOOB),
         }
     }
 }
@@ -869,29 +898,27 @@ mod tests {
 
     #[test]
     fn hex_color_no_regress() {
-        assert!(Color::from_hex("#+a+b+c").is_none());
-        assert!(Color::from_hex("#+0+1+2").is_none());
+        assert_eq!(Color::from_hex("#+a+b+c"), Err(MalformedHex::NotANibble));
+        assert_eq!(Color::from_hex("#+0+1+2"), Err(MalformedHex::NotANibble));
     }
     #[test]
     fn hex_color_sanity() {
-        assert_eq!(
-            Color::from_hex("#01fe3a"),
-            Some(Color::Rgb(0x01, 0xfe, 0x3a))
-        );
-        assert_eq!(Color::from_hex("#abc"), Some(Color::Rgb(0xaa, 0xbb, 0xcc)));
+        assert_eq!(Color::from_hex("#01fe3a"), Ok(Color::Rgb(0x01, 0xfe, 0x3a)));
+        assert_eq!(Color::from_hex("#abc"), Ok(Color::Rgb(0xaa, 0xbb, 0xcc)));
     }
     #[test]
     fn hex_color_invalid_len() {
-        // should alpha channel be explicitly rejected?
         for h in [
             "#0",
             "#00",
+            "#0000",
             "#00000",
             "#0000000",
+            "#00000000",
             "#000000000",
             "#0000000000",
         ] {
-            assert!(Color::from_hex(h).is_none());
+            assert_eq!(Color::from_hex(h), Err(MalformedHex::LenOOB));
         }
     }
 }
