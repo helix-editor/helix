@@ -56,6 +56,9 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub auto_format: bool,
 
+    #[serde(default)]
+    pub code_actions_on_save: Option<Vec<CodeActionsOnSave>>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub formatter: Option<FormatterConfiguration>,
 
@@ -433,6 +436,13 @@ pub struct AdvancedCompletion {
     pub name: Option<String>,
     pub completion: Option<String>,
     pub default: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct CodeActionsOnSave {
+    pub code_action: String,
+    pub enabled: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
