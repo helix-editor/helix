@@ -561,7 +561,7 @@ impl ThemePalette {
 
     pub fn string_to_rgb(s: &str) -> Result<Color, String> {
         if s.starts_with('#') {
-            Self::hex_string_to_rgb(s)
+            Color::from_hex(s).map_err(|e| format!("{e}: {s}"))
         } else {
             Self::ansi_string_to_rgb(s)
         }
@@ -572,20 +572,6 @@ impl ThemePalette {
             return Ok(Color::Indexed(index));
         }
         Err(format!("Malformed ANSI: {}", s))
-    }
-
-    fn hex_string_to_rgb(s: &str) -> Result<Color, String> {
-        if s.len() >= 7 {
-            if let (Ok(red), Ok(green), Ok(blue)) = (
-                u8::from_str_radix(&s[1..3], 16),
-                u8::from_str_radix(&s[3..5], 16),
-                u8::from_str_radix(&s[5..7], 16),
-            ) {
-                return Ok(Color::Rgb(red, green, blue));
-            }
-        }
-
-        Err(format!("Malformed hexcode: {}", s))
     }
 
     fn parse_value_as_str(value: &Value) -> Result<&str, String> {
