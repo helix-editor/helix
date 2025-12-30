@@ -25,10 +25,10 @@
 ; Switches and selects aren't indented, only their case bodies are.
 ; Outdent all closing braces except those closing switches or selects.
 (
-    (_ "}" @outdent) @outer
-    (#not-kind-eq? @outer "select_statement")
-    (#not-kind-eq? @outer "type_switch_statement")
-    (#not-kind-eq? @outer "expression_switch_statement")
+    (_ "}" @outdent) @_outer
+    (#not-kind-eq? @_outer "select_statement")
+    (#not-kind-eq? @_outer "type_switch_statement")
+    (#not-kind-eq? @_outer "expression_switch_statement")
 )
 
 ; Starting a line after a new case should indent.

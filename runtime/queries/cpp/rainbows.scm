@@ -27,8 +27,6 @@
   (explicit_function_specifier)
   (template_parameter_list)
   (template_argument_list)
-  (parameter_list)
-  (argument_list)
   (structured_binding_declarator)
   (noexcept)
   (throw_specifier)

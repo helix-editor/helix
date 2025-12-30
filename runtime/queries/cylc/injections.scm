@@ -1,6 +1,6 @@
 ((setting
-  key: (key) @key
-  (#match? @key "^script$|-script$|^script-")
+  key: (key) @_key
+  (#match? @_key "^script$|-script$|^script-")
   value: (_
     (string_content) @injection.content))
   (#set! "injection.language" "bash"))
@@ -12,8 +12,8 @@
 ; https://github.com/tree-sitter/tree-sitter/issues/3625
 ((task_section
   (sub_section_2
-    name: (_) @section_name
-    (#eq? @section_name "environment")
+    name: (_) @_section_name
+    (#eq? @_section_name "environment")
     (setting) @injection.content))
   (#set! "injection.language" "bash")
   (#set! injection.combined)

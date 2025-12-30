@@ -33,7 +33,7 @@
 ) @function.around
 (lambda
   body: (block)? @function.inside
-) @function.outside
+) @function.around
 
 (params
   ((_) @parameter.inside . ","? @parameter.around) @parameter.around
@@ -58,7 +58,7 @@
   (entity
     provides: (type (nominal_type name: (identifier) @_provides))
     members: (members) @test.inside
-  ) @test.outside
+  ) @test.around
   (#eq? @_provides "UnitTest")
 )
 

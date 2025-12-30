@@ -97,7 +97,6 @@
   ")"
   "["
   "]"
-  ")"
   "{"
   "}"
 ] @punctuation.bracket

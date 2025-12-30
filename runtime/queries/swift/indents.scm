@@ -40,17 +40,17 @@
 
 (assignment
   .
-  (_) @expr-start
+  (_) @_expr-start
   (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 
 (control_transfer_statement
   .
-  (_) @expr-start
+  (_) @_expr-start
   (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 
