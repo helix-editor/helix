@@ -1389,6 +1389,14 @@ pub struct TextDocumentSyncClientCapabilities {
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct InactiveRegionsCapabilities {
+    /// The client support clangd inactive regions extension.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inactive_regions: Option<bool>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PublishDiagnosticsClientCapabilities {
     /// Whether the clients accepts diagnostics with related information.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1591,6 +1599,10 @@ pub struct TextDocumentClientCapabilities {
     /// @since 3.17.0
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diagnostic: Option<DiagnosticClientCapabilities>,
+
+    /// Capabilities specific to the `textDocument/inactiveRegions` notification clangd extension.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inactive_regions_capabilities: Option<InactiveRegionsCapabilities>,
 
     /// Capabilities specific to the `textDocument/inlineCompletion` request.
     ///
@@ -2550,6 +2562,26 @@ impl PublishDiagnosticsParams {
             uri,
             diagnostics,
             version,
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InactiveRegionsParams {
+    pub text_document: TextDocumentIdentifier,
+
+    pub regions: Vec<Range>,
+}
+
+impl InactiveRegionsParams {
+    pub fn new(
+        text_document: TextDocumentIdentifier,
+        regions: Vec<Range>,
+    ) -> InactiveRegionsParams {
+        InactiveRegionsParams {
+            text_document,
+            regions,
         }
     }
 }
