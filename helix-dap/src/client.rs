@@ -453,7 +453,7 @@ impl Client {
     }
 
     pub fn threads(&self) -> impl Future<Output = Result<Value>> {
-        self.call::<requests::Threads>(())
+        self.call::<requests::Threads>(Some(requests::ThreadsArguments {}))
     }
 
     pub async fn scopes(&self, frame_id: usize) -> Result<Vec<Scope>> {
