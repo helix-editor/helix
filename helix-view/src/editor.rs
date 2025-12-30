@@ -1003,6 +1003,8 @@ pub struct IndentGuidesConfig {
     pub render: bool,
     pub character: char,
     pub skip_levels: u8,
+    #[serde(default = "default_true")]
+    pub render_diagnostics: bool,
 }
 
 impl Default for IndentGuidesConfig {
@@ -1011,8 +1013,13 @@ impl Default for IndentGuidesConfig {
             skip_levels: 0,
             render: false,
             character: '│',
+            render_diagnostics: true,
         }
     }
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Line ending configuration.

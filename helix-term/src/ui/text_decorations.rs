@@ -60,6 +60,7 @@ pub trait Decoration {
         _renderer: &mut TextRenderer,
         _pos: LinePos,
         _virt_off: Position,
+        _indent_level: usize,
     ) -> Position {
         Position::new(0, 0)
     }
@@ -136,10 +137,11 @@ impl<'a> DecorationManager<'a> {
         renderer: &mut TextRenderer,
         pos: LinePos,
         line_width: usize,
+        indent_level: usize,
     ) {
         let mut virt_off = Position::new(1, line_width); // start at 1 so the line is never overwritten
         for (decoration, _) in &mut self.decorations {
-            virt_off += decoration.render_virt_lines(renderer, pos, virt_off);
+            virt_off += decoration.render_virt_lines(renderer, pos, virt_off, indent_level);
         }
     }
 }
