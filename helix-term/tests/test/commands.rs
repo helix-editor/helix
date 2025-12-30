@@ -4,6 +4,7 @@ use super::*;
 
 mod insert;
 mod movement;
+mod paste_join;
 mod reverse_selection_contents;
 mod rotate_selection_contents;
 mod write;

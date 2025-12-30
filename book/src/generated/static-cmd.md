@@ -202,6 +202,9 @@
 | `paste_clipboard_before` | Paste clipboard before selections | normal: `` <space>P ``, select: `` <space>P `` |
 | `paste_primary_clipboard_after` | Paste primary clipboard after selections |  |
 | `paste_primary_clipboard_before` | Paste primary clipboard before selections |  |
+| `paste_before_joined_with_newline` | Join all selections with a newline and paste before cursor |  |
+| `paste_after_joined_with_newline` | Join all selections with a newline and paste after cursor |  |
+| `replace_joined_with_newline` | Replace selection with all selections joined with a newline |  |
 | `indent` | Indent selection | normal: `` <gt> ``, select: `` <gt> `` |
 | `unindent` | Unindent selection | normal: `` <lt> ``, select: `` <lt> `` |
 | `format_selections` | Format selection | normal: `` = ``, select: `` = `` |
