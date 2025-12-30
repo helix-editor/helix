@@ -62,6 +62,7 @@ futures-util = { version = "0.3", features = ["std", "async-await"], default-fea
 arc-swap = { version = "1.8.0" }
 termini = "1"
 indexmap = "2.12"
+path-clean = "1.0.1"
 
 # Logging
 fern = "0.7"

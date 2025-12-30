@@ -15,6 +15,7 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 use helix_event::dispatch;
+use helix_loader::default_recents_file;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -223,6 +224,28 @@ impl Default for FilePickerConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct RecentPickerConfig {
+    /// Maximum numter of entries to show.
+    pub max_show_entries: usize,
+    /// Maximum numter of entries to save.
+    pub max_save_entries: usize,
+    /// Path to save the recents file.
+    pub recents_path: PathBuf,
+}
+
+impl Default for RecentPickerConfig {
+    fn default() -> Self {
+        let max_entries = 50;
+        Self {
+            max_show_entries: max_entries,
+            max_save_entries: max_entries,
+            recents_path: default_recents_file(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FileExplorerConfig {
     /// IgnoreOptions
     /// Enables ignoring hidden files.
@@ -361,6 +384,7 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    pub recent_picker: RecentPickerConfig,
     pub file_explorer: FileExplorerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
@@ -1109,6 +1133,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            recent_picker: RecentPickerConfig::default(),
             file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
@@ -2044,10 +2069,38 @@ impl Editor {
         // When a file is written to, notify the file event handler.
         // Note: This can be removed once proper file watching is implemented.
         let handler = self.language_servers.file_event_handler.clone();
+        let recents_path: PathBuf = self.config().recent_picker.recents_path.clone();
+        let max_save_recents = self.config().recent_picker.max_save_entries;
         let future = async move {
             let res = doc_save_future.await;
             if let Ok(event) = &res {
-                handler.file_changed(event.path.clone());
+                let path = event.path.clone();
+                handler.file_changed(path);
+
+                // TODO: Put this into a better place and add a disable option
+                use std::fs::OpenOptions;
+                use std::io::{BufRead, BufReader, Write};
+                let path_str = event.path.clone().to_string_lossy().to_string();
+                std::fs::create_dir_all(recents_path.parent().unwrap_or_else(|| Path::new(".")))?;
+                let mut entries: Vec<String> = if recents_path.exists() {
+                    let file = std::fs::File::open(&recents_path)?;
+                    BufReader::new(file).lines().flatten().collect()
+                } else {
+                    Vec::new()
+                };
+                entries.retain(|line| line != &path_str);
+                entries.insert(0, path_str);
+                if entries.len() > max_save_recents {
+                    entries.truncate(max_save_recents);
+                }
+                let mut file = OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .truncate(true)
+                    .open(&recents_path)?;
+                for e in entries {
+                    writeln!(file, "{}", e)?;
+                }
             }
             res
         };
