@@ -17,6 +17,8 @@ pub enum CursorKind {
     Underline,
     /// Hidden cursor, can set cursor position with this to let IME have correct cursor position.
     Hidden,
+    /// Use the terminal's native/default cursor shape configured by the user.
+    Native,
 }
 
 impl Default for CursorKind {
