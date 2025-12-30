@@ -188,7 +188,7 @@ names of rules in the grammar. Brackets are usually written in tree-sitter
 grammars as literal strings, for example:</p>
 <pre><code class="language-js">{
   // ...
-  arguments: seq("(", repeat($.argument), ")"),
+  arguments: $ =&gt; seq("(", repeat($.argument), ")"),
   // ...
 }
 </code></pre>
