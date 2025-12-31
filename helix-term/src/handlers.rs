@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
+use code_lenses::DocumentCodeLensesHandler;
 use diagnostics::PullAllDocumentsDiagnosticHandler;
 use helix_event::AsyncHook;
 
@@ -15,6 +16,7 @@ pub use helix_view::handlers::{word_index, Handlers};
 use self::document_colors::DocumentColorsHandler;
 
 mod auto_save;
+pub mod code_lenses;
 pub mod completion;
 pub mod diagnostics;
 mod document_colors;
@@ -29,6 +31,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
     let document_colors = DocumentColorsHandler::default().spawn();
+    let code_lenses = DocumentCodeLensesHandler::default().spawn();
     let word_index = word_index::Handler::spawn();
     let pull_diagnostics = PullDiagnosticsHandler::default().spawn();
     let pull_all_documents_diagnostics = PullAllDocumentsDiagnosticHandler::default().spawn();
@@ -38,6 +41,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
         signature_hints,
         auto_save,
         document_colors,
+        code_lenses,
         word_index,
         pull_diagnostics,
         pull_all_documents_diagnostics,
@@ -50,6 +54,8 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     diagnostics::register_hooks(&handlers);
     snippet::register_hooks(&handlers);
     document_colors::register_hooks(&handlers);
+    code_lenses::register_hooks(&handlers);
+    code_lenses::register_hooks(&handlers);
     prompt::register_hooks(&handlers);
     handlers
 }

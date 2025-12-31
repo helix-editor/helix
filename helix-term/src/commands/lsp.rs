@@ -1,4 +1,8 @@
-use futures_util::{stream::FuturesOrdered, FutureExt};
+use futures_util::{
+    future::{ready, Either},
+    stream::FuturesOrdered,
+    FutureExt,
+};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -1455,4 +1459,84 @@ fn compute_inlay_hints_for_view(
     );
 
     Some(callback)
+}
+
+impl ui::menu::Item for lsp::CodeLens {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> Row<'_> {
+        // Safety: assumes that only resolved code lenses are passed to the menu
+        self.command.as_ref().unwrap().title.as_str().into()
+    }
+}
+
+pub fn show_code_lenses_under_cursor(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let doc_id = doc.id();
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::CodeLens);
+    let language_server_id = language_server.id();
+    let offset_encoding = language_server.offset_encoding();
+    let pos = doc.position(view.id, offset_encoding);
+
+    // TODO(matoous): this should eventually support multiple language servers
+    let mut futures: FuturesOrdered<_> = doc
+        .code_lenses()
+        .iter()
+        .filter(|c| c.line == pos.line as usize)
+        .filter_map(|c| {
+            if c.lens.command.is_some() {
+                Some(Either::Left(ready(Ok(c.lens.clone()))))
+            } else {
+                // Safety: the command is empty only if the code lens is unresolved and we assume
+                // that if the code lens is unresolved the language server support resolution.
+                language_server
+                    .resolve_code_lens(c.lens.clone())
+                    .map(Either::Right)
+            }
+        })
+        .collect();
+
+    cx.jobs.callback(async move {
+        let mut lenses = Vec::new();
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok(item) => lenses.push(item),
+                Err(err) => log::error!("Error requesting document symbols: {err}"),
+            }
+        }
+
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if lenses.is_empty() {
+                editor.set_error("No code lenses available");
+                return;
+            }
+
+            if let Some(doc) = editor.documents.get_mut(&doc_id) {
+                doc.set_code_lenses(lenses.clone());
+            }
+
+            let mut picker = ui::Menu::new(lenses, (), move |editor, lens, event| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
+
+                // always present here
+                let lens = lens.unwrap();
+
+                if let Some(cmd) = lens.command.clone() {
+                    log::debug!("code lens command: {:?}", cmd);
+                    editor.execute_lsp_command(cmd, language_server_id);
+                };
+            });
+            picker.move_down(); // pre-select the first item
+
+            let popup = Popup::new("code-lens", picker)
+                .with_scrollbar(false)
+                .auto_close(true);
+
+            compositor.replace_or_push("code-lens", popup);
+        };
+
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }

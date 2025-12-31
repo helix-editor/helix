@@ -130,6 +130,7 @@
 | `add_newline_below` | Add newline below | normal: `` ]<space> ``, select: `` ]<space> `` |
 | `goto_type_definition` | Goto type definition | normal: `` gy ``, select: `` gy `` |
 | `goto_implementation` | Goto implementation | normal: `` gi ``, select: `` gi `` |
+| `show_code_lenses_under_cursor` | Show code lenses under cursor | normal: `` <space>l ``, select: `` <space>l `` |
 | `goto_file_start` | Goto line number <n> else file start | normal: `` gg `` |
 | `goto_file_end` | Goto file end |  |
 | `extend_to_file_start` | Extend to line number<n> else file start | select: `` gg `` |
