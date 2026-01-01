@@ -5214,7 +5214,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
             {
                 doc.set_selection(view.id, selection);
-            } else {
+            } else if event == PromptEvent::Validate {
                 cx.editor.set_error("no selections remaining");
             }
         },
