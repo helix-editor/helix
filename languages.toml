@@ -5145,3 +5145,17 @@ injection-regex = "^chuck$|^ck$"
 [[grammar]]
 name = "chuck"
 source = { git = "https://github.com/tymbalodeon/tree-sitter-chuck", rev = "2fd18bcd48e7b23ee47f854e639020df90b1270b" }
+
+[[language]]
+name = "ptx"
+scope = "source.ptx"
+injection-regex = "ptx"
+file-types = ["ptx"]
+language-servers = []
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "ptx"
+source = { git = "https://codeberg.org/jer-gremlin/tree-sitter-ptx.git", rev = "3dfa6758d4c15832d051f933101992b9e01d6611" }
