@@ -219,6 +219,7 @@
 | properties | ✓ | ✓ |  |  |  |  |
 | protobuf | ✓ | ✓ | ✓ | ✓ |  | `buf`, `pb`, `protols` |
 | prql | ✓ |  |  |  |  |  |
+| ptx | ✓| ✓| ✓| | | | 
 | pug | ✓ |  |  |  |  |  |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
