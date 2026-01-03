@@ -56,6 +56,7 @@ gitlab-ci-ls = { command = "gitlab-ci-ls" }
 gleam = { command = "gleam", args = ["lsp"] }
 glsl_analyzer = { command = "glsl_analyzer" }
 graphql-language-service = { command = "graphql-lsp", args = ["server", "-m", "stream"] }
+hare-lsp = { command = "hare-lsp", args = ["-S"] }
 harper-ls = { command = "harper-ls", args = ["--stdio"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 hdls = { command = "hdls" }
@@ -92,6 +93,7 @@ nls = { command = "nls" }
 nu-lsp = { command = "nu", args = [ "--lsp" ] }
 ocamllsp = { command = "ocamllsp" }
 ols = { command = "ols", args = [] }
+oxlint-language-server = {command = "oxlint", args = ["--lsp"]}
 omnisharp = { command = "OmniSharp", args = [ "--languageserver" ] }
 openscad-lsp = { command = "openscad-lsp", args = ["--stdio"] }
 pasls = { command = "pasls", args = [] }
@@ -113,6 +115,7 @@ r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
 racket = { command = "racket", args = ["-l", "racket-langserver"] }
 regols = { command = "regols" }
 rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
+ripple-lsp = { command = "ripple-language-server", args = ["--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
 ron-lsp = { command = "ron-lsp" }
 ruff = { command = "ruff", args = ["server"] }
@@ -586,7 +589,13 @@ file-types = [
   "sublime-project",
   "sublime-settings",
   "sublime-theme",
-  "sublime-workspace"
+  "sublime-workspace",
+  "code-workspace",
+  { glob = ".pytest_cache/v/cache/*" }, # https://docs.pytest.org/en/latest/reference/reference.html#confval-cache_dir
+  { glob = "devenv.lock" }, # https://devenv.sh/
+  { glob = "devbox.lock" }, # https://www.jetify.com/docs/devbox/
+  { glob = "manifest.lock" }, # https://flox.dev/docs/
+  { glob = "deno.lock" }, # https://deno.com/
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
@@ -600,7 +609,14 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "73076
 name = "jsonc"
 scope = "source.json"
 injection-regex = "jsonc"
-file-types = ["jsonc", { glob = "{t,j}sconfig.json" }, { glob = "bun.lock" }]
+file-types = [
+  "jsonc",
+  { glob = "{t,j}sconfig.json" },
+  { glob = "bun.lock" },
+  { glob = ".devcontainer.json" },
+  { glob = "devcontainer.json" },
+  { glob = ".vscode/*.json" },
+]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 grammar = "json"
@@ -730,7 +746,7 @@ roots = ["sln", "csproj"]
 comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
-language-servers = [ "omnisharp" ]
+language-servers = [ "omnisharp", "csharp-ls" ]
 
 [language.debugger]
 name = "netcoredbg"
@@ -2047,7 +2063,7 @@ grammar = "yaml"
 [[language]]
 name = "git-commit"
 scope = "git.commitmsg"
-file-types = [{ glob = "COMMIT_EDITMSG" }, { glob = "MERGE_MSG" }]
+file-types = [{ glob = "COMMIT_EDITMSG" }, { glob = "MERGE_MSG" }, { glob = "TAG_EDITMSG" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 rulers = [51, 73]
@@ -2062,7 +2078,7 @@ source = { git = "https://github.com/gbprod/tree-sitter-gitcommit", rev = "a7166
 [[language]]
 name = "git-notes"
 scope = "git.notesmsg"
-file-types = [{ glob = "NOTES_EDITMSG" }]
+file-types = [{ glob = "NOTES_EDITMSG" }, { glob = "EDIT_DESCRIPTION" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 rulers = [73]
@@ -2502,6 +2518,11 @@ injection-regex = "hare"
 file-types = ["ha"]
 comment-token = "//"
 indent = { tab-width = 8, unit = "\t" }
+language-servers = [
+  { except-features = [
+    "code-action", "completion", "format", "inlay-hints", "rename-symbol", "workspace-symbols",
+  ], name = "hare-lsp" },
+]
 
 [[grammar]]
 name = "hare"
@@ -3182,7 +3203,16 @@ source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9a
 [[language]]
 name = "env"
 scope = "source.env"
-file-types = [{ glob = ".env" }, { glob = ".env.*" }, { glob = ".envrc" }, { glob = ".envrc.*" }]
+file-types = [
+  { glob = ".env" },
+  { glob = ".env.*" },
+  { glob = ".envrc" },
+  { glob = ".envrc.*" },
+  { glob = "_environment" }, # https://quarto.org/docs/projects/environment.html#environment-file
+  { glob = "_environment-*" }, # https://quarto.org/docs/projects/environment.html#profile-environments
+  { glob = "_environment.local" }, # https://quarto.org/docs/projects/environment.html#local-environment
+  { glob = "_environment.required" }, # https://quarto.org/docs/projects/environment.html#required-variables
+]
 injection-regex = "env"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -3663,7 +3693,7 @@ indent = { tab-width = 3, unit = "   " }
 
 [[grammar]]
 name = "forth"
-source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "90189238385cf636b9ee99ce548b9e5b5e569d48" }
+source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "360ef13f8c609ec6d2e80782af69958b84e36cd0" }
 
 [[language]]
 name = "fsharp"
@@ -4472,7 +4502,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "spade"
-source = { git = "https://gitlab.com/spade-lang/tree-sitter-spade", rev = "78bf09a88fc1d396f66b69879f908fc6bd2e6934" }
+source = { git = "https://gitlab.com/spade-lang/tree-sitter-spade", rev = "6569cd11cc9362e277845ce24111735059b145ee" }
 
 [[language]]
 name = "amber"
@@ -4484,7 +4514,7 @@ language-servers = ["amber-lsp"]
 
 [[grammar]]
 name = "amber"
-source = { git = "https://github.com/amber-lang/tree-sitter-amber", rev = "c6df3ec2ec243ed76550c525e7ac3d9a10c6c814" }
+source = { git = "https://github.com/amber-lang/tree-sitter-amber", rev = "dc69f42449fd3c807bacefa398263f62e581f755" }
 
 [[language]]
 name = "koto"
@@ -4576,7 +4606,7 @@ source = { git = "https://github.com/MaeBrooks/tree-sitter-gren", rev = "76554f4
 [[language]]
 name = "ghostty"
 scope = "source.ghostty"
-file-types = [{ glob = "ghostty/config" }]
+file-types = ["ghostty", { glob = "ghostty/config" }]
 comment-tokens = "#"
 indent = { tab-width = 2, unit = "  " }
 
@@ -4779,7 +4809,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "alloy"
-source = { git = "https://github.com/mattsre/tree-sitter-alloy", rev = "3e18eb4e97f06c57a3925f3d20bef6329a6eaef3" }
+source = { git = "https://github.com/mattsre/tree-sitter-alloy", rev = "58d462b1cdb077682b130caa324f3822aeb00b8e" }
 
 [[language]]
 name = "luau"
@@ -5071,3 +5101,47 @@ comment-token = "#"
 [[grammar]]
 name = "scfg"
 source = { git = "https://github.com/rockorager/tree-sitter-scfg", rev = "d850fd470445d73de318a21d734d1e09e29b773c" }
+
+[[language]]
+name = "ripple"
+scope = "source.ripple"
+file-types = [ "ripple" ]
+roots = [ "package.json" ]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit="    "}
+language-servers = [ "ripple-lsp" ]
+
+[[grammar]]
+name = "ripple"
+source = { git = "https://github.com/Ripple-TS/ripple", rev = "49762f0a63de0d1845fcd2e6632639c095995336", subpath = "packages/tree-sitter" }
+
+[[language]]
+name = "woodpecker-ci"
+scope = "source.woodpecker-ci"
+injection-regex = "^woodpecker-ci$"
+# https://woodpecker-ci.org/docs/usage/workflows
+file-types = [
+  { glob = ".woodpecker.yaml" },
+  { glob = ".woodpecker/*.yaml" },
+  { glob = ".woodpecker/*.yml" },
+]
+grammar = "yaml"
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["yaml-language-server"]
+comment-token = "#"
+formatter = { command = "yamlfmt", args = ['-'] }
+auto-format = true
+
+[[language]]
+name = "chuck"
+scope = "source.ck"
+comment-tokens = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+file-types = [{ glob = "*.ck" }]
+indent = { tab-width = 4, unit="    "}
+injection-regex = "^chuck$|^ck$"
+
+[[grammar]]
+name = "chuck"
+source = { git = "https://github.com/tymbalodeon/tree-sitter-chuck", rev = "2fd18bcd48e7b23ee47f854e639020df90b1270b" }

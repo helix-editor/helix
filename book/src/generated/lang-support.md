@@ -4,7 +4,7 @@
 | adl | ✓ | ✓ | ✓ |  |  |  |
 | agda | ✓ |  |  |  |  |  |
 | alloy | ✓ |  |  |  |  |  |
-| amber | ✓ |  |  |  |  | `amber-lsp` |
+| amber | ✓ | ✓ | ✓ | ✓ | ✓ | `amber-lsp` |
 | astro | ✓ |  |  |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  |  |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | ✓ | ✓ | `bash-language-server` |
@@ -18,12 +18,13 @@
 | blueprint | ✓ |  |  |  |  | `blueprint-compiler` |
 | bovex | ✓ |  |  |  | ✓ |  |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
-| c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp` |
+| c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp`, `csharp-ls` |
 | cabal |  |  |  |  |  | `haskell-language-server-wrapper` |
 | caddyfile | ✓ | ✓ | ✓ |  |  |  |
 | cairo | ✓ | ✓ | ✓ |  |  | `cairo-language-server` |
 | capnp | ✓ |  | ✓ |  |  |  |
 | cel | ✓ |  |  |  |  |  |
+| chuck | ✓ |  |  |  |  |  |
 | circom | ✓ |  |  |  |  | `circom-lsp` |
 | clarity | ✓ |  |  |  |  | `clarinet` |
 | clojure | ✓ | ✓ | ✓ |  | ✓ | `clojure-lsp` |
@@ -107,7 +108,7 @@
 | gren | ✓ | ✓ |  |  |  |  |
 | groovy | ✓ |  |  |  |  |  |
 | gts | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
-| hare | ✓ |  |  |  |  |  |
+| hare | ✓ |  |  |  |  | `hare-lsp` |
 | haskell | ✓ | ✓ |  |  |  | `haskell-language-server-wrapper` |
 | haskell-literate | ✓ |  |  |  |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |  |  |
@@ -226,6 +227,7 @@
 | regex | ✓ |  |  |  | ✓ |  |
 | rego | ✓ |  |  |  |  | `regols` |
 | rescript | ✓ | ✓ |  |  |  | `rescript-language-server` |
+| ripple | ✓ |  |  |  |  | `ripple-language-server` |
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
 | robot | ✓ |  |  |  |  | `robotframework_ls` |
 | robots.txt | ✓ | ✓ |  | ✓ |  |  |
@@ -252,7 +254,7 @@
 | snakemake | ✓ |  | ✓ |  |  | `pylsp` |
 | solidity | ✓ | ✓ |  |  |  | `solc` |
 | sourcepawn | ✓ | ✓ |  |  |  | `sourcepawn-studio` |
-| spade | ✓ |  | ✓ |  |  | `spade-language-server` |
+| spade | ✓ |  | ✓ |  | ✓ | `spade-language-server` |
 | spicedb | ✓ |  |  | ✓ |  |  |
 | sql | ✓ | ✓ |  |  |  |  |
 | sshclientconfig | ✓ |  |  |  |  |  |
@@ -304,6 +306,7 @@
 | wgsl | ✓ | ✓ | ✓ | ✓ | ✓ | `wgsl-analyzer` |
 | wikitext | ✓ |  |  |  |  | `wikitext-lsp` |
 | wit | ✓ |  | ✓ |  |  |  |
+| woodpecker-ci | ✓ | ✓ | ✓ | ✓ | ✓ | `yaml-language-server` |
 | wren | ✓ | ✓ | ✓ |  |  |  |
 | xit | ✓ |  |  |  |  |  |
 | xml | ✓ | ✓ | ✓ |  | ✓ |  |
