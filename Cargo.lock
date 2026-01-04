@@ -3454,7 +3454,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#3a5fccea2bcccf75a6a37bdfcdfda058d18c0db3"
+source = "git+https://github.com/mattwparas/steel.git#b7c2306320ea05649ebcac3af7ecaa7aa0c77117"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -3512,7 +3512,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#3a5fccea2bcccf75a6a37bdfcdfda058d18c0db3"
+source = "git+https://github.com/mattwparas/steel.git#b7c2306320ea05649ebcac3af7ecaa7aa0c77117"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3522,7 +3522,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#3a5fccea2bcccf75a6a37bdfcdfda058d18c0db3"
+source = "git+https://github.com/mattwparas/steel.git#b7c2306320ea05649ebcac3af7ecaa7aa0c77117"
 dependencies = [
  "steel-core",
 ]
@@ -3530,7 +3530,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.3.0"
-source = "git+https://github.com/mattwparas/steel.git#3a5fccea2bcccf75a6a37bdfcdfda058d18c0db3"
+source = "git+https://github.com/mattwparas/steel.git#b7c2306320ea05649ebcac3af7ecaa7aa0c77117"
 dependencies = [
  "codegen",
  "serde",
@@ -3539,7 +3539,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.7.0"
-source = "git+https://github.com/mattwparas/steel.git#3a5fccea2bcccf75a6a37bdfcdfda058d18c0db3"
+source = "git+https://github.com/mattwparas/steel.git#b7c2306320ea05649ebcac3af7ecaa7aa0c77117"
 dependencies = [
  "compact_str",
  "lasso",
@@ -3557,7 +3557,7 @@ dependencies = [
 [[package]]
 name = "steel-quickscope"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#3a5fccea2bcccf75a6a37bdfcdfda058d18c0db3"
+source = "git+https://github.com/mattwparas/steel.git#b7c2306320ea05649ebcac3af7ecaa7aa0c77117"
 dependencies = [
  "indexmap 2.12.0",
  "smallvec",
