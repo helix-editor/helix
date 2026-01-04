@@ -8,8 +8,8 @@
 "ui.menu" = { fg = "white" }
 "ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.menu.scroll" = { fg = "light-gray" }
-"ui.linenr" = { modifiers = ["dim"] }
-"ui.linenr.selected" = { fg = "white",  modifiers = ["bold"] }
+"ui.linenr" = { fg = "light-gray", modifiers = ["dim"] }
+"ui.linenr.selected" = { fg = "white", modifiers = ["bold"] }
 "ui.popup" = { fg = "white" }
 "ui.window" = { fg = "gray" }
 "ui.selection" = { bg = "gray" }
@@ -42,7 +42,7 @@
 "constant" = "yellow"
 "attribute" = "yellow"
 "type" = "light-yellow"
-"string"  = "light-green"
+"string" = "light-green"
 "variable.other.member" = "green"
 "constant.character.escape" = "light-cyan"
 "function" = "light-blue"
