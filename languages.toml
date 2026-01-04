@@ -5156,9 +5156,9 @@ indent = { tab-width = 4, unit="    "}
 injection-regex = "^chuck$|^ck$"
 
 [[language]]
-name="umka"
-scope="source.umka"
-file-types=["um"]
+name = "umka"
+scope = "source.umka"
+file-types = ["um"]
 
 [[grammar]]
 name = "umka"
