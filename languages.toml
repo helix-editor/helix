@@ -5159,6 +5159,7 @@ injection-regex = "^chuck$|^ck$"
 name="umka"
 scope="source.umka"
 file-types=["um"]
+
 [[grammar]]
 name = "umka"
 source = { git = "https://github.com/thacuber2a03/tree-sitter-umka", rev = "f2588765c45d7f5099d53cf34b46883f31407ff2"}
