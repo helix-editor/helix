@@ -75,6 +75,7 @@
             shellHook = ''
               export RUST_BACKTRACE="1"
               export RUSTFLAGS="''${RUSTFLAGS:-""} ${commonRustFlagsEnv} ${platformRustFlagsEnv}"
+              export HELIX_RUNTIME="''${PWD}/runtime/"
             '';
           };
       })
