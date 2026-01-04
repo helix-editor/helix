@@ -25,7 +25,6 @@
 | capnp | ✓ |  | ✓ |  |  |  |
 | cel | ✓ |  |  |  |  |  |
 | chuck | ✓ |  |  |  |  |  |
-| chuck | ✓ |  |  |  |  |  |
 | circom | ✓ |  |  |  |  | `circom-lsp` |
 | clarity | ✓ |  |  |  |  | `clarinet` |
 | clojure | ✓ | ✓ | ✓ |  | ✓ | `clojure-lsp` |
