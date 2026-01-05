@@ -2493,6 +2493,8 @@ shebangs = ["nu"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "nu-lsp" ]
+formatter = { command = "nufmt", args = ["--stdin"] } # https://github.com/nushell/nufmt
+auto-format = false
 
 [[grammar]]
 name = "nu"
