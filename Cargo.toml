@@ -50,7 +50,7 @@ foldhash = "0.2"
 parking_lot = "0.12"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-tokio-stream = "0.1.17"
+tokio-stream = "0.1.18"
 toml = "0.9"
 termina = "0.1"
 sonic-rs = "0.5"
