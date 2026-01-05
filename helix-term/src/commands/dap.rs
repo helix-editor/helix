@@ -586,15 +586,23 @@ pub fn dap_terminate(cx: &mut Context) {
     cx.editor.set_status("Terminating debug session...");
     let debugger = debugger!(cx.editor);
 
-    let terminate_arguments = Some(TerminateArguments {
-        restart: Some(false),
-    });
+    if debugger
+        .caps
+        .as_ref()
+        .is_some_and(|c| c.supports_terminate_request.unwrap_or_default())
+    {
+        let terminate_arguments = Some(TerminateArguments {
+            restart: Some(false),
+        });
 
-    let request = debugger.terminate(terminate_arguments);
-    dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
-        // editor.set_error(format!("Failed to disconnect: {}", e));
-        editor.debug_adapters.unset_active_client();
-    });
+        let request = debugger.terminate(terminate_arguments);
+        dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
+            // editor.set_error(format!("Failed to disconnect: {}", e));
+            editor.debug_adapters.unset_active_client();
+        });
+    } else {
+        cx.editor.debug_adapters.unset_active_client();
+    }
 }
 
 pub fn dap_enable_exceptions(cx: &mut Context) {

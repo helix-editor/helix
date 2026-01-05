@@ -3,10 +3,14 @@
 
 [
   (statement_block)
-  (function)
   (arrow_function)
+  (function_expression)
   (function_declaration)
   (method_definition)
+  (for_statement)
+  (for_in_statement)
+  (catch_clause)
+  (finally_clause)
 ] @local.scope
 
 ; Definitions

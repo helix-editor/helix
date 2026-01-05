@@ -1,5 +1,3 @@
-(identifier) @variable
-
 ;; Constants, Comments, and Literals
 
 (comment) @comment.line
@@ -10,8 +8,6 @@
 ] @comment.block.documentation
 
 (nil_literal) @constant.builtin
-((identifier) @constant.builtin.boolean
-  (#any-of? @constant.builtin.boolean "true" "false" "on" "off"))
 
 (char_literal) @constant.character
 (escape_sequence) @constant.character.escape
@@ -325,9 +321,35 @@
 ; also: addr end interface using
 
 (blank_identifier) @variable.builtin
+
+; Highlight left side of dot expressions (variables being accessed)
+(dot_expression
+  left: (identifier) @variable)
+
+;; ============================================================================
+;; Fallback identifier patterns (applied last, after all specific contexts)
+;; ============================================================================
+
+;; Special built-in identifiers
 ((identifier) @variable.builtin
   (#eq? @variable.builtin "result"))
 
-(dot_expression
-  left: (identifier) @variable
-  right: (identifier) @variable.other.member)
+;; Built-in constants
+((identifier) @constant.builtin
+  (#match? @constant.builtin "^(NaN|Inf|NegInf|isMainModule|appType|CompileDate|CompileTime|cpuEndian|hostOS|hostCPU|NimVersion|NimMajor|NimMinor|NimPatch|nimvm|QuitSuccess|QuitFailure)$"))
+
+;; Built-in boolean constants
+((identifier) @constant.builtin.boolean
+  (#any-of? @constant.builtin.boolean "true" "false" "on" "off"))
+
+;; Built-in types (primitive and common types)
+((identifier) @type.builtin
+  (#match? @type.builtin "^(int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|float|float32|float64|bool|char|string|cstring|pointer|ptr|ref|void|auto|any|type|typed|untyped|typedesc|range|array|openArray|openarray|varargs|seq|set|tuple|object|enum|concept|distinct|proc|iterator|cstringArray|csize|csize_t|clonglong|culonglong|clong|culong|cint|cuint|cshort|cushort|cchar|cschar|cuchar|cfloat|cdouble|clongdouble|byte|Natural|Positive|sink|lent|owned|iterable|static)$"))
+
+;; Constants (ALL_CAPS naming convention) - fallback for unmatched identifiers
+((identifier) @constant
+  (#match? @constant "^[A-Z][A-Z0-9_]*$"))
+
+;; Type names (PascalCase - starts with capital, contains lowercase) - fallback
+((identifier) @type
+  (#match? @type "^[A-Z][a-z]"))

@@ -8,6 +8,7 @@ members = [
   "helix-lsp-types",
   "helix-lsp",
   "helix-event",
+  "helix-dap-types",
   "helix-dap",
   "helix-loader",
   "helix-vcs",
@@ -39,10 +40,10 @@ package.helix-term.opt-level = 2
 [workspace.dependencies]
 tree-house = { version = "0.3.0", default-features = false }
 nucleo = "0.5.0"
-slotmap = "1.0.7"
+slotmap = "1.1.1"
 thiserror = "2.0"
-tempfile = "3.23.0"
-bitflags = "2.9"
+tempfile = "3.24.0"
+bitflags = "2.10"
 unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 foldhash = "0.2"
@@ -53,6 +54,8 @@ tokio-stream = "0.1.17"
 toml = "0.9"
 termina = "0.1"
 sonic-rs = "0.5"
+# MSRV: update once the MSRV is >=1.85
+globset = "=0.4.16"
 
 [workspace.package]
 version = "25.7.1"
