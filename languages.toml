@@ -1107,6 +1107,7 @@ injection-regex = "nix"
 file-types = ["nix"]
 shebangs = []
 comment-token = "#"
+block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "nil", "nixd" ]
 indent = { tab-width = 2, unit = "  " }
 formatter = { command = "nixfmt" }
