@@ -5149,3 +5149,9 @@ injection-regex = "^chuck$|^ck$"
 [[grammar]]
 name = "chuck"
 source = { git = "https://github.com/tymbalodeon/tree-sitter-chuck", rev = "2fd18bcd48e7b23ee47f854e639020df90b1270b" }
+
+[[language]]
+name = "qmv"
+scope = "source.qmv"
+file-types = [ { glob = "/tmp/qmv*" } ]
+indent = { tab-width = 8, unit = "        " }
