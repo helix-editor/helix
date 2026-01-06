@@ -987,7 +987,7 @@ pub fn find_lsp_workspace(
     for ancestor in file.ancestors() {
         if root_markers
             .iter()
-            .any(|marker| ancestor.join(marker).exists())
+            .any(|marker| dir_contains_file_with_suffix(ancestor, marker))
         {
             top_marker = Some(ancestor);
         }
@@ -1011,6 +1011,20 @@ pub fn find_lsp_workspace(
 
     debug_assert!(false, "workspace must be an ancestor of <file>");
     None
+}
+
+fn dir_contains_file_with_suffix(dir: &Path, suffix: &str) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+
+    for entry in entries.flatten() {
+        if entry.file_name().to_string_lossy().ends_with(suffix) {
+            return true;
+        }
+    }
+
+    false
 }
 
 #[cfg(test)]
