@@ -5155,3 +5155,4 @@ name = "qmv"
 scope = "source.qmv"
 file-types = [ { glob = "/tmp/qmv*" } ]
 indent = { tab-width = 8, unit = "        " }
+soft-wrap = { enable = false }
