@@ -165,6 +165,7 @@
 | log | ✓ |  |  |  |  |  |
 | lpf | ✓ |  |  |  |  |  |
 | lua | ✓ | ✓ | ✓ |  | ✓ | `lua-language-server` |
+| lua-format-string | ✓ |  |  |  |  |  |
 | luap | ✓ |  |  |  |  |  |
 | luau | ✓ | ✓ | ✓ |  |  | `luau-lsp` |
 | mail | ✓ | ✓ |  |  |  |  |
