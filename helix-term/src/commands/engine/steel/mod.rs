@@ -4839,6 +4839,10 @@ fn configure_lsp_globals() {
         "log::debug!",
         "log::warn!",
         "log::error!",
+        "log::info",
+        "log::debug",
+        "log::warn",
+        "log::error",
         "fuzzy-match",
         "helix-find-workspace",
         "find-workspace",
@@ -5722,6 +5726,38 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     });
 
     engine.register_fn("log::error!", |message: SteelVal| {
+        if let SteelVal::StringV(s) = &message {
+            log::error!("{}", s)
+        } else {
+            log::error!("{}", message)
+        }
+    });
+
+    engine.register_fn("log::info", |message: SteelVal| {
+        if let SteelVal::StringV(s) = &message {
+            log::info!("{}", s)
+        } else {
+            log::info!("{}", message)
+        }
+    });
+
+    engine.register_fn("log::debug", |message: SteelVal| {
+        if let SteelVal::StringV(s) = &message {
+            log::debug!("{}", s)
+        } else {
+            log::debug!("{}", message)
+        }
+    });
+
+    engine.register_fn("log::warn", |message: SteelVal| {
+        if let SteelVal::StringV(s) = &message {
+            log::warn!("{}", s)
+        } else {
+            log::warn!("{}", message)
+        }
+    });
+
+    engine.register_fn("log::error", |message: SteelVal| {
         if let SteelVal::StringV(s) = &message {
             log::error!("{}", s)
         } else {
