@@ -23,7 +23,7 @@ use tui::{
 use crate::{
     commands::{engine::steel::BoxDynComponent, Context},
     compositor::{self, Component},
-    ui::overlay::overlaid,
+    ui::{self, overlay::overlaid},
 };
 
 use super::{
@@ -524,6 +524,66 @@ area : Rect?
 area : Rect?
         "#
     );
+
+    module.register_fn(
+        "render-native-component",
+        |this: &mut WrappedDynComponent,
+         area: helix_view::graphics::Rect,
+         frame: &mut Buffer,
+         ctx: &mut Context| {
+            if let Some(inner) = &mut this.inner {
+                let mut ctx = compositor::Context {
+                    editor: ctx.editor,
+                    scroll: None,
+                    jobs: ctx.jobs,
+                };
+
+                inner.render(area, frame, &mut ctx);
+            }
+        },
+    );
+
+    register!(
+        "native-component-required-size",
+        |this: &mut WrappedDynComponent, viewport: (u16, u16)| -> Option<(u16, u16)> {
+            if let Some(inner) = &mut this.inner {
+                return inner.required_size(viewport);
+            }
+
+            None
+        }
+    );
+
+    builtin_components_module.push_str(&format!(
+        r#"
+(provide render-native-component)
+;;@doc
+;; Render a native component
+(define (render-native-component component area buffer)
+    (helix.components.render-native-component component area buffer *helix.cx*))
+                    "#,
+    ));
+
+    module.register_fn(
+        "markdown-component",
+        |ctx: &mut Context, contents: String| {
+            let markdown = ui::Markdown::new(contents, ctx.editor.syn_loader.clone());
+
+            WrappedDynComponent {
+                inner: Some(Box::new(markdown)),
+            }
+        },
+    );
+
+    builtin_components_module.push_str(&format!(
+        r#"
+(provide markdown-component)
+;;@doc
+;; Render a native component
+(define (markdown-component text)
+    (helix.components.markdown-component *helix.cx* text))
+                    "#,
+    ));
 
     register!("overlaid", |component: &mut WrappedDynComponent| {
         let inner: Option<Box<dyn Component + Send + Sync + 'static>> =
