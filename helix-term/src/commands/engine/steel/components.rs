@@ -740,7 +740,13 @@ block: Block?
 
     register!(
         "buffer/clear",
-        Buffer::clear,
+        |buffer: &mut Buffer, area: Rect| {
+            for x in area.left()..area.right() {
+                for y in area.top()..area.bottom() {
+                    buffer.get_mut(x, y).map(|x| x.reset());
+                }
+            }
+        },
         r#"Clear a `Rect` in the `Buffer`
 
 ```scheme
@@ -753,7 +759,17 @@ area : Rect?
 
     register!(
         "buffer/clear-with",
-        Buffer::clear_with,
+        |buffer: &mut Buffer, area: Rect, style: Style| {
+            for x in area.left()..area.right() {
+                for y in area.top()..area.bottom() {
+                    let cell = buffer.get_mut(x, y);
+                    if let Some(cell) = cell {
+                        cell.reset();
+                        cell.set_style(style);
+                    }
+                }
+            }
+        },
         r#"Clear a `Rect` in the `Buffer` with a default `Style`
 
 ```scheme
