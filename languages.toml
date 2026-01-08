@@ -5149,6 +5149,7 @@ source = { git = "https://github.com/tymbalodeon/tree-sitter-chuck", rev = "2fd1
 [[language]]
 name = "umka"
 scope = "source.umka"
+injection-regex = "umka"
 file-types = ["um"]
 comment-token = "//"  
 block-comment-tokens = { start = "/*", end = "*/" }
