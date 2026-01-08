@@ -634,7 +634,7 @@ pub fn move_parent_node_end(
     text: RopeSlice,
     selection: Selection,
     dir: Direction,
-    movement: Movement,
+    extend: bool,
 ) -> Selection {
     selection.transform(|range| {
         let start_from = text.char_to_byte(range.from()) as u32;
@@ -674,14 +674,7 @@ pub fn move_parent_node_end(
             }
         };
 
-        if movement == Movement::Move {
-            // preserve direction of original range
-            if range.direction() == Direction::Forward {
-                Range::new(end_head, end_head + 1)
-            } else {
-                Range::new(end_head + 1, end_head)
-            }
-        } else {
+        if extend {
             // if we end up with a forward range, then adjust it to be one past
             // where we want
             if end_head >= range.anchor {
@@ -689,6 +682,13 @@ pub fn move_parent_node_end(
             }
 
             Range::new(range.anchor, end_head)
+        } else {
+            // preserve direction of original range
+            if range.direction() == Direction::Forward {
+                Range::new(end_head, end_head + 1)
+            } else {
+                Range::new(end_head + 1, end_head)
+            }
         }
     })
 }
