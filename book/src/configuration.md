@@ -30,6 +30,6 @@ You can use a custom configuration file by specifying it with the `-c` or
 You can reload the config file by issuing the `:config-reload` command. Alternatively, on Unix operating systems, you can reload it by sending the USR1
 signal to the Helix process, such as by using the command `pkill -USR1 hx`.
 
-Finally, you can have a `config.toml` and a `languages.toml` local to a project by putting it under a `.helix` directory in your repository.
-Its settings will be merged with the configuration directory and the built-in configuration.
+Finally, you can have a `config.toml`, `languages.toml`, and `auto-pairs.toml` local to a project by putting them under a `.helix` directory in your repository.
+Their settings will be merged with the configuration directory and the built-in configuration.
 
