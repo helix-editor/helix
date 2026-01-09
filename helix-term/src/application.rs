@@ -1112,12 +1112,32 @@ impl Application {
                             .editor
                             .documents
                             .values()
-                            .filter(|x| x.supports_language_server(language_server))
-                            .map(|x| x.id())
+                            .filter(|doc| doc.supports_language_server(language_server))
+                            .map(|doc| doc.id())
                             .collect();
 
                         for document in documents {
                             handlers::diagnostics::request_document_diagnostics(
+                                &mut self.editor,
+                                document,
+                            );
+                        }
+
+                        Ok(serde_json::Value::Null)
+                    }
+                    Ok(MethodCall::CodeLensRefresh) => {
+                        let language_server = language_server!().id();
+
+                        let documents: Vec<_> = self
+                            .editor
+                            .documents
+                            .values()
+                            .filter(|doc| doc.supports_language_server(language_server))
+                            .map(|doc| doc.id())
+                            .collect();
+
+                        for document in documents {
+                            handlers::code_lenses::request_document_code_lenses(
                                 &mut self.editor,
                                 document,
                             );
