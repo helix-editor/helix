@@ -175,6 +175,129 @@ mod tests {
     }
 
     #[test]
+    fn parsing_menus() {
+        use crate::keymap;
+        use helix_core::hashmap;
+        use helix_view::document::Mode;
+
+        let sample_keymaps = r#"
+            [keys.normal]
+            f = { f = "file_picker", c = "wclose" }
+            b = { label = "buffer", b = "buffer_picker", n = "goto_next_buffer" }
+        "#;
+
+        let mut keys = keymap::default();
+        merge_keys(
+            &mut keys,
+            hashmap! {
+                Mode::Normal => keymap!({ "Normal mode"
+                    "f" => { ""
+                        "f" => file_picker,
+                        "c" => wclose,
+                    },
+                    "b" => { "buffer"
+                        "b" => buffer_picker,
+                        "n" => goto_next_buffer,
+                    },
+                }),
+            },
+        );
+
+        assert_eq!(
+            Config::load_test(sample_keymaps),
+            Config {
+                keys,
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn parsing_typable_commands() {
+        use crate::keymap;
+        use crate::keymap::MappableCommand;
+        use helix_view::document::Mode;
+        use helix_view::input::KeyEvent;
+        use std::str::FromStr;
+
+        let sample_keymaps = r#"
+            [keys.normal]
+            o = { label = "Edit Config", command = ":open ~/.config" }
+            c = ":buffer-close" 
+            h = ["vsplit", "normal_mode", "swap_view_left"]
+            j = {command = ["hsplit", "normal_mode", "swap_view_down"], label = "split down"}
+            n = { label = "Delete word", command = "@wd" }
+        "#;
+
+        let config = Config::load_test(sample_keymaps);
+
+        let tree = config.keys.get(&Mode::Normal).unwrap();
+
+        if let keymap::KeyTrie::Node(node) = tree {
+            let open_node = node.get(&KeyEvent::from_str("o").unwrap()).unwrap();
+
+            if let keymap::KeyTrie::MappableCommand(MappableCommand::Typable { doc, .. }) =
+                open_node
+            {
+                assert_eq!(doc, "Edit Config");
+            } else {
+                panic!("Edit Config did not parse to typable command");
+            }
+
+            let close_node = node.get(&KeyEvent::from_str("c").unwrap()).unwrap();
+            if let keymap::KeyTrie::MappableCommand(MappableCommand::Typable { doc, .. }) =
+                close_node
+            {
+                assert_eq!(doc, ":buffer-close []");
+            } else {
+                panic!(":buffer-close command did not parse to typable command");
+            }
+
+            let split_left = node.get(&KeyEvent::from_str("h").unwrap()).unwrap();
+            if let keymap::KeyTrie::Sequence(label, cmds) = split_left {
+                assert_eq!(label, KeyTrie::DEFAULT_SEQUENCE_LABEL);
+                assert_eq!(
+                    *cmds,
+                    vec![
+                        MappableCommand::vsplit,
+                        MappableCommand::normal_mode,
+                        MappableCommand::swap_view_left
+                    ]
+                );
+            }
+
+            let split_down = node.get(&KeyEvent::from_str("j").unwrap()).unwrap();
+            if let keymap::KeyTrie::Sequence(label, cmds) = split_down {
+                assert_eq!(label, "split down");
+                assert_eq!(
+                    *cmds,
+                    vec![
+                        MappableCommand::hsplit,
+                        MappableCommand::normal_mode,
+                        MappableCommand::swap_view_down
+                    ]
+                );
+            }
+
+            let macro_keys = node.get(&KeyEvent::from_str("n").unwrap()).unwrap();
+            if let keymap::KeyTrie::MappableCommand(MappableCommand::Macro { name, keys }) =
+                macro_keys
+            {
+                assert_eq!(name, "Delete word");
+                assert_eq!(
+                    keys,
+                    &vec![
+                        KeyEvent::from_str("w").unwrap(),
+                        KeyEvent::from_str("d").unwrap()
+                    ]
+                );
+            }
+        } else {
+            panic!("Config did not parse to trie");
+        }
+    }
+
+    #[test]
     fn keys_resolve_to_correct_defaults() {
         // From serde default
         let default_keys = Config::load_test("").keys;
