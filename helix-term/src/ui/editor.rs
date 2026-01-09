@@ -195,6 +195,7 @@ impl EditorView {
             primary_cursor,
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
+            config.indent_guides.render_diagnostics,
         ));
         render_document(
             surface,

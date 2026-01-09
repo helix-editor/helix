@@ -358,17 +358,19 @@ tabpad = "·" # Tabs will look like "→···" (depending on tab width)
 
 Options for rendering vertical indent guides.
 
-| Key           | Description                                             | Default |
-| ---           | ---                                                     | ---     |
-| `render`      | Whether to render indent guides                         | `false` |
-| `character`   | Literal character to use for rendering the indent guide | `"│"`   |
-| `skip-levels` | Number of indent levels to skip                         | `0`     |
+| Key                 | Description                                                     | Default |
+| ---                 | ---                                                             | ---     |
+| `render`            | Whether to render indent guides                                 | `false` |
+| `render-diagnostics`| Whether to render indent guides on inline diagnostic lines      | `true`  |
+| `character`         | Literal character to use for rendering the indent guide         | `"│"`   |
+| `skip-levels`       | Number of indent levels to skip                                 | `0`     |
 
 Example:
 
 ```toml
 [editor.indent-guides]
 render = true
+render-diagnostics = true
 character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
 skip-levels = 1
 ```
