@@ -28,7 +28,7 @@ use tree_house::{
     Error, InjectionLanguageMarker, LanguageConfig as SyntaxConfig, Layer,
 };
 
-use crate::{indent::IndentQuery, tree_sitter, ChangeSet, Language};
+use crate::{auto_pairs::AutoPairsRegistry, indent::IndentQuery, tree_sitter, ChangeSet, Language};
 
 pub use tree_house::{
     highlighter::{Highlight, HighlightEvent},
@@ -231,6 +231,55 @@ impl LanguageData {
             .as_ref()
     }
 
+    /// Determine the bracket context at a position in the document.
+    pub fn bracket_context_at(
+        &self,
+        tree: &Tree,
+        source: RopeSlice,
+        pos_char: usize,
+        _loader: &Loader,
+    ) -> crate::auto_pairs::BracketContext {
+        use crate::auto_pairs::BracketContext;
+
+        let pos_byte = source.char_to_byte(pos_char) as u32;
+
+        let Some(mut node) = tree
+            .root_node()
+            .descendant_for_byte_range(pos_byte, pos_byte)
+        else {
+            return BracketContext::Unknown;
+        };
+
+        // Walk up tree-sitter nodes to detect string/comment/regex context
+        loop {
+            let kind = node.kind();
+
+            if kind.contains("string")
+                || kind.contains("char")
+                || kind == "interpreted_string_literal"
+                || kind == "raw_string_literal"
+            {
+                return BracketContext::String;
+            }
+
+            if kind.contains("comment") {
+                return BracketContext::Comment;
+            }
+
+            if kind == "regex" || kind == "regex_literal" || kind == "regex_pattern" {
+                return BracketContext::Regex;
+            }
+
+            if let Some(parent) = node.parent() {
+                node = parent;
+            } else {
+                break;
+            }
+        }
+
+        BracketContext::Code
+    }
+
     fn reconfigure(&self, scopes: &[String]) {
         if let Some(Some(config)) = self.syntax.get() {
             reconfigure_highlights(config, scopes);
@@ -279,12 +328,20 @@ pub struct Loader {
     languages_glob_matcher: FileTypeGlobMatcher,
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
     scopes: ArcSwap<Vec<String>>,
+    auto_pairs_registry: AutoPairsRegistry,
 }
 
 pub type LoaderError = globset::Error;
 
 impl Loader {
     pub fn new(config: Configuration) -> Result<Self, LoaderError> {
+        Self::new_with_auto_pairs(config, AutoPairsRegistry::new())
+    }
+
+    pub fn new_with_auto_pairs(
+        config: Configuration,
+        auto_pairs_registry: AutoPairsRegistry,
+    ) -> Result<Self, LoaderError> {
         let mut languages = Vec::with_capacity(config.language.len());
         let mut languages_by_extension = HashMap::new();
         let mut languages_by_shebang = HashMap::new();
@@ -293,6 +350,16 @@ impl Loader {
         for mut config in config.language {
             let language = Language(languages.len() as u32);
             config.language = Some(language);
+
+            // Explicit auto-pairs in languages.toml takes precedence over auto-pairs.toml
+            if let Some(ref apc) = config.auto_pair_config {
+                config.auto_pairs = apc.into();
+                config.bracket_set = apc.into();
+            } else {
+                let bracket_set = auto_pairs_registry.get(&config.language_id).clone();
+                config.bracket_set = Some(bracket_set.clone());
+                config.auto_pairs = Some(crate::auto_pairs::AutoPairs::from(&bracket_set));
+            }
 
             for file_type in &config.file_types {
                 match file_type {
@@ -318,7 +385,12 @@ impl Loader {
             languages_glob_matcher: FileTypeGlobMatcher::new(file_type_globs)?,
             language_server_configs: config.language_server,
             scopes: ArcSwap::from_pointee(Vec::new()),
+            auto_pairs_registry,
         })
+    }
+
+    pub fn auto_pairs_registry(&self) -> &AutoPairsRegistry {
+        &self.auto_pairs_registry
     }
 
     pub fn languages(&self) -> impl ExactSizeIterator<Item = (Language, &LanguageData)> {
@@ -1388,5 +1460,133 @@ mod test {
             0,
             source.len(),
         );
+    }
+
+    #[test]
+    fn test_hook_with_syntax_auto_computes_contexts() {
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        // Rust code with both code and string positions
+        let source = Rope::from_str("let s = \"hello\"; \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let lang_data = LOADER.language(language);
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("(", ")").with_contexts(ContextMask::CODE)
+        ]);
+
+        // Position 17 (space before newline) - CODE context
+        let selection = Selection::single(17, 18);
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '(',
+            &pairs,
+            Some(&syntax),
+            lang_data,
+            &LOADER,
+        );
+
+        assert!(result.is_some());
+        let mut doc = source.clone();
+        result.unwrap().apply(&mut doc);
+        assert_eq!(doc.to_string(), "let s = \"hello\"; ()\n");
+    }
+
+    #[test]
+    fn test_hook_with_syntax_blocks_in_string() {
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        let source = Rope::from_str("let s = \"hello \"; \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let lang_data = LOADER.language(language);
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("(", ")").with_contexts(ContextMask::CODE)
+        ]);
+
+        // Position 14 (space inside string) - STRING context
+        let selection = Selection::single(14, 15);
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '(',
+            &pairs,
+            Some(&syntax),
+            lang_data,
+            &LOADER,
+        );
+
+        assert!(result.is_some());
+        let mut doc = source.clone();
+        result.unwrap().apply(&mut doc);
+        // Should only insert '(' not '()' since we're in a string
+        assert_eq!(doc.to_string(), "let s = \"hello( \"; \n");
+    }
+
+    #[test]
+    fn test_hook_with_syntax_fallback_when_no_tree() {
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        let source = Rope::from_str("test \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let lang_data = LOADER.language(language);
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("(", ")").with_contexts(ContextMask::CODE)
+        ]);
+
+        // No syntax tree - should fall back to CODE context
+        let selection = Selection::single(5, 6);
+        let result = hook_with_syntax(
+            &source, &selection, '(', &pairs, None, // No syntax tree
+            lang_data, &LOADER,
+        );
+
+        assert!(result.is_some());
+        let mut doc = source.clone();
+        result.unwrap().apply(&mut doc);
+        // Should auto-pair since fallback is CODE context
+        assert_eq!(doc.to_string(), "test ()\n");
+    }
+
+    #[test]
+    fn test_hook_with_syntax_multi_cursor_mixed_contexts() {
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::{Range, Selection};
+
+        // "code \"str\" code\n"
+        let source = Rope::from_str("code \"str\" code\n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let lang_data = LOADER.language(language);
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("(", ")").with_contexts(ContextMask::CODE)
+        ]);
+
+        // Two cursors: one in code (pos 4 = space before "), one in string (pos 7 = 't')
+        let selection = Selection::new(smallvec::smallvec![Range::new(4, 5), Range::new(7, 8)], 0);
+
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '(',
+            &pairs,
+            Some(&syntax),
+            lang_data,
+            &LOADER,
+        );
+
+        assert!(result.is_some());
+        let mut doc = source.clone();
+        result.unwrap().apply(&mut doc);
+        // First cursor in CODE gets "()", second in STRING gets only "("
+        assert_eq!(doc.to_string(), "code() \"s(tr\" code\n");
     }
 }

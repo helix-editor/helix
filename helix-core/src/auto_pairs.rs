@@ -1055,6 +1055,38 @@ pub fn hook_with_context(state: &AutoPairState<'_>, ch: char) -> Option<Transact
     hook_core(state, ch, true)
 }
 
+/// Hook for auto-pairs with syntax tree context detection.
+///
+/// This function automatically detects the syntactic context (code, string, comment, regex)
+/// at each cursor position using the syntax tree, then applies context-aware auto-pairing.
+#[must_use]
+pub fn hook_with_syntax(
+    doc: &Rope,
+    selection: &Selection,
+    ch: char,
+    pairs: &BracketSet,
+    syntax: Option<&crate::syntax::Syntax>,
+    lang_data: &crate::syntax::LanguageData,
+    loader: &crate::syntax::Loader,
+) -> Option<Transaction> {
+    let contexts: Vec<BracketContext> = selection
+        .ranges()
+        .iter()
+        .map(|range| {
+            let cursor_pos = range.cursor(doc.slice(..));
+            match syntax {
+                Some(syn) => {
+                    lang_data.bracket_context_at(syn.tree(), doc.slice(..), cursor_pos, loader)
+                }
+                None => BracketContext::Code,
+            }
+        })
+        .collect();
+
+    let state = AutoPairState::with_contexts(doc, selection, pairs, &contexts);
+    hook_core(&state, ch, true)
+}
+
 /// Hook for multi-character auto-pairs without context awareness.
 #[must_use]
 pub fn hook_multi(
