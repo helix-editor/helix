@@ -1432,6 +1432,7 @@ dependencies = [
  "helix-stdx",
  "log",
  "once_cell",
+ "rustix 1.1.3",
  "serde",
  "tempfile",
  "threadpool",
