@@ -2046,6 +2046,7 @@ file-types = [
 ]
 comment-token = "#"
 indent = { tab-width = 4, unit = "  " }
+formatter = { command = "dockerfmt" }
 language-servers = [ "docker-langserver", "docker-language-server" ]
 
 [[grammar]]
