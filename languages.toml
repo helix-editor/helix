@@ -5149,3 +5149,15 @@ injection-regex = "^chuck$|^ck$"
 [[grammar]]
 name = "chuck"
 source = { git = "https://github.com/tymbalodeon/tree-sitter-chuck", rev = "2fd18bcd48e7b23ee47f854e639020df90b1270b" }
+
+[[language]]
+name = "umka"
+scope = "source.umka"
+injection-regex = "umka"
+file-types = ["um"]
+comment-token = "//"  
+block-comment-tokens = { start = "/*", end = "*/" }
+
+[[grammar]]
+name = "umka"
+source = { git = "https://github.com/thacuber2a03/tree-sitter-umka", rev = "f2588765c45d7f5099d53cf34b46883f31407ff2"}
