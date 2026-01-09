@@ -369,6 +369,7 @@ impl MappableCommand {
         page_cursor_half_down, "Move page and cursor half down",
         select_all, "Select whole document",
         select_regex, "Select all regex matches inside selections",
+        select_character, "Select all matches of character you next press",
         split_selection, "Split selections on regex matches",
         split_selection_on_newline, "Split selection on newlines",
         merge_selections, "Merge selections",
@@ -2102,6 +2103,38 @@ fn select_regex(cx: &mut Context) {
             }
         },
     );
+}
+
+fn select_character(cx: &mut Context) {
+    cx.on_next_key(move |cx, event| {
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => ch,
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => '\n',
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => '\t',
+            _ => return,
+        };
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+        let mut buf = [0u8; 4];
+        if let Some(selection) = selection::select_on_matches(
+            text,
+            doc.selection(view.id),
+            &helix_stdx::rope::Regex::new(&helix_core::regex::escape(ch.encode_utf8(&mut buf))) // this silly `encode_utf8` dance avoids a needless String allocation. not sure if it's worth the ugliness.
+                .expect("regex from a single character should never be invalid"),
+        ) {
+            doc.set_selection(view.id, selection);
+        } else {
+            cx.editor.set_error("nothing selected");
+        }
+    });
 }
 
 fn split_selection(cx: &mut Context) {
