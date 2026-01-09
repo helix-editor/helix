@@ -224,6 +224,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "space" => { "Space"
             "f" => file_picker,
+            "l" => recent_picker, // l stands for latest files
             "F" => file_picker_in_current_directory,
             "e" => file_explorer,
             "E" => file_explorer_in_current_buffer_directory,
