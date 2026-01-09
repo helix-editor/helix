@@ -43,7 +43,7 @@ use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
-    auto_pairs::AutoPairs,
+    auto_pairs::{AutoPairs, BracketSet},
     diagnostic::DiagnosticProvider,
     syntax::{
         self,
