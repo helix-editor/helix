@@ -139,6 +139,12 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
           restore-keys: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
 
+      - name: Install ts_query_ls
+        run: curl -fL https://github.com/ribru17/ts_query_ls/releases/latest/download/ts_query_ls-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+
+      - name: Lint queries
+        run: ./ts_query_ls lint runtime/queries
+
       - name: Validate queries
         run: cargo xtask query-check
 

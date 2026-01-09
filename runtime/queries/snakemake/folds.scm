@@ -1,5 +1,3 @@
-; inherits: python
-
 [
   (rule_definition)
   (rule_inheritance)

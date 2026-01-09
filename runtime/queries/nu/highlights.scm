@@ -86,9 +86,9 @@ file_path: (val_string) @variable.parameter
 (val_interpolated
   [
     "$\""
-    "$\'"
+    "$'"
     "\""
-    "\'"
+    "'"
   ] @string)
 
 (unescaped_interpolated_content) @string

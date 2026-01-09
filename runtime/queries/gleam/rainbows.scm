@@ -6,8 +6,6 @@
   (function)
   (function_parameters)
   (todo)
-  (tuple)
-  (list)
   (anonymous_function)
   (block)
   (case)

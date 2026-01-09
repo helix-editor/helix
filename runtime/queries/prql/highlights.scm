@@ -89,7 +89,6 @@ alias: (identifier) @variable.other.member
   (keyword_avg)
   (keyword_sum)
   (keyword_stddev)
-  (keyword_count)
   (keyword_lag)
   (keyword_lead)
   (keyword_first)

@@ -4,7 +4,6 @@
   (attribute)
   (generic_parameters)
   (parameter_list)
-  (impl)
   (trait)
   (enum_body)
   (enum_member)

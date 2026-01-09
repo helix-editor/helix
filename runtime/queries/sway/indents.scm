@@ -32,31 +32,31 @@
 ; an else-clause where the previous if-clause starts on the same line as the assignment.
 (assignment_expression
   .
-  (_) @expr-start
+  (_) @_expr-start
   right: (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 (compound_assignment_expr
   .
-  (_) @expr-start
+  (_) @_expr-start
   right: (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 (let_declaration
   .
-  (_) @expr-start
+  (_) @_expr-start
   value: (_) @indent
   alternative: (_)? @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 (if_expression
   .
-  (_) @expr-start
+  (_) @_expr-start
   condition: (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 
@@ -65,7 +65,7 @@
 ; Because this multiline expression might be nested in an arbitrary number of
 ; field expressions, this can only be matched using a Regex.
 (field_expression
-  value: (_) @val
+  value: (_) @_val
   "." @outdent
-  (#match? @val "(\\A[^\\n\\r]+\\([\\t ]*(\\n|\\r).*)|(\\A[^\\n\\r]*\\{[\\t ]*(\\n|\\r))")
+  (#match? @_val "(\\A[^\\n\\r]+\\([\\t ]*(\\n|\\r).*)|(\\A[^\\n\\r]*\\{[\\t ]*(\\n|\\r))")
 )

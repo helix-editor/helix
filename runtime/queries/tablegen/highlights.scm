@@ -67,7 +67,6 @@
   "defvar"
   "def"
   "defset"
-  "defvar"
   "deftype"
   "assert"
   "dump"

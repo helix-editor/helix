@@ -30,7 +30,7 @@
 )
 
 (field
-  [":" (field_name) ":"] @variable.other.member
+  [":" (field_name) ] @variable.other.member
 )
 
 (interpreted_text) @markup.raw.inline
