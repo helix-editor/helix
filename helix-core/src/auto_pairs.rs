@@ -587,36 +587,7 @@ pub struct Pair {
     pub close: char,
 }
 
-#[allow(deprecated)]
-impl Pair {
-    /// true if open == close
-    pub fn same(&self) -> bool {
-        self.open == self.close
-    }
 
-    /// true if all of the pair's conditions hold for the given document and range
-    pub fn should_close(&self, doc: &Rope, range: &Range) -> bool {
-        let mut should_close = Self::next_is_not_alpha(doc, range);
-
-        if self.same() {
-            should_close &= Self::prev_is_not_alpha(doc, range);
-        }
-
-        should_close
-    }
-
-    pub fn next_is_not_alpha(doc: &Rope, range: &Range) -> bool {
-        let cursor = range.cursor(doc.slice(..));
-        let next_char = doc.get_char(cursor);
-        next_char.map(|c| !c.is_alphanumeric()).unwrap_or(true)
-    }
-
-    pub fn prev_is_not_alpha(doc: &Rope, range: &Range) -> bool {
-        let cursor = range.cursor(doc.slice(..));
-        let prev_char = prev_char(doc, cursor);
-        prev_char.map(|c| !c.is_alphanumeric()).unwrap_or(true)
-    }
-}
 
 impl From<&(char, char)> for Pair {
     fn from(&(open, close): &(char, char)) -> Self {
@@ -682,137 +653,6 @@ impl From<&BracketSet> for AutoPairs {
     }
 }
 
-// =========================================================================
-// Legacy single-character auto-pairs hook (deprecated, for backwards compat)
-// =========================================================================
-
-/// Legacy hook for single-character auto-pairs.
-#[deprecated(note = "Use hook_multi or hook_with_context instead")]
-#[must_use]
-#[allow(deprecated)]
-pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> Option<Transaction> {
-    log::trace!("autopairs hook selection: {:#?}", selection);
-
-    if let Some(pair) = pairs.get(ch) {
-        if pair.same() {
-            return Some(handle_same(doc, selection, pair));
-        } else if pair.open == ch {
-            return Some(handle_open(doc, selection, pair));
-        } else if pair.close == ch {
-            return Some(handle_close(doc, selection, pair));
-        }
-    }
-
-    None
-}
-
-#[allow(deprecated)]
-fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
-    let mut end_ranges = SmallVec::with_capacity(selection.len());
-    let mut offs = 0;
-
-    let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
-        let cursor = start_range.cursor(doc.slice(..));
-        let next_char = doc.get_char(cursor);
-        let len_inserted;
-
-        let change = match next_char {
-            Some(_) if !pair.should_close(doc, start_range) => {
-                len_inserted = 1;
-                let mut tendril = Tendril::new();
-                tendril.push(pair.open);
-                (cursor, cursor, Some(tendril))
-            }
-            _ => {
-                let pair_str = Tendril::from_iter([pair.open, pair.close]);
-                len_inserted = 2;
-                (cursor, cursor, Some(pair_str))
-            }
-        };
-
-        let next_range = get_next_range(doc, start_range, offs, len_inserted);
-        end_ranges.push(next_range);
-        offs += len_inserted;
-
-        change
-    });
-
-    let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    log::debug!("auto pair transaction: {:#?}", t);
-    t
-}
-
-#[allow(deprecated)]
-fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
-    let mut end_ranges = SmallVec::with_capacity(selection.len());
-    let mut offs = 0;
-
-    let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
-        let cursor = start_range.cursor(doc.slice(..));
-        let next_char = doc.get_char(cursor);
-        let mut len_inserted = 0;
-
-        let change = if next_char == Some(pair.close) {
-            (cursor, cursor, None)
-        } else {
-            len_inserted = 1;
-            let mut tendril = Tendril::new();
-            tendril.push(pair.close);
-            (cursor, cursor, Some(tendril))
-        };
-
-        let next_range = get_next_range(doc, start_range, offs, len_inserted);
-        end_ranges.push(next_range);
-        offs += len_inserted;
-
-        change
-    });
-
-    let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    log::debug!("auto pair transaction: {:#?}", t);
-    t
-}
-
-#[allow(deprecated)]
-fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
-    let mut end_ranges = SmallVec::with_capacity(selection.len());
-    let mut offs = 0;
-
-    let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
-        let cursor = start_range.cursor(doc.slice(..));
-        let mut len_inserted = 0;
-        let next_char = doc.get_char(cursor);
-
-        let change = if next_char == Some(pair.open) {
-            (cursor, cursor, None)
-        } else {
-            let mut pair_str = Tendril::new();
-            pair_str.push(pair.open);
-
-            if pair.should_close(doc, start_range) {
-                pair_str.push(pair.close);
-            }
-
-            len_inserted += pair_str.chars().count();
-            (cursor, cursor, Some(pair_str))
-        };
-
-        let next_range = get_next_range(doc, start_range, offs, len_inserted);
-        end_ranges.push(next_range);
-        offs += len_inserted;
-
-        change
-    });
-
-    let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    log::debug!("auto pair transaction: {:#?}", t);
-    t
-}
-
-// =========================================================================
-// New multi-character auto-pairs system
-// =========================================================================
-
 /// State passed to the auto-pairs hook for context-aware pairing.
 #[derive(Debug, Clone)]
 pub struct AutoPairState<'a> {
@@ -820,6 +660,9 @@ pub struct AutoPairState<'a> {
     pub selection: &'a Selection,
     pub pairs: &'a BracketSet,
     pub contexts: Option<&'a [BracketContext]>,
+    pub syntax: Option<&'a crate::syntax::Syntax>,
+    pub lang_data: Option<&'a crate::syntax::LanguageData>,
+    pub loader: Option<&'a crate::syntax::Loader>,
 }
 
 impl<'a> AutoPairState<'a> {
@@ -830,6 +673,9 @@ impl<'a> AutoPairState<'a> {
             selection,
             pairs,
             contexts: None,
+            syntax: None,
+            lang_data: None,
+            loader: None,
         }
     }
 
@@ -845,6 +691,30 @@ impl<'a> AutoPairState<'a> {
             selection,
             pairs,
             contexts: Some(contexts),
+            syntax: None,
+            lang_data: None,
+            loader: None,
+        }
+    }
+
+    /// Create a new AutoPairState with full syntax information for language-specific behavior.
+    pub fn with_syntax(
+        doc: &'a Rope,
+        selection: &'a Selection,
+        pairs: &'a BracketSet,
+        contexts: &'a [BracketContext],
+        syntax: &'a crate::syntax::Syntax,
+        lang_data: &'a crate::syntax::LanguageData,
+        loader: &'a crate::syntax::Loader,
+    ) -> Self {
+        Self {
+            doc,
+            selection,
+            pairs,
+            contexts: Some(contexts),
+            syntax: Some(syntax),
+            lang_data: Some(lang_data),
+            loader: Some(loader),
         }
     }
 
@@ -854,6 +724,7 @@ impl<'a> AutoPairState<'a> {
             .and_then(|ctx| ctx.get(range_idx).copied())
             .unwrap_or(BracketContext::Code)
     }
+
 }
 
 /// Core auto-pairs hook implementation.
@@ -1055,10 +926,7 @@ pub fn hook_with_context(state: &AutoPairState<'_>, ch: char) -> Option<Transact
     hook_core(state, ch, true)
 }
 
-/// Hook for auto-pairs with syntax tree context detection.
-///
-/// This function automatically detects the syntactic context (code, string, comment, regex)
-/// at each cursor position using the syntax tree, then applies context-aware auto-pairing.
+/// Hook for multi-character auto-pairs with automatic context detection from syntax tree.
 #[must_use]
 pub fn hook_with_syntax(
     doc: &Rope,
@@ -1069,22 +937,26 @@ pub fn hook_with_syntax(
     lang_data: &crate::syntax::LanguageData,
     loader: &crate::syntax::Loader,
 ) -> Option<Transaction> {
-    let contexts: Vec<BracketContext> = selection
+    log::trace!("autopairs hook_with_syntax selection: {:#?}", selection);
+
+    let contexts: SmallVec<[BracketContext; 4]> = selection
         .ranges()
         .iter()
         .map(|range| {
-            let cursor_pos = range.cursor(doc.slice(..));
-            match syntax {
-                Some(syn) => {
-                    lang_data.bracket_context_at(syn.tree(), doc.slice(..), cursor_pos, loader)
-                }
-                None => BracketContext::Code,
-            }
+            let cursor = range.cursor(doc.slice(..));
+            syntax
+                .map(|syn| lang_data.bracket_context_at(syn.tree(), doc.slice(..), cursor, loader))
+                .unwrap_or(BracketContext::Code)
         })
         .collect();
 
-    let state = AutoPairState::with_contexts(doc, selection, pairs, &contexts);
-    hook_core(&state, ch, true)
+    let state = match syntax {
+        Some(syn) => {
+            AutoPairState::with_syntax(doc, selection, pairs, &contexts, syn, lang_data, loader)
+        }
+        None => AutoPairState::with_contexts(doc, selection, pairs, &contexts),
+    };
+    hook_with_context(&state, ch)
 }
 
 /// Hook for multi-character auto-pairs without context awareness.

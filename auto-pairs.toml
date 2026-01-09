@@ -18,7 +18,7 @@
 #     { open = "<!--", close = "-->", kind = "delimiter" },
 #   ]
 #
-# Supported `kind` values: "bracket", "quote", "delimiter", "tag", "custom"
+# Supported `kind` values: "bracket", "quote", "delimiter", "custom"
 # If omitted, kind is auto-detected based on whether open == close.
 #
 # Languages that match the default exactly are not listed here and will

@@ -4294,24 +4294,27 @@ pub mod insert {
         let selection = doc.selection(view.id);
 
         let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
-        let auto_pairs = doc.auto_pairs(cx.editor, loader, view);
 
-        let insert_char = |range: Range, ch: char| {
-            let cursor = range.cursor(text.slice(..));
-            let t = Tendril::from_iter([ch]);
-            ((cursor, cursor, Some(t)), None)
-        };
+        let bracket_set = doc.bracket_set(cx.editor, loader, view);
+        let transaction = bracket_set
+            .and_then(|bs| {
+                let syntax = doc.syntax();
+                let lang_data = syntax
+                    .map(|syn| loader.language(syn.root_language()))
+                    .or_else(|| {
+                        doc.language_name()
+                            .and_then(|name| loader.language_for_name(name))
+                            .map(|lang| loader.language(lang))
+                    });
 
-        let transaction = Transaction::change_by_and_with_selection(text, selection, |range| {
-            auto_pairs
-                .as_ref()
-                .and_then(|ap| {
-                    auto_pairs::hook_insert(text, range, c, ap)
-                        .map(|(change, range)| (change, Some(range)))
-                        .or_else(|| Some(insert_char(*range, c)))
-                })
-                .unwrap_or_else(|| insert_char(*range, c))
-        });
+                match lang_data {
+                    Some(ld) => {
+                        auto_pairs::hook_with_syntax(text, selection, c, bs, syntax, ld, loader)
+                    }
+                    None => auto_pairs::hook_multi(text, selection, c, bs),
+                }
+            })
+            .or_else(|| insert(text, selection, c));
 
         let doc = doc_mut!(cx.editor, &doc.id());
         doc.apply(&transaction, view.id);
@@ -4627,9 +4630,12 @@ pub mod insert {
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
+        let full_doc = doc.text();
+        let tab_width = doc.tab_width();
+        let indent_width = doc.indent_width();
 
         let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
-        let auto_pairs = doc.auto_pairs(cx.editor, loader, view);
+        let bracket_set = doc.bracket_set(cx.editor, loader, view);
 
         let transaction = Transaction::delete_by_and_with_selection(
             doc.text(),
@@ -4642,27 +4648,53 @@ pub mod insert {
                 if pos == 0 {
                     return ((pos, pos), None);
                 }
-
-                dedent(doc, range)
-                    .map(|dedent| (dedent, None))
-                    .or_else(|| {
-                        // [TODO] should this be fixed to get the auto pairs for
-                        // each selection after 46af40017c0704142516b5740cf1a000ba4fd7c1 ?
-                        auto_pairs::hook_delete(doc.text(), range, auto_pairs?)
-                            .map(|(delete, new_range)| (delete, Some(new_range)))
-                    })
-                    .unwrap_or_else(|| {
-                        (
-                            (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos),
-                            None,
-                        )
-                    })
-            },
-        );
-
-        log::debug!("delete_char_backward transaction: {:?}", transaction);
-
-        let doc = doc_mut!(cx.editor, &doc.id());
+                let line_start_pos = text.line_to_char(range.cursor_line(text));
+                // consider to delete by indent level if all characters before `pos` are indent units.
+                let fragment = Cow::from(text.slice(line_start_pos..pos));
+                if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
+                    if text.get_char(pos.saturating_sub(1)) == Some('\t') {
+                        // fast path, delete one char
+                        (graphemes::nth_prev_grapheme_boundary(text, pos, 1), pos)
+                    } else {
+                        let width: usize = fragment
+                            .chars()
+                            .map(|ch| {
+                                if ch == '\t' {
+                                    tab_width
+                                } else {
+                                    // it can be none if it still meet control characters other than '\t'
+                                    // here just set the width to 1 (or some value better?).
+                                    ch.width().unwrap_or(1)
+                                }
+                            })
+                            .sum();
+                        let mut drop = width % indent_width; // round down to nearest unit
+                        if drop == 0 {
+                            drop = indent_width
+                        }; // if it's already at a unit, consume a whole unit
+                        let mut chars = fragment.chars().rev();
+                        let mut start = pos;
+                        for _ in 0..drop {
+                            // delete up to `drop` spaces
+                            match chars.next() {
+                                Some(' ') => start -= 1,
+                                _ => break,
+                            }
+                        }
+                        (start, pos) // delete!
+                    }
+                } else if range.is_single_grapheme(text) {
+                    if let Some(bs) = bracket_set {
+                        if let Some(del) = auto_pairs::detect_pair_for_deletion(full_doc, pos, bs) {
+                            return (pos - del.delete_before, pos + del.delete_after);
+                        }
+                    }
+                    (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos)
+                } else {
+                    (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos)
+                }
+            });
+        let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
     }
 
@@ -6278,24 +6310,32 @@ static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
-        let (view, doc) = current!(cx.editor);
-        // surround_len is the number of new characters being added.
         let (open, close, surround_len) = match event.char() {
             Some(ch) => {
-                let (o, c) = match_brackets::get_pair(ch);
-                let mut open = Tendril::new();
-                open.push(o);
-                let mut close = Tendril::new();
-                close.push(c);
-                (open, close, 2)
+                let loader = cx.editor.syn_loader.load();
+                let (view, doc) = current_ref!(cx.editor);
+                let (o, c) = doc
+                    .bracket_set(cx.editor, &loader, view)
+                    .map(|bs| bs.get_surround_strings(ch))
+                    .unwrap_or_else(|| {
+                        let (o, c) = match_brackets::get_pair(ch);
+                        (o.to_string(), c.to_string())
+                    });
+                let surround_len = o.chars().count() + c.chars().count();
+                (Tendril::from(o), Tendril::from(c), surround_len)
             }
-            None if event.code == KeyCode::Enter => (
-                doc.line_ending.as_str().into(),
-                doc.line_ending.as_str().into(),
-                2 * doc.line_ending.len_chars(),
-            ),
+            None if event.code == KeyCode::Enter => {
+                let (_, doc) = current_ref!(cx.editor);
+                let line_ending = doc.line_ending;
+                (
+                    line_ending.as_str().into(),
+                    line_ending.as_str().into(),
+                    2 * line_ending.len_chars(),
+                )
+            }
             None => return,
         };
+        let (view, doc) = current!(cx.editor);
 
         let selection = doc.selection(view.id);
         let mut changes = Vec::with_capacity(selection.len() * 2);
@@ -6335,6 +6375,7 @@ fn surround_replace(cx: &mut Context) {
             Some(ch) => Some(ch),
             None => return,
         };
+
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
