@@ -8,7 +8,9 @@ use crate::{
     ui::{
         document::{render_document, LinePos, TextRenderer},
         statusline,
-        text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
+        text_decorations::{
+            self, Decoration, DecorationManager, InlineCompletionDecoration, InlineDiagnostics,
+        },
         Completion, ProgressSpinners,
     },
 };
@@ -183,6 +185,45 @@ impl EditorView {
                 primary_cursor,
             });
         }
+        // Add inline completion decoration (renders EOL ghost text, overflow, and additional lines)
+        if let Some(completion) = doc.inline_completions.current() {
+            let has_eol = completion.eol_ghost_text.is_some();
+            let has_overflow = completion.overflow_text.is_some();
+            let has_additional = !completion.additional_lines.is_empty();
+            if has_eol || has_overflow || has_additional {
+                let cursor_line = doc.text().char_to_line(primary_cursor);
+                let style = theme.get("ui.virtual.inline-completion");
+
+                // Get cursor style for EOL first char overlay effect (mode-dependent)
+                let cursor_style = match editor.mode() {
+                    Mode::Insert => theme
+                        .try_get("ui.cursor.primary.insert")
+                        .or_else(|| theme.try_get("ui.cursor.insert"))
+                        .or_else(|| theme.try_get("ui.cursor.primary"))
+                        .unwrap_or_else(|| theme.get("ui.cursor")),
+                    Mode::Select => theme
+                        .try_get("ui.cursor.primary.select")
+                        .or_else(|| theme.try_get("ui.cursor.select"))
+                        .or_else(|| theme.try_get("ui.cursor.primary"))
+                        .unwrap_or_else(|| theme.get("ui.cursor")),
+                    Mode::Normal => theme
+                        .try_get("ui.cursor.primary.normal")
+                        .or_else(|| theme.try_get("ui.cursor.normal"))
+                        .or_else(|| theme.try_get("ui.cursor.primary"))
+                        .unwrap_or_else(|| theme.get("ui.cursor")),
+                };
+
+                decorations.add_decoration(InlineCompletionDecoration::new(
+                    cursor_line,
+                    completion.eol_ghost_text.as_deref(),
+                    completion.overflow_text.as_deref(),
+                    &completion.additional_lines,
+                    style,
+                    Some(cursor_style),
+                ));
+            }
+        }
+
         let width = view.inner_width(doc);
         let config = doc.config.load();
         let enable_cursor_line = view

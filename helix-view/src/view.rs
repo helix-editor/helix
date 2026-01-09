@@ -1,6 +1,7 @@
 use crate::{
     align_view,
     annotations::diagnostics::InlineDiagnostics,
+    annotations::inline_completion::InlineCompletionLines,
     document::{DocumentColorSwatches, DocumentInlayHints},
     editor::{GutterConfig, GutterType},
     graphics::Rect,
@@ -488,6 +489,30 @@ impl View {
                 }
 
                 text_annotations.add_inline_annotations(color_swatches_padding, None);
+            }
+        }
+
+        // Add inline completion ghost text overlays
+        let inline_completion_style =
+            theme.and_then(|t| t.find_highlight("ui.virtual.inline-completion"));
+
+        // All overlays (replace chars in-place, no cursor shift)
+        if !doc.inline_completion_overlays.is_empty() {
+            text_annotations.add_overlay(&doc.inline_completion_overlays, inline_completion_style);
+        }
+
+        // Multi-line ghost text: reserve virtual lines for additional lines
+        if let Some(completion) = doc.inline_completions.current() {
+            if !completion.additional_lines.is_empty() {
+                let cursor = doc
+                    .selection(self.id)
+                    .primary()
+                    .cursor(doc.text().slice(..));
+                let cursor_line = doc.text().char_to_line(cursor);
+                text_annotations.add_line_annotation(InlineCompletionLines::new(
+                    cursor_line,
+                    &completion.additional_lines,
+                ));
             }
         }
 
