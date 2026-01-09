@@ -17,14 +17,16 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "p
 parking_lot.workspace = true
 arc-swap = { version = "1.8.0" }
 
-gix = { version = "0.77.0", features = ["attributes", "status"], default-features = false, optional = true }
+gix = { version = "0.77.0", features = ["attributes", "parallel", "status"], default-features = false, optional = true }
 imara-diff =  "0.2.0"
 anyhow = "1"
-
 log = "0.4"
+memchr = { version = "2.7", optional = true }
+tempfile = { version = "3.13", optional = true }
 
 [features]
 git = ["gix"]
+jj = ["memchr", "tempfile"]
 
 [dev-dependencies]
 tempfile.workspace = true
