@@ -151,6 +151,7 @@
 | kcl | ✓ |  |  |  |  | `kcl-language-server` |
 | kconfig | ✓ |  | ✓ |  |  |  |
 | kdl | ✓ | ✓ | ✓ | ✓ |  |  |
+| klog | ✓ |  |  |  |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ | ✓ |  | `kotlin-language-server` |
 | koto | ✓ | ✓ | ✓ |  | ✓ | `koto-ls` |
