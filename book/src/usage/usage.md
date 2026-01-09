@@ -1,6 +1,9 @@
 # Using Helix
 
-For a full interactive introduction to Helix, refer to the
+## Summary
+
+This chapter will outline the different functionalities of Helix and how
+you can use them. For a full interactive introduction to Helix, refer to the
 [tutor](https://github.com/helix-editor/helix/blob/master/runtime/tutor) which
 can be accessed via the command `hx --tutor` or `:tutor`.
 
