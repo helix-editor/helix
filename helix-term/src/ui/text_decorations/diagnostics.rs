@@ -390,8 +390,10 @@ mod tests {
             TextRenderer::new(&mut surface, &doc, &theme, Position::new(0, 0), viewport);
 
         let diagnostic = test_diagnostic(8);
-        let mut inline_config = InlineDiagnosticsConfig::default();
-        inline_config.other_lines = DiagnosticFilter::Enable(Severity::Hint);
+        let inline_config = InlineDiagnosticsConfig {
+            other_lines: DiagnosticFilter::Enable(Severity::Hint),
+            ..Default::default()
+        };
         let mut diagnostics = InlineDiagnostics::new(
             &doc,
             &theme,
@@ -427,8 +429,10 @@ mod tests {
             TextRenderer::new(&mut surface, &doc, &theme, Position::new(0, 0), viewport);
 
         let diagnostic = test_diagnostic(8);
-        let mut inline_config = InlineDiagnosticsConfig::default();
-        inline_config.other_lines = DiagnosticFilter::Enable(Severity::Hint);
+        let inline_config = InlineDiagnosticsConfig {
+            other_lines: DiagnosticFilter::Enable(Severity::Hint),
+            ..Default::default()
+        };
         let mut diagnostics = InlineDiagnostics::new(
             &doc,
             &theme,

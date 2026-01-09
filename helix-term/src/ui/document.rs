@@ -588,7 +588,9 @@ mod tests {
     use std::sync::Arc;
 
     use arc_swap::ArcSwap;
-    use helix_core::diagnostic::{Diagnostic, DiagnosticProvider, LanguageServerId, Range, Severity};
+    use helix_core::diagnostic::{
+        Diagnostic, DiagnosticProvider, LanguageServerId, Range, Severity,
+    };
     use helix_core::{syntax, Rope, Selection};
     use helix_view::editor::{Config, GutterConfig};
     use helix_view::graphics::Rect;
