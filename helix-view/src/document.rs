@@ -3,7 +3,7 @@ use arc_swap::access::DynAccess;
 use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
-use helix_core::auto_pairs::AutoPairs;
+use helix_core::auto_pairs::{AutoPairs, BracketSet};
 use helix_core::chars::char_is_word;
 use helix_core::command_line::Token;
 use helix_core::diagnostic::DiagnosticProvider;
