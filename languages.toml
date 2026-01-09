@@ -5154,6 +5154,7 @@ source = { git = "https://github.com/tymbalodeon/tree-sitter-chuck", rev = "2fd1
 name = "klog"
 scope = "source.klg"
 file-types = [ "klg" ]
+injection-regex = "klg"
 indent = { tab-width = 4, unit="    "}
 [language.auto-pairs]
 '(' = ')'
