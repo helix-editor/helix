@@ -1,0 +1,77 @@
+# wolf-alabaster-light-mono.toml
+#
+# Author: Wolf <wolf@zv.cx>
+# Project: https://github.com/wolf/alabaster-for-helix
+#
+# This is the "Mono" (monochromatic) variant of Alabaster for Helix.
+# Uses minimal color - mostly grayscale with light backgrounds for strings/constants.
+# Only errors and search results use color.
+#
+# Based on tonsky's "Alabaster Mono" variant from:
+# https://github.com/tonsky/sublime-scheme-alabaster
+
+inherits = "wolf-alabaster-light"
+
+# SYNTAX HIGHLIGHTING - MONO VARIANT
+# Almost entirely grayscale with subtle background highlighting
+
+"string" = { fg = "fg", bg = "string-bg" }
+"string.regexp" = { fg = "fg", bg = "string-bg" }
+"string.special" = { fg = "fg", bg = "string-bg-dark" }
+
+"constant" = { fg = "fg", bg = "string-bg" }
+"constant.numeric" = { fg = "fg", bg = "string-bg" }
+"constant.character" = { fg = "fg", bg = "string-bg" }
+"constant.builtin" = { fg = "fg", bg = "string-bg" }
+
+"comment" = { fg = "comment-grey" }
+"comment.line" = { fg = "comment-grey" }
+"comment.block" = { fg = "comment-grey" }
+
+# Definitions stay default (no highlighting in mono)
+"function" = { fg = "fg" }
+"function.builtin" = { fg = "fg" }
+"function.method" = { fg = "fg" }
+
+"constructor" = { fg = "fg" }
+"type" = { fg = "fg" }
+"type.builtin" = { fg = "fg" }
+
+# Punctuation even more dimmed
+"punctuation" = { fg = "punctuation-light" }
+"punctuation.bracket" = { fg = "punctuation-light" }
+"punctuation.delimiter" = { fg = "punctuation-light" }
+"operator" = { fg = "punctuation-light" }
+
+# Special cases
+"tag" = { fg = "fg" }
+"namespace" = { fg = "fg" }
+
+# MARKUP
+"markup.heading" = { fg = "fg", modifiers = ["bold"] }
+"markup.link.url" = { fg = "fg", bg = "string-bg", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "fg" }
+"markup.quote" = { fg = "comment-grey" }
+"markup.raw" = { fg = "fg", bg = "string-bg" }
+
+# DIFF - Keep some color for version control
+"diff.plus" = { fg = "diff-green" }
+"diff.minus" = { fg = "diff-red" }
+"diff.delta" = { fg = "diff-orange" }
+
+# Errors keep color (important!)
+error = { fg = "error-red", modifiers = ["bold"] }
+"diagnostic.error" = { underline = { color = "error-red", style = "curl" } }
+
+[palette]
+# Monochromatic palette
+comment-grey = "#999999"          # Grey - comments
+punctuation-light = "#BBBBBB"     # Light grey - punctuation
+string-bg = "#EEEEEE"             # Very light grey - strings/constants background
+string-bg-dark = "#D9D9D9"        # Slightly darker grey - escape sequences
+
+# Keep color only for errors and diffs
+error-red = "#CC3333"             # Red - errors
+diff-green = "#5F8700"            # Green - additions
+diff-red = "#CC3333"              # Red - deletions
+diff-orange = "#D78700"           # Orange - changes
