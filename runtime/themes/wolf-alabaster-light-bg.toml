@@ -1,0 +1,62 @@
+# wolf-alabaster-light-bg.toml
+#
+# Author: Wolf <wolf@zv.cx>
+# Project: https://github.com/wolf/alabaster-for-helix
+#
+# This is the "BG" (background) variant of Alabaster for Helix.
+# Unlike the standard version that uses text colors, this variant uses background colors
+# for syntax highlighting while keeping text mostly black.
+#
+# Based on tonsky's "Alabaster BG" variant from:
+# https://github.com/tonsky/sublime-scheme-alabaster
+
+inherits = "wolf-alabaster-light"
+
+# SYNTAX HIGHLIGHTING - BG VARIANT
+# Override to use BACKGROUND colors instead of text colors
+# Text stays black, categories distinguished by background
+
+"string" = { fg = "fg", bg = "string-bg" }
+"string.regexp" = { fg = "fg", bg = "string-bg" }
+"string.special" = { fg = "fg", bg = "string-bg-dark" }
+
+# Constants keep foreground color (same as base)
+"constant" = { fg = "constant" }
+"constant.numeric" = { fg = "constant" }
+"constant.character" = { fg = "constant" }
+"constant.builtin" = { fg = "constant" }
+
+"comment" = { fg = "fg", bg = "comment-bg" }
+"comment.line" = { fg = "fg", bg = "comment-bg" }
+"comment.block" = { fg = "fg", bg = "comment-bg" }
+
+"function" = { fg = "fg", bg = "definition-bg" }
+"function.builtin" = { fg = "fg", bg = "definition-bg" }
+"function.method" = { fg = "fg", bg = "definition-bg" }
+
+"constructor" = { fg = "fg", bg = "definition-bg" }
+"type" = { fg = "fg", bg = "definition-bg" }
+"type.builtin" = { fg = "fg", bg = "definition-bg" }
+
+# Special cases
+"tag" = { fg = "fg", bg = "definition-bg" }
+"namespace" = { fg = "fg", bg = "definition-bg" }
+
+# MARKUP overrides
+"markup.heading" = { fg = "fg", bg = "definition-bg", modifiers = ["bold"] }
+"markup.link.url" = { fg = "fg", bg = "string-bg", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "fg", bg = "definition-bg" }
+"markup.quote" = { fg = "fg", bg = "comment-bg" }
+"markup.raw" = { fg = "fg", bg = "string-bg" }
+
+# DIFF overrides
+"diff.plus" = { fg = "fg", bg = "string-bg" }
+"diff.minus" = { fg = "fg", bg = "error-bg" }
+
+[palette]
+# Add background colors for BG variant (from Alabaster BG)
+string-bg = "#F1FADF"        # Light green - strings
+string-bg-dark = "#DBECB6"   # Darker green - escape sequences
+definition-bg = "#DBF1FF"    # Light blue - definitions
+comment-bg = "#FFFABC"       # Light yellow - comments
+error-bg = "#FFE0E0"         # Light pink - errors

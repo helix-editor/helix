@@ -1,0 +1,147 @@
+# wolf-alabaster-light.toml
+#
+# Author: Wolf <wolf@zv.cx>
+# Project: https://github.com/wolf/alabaster-for-helix
+# Download: https://raw.githubusercontent.com/wolf/alabaster-for-helix/main/helix/dot-config/helix/themes/wolf-alabaster-light.toml
+#
+# This is a light-background theme especically for the Helix editor.
+#
+# The most important part here is the syntax stuff, but the theme includes UI stuff specifically for Helix, as well.
+#
+# What I care about is:
+#   * Readable syntax, no matter the language
+#   * The error messages provided by the LSP
+#   * Anything special needed to make the UI non-surprising
+#   * Building a minimal definition
+#
+# I started from a couple important sources:
+#   * The [priorities and ideas](https://tonsky.me/blog/syntax-highlighting/) behind the Alabaster Theme (which exists for many editors) by Nikita Prokopov
+#   * His [actual repo implementing the theme](https://github.com/tonsky/sublime-scheme-alabaster)
+#   * A [theme template](https://github.com/joegm/helix-theme-template) on GitHub provided by joegm
+
+# I don't consider this to be done! I absolutely want feedback. I absolutely will continue to tinker.
+
+# GENERAL - Diagnostics (LSP errors/warnings)
+warning = { fg = "highlight" }
+error = { fg = "error-red", modifiers = ["bold"] }
+info = { fg = "definition" }
+hint = { fg = "punctuation" }
+diagnostic = { underline = { style = "curl" } }
+
+# UI - Interface elements
+"ui.background" = { bg = "bg" }
+"ui.text" = { fg = "fg" }
+"ui.text.focus" = { fg = "active", modifiers = ["bold"] }
+
+"ui.cursor" = { bg = "active", fg = "bg" }
+"ui.cursor.primary" = { bg = "active", fg = "bg" }
+"ui.cursor.match" = { bg = "highlight" }
+
+"ui.selection" = { bg = "selection" }
+"ui.selection.primary" = { bg = "selection-primary" }
+
+"ui.linenr" = { fg = "punctuation" }
+"ui.linenr.selected" = { fg = "active", modifiers = ["bold"] }
+
+"ui.statusline" = { fg = "fg", bg = "panel" }
+"ui.statusline.inactive" = { fg = "punctuation", bg = "panel" }
+
+# Bufferline - make active buffer clearly visible (like onelight-fixed-bufferline)
+"ui.bufferline.active" = { fg = "fg", bg = "bg", modifiers = ["bold"] }
+"ui.bufferline.background" = { bg = "bg" }
+"ui.bufferline" = { fg = "punctuation", bg = "panel" }
+
+"ui.menu" = { fg = "fg", bg = "panel" }
+"ui.menu.selected" = { fg = "bg", bg = "active" }
+
+"ui.popup" = { fg = "fg", bg = "panel" }
+"ui.popup.info" = { fg = "fg", bg = "panel" }
+"ui.window" = { fg = "punctuation" }
+"ui.help" = { fg = "fg", bg = "bg" }
+
+# LSP diagnostic inline/expanded text
+"diagnostic.error" = { underline = { color = "error-red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "highlight", style = "curl" } }
+"diagnostic.info" = { underline = { color = "definition", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "punctuation", style = "curl" } }
+
+# SYNTAX HIGHLIGHTING - Following Alabaster's minimal approach
+# Only 4 categories get color: strings, constants, comments, definitions
+# Everything else (keywords, variables, calls) stays default fg
+
+"string" = { fg = "string" }
+"string.regexp" = { fg = "string" }
+"string.special" = { fg = "string" }
+
+"constant" = { fg = "constant" }
+"constant.numeric" = { fg = "constant" }
+"constant.character" = { fg = "constant" }
+"constant.builtin" = { fg = "constant" }
+
+"comment" = { fg = "comment" }
+"comment.line" = { fg = "comment" }
+"comment.block" = { fg = "comment" }
+
+"function" = { fg = "definition" }
+"function.builtin" = { fg = "definition" }
+"function.method" = { fg = "definition" }
+
+"constructor" = { fg = "definition" }
+"type" = { fg = "definition" }
+"type.builtin" = { fg = "definition" }
+
+# These are NOT highlighted (Alabaster philosophy: keywords are obvious)
+"keyword" = { fg = "fg" }
+"keyword.control" = { fg = "fg" }
+"keyword.operator" = { fg = "fg" }
+"variable" = { fg = "fg" }
+"variable.parameter" = { fg = "fg" }
+"variable.builtin" = { fg = "fg" }
+
+# Punctuation is dimmed
+"punctuation" = { fg = "punctuation" }
+"punctuation.bracket" = { fg = "punctuation" }
+"punctuation.delimiter" = { fg = "punctuation" }
+
+"operator" = { fg = "punctuation" }
+
+# Special cases
+"tag" = { fg = "definition" }
+"attribute" = { fg = "fg" }
+"namespace" = { fg = "definition" }
+"label" = { fg = "constant" }
+
+# MARKUP - For markdown/documentation
+"markup.heading" = { fg = "definition", modifiers = ["bold"] }
+"markup.list" = { fg = "fg" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "string", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "definition" }
+"markup.quote" = { fg = "comment" }
+"markup.raw" = { fg = "string" }
+
+# DIFF - Version control
+"diff.plus" = { fg = "string" }
+"diff.minus" = { fg = "error-red" }
+"diff.delta" = { fg = "highlight" }
+
+[palette]
+# Core colors (Alabaster-inspired)
+fg = "#000000"           # Main text (Alabaster uses pure black)
+bg = "#F7F7F7"           # Background (Alabaster's light grey)
+
+# The 4 semantic colors
+string = "#448C27"       # Green - strings & numbers
+constant = "#7A3E9D"     # Magenta - constants, booleans
+comment = "#AA3731"      # Red - comments (important!)
+definition = "#325CC0"   # Blue - function/class definitions
+
+# Supporting colors
+punctuation = "#777777"  # Grey - dimmed operators/brackets
+selection = "#BFDBFE"    # Light blue - secondary selections
+selection-primary = "#93C5FD"  # Darker blue - primary selection
+active = "#007ACC"       # Bright blue - cursor, active elements
+highlight = "#FFBC5D"    # Orange - search, warnings
+error-red = "#AA3731"    # Red - errors
+panel = "#EEEEEE"      # Darker grey - UI panels, menus, popups
