@@ -5,6 +5,7 @@ use crate::{
         Loader, LoaderError,
     },
 };
+use helix_loader::config::AutoPairsConfigError;
 
 /// Language configuration based on built-in languages.toml.
 pub fn default_lang_config() -> Configuration {
@@ -24,6 +25,7 @@ pub enum LanguageLoaderError {
     ConfigError(toml::de::Error, String),
     LoaderError(LoaderError),
     AutoPairsError(AutoPairsRegistryError),
+    AutoPairsConfigError(AutoPairsConfigError),
 }
 
 impl std::fmt::Display for LanguageLoaderError {
@@ -35,6 +37,9 @@ impl std::fmt::Display for LanguageLoaderError {
             }
             Self::LoaderError(err) => write!(f, "Failed to compile language config: {err}"),
             Self::AutoPairsError(err) => write!(f, "Failed to load auto-pairs config: {err}"),
+            Self::AutoPairsConfigError(err) => {
+                write!(f, "Failed to load auto-pairs config: {err}")
+            }
         }
     }
 }
@@ -48,8 +53,8 @@ pub fn user_lang_config() -> Result<Configuration, toml::de::Error> {
 
 /// Load the auto-pairs registry from auto-pairs.toml.
 pub fn auto_pairs_registry() -> Result<AutoPairsRegistry, LanguageLoaderError> {
-    let config_val =
-        helix_loader::config::auto_pairs_config().map_err(LanguageLoaderError::DeserializeError)?;
+    let config_val = helix_loader::config::auto_pairs_config()
+        .map_err(LanguageLoaderError::AutoPairsConfigError)?;
     AutoPairsRegistry::from_toml(&config_val).map_err(LanguageLoaderError::AutoPairsError)
 }
 
