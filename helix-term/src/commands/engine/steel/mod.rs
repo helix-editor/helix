@@ -39,6 +39,7 @@ use serde_json::Value;
 use steel::{
     compiler::modules::steel_home,
     gc::{unsafe_erased_pointers::CustomReference, ShareableMut},
+    parser::interner::InternedString,
     rerrs::ErrorKind,
     rvals::{as_underlying_type, AsRefMutSteelVal, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{
@@ -50,7 +51,7 @@ use termina::EventReader;
 
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     error::Error,
     io::Write,
     num::NonZeroU8,
@@ -89,6 +90,9 @@ static SAFEPOINT_HANDLER: Lazy<Mutex<Option<Arc<SafepointHandler>>>> =
 
 static GLOBAL_OFFSET: AtomicUsize = AtomicUsize::new(0);
 
+static IDENTIFIERS_AVAILABLE_AFTER_BOOT: Lazy<Mutex<HashSet<InternedString>>> =
+    Lazy::new(|| Mutex::new(HashSet::default()));
+
 static EVENT_READER: OnceCell<EventReader> = OnceCell::new();
 
 fn install_event_reader(event_reader: TerminalEventReaderHandle) {
@@ -114,8 +118,26 @@ fn reload_engine() {
     })
 }
 
+fn identifier_available_at_startup(ident: &str) -> bool {
+    let interned: InternedString = ident.into();
+
+    IDENTIFIERS_AVAILABLE_AFTER_BOOT
+        .lock()
+        .unwrap()
+        .contains(&interned)
+}
+
 fn setup() -> Engine {
     let engine = steel::steel_vm::engine::Engine::new();
+
+    {
+        let mut guard = IDENTIFIERS_AVAILABLE_AFTER_BOOT.lock().unwrap();
+        guard.clear();
+
+        for identifier in engine.readable_globals(0) {
+            guard.insert(identifier);
+        }
+    }
 
     let controller = engine.get_thread_state_controller();
     let running = Arc::new(AtomicBool::new(false));
@@ -2895,6 +2917,14 @@ impl super::PluginSystem for SteelScriptingEngine {
     ) -> bool {
         if enter_engine(|x| x.global_exists(command)) {
             let args = parts;
+
+            // Handle ties for built in implementations:
+            if crate::commands::typed::TYPABLE_COMMAND_MAP.contains_key(command) {
+                let should_prefer_builtin = identifier_available_at_startup(command);
+                if should_prefer_builtin {
+                    return false;
+                }
+            }
 
             // We're finalizing the event - we actually want to call the function
             if event == PromptEvent::Validate {
