@@ -35,10 +35,6 @@ pairs = [
   { open = "`", close = "`", kind = "quote" },
 ]
 
-# =============================================================================
-# Systems Programming
-# =============================================================================
-
 [rust]
 pairs = [
   { open = "(", close = ")" },
@@ -47,7 +43,6 @@ pairs = [
   { open = "\"", close = "\"", kind = "quote" },
   { open = "`", close = "`", kind = "quote" },
   { open = "|", close = "|" },
-  # No single quote - used for lifetimes
 ]
 
 [c]
@@ -57,7 +52,6 @@ pairs = [
   { open = "[", close = "]" },
   { open = "\"", close = "\"", kind = "quote" },
   { open = "'", close = "'", kind = "quote" },
-  # No backtick
 ]
 
 [cpp]
@@ -79,10 +73,6 @@ pairs = [
   { open = "'", close = "'", kind = "quote" },
   { open = "|", close = "|" },
 ]
-
-# =============================================================================
-# Web / Markup
-# =============================================================================
 
 [html]
 pairs = [
@@ -158,7 +148,6 @@ pairs = [
   { open = "[", close = "]" },
   { open = "\"", close = "\"", kind = "quote" },
   { open = "'", close = "'", kind = "quote" },
-  # No backtick
 ]
 
 [scss]
@@ -195,10 +184,6 @@ pairs = [
   { open = "<", close = ">" },
   { open = "<!--", close = "-->", kind = "delimiter" },
 ]
-
-# =============================================================================
-# Template Languages
-# =============================================================================
 
 [jinja]
 pairs = [
@@ -271,10 +256,6 @@ pairs = [
   { open = "<%-", close = "%>", kind = "delimiter" },
 ]
 
-# =============================================================================
-# Scripting Languages
-# =============================================================================
-
 [python]
 pairs = [
   { open = "(", close = ")" },
@@ -314,7 +295,6 @@ pairs = [
   { open = "[", close = "]" },
   { open = "\"", close = "\"", kind = "quote" },
   { open = "'", close = "'", kind = "quote" },
-  # No backtick
 ]
 
 [php]
@@ -327,10 +307,6 @@ pairs = [
   { open = "<?php", close = "?>", kind = "delimiter" },
   { open = "<?=", close = "?>", kind = "delimiter" },
 ]
-
-# =============================================================================
-# Lisp Family (no single quote - it's syntax)
-# =============================================================================
 
 [clojure]
 pairs = [
@@ -377,10 +353,6 @@ pairs = [
   { open = "\"", close = "\"", kind = "quote" },
   { open = "`", close = "`", kind = "quote" },
 ]
-
-# =============================================================================
-# Functional Languages
-# =============================================================================
 
 [haskell]
 pairs = [
@@ -433,10 +405,6 @@ pairs = [
   { open = "<", close = ">" },
 ]
 
-# =============================================================================
-# JVM Languages
-# =============================================================================
-
 [java]
 pairs = [
   { open = "(", close = ")" },
@@ -478,10 +446,6 @@ pairs = [
   { open = "${", close = "}", kind = "delimiter" },
 ]
 
-# =============================================================================
-# .NET Languages
-# =============================================================================
-
 [csharp]
 pairs = [
   { open = "(", close = ")" },
@@ -503,10 +467,6 @@ pairs = [
   { open = "(*", close = "*)", kind = "delimiter" },
 ]
 
-# =============================================================================
-# Shell / Config
-# =============================================================================
-
 [bash]
 pairs = [
   { open = "(", close = ")" },
@@ -526,7 +486,6 @@ pairs = [
   { open = "[", close = "]" },
   { open = "\"", close = "\"", kind = "quote" },
   { open = "'", close = "'", kind = "quote" },
-  # No backtick
 ]
 
 [nix]
@@ -561,10 +520,6 @@ pairs = [
   { open = "\"", close = "\"", kind = "quote" },
 ]
 
-# =============================================================================
-# Documentation / Prose
-# =============================================================================
-
 [markdown]
 pairs = [
   { open = "(", close = ")" },
@@ -577,7 +532,6 @@ pairs = [
   { open = "*", close = "*", kind = "delimiter" },
   { open = "_", close = "_", kind = "delimiter" },
   { open = "~~", close = "~~", kind = "delimiter" },
-
 ]
 
 [latex]
@@ -602,10 +556,6 @@ pairs = [
   { open = "<", close = ">" },
 ]
 
-# =============================================================================
-# Query / Data Languages
-# =============================================================================
-
 [sql]
 pairs = [
   { open = "(", close = ")" },
@@ -621,10 +571,6 @@ pairs = [
   { open = "[", close = "]" },
   { open = "\"", close = "\"", kind = "quote" },
 ]
-
-# =============================================================================
-# Other
-# =============================================================================
 
 [swift]
 pairs = [
@@ -656,7 +602,6 @@ pairs = [
   { open = "[", close = "]" },
   { open = "\"", close = "\"", kind = "quote" },
   { open = "'", close = "'", kind = "quote" },
-  # No backtick
 ]
 
 [julia]
@@ -665,7 +610,6 @@ pairs = [
   { open = "{", close = "}" },
   { open = "[", close = "]" },
   { open = "\"", close = "\"", kind = "quote" },
-
   { open = "'", close = "'", kind = "quote" },
   { open = "$(", close = ")", kind = "delimiter" },
 ]
@@ -697,5 +641,197 @@ pairs = [
   { open = "[", close = "]" },
   { open = "\"", close = "\"", kind = "quote" },
   { open = "'", close = "'", kind = "quote" },
-  # No backtick
+]
+
+[elisp]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[hy]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[dune]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[sml]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[ocaml-interface]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[nickel]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[lean]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "⟨", close = "⟩" },
+]
+
+[unison]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+]
+
+[agda]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[adl]
+pairs = [
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[fidl]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[wit]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[ohm]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[pest]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[tsq]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[glimmer]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[gjs]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[gts]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[spade]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[tact]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[dtd]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[msbuild]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[bovex]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
 ]
