@@ -443,11 +443,12 @@ pub fn detect_trigger_at<'a>(
         .max_by_key(|pair| pair.trigger.len())
 }
 
-/// When completing a multi-char trigger like `{%`, check if the prefix `{`
-/// was already auto-paired with `}` that now needs replacement.
+/// When completing a multi-char trigger like `{%` or `<!--`, check if a prefix
+/// was already auto-paired with a closer that now needs replacement.
 ///
 /// This handles multi-char triggers that have a prefix:
 /// - For `{%` trigger with `{` prefix pair: replaces `}` with `%}`
+/// - For `<!--` trigger with `<` prefix pair: replaces `>` with `-->`
 fn find_prefix_close_to_replace(
     doc: &Rope,
     cursor: usize,
@@ -459,15 +460,19 @@ fn find_prefix_close_to_replace(
         return None;
     }
 
-    let mut chars: SmallVec<[char; 8]> = matched_pair.trigger.chars().collect();
-    let _ = chars.pop()?;
-    let prefix_last_char = *chars.last()?;
+    // Find the longest prefix pair whose trigger is a proper prefix of the matched trigger.
+    // For example, for trigger "<!--", we should find "<" → ">" as a prefix pair.
+    // For trigger "{%", we should find "{" → "}" as a prefix pair.
+    let prefix_pair = set
+        .pairs()
+        .iter()
+        .filter(|p| {
+            let pt = &p.trigger;
+            pt.len() < matched_pair.trigger.len() && matched_pair.trigger.starts_with(pt)
+        })
+        .max_by_key(|p| p.trigger_len())?;
 
-    // Find a prefix pair that could have been auto-paired before this longer trigger
-    let prefix_pair = set.pairs().iter().find(|p| {
-        p.trigger_len() < trigger_len && p.trigger.starts_with(prefix_last_char)
-    })?;
-
+    // Check if the prefix pair's closer is at the cursor position
     let close_first_char = prefix_pair.close.chars().next()?;
     let char_at_cursor = doc.get_char(cursor)?;
 
@@ -877,7 +882,9 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
                 let chars_removed = delete_end - delete_start;
                 let net_inserted = len_inserted.saturating_sub(chars_removed);
 
-                let next_range = get_next_range(state.doc, start_range, offs, net_inserted);
+                // Cursor should end up after the typed char, before the close sequence.
+                // So cursor moves by 1, but offs accumulates net_inserted for multi-cursor.
+                let next_range = get_next_range(state.doc, start_range, offs, 1);
                 end_ranges.push(next_range);
                 offs += net_inserted;
                 made_changes = true;
@@ -1644,6 +1651,40 @@ mod tests {
 
         // "{}" with cursor at 5 (between { and }) → type "%" → "{%%}"
         assert_eq!(new_doc.to_string(), "test{%%}\n");
+    }
+
+    #[test]
+    fn test_hook_multi_replaces_prefix_close_html_comment() {
+        // Scenario: User has both < → > and <!-- → --> pairs configured.
+        // They type "<" which auto-pairs to "<|>" (cursor at |).
+        // Then they type "!--" - we should replace ">" with "-->" to get "<!--|-->"
+
+        // Start with document that has "<>" already (from previous auto-pair)
+        // and simulate document states as if the user typed "!--"
+
+        // Document after typing "<!-" manually (no triggers matched for ! or first -)
+        // "test<!->\n" with positions: t(0) e(1) s(2) t(3) <(4) !(5) -(6) >(7) \n(8)
+        let doc = Rope::from("test<!->\n");
+        let selection = Selection::single(7, 8); // cursor at position 7 (the ">")
+
+        let pairs = vec![BracketPair::new("<", ">"), BracketPair::new("<!--", "-->")];
+        let set = BracketSet::new(pairs);
+
+        // Type "-" after "<!-": this completes "<!--" trigger
+        let result = hook_multi(&doc, &selection, '-', &set);
+        assert!(result.is_some());
+        let transaction = result.unwrap();
+        let mut new_doc = doc.clone();
+        assert!(transaction.apply(&mut new_doc));
+
+        // Should replace ">" with "-->" to get "<!---->"
+        // Result: "test<!---->\n" with positions: t(0) e(1) s(2) t(3) <(4) !(5) -(6) -(7) -(8) -(9) >(10) \n(11)
+        assert_eq!(new_doc.to_string(), "test<!---->\n");
+
+        // Verify cursor position: should be at position 8 (between "<!--" and "-->")
+        let new_selection = transaction.selection().unwrap();
+        let cursor = new_selection.primary().cursor(new_doc.slice(..));
+        assert_eq!(cursor, 8, "cursor should be between <!-- and -->");
     }
 
     #[test]
