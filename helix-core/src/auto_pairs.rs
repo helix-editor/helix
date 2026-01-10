@@ -1211,13 +1211,13 @@ impl AutoPairsRegistry {
     pub fn from_toml(value: &toml::Value) -> Result<Self, AutoPairsRegistryError> {
         let table = value
             .as_table()
-            .ok_or(AutoPairsRegistryError::InvalidFormat("expected table"))?;
+            .ok_or_else(|| AutoPairsRegistryError::new("expected table"))?;
 
         let mut languages = HashMap::new();
         let mut default = BracketSet::from_default_pairs();
 
         for (key, val) in table {
-            let pairs = Self::parse_pairs(val)?;
+            let pairs = Self::parse_pairs(key, val)?;
             let bracket_set = BracketSet::new(pairs);
 
             if key == "default" {
@@ -1230,28 +1230,32 @@ impl AutoPairsRegistry {
         Ok(Self { languages, default })
     }
 
-    fn parse_pairs(val: &toml::Value) -> Result<Vec<BracketPair>, AutoPairsRegistryError> {
-        let pairs_val = val
-            .get("pairs")
-            .ok_or(AutoPairsRegistryError::InvalidFormat("missing 'pairs' key"))?;
+    fn parse_pairs(
+        language: &str,
+        val: &toml::Value,
+    ) -> Result<Vec<BracketPair>, AutoPairsRegistryError> {
+        let pairs_val = val.get("pairs").ok_or_else(|| {
+            AutoPairsRegistryError::new("missing 'pairs' key").with_language(language)
+        })?;
 
-        let pairs_arr = pairs_val
-            .as_array()
-            .ok_or(AutoPairsRegistryError::InvalidFormat(
-                "'pairs' must be array",
-            ))?;
+        let pairs_arr = pairs_val.as_array().ok_or_else(|| {
+            AutoPairsRegistryError::new("'pairs' must be array").with_language(language)
+        })?;
 
         let mut pairs = Vec::with_capacity(pairs_arr.len());
 
-        for pair_val in pairs_arr {
-            let open = pair_val
-                .get("open")
-                .and_then(|v| v.as_str())
-                .ok_or(AutoPairsRegistryError::InvalidFormat("pair missing 'open'"))?;
+        for (idx, pair_val) in pairs_arr.iter().enumerate() {
+            let open = pair_val.get("open").and_then(|v| v.as_str()).ok_or_else(|| {
+                AutoPairsRegistryError::new("pair missing 'open'")
+                    .with_language(language)
+                    .with_pair_index(idx)
+            })?;
 
-            let close = pair_val.get("close").and_then(|v| v.as_str()).ok_or(
-                AutoPairsRegistryError::InvalidFormat("pair missing 'close'"),
-            )?;
+            let close = pair_val.get("close").and_then(|v| v.as_str()).ok_or_else(|| {
+                AutoPairsRegistryError::new("pair missing 'close'")
+                    .with_language(language)
+                    .with_pair_index(idx)
+            })?;
 
             let mut bracket_pair = BracketPair::new(open, close);
 
@@ -1330,17 +1334,42 @@ impl AutoPairsRegistry {
 
 /// Error type for AutoPairsRegistry parsing.
 #[derive(Debug, Clone)]
-pub enum AutoPairsRegistryError {
-    InvalidFormat(&'static str),
+pub struct AutoPairsRegistryError {
+    pub message: &'static str,
+    pub language: Option<String>,
+    pub pair_index: Option<usize>,
+}
+
+impl AutoPairsRegistryError {
+    fn new(message: &'static str) -> Self {
+        Self {
+            message,
+            language: None,
+            pair_index: None,
+        }
+    }
+
+    fn with_language(mut self, language: &str) -> Self {
+        self.language = Some(language.to_string());
+        self
+    }
+
+    fn with_pair_index(mut self, index: usize) -> Self {
+        self.pair_index = Some(index);
+        self
+    }
 }
 
 impl std::fmt::Display for AutoPairsRegistryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AutoPairsRegistryError::InvalidFormat(msg) => {
-                write!(f, "invalid auto-pairs.toml format: {}", msg)
-            }
+        write!(f, "invalid auto-pairs.toml")?;
+        if let Some(lang) = &self.language {
+            write!(f, " in [{}]", lang)?;
         }
+        if let Some(idx) = self.pair_index {
+            write!(f, " at pairs[{}]", idx)?;
+        }
+        write!(f, ": {}", self.message)
     }
 }
 
