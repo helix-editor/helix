@@ -353,12 +353,10 @@ impl Loader {
 
             // Explicit auto-pairs in languages.toml takes precedence over auto-pairs.toml
             if let Some(ref apc) = config.auto_pair_config {
-                config.auto_pairs = apc.into();
                 config.bracket_set = apc.into();
             } else {
                 let bracket_set = auto_pairs_registry.get(&config.language_id).clone();
-                config.bracket_set = Some(bracket_set.clone());
-                config.auto_pairs = Some(crate::auto_pairs::AutoPairs::from(&bracket_set));
+                config.bracket_set = Some(bracket_set);
             }
 
             for file_type in &config.file_types {
