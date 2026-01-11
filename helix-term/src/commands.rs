@@ -4363,9 +4363,16 @@ pub mod insert {
                 // insert an additional line which is indented one level
                 // more and place the cursor there
                 let on_auto_pair = doc
-                    .auto_pairs(cx.editor, loader, view)
-                    .and_then(|pairs| pairs.get(prev))
-                    .is_some_and(|pair| pair.open == prev && pair.close == curr);
+                    .bracket_set(cx.editor, loader, view)
+                    .map(|bs| {
+                        bs.pairs().iter().any(|pair| {
+                            pair.open.len() == 1
+                                && pair.close.len() == 1
+                                && pair.open.starts_with(prev)
+                                && pair.close.starts_with(curr)
+                        })
+                    })
+                    .unwrap_or(false);
 
                 let local_offs = if let Some(token) = continue_comment_token {
                     new_text.reserve_exact(line_ending.len() + indent.len() + token.len() + 1);

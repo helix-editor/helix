@@ -1,5 +1,5 @@
 use crate::{
-    auto_pairs::{AutoPairs, BracketKind, BracketPair, BracketSet, ContextMask},
+    auto_pairs::{BracketKind, BracketPair, BracketSet, ContextMask},
     diagnostic::Severity,
     Language,
 };
@@ -98,9 +98,6 @@ pub struct LanguageConfiguration {
         deserialize_with = "deserialize_auto_pair_config"
     )]
     pub auto_pair_config: Option<AutoPairConfig>,
-
-    #[serde(skip)]
-    pub auto_pairs: Option<AutoPairs>,
 
     #[serde(skip)]
     pub bracket_set: Option<BracketSet>,
@@ -622,18 +619,6 @@ impl Default for AutoPairConfig {
     }
 }
 
-impl From<&AutoPairConfig> for Option<AutoPairs> {
-    fn from(auto_pair_config: &AutoPairConfig) -> Self {
-        match auto_pair_config {
-            AutoPairConfig::Enable(false) => None,
-            AutoPairConfig::Enable(true) => Some(AutoPairs::default()),
-            AutoPairConfig::Pairs(pairs) => Some(AutoPairs::new(pairs.iter())),
-            // Legacy AutoPairs only supports single-char pairs; multi-char uses BracketSet
-            AutoPairConfig::Advanced(_) => Some(AutoPairs::default()),
-        }
-    }
-}
-
 impl From<&AutoPairConfig> for Option<BracketSet> {
     fn from(auto_pair_config: &AutoPairConfig) -> Self {
         match auto_pair_config {
@@ -650,12 +635,6 @@ impl From<&AutoPairConfig> for Option<BracketSet> {
                 Some(BracketSet::new(bracket_pairs))
             }
         }
-    }
-}
-
-impl From<AutoPairConfig> for Option<AutoPairs> {
-    fn from(auto_pairs_config: AutoPairConfig) -> Self {
-        (&auto_pairs_config).into()
     }
 }
 
@@ -743,13 +722,6 @@ where
             ))
         }
     })
-}
-
-pub fn deserialize_auto_pairs<'de, D>(deserializer: D) -> Result<Option<AutoPairs>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    Ok(Option::<AutoPairConfig>::deserialize(deserializer)?.and_then(AutoPairConfig::into))
 }
 
 pub fn deserialize_auto_pair_config<'de, D>(

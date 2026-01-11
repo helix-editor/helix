@@ -43,7 +43,7 @@ use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
-    auto_pairs::{AutoPairs, BracketSet},
+    auto_pairs::BracketSet,
     diagnostic::DiagnosticProvider,
     syntax::{
         self,
@@ -1219,7 +1219,6 @@ pub struct Editor {
     pub autoinfo: Option<Info>,
 
     pub config: Arc<dyn DynAccess<Config>>,
-    pub auto_pairs: Option<AutoPairs>,
     pub bracket_set: Option<BracketSet>,
 
     pub idle_timer: Pin<Box<Sleep>>,
@@ -1323,7 +1322,6 @@ impl Editor {
     ) -> Self {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
-        let auto_pairs = (&conf.auto_pairs).into();
         let bracket_set = (&conf.auto_pairs).into();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
@@ -1363,7 +1361,6 @@ impl Editor {
             last_completion: None,
             last_cwd: None,
             config,
-            auto_pairs,
             bracket_set,
             exit_code: 0,
             config_events: unbounded_channel(),
@@ -1410,7 +1407,6 @@ impl Editor {
     /// relevant members.
     pub fn refresh_config(&mut self, old_config: &Config) {
         let config = self.config();
-        self.auto_pairs = (&config.auto_pairs).into();
         self.bracket_set = (&config.auto_pairs).into();
         self.reset_idle_timer();
         self._refresh();

@@ -3,7 +3,7 @@ use arc_swap::access::DynAccess;
 use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
-use helix_core::auto_pairs::{AutoPairs, BracketSet};
+use helix_core::auto_pairs::BracketSet;
 use helix_core::chars::char_is_word;
 use helix_core::command_line::Token;
 use helix_core::diagnostic::DiagnosticProvider;
@@ -2170,38 +2170,6 @@ impl Document {
     pub fn clear_diagnostics_for_language_server(&mut self, id: LanguageServerId) {
         self.diagnostics
             .retain(|d| d.provider.language_server_id() != Some(id));
-    }
-
-    /// Get the document's auto pairs. If the document has a recognized
-    /// language config with auto pairs configured, returns that;
-    /// otherwise, falls back to the global auto pairs config. If the global
-    /// config is false, then ignore language settings.
-    pub fn auto_pairs<'a>(
-        &'a self,
-        editor: &'a Editor,
-        loader: &'a syntax::Loader,
-        _view: &View,
-    ) -> Option<&'a AutoPairs> {
-        let global_config = (editor.auto_pairs).as_ref();
-
-        // NOTE: If the user specifies the global auto pairs config as false, then
-        //       we want to disable it globally regardless of language settings
-        #[allow(clippy::question_mark)]
-        {
-            if global_config.is_none() {
-                return None;
-            }
-        }
-
-        // Use root layer so template language pairs (e.g. Jinja) work in injection regions
-        self.syntax
-            .as_ref()
-            .and_then(|syntax| {
-                let root_layer = syntax.root_layer();
-                let root_lang_config = loader.language(syntax.layer(root_layer).language).config();
-                root_lang_config.auto_pairs.as_ref()
-            })
-            .or(global_config)
     }
 
     /// Get the document's bracket set for multi-character auto-pairs.
