@@ -1587,7 +1587,8 @@ file-types = [
   { glob = ".kube/config" },
   { glob = ".kube/kuberc" },
   { glob = "yarn.lock" },
-  "sublime-syntax"
+  "sublime-syntax",
+  "bu"
 ]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
