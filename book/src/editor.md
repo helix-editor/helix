@@ -356,7 +356,6 @@ Each pair object supports the following fields:
 |-------|-------------|---------|
 | `open` | The opening string (required) | - |
 | `close` | The closing string (required) | - |
-| `trigger` | Custom string that triggers the pair | Same as `open` |
 | `kind` | Classification: `bracket`, `quote`, `delimiter`, or `custom` | Auto-detected |
 | `allowed-contexts` | Array of contexts where pairing is active: `code`, `string`, `comment`, `regex`, or `all` | `["code"]` |
 | `surround` | Whether this pair participates in surround commands | `true` |

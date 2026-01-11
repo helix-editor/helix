@@ -545,8 +545,6 @@ pub struct BracketPairConfig {
     pub open: String,
     pub close: String,
     #[serde(default)]
-    pub trigger: Option<String>,
-    #[serde(default)]
     pub kind: Option<String>,
     #[serde(default)]
     pub allowed_contexts: Option<Vec<String>>,
@@ -600,16 +598,10 @@ impl BracketPairConfig {
 
 impl From<BracketPairConfig> for BracketPair {
     fn from(config: BracketPairConfig) -> Self {
-        let mut pair = BracketPair::new(config.open.clone(), config.close.clone())
+        BracketPair::new(config.open.clone(), config.close.clone())
             .with_kind(config.parse_kind())
             .with_contexts(config.parse_contexts())
-            .with_surround(config.surround.unwrap_or(true));
-
-        if let Some(trigger) = config.trigger {
-            pair = pair.with_trigger(trigger);
-        }
-
-        pair
+            .with_surround(config.surround.unwrap_or(true))
     }
 }
 
@@ -822,7 +814,6 @@ mod tests {
         let config = BracketPairConfig {
             open: "{%".to_string(),
             close: "%}".to_string(),
-            trigger: None,
             kind: Some("delimiter".to_string()),
             allowed_contexts: Some(vec!["code".to_string(), "string".to_string()]),
             surround: Some(false),
@@ -831,7 +822,6 @@ mod tests {
         let pair: BracketPair = config.into();
         assert_eq!(pair.open, "{%");
         assert_eq!(pair.close, "%}");
-        assert_eq!(pair.trigger, "{%");
         assert_eq!(pair.kind, BracketKind::Delimiter);
         assert!(pair.allowed_contexts.contains(ContextMask::CODE));
         assert!(pair.allowed_contexts.contains(ContextMask::STRING));
@@ -845,7 +835,6 @@ mod tests {
             BracketPairConfig {
                 open: "(".to_string(),
                 close: ")".to_string(),
-                trigger: None,
                 kind: None,
                 allowed_contexts: None,
                 surround: None,
@@ -853,7 +842,6 @@ mod tests {
             BracketPairConfig {
                 open: "```".to_string(),
                 close: "```".to_string(),
-                trigger: None,
                 kind: None,
                 allowed_contexts: None,
                 surround: None,
@@ -864,7 +852,7 @@ mod tests {
         assert!(set.is_some());
         let set = set.unwrap();
         assert_eq!(set.len(), 2);
-        assert_eq!(set.max_trigger_len(), 3);
+        assert_eq!(set.max_open_len(), 3);
     }
 
     #[test]
@@ -873,7 +861,6 @@ mod tests {
         let config = BracketPairConfig {
             open: "\"".to_string(),
             close: "\"".to_string(),
-            trigger: None,
             kind: None,
             allowed_contexts: None,
             surround: None,
@@ -885,7 +872,6 @@ mod tests {
         let config = BracketPairConfig {
             open: "<!--".to_string(),
             close: "-->".to_string(),
-            trigger: None,
             kind: None,
             allowed_contexts: None,
             surround: None,
@@ -897,7 +883,6 @@ mod tests {
         let config = BracketPairConfig {
             open: "[".to_string(),
             close: "]".to_string(),
-            trigger: None,
             kind: None,
             allowed_contexts: None,
             surround: None,
@@ -930,9 +915,8 @@ close = "%}"
             "auto_pair_config should be Some"
         );
 
-        // auto_pairs and bracket_set are populated by Loader::new, not during parsing
-        // So here they should be None
-        assert!(config.auto_pairs.is_none());
+        // bracket_set is populated by Loader::new, not during parsing
+        // So here it should be None
         assert!(config.bracket_set.is_none());
 
         // Verify the AutoPairConfig is correct
