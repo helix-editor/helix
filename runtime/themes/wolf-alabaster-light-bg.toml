@@ -60,3 +60,7 @@ string-bg-dark = "#DBECB6"   # Darker green - escape sequences
 definition-bg = "#DBF1FF"    # Light blue - definitions
 comment-bg = "#FFFABC"       # Light yellow - comments
 error-bg = "#FFE0E0"         # Light pink - errors
+
+# Override selection colors (Alabaster BG uses slightly darker selection)
+selection-primary = "#B4D8FD"  # Original Alabaster BG selection
+selection = "#D5E5F3"          # Lighter for secondary selections

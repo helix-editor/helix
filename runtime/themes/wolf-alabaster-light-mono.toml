@@ -70,8 +70,8 @@ punctuation-light = "#BBBBBB"     # Light grey - punctuation
 string-bg = "#EEEEEE"             # Very light grey - strings/constants background
 string-bg-dark = "#D9D9D9"        # Slightly darker grey - escape sequences
 
-# Keep color only for errors and diffs
-error-red = "#CC3333"             # Red - errors
-diff-green = "#5F8700"            # Green - additions
+# Override parent colors with more muted tones for monochromatic aesthetic
+error-red = "#CC3333"             # Red - errors (more muted than parent)
+diff-green = "#5F8700"            # Green - additions (more muted than parent)
 diff-red = "#CC3333"              # Red - deletions
-diff-orange = "#D78700"           # Orange - changes
+diff-orange = "#D78700"           # Orange - changes (more muted than parent)

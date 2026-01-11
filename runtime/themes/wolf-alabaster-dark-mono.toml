@@ -68,9 +68,4 @@ comment-grey = "#777777"          # Grey - comments
 punctuation-dark = "#555555"      # Dark grey - punctuation
 string-bg = "#2A2A2A"             # Dark grey - strings/constants background
 string-bg-dark = "#333333"        # Slightly lighter grey - escape sequences
-
-# Keep color only for errors and diffs
-error-red = "#F07178"             # Red/Pink - errors
-diff-green = "#AAD94C"            # Green - additions
-diff-red = "#F07178"              # Red/Pink - deletions
-diff-orange = "#FF9800"           # Orange - changes
+# Note: error-red, diff-green, diff-red, diff-orange inherited from parent (identical values)

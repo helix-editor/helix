@@ -59,6 +59,9 @@ diagnostic = { underline = { style = "curl" } }
 "ui.window" = { fg = "punctuation" }
 "ui.help" = { fg = "fg", bg = "bg" }
 
+# Jump labels - extremely visible
+"ui.virtual.jump-label" = { fg = "jump-label", modifiers = ["bold"] }
+
 # LSP diagnostic inline/expanded text
 "diagnostic.error" = { underline = { color = "error-red", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "highlight", style = "curl" } }
@@ -139,9 +142,15 @@ definition = "#325CC0"   # Blue - function/class definitions
 
 # Supporting colors
 punctuation = "#777777"  # Grey - dimmed operators/brackets
-selection = "#BFDBFE"    # Light blue - secondary selections
-selection-primary = "#93C5FD"  # Darker blue - primary selection
+selection = "#DDE7ED"    # Light gray-blue - secondary selections (subtle but distinct)
+selection-primary = "#BFDBFE"  # Light blue - primary selection (original Alabaster)
 active = "#007ACC"       # Bright blue - cursor, active elements
 highlight = "#FFBC5D"    # Orange - search, warnings
 error-red = "#AA3731"    # Red - errors
-panel = "#EEEEEE"      # Darker grey - UI panels, menus, popups
+panel = "#EEEEEE"        # Darker grey - UI panels, menus, popups
+jump-label = "#FF4500"   # Bright orange-red - jump destinations
+
+# Diff colors
+diff-green = "#448C27"   # Green - additions (same as string)
+diff-red = "#AA3731"     # Red - deletions (same as error-red)
+diff-orange = "#FFBC5D"  # Orange - changes (same as highlight)

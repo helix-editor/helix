@@ -59,3 +59,7 @@ string-bg-dark = "#2A4A2A"   # Slightly brighter dark green - escape sequences
 definition-bg = "#1F2F3F"    # Dark blue - definitions
 comment-bg = "#3F3F1F"       # Dark yellow - comments
 error-bg = "#3F1F1F"         # Dark red - errors
+
+# Selection colors need to be more visible against colored syntax backgrounds
+selection-primary = "#5A8FC7"  # Brighter blue - visible against all syntax backgrounds
+selection = "#2A4A6F"          # Medium dark blue - secondary selections

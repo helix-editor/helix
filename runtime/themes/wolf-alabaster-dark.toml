@@ -59,6 +59,9 @@ diagnostic = { underline = { style = "curl" } }
 "ui.window" = { fg = "punctuation" }
 "ui.help" = { fg = "fg", bg = "bg" }
 
+# Jump labels - extremely visible
+"ui.virtual.jump-label" = { fg = "jump-label", modifiers = ["bold"] }
+
 # LSP diagnostic inline/expanded text
 "diagnostic.error" = { underline = { color = "error-red", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "highlight", style = "curl" } }
@@ -127,21 +130,27 @@ diagnostic = { underline = { style = "curl" } }
 "diff.delta" = { fg = "highlight" }
 
 [palette]
-# Core colors (Dark Alabaster)
-fg = "#CCCCCC"           # Main text - light grey
-bg = "#1E1E1E"           # Background - dark grey
+# Core colors (Original Alabaster Dark)
+fg = "#CECECE"           # Main text - light grey
+bg = "#0E1415"           # Background - very dark blue-black
 
-# The 4 semantic colors (adjusted for dark background)
-string = "#AAD94C"       # Green - strings & numbers
-constant = "#D2A6FF"     # Magenta - constants, booleans
-comment = "#F07178"      # Red/Pink - comments (important!)
-definition = "#73B8FF"   # Blue - function/class definitions
+# The 4 semantic colors (Original Alabaster Dark)
+string = "#95CB82"       # Green - strings & numbers
+constant = "#CC8BC9"     # Magenta - constants, booleans
+comment = "#DFDF8E"      # Yellow - comments (important!)
+definition = "#71ADE7"   # Blue - function/class definitions
 
 # Supporting colors
 punctuation = "#8C8C8C"  # Grey - dimmed operators/brackets
-selection = "#264F78"    # Dark blue - secondary selections
-selection-primary = "#4A7BA7"  # Much brighter blue - primary selection (clearly distinct)
-active = "#0E7ACC"       # Bright blue - cursor, active elements
+selection = "#1E3A5F"    # Very dark blue - secondary selections (subtle)
+selection-primary = "#4A7BA7"  # Bright blue - primary selection (clearly distinct)
+active = "#CD974B"       # Golden brown - cursor, active elements (original Alabaster Dark)
 highlight = "#FF9800"    # Orange - search, warnings
-error-red = "#F07178"    # Red/Pink - errors
+error-red = "#DFDF8E"    # Yellow - errors (use comment color for visibility)
 panel = "#252526"        # Slightly lighter grey - UI panels, menus, popups
+jump-label = "#FF6B35"   # Bright orange - jump destinations
+
+# Diff colors
+diff-green = "#95CB82"   # Green - additions (same as string)
+diff-red = "#DFDF8E"     # Yellow - deletions (same as error-red)
+diff-orange = "#FF9800"  # Orange - changes (same as highlight)
