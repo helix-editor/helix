@@ -82,8 +82,6 @@ impl BracketContext {
 /// Represents a multi-character bracket pair configuration.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BracketPair {
-    /// What the user types to trigger pairing (usually == open)
-    pub trigger: String,
     /// Inserted on the left
     pub open: String,
     /// Inserted on the right
@@ -94,8 +92,6 @@ pub struct BracketPair {
     pub allowed_contexts: ContextMask,
     /// Whether this pair participates in surround commands
     pub surround: bool,
-    /// Cached char length of trigger
-    trigger_len: usize,
     /// Cached char length of open
     open_len: usize,
     /// Cached char length of close
@@ -107,18 +103,14 @@ impl BracketPair {
     pub fn new(open: impl Into<String>, close: impl Into<String>) -> Self {
         let open = open.into();
         let close = close.into();
-        let trigger = open.clone();
-        let trigger_len = trigger.chars().count();
         let open_len = open.chars().count();
         let close_len = close.chars().count();
         Self {
-            trigger,
             open,
             close,
             kind: BracketKind::Bracket,
             allowed_contexts: ContextMask::CODE,
             surround: true,
-            trigger_len,
             open_len,
             close_len,
         }
@@ -142,31 +134,19 @@ impl BracketPair {
         self
     }
 
-    /// Set a custom trigger (different from open).
-    pub fn with_trigger(mut self, trigger: impl Into<String>) -> Self {
-        self.trigger = trigger.into();
-        self.trigger_len = self.trigger.chars().count();
-        self
-    }
-
     /// Returns true if open == close (symmetric pair like quotes).
     pub fn same(&self) -> bool {
         self.open == self.close
     }
 
-    /// Returns the first character of the trigger.
-    pub fn trigger_first_char(&self) -> Option<char> {
-        self.trigger.chars().next()
+    /// Returns the first character of the open string.
+    pub fn open_first_char(&self) -> Option<char> {
+        self.open.chars().next()
     }
 
     /// Returns the first character of the close string.
     pub fn close_first_char(&self) -> Option<char> {
         self.close.chars().next()
-    }
-
-    /// Returns the cached char length of the trigger.
-    pub fn trigger_len(&self) -> usize {
-        self.trigger_len
     }
 
     /// Returns the cached char length of the open string.
@@ -232,7 +212,7 @@ pub struct BracketSet {
     pairs: Vec<BracketPair>,
     first_char_index: HashMap<char, Vec<usize>>,
     close_char_index: HashMap<char, Vec<usize>>,
-    max_trigger_len: usize,
+    max_open_len: usize,
 }
 
 impl BracketSet {
@@ -240,23 +220,23 @@ impl BracketSet {
     pub fn new(pairs: Vec<BracketPair>) -> Self {
         let mut first_char_index: HashMap<char, Vec<usize>> = HashMap::new();
         let mut close_char_index: HashMap<char, Vec<usize>> = HashMap::new();
-        let mut max_trigger_len = 0;
+        let mut max_open_len = 0;
 
         for (i, pair) in pairs.iter().enumerate() {
-            if let Some(ch) = pair.trigger_first_char() {
+            if let Some(ch) = pair.open_first_char() {
                 first_char_index.entry(ch).or_default().push(i);
             }
             if let Some(ch) = pair.close_first_char() {
                 close_char_index.entry(ch).or_default().push(i);
             }
-            max_trigger_len = max_trigger_len.max(pair.trigger.len());
+            max_open_len = max_open_len.max(pair.open.len());
         }
 
         Self {
             pairs,
             first_char_index,
             close_char_index,
-            max_trigger_len,
+            max_open_len,
         }
     }
 
@@ -271,8 +251,8 @@ impl BracketSet {
         &self.pairs
     }
 
-    /// Get pairs whose trigger starts with the given character.
-    pub fn candidates_for_trigger(&self, ch: char) -> impl Iterator<Item = &BracketPair> {
+    /// Get pairs whose open starts with the given character.
+    pub fn candidates_for_open(&self, ch: char) -> impl Iterator<Item = &BracketPair> {
         self.first_char_index
             .get(&ch)
             .into_iter()
@@ -327,9 +307,9 @@ impl BracketSet {
         }
     }
 
-    /// Get the maximum trigger length.
-    pub fn max_trigger_len(&self) -> usize {
-        self.max_trigger_len
+    /// Get the maximum open length.
+    pub fn max_open_len(&self) -> usize {
+        self.max_open_len
     }
 
     /// Check if the set is empty.
@@ -343,14 +323,14 @@ impl BracketSet {
     }
 }
 
-/// Detect the longest matching trigger at the cursor position.
+/// Detect the longest matching open sequence at the cursor position.
 ///
 /// For overlapping symmetric pairs like `"` and `"""`, this function applies
 /// a heuristic: if the next character after the cursor is the same as what
 /// we just typed, we filter out multi-char symmetric pairs. This allows the
 /// single-char pair's skip logic to handle closing sequences one character
 /// at a time (e.g., stepping through `"""` as three individual `"` skips).
-pub fn detect_trigger_at<'a>(
+pub fn detect_open_at<'a>(
     doc: &Rope,
     cursor_char: usize,
     last_typed: char,
@@ -359,18 +339,18 @@ pub fn detect_trigger_at<'a>(
     let mut candidates: Vec<_> = set
         .pairs()
         .iter()
-        .filter(|pair| pair.trigger.ends_with(last_typed))
+        .filter(|pair| pair.open.ends_with(last_typed))
         .collect();
 
     if candidates.is_empty() {
         return None;
     }
 
-    if candidates.iter().all(|p| p.trigger.len() == 1) {
+    if candidates.iter().all(|p| p.open.len() == 1) {
         return candidates.into_iter().next();
     }
 
-    // For overlapping symmetric triggers like " and """, we need special handling.
+    // For overlapping symmetric pairs like " and """, we need special handling.
     // Count consecutive same-chars before cursor once, then use it for filtering.
     let next_char = doc.get_char(cursor_char);
     let consecutive_count = {
@@ -387,11 +367,11 @@ pub fn detect_trigger_at<'a>(
         count
     };
 
-    // Find the longest multi-char symmetric trigger for this char
-    let max_symmetric_trigger_len = candidates
+    // Find the longest multi-char symmetric open for this char
+    let max_symmetric_open_len = candidates
         .iter()
-        .filter(|p| p.same() && p.trigger_len() > 1)
-        .map(|p| p.trigger_len())
+        .filter(|p| p.same() && p.open_len() > 1)
+        .map(|p| p.open_len())
         .max()
         .unwrap_or(0);
 
@@ -399,28 +379,28 @@ pub fn detect_trigger_at<'a>(
         if !pair.same() {
             return true;
         }
-        let trigger_len = pair.trigger_len();
+        let open_len = pair.open_len();
 
         // If next char is the same as what we typed, filter out multi-char
         // symmetric pairs - let single-char pair handle skip logic.
         // But keep single-char pairs for skip behavior.
-        if trigger_len > 1 && next_char == Some(last_typed) {
+        if open_len > 1 && next_char == Some(last_typed) {
             return false;
         }
 
-        // For multi-char symmetric pairs, only match if preceding count is exactly trigger_len - 1
-        // (i.e., we're completing the trigger, like "" + " -> """)
-        if trigger_len > 1 && consecutive_count != trigger_len - 1 {
+        // For multi-char symmetric pairs, only match if preceding count is exactly open_len - 1
+        // (i.e., we're completing the open, like "" + " -> """)
+        if open_len > 1 && consecutive_count != open_len - 1 {
             return false;
         }
 
         // For single-char symmetric pairs when there's NO same char ahead:
-        // If we're past the multi-char trigger length, don't auto-pair.
+        // If we're past the multi-char open length, don't auto-pair.
         // This handles the case where user types " after """""" - just insert plain quote.
-        if trigger_len == 1
+        if open_len == 1
             && next_char != Some(last_typed)
-            && max_symmetric_trigger_len > 0
-            && consecutive_count >= max_symmetric_trigger_len
+            && max_symmetric_open_len > 0
+            && consecutive_count >= max_symmetric_open_len
         {
             return false;
         }
@@ -432,45 +412,45 @@ pub fn detect_trigger_at<'a>(
         return None;
     }
 
-    // Build sliding window of recent chars to support multi-char triggers
-    let start = cursor_char.saturating_sub(set.max_trigger_len().saturating_sub(1));
+    // Build sliding window of recent chars to support multi-char opens
+    let start = cursor_char.saturating_sub(set.max_open_len().saturating_sub(1));
     let slice = doc.slice(start..cursor_char);
     let recent: String = slice.chars().chain(std::iter::once(last_typed)).collect();
 
     candidates
         .into_iter()
-        .filter(|pair| recent.ends_with(&pair.trigger))
-        .max_by_key(|pair| pair.trigger.len())
+        .filter(|pair| recent.ends_with(&pair.open))
+        .max_by_key(|pair| pair.open.len())
 }
 
-/// When completing a multi-char trigger like `{%` or `<!--`, check if a prefix
+/// When completing a multi-char open like `{%` or `<!--`, check if a prefix
 /// was already auto-paired with a closer that now needs replacement.
 ///
-/// This handles multi-char triggers that have a prefix:
-/// - For `{%` trigger with `{` prefix pair: replaces `}` with `%}`
-/// - For `<!--` trigger with `<` prefix pair: replaces `>` with `-->`
+/// This handles multi-char opens that have a prefix:
+/// - For `{%` open with `{` prefix pair: replaces `}` with `%}`
+/// - For `<!--` open with `<` prefix pair: replaces `>` with `-->`
 fn find_prefix_close_to_replace(
     doc: &Rope,
     cursor: usize,
     matched_pair: &BracketPair,
     set: &BracketSet,
 ) -> Option<usize> {
-    let trigger_len = matched_pair.trigger_len();
-    if trigger_len <= 1 {
+    let open_len = matched_pair.open_len();
+    if open_len <= 1 {
         return None;
     }
 
-    // Find the longest prefix pair whose trigger is a proper prefix of the matched trigger.
-    // For example, for trigger "<!--", we should find "<" → ">" as a prefix pair.
-    // For trigger "{%", we should find "{" → "}" as a prefix pair.
+    // Find the longest prefix pair whose open is a proper prefix of the matched open.
+    // For example, for open "<!--", we should find "<" → ">" as a prefix pair.
+    // For open "{%", we should find "{" → "}" as a prefix pair.
     let prefix_pair = set
         .pairs()
         .iter()
         .filter(|p| {
-            let pt = &p.trigger;
-            pt.len() < matched_pair.trigger.len() && matched_pair.trigger.starts_with(pt)
+            let po = &p.open;
+            po.len() < matched_pair.open.len() && matched_pair.open.starts_with(po)
         })
-        .max_by_key(|p| p.trigger_len())?;
+        .max_by_key(|p| p.open_len())?;
 
     // Check if the prefix pair's closer is at the cursor position
     let close_first_char = prefix_pair.close.chars().next()?;
@@ -689,10 +669,10 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
             return (cursor, cursor, Some(t));
         }
 
-        if let Some(pair) = detect_trigger_at(state.doc, cursor, ch, state.pairs) {
+        if let Some(pair) = detect_open_at(state.doc, cursor, ch, state.pairs) {
             log::trace!(
-                "autopairs: detected trigger '{}' at cursor {}, next_char={:?}",
-                pair.trigger,
+                "autopairs: detected open '{}' at cursor {}, next_char={:?}",
+                pair.open,
                 cursor,
                 state.doc.get_char(cursor)
             );
@@ -727,12 +707,12 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
 
             if pair.should_close(state.doc, start_range) {
                 // Check for symmetric multi-char pair upgrade (e.g., "" + " → """|""")
-                // When completing a multi-char symmetric trigger like """, we need to
+                // When completing a multi-char symmetric open like """, we need to
                 // replace the prefix (the already-typed quotes) with the full open+close.
                 if pair.same() {
-                    let trigger_len = pair.trigger_len();
-                    if trigger_len > 1 {
-                        let prefix_len = trigger_len - 1;
+                    let open_len = pair.open_len();
+                    if open_len > 1 {
+                        let prefix_len = open_len - 1;
                         if cursor >= prefix_len {
                             let prefix_start = cursor - prefix_len;
                             let prefix = state.doc.slice(prefix_start..cursor);
@@ -782,6 +762,7 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
                 let prefix_close_to_remove =
                     find_prefix_close_to_replace(state.doc, cursor, pair, state.pairs);
 
+                // Insert the typed char followed by the close sequence
                 let mut pair_str = Tendril::new();
                 pair_str.push(ch);
                 pair_str.push_str(&pair.close);
@@ -798,8 +779,7 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
                 let chars_removed = delete_end - delete_start;
                 let net_inserted = len_inserted.saturating_sub(chars_removed);
 
-                // Cursor should end up after the typed char, before the close sequence.
-                // So cursor moves by 1, but offs accumulates net_inserted for multi-cursor.
+                // Standard case: cursor moves by 1
                 let next_range = get_next_range(state.doc, start_range, offs, 1);
                 end_ranges.push(next_range);
                 offs += net_inserted;
@@ -1194,10 +1174,6 @@ impl AutoPairsRegistry {
                 bracket_pair = bracket_pair.with_kind(kind);
             }
 
-            if let Some(trigger) = pair_val.get("trigger").and_then(|v| v.as_str()) {
-                bracket_pair = bracket_pair.with_trigger(trigger);
-            }
-
             if let Some(surround) = pair_val.get("surround").and_then(|v| v.as_bool()) {
                 bracket_pair = bracket_pair.with_surround(surround);
             }
@@ -1300,7 +1276,6 @@ mod tests {
         let pair = BracketPair::new("(", ")");
         assert_eq!(pair.open, "(");
         assert_eq!(pair.close, ")");
-        assert_eq!(pair.trigger, "(");
         assert!(!pair.same());
     }
 
@@ -1322,12 +1297,12 @@ mod tests {
         ];
         let set = BracketSet::new(pairs);
 
-        let candidates: Vec<_> = set.candidates_for_trigger('{').collect();
+        let candidates: Vec<_> = set.candidates_for_open('{').collect();
         assert_eq!(candidates.len(), 2);
     }
 
     #[test]
-    fn test_bracket_set_max_trigger_len() {
+    fn test_bracket_set_max_open_len() {
         let pairs = vec![
             BracketPair::new("(", ")"),
             BracketPair::new("```", "```"),
@@ -1335,7 +1310,7 @@ mod tests {
         ];
         let set = BracketSet::new(pairs);
 
-        assert_eq!(set.max_trigger_len(), 4);
+        assert_eq!(set.max_open_len(), 4);
     }
 
     #[test]
@@ -1397,31 +1372,31 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_trigger_single_char() {
+    fn test_detect_open_single_char() {
         let doc = Rope::from("test");
         let pairs = vec![BracketPair::new("(", ")")];
         let set = BracketSet::new(pairs);
 
-        let result = detect_trigger_at(&doc, 4, '(', &set);
+        let result = detect_open_at(&doc, 4, '(', &set);
         assert!(result.is_some());
         assert_eq!(result.unwrap().open, "(");
     }
 
     #[test]
-    fn test_detect_trigger_multi_char() {
+    fn test_detect_open_multi_char() {
         let doc = Rope::from("test{");
         let pairs = vec![BracketPair::new("{", "}"), BracketPair::new("{%", "%}")];
         let set = BracketSet::new(pairs);
 
         // After typing single brace
-        let result = detect_trigger_at(&doc, 5, '{', &set);
+        let result = detect_open_at(&doc, 5, '{', &set);
         assert!(result.is_some());
         // Should match single brace since that's what's in the doc
         assert_eq!(result.unwrap().open, "{");
 
         // Now test with Jinja delimiter
         let doc = Rope::from("test{");
-        let result = detect_trigger_at(&doc, 5, '%', &set);
+        let result = detect_open_at(&doc, 5, '%', &set);
         assert!(result.is_some());
         // Should match Jinja delimiter (longest match)
         assert_eq!(result.unwrap().open, "{%");
@@ -1559,7 +1534,7 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_trigger_considers_position() {
+    fn test_detect_open_considers_position() {
         // When cursor is at position 5 and we type %,
         // we need to look at chars before position 5
         let doc = Rope::from("test{");
@@ -1571,7 +1546,7 @@ mod tests {
         // Cursor is at 5, we're typing '%'
         // Characters before cursor are "test{"
         // The trigger "{%" should match "{" + "%" (last typed)
-        let result = detect_trigger_at(&doc, 5, '%', &set);
+        let result = detect_open_at(&doc, 5, '%', &set);
         assert!(result.is_some());
         assert_eq!(result.unwrap().open, "{%");
     }
@@ -2329,34 +2304,34 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_trigger_filters_multi_char_symmetric_when_same_char_ahead() {
+    fn test_detect_open_filters_multi_char_symmetric_when_same_char_ahead() {
         // When cursor is before a quote, multi-char symmetric pair """ should be filtered
         let doc = Rope::from("\"\"\"\n");
         let pairs = create_overlapping_quote_pairs();
 
         // Cursor at position 3 (right before a quote at position 3? No, at newline)
         // Let's test at position 0 where next char is "
-        let result = detect_trigger_at(&doc, 0, '"', &pairs);
+        let result = detect_open_at(&doc, 0, '"', &pairs);
         assert!(result.is_some());
         // Should pick single quote pair since next char is "
-        assert_eq!(result.unwrap().trigger, "\"");
+        assert_eq!(result.unwrap().open, "\"");
     }
 
     #[test]
-    fn test_detect_trigger_picks_triple_quote_when_no_quote_ahead() {
+    fn test_detect_open_picks_triple_quote_when_no_quote_ahead() {
         // When cursor is NOT before a quote, triple quote should be selected
         let doc = Rope::from("\"\"\n");
         let pairs = create_overlapping_quote_pairs();
 
         // After typing "" and about to type third ", cursor at 2, next char is \n
-        let result = detect_trigger_at(&doc, 2, '"', &pairs);
+        let result = detect_open_at(&doc, 2, '"', &pairs);
         assert!(result.is_some());
         // Should pick triple quote pair since next char is not "
-        assert_eq!(result.unwrap().trigger, "\"\"\"");
+        assert_eq!(result.unwrap().open, "\"\"\"");
     }
 
     #[test]
-    fn test_detect_trigger_step3_exactly() {
+    fn test_detect_open_step3_exactly() {
         // Exact state at step 3: doc is "" (just two quotes), cursor at 2
         let doc = Rope::from("\"\"");
         let pairs = create_overlapping_quote_pairs();
@@ -2365,10 +2340,10 @@ mod tests {
         assert_eq!(doc.len_chars(), 2);
         assert_eq!(doc.get_char(2), None);
 
-        let result = detect_trigger_at(&doc, 2, '"', &pairs);
-        assert!(result.is_some(), "Should detect a trigger");
+        let result = detect_open_at(&doc, 2, '"', &pairs);
+        assert!(result.is_some(), "Should detect an open");
         assert_eq!(
-            result.unwrap().trigger,
+            result.unwrap().open,
             "\"\"\"",
             "Should pick triple quote when no quote ahead"
         );
@@ -2492,5 +2467,4 @@ mod tests {
         assert_eq!(doc.to_string(), "\"\"\"\"\"\"\n");
         assert_eq!(cursor_pos, 6);
     }
-
 }
