@@ -46,7 +46,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::Action,
+    editor::{Action, FilePickerType},
     expansion,
     info::Info,
     input::KeyEvent,
@@ -2550,6 +2550,17 @@ fn global_search(cx: &mut Context) {
             .canonicalize()
             .unwrap_or_else(|_| search_root.clone());
 
+        // Get tracked files to filter out untracked files from search results (only if configured)
+        let hide_untracked = config
+            .file_picker_config
+            .git_hide_untracked
+            .contains(&FilePickerType::Search);
+        let tracked_files = if hide_untracked {
+            editor.diff_providers.get_tracked_files(&search_root)
+        } else {
+            None // Show all files including untracked
+        };
+
         let injector = injector.clone();
         async move {
             let searcher = SearcherBuilder::new()
@@ -2575,6 +2586,7 @@ fn global_search(cx: &mut Context) {
                     let matcher = matcher.clone();
                     let injector = injector.clone();
                     let documents = &documents;
+                    let tracked_files = &tracked_files;
                     Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
                         let entry = match entry {
                             Ok(entry) => entry,
@@ -2586,6 +2598,16 @@ fn global_search(cx: &mut Context) {
                             // skip everything else
                             _ => return WalkState::Continue,
                         };
+
+                        // Skip untracked files if we have git tracking info
+                        if let Some(tracked) = tracked_files {
+                            let path = entry.path();
+                            // Canonicalize the path for consistent comparison
+                            let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+                            if !tracked.contains(&canonical_path) {
+                                return WalkState::Continue;
+                            }
+                        }
 
                         let mut stop = false;
                         let sink = sinks::UTF8(|line_num, _line_content| {
@@ -3412,11 +3434,25 @@ fn changed_file_picker(cx: &mut Context) {
     .with_preview(|_editor, meta| Some((meta.path().into(), None)));
     let injector = picker.injector();
 
+    // Check if we should hide untracked files
+    let hide_untracked = cx
+        .editor
+        .config()
+        .file_picker
+        .git_hide_untracked
+        .contains(&FilePickerType::Changed);
+
     cx.editor
         .diff_providers
         .clone()
         .for_each_changed_file(cwd, move |change| match change {
-            Ok(change) => injector.push(change).is_ok(),
+            Ok(change) => {
+                // Skip untracked files if configured to hide them
+                if hide_untracked && matches!(change, FileChange::Untracked { .. }) {
+                    return true;
+                }
+                injector.push(change).is_ok()
+            }
             Err(err) => {
                 status::report_blocking(err);
                 true

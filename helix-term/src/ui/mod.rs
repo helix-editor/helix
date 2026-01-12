@@ -29,6 +29,7 @@ pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
+use helix_view::editor::FilePickerType;
 use helix_view::Editor;
 use tui::text::{Span, Spans};
 
@@ -223,6 +224,17 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     let dedup_symlinks = config.file_picker.deduplicate_links;
     let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
 
+    // Get tracked files to filter out untracked files (only if configured)
+    let hide_untracked = config
+        .file_picker
+        .git_hide_untracked
+        .contains(&FilePickerType::Files);
+    let tracked_files = if hide_untracked {
+        editor.diff_providers.get_tracked_files(&root)
+    } else {
+        None
+    };
+
     let mut walk_builder = WalkBuilder::new(&root);
 
     let mut files = walk_builder
@@ -240,12 +252,19 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .add_custom_ignore_filename(".helix/ignore")
         .types(get_excluded_types())
         .build()
-        .filter_map(|entry| {
+        .filter_map(move |entry| {
             let entry = entry.ok()?;
             if !entry.file_type()?.is_file() {
                 return None;
             }
-            Some(entry.into_path())
+            let path = entry.into_path();
+            // Filter out untracked files if configured
+            if let Some(ref tracked) = tracked_files {
+                if !tracked.contains(&path) {
+                    return None;
+                }
+            }
+            Some(path)
         });
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 

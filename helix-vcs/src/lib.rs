@@ -5,6 +5,7 @@
 use anyhow::{anyhow, bail, Result};
 use arc_swap::ArcSwap;
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -75,6 +76,20 @@ impl DiffProviderRegistry {
             }
         });
     }
+
+    /// Get the set of all tracked files in the repository.
+    pub fn get_tracked_files(&self, cwd: &Path) -> Option<HashSet<PathBuf>> {
+        self.providers
+            .iter()
+            .find_map(|provider| match provider.get_tracked_files(cwd) {
+                Ok(res) => Some(res),
+                Err(err) => {
+                    log::debug!("{err:#?}");
+                    log::debug!("failed to get tracked files for {}", cwd.display());
+                    None
+                }
+            })
+    }
 }
 
 impl Default for DiffProviderRegistry {
@@ -126,6 +141,14 @@ impl DiffProvider {
         match self {
             #[cfg(feature = "git")]
             Self::Git => git::for_each_changed_file(cwd, f),
+            Self::None => bail!("No diff support compiled in"),
+        }
+    }
+
+    fn get_tracked_files(&self, cwd: &Path) -> Result<HashSet<PathBuf>> {
+        match self {
+            #[cfg(feature = "git")]
+            Self::Git => git::get_tracked_files(cwd),
             Self::None => bail!("No diff support compiled in"),
         }
     }
