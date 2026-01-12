@@ -262,24 +262,19 @@ impl EditorView {
 
         let view_offset = doc.view_offset(view.id);
 
-        let max_line_width_option = config
+        let max_line_width = config
             .rulers_auto_hide
             .then(|| Self::max_line_width_in_viewport(doc, view));
 
-        for &ruler in rulers {
-            if max_line_width_option.is_some_and(|max_line_width| ruler >= max_line_width) {
-                continue;
-            }
-
-            let Some(ruler) = ruler.checked_sub(1 + view_offset.horizontal_offset as u16) else {
-                continue;
-            };
-
-            if ruler < viewport.width {
-                let area = viewport.clip_left(ruler).with_width(1);
-                surface.set_style(area, ruler_theme);
-            }
-        }
+        rulers
+            .iter()
+            .filter(|&&ruler| max_line_width.map_or(true, |max| ruler < max))
+            // View might be horizontally scrolled, convert from absolute distance
+            // from the 1st column to relative distance from left of viewport
+            .filter_map(|ruler| ruler.checked_sub(1 + view_offset.horizontal_offset as u16))
+            .filter(|ruler| ruler < &viewport.width)
+            .map(|ruler| viewport.clip_left(ruler).with_width(1))
+            .for_each(|area| surface.set_style(area, ruler_theme))
     }
 
     /// Calculates the maximum visual line width among all lines in the current
