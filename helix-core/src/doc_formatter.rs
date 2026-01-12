@@ -281,7 +281,7 @@ impl<'t> DocumentFormatter<'t> {
                 // EOF grapheme is required for rendering
                 // and correct position computations
                 return Some(GraphemeWithSource {
-                    grapheme: Grapheme::Other { g: " ".into() },
+                    grapheme: Grapheme::EndOfBuffer,
                     source: GraphemeSource::Document { codepoints: 0 },
                 });
             };
