@@ -19,7 +19,7 @@ inherits="adwaita-dark"
 "comment" = "light_6"
 
 "variable" = "dark_5"
-"variable.parameter" = "orange_4"
+"variable.parameter" = "dark_5"
 "variable.builtin" = "orange_4"
 "variable.other" = "teal_4"
 "variable.other.member" = "teal_5"
@@ -70,16 +70,16 @@ inherits="adwaita-dark"
 "ui.cursor.match" = { fg = "light_2", bg = "blue_1" }
 "ui.cursor.primary" = { fg = "light_2", bg = "dark_6" }
 "ui.linenr" = "light_5"
-"ui.linenr.selected" = { fg = "dark_2", bg = "light_3", modifiers = [
+"ui.linenr.selected" = { fg = "dark_2", modifiers = [
   "bold",
 ] }
 "ui.statusline" = { fg = "dark_4", bg = "light_4" }
-"ui.statusline.inactive" = { fg = "dark_3", bg = "light_3" }
-"ui.statusline.insert" = { fg = "light_5", bg = "teal_3" }
-"ui.statusline.select" = { fg = "light_4", bg = "blue_3" }
+"ui.statusline.inactive" = { fg = "dark_4", bg = "light_4" }
+"ui.statusline.insert" = { fg = "light_4", bg = "teal_4" }
+"ui.statusline.select" = { fg = "light_4", bg = "blue_4" }
 "ui.popup" = { bg = "light_3" }
 "ui.window" = "split_and_borders"
-"ui.help" = { bg = "light_3" }
+"ui.help" = { fg = "dark_4", bg = "light_3" }
 "ui.text" = "dark_4"
 "ui.virtual" = "light_5"
 "ui.virtual.ruler" = { bg = "light_5"}

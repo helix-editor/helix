@@ -20,7 +20,7 @@
 "comment" = "dark_2"
 
 "variable" = "light_4"
-"variable.parameter" = "orange_2"
+"variable.parameter" = "light_4"
 "variable.builtin" = "orange_2"
 "variable.other" = "teal_2"
 "variable.other.member" = "teal_2"
@@ -70,7 +70,7 @@
 "ui.cursor.match" = { fg = "libadwaita_dark", bg = "blue_2" }
 "ui.cursor.primary" = { fg = "libadwaita_dark", bg = "light_7" }
 "ui.linenr" = "dark_2"
-"ui.linenr.selected" = { fg = "light_7", bg = "libadwaita_dark_alt", modifiers = [
+"ui.linenr.selected" = { fg = "light_7", modifiers = [
   "bold",
 ] }
 "ui.statusline" = { fg = "light_4", bg = "libadwaita_dark_alt" }
@@ -79,7 +79,7 @@
 "ui.statusline.select" = { fg = "light_4", bg = "blue_4" }
 "ui.popup" = { bg = "libadwaita_popup" }
 "ui.window" = "split_and_borders"
-"ui.help" = { bg = "libadwaita_dark_alt" }
+"ui.help" = { fg = "light_4", bg = "libadwaita_dark_alt" }
 "ui.text" = "light_4"
 "ui.virtual" = "dark_1"
 "ui.virtual.ruler" = { bg = "libadwaita_popup"}
@@ -133,7 +133,7 @@ green_4 = "#2EC27E"
 green_5 = "#26A269"
 green_6 = "#1F7F56"
 green_7 = "#1C6849"
-libadwaita_dark = "#1d1d20"
+libadwaita_dark = "#1c1c1f"
 libadwaita_dark_alt = "#28282c"
 libadwaita_popup = "#36363a"
 light_1 = "#FFFFFF"
