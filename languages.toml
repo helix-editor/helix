@@ -5,6 +5,7 @@ use-grammars = { except = [ "wren", "gemini" ] }
 
 [language-server]
 
+actions-language-server = {command = "actions-languageserver", args = ["--stdio"]}
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
 ada-language-server = { command = "ada_language_server" }
 als = { command = "als" }
@@ -2086,6 +2087,15 @@ indent = { tab-width = 4, unit = "    " }
 rulers = [73]
 text-width = 72
 grammar = "gitcommit"
+
+[[language]]
+name = "github-action"
+scope = "source.yaml.github-action"
+language-servers = [ "actions-language-server", "yaml-language-server" ]
+file-types = [{ glob = ".github/workflows/*.yaml" }, { glob = ".github/workflows/*.yml" }]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+grammar = "yaml"
 
 [[language]]
 name = "diff"
