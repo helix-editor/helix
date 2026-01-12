@@ -2603,7 +2603,8 @@ fn global_search(cx: &mut Context) {
                         if let Some(tracked) = tracked_files {
                             let path = entry.path();
                             // Canonicalize the path for consistent comparison
-                            let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+                            let canonical_path =
+                                path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
                             if !tracked.contains(&canonical_path) {
                                 return WalkState::Continue;
                             }

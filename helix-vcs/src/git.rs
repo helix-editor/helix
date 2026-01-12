@@ -92,7 +92,9 @@ pub fn get_tracked_files(cwd: &Path) -> Result<HashSet<std::path::PathBuf>> {
         .ok_or_else(|| anyhow::anyhow!("working tree not found"))?;
 
     // Canonicalize work_dir for consistent path comparison
-    let work_dir = work_dir.canonicalize().unwrap_or_else(|_| work_dir.to_path_buf());
+    let work_dir = work_dir
+        .canonicalize()
+        .unwrap_or_else(|_| work_dir.to_path_buf());
 
     let index = repo.index_or_empty()?;
     let mut tracked = HashSet::new();
