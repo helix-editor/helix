@@ -2,6 +2,7 @@ pub(crate) mod dap;
 pub(crate) mod lsp;
 pub(crate) mod syntax;
 pub(crate) mod typed;
+pub(crate) mod vte;
 
 pub use dap::*;
 use futures_util::FutureExt;
@@ -18,6 +19,7 @@ use tui::{
     widgets::Cell,
 };
 pub use typed::*;
+pub use vte::*;
 
 use helix_core::{
     char_idx_at_visual_offset,
@@ -406,6 +408,7 @@ impl MappableCommand {
         file_explorer, "Open file explorer in workspace root",
         file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
         file_explorer_in_current_directory, "Open file explorer at current working directory",
+        integrated_terminal, "Open the integrated terminal",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -616,6 +619,8 @@ impl MappableCommand {
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
+        toggle_terminal, "Toggle integrated terminal",
+        close_terminal, "Close active terminal",
     );
 }
 
@@ -3156,6 +3161,10 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     if let Ok(picker) = ui::file_explorer(cwd, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
+}
+
+fn integrated_terminal(cx: &mut Context) {
+    cx.editor.terminals.toggle_terminal();
 }
 
 fn buffer_picker(cx: &mut Context) {

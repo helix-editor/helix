@@ -10,6 +10,7 @@ use crate::{
     info::Info,
     input::KeyEvent,
     register::Registers,
+    terminal::{TerminalEvent, TerminalView},
     theme::{self, Theme},
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
@@ -1224,6 +1225,7 @@ pub struct Editor {
     pub idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
+    pub terminals: TerminalView,
     pub last_completion: Option<CompleteAction>,
     last_cwd: Option<PathBuf>,
 
@@ -1257,6 +1259,7 @@ pub enum EditorEvent {
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent((DebugAdapterId, dap::Payload)),
+    TerminalEvent(TerminalEvent),
     IdleTimer,
     Redraw,
 }
@@ -1360,6 +1363,7 @@ impl Editor {
             last_motion: None,
             last_completion: None,
             last_cwd: None,
+            terminals: TerminalView::new(),
             config,
             auto_pairs,
             exit_code: 0,
@@ -2275,6 +2279,9 @@ impl Editor {
                 }
                 Some(event) = self.debug_adapters.incoming.next() => {
                     return EditorEvent::DebuggerEvent(event)
+                }
+                Some(event) = self.terminals.poll_event() => {
+                    return EditorEvent::TerminalEvent(event)
                 }
 
                 _ = helix_event::redraw_requested() => {
