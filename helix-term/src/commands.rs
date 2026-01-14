@@ -4140,7 +4140,9 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
 
         push_jump(view, doc);
         doc.set_selection(view.id, selection);
-        status.get().and_then(|s| Some(editor.set_status(s)));
+        if let Some(message) = status.get() {
+            editor.set_status(message)
+        };
     };
     cx.editor.apply_motion(motion);
 }
