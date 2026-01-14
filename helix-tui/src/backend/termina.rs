@@ -49,6 +49,7 @@ fn vte_version() -> Option<usize> {
 #[derive(Debug, Default, Clone, Copy)]
 struct Capabilities {
     kitty_keyboard: KittyKeyboardSupport,
+    kitty_multi_cursor: bool,
     synchronized_output: bool,
     true_color: bool,
     extended_underlines: bool,
@@ -125,7 +126,6 @@ impl TerminaBackend {
     ) -> io::Result<(Capabilities, String)> {
         use std::time::{Duration, Instant};
 
-        // Colibri "midnight"
         const TEST_COLOR: RgbColor = RgbColor::new(59, 34, 76);
 
         terminal.enter_raw_mode()?;
@@ -149,7 +149,7 @@ impl TerminaBackend {
         // If we only receive the device attributes then we know it is not.
         write!(
             terminal,
-            "{}{}{}{}{}{}{}",
+            "{}{}\x1b[> q{}{}{}{}{}",
             // Synchronized output
             Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
                 csi::DecPrivateModeCode::SynchronizedOutput
@@ -199,7 +199,19 @@ impl TerminaBackend {
                         capabilities.extended_underlines =
                             sgrs.contains(&csi::Sgr::UnderlineColor(TEST_COLOR.into()));
                     }
-                    _ => (),
+                    Event::Csi(Csi::Cursor(csi::Cursor::CursorShapeQueryResponse(shapes))) => {
+                        // Any numbers in the response means the protocol is supported
+                        if !shapes.is_empty() {
+                            capabilities.kitty_multi_cursor = true;
+                            log::debug!(
+                                "Detected kitty multi-cursor support via protocol query. Supported shapes: {:?}",
+                                shapes
+                            );
+                        }
+                    }
+                    event => {
+                        log::trace!("Unhandled capability detection event: {event:?}");
+                    }
                 }
             }
 
@@ -544,6 +556,38 @@ impl Backend for TerminaBackend {
         self.flush()
     }
 
+    fn set_multiple_cursors(&mut self, cursors: &[(u16, u16)]) -> io::Result<()> {
+        if !self.capabilities.kitty_multi_cursor {
+            return Ok(());
+        }
+
+        // Always clear existing cursors first
+        write!(
+            self.terminal,
+            "{}",
+            Csi::Cursor(csi::Cursor::ClearSecondaryCursors)
+        )?;
+
+        if !cursors.is_empty() {
+            // Convert to 1-indexed positions (helix uses 0-indexed)
+            let positions: Vec<(u16, u16)> = cursors
+                .iter()
+                .map(|(x, y)| (y + 1, x + 1)) // (line, col) both 1-indexed
+                .collect();
+
+            write!(
+                self.terminal,
+                "{}",
+                Csi::Cursor(csi::Cursor::SetMultipleCursors {
+                    shape: 29, // Follow main cursor shape
+                    positions,
+                })
+            )?;
+        }
+
+        self.flush()
+    }
+
     fn clear(&mut self) -> io::Result<()> {
         self.start_synchronized_render()?;
         write!(
@@ -569,6 +613,12 @@ impl Backend for TerminaBackend {
 
     fn get_theme_mode(&self) -> Option<theme::Mode> {
         self.capabilities.theme_mode
+    }
+}
+
+impl TerminaBackend {
+    pub fn supports_kitty_multi_cursor(&self) -> bool {
+        self.capabilities.kitty_multi_cursor
     }
 }
 

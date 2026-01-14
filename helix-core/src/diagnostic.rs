@@ -5,19 +5,14 @@ pub use helix_stdx::range::Range;
 use serde::{Deserialize, Serialize};
 
 /// Describes the severity level of a [`Diagnostic`].
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
+    #[default]
     Hint,
     Info,
     Warning,
     Error,
-}
-
-impl Default for Severity {
-    fn default() -> Self {
-        Self::Hint
-    }
 }
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Deserialize, Serialize)]
