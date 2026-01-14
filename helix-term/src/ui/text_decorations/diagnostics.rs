@@ -47,7 +47,6 @@ pub struct InlineDiagnostics<'a> {
     state: InlineDiagnosticAccumulator<'a>,
     eol_diagnostics: DiagnosticFilter,
     styles: Styles,
-    render_indent_guides: bool,
 }
 
 impl<'a> InlineDiagnostics<'a> {
@@ -57,13 +56,11 @@ impl<'a> InlineDiagnostics<'a> {
         cursor: usize,
         config: InlineDiagnosticsConfig,
         eol_diagnostics: DiagnosticFilter,
-        render_indent_guides: bool,
     ) -> Self {
         InlineDiagnostics {
             state: InlineDiagnosticAccumulator::new(cursor, doc, config),
             styles: Styles::new(theme),
             eol_diagnostics,
-            render_indent_guides,
         }
     }
 }
@@ -286,22 +283,20 @@ impl Decoration for InlineDiagnostics<'_> {
         }
 
         self.state.compute_line_diagnostics();
-        if self.render_indent_guides {
-            let multi = self.state.has_multi(renderer.viewport.width);
-            let diag_height: usize = self
-                .state
-                .stack
-                .iter()
-                .map(|(diag, anchor)| {
-                    let text_fmt = self.state.config.text_fmt(*anchor, renderer.viewport.width);
-                    softwrapped_dimensions(diag.message.as_str().trim().into(), &text_fmt).0
-                })
-                .sum();
-            let total_rows = (multi as usize) + diag_height;
-            let start_row = pos.visual_line + virt_off.row as u16;
-            for row in 0..total_rows {
-                renderer.draw_indent_guides(indent_level, start_row + row as u16);
-            }
+        let multi = self.state.has_multi(renderer.viewport.width);
+        let diag_height: usize = self
+            .state
+            .stack
+            .iter()
+            .map(|(diag, anchor)| {
+                let text_fmt = self.state.config.text_fmt(*anchor, renderer.viewport.width);
+                softwrapped_dimensions(diag.message.as_str().trim().into(), &text_fmt).0
+            })
+            .sum();
+        let total_rows = (multi as usize) + diag_height;
+        let start_row = pos.visual_line + virt_off.row as u16;
+        for row in 0..total_rows {
+            renderer.draw_indent_guides(indent_level, start_row + row as u16);
         }
         let mut renderer = Renderer {
             renderer,
@@ -394,14 +389,8 @@ mod tests {
             other_lines: DiagnosticFilter::Enable(Severity::Hint),
             ..Default::default()
         };
-        let mut diagnostics = InlineDiagnostics::new(
-            &doc,
-            &theme,
-            0,
-            inline_config,
-            DiagnosticFilter::Disable,
-            true,
-        );
+        let mut diagnostics =
+            InlineDiagnostics::new(&doc, &theme, 0, inline_config, DiagnosticFilter::Disable);
         diagnostics.state.stack = vec![(&diagnostic, 12)];
 
         let pos = LinePos {
@@ -413,44 +402,5 @@ mod tests {
 
         assert_eq!(surface[(0, 1)].symbol, "|");
         assert_eq!(surface[(4, 1)].symbol, "|");
-    }
-
-    #[test]
-    fn inline_diagnostics_respect_render_diagnostics_flag() {
-        let mut config = Config::default();
-        config.indent_guides.render = true;
-        config.indent_guides.character = '|';
-
-        let doc = test_document(config, "        let x = 1;");
-        let theme = Theme::default();
-        let mut surface = Surface::empty(Rect::new(0, 0, 80, 5));
-        let viewport = Rect::new(0, 0, 80, 5);
-        let mut renderer =
-            TextRenderer::new(&mut surface, &doc, &theme, Position::new(0, 0), viewport);
-
-        let diagnostic = test_diagnostic(8);
-        let inline_config = InlineDiagnosticsConfig {
-            other_lines: DiagnosticFilter::Enable(Severity::Hint),
-            ..Default::default()
-        };
-        let mut diagnostics = InlineDiagnostics::new(
-            &doc,
-            &theme,
-            0,
-            inline_config,
-            DiagnosticFilter::Disable,
-            false,
-        );
-        diagnostics.state.stack = vec![(&diagnostic, 12)];
-
-        let pos = LinePos {
-            first_visual_line: true,
-            doc_line: 0,
-            visual_line: 0,
-        };
-        diagnostics.render_virt_lines(&mut renderer, pos, Position::new(1, 0), 8);
-
-        assert_eq!(surface[(0, 1)].symbol, " ");
-        assert_eq!(surface[(4, 1)].symbol, " ");
     }
 }

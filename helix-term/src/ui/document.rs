@@ -608,7 +608,6 @@ mod tests {
         let mut config = Config::default();
         config.indent_guides.render = true;
         config.indent_guides.character = '|';
-        config.indent_guides.render_diagnostics = true;
 
         let config = Arc::new(ArcSwap::new(Arc::new(config)));
         let loader = Arc::new(ArcSwap::from_pointee(syntax::Loader::default()));
@@ -668,7 +667,6 @@ mod tests {
             primary_cursor,
             inline_config,
             config.end_of_line_diagnostics,
-            config.indent_guides.render_diagnostics,
         ));
 
         let mut surface = Surface::empty(inner);
