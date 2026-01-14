@@ -4,7 +4,7 @@ use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::{DocumentFormatter, FormattedGrapheme};
 use helix_core::graphemes::Grapheme;
 use helix_core::text_annotations::TextAnnotations;
-use helix_core::{Diagnostic, Position};
+use helix_core::{softwrapped_dimensions, Diagnostic, Position};
 use helix_view::annotations::diagnostics::{
     DiagnosticFilter, InlineDiagnosticAccumulator, InlineDiagnosticsConfig,
 };
@@ -249,6 +249,7 @@ impl Decoration for InlineDiagnostics<'_> {
         renderer: &mut TextRenderer,
         pos: LinePos,
         virt_off: Position,
+        indent_level: usize,
     ) -> Position {
         let mut col_off = 0;
         let filter = self.state.filter();
@@ -282,6 +283,21 @@ impl Decoration for InlineDiagnostics<'_> {
         }
 
         self.state.compute_line_diagnostics();
+        let multi = self.state.has_multi(renderer.viewport.width);
+        let diag_height: usize = self
+            .state
+            .stack
+            .iter()
+            .map(|(diag, anchor)| {
+                let text_fmt = self.state.config.text_fmt(*anchor, renderer.viewport.width);
+                softwrapped_dimensions(diag.message.as_str().trim().into(), &text_fmt).0
+            })
+            .sum();
+        let total_rows = (multi as usize) + diag_height;
+        let start_row = pos.visual_line + virt_off.row as u16;
+        for row in 0..total_rows {
+            renderer.draw_indent_guides(indent_level, start_row + row as u16);
+        }
         let mut renderer = Renderer {
             renderer,
             first_row: pos.visual_line + virt_off.row as u16,
@@ -310,5 +326,81 @@ impl Decoration for InlineDiagnostics<'_> {
     ) -> usize {
         self.state
             .proccess_anchor(grapheme, renderer.viewport.width, renderer.offset.col)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    use arc_swap::ArcSwap;
+    use helix_core::diagnostic::{
+        Diagnostic, DiagnosticProvider, LanguageServerId, Range, Severity,
+    };
+    use helix_core::{syntax, Position, Rope};
+    use helix_view::editor::Config;
+    use helix_view::graphics::Rect;
+    use helix_view::theme::Theme;
+    use helix_view::Document;
+    use tui::buffer::Buffer as Surface;
+
+    fn test_document(config: Config, text: &str) -> Document {
+        let config = Arc::new(ArcSwap::new(Arc::new(config)));
+        let loader = Arc::new(ArcSwap::from_pointee(syntax::Loader::default()));
+        Document::from(Rope::from_str(text), None, config, loader)
+    }
+
+    fn test_diagnostic(start: usize) -> Diagnostic {
+        Diagnostic {
+            range: Range { start, end: start },
+            ends_at_word: false,
+            starts_at_word: false,
+            zero_width: true,
+            line: 0,
+            message: "diagnostic".to_string(),
+            severity: Some(Severity::Warning),
+            code: None,
+            provider: DiagnosticProvider::Lsp {
+                server_id: LanguageServerId::default(),
+                identifier: None,
+            },
+            tags: Vec::new(),
+            source: None,
+            data: None,
+        }
+    }
+
+    #[test]
+    fn inline_diagnostics_draw_indent_guides_on_virtual_lines() {
+        let mut config = Config::default();
+        config.indent_guides.render = true;
+        config.indent_guides.character = '|';
+
+        let doc = test_document(config, "        let x = 1;");
+        let theme = Theme::default();
+        let mut surface = Surface::empty(Rect::new(0, 0, 80, 5));
+        let viewport = Rect::new(0, 0, 80, 5);
+        let mut renderer =
+            TextRenderer::new(&mut surface, &doc, &theme, Position::new(0, 0), viewport);
+
+        let diagnostic = test_diagnostic(8);
+        let inline_config = InlineDiagnosticsConfig {
+            other_lines: DiagnosticFilter::Enable(Severity::Hint),
+            ..Default::default()
+        };
+        let mut diagnostics =
+            InlineDiagnostics::new(&doc, &theme, 0, inline_config, DiagnosticFilter::Disable);
+        diagnostics.state.stack = vec![(&diagnostic, 12)];
+
+        let pos = LinePos {
+            first_visual_line: true,
+            doc_line: 0,
+            visual_line: 0,
+        };
+        diagnostics.render_virt_lines(&mut renderer, pos, Position::new(1, 0), 8);
+
+        assert_eq!(surface[(0, 1)].symbol, "|");
+        assert_eq!(surface[(4, 1)].symbol, "|");
     }
 }

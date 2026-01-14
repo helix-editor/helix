@@ -121,7 +121,12 @@ pub fn render_text(
                 // draw indent guides for the last line
                 renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
                 is_in_indent_area = true;
-                decorations.render_virtual_lines(renderer, last_line_pos, last_line_end)
+                decorations.render_virtual_lines(
+                    renderer,
+                    last_line_pos,
+                    last_line_end,
+                    last_line_indent_level,
+                )
             }
             last_line_pos = LinePos {
                 first_visual_line: grapheme.line_idx != last_line_pos.doc_line,
@@ -169,7 +174,12 @@ pub fn render_text(
     }
 
     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
-    decorations.render_virtual_lines(renderer, last_line_pos, last_line_end)
+    decorations.render_virtual_lines(
+        renderer,
+        last_line_pos,
+        last_line_end,
+        last_line_indent_level,
+    )
 }
 
 #[derive(Debug)]
@@ -570,5 +580,109 @@ impl<'t> OverlayHighlighter<'t> {
             acc.patch(self.theme.highlight(highlight))
         });
         self.update_pos();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use arc_swap::ArcSwap;
+    use helix_core::diagnostic::{
+        Diagnostic, DiagnosticProvider, LanguageServerId, Range, Severity,
+    };
+    use helix_core::{syntax, Rope, Selection};
+    use helix_view::editor::{Config, GutterConfig};
+    use helix_view::graphics::Rect;
+    use helix_view::theme::Theme;
+    use helix_view::view::View;
+    use helix_view::{Document, DocumentId};
+    use tui::buffer::Buffer as Surface;
+
+    use crate::ui::text_decorations::{DecorationManager, InlineDiagnostics};
+
+    use super::render_document;
+
+    #[test]
+    fn render_document_draws_indent_guides_for_inline_diagnostics() {
+        let mut config = Config::default();
+        config.indent_guides.render = true;
+        config.indent_guides.character = '|';
+
+        let config = Arc::new(ArcSwap::new(Arc::new(config)));
+        let loader = Arc::new(ArcSwap::from_pointee(syntax::Loader::default()));
+
+        let mut doc = Document::from(Rope::from_str("        let x = 1;"), None, config, loader);
+        let diagnostic = Diagnostic {
+            range: Range { start: 8, end: 8 },
+            ends_at_word: false,
+            starts_at_word: false,
+            zero_width: true,
+            line: 0,
+            message: "diagnostic".to_string(),
+            severity: Some(Severity::Warning),
+            code: None,
+            provider: DiagnosticProvider::Lsp {
+                server_id: LanguageServerId::default(),
+                identifier: None,
+            },
+            tags: Vec::new(),
+            source: None,
+            data: None,
+        };
+        doc.replace_diagnostics(vec![diagnostic], &[], None);
+
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig {
+                layout: Vec::new(),
+                ..Default::default()
+            },
+        );
+        view.area = Rect::new(0, 0, 80, 6);
+        doc.ensure_view_init(view.id);
+        doc.set_selection(view.id, Selection::single(0, 0));
+        view.diagnostics_handler
+            .immediately_show_diagnostic(&doc, view.id);
+
+        let theme = Theme::default();
+        let text_annotations = view.text_annotations(&doc, Some(&theme));
+        let inner = view.inner_area(&doc);
+        let view_offset = doc.view_offset(view.id);
+        let primary_cursor = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
+        let width = view.inner_width(&doc);
+        let enable_cursor_line = view
+            .diagnostics_handler
+            .show_cursorline_diagnostics(&doc, view.id);
+        let config = doc.config.load();
+        let inline_config = config.inline_diagnostics.prepare(width, enable_cursor_line);
+
+        let mut decorations = DecorationManager::default();
+        decorations.add_decoration(InlineDiagnostics::new(
+            &doc,
+            &theme,
+            primary_cursor,
+            inline_config,
+            config.end_of_line_diagnostics,
+        ));
+
+        let mut surface = Surface::empty(inner);
+        render_document(
+            &mut surface,
+            inner,
+            &doc,
+            view_offset,
+            &text_annotations,
+            None,
+            Vec::new(),
+            &theme,
+            decorations,
+        );
+
+        assert_eq!(surface[(0, 1)].symbol, "|");
+        assert_eq!(surface[(4, 1)].symbol, "|");
     }
 }
