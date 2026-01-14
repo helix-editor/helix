@@ -1,13 +1,15 @@
 ## Registers
 
+In Helix, registers are storage locations for text and other data, such as the
+result of a search. Registers can be used to cut, copy, and paste text, similar
+to the clipboard in other text editors. `"<char>` is used to select a register for the
+next action.
+
+There are three types of registers, outlined below:
+
 - [User-defined registers](#user-defined-registers)
 - [Default registers](#default-registers)
 - [Special registers](#special-registers)
-
-In Helix, registers are storage locations for text and other data, such as the
-result of a search. Registers can be used to cut, copy, and paste text, similar
-to the clipboard in other text editors. Usage is similar to Vim, with `"` being
-used to select a register.
 
 ### User-defined registers
 
@@ -52,3 +54,9 @@ are joined with newlines. Pasting from these registers will paste multiple
 selections if the clipboard was last yanked to by the Helix session. Otherwise
 the clipboard contents are pasted as one selection.
 
+> **Note** To use the system clipboard, you may need a clipboard provider library installed
+> on the system. For Linux, the following packages are recommended:
+> 
+> - `xclip` or `xsel` (X sessions);
+> - `wl-clipboard` (Wayland sessions).
+> - `win32yank.exe` in Windows path (WSL). This can be found [here](https://github.com/equalsraf/win32yank/).
