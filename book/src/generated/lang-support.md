@@ -267,7 +267,7 @@
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
 | swift | ✓ | ✓ | ✓ |  | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  |  |  | `systemd-lsp` |
-| systemverilog | ✓ |  |  |  |  | `verible-verilog-ls` |
+| systemverilog | ✓ | ✓ |  |  |  | `svlangserver`, `verible-verilog-ls` |
 | t32 | ✓ |  |  |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |  |  |
 | tact | ✓ | ✓ | ✓ |  |  |  |
@@ -294,7 +294,7 @@
 | v | ✓ | ✓ | ✓ |  |  | `v-analyzer` |
 | vala | ✓ | ✓ |  |  |  | `vala-language-server` |
 | vento | ✓ |  |  |  |  |  |
-| verilog | ✓ | ✓ |  |  |  | `svlangserver` |
+| verilog | ✓ | ✓ |  |  |  | `verible-verilog-ls` |
 | vhdl | ✓ |  |  |  |  | `vhdl_ls` |
 | vhs | ✓ |  |  |  |  |  |
 | vim | ✓ |  |  |  |  |  |
