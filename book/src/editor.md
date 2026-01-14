@@ -321,7 +321,7 @@ Search specific options.
 | Key | Description | Default |
 |--|--|---------|
 | `smart-case` | Enable smart case regex searching (case-insensitive unless pattern contains upper case characters) | `true` |
-| `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
+| `wrap-around`| Whether the search should wrap after depleting the matches, also applies to goto_next_change/goto_prev_change | `true` |
 
 ### `[editor.whitespace]` Section
 
