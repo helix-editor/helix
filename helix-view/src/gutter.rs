@@ -102,7 +102,7 @@ pub fn diff<'doc>(
         let mut hunk_i = 0;
         let mut hunk = hunks.nth_hunk(hunk_i);
         Box::new(
-            move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            move |line: usize, _selected: bool, _first_visual_line: bool, out: &mut String| {
                 // truncating the line is fine here because we don't compute diffs
                 // for files with more lines than i32::MAX anyways
                 // we need to special case removals here
@@ -122,9 +122,6 @@ pub fn diff<'doc>(
                 let (icon, style) = if hunk.is_pure_insertion() {
                     ("▍", added)
                 } else if hunk.is_pure_removal() {
-                    if !first_visual_line {
-                        return None;
-                    }
                     ("▔", deleted)
                 } else {
                     ("▍", modified)
