@@ -800,7 +800,10 @@ pub mod completers {
 #[cfg(test)]
 mod tests {
     use std::fs::{create_dir, File};
+    #[cfg(unix)]
     use std::os::unix::fs::symlink;
+    #[cfg(not(unix))]
+    use std::os::windows::fs::symlink_file as symlink;
 
     use helix_view::Theme;
 
