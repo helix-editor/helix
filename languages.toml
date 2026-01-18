@@ -1590,7 +1590,9 @@ file-types = [
   { glob = ".kube/kuberc" },
   { glob = "yarn.lock" },
   "sublime-syntax",
-  "bu"
+  "bu",
+  { glob = ".stylelintrc" },  # https://stylelint.io/user-guide/configure/
+  { glob = ".puppeteerrc" },  # https://pptr.dev/guides/configuration
 ]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
