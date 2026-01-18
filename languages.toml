@@ -5178,3 +5178,18 @@ scope = "source.qmv"
 file-types = [ { glob = "/tmp/qmv*" } ]
 indent = { tab-width = 8, unit = "        " }
 soft-wrap = { enable = false }
+
+[[language]]
+name = "klog"
+scope = "source.klg"
+file-types = [ "klg" ]
+injection-regex = "klg"
+indent = { tab-width = 4, unit="    "}
+[language.auto-pairs]
+'(' = ')'
+'"' = '"'
+"'" = "'"
+
+[[grammar]]
+name = "klog"
+source = { git = "https://github.com/Ansimorph/tree-sitter-klog/", rev = "0b215fe75bdeb8368546e3cee36aca8c19212d06" }
