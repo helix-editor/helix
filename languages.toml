@@ -92,6 +92,7 @@ nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
 nixd = { command = "nixd" }
 nls = { command = "nls" }
+nu-lint = { command = "nu-lint", args = ["--lsp"] }
 nu-lsp = { command = "nu", args = [ "--lsp" ] }
 ocamllsp = { command = "ocamllsp" }
 ols = { command = "ols", args = [] }
@@ -2505,7 +2506,7 @@ file-types = ["nu", "nuon"]
 shebangs = ["nu"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-language-servers = [ "nu-lsp" ]
+language-servers = [ "nu-lsp", "nu-lint" ]
 formatter = { command = "nufmt", args = ["--stdin"] } # https://github.com/nushell/nufmt
 auto-format = false
 
