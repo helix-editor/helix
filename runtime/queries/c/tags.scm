@@ -12,4 +12,4 @@
   name: (type_identifier) @definition.struct)
 
 (enum_specifier
-  name: (type_identifier) @definition.type)
+  name: (type_identifier) @definition.enum)
