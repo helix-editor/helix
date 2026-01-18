@@ -7,6 +7,7 @@ mod transport;
 use arc_swap::ArcSwap;
 pub use client::Client;
 pub use futures_executor::block_on;
+use globset::{Glob, GlobSet, GlobSetBuilder};
 pub use helix_lsp_types as lsp;
 pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
@@ -21,6 +22,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
     collections::HashMap,
+    fs,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -983,12 +985,19 @@ pub fn find_lsp_workspace(
         return None;
     }
 
+    let marker_globs = root_marker_globs(root_markers);
     let mut top_marker = None;
     for ancestor in file.ancestors() {
-        if root_markers
-            .iter()
-            .any(|marker| dir_contains_file_with_suffix(ancestor, marker))
-        {
+        let Ok(mut dir) = fs::read_dir(ancestor) else {
+            continue;
+        };
+
+        if dir.any(|entry| {
+            if let Ok(entry) = entry {
+                return marker_globs.is_match(entry.file_name());
+            }
+            false
+        }) {
             top_marker = Some(ancestor);
         }
 
@@ -1013,18 +1022,18 @@ pub fn find_lsp_workspace(
     None
 }
 
-fn dir_contains_file_with_suffix(dir: &Path, suffix: &str) -> bool {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return false;
-    };
+fn root_marker_globs(patterns: &[String]) -> GlobSet {
+    let mut builder = GlobSetBuilder::new();
 
-    for entry in entries.flatten() {
-        if entry.file_name().to_string_lossy().ends_with(suffix) {
-            return true;
-        }
+    for glob in patterns.iter().flat_map(|pattern| Glob::new(pattern)) {
+        builder.add(glob);
     }
 
-    false
+    builder.build().unwrap_or_else(|_| {
+        GlobSetBuilder::new()
+            .build()
+            .expect("empty globset build never fails")
+    })
 }
 
 #[cfg(test)]
