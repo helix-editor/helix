@@ -267,7 +267,7 @@
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
 | swift | ✓ | ✓ | ✓ |  | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  |  |  | `systemd-lsp` |
-| systemverilog | ✓ | ✓ |  |  |  | `svlangserver`, `verible-verilog-ls` |
+| systemverilog | ✓ |  |  |  |  | `svlangserver`, `verible-verilog-ls` |
 | t32 | ✓ |  |  |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |  |  |
 | tact | ✓ | ✓ | ✓ |  |  |  |
