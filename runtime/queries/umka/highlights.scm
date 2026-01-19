@@ -1,7 +1,7 @@
 
 ["case" "const" "default" "enum" "fn" "map" "import" "interface" "return" "struct" "switch" "type" "var" "weak" "in"] @keyword
 
-["if" "for"] @keyword.conditional
+["if" "for"] @keyword.control.conditional
 
 ["append" "atan" "atan2" "cap" "ceil" "copy" "cos" "delete"
  "exit" "exp" "fabs" "fiberalive" "fibercall" "fiberspawn"
