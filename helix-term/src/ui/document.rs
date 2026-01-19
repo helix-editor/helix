@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use helix_core::doc_formatter::{DocumentFormatter, GraphemeSource, TextFormat};
+use helix_core::doc_formatter::{DocumentFormatter, FormattedGrapheme, GraphemeSource, TextFormat};
 use helix_core::graphemes::Grapheme;
 use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::{self, HighlightEvent, Highlighter, OverlayHighlights};
@@ -158,7 +158,7 @@ pub fn render_text(
 
         let virt = grapheme.is_virtual();
         let grapheme_width = renderer.draw_grapheme(
-            grapheme.raw,
+            &grapheme,
             grapheme_style,
             virt,
             &mut last_line_indent_level,
@@ -313,7 +313,7 @@ impl<'a> TextRenderer<'a> {
     /// Draws a single `grapheme` at the current render position with a specified `style`.
     pub fn draw_grapheme(
         &mut self,
-        grapheme: Grapheme,
+        grapheme: &FormattedGrapheme,
         grapheme_style: GraphemeStyle,
         is_virtual: bool,
         last_indent_level: &mut usize,
@@ -343,17 +343,21 @@ impl<'a> TextRenderer<'a> {
         } else {
             &self.tab
         };
-        let grapheme = match grapheme {
-            Grapheme::Tab { width } => {
-                let grapheme_tab_width = char_to_byte_idx(tab, width);
-                &tab[..grapheme_tab_width]
+        let grapheme = if !grapheme.source.is_eof() {
+            match grapheme.raw {
+                Grapheme::Tab { width } => {
+                    let grapheme_tab_width = char_to_byte_idx(tab, width);
+                    &tab[..grapheme_tab_width]
+                }
+                // TODO special rendering for other whitespaces?
+                Grapheme::Other { ref g } if g == " " => space,
+                Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
+                Grapheme::Other { ref g } if g == "\u{202F}" => nnbsp,
+                Grapheme::Other { ref g } => g,
+                Grapheme::Newline => &self.newline,
             }
-            // TODO special rendering for other whitespaces?
-            Grapheme::Other { ref g } if g == " " => space,
-            Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
-            Grapheme::Other { ref g } if g == "\u{202F}" => nnbsp,
-            Grapheme::Other { ref g } => g,
-            Grapheme::Newline => &self.newline,
+        } else {
+            " "
         };
 
         let in_bounds = self.column_in_bounds(position.col, width);
