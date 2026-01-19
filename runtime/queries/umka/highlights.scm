@@ -28,7 +28,7 @@
 	(identList (ident) @variable.parameter)))
 
 (structType (typedIdentList
-    (identList (ident) @property)))
+    (identList (ident) @variable.other.member)))
 
 (constDeclItem name: (ident) @constant)
 (enumItem) @constant
