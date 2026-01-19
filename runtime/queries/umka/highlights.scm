@@ -50,4 +50,4 @@
 ((ident) @constant.builtin
 	(#match? @constant.builtin "^(true|false|null)$"))
 
-[ (decNumber) (hexNumber) (realNumber) ] @number
+[ (decNumber) (hexNumber) (realNumber) ] @constant.numeric
