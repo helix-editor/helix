@@ -39,11 +39,11 @@
 (escSeq) @string.special
 (fmtSeq) @string.special
 (comment) @comment
-(importItem name: (ident) @module)
+(importItem name: (ident) @namespace)
 (typeDeclItem name: (ident) @type)
 (type (qualIdent name: (ident) @type))
-(qualIdent module: (ident) @module)
-(modSeq name: (ident) @module)
+(qualIdent module: (ident) @namespace)
+(modSeq name: (ident) @namespace)
 ((type) @type.builtin
 	(#match? @type.builtin "^(str|void|int8|int16|int32|int|uint8|uint16|uint32|uint|bool|char|real32|real|fiber|any)$"))
 
