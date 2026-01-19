@@ -777,8 +777,7 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
                 let chars_removed = delete_end - delete_start;
                 let net_inserted = len_inserted.saturating_sub(chars_removed);
 
-                // Standard case: cursor moves by 1
-                let next_range = get_next_range(state.doc, start_range, offs, 1);
+                let next_range = get_next_range(state.doc, start_range, offs, len_inserted);
                 end_ranges.push(next_range);
                 offs += net_inserted;
                 made_changes = true;
