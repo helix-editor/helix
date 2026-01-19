@@ -169,6 +169,13 @@ impl<'de> Deserialize<'de> for FileType {
             {
                 match map.next_entry::<String, String>()? {
                     Some((key, mut glob)) if key == "glob" => {
+                        // If glob starts with a period, also match "dot-" as
+                        // an alternative prefix to support GNU stow --dotfiles
+                        // preprocessing.
+                        if let Some(rest) = glob.strip_prefix('.') {
+                            glob = format!("{{.,dot-}}{}", rest);
+                        }
+
                         // If the glob isn't an absolute path or already starts
                         // with a glob pattern, add a leading glob so we
                         // properly match relative paths.
