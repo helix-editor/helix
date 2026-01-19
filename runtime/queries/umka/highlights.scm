@@ -8,7 +8,7 @@
  "floor" "fprintf" "fscanf" "insert" "keys" "len" "log" "make"
  "memusage" "new" "printf" "round" "scanf" "selfhasptr"
  "selftypeeq" "sin" "sizeof" "sizeofself" "slice" "sprintf"
- "sqrt" "sscanf" "trunc" "typeptr" "valid" "validkey"] @support.function @function.builtin
+ "sqrt" "sscanf" "trunc" "typeptr" "valid" "validkey"] @function.builtin
 
 ["=" ":=" "*" ":" "," "::" "." ";" "++" "--"] @operator
 
