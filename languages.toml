@@ -5158,4 +5158,4 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "ptx"
-source = { git = "https://codeberg.org/jer-gremlin/tree-sitter-ptx.git", rev = "3dfa6758d4c15832d051f933101992b9e01d6611" }
+source = { git = "https://codeberg.org/jer-gremlin/tree-sitter-ptx", rev = "3dfa6758d4c15832d051f933101992b9e01d6611" }
