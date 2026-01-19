@@ -298,7 +298,7 @@ impl<'a> TextRenderer<'a> {
             }
             Grapheme::Other { ref g } if g == "\u{00A0}" => " ",
             Grapheme::Other { ref g } => g,
-            Grapheme::Newline | Grapheme::EndOfBuffer => " ",
+            Grapheme::Newline => " ",
         };
 
         self.surface.set_string(
@@ -354,7 +354,6 @@ impl<'a> TextRenderer<'a> {
             Grapheme::Other { ref g } if g == "\u{202F}" => nnbsp,
             Grapheme::Other { ref g } => g,
             Grapheme::Newline => &self.newline,
-            Grapheme::EndOfBuffer => " ",
         };
 
         let in_bounds = self.column_in_bounds(position.col, width);

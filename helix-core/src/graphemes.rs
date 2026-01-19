@@ -25,7 +25,6 @@ pub enum Grapheme<'a> {
     Newline,
     Tab { width: usize },
     Other { g: GraphemeStr<'a> },
-    EndOfBuffer,
 }
 
 impl<'a> Grapheme<'a> {
@@ -60,7 +59,7 @@ impl<'a> Grapheme<'a> {
             // than 2 and graphemes are usually atmost two visible codepoints wide
             Grapheme::Other { ref g } => grapheme_width(g),
             Grapheme::Tab { width } => width,
-            Grapheme::Newline | Grapheme::EndOfBuffer => 1,
+            Grapheme::Newline => 1,
         }
     }
 
@@ -80,7 +79,7 @@ impl<'a> Grapheme<'a> {
 impl Display for Grapheme<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Grapheme::Newline | Grapheme::EndOfBuffer => write!(f, " "),
+            Grapheme::Newline => write!(f, " "),
             Grapheme::Tab { width } => {
                 for _ in 0..width {
                     write!(f, " ")?;
