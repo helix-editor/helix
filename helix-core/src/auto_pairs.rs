@@ -161,8 +161,7 @@ impl BracketPair {
 
     /// Check if this pair should auto-close at the given position.
     pub fn should_close(&self, doc: &Rope, range: &Range) -> bool {
-        Self::next_is_not_alpha(doc, range)
-            && (!self.same() || Self::prev_is_not_alpha(doc, range))
+        Self::next_is_not_alpha(doc, range) && (!self.same() || Self::prev_is_not_alpha(doc, range))
     }
 
     fn next_is_not_alpha(doc: &Rope, range: &Range) -> bool {
@@ -625,7 +624,6 @@ impl<'a> AutoPairState<'a> {
             .and_then(|ctx| ctx.get(range_idx).copied())
             .unwrap_or(BracketContext::Code)
     }
-
 }
 
 /// Core auto-pairs hook implementation.
@@ -1141,17 +1139,23 @@ impl AutoPairsRegistry {
         let mut pairs = Vec::with_capacity(pairs_arr.len());
 
         for (idx, pair_val) in pairs_arr.iter().enumerate() {
-            let open = pair_val.get("open").and_then(|v| v.as_str()).ok_or_else(|| {
-                AutoPairsRegistryError::new("pair missing 'open'")
-                    .with_language(language)
-                    .with_pair_index(idx)
-            })?;
+            let open = pair_val
+                .get("open")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    AutoPairsRegistryError::new("pair missing 'open'")
+                        .with_language(language)
+                        .with_pair_index(idx)
+                })?;
 
-            let close = pair_val.get("close").and_then(|v| v.as_str()).ok_or_else(|| {
-                AutoPairsRegistryError::new("pair missing 'close'")
-                    .with_language(language)
-                    .with_pair_index(idx)
-            })?;
+            let close = pair_val
+                .get("close")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    AutoPairsRegistryError::new("pair missing 'close'")
+                        .with_language(language)
+                        .with_pair_index(idx)
+                })?;
 
             let mut bracket_pair = BracketPair::new(open, close);
 

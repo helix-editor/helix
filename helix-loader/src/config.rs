@@ -72,19 +72,20 @@ pub fn auto_pairs_config() -> Result<toml::Value, AutoPairsConfigError> {
     ] {
         let file = path.join("auto-pairs.toml");
         if let Ok(content) = std::fs::read_to_string(&file) {
-            let parsed: toml::Value = toml::from_str(&content).map_err(|error| {
-                AutoPairsConfigError {
+            let parsed: toml::Value =
+                toml::from_str(&content).map_err(|error| AutoPairsConfigError {
                     path: file.clone(),
                     error,
-                }
-            })?;
+                })?;
             configs.push(parsed);
         }
     }
 
-    let config = configs.into_iter().fold(default_auto_pairs_config(), |a, b| {
-        crate::merge_toml_values(a, b, 1)
-    });
+    let config = configs
+        .into_iter()
+        .fold(default_auto_pairs_config(), |a, b| {
+            crate::merge_toml_values(a, b, 1)
+        });
 
     Ok(config)
 }
