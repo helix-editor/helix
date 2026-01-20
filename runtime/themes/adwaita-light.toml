@@ -68,12 +68,16 @@ inherits="adwaita-dark"
 "ui.cursor.select" = { fg = "light_2", bg = "dark_5" }
 "ui.cursor.match" = { fg = "light_2", bg = "blue_1" }
 "ui.cursor.primary" = { fg = "light_2", bg = "dark_6" }
+"ui.cursor.primary.normal" = { fg = "light_2", bg = "dark_6" }
+"ui.cursor.primary.insert" = { fg = "light_2", bg = "teal_4" }
+"ui.cursor.primary.select" = { fg = "light_2", bg = "blue_4" }
 "ui.linenr" = "light_5"
 "ui.linenr.selected" = { fg = "dark_2", modifiers = ["bold"] }
 "ui.statusline" = { fg = "dark_4", bg = "light_4" }
-"ui.statusline.inactive" = { fg = "dark_4", bg = "light_4" }
-"ui.statusline.insert" = { fg = "light_4", bg = "teal_4" }
-"ui.statusline.select" = { fg = "light_4", bg = "blue_4" }
+"ui.statusline.inactive" = { fg = "light_7", bg = "light_4" }
+"ui.statusline.normal" = { fg = "light_2", bg = "dark_6" }
+"ui.statusline.insert" = { fg = "light_2", bg = "teal_4" }
+"ui.statusline.select" = { fg = "light_2", bg = "blue_4" }
 "ui.popup" = { fg = "dark_4", bg = "light_3" }
 "ui.window" = "split_and_borders"
 "ui.help" = { fg = "dark_4", bg = "light_3" }
