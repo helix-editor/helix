@@ -388,6 +388,7 @@ impl MappableCommand {
         extend_line_above, "Select current line, if already selected, extend to previous line",
         select_line_above, "Select current line, if already selected, extend or shrink line above based on the anchor",
         select_line_below, "Select current line, if already selected, extend or shrink line below based on the anchor",
+        select_line_trimmed, "Select current line(s) without leading/trailing whitespace",
         extend_to_line_bounds, "Extend selection to line bounds",
         shrink_to_line_bounds, "Shrink selection to line bounds",
         delete_selection, "Delete selection",
@@ -2739,6 +2740,32 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
     });
 
     doc.set_selection(view.id, selection);
+}
+fn select_line_trimmed(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    doc.set_selection(
+        view.id,
+        doc.selection(view.id).clone().transform(|range| {
+            let (start_line, end_line) = range.line_range(text);
+
+            let start = text.line_to_char(start_line);
+            let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+
+            let new_start =
+                movement::skip_while(text, start, |ch| ch.is_whitespace()).unwrap_or(start);
+            let new_end = movement::backwards_skip_while(text, end, |ch| ch.is_whitespace())
+                .unwrap_or(end);
+
+            if new_start >= new_end {
+                // For blank/whitespace-only lines, collapse to an empty selection at line start.
+                Range::new(start, start).with_direction(range.direction())
+            } else {
+                Range::new(new_start, new_end).with_direction(range.direction())
+            }
+        }),
+    );
 }
 fn select_line_below(cx: &mut Context) {
     select_line_impl(cx, Extend::Below);
