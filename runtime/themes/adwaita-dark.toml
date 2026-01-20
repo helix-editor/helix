@@ -69,12 +69,16 @@
 "ui.cursor.select" = { fg = "libadwaita_dark", bg = "light_5" }
 "ui.cursor.match" = { fg = "libadwaita_dark", bg = "blue_2" }
 "ui.cursor.primary" = { fg = "libadwaita_dark", bg = "light_7" }
+"ui.cursor.primary.normal" = { fg = "libadwaita_dark", bg = "light_7" }
+"ui.cursor.primary.insert" = { fg = "libadwaita_dark", bg = "teal_4" }
+"ui.cursor.primary.select" = { fg = "libadwaita_dark", bg = "blue_4" }
 "ui.linenr" = "dark_2"
 "ui.linenr.selected" = { fg = "light_7", modifiers = ["bold"] }
 "ui.statusline" = { fg = "light_4", bg = "libadwaita_dark_alt" }
-"ui.statusline.inactive" = { fg = "light_4", bg = "libadwaita_dark_alt" }
-"ui.statusline.insert" = { fg = "light_4", bg = "teal_4" }
-"ui.statusline.select" = { fg = "light_4", bg = "blue_4" }
+"ui.statusline.inactive" = { fg = "light_7", bg = "libadwaita_dark_alt" }
+"ui.statusline.normal" = { fg = "libadwaita_dark", bg = "light_7" }
+"ui.statusline.insert" = { fg = "libadwaita_dark", bg = "teal_4" }
+"ui.statusline.select" = { fg = "libadwaita_dark", bg = "blue_4" }
 "ui.popup" = { fg = "light_4", bg = "libadwaita_popup" }
 "ui.window" = "split_and_borders"
 "ui.help" = { fg = "light_4", bg = "libadwaita_dark_alt" }
