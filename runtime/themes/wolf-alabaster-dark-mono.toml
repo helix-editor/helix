@@ -62,10 +62,15 @@ inherits = "wolf-alabaster-dark"
 error = { fg = "error-red", modifiers = ["bold"] }
 "diagnostic.error" = { underline = { color = "error-red", style = "curl" } }
 
+# Virtual text - grey in mono (no colored definitions)
+"ui.virtual" = { fg = "inlay-hint" }
+"ui.virtual.inlay-hint" = { fg = "inlay-hint" }
+
 [palette]
 # Dark monochromatic palette
 comment-grey = "#777777"          # Grey - comments
 punctuation-dark = "#555555"      # Dark grey - punctuation
 string-bg = "#2A2A2A"             # Dark grey - strings/constants background
 string-bg-dark = "#333333"        # Slightly lighter grey - escape sequences
+inlay-hint = "#555555"            # Dimmed grey - virtual text (type hints)
 # Note: error-red, diff-green, diff-red, diff-orange inherited from parent (identical values)

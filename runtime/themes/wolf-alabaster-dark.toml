@@ -36,6 +36,10 @@ diagnostic = { underline = { style = "curl" } }
 "ui.cursor" = { bg = "active", fg = "bg" }
 "ui.cursor.primary" = { bg = "active", fg = "bg" }
 "ui.cursor.match" = { bg = "highlight" }
+"ui.cursorline" = { bg = "cursorline" }
+"ui.cursorcolumn" = { bg = "cursorline" }
+
+"ui.gutter" = { bg = "bg" }
 
 "ui.selection" = { bg = "selection" }
 "ui.selection.primary" = { bg = "selection-primary" }
@@ -62,11 +66,17 @@ diagnostic = { underline = { style = "curl" } }
 # Jump labels - extremely visible
 "ui.virtual.jump-label" = { fg = "jump-label", modifiers = ["bold"] }
 
+# Virtual text (inlay hints, etc.) - dimmed type color
+"ui.virtual" = { fg = "inlay-hint" }
+"ui.virtual.inlay-hint" = { fg = "inlay-hint" }
+"ui.virtual.ruler" = { bg = "cursorline" }
+
 # LSP diagnostic inline/expanded text
 "diagnostic.error" = { underline = { color = "error-red", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "highlight", style = "curl" } }
 "diagnostic.info" = { underline = { color = "definition", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "punctuation", style = "curl" } }
+"diagnostic.deprecated" = { fg = "punctuation", modifiers = ["crossed_out"] }
 
 # SYNTAX HIGHLIGHTING - Following Alabaster's minimal approach
 # Only 4 categories get color: strings, constants, comments, definitions
@@ -110,6 +120,7 @@ diagnostic = { underline = { style = "curl" } }
 
 # Special cases
 "tag" = { fg = "definition" }
+"tag.error" = { fg = "error-red", underline = { style = "line" } }
 "attribute" = { fg = "fg" }
 "namespace" = { fg = "definition" }
 "label" = { fg = "constant" }
@@ -148,7 +159,9 @@ active = "#CD974B"       # Golden brown - cursor, active elements (original Alab
 highlight = "#FF9800"    # Orange - search, warnings
 error-red = "#DFDF8E"    # Yellow - errors (use comment color for visibility)
 panel = "#252526"        # Slightly lighter grey - UI panels, menus, popups
+cursorline = "#1A2022"   # Subtle highlight - cursorline, ruler
 jump-label = "#FF6B35"   # Bright orange - jump destinations
+inlay-hint = "#4A7090"   # Dimmed blue - virtual text (type hints)
 
 # Diff colors
 diff-green = "#95CB82"   # Green - additions (same as string)
