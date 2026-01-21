@@ -98,6 +98,7 @@
 | glimmer | ✓ |  |  |  |  | `ember-language-server` |
 | glsl | ✓ | ✓ | ✓ |  |  | `glsl_analyzer`, `glsld` |
 | gn | ✓ |  |  |  |  |  |
+| gnuplot | ✓ |  |  |  |  |  |
 | go | ✓ | ✓ | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | go-format-string | ✓ |  |  |  | ✓ |  |
 | godot-resource | ✓ | ✓ |  |  |  |  |
