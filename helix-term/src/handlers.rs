@@ -21,11 +21,12 @@ mod document_colors;
 mod prompt;
 mod signature_help;
 mod snippet;
+mod workspace_trust;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     events::register();
 
-    let event_tx = completion::CompletionHandler::new(config).spawn();
+    let event_tx = completion::CompletionHandler::new(config.clone()).spawn();
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
     let document_colors = DocumentColorsHandler::default().spawn();
@@ -51,5 +52,8 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     snippet::register_hooks(&handlers);
     document_colors::register_hooks(&handlers);
     prompt::register_hooks(&handlers);
+    if !config.load().editor.insecure {
+        workspace_trust::register_hooks(&handlers);
+    }
     handlers
 }
