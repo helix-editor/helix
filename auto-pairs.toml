@@ -532,6 +532,7 @@ pairs = [
   { open = "*", close = "*", kind = "delimiter" },
   { open = "_", close = "_", kind = "delimiter" },
   { open = "~~", close = "~~", kind = "delimiter" },
+  { open = "```", close = "```", kind = "delimiter" },
 ]
 
 [latex]
