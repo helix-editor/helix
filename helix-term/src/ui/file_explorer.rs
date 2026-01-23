@@ -1,6 +1,6 @@
 //! File explorer with file management capabilities.
 //!
-//! Provides create, delete, yank (copy), and paste operations with live feedback.
+//! Provides create, delete, rename, move, yank (copy), cut, and paste operations with live feedback.
 
 use std::path::{Path, PathBuf};
 
@@ -21,10 +21,18 @@ use crate::{
 
 pub const ID: &str = "file-explorer";
 
-/// Clipboard entry for copy/paste operations
+/// Type of clipboard operation
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ClipboardOperation {
+    Copy,
+    Cut,
+}
+
+/// Clipboard entry for copy/cut/paste operations
 #[derive(Clone)]
 pub struct ClipboardEntry {
     pub path: PathBuf,
+    pub operation: ClipboardOperation,
 }
 
 /// Global clipboard for file operations (shared across file explorer instances)
@@ -195,10 +203,219 @@ impl FileExplorer {
         }
 
         if let Ok(mut clipboard) = get_clipboard().lock() {
-            *clipboard = Some(ClipboardEntry { path: path.clone() });
+            *clipboard = Some(ClipboardEntry {
+                path: path.clone(),
+                operation: ClipboardOperation::Copy,
+            });
         }
         ctx.editor.set_status(format!("Yanked: {}", path.display()));
         EventResult::Consumed(None)
+    }
+
+    /// Handle 'x' key - cut file/directory to clipboard
+    fn handle_cut(&mut self, ctx: &mut Context) -> EventResult {
+        let Some((path, _is_dir)) = self.selected_path().cloned() else {
+            ctx.editor.set_error("No file selected");
+            return EventResult::Consumed(None);
+        };
+
+        // Don't allow cutting ".."
+        if path.file_name().map(|n| n == "..").unwrap_or(false) {
+            ctx.editor.set_error("Cannot cut parent directory reference");
+            return EventResult::Consumed(None);
+        }
+
+        if let Ok(mut clipboard) = get_clipboard().lock() {
+            *clipboard = Some(ClipboardEntry {
+                path: path.clone(),
+                operation: ClipboardOperation::Cut,
+            });
+        }
+        ctx.editor.set_status(format!("Cut: {}", path.display()));
+        EventResult::Consumed(None)
+    }
+
+    /// Handle 'r' key - rename file/directory
+    fn handle_rename(&mut self, ctx: &mut Context) -> EventResult {
+        let Some((path, _is_dir)) = self.selected_path().cloned() else {
+            ctx.editor.set_error("No file selected");
+            return EventResult::Consumed(None);
+        };
+
+        // Don't allow renaming ".."
+        if path.file_name().map(|n| n == "..").unwrap_or(false) {
+            ctx.editor.set_error("Cannot rename parent directory reference");
+            return EventResult::Consumed(None);
+        }
+
+        let old_name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        let root = self.root.clone();
+        let parent = path.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| root.clone());
+        let old_name_for_prompt = old_name.clone();
+
+        let prompt = Prompt::new(
+            "rename: ".into(),
+            None,
+            ui::completers::none,
+            move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
+
+                if input.is_empty() {
+                    return;
+                }
+
+                let new_path = parent.join(input);
+
+                // Check if destination exists
+                if new_path.exists() {
+                    cx.editor.set_error(format!("'{}' already exists", input));
+                    return;
+                }
+
+                match std::fs::rename(&path, &new_path) {
+                    Ok(_) => {
+                        cx.editor.set_status(format!("Renamed: {} -> {}", old_name, input));
+                        schedule_refresh_with_prompt(cx, root.clone());
+                    }
+                    Err(e) => {
+                        cx.editor.set_error(format!("Failed to rename: {}", e));
+                    }
+                }
+            },
+        )
+        .with_line(old_name_for_prompt, ctx.editor);
+
+        EventResult::Consumed(Some(Box::new(move |compositor: &mut Compositor, _cx: &mut Context| {
+            compositor.push(Box::new(prompt));
+        })))
+    }
+
+    /// Handle 'm' key - move file/directory to new location
+    fn handle_move(&mut self, ctx: &mut Context) -> EventResult {
+        let Some((path, is_dir)) = self.selected_path().cloned() else {
+            ctx.editor.set_error("No file selected");
+            return EventResult::Consumed(None);
+        };
+
+        // Don't allow moving ".."
+        if path.file_name().map(|n| n == "..").unwrap_or(false) {
+            ctx.editor.set_error("Cannot move parent directory reference");
+            return EventResult::Consumed(None);
+        }
+
+        let root = self.root.clone();
+        let file_name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        let prompt = Prompt::new(
+            "move to: ".into(),
+            None,
+            ui::completers::directory,
+            move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
+
+                if input.is_empty() {
+                    return;
+                }
+
+                // Expand ~ and resolve path
+                let dest_dir = helix_stdx::path::expand_tilde(Path::new(input));
+                let dest_path = if dest_dir.is_dir() {
+                    dest_dir.join(&file_name)
+                } else {
+                    dest_dir.to_path_buf()
+                };
+
+                // Create parent directories if needed
+                if let Some(parent) = dest_path.parent() {
+                    if !parent.exists() {
+                        if let Err(e) = std::fs::create_dir_all(parent) {
+                            cx.editor.set_error(format!("Failed to create directories: {}", e));
+                            return;
+                        }
+                    }
+                }
+
+                // Check if destination exists
+                if dest_path.exists() {
+                    cx.editor.set_error(format!("'{}' already exists", dest_path.display()));
+                    return;
+                }
+
+                match std::fs::rename(&path, &dest_path) {
+                    Ok(_) => {
+                        let verb = if is_dir { "Moved directory" } else { "Moved" };
+                        cx.editor.set_status(format!("{}: {} -> {}", verb, path.display(), dest_path.display()));
+                        schedule_refresh_with_prompt(cx, root.clone());
+                    }
+                    Err(e) => {
+                        // Cross-device move: try copy + delete
+                        if e.raw_os_error() == Some(18) {
+                            // EXDEV
+                            if is_dir {
+                                match copy_dir_recursive(&path, &dest_path) {
+                                    Ok(_) => {
+                                        if let Err(del_err) = std::fs::remove_dir_all(&path) {
+                                            cx.editor.set_error(format!(
+                                                "Copied but failed to remove source: {}",
+                                                del_err
+                                            ));
+                                            return;
+                                        }
+                                        cx.editor.set_status(format!(
+                                            "Moved directory: {} -> {}",
+                                            path.display(),
+                                            dest_path.display()
+                                        ));
+                                        schedule_refresh_with_prompt(cx, root.clone());
+                                    }
+                                    Err(copy_err) => {
+                                        cx.editor.set_error(format!("Failed to move: {}", copy_err));
+                                    }
+                                }
+                            } else {
+                                match std::fs::copy(&path, &dest_path) {
+                                    Ok(_) => {
+                                        if let Err(del_err) = std::fs::remove_file(&path) {
+                                            cx.editor.set_error(format!(
+                                                "Copied but failed to remove source: {}",
+                                                del_err
+                                            ));
+                                            return;
+                                        }
+                                        cx.editor.set_status(format!(
+                                            "Moved: {} -> {}",
+                                            path.display(),
+                                            dest_path.display()
+                                        ));
+                                        schedule_refresh_with_prompt(cx, root.clone());
+                                    }
+                                    Err(copy_err) => {
+                                        cx.editor.set_error(format!("Failed to move: {}", copy_err));
+                                    }
+                                }
+                            }
+                        } else {
+                            cx.editor.set_error(format!("Failed to move: {}", e));
+                        }
+                    }
+                }
+            },
+        );
+
+        EventResult::Consumed(Some(Box::new(move |compositor: &mut Compositor, _cx: &mut Context| {
+            compositor.push(Box::new(prompt));
+        })))
     }
 
     /// Handle 'p' key - paste from clipboard
@@ -224,6 +441,7 @@ impl FileExplorer {
         let root = self.root.clone();
         let src_path = entry.path.clone();
         let is_dir = src_path.is_dir();
+        let operation = entry.operation;
 
         // Check if destination already exists
         if dest_path.exists() {
@@ -244,7 +462,7 @@ impl FileExplorer {
                         return;
                     }
 
-                    perform_copy_with_prompt(cx, &src_path, &dest_path, is_dir, &root);
+                    perform_paste_with_prompt(cx, &src_path, &dest_path, is_dir, operation, &root);
                 },
             );
 
@@ -252,7 +470,7 @@ impl FileExplorer {
                 compositor.push(Box::new(prompt));
             })))
         } else {
-            perform_copy_no_prompt(ctx, &src_path, &dest_path, is_dir, &root);
+            perform_paste_no_prompt(ctx, &src_path, &dest_path, is_dir, operation, &root);
             EventResult::Consumed(None)
         }
     }
@@ -269,7 +487,10 @@ impl Component for FileExplorer {
         match key_event {
             key!('a') => self.handle_create(ctx),
             key!('d') => self.handle_delete(ctx),
+            key!('r') => self.handle_rename(ctx),
+            key!('m') => self.handle_move(ctx),
             key!('y') => self.handle_yank(ctx),
+            key!('x') => self.handle_cut(ctx),
             key!('p') => self.handle_paste(ctx),
             // Delegate all other keys to the picker
             _ => self.picker.handle_event(event, ctx),
@@ -329,60 +550,122 @@ fn schedule_refresh_no_prompt(cx: &mut Context, root: PathBuf) {
     cx.jobs.callback(callback);
 }
 
-/// Perform copy operation and refresh (called from prompt)
-fn perform_copy_with_prompt(
+/// Perform paste operation and refresh (called from prompt)
+fn perform_paste_with_prompt(
     cx: &mut compositor::Context,
     src: &Path,
     dest: &Path,
     is_dir: bool,
+    operation: ClipboardOperation,
     root: &Path,
 ) {
-    let result = if is_dir {
-        copy_dir_recursive(src, dest)
-    } else {
-        std::fs::copy(src, dest).map(|_| ())
+    let (result, verb) = match operation {
+        ClipboardOperation::Copy => {
+            let res = if is_dir {
+                copy_dir_recursive(src, dest)
+            } else {
+                std::fs::copy(src, dest).map(|_| ())
+            };
+            (res, "Copied")
+        }
+        ClipboardOperation::Cut => {
+            // Try rename first (fast path for same filesystem)
+            let res = std::fs::rename(src, dest).or_else(|e| {
+                // Cross-device: copy then delete
+                if e.raw_os_error() == Some(18) {
+                    if is_dir {
+                        copy_dir_recursive(src, dest)?;
+                        std::fs::remove_dir_all(src)
+                    } else {
+                        std::fs::copy(src, dest)?;
+                        std::fs::remove_file(src)
+                    }
+                } else {
+                    Err(e)
+                }
+            });
+            // Clear clipboard after successful cut
+            if res.is_ok() {
+                if let Ok(mut clipboard) = get_clipboard().lock() {
+                    *clipboard = None;
+                }
+            }
+            (res, "Moved")
+        }
     };
 
     match result {
         Ok(_) => {
             cx.editor.set_status(format!(
-                "Copied: {} -> {}",
+                "{}: {} -> {}",
+                verb,
                 src.display(),
                 dest.display()
             ));
             schedule_refresh_with_prompt(cx, root.to_path_buf());
         }
         Err(e) => {
-            cx.editor.set_error(format!("Failed to copy: {}", e));
+            cx.editor.set_error(format!("Failed to paste: {}", e));
         }
     }
 }
 
-/// Perform copy operation and refresh (no prompt)
-fn perform_copy_no_prompt(
+/// Perform paste operation and refresh (no prompt)
+fn perform_paste_no_prompt(
     cx: &mut Context,
     src: &Path,
     dest: &Path,
     is_dir: bool,
+    operation: ClipboardOperation,
     root: &Path,
 ) {
-    let result = if is_dir {
-        copy_dir_recursive(src, dest)
-    } else {
-        std::fs::copy(src, dest).map(|_| ())
+    let (result, verb) = match operation {
+        ClipboardOperation::Copy => {
+            let res = if is_dir {
+                copy_dir_recursive(src, dest)
+            } else {
+                std::fs::copy(src, dest).map(|_| ())
+            };
+            (res, "Copied")
+        }
+        ClipboardOperation::Cut => {
+            // Try rename first (fast path for same filesystem)
+            let res = std::fs::rename(src, dest).or_else(|e| {
+                // Cross-device: copy then delete
+                if e.raw_os_error() == Some(18) {
+                    if is_dir {
+                        copy_dir_recursive(src, dest)?;
+                        std::fs::remove_dir_all(src)
+                    } else {
+                        std::fs::copy(src, dest)?;
+                        std::fs::remove_file(src)
+                    }
+                } else {
+                    Err(e)
+                }
+            });
+            // Clear clipboard after successful cut
+            if res.is_ok() {
+                if let Ok(mut clipboard) = get_clipboard().lock() {
+                    *clipboard = None;
+                }
+            }
+            (res, "Moved")
+        }
     };
 
     match result {
         Ok(_) => {
             cx.editor.set_status(format!(
-                "Copied: {} -> {}",
+                "{}: {} -> {}",
+                verb,
                 src.display(),
                 dest.display()
             ));
             schedule_refresh_no_prompt(cx, root.to_path_buf());
         }
         Err(e) => {
-            cx.editor.set_error(format!("Failed to copy: {}", e));
+            cx.editor.set_error(format!("Failed to paste: {}", e));
         }
     }
 }
@@ -581,7 +864,7 @@ mod tests {
     }
 
     #[test]
-    fn test_clipboard_operations() {
+    fn test_clipboard_copy_operation() {
         // Clear clipboard first
         if let Ok(mut clipboard) = get_clipboard().lock() {
             *clipboard = None;
@@ -591,18 +874,40 @@ mod tests {
         let entry = get_clipboard().lock().ok().and_then(|g| g.clone());
         assert!(entry.is_none());
 
-        // Set clipboard
+        // Set clipboard with Copy operation
         let test_path = PathBuf::from("/test/path.txt");
         if let Ok(mut clipboard) = get_clipboard().lock() {
             *clipboard = Some(ClipboardEntry {
                 path: test_path.clone(),
+                operation: ClipboardOperation::Copy,
             });
         }
 
         // Verify set
         let entry = get_clipboard().lock().ok().and_then(|g| g.clone());
         assert!(entry.is_some());
-        assert_eq!(entry.unwrap().path, test_path);
+        let entry = entry.unwrap();
+        assert_eq!(entry.path, test_path);
+        assert_eq!(entry.operation, ClipboardOperation::Copy);
+    }
+
+    #[test]
+    fn test_clipboard_cut_operation() {
+        // Set clipboard with Cut operation
+        let test_path = PathBuf::from("/test/cut_path.txt");
+        if let Ok(mut clipboard) = get_clipboard().lock() {
+            *clipboard = Some(ClipboardEntry {
+                path: test_path.clone(),
+                operation: ClipboardOperation::Cut,
+            });
+        }
+
+        // Verify set
+        let entry = get_clipboard().lock().ok().and_then(|g| g.clone());
+        assert!(entry.is_some());
+        let entry = entry.unwrap();
+        assert_eq!(entry.path, test_path);
+        assert_eq!(entry.operation, ClipboardOperation::Cut);
     }
 
     #[test]
