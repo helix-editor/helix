@@ -104,7 +104,12 @@ fn setup_integration_logging() {
 }
 
 impl Application {
-    pub fn new(args: Args, config: Config, lang_loader: syntax::Loader) -> Result<Self, Error> {
+    pub fn new(
+        args: Args,
+        config: Config,
+        lang_loader: syntax::Loader,
+        workspace_trust: helix_loader::trust::WorkspaceTrust,
+    ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
@@ -138,6 +143,11 @@ impl Application {
             })),
             handlers,
         );
+
+        // Set workspace trust state
+        let show_trust_prompt = workspace_trust.is_pending();
+        editor.workspace_trust = workspace_trust;
+
         Self::load_configured_theme(
             &mut editor,
             &config.load(),
@@ -242,6 +252,50 @@ impl Application {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+        }
+
+        // Show trust prompt if the workspace trust is pending
+        if show_trust_prompt {
+            let workspace_path = editor.workspace_trust.workspace_path.clone();
+            let trust_prompt = ui::TrustPrompt::new(
+                workspace_path,
+                |_compositor, editor, decision| {
+                    use helix_loader::trust::{set_workspace_trust, TrustLevel, TrustProfile};
+                    use ui::TrustDecision;
+
+                    match decision {
+                        TrustDecision::Trust => {
+                            // Persist trust decision
+                            let _ = set_workspace_trust(
+                                &editor.workspace_trust.workspace_path,
+                                TrustLevel::Trusted,
+                            );
+                            // Update runtime state
+                            editor.workspace_trust.trust_level = TrustLevel::Trusted;
+                            editor.workspace_trust.profile = TrustProfile::trusted();
+                            editor.set_status(
+                                "Workspace trusted. Restart Helix to load workspace configuration.",
+                            );
+                        }
+                        TrustDecision::Untrust => {
+                            // Persist untrust decision
+                            let _ = set_workspace_trust(
+                                &editor.workspace_trust.workspace_path,
+                                TrustLevel::Untrusted,
+                            );
+                            // Update runtime state (already untrusted by default)
+                            editor.workspace_trust.trust_level = TrustLevel::Untrusted;
+                            editor.set_status("Workspace not trusted.");
+                        }
+                        TrustDecision::Cancel => {
+                            // Session-only untrust, don't persist
+                            // Trust level remains Unknown but treated as untrusted
+                            editor.set_status("Trust prompt dismissed. Workspace treated as untrusted for this session.");
+                        }
+                    }
+                },
+            );
+            compositor.push(Box::new(trust_prompt));
         }
 
         #[cfg(windows)]

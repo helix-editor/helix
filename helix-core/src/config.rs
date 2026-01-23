@@ -43,8 +43,16 @@ pub fn user_lang_config() -> Result<Configuration, toml::de::Error> {
 
 /// Language configuration loader based on user configured languages.toml.
 pub fn user_lang_loader() -> Result<Loader, LanguageLoaderError> {
-    let config_val =
-        helix_loader::config::user_lang_config().map_err(LanguageLoaderError::DeserializeError)?;
+    user_lang_loader_trusted(true)
+}
+
+/// Language configuration loader with optional workspace config.
+///
+/// If `include_workspace` is false, only the global user config is loaded,
+/// ignoring any `.helix/languages.toml` in the workspace.
+pub fn user_lang_loader_trusted(include_workspace: bool) -> Result<Loader, LanguageLoaderError> {
+    let config_val = helix_loader::config::user_lang_config_trusted(include_workspace)
+        .map_err(LanguageLoaderError::DeserializeError)?;
     let config = config_val.clone().try_into().map_err(|e| {
         if let Some(languages) = config_val.get("language").and_then(|v| v.as_array()) {
             for lang in languages.iter() {

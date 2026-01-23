@@ -21,6 +21,7 @@
   - [Helix mode in other software](./other-software.md)
 - [Configuration](./configuration.md)
   - [Editor](./editor.md)
+  - [Workspace Trust](./workspace-trust.md)
   - [Themes](./themes.md)
   - [Key remapping](./remapping.md)
   - [Languages](./languages.md)

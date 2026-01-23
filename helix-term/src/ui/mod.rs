@@ -13,6 +13,7 @@ mod spinner;
 mod statusline;
 mod text;
 mod text_decorations;
+pub mod trust_prompt;
 
 use crate::compositor::Compositor;
 use crate::filter_picker_entry;
@@ -28,6 +29,7 @@ pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
+pub use trust_prompt::{TrustDecision, TrustPrompt};
 
 use helix_view::Editor;
 use tui::text::{Span, Spans};

@@ -22,6 +22,7 @@
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
 - [`[editor.word-completion]` Section](#editorword-completion-section)
+- [`[editor.trust]` Section](#editortrust-section)
 
 ### `[editor]` Section
 
@@ -525,4 +526,91 @@ Example:
 enable = true
 # Set the trigger length lower so that words are completed more often
 trigger-length = 4
+```
+
+### `[editor.trust]` Section
+
+Workspace trust settings control what features are enabled when opening workspaces. See the [Workspace Trust](./workspace-trust.md) page for full documentation.
+
+| Key | Description | Default |
+|--|--|---------|
+| `default` | Default behavior for unknown workspaces: `"prompt"`, `"trust"`, or `"untrust"` | `"prompt"` |
+
+#### `[editor.trust.trusted]` Section
+
+Permissions granted to trusted workspaces.
+
+| Key | Description | Default |
+|--|--|---------|
+| `lsp` | Enable Language Server Protocol | `true` |
+| `dap` | Enable Debug Adapter Protocol | `true` |
+| `shell-commands` | Enable shell command execution (`:sh`, `:pipe`, etc.) | `true` |
+| `workspace-config` | Load workspace `.helix/config.toml` and `.helix/languages.toml` | `true` |
+
+#### `[editor.trust.untrusted]` Section
+
+Permissions granted to untrusted workspaces.
+
+| Key | Description | Default |
+|--|--|---------|
+| `lsp` | Enable Language Server Protocol | `false` |
+| `dap` | Enable Debug Adapter Protocol | `false` |
+| `shell-commands` | Enable shell command execution | `false` |
+| `workspace-config` | Load workspace configuration | `false` |
+
+#### `[[editor.trust.workspaces]]` Section
+
+Per-workspace permission overrides. Each entry specifies a workspace path and its allowed features.
+
+**Path inheritance**: Overrides apply to the specified path and all subdirectories. More specific paths take precedence over parent paths.
+
+| Key | Description | Default |
+|--|--|---------|
+| `path` | Path to the workspace (supports `~` expansion). Applies to this path and all children. | Required |
+| `lsp` | Enable LSP for this workspace | - |
+| `dap` | Enable DAP for this workspace | - |
+| `shell-commands` | Enable shell commands for this workspace | - |
+| `workspace-config` | Load workspace config for this workspace | - |
+
+Example:
+
+```toml
+[editor.trust]
+default = "prompt"
+
+[editor.trust.trusted]
+lsp = true
+dap = true
+shell-commands = true
+workspace-config = true
+
+[editor.trust.untrusted]
+lsp = false
+dap = false
+shell-commands = false
+workspace-config = false
+
+# Trust all projects in ~/work/ (applies to all subdirectories)
+[[editor.trust.workspaces]]
+path = "~/work"
+lsp = true
+dap = true
+shell-commands = true
+workspace-config = true
+
+# Override: disable DAP for a specific project within ~/work/
+[[editor.trust.workspaces]]
+path = "~/work/legacy-project"
+lsp = true
+dap = false
+shell-commands = false
+workspace-config = false
+
+# Restrict all downloaded repos
+[[editor.trust.workspaces]]
+path = "~/downloads"
+lsp = false
+dap = false
+shell-commands = false
+workspace-config = false
 ```

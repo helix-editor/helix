@@ -118,10 +118,25 @@ impl Config {
     }
 
     pub fn load_default() -> Result<Config, ConfigLoadError> {
+        Self::load_default_trusted(true)
+    }
+
+    /// Load config with optional workspace config.
+    ///
+    /// If `include_workspace` is false, only the global config is loaded,
+    /// ignoring any `.helix/config.toml` in the workspace.
+    pub fn load_default_trusted(include_workspace: bool) -> Result<Config, ConfigLoadError> {
         let global_config =
             fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
-        let local_config = fs::read_to_string(helix_loader::workspace_config_file())
-            .map_err(ConfigLoadError::Error);
+        let local_config = if include_workspace {
+            fs::read_to_string(helix_loader::workspace_config_file())
+                .map_err(ConfigLoadError::Error)
+        } else {
+            Err(ConfigLoadError::Error(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "workspace config disabled due to trust settings",
+            )))
+        };
         Config::load(global_config, local_config)
     }
 }

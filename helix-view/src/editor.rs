@@ -374,6 +374,9 @@ pub struct Config {
     #[serde(default)]
     pub search: SearchConfig,
     pub lsp: LspConfig,
+    /// Workspace trust configuration.
+    #[serde(default)]
+    pub trust: helix_loader::trust::TrustConfig,
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
@@ -1116,6 +1119,7 @@ impl Default for Config {
             undercurl: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
+            trust: helix_loader::trust::TrustConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
@@ -1219,6 +1223,8 @@ pub struct Editor {
     pub autoinfo: Option<Info>,
 
     pub config: Arc<dyn DynAccess<Config>>,
+    /// Workspace trust state for the current workspace.
+    pub workspace_trust: helix_loader::trust::WorkspaceTrust,
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
@@ -1361,6 +1367,7 @@ impl Editor {
             last_completion: None,
             last_cwd: None,
             config,
+            workspace_trust: helix_loader::trust::WorkspaceTrust::default(),
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
@@ -1622,6 +1629,11 @@ impl Editor {
     /// Launch a language server for a given document
     fn launch_language_servers(&mut self, doc_id: DocumentId) {
         if !self.config().lsp.enable {
+            return;
+        }
+        // Check workspace trust - LSP is disabled in untrusted workspaces
+        if !self.workspace_trust.lsp_allowed() {
+            log::debug!("LSP disabled: workspace not trusted");
             return;
         }
         // if doc doesn't have a URL it's a scratch buffer, ignore it

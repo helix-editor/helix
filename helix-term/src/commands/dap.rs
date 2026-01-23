@@ -119,6 +119,11 @@ pub fn dap_start_impl(
     socket: Option<std::net::SocketAddr>,
     params: Option<Vec<std::borrow::Cow<str>>>,
 ) -> Result<(), anyhow::Error> {
+    // Check workspace trust - DAP is disabled in untrusted workspaces
+    if !cx.editor.workspace_trust.dap_allowed() {
+        anyhow::bail!("DAP disabled: workspace not trusted. Use :trust to enable.");
+    }
+
     let doc = doc!(cx.editor);
     let config = doc
         .language_config()
@@ -229,6 +234,13 @@ pub fn dap_start_impl(
 }
 
 pub fn dap_launch(cx: &mut Context) {
+    // Check workspace trust - DAP is disabled in untrusted workspaces
+    if !cx.editor.workspace_trust.dap_allowed() {
+        cx.editor
+            .set_error("DAP disabled: workspace not trusted. Use :trust to enable.");
+        return;
+    }
+
     // TODO: Now that we support multiple Clients, we could run multiple debuggers at once but for now keep this as is
     if cx.editor.debug_adapters.get_active_client().is_some() {
         cx.editor.set_error("Debugger is already running");

@@ -2482,6 +2482,11 @@ fn run_shell_command(
         return Ok(());
     }
 
+    // Check workspace trust - shell commands are disabled in untrusted workspaces
+    if !cx.editor.workspace_trust.shell_allowed() {
+        bail!("Shell commands disabled: workspace not trusted. Use :trust to enable.");
+    }
+
     let shell = cx.editor.config().shell.clone();
     let args = args.join(" ");
 
@@ -2725,6 +2730,72 @@ fn echo(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
 }
 
 fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyhow::Result<()> {
+    Ok(())
+}
+
+fn trust_workspace(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let workspace_path = cx.editor.workspace_trust.workspace_path.clone();
+
+    // Update the trust level
+    if let Err(e) = helix_loader::trust::set_workspace_trust(
+        &workspace_path,
+        helix_loader::trust::TrustLevel::Trusted,
+    ) {
+        cx.editor
+            .set_error(format!("Failed to save trust decision: {}", e));
+        return Ok(());
+    }
+
+    // Update runtime state
+    cx.editor.workspace_trust.trust_level = helix_loader::trust::TrustLevel::Trusted;
+    cx.editor.workspace_trust.profile = cx.editor.config().trust.trusted.clone();
+
+    cx.editor.set_status(format!(
+        "Workspace trusted: {}. Restart Helix to load workspace configuration.",
+        workspace_path.display()
+    ));
+
+    Ok(())
+}
+
+fn untrust_workspace(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let workspace_path = cx.editor.workspace_trust.workspace_path.clone();
+
+    // Update the trust level
+    if let Err(e) = helix_loader::trust::set_workspace_trust(
+        &workspace_path,
+        helix_loader::trust::TrustLevel::Untrusted,
+    ) {
+        cx.editor
+            .set_error(format!("Failed to save trust decision: {}", e));
+        return Ok(());
+    }
+
+    // Update runtime state
+    cx.editor.workspace_trust.trust_level = helix_loader::trust::TrustLevel::Untrusted;
+    cx.editor.workspace_trust.profile = cx.editor.config().trust.untrusted.clone();
+
+    cx.editor.set_status(format!(
+        "Workspace untrusted: {}. LSP and shell commands are now disabled.",
+        workspace_path.display()
+    ));
+
     Ok(())
 }
 
@@ -3775,6 +3846,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (1, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "trust",
+        aliases: &[],
+        doc: "Trust the current workspace, enabling LSP and shell commands.",
+        fun: trust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "untrust",
+        aliases: &[],
+        doc: "Untrust the current workspace, disabling LSP and shell commands.",
+        fun: untrust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
     },

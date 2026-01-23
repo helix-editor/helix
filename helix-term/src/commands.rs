@@ -6431,6 +6431,12 @@ async fn shell_impl_async(
 }
 
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
+    // Check workspace trust - shell commands are disabled in untrusted workspaces
+    if !cx.editor.workspace_trust.shell_allowed() {
+        cx.editor.set_error("Shell commands disabled: workspace not trusted. Use :trust to enable.");
+        return;
+    }
+
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,

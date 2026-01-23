@@ -74,6 +74,8 @@ FLAGS:
     -V, --version                  Print version information
     --vsplit                       Split all given files vertically into different windows
     --hsplit                       Split all given files horizontally into different windows
+    --trust                        Trust the workspace (enable LSP, shell commands, workspace config)
+    --untrust                      Don't trust the workspace (disable dangerous features)
     -w, --working-dir <path>       Specify an initial working directory
     +[N]                           Open the first given file at line number N, or the last line, if
                                    N is not specified.
@@ -125,7 +127,22 @@ FLAGS:
         helix_stdx::env::set_current_working_dir(path)?;
     }
 
-    let config = match Config::load_default() {
+    // Determine workspace and trust status BEFORE loading config
+    let (workspace_path, _) = helix_loader::find_workspace();
+    // Canonicalize once to resolve symlinks - reuse this for all trust operations
+    let workspace_path = std::fs::canonicalize(&workspace_path).unwrap_or(workspace_path);
+    let cli_trust_override = args.trust_workspace;
+
+    // Determine trust level: CLI flag > persisted store > default
+    let trust_level = match cli_trust_override {
+        Some(true) => helix_loader::trust::TrustLevel::Trusted,
+        Some(false) => helix_loader::trust::TrustLevel::Untrusted,
+        None => helix_loader::trust::get_workspace_trust(&workspace_path),
+    };
+
+    // Load global config first to get trust settings
+    // We always load global config; workspace config depends on trust
+    let global_config = match Config::load_default_trusted(false) {
         Ok(config) => config,
         Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
             Config::default()
@@ -140,17 +157,63 @@ FLAGS:
         }
     };
 
-    let lang_loader = helix_core::config::user_lang_loader().unwrap_or_else(|err| {
-        eprintln!("{}", err);
-        eprintln!("Press <ENTER> to continue with default language config");
-        use std::io::Read;
-        // This waits for an enter press.
-        let _ = std::io::stdin().read(&mut []);
-        helix_core::config::default_lang_loader()
-    });
+    // Resolve the trust profile based on config and trust level
+    let trust_config = &global_config.editor.trust;
+    let effective_trust_level = if trust_level == helix_loader::trust::TrustLevel::Unknown {
+        // Apply default behavior from config
+        match trust_config.default {
+            helix_loader::trust::TrustDefault::Trust => helix_loader::trust::TrustLevel::Trusted,
+            helix_loader::trust::TrustDefault::Untrust => helix_loader::trust::TrustLevel::Untrusted,
+            helix_loader::trust::TrustDefault::Prompt => helix_loader::trust::TrustLevel::Unknown, // Will prompt
+        }
+    } else {
+        trust_level
+    };
+
+    let trust_profile = trust_config.resolve_profile(&workspace_path, effective_trust_level);
+    let workspace_config_allowed = trust_profile.workspace_config;
+
+    // Now load the full config with workspace config if allowed
+    let config = if workspace_config_allowed {
+        match Config::load_default_trusted(true) {
+            Ok(config) => config,
+            Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
+                global_config
+            }
+            Err(ConfigLoadError::Error(err)) => return Err(Error::new(err)),
+            Err(ConfigLoadError::BadConfig(err)) => {
+                eprintln!("Bad workspace config: {}", err);
+                eprintln!("Press <ENTER> to continue with global config");
+                use std::io::Read;
+                let _ = std::io::stdin().read(&mut []);
+                global_config
+            }
+        }
+    } else {
+        global_config
+    };
+
+    // Create workspace trust state
+    let workspace_trust = helix_loader::trust::WorkspaceTrust::new(
+        workspace_path,
+        effective_trust_level,
+        cli_trust_override.is_some(),
+        trust_profile,
+    );
+
+    let lang_loader = helix_core::config::user_lang_loader_trusted(workspace_config_allowed)
+        .unwrap_or_else(|err| {
+            eprintln!("{}", err);
+            eprintln!("Press <ENTER> to continue with default language config");
+            use std::io::Read;
+            // This waits for an enter press.
+            let _ = std::io::stdin().read(&mut []);
+            helix_core::config::default_lang_loader()
+        });
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config, lang_loader).context("unable to start Helix")?;
+    let mut app =
+        Application::new(args, config, lang_loader, workspace_trust).context("unable to start Helix")?;
     let mut events = app.event_stream();
 
     let exit_code = app.run(&mut events).await?;

@@ -1,5 +1,6 @@
 pub mod config;
 pub mod grammar;
+pub mod trust;
 
 use helix_stdx::{env::current_working_dir, path};
 

@@ -19,6 +19,8 @@ pub struct Args {
     pub config_file: Option<PathBuf>,
     pub files: IndexMap<PathBuf, Vec<Position>>,
     pub working_directory: Option<PathBuf>,
+    /// Workspace trust override: Some(true) = --trust, Some(false) = --untrust, None = check store
+    pub trust_workspace: Option<bool>,
 }
 
 impl Args {
@@ -59,6 +61,8 @@ impl Args {
                     args.health = true;
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
                 }
+                "--trust" => args.trust_workspace = Some(true),
+                "--untrust" => args.trust_workspace = Some(false),
                 "-g" | "--grammar" => match argv.next().as_deref() {
                     Some("fetch") => args.fetch_grammars = true,
                     Some("build") => args.build_grammars = true,
