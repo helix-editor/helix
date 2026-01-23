@@ -161,6 +161,9 @@ impl BracketPair {
 
     /// Check if this pair should auto-close at the given position.
     pub fn should_close(&self, doc: &Rope, range: &Range) -> bool {
+        if self.kind == BracketKind::Delimiter {
+            return true;
+        }
         Self::next_is_not_alpha(doc, range) && (!self.same() || Self::prev_is_not_alpha(doc, range))
     }
 
@@ -380,9 +383,7 @@ pub fn detect_open_at<'a>(
         }
         let open_len = pair.open_len();
 
-        // If next char is the same as what we typed, filter out multi-char
-        // symmetric pairs - let single-char pair handle skip logic.
-        // But keep single-char pairs for skip behavior.
+        // Filter multi-char pairs when next char matches typed char (let single-char handle skip).
         if open_len > 1 && next_char == Some(last_typed) {
             return false;
         }
@@ -853,7 +854,11 @@ pub fn hook_with_syntax(
         .map(|range| {
             let cursor = range.cursor(doc.slice(..));
             syntax
-                .map(|syn| lang_data.bracket_context_at(syn.tree(), doc.slice(..), cursor, loader))
+                .map(|syn| {
+                    let cursor_byte = doc.slice(..).char_to_byte(cursor) as u32;
+                    let tree = syn.tree_for_byte_range(cursor_byte, cursor_byte);
+                    lang_data.bracket_context_at(tree, doc.slice(..), cursor, loader)
+                })
                 .unwrap_or(BracketContext::Code)
         })
         .collect();
@@ -2477,5 +2482,129 @@ mod tests {
         cursor_pos = new_sel.primary().cursor(doc.slice(..));
         assert_eq!(doc.to_string(), "\"\"\"\"\"\"\n");
         assert_eq!(cursor_pos, 6);
+    }
+
+    #[test]
+    fn test_overlapping_backticks_for_markdown() {
+        // Test that single backtick and triple backtick work together like quotes
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("`", "`").with_kind(BracketKind::Quote),
+            BracketPair::new("```", "```").with_kind(BracketKind::Delimiter),
+        ]);
+
+        let mut doc = Rope::from("\n");
+        let mut cursor_pos = 0;
+
+        // Step 1: | -> `|`
+        let selection = Selection::single(cursor_pos, cursor_pos + 1);
+        let result = hook_multi(&doc, &selection, '`', &pairs).unwrap();
+        let new_sel = result.selection().unwrap();
+        result.apply(&mut doc);
+        cursor_pos = new_sel.primary().cursor(doc.slice(..));
+        assert_eq!(doc.to_string(), "``\n");
+        assert_eq!(cursor_pos, 1);
+
+        // Step 2: `|` -> ``|
+        let selection = Selection::single(cursor_pos, cursor_pos + 1);
+        let result = hook_multi(&doc, &selection, '`', &pairs).unwrap();
+        let new_sel = result.selection().unwrap();
+        result.apply(&mut doc);
+        cursor_pos = new_sel.primary().cursor(doc.slice(..));
+        assert_eq!(doc.to_string(), "``\n");
+        assert_eq!(cursor_pos, 2);
+
+        // Step 3: ``| -> ```|```
+        let selection = Selection::single(cursor_pos, cursor_pos + 1);
+        let result = hook_multi(&doc, &selection, '`', &pairs).unwrap();
+        let new_sel = result.selection().unwrap();
+        result.apply(&mut doc);
+        cursor_pos = new_sel.primary().cursor(doc.slice(..));
+        assert_eq!(doc.to_string(), "``````\n");
+        assert_eq!(cursor_pos, 3);
+    }
+
+    #[test]
+    fn test_overlapping_backticks_with_context() {
+        // Test using hook_with_context path (like hook_with_syntax uses)
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("`", "`").with_kind(BracketKind::Quote),
+            BracketPair::new("```", "```").with_kind(BracketKind::Delimiter),
+        ]);
+
+        let mut doc = Rope::from("\n");
+        let mut cursor_pos = 0;
+
+        // Step 1: | -> `|`
+        let selection = Selection::single(cursor_pos, cursor_pos + 1);
+        let contexts: SmallVec<[BracketContext; 4]> = smallvec::smallvec![BracketContext::Code];
+        let state = AutoPairState::with_contexts(&doc, &selection, &pairs, &contexts);
+        let result = hook_with_context(&state, '`').unwrap();
+        let new_sel = result.selection().unwrap();
+        result.apply(&mut doc);
+        cursor_pos = new_sel.primary().cursor(doc.slice(..));
+        assert_eq!(doc.to_string(), "``\n");
+        assert_eq!(cursor_pos, 1);
+
+        // Step 2: `|` -> ``|
+        let selection = Selection::single(cursor_pos, cursor_pos + 1);
+        let contexts: SmallVec<[BracketContext; 4]> = smallvec::smallvec![BracketContext::Code];
+        let state = AutoPairState::with_contexts(&doc, &selection, &pairs, &contexts);
+        let result = hook_with_context(&state, '`').unwrap();
+        let new_sel = result.selection().unwrap();
+        result.apply(&mut doc);
+        cursor_pos = new_sel.primary().cursor(doc.slice(..));
+        assert_eq!(doc.to_string(), "``\n");
+        assert_eq!(cursor_pos, 2);
+
+        // Step 3: ``| -> ```|```
+        let selection = Selection::single(cursor_pos, cursor_pos + 1);
+        let contexts: SmallVec<[BracketContext; 4]> = smallvec::smallvec![BracketContext::Code];
+        let state = AutoPairState::with_contexts(&doc, &selection, &pairs, &contexts);
+        let result = hook_with_context(&state, '`').unwrap();
+        let new_sel = result.selection().unwrap();
+        result.apply(&mut doc);
+        cursor_pos = new_sel.primary().cursor(doc.slice(..));
+        assert_eq!(doc.to_string(), "``````\n");
+        assert_eq!(cursor_pos, 3);
+    }
+
+    #[test]
+    fn test_triple_backtick_with_text_after() {
+        // Test typing ``` when there's text after the cursor (like "for other...")
+        // This is the case: //! |for other... -> //! ```|```for other...
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("`", "`").with_kind(BracketKind::Delimiter),
+            BracketPair::new("```", "```").with_kind(BracketKind::Delimiter),
+        ]);
+
+        let mut doc = Rope::from("for other\n");
+        let mut cursor_pos = 0; // cursor before 'f'
+
+        // Step 1: |for -> `|`for
+        let selection = Selection::single(cursor_pos, cursor_pos + 1);
+        let result = hook_multi(&doc, &selection, '`', &pairs).unwrap();
+        let new_sel = result.selection().unwrap();
+        result.apply(&mut doc);
+        cursor_pos = new_sel.primary().cursor(doc.slice(..));
+        assert_eq!(doc.to_string(), "``for other\n");
+        assert_eq!(cursor_pos, 1); // between the two backticks
+
+        // Step 2: `|`for -> ``|for (skip over close)
+        let selection = Selection::single(cursor_pos, cursor_pos + 1);
+        let result = hook_multi(&doc, &selection, '`', &pairs).unwrap();
+        let new_sel = result.selection().unwrap();
+        result.apply(&mut doc);
+        cursor_pos = new_sel.primary().cursor(doc.slice(..));
+        assert_eq!(doc.to_string(), "``for other\n");
+        assert_eq!(cursor_pos, 2); // after both backticks
+
+        // Step 3: ``|for -> ```|```for (upgrade to triple)
+        let selection = Selection::single(cursor_pos, cursor_pos + 1);
+        let result = hook_multi(&doc, &selection, '`', &pairs).unwrap();
+        let new_sel = result.selection().unwrap();
+        result.apply(&mut doc);
+        cursor_pos = new_sel.primary().cursor(doc.slice(..));
+        assert_eq!(doc.to_string(), "``````for other\n");
+        assert_eq!(cursor_pos, 3); // after ``` open, before ``` close
     }
 }

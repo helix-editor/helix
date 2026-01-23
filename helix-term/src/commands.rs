@@ -4180,8 +4180,16 @@ pub mod insert {
         let transaction = bracket_set
             .and_then(|bs| {
                 let syntax = doc.syntax();
-                let lang_data = syntax
-                    .map(|syn| loader.language(syn.root_language()))
+                let layer_language = syntax.map(|syn| {
+                    let primary = selection.primary();
+                    let cursor = primary.cursor(text.slice(..));
+                    let cursor_byte = text.slice(..).char_to_byte(cursor) as u32;
+                    let layer = syn.layer_for_byte_range(cursor_byte, cursor_byte);
+                    syn.layer(layer).language
+                });
+
+                let lang_data = layer_language
+                    .map(|lang| loader.language(lang))
                     .or_else(|| {
                         doc.language_name()
                             .and_then(|name| loader.language_for_name(name))

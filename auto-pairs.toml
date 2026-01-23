@@ -526,7 +526,37 @@ pairs = [
   { open = "[", close = "]" },
   { open = "\"", close = "\"", kind = "quote" },
   { open = "'", close = "'", kind = "quote" },
-  { open = "`", close = "`", kind = "quote" },
+  { open = "`", close = "`", kind = "delimiter" },
+  { open = "**", close = "**", kind = "delimiter" },
+  { open = "__", close = "__", kind = "delimiter" },
+  { open = "*", close = "*", kind = "delimiter" },
+  { open = "_", close = "_", kind = "delimiter" },
+  { open = "~~", close = "~~", kind = "delimiter" },
+  { open = "```", close = "```", kind = "delimiter" },
+]
+
+[markdown-rustdoc]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "delimiter" },
+  { open = "**", close = "**", kind = "delimiter" },
+  { open = "__", close = "__", kind = "delimiter" },
+  { open = "*", close = "*", kind = "delimiter" },
+  { open = "_", close = "_", kind = "delimiter" },
+  { open = "~~", close = "~~", kind = "delimiter" },
+  { open = "```", close = "```", kind = "delimiter" },
+]
+
+["markdown.inline"]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "delimiter" },
   { open = "**", close = "**", kind = "delimiter" },
   { open = "__", close = "__", kind = "delimiter" },
   { open = "*", close = "*", kind = "delimiter" },

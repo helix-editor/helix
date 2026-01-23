@@ -2192,9 +2192,12 @@ impl Document {
             .as_ref()
             .and_then(|syntax| {
                 let selection = self.selection(view.id).primary();
-                let (start, end) = selection.into_byte_range(self.text().slice(..));
-                let layer = syntax.layer_for_byte_range(start as u32, end as u32);
-                let lang_config = loader.language(syntax.layer(layer).language).config();
+                let text = self.text().slice(..);
+                let cursor = selection.cursor(text);
+                let cursor_byte = text.char_to_byte(cursor) as u32;
+                let layer = syntax.layer_for_byte_range(cursor_byte, cursor_byte);
+                let layer_data = syntax.layer(layer);
+                let lang_config = loader.language(layer_data.language).config();
                 lang_config.bracket_set.as_ref()
             })
             .or(global_config)
