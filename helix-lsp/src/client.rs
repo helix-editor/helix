@@ -69,7 +69,7 @@ impl Client {
         self: &Arc<Self>,
         root_markers: &[String],
         manual_roots: &[PathBuf],
-        doc_path: Option<&std::path::PathBuf>,
+        doc_path: Option<&std::path::Path>,
         may_support_workspace: bool,
     ) -> bool {
         let (workspace, workspace_is_cwd) = find_workspace();
