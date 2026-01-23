@@ -2884,7 +2884,7 @@ impl super::PluginSystem for SteelScriptingEngine {
                 .map(|x| x.clone().into_steelval().unwrap())
                 .collect::<Vec<_>>();
 
-            if let Err(e) = enter_engine(|guard| {
+            match enter_engine(|guard| {
                 {
                     // Install the interrupt handler, in the event this thing
                     // is blocking for too long.
@@ -2900,8 +2900,13 @@ impl super::PluginSystem for SteelScriptingEngine {
                     })
                 }
             }) {
-                cx.editor.set_error(format!("{}", e));
-            }
+                Ok(v) => {
+                    cx.editor.set_status(v.to_string());
+                }
+                Err(e) => {
+                    cx.editor.set_error(e.to_string());
+                }
+            };
             true
         } else {
             false
