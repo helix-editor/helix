@@ -21,6 +21,9 @@ use crate::{
 
 pub const ID: &str = "file-explorer";
 
+/// Type alias for the file explorer picker to reduce type complexity
+type FileExplorerPicker = Picker<(PathBuf, bool), (PathBuf, Style)>;
+
 /// Type of clipboard operation
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClipboardOperation {
@@ -45,7 +48,7 @@ fn get_clipboard() -> &'static std::sync::Mutex<Option<ClipboardEntry>> {
 
 /// File explorer with file management capabilities
 pub struct FileExplorer {
-    picker: Picker<(PathBuf, bool), (PathBuf, Style)>,
+    picker: FileExplorerPicker,
     root: PathBuf,
 }
 
@@ -695,10 +698,7 @@ fn perform_paste_no_prompt(
 }
 
 /// Create the underlying picker for the file explorer
-fn create_picker(
-    root: PathBuf,
-    editor: &Editor,
-) -> Result<Picker<(PathBuf, bool), (PathBuf, Style)>, std::io::Error> {
+fn create_picker(root: PathBuf, editor: &Editor) -> Result<FileExplorerPicker, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root, editor)?;
 
