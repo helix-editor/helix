@@ -28,8 +28,7 @@ pub struct DocumentId(NonZeroUsize);
 
 impl Default for DocumentId {
     fn default() -> DocumentId {
-        // Safety: 1 is non-zero
-        DocumentId(unsafe { NonZeroUsize::new_unchecked(1) })
+        DocumentId(NonZeroUsize::new(1).unwrap())
     }
 }
 

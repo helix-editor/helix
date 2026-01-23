@@ -1,5 +1,5 @@
 use crate::{graphics::Rect, View, ViewId};
-use slotmap::HopSlotMap;
+use slotmap::SlotMap;
 
 // the dimensions are recomputed on window resize/tree change.
 //
@@ -11,7 +11,7 @@ pub struct Tree {
     // fullscreen: bool,
     area: Rect,
 
-    nodes: HopSlotMap<ViewId, Node>,
+    nodes: SlotMap<ViewId, Node>,
 
     // used for traversals
     stack: Vec<(ViewId, Rect)>,
@@ -87,7 +87,7 @@ impl Tree {
     pub fn new(area: Rect) -> Self {
         let root = Node::container(Layout::Vertical);
 
-        let mut nodes = HopSlotMap::with_key();
+        let mut nodes = SlotMap::with_key();
         let root = nodes.insert(root);
 
         // root is it's own parent

@@ -1,0 +1,99 @@
+# Author: F.Nomeniavo Joe <24nomeniavo@gmail.com>
+# Ported Theme: Night Rider
+#
+# Original Author Credit:
+# This color scheme is based on the original VS Code theme by trustfall.
+# Repository: https://github.com/trustfall/vscode-night-rider# 
+
+# SYNTAX
+"attribute" = "#7b79b5"
+"comment" = { fg = "#5C588A", modifiers = ["italic"] }
+"constant" = "#e591ff"
+"constant.builtin" = "#AC70FC"
+"constant.character" = "#71E4FE"
+"contant.character.escape" = "#71E4FE"
+"constant.numeric" = "#DA65BA"
+"constructor" = { fg = "#e591ff", modifiers = ["italic"] }
+"diff.delta" = "#F1C56C"
+"diff.minus" = "#FF6E9C"
+"diff.plus" = "#45F5CF"
+"function" = "#D8608C"
+"function.builtin" = { fg = "#D8608C", modifiers = ["italic"] }
+"function.macro" = "#AC70FC"
+"keyword" = "#AC70FC"
+"keyword.control" = "#A68AE1"
+"keyword.directive" = "#A68AE1"
+"label" = "#7DA7FF"
+"module" = "#e591ff"
+"namespace" = "#e591ff"
+"operator" = "#9C57F0"
+"punctuation" = "#6FFEE0"
+"punctuation.delimiter" = "#C9CBDB"
+"string" = "#74FEE1"
+"string.regexp" = "#71E4FE"
+"tag" = "#7EA7F3"
+"special" = "#7EA7FF"
+"type" = { fg = "#e591ff", modifiers = ["italic"] }
+"type.builtin" = { fg = "#e591ff", modifiers = ["italic"] }
+"type.enum.variant" = { fg = "#e591ff", modifiers = ["italic"] }
+"variable" = "#C9CBDB"
+"variable.builtin" = "#e591ff"
+"variable.other.member" = "#C9CBDB"
+"variable.parameter" = "#C9CBDB"
+
+# UI
+"ui.background" = { "bg" = "background" }
+"ui.window" = { "bg" = "widget" }
+"ui.popup" = { "fg" = "text", bg = "widget" }
+"ui.help" = { "fg" = "text", bg = "widget" }
+"ui.menu" = { "fg" = "text", bg = "widget" }
+"ui.menu.selected" = { fg = "#789ef8", modifiers = ["reversed"] }
+
+"ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
+"ui.selection" = { "bg" = "selection" }
+"ui.selection.primary" = { "bg" = "#625D88" }
+"ui.linenr" = { fg = "#696292" }
+"ui.linenr.selected" = { fg = "#27264B" }
+"ui.cursorline.primary" = { bg = "#887ced" }
+"ui.statusline" = { fg = "status_fg", bg = "status_bg" }
+"ui.statusline.inactive" = { fg = "#5C588A", bg = "background" }
+"ui.statusline.normal" = { fg = "status_bg", bg = "status_fg" }
+"ui.statusline.insert" = { fg = "status_bg", bg = "#7EA7FB" }
+"ui.statusline.select" = { fg = "status_bg", bg = "#e591ff" }
+
+"ui.bufferline" = { fg = "text", bg = "widget" }
+"ui.bufferline.active" = { fg = "#789EF8", bg = "background" }
+"ui.bufferline.background" = { bg = "background" }
+"ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "#ffffff" }
+"ui.text.directory" = { fg = "#AC70FC" }
+"ui.text.inactive" = { fg = "#7EA7F3" }
+"ui.virtual.whitespace" = { fg = "#5C588A" }
+"ui.virtual.indent-guide" = { bg = "#24215E" }
+"ui.debug.active" = { fg = "#A68AE1" }
+"ui.debug.breakpoint" = { fg = "white" }
+"ui.picker.header.column" = { underline.style = "line" }
+"ui.picker.header.column.active" = { fg = "white", underline.style = "line" }
+
+"warning" = { "fg" = "#71E4FE" }
+"error" = { "fg" = "#FF709D" }
+"info" = { "fg" = "#7DA7FF" }
+"hint" = { "fg" = "#7DA7FF" }
+
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { fg = "white", bg = "#454568" }
+
+"diagnostic.error" = { underline = { color = "text", style = "curl" } }
+"diagnostic".underline = { color = "text", style = "curl" }
+
+
+[palette]
+background = "#1e1c3f"
+widget = "#222246"
+selection = "#5D4089"
+cursor = "#7EA7FB"
+status_bg = "#171530"
+status_fg = "#5D5988"
+text = "#C9CBDB"
+red = "#D8608C"
+white = "#FFFFFF"

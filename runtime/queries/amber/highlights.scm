@@ -38,7 +38,9 @@
 (null) @constant.numeric
 (string) @string
 (status) @keyword
-(command) @string
+; Highlight only command delimiters, not content (bash injection handles content)
+(command
+  ["$"] @string)
 (handler) @keyword
 (block) @punctuation.delimiter
 (variable_init) @keyword

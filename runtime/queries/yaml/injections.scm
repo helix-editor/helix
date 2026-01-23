@@ -1,8 +1,8 @@
 ((comment) @injection.content
  (#set! injection.language "comment"))
 
-; The remaining code in this file incorporates work covered by the following
-; copyright and permission notice:
+; The following code in this file until the ";;; END nvim-treesitter LICENSED CODE"
+; marker incorporates work covered by the following copyright and permission notice:
 ;
 ;   Copyright 2023 the nvim-treesitter authors
 ;
@@ -53,3 +53,5 @@
                (block_node
                   (block_scalar) @injection.content
                   (#set! injection.language "bash"))))))
+
+;;; END nvim-treesitter LICENSED CODE

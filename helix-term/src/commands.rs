@@ -2111,7 +2111,7 @@ fn select_regex(cx: &mut Context) {
                 selection::select_on_matches(text, doc.selection(view.id), &regex)
             {
                 doc.set_selection(view.id, selection);
-            } else {
+            } else if event == PromptEvent::Validate {
                 cx.editor.set_error("nothing selected");
             }
         },
@@ -3091,8 +3091,17 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     let path = match doc_dir {
         Some(path) => path,
         None => {
-            cx.editor.set_error("current buffer has no path or parent");
-            return;
+            let cwd = helix_stdx::env::current_working_dir();
+            if !cwd.exists() {
+                cx.editor.set_error(
+                    "Current buffer has no parent and current working directory does not exist",
+                );
+                return;
+            }
+            cx.editor.set_error(
+                "Current buffer has no parent, opening file picker in current working directory",
+            );
+            cwd
         }
     };
 
@@ -3216,7 +3225,20 @@ fn buffer_picker(cx: &mut Context) {
                 .into()
         }),
     ];
-    let initial_cursor = if items.len() <= 1 { 0 } else { 1 };
+
+    let initial_cursor = if cx
+        .editor
+        .config()
+        .buffer_picker
+        .start_position
+        .is_previous()
+        && !items.is_empty()
+    {
+        1
+    } else {
+        0
+    };
+
     let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
         cx.editor.switch(meta.id, action);
     })
@@ -5073,15 +5095,31 @@ fn format_selections(cx: &mut Context) {
         )
         .unwrap();
 
-    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future))
-        .ok()
-        .flatten()
-        .unwrap_or_default();
+    let text = doc.text().clone();
+    let doc_id = doc.id();
+    let doc_version = doc.version();
 
-    let transaction =
-        helix_lsp::util::generate_transaction_from_edits(doc.text(), edits, offset_encoding);
-
-    doc.apply(&transaction, view_id);
+    tokio::spawn(async move {
+        match future.await {
+            Ok(Some(res)) => {
+                let transaction =
+                    helix_lsp::util::generate_transaction_from_edits(&text, res, offset_encoding);
+                job::dispatch(move |editor, _compositor| {
+                    let Some(doc) = editor.document_mut(doc_id) else {
+                        return;
+                    };
+                    // Updating a desynced document causes problems with applying the transaction
+                    if doc.version() != doc_version {
+                        return;
+                    }
+                    doc.apply(&transaction, view_id);
+                })
+                .await
+            }
+            Err(err) => log::error!("format sections failed: {err}"),
+            Ok(None) => (),
+        }
+    });
 }
 
 fn join_selections_impl(cx: &mut Context, select_space: bool) {
@@ -5202,7 +5240,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
             {
                 doc.set_selection(view.id, selection);
-            } else {
+            } else if event == PromptEvent::Validate {
                 cx.editor.set_error("no selections remaining");
             }
         },
@@ -6531,6 +6569,14 @@ fn shell_prompt_for_behavior(cx: &mut Context, prompt: Cow<'static, str>, behavi
 fn suspend(_cx: &mut Context) {
     #[cfg(not(windows))]
     {
+        // SAFETY: These are calls to standard POSIX functions.
+        // Unsafe is necessary since we are calling outside of Rust.
+        let is_session_leader = unsafe { libc::getpid() == libc::getsid(0) };
+
+        // If helix is the session leader, there is nothing to suspend to, so skip
+        if is_session_leader {
+            return;
+        }
         _cx.block_try_flush_writes().ok();
         signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
     }
