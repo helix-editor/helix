@@ -13,9 +13,9 @@ use helix_view::{
 use tui::buffer::Buffer as Surface;
 
 use crate::{
+    alt,
     compositor::{self, Component, Compositor, Context, Event, EventResult},
     job::Callback as JobCallback,
-    key,
     ui::{self, overlay, Picker, PickerColumn, Prompt, PromptEvent},
 };
 
@@ -95,7 +95,12 @@ impl FileExplorer {
                     // Create directory (strip trailing slash for the actual path)
                     let dir_path = path.with_file_name(
                         path.file_name()
-                            .map(|n| n.to_string_lossy().trim_end_matches('/').trim_end_matches(std::path::MAIN_SEPARATOR).to_string())
+                            .map(|n| {
+                                n.to_string_lossy()
+                                    .trim_end_matches('/')
+                                    .trim_end_matches(std::path::MAIN_SEPARATOR)
+                                    .to_string()
+                            })
                             .unwrap_or_default(),
                     );
                     std::fs::create_dir_all(&dir_path).map(|_| dir_path)
@@ -104,7 +109,8 @@ impl FileExplorer {
                     if let Some(parent) = path.parent() {
                         if !parent.exists() {
                             if let Err(e) = std::fs::create_dir_all(parent) {
-                                cx.editor.set_error(format!("Failed to create directories: {}", e));
+                                cx.editor
+                                    .set_error(format!("Failed to create directories: {}", e));
                                 return;
                             }
                         }
@@ -114,7 +120,8 @@ impl FileExplorer {
 
                 match result {
                     Ok(created_path) => {
-                        cx.editor.set_status(format!("Created: {}", created_path.display()));
+                        cx.editor
+                            .set_status(format!("Created: {}", created_path.display()));
                         schedule_refresh_with_prompt(cx, root.clone());
                     }
                     Err(e) => {
@@ -124,9 +131,11 @@ impl FileExplorer {
             },
         );
 
-        EventResult::Consumed(Some(Box::new(move |compositor: &mut Compositor, _cx: &mut Context| {
-            compositor.push(Box::new(prompt));
-        })))
+        EventResult::Consumed(Some(Box::new(
+            move |compositor: &mut Compositor, _cx: &mut Context| {
+                compositor.push(Box::new(prompt));
+            },
+        )))
     }
 
     /// Handle 'd' key - delete file or directory
@@ -138,7 +147,8 @@ impl FileExplorer {
 
         // Don't allow deleting ".."
         if path.file_name().map(|n| n == "..").unwrap_or(false) {
-            ctx.editor.set_error("Cannot delete parent directory reference");
+            ctx.editor
+                .set_error("Cannot delete parent directory reference");
             return EventResult::Consumed(None);
         }
 
@@ -184,9 +194,11 @@ impl FileExplorer {
             },
         );
 
-        EventResult::Consumed(Some(Box::new(move |compositor: &mut Compositor, _cx: &mut Context| {
-            compositor.push(Box::new(prompt));
-        })))
+        EventResult::Consumed(Some(Box::new(
+            move |compositor: &mut Compositor, _cx: &mut Context| {
+                compositor.push(Box::new(prompt));
+            },
+        )))
     }
 
     /// Handle 'y' key - yank (copy) file/directory to clipboard
@@ -198,7 +210,8 @@ impl FileExplorer {
 
         // Don't allow yanking ".."
         if path.file_name().map(|n| n == "..").unwrap_or(false) {
-            ctx.editor.set_error("Cannot yank parent directory reference");
+            ctx.editor
+                .set_error("Cannot yank parent directory reference");
             return EventResult::Consumed(None);
         }
 
@@ -221,7 +234,8 @@ impl FileExplorer {
 
         // Don't allow cutting ".."
         if path.file_name().map(|n| n == "..").unwrap_or(false) {
-            ctx.editor.set_error("Cannot cut parent directory reference");
+            ctx.editor
+                .set_error("Cannot cut parent directory reference");
             return EventResult::Consumed(None);
         }
 
@@ -244,7 +258,8 @@ impl FileExplorer {
 
         // Don't allow renaming ".."
         if path.file_name().map(|n| n == "..").unwrap_or(false) {
-            ctx.editor.set_error("Cannot rename parent directory reference");
+            ctx.editor
+                .set_error("Cannot rename parent directory reference");
             return EventResult::Consumed(None);
         }
 
@@ -254,7 +269,10 @@ impl FileExplorer {
             .unwrap_or_default();
 
         let root = self.root.clone();
-        let parent = path.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| root.clone());
+        let parent = path
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| root.clone());
         let old_name_for_prompt = old_name.clone();
 
         let prompt = Prompt::new(
@@ -280,7 +298,8 @@ impl FileExplorer {
 
                 match std::fs::rename(&path, &new_path) {
                     Ok(_) => {
-                        cx.editor.set_status(format!("Renamed: {} -> {}", old_name, input));
+                        cx.editor
+                            .set_status(format!("Renamed: {} -> {}", old_name, input));
                         schedule_refresh_with_prompt(cx, root.clone());
                     }
                     Err(e) => {
@@ -291,9 +310,11 @@ impl FileExplorer {
         )
         .with_line(old_name_for_prompt, ctx.editor);
 
-        EventResult::Consumed(Some(Box::new(move |compositor: &mut Compositor, _cx: &mut Context| {
-            compositor.push(Box::new(prompt));
-        })))
+        EventResult::Consumed(Some(Box::new(
+            move |compositor: &mut Compositor, _cx: &mut Context| {
+                compositor.push(Box::new(prompt));
+            },
+        )))
     }
 
     /// Handle 'm' key - move file/directory to new location
@@ -305,7 +326,8 @@ impl FileExplorer {
 
         // Don't allow moving ".."
         if path.file_name().map(|n| n == "..").unwrap_or(false) {
-            ctx.editor.set_error("Cannot move parent directory reference");
+            ctx.editor
+                .set_error("Cannot move parent directory reference");
             return EventResult::Consumed(None);
         }
 
@@ -340,7 +362,8 @@ impl FileExplorer {
                 if let Some(parent) = dest_path.parent() {
                     if !parent.exists() {
                         if let Err(e) = std::fs::create_dir_all(parent) {
-                            cx.editor.set_error(format!("Failed to create directories: {}", e));
+                            cx.editor
+                                .set_error(format!("Failed to create directories: {}", e));
                             return;
                         }
                     }
@@ -348,14 +371,20 @@ impl FileExplorer {
 
                 // Check if destination exists
                 if dest_path.exists() {
-                    cx.editor.set_error(format!("'{}' already exists", dest_path.display()));
+                    cx.editor
+                        .set_error(format!("'{}' already exists", dest_path.display()));
                     return;
                 }
 
                 match std::fs::rename(&path, &dest_path) {
                     Ok(_) => {
                         let verb = if is_dir { "Moved directory" } else { "Moved" };
-                        cx.editor.set_status(format!("{}: {} -> {}", verb, path.display(), dest_path.display()));
+                        cx.editor.set_status(format!(
+                            "{}: {} -> {}",
+                            verb,
+                            path.display(),
+                            dest_path.display()
+                        ));
                         schedule_refresh_with_prompt(cx, root.clone());
                     }
                     Err(e) => {
@@ -380,7 +409,8 @@ impl FileExplorer {
                                         schedule_refresh_with_prompt(cx, root.clone());
                                     }
                                     Err(copy_err) => {
-                                        cx.editor.set_error(format!("Failed to move: {}", copy_err));
+                                        cx.editor
+                                            .set_error(format!("Failed to move: {}", copy_err));
                                     }
                                 }
                             } else {
@@ -401,7 +431,8 @@ impl FileExplorer {
                                         schedule_refresh_with_prompt(cx, root.clone());
                                     }
                                     Err(copy_err) => {
-                                        cx.editor.set_error(format!("Failed to move: {}", copy_err));
+                                        cx.editor
+                                            .set_error(format!("Failed to move: {}", copy_err));
                                     }
                                 }
                             }
@@ -413,17 +444,16 @@ impl FileExplorer {
             },
         );
 
-        EventResult::Consumed(Some(Box::new(move |compositor: &mut Compositor, _cx: &mut Context| {
-            compositor.push(Box::new(prompt));
-        })))
+        EventResult::Consumed(Some(Box::new(
+            move |compositor: &mut Compositor, _cx: &mut Context| {
+                compositor.push(Box::new(prompt));
+            },
+        )))
     }
 
     /// Handle 'p' key - paste from clipboard
     fn handle_paste(&mut self, ctx: &mut Context) -> EventResult {
-        let clipboard_entry = get_clipboard()
-            .lock()
-            .ok()
-            .and_then(|guard| guard.clone());
+        let clipboard_entry = get_clipboard().lock().ok().and_then(|guard| guard.clone());
 
         let Some(entry) = clipboard_entry else {
             ctx.editor.set_error("Clipboard is empty");
@@ -466,9 +496,11 @@ impl FileExplorer {
                 },
             );
 
-            EventResult::Consumed(Some(Box::new(move |compositor: &mut Compositor, _cx: &mut Context| {
-                compositor.push(Box::new(prompt));
-            })))
+            EventResult::Consumed(Some(Box::new(
+                move |compositor: &mut Compositor, _cx: &mut Context| {
+                    compositor.push(Box::new(prompt));
+                },
+            )))
         } else {
             perform_paste_no_prompt(ctx, &src_path, &dest_path, is_dir, operation, &root);
             EventResult::Consumed(None)
@@ -483,15 +515,15 @@ impl Component for FileExplorer {
             _ => return self.picker.handle_event(event, ctx),
         };
 
-        // Handle file management keys
+        // Handle file management keys (Alt/Option + key to not interfere with search)
         match key_event {
-            key!('a') => self.handle_create(ctx),
-            key!('d') => self.handle_delete(ctx),
-            key!('r') => self.handle_rename(ctx),
-            key!('m') => self.handle_move(ctx),
-            key!('y') => self.handle_yank(ctx),
-            key!('x') => self.handle_cut(ctx),
-            key!('p') => self.handle_paste(ctx),
+            alt!('a') => self.handle_create(ctx),
+            alt!('d') => self.handle_delete(ctx),
+            alt!('r') => self.handle_rename(ctx),
+            alt!('m') => self.handle_move(ctx),
+            alt!('y') => self.handle_yank(ctx),
+            alt!('x') => self.handle_cut(ctx),
+            alt!('p') => self.handle_paste(ctx),
             // Delegate all other keys to the picker
             _ => self.picker.handle_event(event, ctx),
         }
@@ -596,12 +628,8 @@ fn perform_paste_with_prompt(
 
     match result {
         Ok(_) => {
-            cx.editor.set_status(format!(
-                "{}: {} -> {}",
-                verb,
-                src.display(),
-                dest.display()
-            ));
+            cx.editor
+                .set_status(format!("{}: {} -> {}", verb, src.display(), dest.display()));
             schedule_refresh_with_prompt(cx, root.to_path_buf());
         }
         Err(e) => {
@@ -656,12 +684,8 @@ fn perform_paste_no_prompt(
 
     match result {
         Ok(_) => {
-            cx.editor.set_status(format!(
-                "{}: {} -> {}",
-                verb,
-                src.display(),
-                dest.display()
-            ));
+            cx.editor
+                .set_status(format!("{}: {} -> {}", verb, src.display(), dest.display()));
             schedule_refresh_no_prompt(cx, root.to_path_buf());
         }
         Err(e) => {
@@ -724,7 +748,10 @@ fn create_picker(
 }
 
 /// Get directory contents for the picker
-pub fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+pub fn directory_content(
+    root: &Path,
+    editor: &Editor,
+) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
     use ignore::WalkBuilder;
 
     let config = editor.config();
@@ -920,7 +947,10 @@ mod tests {
         // Single directory child
         let child_dir = temp.path().join("only_child");
         fs::create_dir(&child_dir).unwrap();
-        assert_eq!(get_child_if_single_dir(temp.path()), Some(child_dir.clone()));
+        assert_eq!(
+            get_child_if_single_dir(temp.path()),
+            Some(child_dir.clone())
+        );
 
         // Add a file - no longer single dir child
         File::create(temp.path().join("file.txt")).unwrap();
