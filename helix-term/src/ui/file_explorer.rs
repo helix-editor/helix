@@ -937,10 +937,11 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
 
     for entry in std::fs::read_dir(src)? {
         let entry = entry?;
-        let file_type = entry.file_type()?;
         let src_path = entry.path();
         let dest_path = dest.join(entry.file_name());
 
+        // Use symlink_metadata so we inspect the entry itself without following symlinks.
+        let file_type = std::fs::symlink_metadata(&src_path)?.file_type();
         if file_type.is_symlink() {
             // Skip symlinks to avoid following symlink loops
             continue;
