@@ -31,53 +31,53 @@
 ; an else-clause where the previous if-clause starts on the same line as the assignment.
 (assignment_expression
   .
-  (_) @expr-start
+  (_) @_expr-start
   right: (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 (compound_assignment_expr
   .
-  (_) @expr-start
+  (_) @_expr-start
   right: (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 (let_declaration
-  "let" @expr-start
+  "let" @_expr-start
   value: (_) @indent
   alternative: (_)? @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 (let_condition
   .
-  (_) @expr-start
+  (_) @_expr-start
   value: (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 (if_expression
   .
-  (_) @expr-start
+  (_) @_expr-start
   condition: (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 (field_pattern
   .
-  (_) @expr-start
+  (_) @_expr-start
   pattern: (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 ; Indent type aliases that span multiple lines, similar to
 ; regular assignment expressions
 (type_item
   .
-  (_) @expr-start
+  (_) @_expr-start
   type: (_) @indent
-  (#not-same-line? @indent @expr-start)
+  (#not-same-line? @indent @_expr-start)
   (#set! "scope" "all")
 )
 
@@ -86,18 +86,18 @@
 ; Because this multiline expression might be nested in an arbitrary number of
 ; field expressions, this can only be matched using a Regex.
 (field_expression
-  value: (_) @val
+  value: (_) @_val
   "." @outdent
   ; Check whether the first line ends with `(`, `{` or `[` (up to whitespace).
-  (#match? @val "(\\A[^\\n\\r]+(\\(|\\{|\\[)[\\t ]*(\\n|\\r))")
+  (#match? @_val "(\\A[^\\n\\r]+(\\(|\\{|\\[)[\\t ]*(\\n|\\r))")
 )
 ; Same as above, but with an additional `call_expression`. This is required since otherwise
 ; the arguments of the function call won't be outdented.
 (call_expression
   function: (field_expression
-    value: (_) @val
+    value: (_) @_val
     "." @outdent
-    (#match? @val "(\\A[^\\n\\r]+(\\(|\\{|\\[)[\\t ]*(\\n|\\r))")
+    (#match? @_val "(\\A[^\\n\\r]+(\\(|\\{|\\[)[\\t ]*(\\n|\\r))")
   )
   arguments: (_) @outdent
 )
@@ -110,9 +110,9 @@
 ; the second line of the pattern (which should only rarely be the case)
 (match_pattern
   .
-  (_) @expr-start
-  "if" @pattern-guard
-  (#not-same-line? @expr-start @pattern-guard)
+  (_) @_expr-start
+  "if" @_pattern-guard
+  (#not-same-line? @_expr-start @_pattern-guard)
 ) @indent
 
 ; Align closure parameters if they span more than one line
@@ -120,15 +120,15 @@
   "|"
   .
   (_) @anchor
-  (_) @expr-end
+  (_) @_expr-end
   .
-  (#not-same-line? @anchor @expr-end)
+  (#not-same-line? @anchor @_expr-end)
 ) @align
 
 (for_expression
-  "in" @in
+  "in" @_in
   .
   (_) @indent
-  (#not-same-line? @in @indent)
+  (#not-same-line? @_in @indent)
   (#set! "scope" "all")
 )  

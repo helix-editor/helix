@@ -3,23 +3,23 @@
 
 ((heredoc_body 
   (heredoc_content) @injection.content
-  (heredoc_end) @name
+  (heredoc_end) @_name
   (#set! injection.language "sql")) 
- (#eq? @name "SQL"))
+ (#eq? @_name "SQL"))
 
 ((heredoc_body
   (heredoc_content) @injection.content
-  (heredoc_end) @name
+  (heredoc_end) @_name
   (#set! injection.language "graphql"))
- (#any-of? @name
+ (#any-of? @_name
        "GQL"
        "GRAPHQL"))
 
 ((heredoc_body
   (heredoc_content) @injection.content
-  (heredoc_end) @name
+  (heredoc_end) @_name
   (#set! injection.language "erb"))
- (#eq? @name "ERB"))
+ (#eq? @_name "ERB"))
 
 ; `<command>`
 ; %x{<command>}

@@ -211,11 +211,11 @@
 ; These might be unnecessary and/or used incorrectly, since they're intended
 ; for markup languages
 ((comment) @diff.plus
-  (#match? @diff.plus "^\/[\/\*][\t ]TODO"))
+  (#match? @diff.plus "^/[/*][\t ]TODO"))
 ((comment) @diff.plus
-  (#match? @diff.plus "^\/[\/\*][\t ]NOTE"))
+  (#match? @diff.plus "^/[/*][\t ]NOTE"))
 ((comment) @diff.minus
-  (#match? @diff.minus "^\/[\/\*][\t ]WARNING"))
+  (#match? @diff.minus "^/[/*][\t ]WARNING"))
 
 ; Keywords
 [

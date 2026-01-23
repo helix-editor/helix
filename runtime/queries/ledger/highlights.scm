@@ -28,7 +28,6 @@
     "nomarket"
     "note"
     "payee"
-    "check"
     "A"
     "Y"
     "N"

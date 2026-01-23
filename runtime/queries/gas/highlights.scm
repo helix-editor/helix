@@ -3,7 +3,7 @@
 (directive_name) @keyword.directive
 (symbol) @variable
 (label) @function
-(label)
+
 (instruction_prefix) @keyword
 (instruction_name) @function.special
 (register) @constant.builtin

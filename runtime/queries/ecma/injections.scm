@@ -93,7 +93,7 @@
 ; `const el = document.querySelector("div.user-panel.main input[name='login']");`
 (call_expression
   function: (member_expression
-    object: (identifier) @_object
+    object: (identifier)
     property: (property_identifier) @_property (#any-of? @_property "querySelector" "querySelectorAll" "closest" "matches"))
   arguments: (arguments
                (string (string_fragment) @injection.content))
