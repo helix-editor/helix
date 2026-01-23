@@ -19,5 +19,3 @@
 (invocation_expression function: (member_access_expression name: (identifier) @name)) @reference.send
 
 (namespace_declaration name: (identifier) @name) @definition.module
-
-(namespace_declaration name: (identifier) @name) @module

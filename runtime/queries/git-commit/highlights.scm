@@ -1,18 +1,18 @@
+[(comment) (generated_comment) (scissor)] @comment
 (subject) @markup.heading
-(path) @string.special.path
 (branch) @string.special.symbol
-(commit) @constant
-(item) @markup.link.url
-(header) @tag
+(filepath) @string.special.path
+(arrow) @punctuation.delimiter
+(subject (subject_prefix) @function)
+(prefix (type) @keyword)
+(prefix (scope) @variable.parameter)
+(prefix [ "(" ")" ":" ] @punctuation.delimiter)
+(prefix "!" @punctuation.special)
+(trailer (token) @variable.other.member)
+(trailer (value) @string)
+(breaking_change (token) @special)
 
-(change kind: "new file" @diff.plus)
-(change kind: "deleted" @diff.minus)
-(change kind: "modified" @diff.delta)
-(change kind: "renamed" @diff.delta.moved)
-
-(trailer
-  key: (trailer_key) @variable.other.member
-  value: (trailer_value) @string)
-
-[":" "=" "->" (scissors)] @punctuation.delimiter
-(comment) @comment
+(change kind: (new)) @diff.plus
+(change kind: (deleted)) @diff.minus
+(change kind: (modified)) @diff.delta
+(change kind: [(renamed) (typechange)]) @diff.delta.moved

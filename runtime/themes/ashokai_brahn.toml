@@ -1,0 +1,37 @@
+# name = "Ashokai Brahn"
+# author = "TeriyakiBomb"
+# version = "1.0.0"
+
+inherits = "ashokai"
+
+[palette]
+bg0 = "#2A211D"
+bg1 = "#3A2C27"
+bg2 = "#49385D"
+bg3 = "#4F3D35"
+fg0 = "#EEE3DC"
+helptext = "#976E5E"
+helpbg = "#24150F"
+grey = "#70697D"
+grey1 = "#667E99"
+red = "#FF5D5D"
+yellow = "#FBC664"
+green = "#43BB71"
+blue = "#7AC3FF"
+blue2 = "#9D7D6C"
+lightblue = "#EEE3DC"
+aqua = "#5DB1B1"
+orange = "#FF9647"
+purple = "#B57CED"
+magenta = "#F94786"
+pink = "#EA7AD5"
+
+diffgreen = "#5B7753"
+
+line_number = "#574941"
+line_number_selected = "#7B665B"
+comment = "#6F5D53"
+
+cursor = "#5E8F81"
+cursorline = "#30241C"
+selection = "#442E21"

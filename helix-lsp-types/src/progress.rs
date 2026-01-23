@@ -40,14 +40,6 @@ pub struct WorkDoneProgressCancelParams {
     pub token: ProgressToken,
 }
 
-/// Options to signal work done progress support in server capabilities.
-#[derive(Debug, Eq, PartialEq, Default, Deserialize, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkDoneProgressOptions {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub work_done_progress: Option<bool>,
-}
-
 /// An optional token that a server can use to report work done progress
 #[derive(Debug, Eq, PartialEq, Default, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]

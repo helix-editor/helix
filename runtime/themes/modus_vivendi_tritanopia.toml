@@ -37,6 +37,8 @@ warning = "magenta"
 info = "cyan"
 hint = "blue"
 
+rainbow = ["red", "magenta", "green-intense", "cyan", "blue", "magenta-intense"]
+
 [palette]
 # Basic values
 bg-main = "#000000"

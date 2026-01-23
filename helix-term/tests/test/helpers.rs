@@ -6,12 +6,16 @@ use std::{
 };
 
 use anyhow::bail;
-use crossterm::event::{Event, KeyEvent};
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
 use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+#[cfg(windows)]
+use crossterm::event::{Event, KeyEvent};
+#[cfg(not(windows))]
+use termina::event::{Event, KeyEvent};
 
 /// Specify how to set up the input text with line feeds
 #[derive(Clone, Debug)]

@@ -1,12 +1,13 @@
 ## Adding indent queries
 
-Helix uses tree-sitter to correctly indent new lines. This requires a tree-
-sitter grammar and an `indent.scm` query file placed in `runtime/queries/
-{language}/indents.scm`. The indentation for a line is calculated by traversing
-the syntax tree from the lowest node at the beginning of the new line (see
-[Indent queries](#indent-queries)). Each of these nodes contributes to the total
-indent when it is captured by the query (in what way depends on the name of
-the capture.
+Helix uses tree-sitter to correctly indent new lines. This requires a
+tree-sitter grammar and an `indent.scm` query file placed in
+`runtime/queries/{language}/indents.scm`. The indentation for a line is
+calculated by traversing the syntax tree from the lowest node at the
+beginning of the new line (see [Indent queries](#indent-queries)).
+Each of these nodes contributes to the total indent when it is
+captured by the query (in what way depends on the name of
+the capture).
 
 Note that it matters where these added indents begin. For example,
 multiple indent level increases that start on the same line only increase

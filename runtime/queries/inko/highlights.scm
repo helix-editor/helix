@@ -78,7 +78,7 @@
 ] @keyword.operator
 
 [
-  "class"
+  "type"
   "trait"
 ] @keyword.storage.type
 

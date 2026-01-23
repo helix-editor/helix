@@ -73,7 +73,7 @@
         "-Wl,-z,relro,-z,now"
       ];
 
-      NAME = grammar.name;
+      SHARED_LIB = grammar.name + stdenv.hostPlatform.extensions.sharedLibrary;
 
       buildPhase = ''
         runHook preBuild
@@ -85,9 +85,7 @@
         fi
 
         $CC -c src/parser.c -o parser.o $FLAGS
-        $CXX -shared -o $NAME.so *.o
-
-        ls -al
+        $CXX -shared -o $SHARED_LIB *.o
 
         runHook postBuild
       '';
@@ -95,14 +93,14 @@
       installPhase = ''
         runHook preInstall
         mkdir $out
-        mv $NAME.so $out/
+        mv $SHARED_LIB $out/
         runHook postInstall
       '';
 
       # Strip failed on darwin: strip: error: symbols referenced by indirect symbol table entries that can't be stripped
       fixupPhase = lib.optionalString stdenv.isLinux ''
         runHook preFixup
-        $STRIP $out/$NAME.so
+        $STRIP $out/$SHARED_LIB
         runHook postFixup
       '';
     };
@@ -118,9 +116,10 @@
   overlaidGrammars =
     lib.pipe extensibleGrammars
     (builtins.map (overlay: grammar: grammar.extend overlay) grammarOverlays);
+  sharedLibExtension = stdenv.hostPlatform.extensions.sharedLibrary;
   grammarLinks =
     lib.mapAttrsToList
-    (name: artifact: "ln -s ${artifact}/${name}.so $out/${name}.so")
+    (name: artifact: "ln -s ${artifact}/${name}${sharedLibExtension} $out/${name}${sharedLibExtension}")
     (lib.filterAttrs (n: v: lib.isDerivation v) overlaidGrammars);
 in
   runCommand "consolidated-helix-grammars" {} ''

@@ -4,6 +4,7 @@ inherits = "monokai"
 
 "comment" = "comment"
 "comment.block.documentation" = { fg = "comment", modifiers = ["bold"] }
+"comment.line.documentation" = { fg = "comment", modifiers = ["bold"] }
 "constant.character.escape" = { fg = "light-blue", modifiers = ["italic"] }
 "function.macro" = { fg = "#c4be89", modifiers = ["italic"] }
 "keyword" = { fg = "keyword", modifiers = ["bold"] }
@@ -34,6 +35,10 @@ inherits = "monokai"
 "ui.popup" = { fg = "light-blue", bg = "#000000" }
 "ui.popup.info" = { fg = "light-blue", bg = "#000000" }
 "ui.text.info" = { fg = "light-blue", bg = "#000000" }
+
+"ui.statusline.normal" = { fg = "#080808", bg = "#e6db74", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "#282828", bg = "#8787af", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "#282828", bg = "#ffd700", modifiers = ["bold"] }
 
 "warning" = { fg = "#ffffff", modifiers = ["bold"] }
 "error" = { fg = "#ffffff", modifiers = ["bold"] }

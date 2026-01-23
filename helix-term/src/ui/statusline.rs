@@ -1,6 +1,5 @@
-use std::borrow::Cow;
-
-use helix_core::{coords_at_pos, encoding, Position};
+use helix_core::indent::IndentStyle;
+use helix_core::{coords_at_pos, encoding, unicode::width::UnicodeWidthStr, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
@@ -142,6 +141,7 @@ where
         helix_view::editor::StatusLineElement::ReadOnlyIndicator => render_read_only_indicator,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
+        helix_view::editor::StatusLineElement::FileIndentStyle => render_file_indent_style,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
@@ -156,6 +156,7 @@ where
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::CurrentWorkingDirectory => render_cwd,
     }
 }
 
@@ -166,18 +167,16 @@ where
     let visible = context.focused;
     let config = context.editor.config();
     let modenames = &config.statusline.mode;
+    let mode_str = match context.editor.mode() {
+        Mode::Insert => &modenames.insert,
+        Mode::Select => &modenames.select,
+        Mode::Normal => &modenames.normal,
+    };
     let content = if visible {
-        Cow::Owned(format!(
-            " {} ",
-            match context.editor.mode() {
-                Mode::Insert => &modenames.insert,
-                Mode::Select => &modenames.select,
-                Mode::Normal => &modenames.normal,
-            }
-        ))
+        format!(" {mode_str} ")
     } else {
         // If not focused, explicitly leave an empty space instead of returning None.
-        Cow::Borrowed("     ")
+        " ".repeat(mode_str.width() + 2)
     };
     let style = if visible && config.color_modes {
         match context.editor.mode() {
@@ -553,4 +552,34 @@ where
     if let Some(reg) = context.editor.selected_register {
         write(context, format!(" reg={} ", reg).into())
     }
+}
+
+fn render_file_indent_style<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let style = context.doc.indent_style;
+
+    write(
+        context,
+        match style {
+            IndentStyle::Tabs => " tabs ".into(),
+            IndentStyle::Spaces(indent) => {
+                format!(" {} space{} ", indent, if indent == 1 { "" } else { "s" }).into()
+            }
+        },
+    );
+}
+
+fn render_cwd<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let cwd = helix_stdx::env::current_working_dir();
+    let cwd = cwd
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+    write(context, cwd.into())
 }

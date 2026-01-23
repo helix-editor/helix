@@ -45,7 +45,7 @@
 "ui.virtual.inlay-hint" = { fg = "subtle" }
 
 "ui.menu" = { fg = "subtle", bg = "surface" }
-"ui.menu.selected" = { fg = "text" }
+"ui.menu.selected" = { fg = "text", bg = "overlay" }
 "ui.menu.scroll" = { fg = "muted", bg = "highlight_med" }
 
 "ui.selection" = { bg = "overlay" }
@@ -94,6 +94,7 @@
 
 "comment" = { fg = "muted", modifiers = ["italic"] }
 # "comment.line" = ""
+# "comment.line.documentation" = ""
 # "comment.block" = ""
 # "comment.block.documentation" = ""
 

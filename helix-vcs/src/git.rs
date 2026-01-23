@@ -162,7 +162,7 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
             } => {
                 let path = work_dir.join(rela_path.to_path()?);
                 match status {
-                    EntryStatus::Conflict(_) => FileChange::Conflict { path },
+                    EntryStatus::Conflict { .. } => FileChange::Conflict { path },
                     EntryStatus::Change(Change::Removed) => FileChange::Deleted { path },
                     EntryStatus::Change(Change::Modification { .. }) => {
                         FileChange::Modified { path }

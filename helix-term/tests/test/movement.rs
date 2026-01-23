@@ -379,9 +379,9 @@ async fn match_around_closest_ts() -> anyhow::Result<()> {
     test_with_config(
         AppBuilder::new().with_file("foo.rs", None),
         (
-            r#"fn main() {todo!{"f#[|oo]#)"};}"#,
+            r#"fn main() {testing!{"f#[|oo]#)"};}"#,
             "mam",
-            r#"fn main() {todo!{#[|"foo)"]#};}"#,
+            r#"fn main() {testing!{#[|"foo)"]#};}"#,
         ),
     )
     .await?;

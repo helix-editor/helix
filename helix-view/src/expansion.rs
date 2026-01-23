@@ -31,12 +31,23 @@ pub enum Variable {
     ///
     /// This corresponds to `crate::Document::display_name`.
     BufferName,
+    /// The absolute path of the currently focused document. For scratch buffers this will default
+    /// to the current working directory.
+    FilePathAbsolute,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
+    /// Curreng working directory
+    CurrentWorkingDirectory,
+    /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
+    WorkspaceDirectory,
     // The name of current buffers language as set in `languages.toml`
     Language,
     // Primary selection
     Selection,
+    // The one-indexed line number of the start of the primary selection in the currently focused document.
+    SelectionLineStart,
+    // The one-indexed line number of the end of the primary selection in the currently focused document.
+    SelectionLineEnd,
 }
 
 impl Variable {
@@ -44,9 +55,14 @@ impl Variable {
         Self::CursorLine,
         Self::CursorColumn,
         Self::BufferName,
+        Self::FilePathAbsolute,
         Self::LineEnding,
+        Self::CurrentWorkingDirectory,
+        Self::WorkspaceDirectory,
         Self::Language,
         Self::Selection,
+        Self::SelectionLineStart,
+        Self::SelectionLineEnd,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -54,9 +70,14 @@ impl Variable {
             Self::CursorLine => "cursor_line",
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
+            Self::FilePathAbsolute => "file_path_absolute",
             Self::LineEnding => "line_ending",
+            Self::CurrentWorkingDirectory => "current_working_directory",
+            Self::WorkspaceDirectory => "workspace_directory",
             Self::Language => "language",
             Self::Selection => "selection",
+            Self::SelectionLineStart => "selection_line_start",
+            Self::SelectionLineEnd => "selection_line_end",
         }
     }
 
@@ -65,9 +86,14 @@ impl Variable {
             "cursor_line" => Some(Self::CursorLine),
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
+            "file_path_absolute" => Some(Self::FilePathAbsolute),
             "line_ending" => Some(Self::LineEnding),
+            "workspace_directory" => Some(Self::WorkspaceDirectory),
+            "current_working_directory" => Some(Self::CurrentWorkingDirectory),
             "language" => Some(Self::Language),
             "selection" => Some(Self::Selection),
+            "selection_line_start" => Some(Self::SelectionLineStart),
+            "selection_line_end" => Some(Self::SelectionLineEnd),
             _ => None,
         }
     }
@@ -224,7 +250,27 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
                 Ok(Cow::Borrowed(crate::document::SCRATCH_BUFFER_NAME))
             }
         }
+        Variable::FilePathAbsolute => {
+            let path = match doc.path() {
+                Some(path) => path.to_owned(),
+                None => helix_stdx::env::current_working_dir(),
+            }
+            .to_string_lossy()
+            .to_string();
+            Ok(Cow::Owned(path))
+        }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
+        Variable::CurrentWorkingDirectory => Ok(std::borrow::Cow::Owned(
+            helix_stdx::env::current_working_dir()
+                .to_string_lossy()
+                .to_string(),
+        )),
+        Variable::WorkspaceDirectory => Ok(std::borrow::Cow::Owned(
+            helix_loader::find_workspace()
+                .0
+                .to_string_lossy()
+                .to_string(),
+        )),
         Variable::Language => Ok(match doc.language_name() {
             Some(lang) => Cow::Owned(lang.to_owned()),
             None => Cow::Borrowed("text"),
@@ -232,5 +278,13 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
         Variable::Selection => Ok(Cow::Owned(
             doc.selection(view.id).primary().fragment(text).to_string(),
         )),
+        Variable::SelectionLineStart => {
+            let start_line = doc.selection(view.id).primary().line_range(text).0;
+            Ok(Cow::Owned((start_line + 1).to_string()))
+        }
+        Variable::SelectionLineEnd => {
+            let end_line = doc.selection(view.id).primary().line_range(text).1;
+            Ok(Cow::Owned((end_line + 1).to_string()))
+        }
     }
 }

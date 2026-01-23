@@ -1,0 +1,186 @@
+
+# Interface colors
+"ui.background" = { bg = "background" }
+"ui.background.separator" = { fg = "muted" }
+"ui.cursor" = { fg = "background", bg = "cursor" }
+"ui.cursor.normal" = { fg = "background", bg = "cursor" }
+"ui.cursor.insert" = { fg = "background", bg = "accent" }
+"ui.cursor.select" = { fg = "background", bg = "purple" }
+"ui.cursor.match" = { fg = "background", bg = "yellow" }
+"ui.cursor.primary" = { fg = "background", bg = "cursor" }
+"ui.cursor.primary.normal" = { fg = "background", bg = "cursor" }
+"ui.cursor.primary.insert" = { fg = "background", bg = "accent" }
+"ui.cursor.primary.select" = { fg = "background", bg = "purple" }
+
+"ui.gutter" = { bg = "background" }
+"ui.gutter.selected" = { bg = "line_highlight" }
+"ui.linenr" = { fg = "line_numbers" }
+"ui.linenr.selected" = { fg = "accent", modifiers = ["bold"] }
+
+"ui.statusline" = { fg = "foreground", bg = "background" }
+"ui.statusline.inactive" = { fg = "muted", bg = "background" }
+"ui.statusline.normal" = { fg = "background", bg = "accent" }
+"ui.statusline.insert" = { fg = "background", bg = "green" }
+"ui.statusline.select" = { fg = "background", bg = "purple" }
+
+"ui.popup" = { fg = "foreground", bg = "popup_bg" }
+"ui.popup.info" = { fg = "foreground", bg = "popup_bg" }
+"ui.window" = { fg = "muted" }
+"ui.help" = { fg = "foreground", bg = "popup_bg" }
+
+"ui.text" = { fg = "foreground" }
+"ui.text.focus" = { fg = "accent", modifiers = ["bold"] }
+"ui.text.inactive" = { fg = "muted" }
+"ui.text.info" = { fg = "foreground" }
+
+"ui.virtual.ruler" = { bg = "line_highlight" }
+"ui.virtual.whitespace" = { fg = "muted" }
+"ui.virtual.indent-guide" = { fg = "muted" }
+"ui.virtual.inlay-hint" = { fg = "hint" }
+"ui.virtual.jump-label" = { fg = "white", bg = "background" }
+
+"ui.menu" = { fg = "foreground", bg = "popup_bg" }
+"ui.menu.selected" = { fg = "background", bg = "accent" }
+"ui.menu.scroll" = { fg = "muted", bg = "background" }
+
+"ui.selection" = { bg = "selection_background" }
+"ui.selection.primary" = { bg = "selection_background" }
+"ui.highlight" = { bg = "line_highlight" }
+"ui.cursorline.primary" = { bg = "line_highlight" }
+"ui.cursorline.secondary" = { bg = "line_highlight" }
+
+# Diagnostics
+"warning" = { fg = "warning" }
+"error" = { fg = "error" }
+"info" = { fg = "info" }
+"hint" = { fg = "hint" }
+"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.hint" = { fg = "hint", modifiers = ["underlined"] }
+"diagnostic.info" = { fg = "info", modifiers = ["underlined"] }
+"diagnostic.warning" = { fg = "warning", modifiers = ["underlined"] }
+"diagnostic.error" = { fg = "error", modifiers = ["underlined"] }
+"diagnostic.unnecessary" = { fg = "muted", modifiers = ["dim"] }
+
+# Syntax highlighting
+"comment" = { fg = "comment", modifiers = ["italic"] }
+"constant" = { fg = "red" }
+"constant.character" = { fg = "green" }
+"constant.character.escape" = { fg = "yellow" }
+"constant.numeric" = { fg = "orange" }
+"constant.builtin" = { fg = "red" }
+
+"string" = { fg = "green" }
+"string.regexp" = { fg = "blue" }
+"string.special" = { fg = "yellow" }
+
+"type" = { fg = "yellow" }
+"type.builtin" = { fg = "yellow" }
+"type.enum" = { fg = "yellow" }
+"type.parameter" = { fg = "orange" }
+
+"constructor" = { fg = "red" }
+"function" = { fg = "yellow" }
+"function.builtin" = { fg = "yellow" }
+"function.method" = { fg = "yellow" }
+"function.macro" = { fg = "purple" }
+
+"variable" = { fg = "cyan" }
+"variable.builtin" = { fg = "red" }
+"variable.parameter" = { fg = "orange" }
+"variable.other.member" = { fg = "cyan" }
+
+"keyword" = { fg = "purple" }
+"keyword.control" = { fg = "purple" }
+"keyword.control.conditional" = { fg = "purple" }
+"keyword.control.repeat" = { fg = "purple" }
+"keyword.control.import" = { fg = "purple" }
+"keyword.control.return" = { fg = "purple" }
+"keyword.control.exception" = { fg = "purple" }
+"keyword.operator" = { fg = "red" }
+"keyword.directive" = { fg = "purple" }
+"keyword.function" = { fg = "purple" }
+"keyword.storage" = { fg = "purple" }
+"keyword.storage.type" = { fg = "purple" }
+"keyword.storage.modifier" = { fg = "purple" }
+
+"operator" = { fg = "red" }
+"punctuation" = { fg = "foreground" }
+"punctuation.delimiter" = { fg = "foreground" }
+"punctuation.bracket" = { fg = "foreground" }
+"punctuation.special" = { fg = "hot_pink" }
+
+"tag" = { fg = "hot_pink" }
+"attribute" = { fg = "orange" }
+"namespace" = { fg = "yellow" }
+"module" = { fg = "yellow" }
+"special" = { fg = "hot_pink" }
+
+# Markup
+"markup.heading" = { fg = "hot_pink", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "hot_pink" }
+"markup.list" = { fg = "yellow" }
+"markup.list.marker" = { fg = "hot_pink" }
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "cyan" }
+"markup.quote" = { fg = "comment", modifiers = ["italic"] }
+"markup.raw" = { fg = "green" }
+"markup.raw.block" = { fg = "green" }
+
+# Diff
+"diff.plus" = { fg = "diff_add" }
+"diff.minus" = { fg = "diff_delete" }
+"diff.delta" = { fg = "diff_change" }
+
+# Color palette
+[palette]
+# Main colors
+white = "#FFFFFF"
+background = "#23262E"
+foreground = "#D5CED9"
+cursor = "#FFFFFF"
+
+# UI colors
+line_highlight = "#2e323d"
+selection_background = "#3D4352"
+line_numbers = "#746f77"
+muted = "#746f77"
+popup_bg = "#20232A"
+
+# Accent colors
+accent = "#00e8c6"   # Cyan
+cyan = "#00e8c6"     # Cyan
+orange = "#f39c12"   # Orange
+yellow = "#FFE66D"   # Yellow
+purple = "#c74ded"   # Purple
+hot_pink = "#f92672" # Hot Pink
+blue = "#7cb7ff"     # Blue
+red = "#ee5d43"      # Red
+green = "#96E072"    # Green
+
+# Syntax colors
+comment = "#A0A1A7"
+string = "#96E072"
+number = "#f39c12"
+keyword = "#c74ded"
+function = "#FFE66D"
+variable = "#00e8c6"
+type = "#FFE66D"
+constant = "#ee5d43"
+operator = "#ee5d43"
+tag = "#f92672"
+attribute = "#f39c12"
+punctuation = "#D5CED9"
+
+# Diagnostic colors
+error = "#FC644D"
+warning = "#FF9F2E"
+info = "#00b0ff"
+hint = "#746f77"
+
+# Diff colors
+diff_add = "#96E072"
+diff_delete = "#FC644D"
+diff_change = "#FFE66D"

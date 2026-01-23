@@ -1,4 +1,7 @@
-use crate::syntax::{config::Configuration, Loader, LoaderError};
+use crate::syntax::{
+    config::{Configuration, LanguageConfiguration},
+    Loader, LoaderError,
+};
 
 /// Language configuration based on built-in languages.toml.
 pub fn default_lang_config() -> Configuration {
@@ -15,6 +18,7 @@ pub fn default_lang_loader() -> Loader {
 #[derive(Debug)]
 pub enum LanguageLoaderError {
     DeserializeError(toml::de::Error),
+    ConfigError(toml::de::Error, String),
     LoaderError(LoaderError),
 }
 
@@ -22,6 +26,9 @@ impl std::fmt::Display for LanguageLoaderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::DeserializeError(err) => write!(f, "Failed to parse language config: {err}"),
+            Self::ConfigError(err, context) => {
+                write!(f, "Failed to parse language config {context}: {err}")
+            }
             Self::LoaderError(err) => write!(f, "Failed to compile language config: {err}"),
         }
     }
@@ -36,10 +43,22 @@ pub fn user_lang_config() -> Result<Configuration, toml::de::Error> {
 
 /// Language configuration loader based on user configured languages.toml.
 pub fn user_lang_loader() -> Result<Loader, LanguageLoaderError> {
-    let config: Configuration = helix_loader::config::user_lang_config()
-        .map_err(LanguageLoaderError::DeserializeError)?
-        .try_into()
-        .map_err(LanguageLoaderError::DeserializeError)?;
-
+    let config_val =
+        helix_loader::config::user_lang_config().map_err(LanguageLoaderError::DeserializeError)?;
+    let config = config_val.clone().try_into().map_err(|e| {
+        if let Some(languages) = config_val.get("language").and_then(|v| v.as_array()) {
+            for lang in languages.iter() {
+                let res: Result<LanguageConfiguration, _> = lang.clone().try_into();
+                if let Err(inner_err) = res {
+                    let context = match lang.get("name") {
+                        Some(name) => format!("for language {}", name),
+                        None => "for unknown language".to_owned(),
+                    };
+                    return LanguageLoaderError::ConfigError(inner_err, context);
+                }
+            }
+        }
+        LanguageLoaderError::ConfigError(e, String::new())
+    })?;
     Loader::new(config).map_err(LanguageLoaderError::LoaderError)
 }

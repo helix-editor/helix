@@ -89,24 +89,26 @@ Cmd-s = ":write" # Cmd or Win or Meta and 's' to write
 
 Special keys are encoded as follows:
 
-| Key name     | Representation |
-| ---          | ---            |
-| Backspace    | `"backspace"`  |
-| Space        | `"space"`      |
-| Return/Enter | `"ret"`        |
-| Left         | `"left"`       |
-| Right        | `"right"`      |
-| Up           | `"up"`         |
-| Down         | `"down"`       |
-| Home         | `"home"`       |
-| End          | `"end"`        |
-| Page Up      | `"pageup"`     |
-| Page Down    | `"pagedown"`   |
-| Tab          | `"tab"`        |
-| Delete       | `"del"`        |
-| Insert       | `"ins"`        |
-| Null         | `"null"`       |
-| Escape       | `"esc"`        |
+| Key name         | Representation |
+| ---              | ---            |
+| Backspace        | `"backspace"`  |
+| Space            | `"space"`      |
+| Return/Enter     | `"ret"`        |
+| Left             | `"left"`       |
+| Right            | `"right"`      |
+| Up               | `"up"`         |
+| Down             | `"down"`       |
+| Home             | `"home"`       |
+| End              | `"end"`        |
+| Page Up          | `"pageup"`     |
+| Page Down        | `"pagedown"`   |
+| Tab              | `"tab"`        |
+| Delete           | `"del"`        |
+| Insert           | `"ins"`        |
+| Null             | `"null"`       |
+| Escape           | `"esc"`        |
+| Less Than (<)    | `"lt"`         |
+| Greater Than (>) | `"gt"`         |
 
 Keys can be disabled by binding them to the `no_op` command.
 

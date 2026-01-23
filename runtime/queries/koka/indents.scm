@@ -1,9 +1,9 @@
 [
-  (appexpr ["[" "("]) ; Applications.
+  (opexpr [index: (arguments) call: (arguments)]) ; Applications.
   (atom ["[" "("]) ; Lists and tuples.
-  (program (moduledecl "{")) ; Braced module declarations.
   (funbody)
   (block)
+  (constructor)
   (handlerexpr)
   (opclausex)
 ] @indent

@@ -38,7 +38,7 @@ All shortcuts/keymaps can be found [in the documentation on the website](https:/
 - Smart, incremental syntax highlighting and code editing via tree-sitter
 
 Although it's primarily a terminal-based editor, I am interested in exploring
-a custom renderer (similar to Emacs) using wgpu or skulpin.
+a custom renderer (similar to Emacs) using wgpu.
 
 Note: Only certain languages have indentation definitions at the moment. Check
 `runtime/queries/<lang>/` for `indents.scm`.

@@ -1,6 +1,7 @@
-use std::{borrow::Cow, collections::HashMap, iter};
+use std::{borrow::Cow, collections::HashMap};
 
 use helix_stdx::rope::RopeSliceExt;
+use tree_house::TREE_SITTER_MATCH_LIMIT;
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
@@ -152,6 +153,12 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
         // Give more weight to tabs, because their presence is a very
         // strong indicator.
         histogram[0] *= 2;
+        // Gives less weight to single indent, as single spaces are
+        // often used in certain languages' comment systems and rarely
+        // used as the actual document indentation.
+        if histogram[1] > 1 {
+            histogram[1] /= 2;
+        }
 
         histogram
     };
@@ -207,7 +214,10 @@ fn whitespace_with_same_width(text: RopeSlice) -> String {
         if grapheme == "\t" {
             s.push('\t');
         } else {
-            s.extend(std::iter::repeat(' ').take(grapheme_width(&Cow::from(grapheme))));
+            s.extend(std::iter::repeat_n(
+                ' ',
+                grapheme_width(&Cow::from(grapheme)),
+            ));
         }
     }
     s
@@ -236,10 +246,10 @@ pub fn normalize_indentation(
         original_len += 1;
     }
     if indent_style == IndentStyle::Tabs {
-        dst.extend(iter::repeat('\t').take(len / tab_width));
+        dst.extend(std::iter::repeat_n('\t', len / tab_width));
         len %= tab_width;
     }
-    dst.extend(iter::repeat(' ').take(len));
+    dst.extend(std::iter::repeat_n(' ', len));
     original_len
 }
 
@@ -297,7 +307,7 @@ fn is_first_in_line(node: &Node, text: RopeSlice, new_line_byte_pos: Option<u32>
 
 #[derive(Debug, Default)]
 pub struct IndentQueryPredicates {
-    not_kind_eq: Option<(Capture, Box<str>)>,
+    not_kind_eq: Vec<(Capture, Box<str>)>,
     same_line: Option<(Capture, Capture, bool)>,
     one_line: Option<(Capture, bool)>,
 }
@@ -309,12 +319,9 @@ impl IndentQueryPredicates {
         text: RopeSlice,
         new_line_byte_pos: Option<u32>,
     ) -> bool {
-        if let Some((capture, not_expected_kind)) = self.not_kind_eq.as_ref() {
-            if !match_
-                .nodes_for_capture(*capture)
-                .next()
-                .is_some_and(|node| node.kind() != not_expected_kind.as_ref())
-            {
+        for (capture, not_expected_kind) in self.not_kind_eq.iter() {
+            let node = match_.nodes_for_capture(*capture).next();
+            if node.is_some_and(|n| n.kind() == not_expected_kind.as_ref()) {
                 return false;
             }
         }
@@ -394,8 +401,11 @@ impl IndentQuery {
                         let capture = predicate.capture_arg(0)?;
                         let not_expected_kind = predicate.str_arg(1)?;
 
-                        predicates.entry(pattern).or_default().not_kind_eq =
-                            Some((capture, not_expected_kind.to_string().into_boxed_str()));
+                        predicates
+                            .entry(pattern)
+                            .or_default()
+                            .not_kind_eq
+                            .push((capture, not_expected_kind.into()));
                         Ok(())
                     }
                     "same-line?" | "not-same-line?" => {
@@ -629,9 +639,7 @@ fn query_indents<'a>(
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
     let mut extend_captures: HashMap<usize, Vec<ExtendCapture>> = HashMap::new();
 
-    let mut cursor = InactiveQueryCursor::new();
-    cursor.set_byte_range(range);
-    let mut cursor = cursor.execute_query(
+    let mut cursor = InactiveQueryCursor::new(range, TREE_SITTER_MATCH_LIMIT).execute_query(
         &query.query,
         &syntax.tree().root_node(),
         RopeInput::new(text),

@@ -8,7 +8,7 @@
 ; Definitions
 
 (alias
-  name: (identifier) @local.definition.variable)
+  alias_name: (identifier) @local.definition.variable)
 
 (assignment
   name: (identifier) @local.definition.variable)
@@ -28,6 +28,9 @@
   name: (identifier) @local.reference)
 
 (function_call
+  name: (identifier) @local.reference)
+
+(module_path
   name: (identifier) @local.reference)
 
 (recipe_dependency

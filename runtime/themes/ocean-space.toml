@@ -1,0 +1,90 @@
+# Author: mikastiv
+
+"attribute" = "red"
+"type" = "orange"
+"type.builtin" = "purple"
+"type.enum" = "purple"
+"constructor" = "yellow"
+"constant" = "red"
+"string" = "green"
+"constant.numeric" = "orange"
+"constant.builtin" = "purple"
+"constant.character.escape" = "red"
+"comment" = "light-gray"
+"variable" = "cyan"
+"variable.builtin" = "purple"
+"label" = "white"
+"punctuation" = "white"
+"keyword" = "purple"
+"operator" = "red"
+"function" = "yellow"
+"function.builtin" = "orange"
+"function.macro" = "orange"
+"tag" = "orange"
+"namespace" = "white"
+"special" = "orange"
+"markup.heading" = "hot-pink"
+"markup.list" = "yellow"
+"markup.link" = "purple"
+"markup.quote" = "green"
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "orange"
+
+"ui.background" = { bg = "bg" }
+"ui.cursor" = { bg = "selected" }
+"ui.cursor.primary" = { bg = "cursor", fg = "bg" }
+"ui.cursor.match" = { fg = "hot-pink", modifiers = ["bold"] }
+"ui.debug.breakpoint" = "red"
+"ui.debug.active" = "red"
+"ui.linenr" = "light-gray"
+"ui.linenr.selected" = "white"
+"ui.statusline" = { bg = "bar", fg = "bg" }
+"ui.bufferline" = { bg = "bg-light", fg = "light-gray" }
+"ui.bufferline.active" = { bg = "bar", fg = "bg" }
+"ui.window" = "light-gray"
+"ui.help" = { bg = "bg" }
+"ui.popup" = { bg = "bg" }
+"ui.text" = "white"
+"ui.text.focus" = { bg = "selected" }
+"ui.text.inactive" = "light-gray"
+"ui.text.directory" = "cyan"
+"ui.virtual.ruler" = { bg = "bg-light" }
+"ui.virtual.indent-guide" = "light-gray"
+"ui.virtual.inlay-hint" = { modifiers = ["dim"] }
+"ui.virtual.jump-label" = { fg = "hot-pink", modifiers = ["bold"] }
+"ui.menu" = { bg = "bg" }
+"ui.menu.selected" = { bg = "selected" }
+"ui.menu.scroll" = "bar"
+"ui.selection" = { bg = "selected" }
+"ui.cursorline.primary" = { bg = "bg-light" }
+
+"warning" = "yellow"
+"error" = "red"
+"hint" = "blue"
+"info" = "blue"
+
+"diagnostic.hint".underline = { color = "blue", style = "curl" }
+"diagnostic.info".underline = { color = "blue", style = "curl" }
+"diagnostic.warning".underline = { color = "yellow", style = "curl" }
+"diagnostic.error".underline = { color = "red", style = "curl" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+white = "#d5ced9"
+light-gray = "#6e7178"
+cyan = "#87d3f8"
+blue = "#3a75c4"
+orange = "#f39c12"
+yellow = "#f2f27a"
+purple = "#c74ded"
+red = "#e25822"
+pink = "#ff00aa"
+hot-pink = "#f92672"
+green = "#14b37d"
+bg = "#0f111a"
+bg-light = "#25293a"
+selected = "#414a5b"
+cursor = "#b4b4b4"
+bar = "#00b491"
