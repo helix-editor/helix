@@ -46,6 +46,24 @@ fn get_clipboard() -> &'static std::sync::Mutex<Option<ClipboardEntry>> {
     CLIPBOARD.get_or_init(|| std::sync::Mutex::new(None))
 }
 
+/// Check if an IO error indicates a cross-device link error (EXDEV on Unix, ERROR_NOT_SAME_DEVICE on Windows)
+fn is_cross_device_error(e: &std::io::Error) -> bool {
+    #[cfg(unix)]
+    {
+        e.raw_os_error() == Some(libc::EXDEV)
+    }
+    #[cfg(windows)]
+    {
+        // ERROR_NOT_SAME_DEVICE = 17
+        e.raw_os_error() == Some(17)
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        // Fallback: assume cross-device if rename fails with an OS error
+        e.raw_os_error().is_some()
+    }
+}
+
 /// File explorer with file management capabilities
 pub struct FileExplorer {
     picker: FileExplorerPicker,
@@ -91,22 +109,50 @@ impl FileExplorer {
                     return;
                 }
 
-                let path = current_dir.join(input);
                 let is_dir = input.ends_with('/') || input.ends_with(std::path::MAIN_SEPARATOR);
+                let trimmed_input = input.trim_end_matches(['/', std::path::MAIN_SEPARATOR]);
+                let path = current_dir.join(trimmed_input);
+
+                // Validate path is within current directory (prevent path traversal)
+                let canonical_current = match current_dir.canonicalize() {
+                    Ok(p) => p,
+                    Err(e) => {
+                        cx.editor
+                            .set_error(format!("Failed to resolve current directory: {}", e));
+                        return;
+                    }
+                };
+
+                // For new paths, check that parent exists and is within current_dir
+                let check_path = if let Some(parent) = path.parent() {
+                    if parent.exists() {
+                        parent.canonicalize().ok()
+                    } else {
+                        // Find the first existing ancestor
+                        let mut ancestor = parent;
+                        while let Some(p) = ancestor.parent() {
+                            if p.exists() {
+                                break;
+                            }
+                            ancestor = p;
+                        }
+                        ancestor.parent().and_then(|p| p.canonicalize().ok())
+                    }
+                } else {
+                    Some(canonical_current.clone())
+                };
+
+                if let Some(check) = check_path {
+                    if !check.starts_with(&canonical_current) {
+                        cx.editor
+                            .set_error("Cannot create files outside the current directory");
+                        return;
+                    }
+                }
 
                 let result = if is_dir {
-                    // Create directory (strip trailing slash for the actual path)
-                    let dir_path = path.with_file_name(
-                        path.file_name()
-                            .map(|n| {
-                                n.to_string_lossy()
-                                    .trim_end_matches('/')
-                                    .trim_end_matches(std::path::MAIN_SEPARATOR)
-                                    .to_string()
-                            })
-                            .unwrap_or_default(),
-                    );
-                    std::fs::create_dir_all(&dir_path).map(|_| dir_path)
+                    // Create directory
+                    std::fs::create_dir_all(&path).map(|_| path.clone())
                 } else {
                     // Create file (and parent directories if needed)
                     if let Some(parent) = path.parent() {
@@ -218,13 +264,19 @@ impl FileExplorer {
             return EventResult::Consumed(None);
         }
 
-        if let Ok(mut clipboard) = get_clipboard().lock() {
-            *clipboard = Some(ClipboardEntry {
-                path: path.clone(),
-                operation: ClipboardOperation::Copy,
-            });
+        match get_clipboard().lock() {
+            Ok(mut clipboard) => {
+                *clipboard = Some(ClipboardEntry {
+                    path: path.clone(),
+                    operation: ClipboardOperation::Copy,
+                });
+                ctx.editor.set_status(format!("Yanked: {}", path.display()));
+            }
+            Err(_) => {
+                ctx.editor
+                    .set_error("Failed to access clipboard for yank operation");
+            }
         }
-        ctx.editor.set_status(format!("Yanked: {}", path.display()));
         EventResult::Consumed(None)
     }
 
@@ -242,13 +294,19 @@ impl FileExplorer {
             return EventResult::Consumed(None);
         }
 
-        if let Ok(mut clipboard) = get_clipboard().lock() {
-            *clipboard = Some(ClipboardEntry {
-                path: path.clone(),
-                operation: ClipboardOperation::Cut,
-            });
+        match get_clipboard().lock() {
+            Ok(mut clipboard) => {
+                *clipboard = Some(ClipboardEntry {
+                    path: path.clone(),
+                    operation: ClipboardOperation::Cut,
+                });
+                ctx.editor.set_status(format!("Cut: {}", path.display()));
+            }
+            Err(_) => {
+                ctx.editor
+                    .set_error("Failed to access clipboard for cut operation");
+            }
         }
-        ctx.editor.set_status(format!("Cut: {}", path.display()));
         EventResult::Consumed(None)
     }
 
@@ -379,6 +437,20 @@ impl FileExplorer {
                     return;
                 }
 
+                // Prevent moving a directory into itself or its subdirectories
+                if is_dir {
+                    if let Ok(src_canonical) = path.canonicalize() {
+                        if let Some(parent) = dest_path.parent() {
+                            if let Ok(dest_canonical) = parent.canonicalize() {
+                                if dest_canonical.starts_with(&src_canonical) {
+                                    cx.editor.set_error("Cannot move a directory into itself");
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 match std::fs::rename(&path, &dest_path) {
                     Ok(_) => {
                         let verb = if is_dir { "Moved directory" } else { "Moved" };
@@ -392,7 +464,7 @@ impl FileExplorer {
                     }
                     Err(e) => {
                         // Cross-device move: try copy + delete
-                        if e.raw_os_error() == Some(18) {
+                        if is_cross_device_error(&e) {
                             // EXDEV
                             if is_dir {
                                 match copy_dir_recursive(&path, &dest_path) {
@@ -475,6 +547,18 @@ impl FileExplorer {
         let src_path = entry.path.clone();
         let is_dir = src_path.is_dir();
         let operation = entry.operation;
+
+        // Prevent pasting a directory into itself or its subdirectories
+        if is_dir {
+            if let Ok(src_canonical) = src_path.canonicalize() {
+                if let Ok(dest_canonical) = dest_dir.canonicalize() {
+                    if dest_canonical.starts_with(&src_canonical) {
+                        ctx.editor.set_error("Cannot paste a directory into itself");
+                        return EventResult::Consumed(None);
+                    }
+                }
+            }
+        }
 
         // Check if destination already exists
         if dest_path.exists() {
@@ -594,6 +678,20 @@ fn perform_paste_with_prompt(
     operation: ClipboardOperation,
     root: &Path,
 ) {
+    // Remove existing destination if it exists (user confirmed overwrite)
+    if dest.exists() {
+        let remove_result = if dest.is_dir() {
+            std::fs::remove_dir_all(dest)
+        } else {
+            std::fs::remove_file(dest)
+        };
+        if let Err(e) = remove_result {
+            cx.editor
+                .set_error(format!("Failed to remove existing destination: {}", e));
+            return;
+        }
+    }
+
     let (result, verb) = match operation {
         ClipboardOperation::Copy => {
             let res = if is_dir {
@@ -607,7 +705,7 @@ fn perform_paste_with_prompt(
             // Try rename first (fast path for same filesystem)
             let res = std::fs::rename(src, dest).or_else(|e| {
                 // Cross-device: copy then delete
-                if e.raw_os_error() == Some(18) {
+                if is_cross_device_error(&e) {
                     if is_dir {
                         copy_dir_recursive(src, dest)?;
                         std::fs::remove_dir_all(src)
@@ -663,7 +761,7 @@ fn perform_paste_no_prompt(
             // Try rename first (fast path for same filesystem)
             let res = std::fs::rename(src, dest).or_else(|e| {
                 // Cross-device: copy then delete
-                if e.raw_os_error() == Some(18) {
+                if is_cross_device_error(&e) {
                     if is_dir {
                         copy_dir_recursive(src, dest)?;
                         std::fs::remove_dir_all(src)
@@ -824,18 +922,34 @@ fn get_excluded_types() -> ignore::types::Types {
         .expect("failed to build excluded_types")
 }
 
-/// Recursively copy a directory
+/// Recursively copy a directory, preserving permissions and skipping symlinks
 fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
+    let dest_existed = dest.exists();
     std::fs::create_dir_all(dest)?;
+
+    // Preserve directory permissions if we created the directory
+    if !dest_existed {
+        if let Ok(src_metadata) = std::fs::metadata(src) {
+            // Ignore permission copy errors to avoid changing existing behavior
+            let _ = std::fs::set_permissions(dest, src_metadata.permissions());
+        }
+    }
+
     for entry in std::fs::read_dir(src)? {
         let entry = entry?;
+        let file_type = entry.file_type()?;
         let src_path = entry.path();
         let dest_path = dest.join(entry.file_name());
-        if src_path.is_dir() {
+
+        if file_type.is_symlink() {
+            // Skip symlinks to avoid following symlink loops
+            continue;
+        } else if file_type.is_dir() {
             copy_dir_recursive(&src_path, &dest_path)?;
-        } else {
+        } else if file_type.is_file() {
             std::fs::copy(&src_path, &dest_path)?;
         }
+        // Skip other types (sockets, etc.)
     }
     Ok(())
 }
