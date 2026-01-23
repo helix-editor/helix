@@ -1038,7 +1038,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "less"
-source = { git = "https://github.com/jimliang/tree-sitter-less", rev = "c128ea2e06fa85ec5885c53f512082b489beca16" }
+source = { git = "https://github.com/jimliang/tree-sitter-less", rev = "e5ae6245f841b5778c79ac93b28fa4f56b679c5d" }
 
 [[language]]
 name = "html"
