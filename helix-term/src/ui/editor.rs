@@ -153,7 +153,9 @@ impl EditorView {
                 &config.cursor_shape,
                 self.terminal_focused,
             ));
-            if let Some(overlay) = Self::highlight_focused_view_elements(view, doc, theme) {
+            if let Some(overlay) =
+                Self::highlight_focused_view_elements(editor.mode(), view, doc, theme)
+            {
                 overlays.push(overlay);
             }
         }
@@ -568,6 +570,7 @@ impl EditorView {
 
     /// Render brace match, etc (meant for the focused view only)
     pub fn highlight_focused_view_elements(
+        mode: Mode,
         view: &View,
         doc: &Document,
         theme: &Theme,
@@ -576,8 +579,20 @@ impl EditorView {
         let syntax = doc.syntax()?;
         let highlight = theme.find_highlight_exact("ui.cursor.match")?;
         let text = doc.text().slice(..);
-        let pos = doc.selection(view.id).primary().cursor(text);
-        let pos = helix_core::match_brackets::find_matching_bracket(syntax, text, pos)?;
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let pos = match mode {
+            Mode::Insert if cursor >= 1 => {
+                // The idea is that if you are writing heavily parenthesized code (e.g. LISP) then at the end of an expression
+                //     you want to close all the open parenthesis. This "- 1" helps here, because you are highlighting
+                //     the open parenthesis that the just inserted closing parenthesis matches to.
+                // This means that you can just spam ')' until the very first one is highlighted and you are done.
+                helix_core::match_brackets::find_matching_bracket(syntax, text, cursor - 1)
+            }
+            Mode::Insert => None,
+            Mode::Normal | Mode::Select => {
+                helix_core::match_brackets::find_matching_bracket(syntax, text, cursor)
+            }
+        }?;
         Some(OverlayHighlights::single(highlight, pos..pos + 1))
     }
 
