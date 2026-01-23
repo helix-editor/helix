@@ -1,5 +1,4 @@
 use anyhow::{Context, Error, Result};
-use crossterm::event::EventStream;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
@@ -57,26 +56,27 @@ USAGE:
     hx [FLAGS] [files]...
 
 ARGS:
-    <files>...    Sets the input file to use, position can also be specified via file[:row[:col]]
+    <files>...    Set the input file to use, position can also be specified via file[:row[:col]]
 
 FLAGS:
-    -h, --help                     Prints help information
-    --tutor                        Loads the tutorial
-    --health [CATEGORY]            Checks for potential errors in editor setup
+    -h, --help                     Print help information
+    --tutor                        Load the tutorial
+    --health [CATEGORY]            Check for potential errors in editor setup
                                    CATEGORY can be a language or one of 'clipboard', 'languages',
                                    'all-languages' or 'all'. 'languages' is filtered according to
                                    user config, 'all-languages' and 'all' are not. If not specified,
                                    the default is the same as 'all', but with languages filtering.
-    -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
-    -c, --config <file>            Specifies a file to use for configuration
-    -v                             Increases logging verbosity each use for up to 3 times
-    --log <file>                   Specifies a file to use for logging
+    -g, --grammar {{fetch|build}}    Fetch or builds tree-sitter grammars listed in languages.toml
+    -c, --config <file>            Specify a file to use for configuration
+    -v                             Increase logging verbosity each use for up to 3 times
+    --log <file>                   Specify a file to use for logging
                                    (default file: {})
-    -V, --version                  Prints version information
-    --vsplit                       Splits all given files vertically into different windows
-    --hsplit                       Splits all given files horizontally into different windows
+    -V, --version                  Print version information
+    --vsplit                       Split all given files vertically into different windows
+    --hsplit                       Split all given files horizontally into different windows
     -w, --working-dir <path>       Specify an initial working directory
-    +N                             Open the first given file at line number N
+    +[N]                           Open the first given file at line number N, or the last line, if
+                                   N is not specified.
 ",
             env!("CARGO_PKG_NAME"),
             VERSION_AND_GIT_HASH,
@@ -151,8 +151,9 @@ FLAGS:
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config, lang_loader).context("unable to start Helix")?;
+    let mut events = app.event_stream();
 
-    let exit_code = app.run(&mut EventStream::new()).await?;
+    let exit_code = app.run(&mut events).await?;
 
     Ok(exit_code)
 }

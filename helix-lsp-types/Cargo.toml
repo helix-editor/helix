@@ -22,8 +22,8 @@ license = "MIT"
 
 [dependencies]
 bitflags.workspace = true
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.142"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
 url = {version = "2.5.4", features = ["serde"]}
 
 [features]

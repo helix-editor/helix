@@ -2,7 +2,7 @@
 //! Frontend for [Backend]
 
 use crate::{backend::Backend, buffer::Buffer};
-use helix_view::editor::Config as EditorConfig;
+use helix_view::editor::{Config as EditorConfig, KittyKeyboardProtocolConfig};
 use helix_view::graphics::{CursorKind, Rect};
 use std::io;
 
@@ -24,12 +24,16 @@ pub struct Viewport {
 #[derive(Debug)]
 pub struct Config {
     pub enable_mouse_capture: bool,
+    pub force_enable_extended_underlines: bool,
+    pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
 }
 
-impl From<EditorConfig> for Config {
-    fn from(config: EditorConfig) -> Self {
+impl From<&EditorConfig> for Config {
+    fn from(config: &EditorConfig) -> Self {
         Self {
             enable_mouse_capture: config.mouse,
+            force_enable_extended_underlines: config.undercurl,
+            kitty_keyboard_protocol: config.kitty_keyboard_protocol,
         }
     }
 }
@@ -69,6 +73,14 @@ where
     viewport: Viewport,
 }
 
+/// Default terminal size: 80 columns, 24 lines
+pub const DEFAULT_TERMINAL_SIZE: Rect = Rect {
+    x: 0,
+    y: 0,
+    width: 80,
+    height: 24,
+};
+
 impl<B> Terminal<B>
 where
     B: Backend,
@@ -76,7 +88,7 @@ where
     /// Wrapper around Terminal initialization. Each buffer is initialized with a blank string and
     /// default colors for the foreground and the background
     pub fn new(backend: B) -> io::Result<Terminal<B>> {
-        let size = backend.size()?;
+        let size = backend.size().unwrap_or(DEFAULT_TERMINAL_SIZE);
         Terminal::with_options(
             backend,
             TerminalOptions {
@@ -102,16 +114,16 @@ where
         })
     }
 
-    pub fn claim(&mut self, config: Config) -> io::Result<()> {
-        self.backend.claim(config)
+    pub fn claim(&mut self) -> io::Result<()> {
+        self.backend.claim()
     }
 
     pub fn reconfigure(&mut self, config: Config) -> io::Result<()> {
         self.backend.reconfigure(config)
     }
 
-    pub fn restore(&mut self, config: Config) -> io::Result<()> {
-        self.backend.restore(config)
+    pub fn restore(&mut self) -> io::Result<()> {
+        self.backend.restore()
     }
 
     // /// Get a Frame object which provides a consistent view into the terminal state for rendering.
@@ -155,7 +167,7 @@ where
 
     /// Queries the backend for size and resizes if it doesn't match the previous size.
     pub fn autoresize(&mut self) -> io::Result<Rect> {
-        let size = self.size()?;
+        let size = self.size();
         if size != self.viewport.area {
             self.resize(size)?;
         };
@@ -218,10 +230,6 @@ where
         Ok(())
     }
 
-    pub fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
-        self.backend.get_cursor()
-    }
-
     pub fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {
         self.backend.set_cursor(x, y)
     }
@@ -235,7 +243,7 @@ where
     }
 
     /// Queries the real size of the backend.
-    pub fn size(&self) -> io::Result<Rect> {
-        self.backend.size()
+    pub fn size(&self) -> Rect {
+        self.backend.size().unwrap_or(DEFAULT_TERMINAL_SIZE)
     }
 }

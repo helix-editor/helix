@@ -457,10 +457,13 @@ pub mod requests {
     pub enum ConfigurationDone {}
 
     impl Request for ConfigurationDone {
-        type Arguments = ();
+        type Arguments = Option<ConfigurationDoneArguments>;
         type Result = ();
         const COMMAND: &'static str = "configurationDone";
     }
+
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct ConfigurationDoneArguments {}
 
     #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -541,6 +544,9 @@ pub mod requests {
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct ThreadsArguments {}
+
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ThreadsResponse {
         pub threads: Vec<Thread>,
@@ -550,7 +556,7 @@ pub mod requests {
     pub enum Threads {}
 
     impl Request for Threads {
-        type Arguments = ();
+        type Arguments = Option<ThreadsArguments>;
         type Result = ThreadsResponse;
         const COMMAND: &'static str = "threads";
     }

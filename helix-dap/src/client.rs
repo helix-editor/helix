@@ -2,10 +2,10 @@ use crate::{
     registry::DebugAdapterId,
     requests::{DisconnectArguments, TerminateArguments},
     transport::{Payload, Request, Response, Transport},
-    types::*,
     Error, Result,
 };
 use helix_core::syntax::config::{DebugAdapterConfig, DebuggerQuirks};
+use helix_dap_types::*;
 
 use serde_json::Value;
 
@@ -231,7 +231,11 @@ impl Client {
     }
 
     fn next_request_id(&self) -> u64 {
-        self.request_counter.fetch_add(1, Ordering::Relaxed)
+        // > The `seq` for the first message sent by a client or debug adapter
+        // > is 1, and for each subsequent message is 1 greater than the
+        // > previous message sent by that actor
+        // <https://microsoft.github.io/debug-adapter-protocol/specification#Base_Protocol_ProtocolMessage>
+        self.request_counter.fetch_add(1, Ordering::Relaxed) + 1
     }
 
     // Internal, called by specific DAP commands when resuming
@@ -245,7 +249,7 @@ impl Client {
     }
 
     /// Execute a RPC request on the debugger.
-    pub fn call<R: crate::types::Request>(
+    pub fn call<R: helix_dap_types::Request>(
         &self,
         arguments: R::Arguments,
     ) -> impl Future<Output = Result<Value>>
@@ -284,7 +288,10 @@ impl Client {
         }
     }
 
-    pub async fn request<R: crate::types::Request>(&self, params: R::Arguments) -> Result<R::Result>
+    pub async fn request<R: helix_dap_types::Request>(
+        &self,
+        params: R::Arguments,
+    ) -> Result<R::Result>
     where
         R::Arguments: serde::Serialize,
         R::Result: core::fmt::Debug, // TODO: temporary
@@ -420,7 +427,8 @@ impl Client {
     }
 
     pub async fn configuration_done(&self) -> Result<()> {
-        self.request::<requests::ConfigurationDone>(()).await
+        self.request::<requests::ConfigurationDone>(Some(requests::ConfigurationDoneArguments {}))
+            .await
     }
 
     pub fn continue_thread(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
@@ -445,7 +453,7 @@ impl Client {
     }
 
     pub fn threads(&self) -> impl Future<Output = Result<Value>> {
-        self.call::<requests::Threads>(())
+        self.call::<requests::Threads>(Some(requests::ThreadsArguments {}))
     }
 
     pub async fn scopes(&self, frame_id: usize) -> Result<Vec<Scope>> {
