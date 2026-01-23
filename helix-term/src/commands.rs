@@ -360,13 +360,21 @@ impl MappableCommand {
         switch_to_uppercase, "Switch to uppercase",
         switch_to_lowercase, "Switch to lowercase",
         page_up, "Move page up",
+        extend_page_up, "Move page up, extending the selection",
         page_down, "Move page down",
+        extend_page_down, "Move page down, extending the selection",
         half_page_up, "Move half page up",
+        extend_half_page_up, "Move half page up, extending the selection",
         half_page_down, "Move half page down",
+        extend_half_page_down, "Move half page down, extending the selection",
         page_cursor_up, "Move page and cursor up",
+        extend_page_cursor_up, "Move page and cursor up, extending the selection",
         page_cursor_down, "Move page and cursor down",
+        extend_page_cursor_down, "Move page and cursor down, extending the selection",
         page_cursor_half_up, "Move page and cursor half up",
+        extend_page_cursor_half_up, "Move page and cursor half up, extending the selection",
         page_cursor_half_down, "Move page and cursor half down",
+        extend_page_cursor_half_down, "Move page and cursor half down, extending the selection",
         select_all, "Select whole document",
         select_regex, "Select all regex matches inside selections",
         split_selection, "Split selections on regex matches",
@@ -1821,6 +1829,20 @@ fn switch_to_lowercase(cx: &mut Context) {
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {
+    let movement = match cx.editor.mode {
+        Mode::Select => Movement::Extend,
+        _ => Movement::Move,
+    };
+    scroll_impl(cx, offset, direction, sync_cursor, movement);
+}
+
+pub fn scroll_impl(
+    cx: &mut Context,
+    offset: usize,
+    direction: Direction,
+    sync_cursor: bool,
+    movement: Movement,
+) {
     use Direction::*;
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
@@ -1856,10 +1878,6 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     let mut annotations = view.text_annotations(&*doc, None);
 
     if sync_cursor {
-        let movement = match cx.editor.mode {
-            Mode::Select => Movement::Extend,
-            _ => Movement::Move,
-        };
         // TODO: When inline diagnostics gets merged- 1. move_vertically_visual removes
         // line annotations/diagnostics so the cursor may jump further than the view.
         // 2. If the cursor lands on a complete line of virtual text, the cursor will
@@ -1930,52 +1948,160 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     doc.set_selection(view.id, sel);
 }
 
-fn page_up(cx: &mut Context) {
+fn scroll_page(cx: &mut Context, direction: Direction, sync_cursor: bool, movement: Movement) {
     let view = view!(cx.editor);
     let offset = view.inner_height();
-    scroll(cx, offset, Direction::Backward, false);
+    scroll_impl(cx, offset, direction, sync_cursor, movement);
+}
+
+fn page_up(cx: &mut Context) {
+    scroll_page(
+        cx,
+        Direction::Backward,
+        /*sync_cursor*/ false,
+        Movement::Move,
+    );
+}
+
+fn extend_page_up(cx: &mut Context) {
+    scroll_page(
+        cx,
+        Direction::Backward,
+        /*sync_cursor*/ false,
+        Movement::Extend,
+    );
 }
 
 fn page_down(cx: &mut Context) {
-    let view = view!(cx.editor);
-    let offset = view.inner_height();
-    scroll(cx, offset, Direction::Forward, false);
+    scroll_page(
+        cx,
+        Direction::Forward,
+        /*sync_cursor*/ false,
+        Movement::Move,
+    );
 }
 
-fn half_page_up(cx: &mut Context) {
-    let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
-    scroll(cx, offset, Direction::Backward, false);
-}
-
-fn half_page_down(cx: &mut Context) {
-    let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
-    scroll(cx, offset, Direction::Forward, false);
+fn extend_page_down(cx: &mut Context) {
+    scroll_page(
+        cx,
+        Direction::Forward,
+        /*sync_cursor*/ false,
+        Movement::Extend,
+    );
 }
 
 fn page_cursor_up(cx: &mut Context) {
-    let view = view!(cx.editor);
-    let offset = view.inner_height();
-    scroll(cx, offset, Direction::Backward, true);
+    scroll_page(
+        cx,
+        Direction::Backward,
+        /*sync_cursor*/ true,
+        Movement::Move,
+    );
+}
+
+fn extend_page_cursor_up(cx: &mut Context) {
+    scroll_page(
+        cx,
+        Direction::Backward,
+        /*sync_cursor*/ true,
+        Movement::Extend,
+    );
 }
 
 fn page_cursor_down(cx: &mut Context) {
+    scroll_page(
+        cx,
+        Direction::Forward,
+        /*sync_cursor*/ true,
+        Movement::Move,
+    );
+}
+
+fn extend_page_cursor_down(cx: &mut Context) {
+    scroll_page(
+        cx,
+        Direction::Forward,
+        /*sync_cursor*/ true,
+        Movement::Extend,
+    );
+}
+
+fn scroll_half_page(cx: &mut Context, direction: Direction, sync_cursor: bool, movement: Movement) {
     let view = view!(cx.editor);
-    let offset = view.inner_height();
-    scroll(cx, offset, Direction::Forward, true);
+    let offset = view.inner_height() / 2;
+    scroll_impl(cx, offset, direction, sync_cursor, movement);
+}
+
+fn half_page_up(cx: &mut Context) {
+    scroll_half_page(
+        cx,
+        Direction::Backward,
+        /*sync_cursor*/ false,
+        Movement::Move,
+    );
+}
+
+fn extend_half_page_up(cx: &mut Context) {
+    scroll_half_page(
+        cx,
+        Direction::Backward,
+        /*sync_cursor*/ false,
+        Movement::Extend,
+    );
+}
+
+fn half_page_down(cx: &mut Context) {
+    scroll_half_page(
+        cx,
+        Direction::Forward,
+        /*sync_cursor*/ false,
+        Movement::Move,
+    );
+}
+
+fn extend_half_page_down(cx: &mut Context) {
+    scroll_half_page(
+        cx,
+        Direction::Forward,
+        /*sync_cursor*/ false,
+        Movement::Extend,
+    );
 }
 
 fn page_cursor_half_up(cx: &mut Context) {
-    let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
-    scroll(cx, offset, Direction::Backward, true);
+    scroll_half_page(
+        cx,
+        Direction::Backward,
+        /*sync_cursor*/ true,
+        Movement::Move,
+    );
+}
+
+fn extend_page_cursor_half_up(cx: &mut Context) {
+    scroll_half_page(
+        cx,
+        Direction::Backward,
+        /*sync_cursor*/ true,
+        Movement::Extend,
+    );
 }
 
 fn page_cursor_half_down(cx: &mut Context) {
-    let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
-    scroll(cx, offset, Direction::Forward, true);
+    scroll_half_page(
+        cx,
+        Direction::Forward,
+        /*sync_cursor*/ true,
+        Movement::Move,
+    );
+}
+
+fn extend_page_cursor_half_down(cx: &mut Context) {
+    scroll_half_page(
+        cx,
+        Direction::Forward,
+        /*sync_cursor*/ true,
+        Movement::Extend,
+    );
 }
 
 #[allow(deprecated)]
