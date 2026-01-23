@@ -1587,4 +1587,165 @@ mod test {
         // First cursor in CODE gets "()", second in STRING gets only "("
         assert_eq!(doc.to_string(), "code() \"s(tr\" code\n");
     }
+
+    #[test]
+    fn test_doc_comment_injection_layer_detection() {
+        // Test that we can detect injection layers in doc comments
+        // Using inner doc comment (//!) like the user's case
+        let source = Rope::from_str("//! Hello world\n//! \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+
+        // Position at end of second line (the empty doc comment line)
+        // "//! Hello world\n//! \n"
+        //  0123456789...   16 17 18 19 20
+        let pos = 20; // After "//! " on second line
+        let pos_byte = source.slice(..).char_to_byte(pos) as u32;
+
+        // Check the layer at this position
+        let layer = syntax.layer_for_byte_range(pos_byte, pos_byte);
+        let layer_data = syntax.layer(layer);
+        let layer_lang = LOADER.language(layer_data.language);
+
+        // The layer should be markdown-rustdoc
+        assert_eq!(layer_lang.config().language_id, "markdown-rustdoc");
+
+        // Check the tree at this position
+        let tree = syntax.tree_for_byte_range(pos_byte, pos_byte);
+        assert_eq!(tree.root_node().kind(), "document");
+
+        // Check context is Code (not Comment)
+        let context = layer_lang.bracket_context_at(&tree, source.slice(..), pos, &LOADER);
+        assert_eq!(context, crate::auto_pairs::BracketContext::Code);
+
+        // Test auto-pair with backtick
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("`", "`").with_contexts(ContextMask::CODE)
+        ]);
+
+        let selection = Selection::single(pos, pos + 1);
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '`',
+            &pairs,
+            Some(&syntax),
+            layer_lang,
+            &LOADER,
+        );
+
+        // Should produce backtick pair
+        assert!(result.is_some());
+        let mut test_doc = source.clone();
+        result.unwrap().apply(&mut test_doc);
+        assert!(test_doc.to_string().contains("``"));
+    }
+
+    #[test]
+    fn test_markdown_autopairs_in_doc_comments() {
+        // Test that markdown auto-pairs (*, _, etc.) work in doc comments
+        let source = Rope::from_str("/// Test \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+
+        // Position at end of first line after "Test "
+        let pos = 9; // After "/// Test "
+        let pos_byte = source.slice(..).char_to_byte(pos) as u32;
+
+        // Check the layer at this position
+        let layer = syntax.layer_for_byte_range(pos_byte, pos_byte);
+        let layer_data = syntax.layer(layer);
+        let layer_lang = LOADER.language(layer_data.language);
+
+        // The layer should be markdown-rustdoc
+        assert_eq!(layer_lang.config().language_id, "markdown-rustdoc");
+
+        // Check the tree at this position
+        let tree = syntax.tree_for_byte_range(pos_byte, pos_byte);
+
+        // Check context is Code (not Comment)
+        let context = layer_lang.bracket_context_at(&tree, source.slice(..), pos, &LOADER);
+        assert_eq!(context, crate::auto_pairs::BracketContext::Code);
+
+        // Test auto-pair with asterisk
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("*", "*").with_contexts(ContextMask::CODE)
+        ]);
+
+        let selection = Selection::single(pos, pos + 1);
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '*',
+            &pairs,
+            Some(&syntax),
+            layer_lang,
+            &LOADER,
+        );
+
+        // Should produce asterisk pair
+        assert!(
+            result.is_some(),
+            "Expected * to autopair in doc comment, but it didn't"
+        );
+        let mut test_doc = source.clone();
+        result.unwrap().apply(&mut test_doc);
+        assert!(
+            test_doc.to_string().contains("**"),
+            "Expected ** in doc, got: {}",
+            test_doc
+        );
+    }
+
+    #[test]
+    fn test_markdown_rustdoc_with_full_auto_pairs_registry() {
+        // Test with the full auto-pairs.toml registry to verify * pair is available
+        let registry =
+            crate::config::auto_pairs_registry().expect("Failed to load auto-pairs.toml");
+
+        // Check that markdown-rustdoc is in the registry
+        assert!(
+            registry.has_language("markdown-rustdoc"),
+            "markdown-rustdoc should be in registry"
+        );
+
+        // Get the bracket set for markdown-rustdoc
+        let bracket_set = registry.get("markdown-rustdoc");
+
+        // Verify it has the asterisk pair
+        let has_asterisk = bracket_set
+            .pairs()
+            .iter()
+            .any(|p| p.open == "*" && p.close == "*");
+        assert!(
+            has_asterisk,
+            "markdown-rustdoc should have * pair in auto-pairs.toml"
+        );
+
+        // Verify it has underscore pair
+        let has_underscore = bracket_set
+            .pairs()
+            .iter()
+            .any(|p| p.open == "_" && p.close == "_");
+        assert!(
+            has_underscore,
+            "markdown-rustdoc should have _ pair in auto-pairs.toml"
+        );
+
+        // Verify it has triple backtick pair
+        let has_triple_backtick = bracket_set
+            .pairs()
+            .iter()
+            .any(|p| p.open == "```" && p.close == "```");
+        assert!(
+            has_triple_backtick,
+            "markdown-rustdoc should have ``` pair in auto-pairs.toml"
+        );
+    }
 }
