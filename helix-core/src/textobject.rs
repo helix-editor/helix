@@ -228,7 +228,19 @@ fn textobject_pair_surround_impl(
 ) -> Range {
     let pair_pos = match ch {
         Some(ch) => surround::find_nth_pairs_pos(slice, ch, range, count),
-        None => surround::find_nth_closest_pairs_pos(syntax, slice, range, count),
+        None => {
+            surround::find_nth_closest_pairs_pos(syntax, slice, range, count).and_then(|closest| {
+                // Since `find_nth_closest_pairs_pos` takes into accout the closest
+                // pair even if the range included it entirely, we need to handle this
+                // edge case separetely. In such cases, we want to actually find the
+                // next pair.
+                if Range::new(closest.0, closest.1).len() == range.len() - 1 && count == 1 {
+                    surround::find_nth_closest_pairs_pos(syntax, slice, range, count + 1)
+                } else {
+                    Ok(closest)
+                }
+            })
+        }
     };
     pair_pos
         .map(|(anchor, head)| match textobject {
