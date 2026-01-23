@@ -589,8 +589,15 @@ impl FileExplorer {
                 },
             )))
         } else {
-            perform_paste_no_prompt(ctx, &src_path, &dest_path, is_dir, operation, &root);
-            EventResult::Consumed(None)
+            // Re-check just before performing the paste to reduce TOCTOU risk.
+            if dest_path.exists() {
+                ctx.editor
+                    .set_error("Destination already exists; paste cancelled");
+                EventResult::Consumed(None)
+            } else {
+                perform_paste_no_prompt(ctx, &src_path, &dest_path, is_dir, operation, &root);
+                EventResult::Consumed(None)
+            }
         }
     }
 }
