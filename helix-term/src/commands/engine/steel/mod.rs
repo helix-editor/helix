@@ -2503,6 +2503,89 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     let mut builtin_editor_command_module =
         "(require-builtin helix/core/editor as helix.)".to_string();
 
+    module.register_fn("register-hook", register_hook);
+
+    if generate_sources {
+        let doc = r#"
+
+(provide register-hook)
+;;@doc
+;; Register a hook to be called after the event kind fired. It is not possible
+;; to unregister a hook once it has been registered. Any values that are captured
+;; through the callback function for this hook are considered to be rooted,
+;; and will not be freed for the duration of the runtime.
+;;
+;; ```scheme
+;; (register-hook event-kind callback-fn)
+;;
+;; event-kind - symbol?
+;; callback-fn - function?
+;; ```
+;;
+;; The valid events are as follows:
+;; * 'on-mode-switch
+;; * 'post-insert-char
+;; * 'post-command
+;; * 'document-focus-lost
+;; * 'selection-did-change
+;; * 'document-opened
+;; * 'document-saved
+;;
+;; Each of these expects a function with a slightly different signature to accept
+;; the event payload.
+;;
+;; ## on-mode-switch
+;;
+;; Expects a function with one argument to accept the `OnModeSwitchEvent`.
+;;
+;; ### Example:
+;; ```scheme
+;; (register-hook 'on-mode-switch (lambda (switch-event) (log::info! (mode-switch-old switch-event))))
+;; ```
+;;
+;; ## post-insert-char
+;;
+;; Expects a function with one argument to accept the character (`char?`).
+;; 
+;; ```scheme
+;; (register-hook 'post-insert-char
+;;          (lambda (char) (log::info! char)))
+;; ```
+;;
+;; ## post-command
+;;
+;; Post command expects a function with one argument to accept the name of the command that was called.
+;; Note, this does not provide the arguments for the command, just the name of the command.
+;;
+;; ```scheme
+;; (register-hook 'post-command
+;;                (lambda (command-name) (log::info! command-name)))
+;; ```
+;;
+;; ## document-focus-lost
+;;
+;; Expects a function with one argument to accept the doc id of the document that has lost focus.
+;;
+;; ## selection-did-change
+;;
+;; Expects a function with one argument to accept the view id.
+;;
+;; ## document-opened
+;;
+;; Expects a function with one argument to accept the doc id of the document that was just opened.
+;;
+;; ## document-saved
+;;
+;; Expects a function with one argument to accept the doc id of the document that was just saved.
+(define (register-hook event-kind callback-fn)
+    (helix.register-hook event-kind callback-fn))
+
+            
+        "#;
+
+        builtin_editor_command_module.push_str(doc);
+    }
+
     let mut template_function_arity_0 = |name: &str, doc: &str| {
         let doc = format_docstring(doc);
         builtin_editor_command_module.push_str(&format!(
