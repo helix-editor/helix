@@ -90,3 +90,15 @@ magenta = "#dfbfff"
 orange = "#ffad66"
 red = "#f28779"
 yellow = "#ffcc77"
+((vid) @constant.builtin (#eq? @constant.builtin "nil"))
+((vid) @constant.builtin.boolean
+ (#match? @constant.builtin.boolean "^(true|false)$"))
+((vid) @operator (#eq? @operator "::"))
+((vid) @keyword.storage.modifier (#eq? @keyword.storage.modifier "ref"))
+
+;; *******************************************************************
+;; Punctuation
+;; *******************************************************************
+
+["(" ")" "[" "]" "{" "}"] @punctuation.bracket
+["." "," ":" ";" "|" "=>" ":>"] @punctuation.delimiter
