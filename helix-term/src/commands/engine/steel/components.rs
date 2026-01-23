@@ -723,22 +723,8 @@ Valid borders include:
 
     register!(
         "block/render",
-        |buf: &mut Buffer, mut area: Rect, block: Block| {
-            if area.right() > buf.area.right() {
-                area = area.clip_right(area.width.saturating_sub(area.right() - buf.area.right()));
-            }
-            if area.bottom() > buf.area.bottom() {
-                area =
-                    area.clip_bottom(area.width.saturating_sub(area.bottom() - buf.area.bottom()));
-            }
-            if area.left() < buf.area.left() {
-                area = area.clip_left(buf.area.left() - area.left());
-            }
-            if area.top() > buf.area.top() {
-                area = area.clip_top(buf.area.top() - area.top());
-            }
-
-            block.render(area, buf);
+        |buf: &mut Buffer, area: Rect, block: Block| {
+            block.render_with_bounds(area, buf);
         },
         r#"
 Render the given `Block` over the given `Rect` onto the provided `Buffer`.
