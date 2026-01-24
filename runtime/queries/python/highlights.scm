@@ -215,8 +215,10 @@
     (#any-of? @_func "TypeVar" "NewType" "NamedTuple" "TypedDict" "ParamSpec" "TypeVarTuple")))
 
 ; Python 3.12 type alias statement: type Alias = ...
+; Note: Uses `.` anchor to match only first child, for compatibility with
+; Snakemake which inherits Python but lacks named fields in type_alias_statement
 (type_alias_statement
-  left: (type (identifier) @type.definition))
+  . (type (identifier) @type.definition))
 
 ; -------
 ; Functions

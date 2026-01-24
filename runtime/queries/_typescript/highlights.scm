@@ -121,6 +121,12 @@
 ; Type definitions
 ; ----------------
 
+; Override ecma class patterns: TypeScript uses type_identifier, not identifier
+(class
+  name: (type_identifier) @type.definition)
+(class_declaration
+  name: (type_identifier) @type.definition)
+
 (interface_declaration
   name: (type_identifier) @type.definition)
 (type_alias_declaration

@@ -158,14 +158,6 @@
 (shorthand_property_identifier) @variable.other.member
 (shorthand_property_identifier_pattern) @variable.other.member
 
-; Class definitions
-;------------------
-
-(class
-  name: (identifier) @type.definition)
-(class_declaration
-  name: (identifier) @type.definition)
-
 ; Function and method definitions
 ;--------------------------------
 
