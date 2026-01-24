@@ -2983,9 +2983,15 @@ impl super::PluginSystem for SteelScriptingEngine {
                     })
                 }
             }) {
-                Ok(v) => {
-                    cx.editor.set_status(v.to_string());
-                }
+                Ok(res) => match &res {
+                    SteelVal::Void => {}
+                    SteelVal::StringV(s) => {
+                        cx.editor.set_status(s.as_str().to_owned());
+                    }
+                    _ => {
+                        cx.editor.set_status(res.to_string());
+                    }
+                },
                 Err(e) => {
                     cx.editor.set_error(e.to_string());
                 }
