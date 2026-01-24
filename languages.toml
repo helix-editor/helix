@@ -145,6 +145,7 @@ taplo = { command = "taplo", args = ["lsp", "stdio"] }
 templ = { command = "templ", args = ["lsp"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
+tilt = { command = "tilt", args = ["lsp", "start"] }
 tombi = { command = "tombi", args = ["lsp"] }
 ty = { command = "ty", args = ["server"] }
 typespec = { command = "tsp-server", args = ["--stdio"] }
@@ -2878,7 +2879,7 @@ source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569
 name = "starlark"
 scope = "source.starlark"
 injection-regex = "(starlark|bzl|bazel|buck)"
-file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUCK" }, { glob = "BUILD.*" }, { glob = "Tiltfile" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }, { glob = "PACKAGE" }]
+file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUCK" }, { glob = "BUILD.*" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }, { glob = "PACKAGE" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = [ "starpls" ]
@@ -5291,3 +5292,17 @@ indent = { tab-width = 4, unit="    "}
 [[grammar]]
 name = "klog"
 source = { git = "https://github.com/Ansimorph/tree-sitter-klog/", rev = "0b215fe75bdeb8368546e3cee36aca8c19212d06" }
+
+
+# https://docs.tilt.dev/editor.html
+[[language]]
+name = "tilt"
+scope = "source.tilt"
+injection-regex = "[Tt]ilt(file)?"
+file-types = [{ glob = "Tiltfile" }, "tiltfile"]
+comment-token = "#"
+grammar = "python" # Uses starlark as grammar
+indent = { tab-width = 4, unit = "    " }
+language-servers = ["tilt"]
+formatter = {command = "buildifier"} # Official formatter tool for starlark/bazel
+auto-format = true
