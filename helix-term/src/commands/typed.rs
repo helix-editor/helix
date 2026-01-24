@@ -2756,7 +2756,11 @@ fn trust_workspace(
 
     // Update runtime state
     cx.editor.workspace_trust.trust_level = helix_loader::trust::TrustLevel::Trusted;
-    cx.editor.workspace_trust.profile = cx.editor.config().trust.trusted.clone();
+    cx.editor.workspace_trust.profile = cx
+        .editor
+        .config()
+        .trust
+        .resolve_profile(&workspace_path, helix_loader::trust::TrustLevel::Trusted);
 
     cx.editor.set_status(format!(
         "Workspace trusted: {}. Restart Helix to load workspace configuration.",

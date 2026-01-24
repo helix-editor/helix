@@ -196,7 +196,8 @@ impl TrustConfig {
         self.workspaces.iter().find(|w| {
             // Resolve symlinks for the override path
             let override_expanded = helix_stdx::path::canonicalize(w.expanded_path());
-            let override_path = std::fs::canonicalize(&override_expanded).unwrap_or(override_expanded);
+            let override_path =
+                std::fs::canonicalize(&override_expanded).unwrap_or(override_expanded);
             canonical == override_path || canonical.starts_with(&override_path)
         })
     }
@@ -762,14 +763,18 @@ mod tests {
                 if canonical.starts_with(p) {
                     match best_match {
                         None => best_match = Some((p, entry)),
-                        Some((best_path, _)) if p.as_os_str().len() > best_path.as_os_str().len() => {
+                        Some((best_path, _))
+                            if p.as_os_str().len() > best_path.as_os_str().len() =>
+                        {
                             best_match = Some((p, entry));
                         }
                         _ => {}
                     }
                 }
             }
-            best_match.map(|(_, e)| e.level).unwrap_or(TrustLevel::Unknown)
+            best_match
+                .map(|(_, e)| e.level)
+                .unwrap_or(TrustLevel::Unknown)
         };
 
         // Parent is trusted

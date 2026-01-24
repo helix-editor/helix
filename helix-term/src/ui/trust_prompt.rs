@@ -20,10 +20,13 @@ pub enum TrustDecision {
     Cancel,
 }
 
+type TrustCallback =
+    Box<dyn FnOnce(&mut Compositor, &mut helix_view::Editor, TrustDecision) + Send>;
+
 /// A prompt dialog asking the user whether to trust a workspace.
 pub struct TrustPrompt {
     workspace_path: PathBuf,
-    callback: Option<Box<dyn FnOnce(&mut Compositor, &mut helix_view::Editor, TrustDecision) + Send>>,
+    callback: Option<TrustCallback>,
 }
 
 impl TrustPrompt {
@@ -39,14 +42,16 @@ impl TrustPrompt {
 
     fn close_with_decision(&mut self, decision: TrustDecision) -> EventResult {
         let callback = self.callback.take();
-        EventResult::Consumed(Some(Box::new(move |compositor: &mut Compositor, cx: &mut Context| {
-            // Remove the prompt from the compositor
-            compositor.remove(TrustPrompt::ID);
-            // Call the callback with the decision
-            if let Some(cb) = callback {
-                cb(compositor, cx.editor, decision);
-            }
-        })))
+        EventResult::Consumed(Some(Box::new(
+            move |compositor: &mut Compositor, cx: &mut Context| {
+                // Remove the prompt from the compositor
+                compositor.remove(TrustPrompt::ID);
+                // Call the callback with the decision
+                if let Some(cb) = callback {
+                    cb(compositor, cx.editor, decision);
+                }
+            },
+        )))
     }
 
     const ID: &'static str = "trust-prompt";
@@ -122,8 +127,7 @@ impl Component for TrustPrompt {
             }) => self.close_with_decision(TrustDecision::Untrust),
 
             Event::Key(KeyEvent {
-                code: KeyCode::Esc,
-                ..
+                code: KeyCode::Esc, ..
             }) => self.close_with_decision(TrustDecision::Cancel),
 
             // Consume all other events to prevent them from reaching the editor

@@ -260,7 +260,7 @@ impl Application {
             let trust_prompt = ui::TrustPrompt::new(
                 workspace_path,
                 |_compositor, editor, decision| {
-                    use helix_loader::trust::{set_workspace_trust, TrustLevel, TrustProfile};
+                    use helix_loader::trust::{set_workspace_trust, TrustLevel};
                     use ui::TrustDecision;
 
                     match decision {
@@ -274,13 +274,10 @@ impl Application {
                             editor.workspace_trust.trust_level = TrustLevel::Trusted;
                             // Resolve the appropriate trust profile for this workspace,
                             // honoring any [[editor.trust.workspaces]] overrides.
-                            editor.workspace_trust.profile = editor
-                                .config()
-                                .trust
-                                .resolve_profile(
-                                    &editor.workspace_trust.workspace_path,
-                                    TrustLevel::Trusted,
-                                );
+                            editor.workspace_trust.profile = editor.config().trust.resolve_profile(
+                                &editor.workspace_trust.workspace_path,
+                                TrustLevel::Trusted,
+                            );
                             editor.set_status(
                                 "Workspace trusted. Restart Helix to load workspace configuration.",
                             );
