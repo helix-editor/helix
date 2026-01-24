@@ -590,7 +590,14 @@ impl FileExplorer {
                         return;
                     }
 
-                    perform_paste(cx, &src_path, &dest_path, is_dir, operation, &root, true);
+                    // Re-check destination existence to reduce TOCTOU risk between prompt and confirmation.
+                    if dest_path.exists() {
+                        // Destination still exists: proceed with overwrite as confirmed.
+                        perform_paste(cx, &src_path, &dest_path, is_dir, operation, &root, true);
+                    } else {
+                        // Destination disappeared or changed: fall back to non-overwrite behavior.
+                        perform_paste(cx, &src_path, &dest_path, is_dir, operation, &root, false);
+                    }
                 },
             );
 
