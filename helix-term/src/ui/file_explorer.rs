@@ -2,6 +2,7 @@
 //!
 //! Provides create, delete, rename, move, yank (copy), cut, and paste operations with live feedback.
 
+use std::error::Error;
 use std::path::{Path, PathBuf};
 
 use helix_core::Position;
@@ -111,6 +112,18 @@ impl FileExplorer {
 
                 let is_dir = input.ends_with('/') || input.ends_with(std::path::MAIN_SEPARATOR);
                 let trimmed_input = input.trim_end_matches(['/', std::path::MAIN_SEPARATOR]);
+
+                // Reject path traversal attempts: inputs containing ".." are not allowed.
+                // This prevents escaping the current directory via sequences like "../../../etc".
+                if trimmed_input
+                    .split(['/', std::path::MAIN_SEPARATOR])
+                    .any(|c| c == "..")
+                {
+                    cx.editor
+                        .set_error("Cannot create files outside the current directory");
+                    return;
+                }
+
                 let path = current_dir.join(trimmed_input);
 
                 // Validate path is within current directory (prevent path traversal)
@@ -123,30 +136,17 @@ impl FileExplorer {
                     }
                 };
 
-                // For new paths, check that parent exists and is within current_dir
-                let check_path = if let Some(parent) = path.parent() {
+                // For paths that can be fully resolved, verify they stay within current_dir.
+                // This handles edge cases like symlinks that could escape the directory.
+                if let Some(parent) = path.parent() {
                     if parent.exists() {
-                        parent.canonicalize().ok()
-                    } else {
-                        // Find the first existing ancestor
-                        let mut ancestor = parent;
-                        while let Some(p) = ancestor.parent() {
-                            if p.exists() {
-                                break;
+                        if let Ok(canonical_parent) = parent.canonicalize() {
+                            if !canonical_parent.starts_with(&canonical_current) {
+                                cx.editor
+                                    .set_error("Cannot create files outside the current directory");
+                                return;
                             }
-                            ancestor = p;
                         }
-                        ancestor.parent().and_then(|p| p.canonicalize().ok())
-                    }
-                } else {
-                    Some(canonical_current.clone())
-                };
-
-                if let Some(check) = check_path {
-                    if !check.starts_with(&canonical_current) {
-                        cx.editor
-                            .set_error("Cannot create files outside the current directory");
-                        return;
                     }
                 }
 
@@ -349,6 +349,17 @@ impl FileExplorer {
                     return;
                 }
 
+                // Reject path separators to prevent path traversal attacks.
+                // Rename should only change the filename within the same directory.
+                if input.contains('/')
+                    || input.contains(std::path::MAIN_SEPARATOR)
+                    || input.contains("..")
+                {
+                    cx.editor
+                        .set_error("Invalid filename: cannot contain path separators or '..'");
+                    return;
+                }
+
                 let new_path = parent.join(input);
 
                 // Check if destination exists
@@ -451,14 +462,38 @@ impl FileExplorer {
                     }
                 }
 
+                // Check if destination is outside the file explorer root.
+                // This helps users notice moves to unintended locations (e.g., ~/Downloads vs ./Downloads).
+                let is_outside_root = if let Ok(canonical_root) = root.canonicalize() {
+                    if let Some(parent) = dest_path.parent() {
+                        if let Ok(canonical_dest_parent) = parent.canonicalize() {
+                            !canonical_dest_parent.starts_with(&canonical_root)
+                        } else {
+                            // Can't canonicalize - destination parent doesn't exist yet, check if it will be outside
+                            !parent.starts_with(&root)
+                        }
+                    } else {
+                        true // No parent means root-level, which is outside
+                    }
+                } else {
+                    false // Can't canonicalize root, skip the check
+                };
+
                 match std::fs::rename(&path, &dest_path) {
                     Ok(_) => {
                         let verb = if is_dir { "Moved directory" } else { "Moved" };
+                        // Include "(outside file explorer)" suffix to warn user of external move
+                        let suffix = if is_outside_root {
+                            " (outside file explorer)"
+                        } else {
+                            ""
+                        };
                         cx.editor.set_status(format!(
-                            "{}: {} -> {}",
+                            "{}: {} -> {}{}",
                             verb,
                             path.display(),
-                            dest_path.display()
+                            dest_path.display(),
+                            suffix
                         ));
                         schedule_refresh(cx, root.clone());
                     }
@@ -475,10 +510,16 @@ impl FileExplorer {
                                             ));
                                             return;
                                         }
+                                        let suffix = if is_outside_root {
+                                            " (outside file explorer)"
+                                        } else {
+                                            ""
+                                        };
                                         cx.editor.set_status(format!(
-                                            "Moved directory: {} -> {}",
+                                            "Moved directory: {} -> {}{}",
                                             path.display(),
-                                            dest_path.display()
+                                            dest_path.display(),
+                                            suffix
                                         ));
                                         schedule_refresh(cx, root.clone());
                                     }
@@ -497,10 +538,16 @@ impl FileExplorer {
                                             ));
                                             return;
                                         }
+                                        let suffix = if is_outside_root {
+                                            " (outside file explorer)"
+                                        } else {
+                                            ""
+                                        };
                                         cx.editor.set_status(format!(
-                                            "Moved: {} -> {}",
+                                            "Moved: {} -> {}{}",
                                             path.display(),
-                                            dest_path.display()
+                                            dest_path.display(),
+                                            suffix
                                         ));
                                         schedule_refresh(cx, root.clone());
                                     }
@@ -591,11 +638,13 @@ impl FileExplorer {
                     }
 
                     // Re-check destination existence to reduce TOCTOU risk between prompt and confirmation.
+                    // Note: A small race window still exists between this check and the actual operation,
+                    // but this significantly reduces the risk of unexpected behavior.
                     if dest_path.exists() {
                         // Destination still exists: proceed with overwrite as confirmed.
                         perform_paste(cx, &src_path, &dest_path, is_dir, operation, &root, true);
                     } else {
-                        // Destination disappeared or changed: fall back to non-overwrite behavior.
+                        // Destination disappeared: fall back to non-overwrite behavior.
                         perform_paste(cx, &src_path, &dest_path, is_dir, operation, &root, false);
                     }
                 },
@@ -608,6 +657,9 @@ impl FileExplorer {
             )))
         } else {
             // Re-check just before performing the paste to reduce TOCTOU risk.
+            // Note: A small race window still exists between this check and the actual
+            // file operation in perform_paste. This is a known limitation; fully eliminating
+            // TOCTOU would require exclusive file creation flags at the filesystem level.
             if dest_path.exists() {
                 ctx.editor
                     .set_error("Destination already exists; paste cancelled");
@@ -663,19 +715,13 @@ fn schedule_refresh(cx: &mut Context, root: PathBuf) {
     let callback = Box::pin(async move {
         let call: JobCallback =
             JobCallback::EditorCompositor(Box::new(move |editor, compositor| {
-                // Only refresh if the current top layer is the file explorer.
-                //
-                // This avoids accidentally popping unrelated overlays that may have been
-                // opened after the refresh was scheduled (e.g. prompts or other UI).
-                if let Some(component) = compositor.current() {
-                    if component.id() == Some(ID) {
-                        // Pop the current file explorer (wrapped in overlay)
-                        compositor.pop();
-                        // Push a fresh file explorer
-                        if let Ok(explorer) = FileExplorer::new(root, editor) {
-                            compositor.push(Box::new(overlay::overlaid(explorer)));
-                        }
-                    }
+                // Remove the file explorer by ID instead of blindly popping.
+                // This prevents accidentally removing unrelated overlays (like prompts)
+                // that may have been opened after the refresh was scheduled.
+                compositor.remove(ID);
+                // Push a fresh file explorer
+                if let Ok(explorer) = FileExplorer::new(root, editor) {
+                    compositor.push(Box::new(overlay::overlaid(explorer)));
                 }
             }));
         Ok(call)
@@ -792,7 +838,7 @@ fn create_picker(root: PathBuf, editor: &Editor) -> Result<FileExplorerPicker, s
                 });
                 cx.jobs.callback(callback);
             } else if let Err(e) = cx.editor.open(path, action) {
-                let err = if let Some(err) = std::error::Error::source(&e) {
+                let err = if let Some(err) = e.source() {
                     format!("{}", err)
                 } else {
                     format!("unable to open \"{}\"", path.display())
