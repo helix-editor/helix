@@ -61,7 +61,7 @@ impl Component for TrustPrompt {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // Calculate dialog size and position (centered)
         let width = 60.min(area.width.saturating_sub(4));
-        let height = 12.min(area.height.saturating_sub(4));
+        let height = 14.min(area.height.saturating_sub(4));
         let x = area.x + (area.width.saturating_sub(width)) / 2;
         let y = area.y + (area.height.saturating_sub(height)) / 2;
         let dialog_area = Rect::new(x, y, width, height);
