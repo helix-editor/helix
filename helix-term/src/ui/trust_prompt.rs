@@ -77,6 +77,7 @@ impl Component for TrustPrompt {
              {}\n\n\
              Trusting enables:\n\
               - Language servers (LSP)\n\
+              - Debug adapters (DAP)\n\
               - Shell commands\n\
               - Workspace configuration\n\n\
              [y] Trust   [n] Don't Trust   [Esc] Cancel",
