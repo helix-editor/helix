@@ -62,12 +62,11 @@ impl Hover {
         self.contents
             .iter()
             .map(|(header, body)| {
-                let header: String = header
-                    .iter()
-                    .map(|header| header.contents.clone())
-                    .collect();
-
-                format!("{}{}", header, body.contents)
+                if let Some(header) = header {
+                    format!("{}\n{}", header.contents.trim(), body.contents.trim())
+                } else {
+                    body.contents.trim().to_owned()
+                }
             })
             .collect::<Vec<String>>()
             .join("\n\n---\n\n")
