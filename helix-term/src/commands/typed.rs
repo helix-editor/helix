@@ -2789,7 +2789,11 @@ fn untrust_workspace(
 
     // Update runtime state
     cx.editor.workspace_trust.trust_level = helix_loader::trust::TrustLevel::Untrusted;
-    cx.editor.workspace_trust.profile = cx.editor.config().trust.untrusted.clone();
+    cx.editor.workspace_trust.profile = cx
+        .editor
+        .config()
+        .trust
+        .resolve_profile(&workspace_path, helix_loader::trust::TrustLevel::Untrusted);
 
     cx.editor.set_status(format!(
         "Workspace untrusted: {}. LSP and shell commands are now disabled.",
