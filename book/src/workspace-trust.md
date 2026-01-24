@@ -145,13 +145,13 @@ workspace-config = false
 
 ### Trust Resolution Order
 
-When determining trust for a workspace, Helix checks in this order:
+When determining the **trust level** for a workspace, Helix checks in this order:
 
-1. **Per-workspace override**: Check `[[editor.trust.workspaces]]` for a matching path (most specific match wins)
-2. **CLI flag**: `--trust` or `--untrust` overrides stored decisions
-3. **Persisted trust store**: Check `~/.config/helix/workspace-trust.toml` (most specific match wins)
-4. **Default setting**: Use `editor.trust.default` from config
+1. **CLI flag**: `--trust` or `--untrust` (highest priority)
+2. **Persisted trust store**: Check `~/.config/helix/workspace-trust.toml` (most specific match wins)
+3. **Default setting**: Use `editor.trust.default` from config
 
+The per-workspace override from `[[editor.trust.workspaces]]` does **not** determine the trust level. It is used only after the trust level is known, to select which features (LSP, DAP, shell commands, workspace config, etc.) are enabled for that workspace.
 ### Persistence
 
 Trust decisions are stored in `~/.config/helix/workspace-trust.toml`:
