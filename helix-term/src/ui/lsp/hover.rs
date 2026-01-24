@@ -58,6 +58,22 @@ impl Hover {
         &self.contents[self.active_index]
     }
 
+    pub fn content_string(&self) -> String {
+        self.contents
+            .iter()
+            .map(|(header, body)| {
+                let header: String = header
+                    .iter()
+                    .map(|header| header.contents.clone())
+                    .collect();
+
+                format!("{}{}", header, body.contents)
+            })
+            .collect::<Vec<String>>()
+            .join("\n\n---\n\n")
+            + "\n"
+    }
+
     fn set_index(&mut self, index: usize) {
         assert!((0..self.contents.len()).contains(&index));
         self.active_index = index;
