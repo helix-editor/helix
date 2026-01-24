@@ -272,7 +272,15 @@ impl Application {
                             );
                             // Update runtime state
                             editor.workspace_trust.trust_level = TrustLevel::Trusted;
-                            editor.workspace_trust.profile = TrustProfile::trusted();
+                            // Resolve the appropriate trust profile for this workspace,
+                            // honoring any [[editor.trust.workspaces]] overrides.
+                            editor.workspace_trust.profile = editor
+                                .config()
+                                .trust
+                                .resolve_profile(
+                                    &editor.workspace_trust.workspace_path,
+                                    TrustLevel::Trusted,
+                                );
                             editor.set_status(
                                 "Workspace trusted. Restart Helix to load workspace configuration.",
                             );
