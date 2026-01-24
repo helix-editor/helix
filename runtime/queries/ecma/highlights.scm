@@ -158,6 +158,14 @@
 (shorthand_property_identifier) @variable.other.member
 (shorthand_property_identifier_pattern) @variable.other.member
 
+; Class definitions
+;------------------
+
+(class
+  name: (identifier) @type.definition)
+(class_declaration
+  name: (identifier) @type.definition)
+
 ; Function and method definitions
 ;--------------------------------
 
@@ -206,14 +214,14 @@
 ;--------------------------
 
 (call_expression
-  function: (identifier) @function)
+  function: (identifier) @function.call)
 
 (call_expression
   function: (member_expression
-    property: (property_identifier) @function.method))
+    property: (property_identifier) @function.method.call))
 (call_expression
   function: (member_expression
-    property: (private_property_identifier) @function.method.private))
+    property: (private_property_identifier) @function.method.private.call))
 
 ; Literals
 ;---------

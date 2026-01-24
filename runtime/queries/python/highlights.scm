@@ -195,8 +195,28 @@
         (_ [(identifier) (none)]? @type)))))
 
 ; Classes
-(class_definition name: (identifier) @type)
+(class_definition name: (identifier) @type.definition)
 (class_definition superclasses: (argument_list (identifier) @type))
+
+; Type definitions via typing module functions
+; Covers: TypeVar, NewType, NamedTuple, TypedDict, ParamSpec, TypeVarTuple
+(assignment
+  left: (identifier) @type.definition
+  right: (call
+    function: (identifier) @_func
+    (#any-of? @_func "TypeVar" "NewType" "NamedTuple" "TypedDict" "ParamSpec" "TypeVarTuple")))
+
+; Also match typing.TypeVar(...) form
+(assignment
+  left: (identifier) @type.definition
+  right: (call
+    function: (attribute
+      attribute: (identifier) @_func)
+    (#any-of? @_func "TypeVar" "NewType" "NamedTuple" "TypedDict" "ParamSpec" "TypeVarTuple")))
+
+; Python 3.12 type alias statement: type Alias = ...
+(type_alias_statement
+  left: (type (identifier) @type.definition))
 
 ; -------
 ; Functions
@@ -206,7 +226,7 @@
   name: (identifier) @function)
 
 (call
-  function: (identifier) @function)
+  function: (identifier) @function.call)
 
 ; Decorators
 (decorator) @function
@@ -217,7 +237,7 @@
 
 ; Methods
 (call
-  function: (attribute attribute: (identifier) @function.method))
+  function: (attribute attribute: (identifier) @function.method.call))
 
 ; Builtin functions
 ((call

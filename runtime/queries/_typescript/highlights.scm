@@ -118,6 +118,18 @@
   name: (type_identifier) @type.parameter)
 (predefined_type) @type.builtin
 
+; Type definitions
+; ----------------
+
+(interface_declaration
+  name: (type_identifier) @type.definition)
+(type_alias_declaration
+  name: (type_identifier) @type.definition)
+(enum_declaration
+  name: (identifier) @type.definition)
+(abstract_class_declaration
+  name: (type_identifier) @type.definition)
+
 ; Type arguments and parameters
 ; -----------------------------
 
