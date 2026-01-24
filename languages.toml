@@ -1522,7 +1522,7 @@ language-servers = [ "lua-language-server" ]
 
 [[grammar]]
 name = "lua"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-lua", rev = "88e446476a1e97a8724dff7a23e2d709855077f2" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-lua", rev = "e40f5b6e6df9c2d1d6d664ff5d346a75d71ee6b2" }
 
 [[language]]
 name = "luap"
