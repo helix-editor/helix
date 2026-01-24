@@ -188,14 +188,10 @@ impl TrustConfig {
     ///
     /// For best performance, pass an already-canonicalized workspace path.
     pub fn find_workspace_override(&self, workspace: &Path) -> Option<&WorkspaceTrustOverride> {
-        // If workspace is already absolute and exists, assume it's canonical
-        // Otherwise, try to canonicalize it
-        let canonical = if workspace.is_absolute() {
-            workspace.to_path_buf()
-        } else {
-            let expanded = helix_stdx::path::canonicalize(workspace);
-            std::fs::canonicalize(&expanded).unwrap_or(expanded)
-        };
+        // Always try to canonicalize the workspace path to resolve symlinks,
+        // regardless of whether it is absolute or relative.
+        let expanded = helix_stdx::path::canonicalize(workspace);
+        let canonical = std::fs::canonicalize(&expanded).unwrap_or(expanded);
 
         self.workspaces.iter().find(|w| {
             // Resolve symlinks for the override path
