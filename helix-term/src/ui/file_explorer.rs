@@ -656,11 +656,19 @@ fn schedule_refresh(cx: &mut Context, root: PathBuf) {
     let callback = Box::pin(async move {
         let call: JobCallback =
             JobCallback::EditorCompositor(Box::new(move |editor, compositor| {
-                // Pop the current file explorer (wrapped in overlay)
-                compositor.pop();
-                // Push a fresh file explorer
-                if let Ok(explorer) = FileExplorer::new(root, editor) {
-                    compositor.push(Box::new(overlay::overlaid(explorer)));
+                // Only refresh if the current top layer is the file explorer.
+                //
+                // This avoids accidentally popping unrelated overlays that may have been
+                // opened after the refresh was scheduled (e.g. prompts or other UI).
+                if let Some(component) = compositor.current() {
+                    if component.id() == Some(ID) {
+                        // Pop the current file explorer (wrapped in overlay)
+                        compositor.pop();
+                        // Push a fresh file explorer
+                        if let Ok(explorer) = FileExplorer::new(root, editor) {
+                            compositor.push(Box::new(overlay::overlaid(explorer)));
+                        }
+                    }
                 }
             }));
         Ok(call)
