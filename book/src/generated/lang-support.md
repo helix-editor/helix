@@ -252,7 +252,7 @@
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
 | slint | ✓ | ✓ | ✓ |  |  | `slint-lsp` |
 | slisp | ✓ |  |  | ✓ |  |  |
-| smali | ✓ |  | ✓ |  |  |  |
+| smali | ✓ |  | ✓ |  |  | `smalisp` |
 | smithy | ✓ |  |  |  |  | `cs` |
 | sml | ✓ |  |  |  |  |  |
 | snakemake | ✓ |  | ✓ |  |  | `pylsp` |

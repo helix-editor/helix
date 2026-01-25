@@ -128,6 +128,7 @@ rumdl = { command = "rumdl", args = ["server"] }
 serve-d = { command = "serve-d" }
 slangd = { command = "slangd" }
 slint-lsp = { command = "slint-lsp", args = [] }
+smalisp = { command = "smalisp" }
 systemd-lsp = { command = "systemd-lsp" }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
