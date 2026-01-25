@@ -1,16 +1,18 @@
 ; Functions/constructors/predicates in Domain
-(constructor_decl) @function.outer
-(function_decl) @function.outer
-(predicate_decl) @function.outer
+(constructor_decl) @function.around
 
-; Blocks
-(block) @block.outer
-(block) @block.inner
+(function_decl) @function.around
+
+(predicate_decl) @function.around
 
 ; Parameters
-(parameter_list) @parameter.outer
-(parameter) @parameter.inner
+(parameter_list
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 ; Arguments
-(argument_list) @call.outer
-(argument_list) @call.inner
+(argument_list
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
+; Comments
+(comment) @comment.inside
+(comment) @comment.around

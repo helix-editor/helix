@@ -1799,7 +1799,7 @@ source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "88408ff
 
 [[language]]
 name = "penrose"
-scope = "source.{domain, substance, style}"
+scope = "source.penrose"
 auto-format = false
 file-types = ["substance", "style", "domain"]
 comment-tokens = "--"
@@ -1807,7 +1807,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "penrose"
-source = {git="https://github.com/klukaszek/tree-sitter-penrose/", rev="dedf9e775d086f8912c5282234cbaefed0c5f8dc"}
+source = { git = "https://github.com/klukaszek/tree-sitter-penrose", rev = "1a50b8303216b7f8387a8d89fa7333e495d7e923" }
 
 [[language]]
 name = "perl"
