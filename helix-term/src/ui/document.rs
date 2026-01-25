@@ -343,21 +343,17 @@ impl<'a> TextRenderer<'a> {
         } else {
             &self.tab
         };
-        let grapheme = if !grapheme.source.is_eof() {
-            match grapheme.raw {
-                Grapheme::Tab { width } => {
-                    let grapheme_tab_width = char_to_byte_idx(tab, width);
-                    &tab[..grapheme_tab_width]
-                }
-                // TODO special rendering for other whitespaces?
-                Grapheme::Other { ref g } if g == " " => space,
-                Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
-                Grapheme::Other { ref g } if g == "\u{202F}" => nnbsp,
-                Grapheme::Other { ref g } => g,
-                Grapheme::Newline => &self.newline,
+        let grapheme = match grapheme.raw {
+            Grapheme::Tab { width } => {
+                let grapheme_tab_width = char_to_byte_idx(tab, width);
+                &tab[..grapheme_tab_width]
             }
-        } else {
-            " "
+            // TODO special rendering for other whitespaces?
+            Grapheme::Other { ref g } if g == " " && !grapheme.source.is_eof() => space,
+            Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
+            Grapheme::Other { ref g } if g == "\u{202F}" => nnbsp,
+            Grapheme::Other { ref g } => g,
+            Grapheme::Newline => &self.newline,
         };
 
         let in_bounds = self.column_in_bounds(position.col, width);
