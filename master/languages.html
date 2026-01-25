@@ -213,7 +213,7 @@ language-servers = [ "mylang-lsp" ]
 <tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">language injection</a> site.</td></tr>
 <tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>["yml", "yaml"]</code>. See the file-type detection section below.</td></tr>
 <tr><td><code>shebangs</code></td><td>The interpreters from the shebang line, for example <code>["sh", "bash"]</code></td></tr>
-<tr><td><code>roots</code></td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code></td></tr>
+<tr><td><code>roots</code></td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code>, <code>*.csproj</code></td></tr>
 <tr><td><code>auto-format</code></td><td>Whether to autoformat this language when saving</td></tr>
 <tr><td><code>diagnostic-severity</code></td><td>Minimal severity of diagnostic for it to be displayed. (Allowed values: <code>error</code>, <code>warning</code>, <code>info</code>, <code>hint</code>)</td></tr>
 <tr><td><code>comment-tokens</code></td><td>The tokens to use as a comment token, either a single token <code>"//"</code> or an array <code>["//", "///", "//!"]</code> (the first token will be used for commenting). Also configurable as <code>comment-token</code> for backwards compatibility</td></tr>
