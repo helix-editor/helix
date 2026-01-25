@@ -746,7 +746,7 @@ name = "c-sharp"
 scope = "source.csharp"
 injection-regex = "c-?sharp"
 file-types = ["cs", "csx", "cake"]
-roots = ["sln", "csproj"]
+roots = ["*.slnx", "*.sln", "*.csproj"]
 comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
@@ -3728,7 +3728,7 @@ source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "
 [[language]]
 name = "fsharp"
 scope = "source.fs"
-roots = ["sln", "fsproj"]
+roots = ["*.slnx", "*.sln", "*.fsproj"]
 injection-regex = "fsharp"
 file-types = ["fs", "fsx", "fsi", "fsscript"]
 comment-token = "//"
