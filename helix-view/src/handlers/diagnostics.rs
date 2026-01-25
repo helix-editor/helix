@@ -105,7 +105,7 @@ impl DiagnosticsHandler {
             .store(self.generation.get(), atomic::Ordering::Relaxed);
     }
     pub fn show_cursorline_diagnostics(&self, doc: &Document, view: ViewId) -> bool {
-        if !self.active {
+        if !self.active || !doc.config.load().enable_diagnostics {
             return false;
         }
         let cursor_line = doc
