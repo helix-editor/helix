@@ -87,6 +87,30 @@ pub fn diagnostic<'doc>(
     )
 }
 
+pub fn lens<'doc>(
+    _editor: &'doc Editor,
+    doc: &'doc Document,
+    theme: &Theme,
+    _is_focused: bool,
+) -> GutterFn<'doc> {
+    let info = theme.get("info");
+    let lenses = &doc.code_lenses;
+
+    Box::new(
+        move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            if !first_visual_line {
+                return None;
+            }
+            if lenses.iter().any(|l| l.line == line) {
+                write!(out, "▶").ok();
+                Some(info)
+            } else {
+                None
+            }
+        },
+    )
+}
+
 pub fn diff<'doc>(
     _editor: &'doc Editor,
     doc: &'doc Document,
@@ -316,11 +340,13 @@ pub fn diagnostics_or_breakpoints<'doc>(
     let mut diagnostics = diagnostic(editor, doc, view, theme, is_focused);
     let mut breakpoints = breakpoints(editor, doc, view, theme, is_focused);
     let mut execution_pause_indicator = execution_pause_indicator(editor, doc, theme, is_focused);
+    let mut lenses = lens(editor, doc, theme, is_focused);
 
     Box::new(move |line, selected, first_visual_line: bool, out| {
         execution_pause_indicator(line, selected, first_visual_line, out)
             .or_else(|| breakpoints(line, selected, first_visual_line, out))
             .or_else(|| diagnostics(line, selected, first_visual_line, out))
+            .or_else(|| lenses(line, selected, first_visual_line, out))
     })
 }
 

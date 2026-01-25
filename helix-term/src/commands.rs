@@ -433,6 +433,7 @@ impl MappableCommand {
         add_newline_below, "Add newline below",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
+        show_code_lenses_under_cursor, "Show code lenses under cursor",
         goto_file_start, "Goto line number <n> else file start",
         goto_file_end, "Goto file end",
         extend_to_file_start, "Extend to line number<n> else file start",
