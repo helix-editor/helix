@@ -7,14 +7,13 @@ mod transport;
 use arc_swap::ArcSwap;
 pub use client::Client;
 pub use futures_executor::block_on;
-use globset::{Glob, GlobSet, GlobSetBuilder};
 pub use helix_lsp_types as lsp;
 pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
 
 use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::config::{
-    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
+    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures, RootMarkers,
 };
 use helix_stdx::path;
 use slotmap::SlotMap;
@@ -967,7 +966,7 @@ fn start_client(
 /// * If we stopped at `workspace` instead and `workspace_is_cwd == true` return `workspace`
 pub fn find_lsp_workspace(
     file: &str,
-    root_markers: &[String],
+    root_markers: &RootMarkers,
     root_dirs: &[PathBuf],
     workspace: &Path,
     workspace_is_cwd: bool,
@@ -985,7 +984,6 @@ pub fn find_lsp_workspace(
         return None;
     }
 
-    let marker_globs = root_marker_globs(root_markers);
     let mut top_marker = None;
     for ancestor in file.ancestors() {
         let Ok(mut dir) = fs::read_dir(ancestor) else {
@@ -994,7 +992,7 @@ pub fn find_lsp_workspace(
 
         if dir.any(|entry| {
             if let Ok(entry) = entry {
-                return marker_globs.is_match(entry.file_name());
+                return root_markers.is_match(entry.file_name());
             }
             false
         }) {
@@ -1020,20 +1018,6 @@ pub fn find_lsp_workspace(
 
     debug_assert!(false, "workspace must be an ancestor of <file>");
     None
-}
-
-fn root_marker_globs(patterns: &[String]) -> GlobSet {
-    let mut builder = GlobSetBuilder::new();
-
-    for glob in patterns.iter().flat_map(|pattern| Glob::new(pattern)) {
-        builder.add(glob);
-    }
-
-    builder.build().unwrap_or_else(|_| {
-        GlobSetBuilder::new()
-            .build()
-            .expect("empty globset build never fails")
-    })
 }
 
 #[cfg(test)]
