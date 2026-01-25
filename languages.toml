@@ -3702,7 +3702,7 @@ source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "
 [[language]]
 name = "fsharp"
 scope = "source.fs"
-roots = ["sln", "fsproj"]
+roots = ["*.slnx", "*.sln", "*.fsproj"]
 injection-regex = "fsharp"
 file-types = ["fs", "fsx", "fsi", "fsscript"]
 comment-token = "//"
