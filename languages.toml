@@ -108,7 +108,7 @@ prisma-language-server = { command = "prisma-language-server", args = ["--stdio"
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
 pyrefly = { command = "pyrefly", args = ["lsp"] }
-pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
+pyright = { command = "pyright-langserver", args = ["--stdio"], config = {}, roots = ["pyrightconfig.json"] }
 protols = { command = "protols", args = [] }
 basedpyright = { command = "basedpyright-langserver", args = ["--stdio"], config = {} }
 pylyzer = { command = "pylyzer", args = ["--server"] }
@@ -1074,7 +1074,7 @@ scope = "source.python"
 injection-regex = "py(thon)?"
 file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { glob = ".python_history" }, { glob = ".pythonstartup" }, { glob = ".pythonrc" }, { glob = "*SConstruct" }, { glob = "*SConscript" }, { glob = "*sconstruct" }]
 shebangs = ["python", "uv"]
-roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
+roots = ["pyproject.toml", "setup.py", "poetry.lock"]
 comment-token = "#"
 language-servers = ["ty", "ruff", "jedi", "pylsp"]
 # TODO: pyls needs utf-8 offsets

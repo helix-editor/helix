@@ -887,11 +887,17 @@ fn start_client(
 ) -> Result<NewClient, StartupError> {
     let (workspace, workspace_is_cwd) = helix_loader::find_workspace();
     let workspace = path::normalize(workspace);
+    let mut roots = config.roots.clone();
+    if !ls_config.roots.is_empty() {
+        let mut ls_roots = ls_config.roots.clone();
+        ls_roots.append(&mut roots);
+        roots = ls_roots;
+    };
     let root = find_lsp_workspace(
         doc_path
             .and_then(|x| x.parent().and_then(|x| x.to_str()))
             .unwrap_or("."),
-        &config.roots,
+        &roots,
         config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
         &workspace,
         workspace_is_cwd,
