@@ -35,6 +35,7 @@ pub struct Menu<T: Item> {
     size: (u16, u16),
     viewport: (u16, u16),
     recalculate: bool,
+    auto_close: bool,
 }
 
 impl<T: Item> Menu<T> {
@@ -59,6 +60,7 @@ impl<T: Item> Menu<T> {
             size: (0, 0),
             viewport: (0, 0),
             recalculate: true,
+            auto_close: false,
         }
     }
 
@@ -107,6 +109,11 @@ impl<T: Item> Menu<T> {
         let pos = self.cursor.map_or(0, |i| i + 1) % len;
         self.cursor = Some(pos);
         self.adjust_scroll();
+    }
+
+    pub fn auto_close(mut self, auto_close: bool) -> Self {
+        self.auto_close = auto_close;
+        self
     }
 
     fn recalculate_size(&mut self, viewport: (u16, u16)) {
@@ -272,6 +279,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             // enter confirms the match and closes the menu
             // typing filters the menu
             // if we run out of options the menu closes itself
+            _ if self.auto_close => {
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
+                return EventResult::Consumed(close_fn);
+            }
             _ => (),
         }
         // for some events, we want to process them but send ignore, specifically all input except
