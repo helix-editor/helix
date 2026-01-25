@@ -2,6 +2,7 @@ use crate::{auto_pairs::AutoPairs, diagnostic::Severity, Language};
 
 use helix_stdx::rope;
 use serde::{ser::SerializeSeq as _, Deserialize, Serialize};
+use serde_json::Value;
 
 use std::{
     collections::{HashMap, HashSet},
@@ -467,22 +468,13 @@ pub enum DebugConfigCompletion {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum DebugArgumentValue {
-    String(String),
-    Array(Vec<String>),
-    Boolean(bool),
-    Table(HashMap<String, String>),
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebugTemplate {
     pub name: String,
     pub request: String,
     #[serde(default)]
     pub completion: Vec<DebugConfigCompletion>,
-    pub args: HashMap<String, DebugArgumentValue>,
+    pub args: HashMap<String, Value>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
