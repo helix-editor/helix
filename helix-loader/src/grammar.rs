@@ -11,7 +11,10 @@ use std::{
 use tempfile::TempPath;
 use tree_house::tree_sitter::Grammar;
 
-#[cfg(unix)]
+#[cfg(target_os = "macos")]
+const DYLIB_EXTENSION: &str = "dylib";
+
+#[cfg(all(unix, not(target_os = "macos")))]
 const DYLIB_EXTENSION: &str = "so";
 
 #[cfg(windows)]

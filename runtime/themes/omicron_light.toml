@@ -1,0 +1,111 @@
+error = "err"
+warning = "warn"
+hint = "diag"
+info = "diag"
+diagnostic = { underline = { color = "ghost", style = "curl" } }
+"diagnostic.error" = { underline = { color = "err", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "warn", style = "curl" } }
+"diagnostic.deprecated" = { fg = "code_unsafe", bg = "code_bg_unsafe", modifiers = [
+	"crossed_out",
+] }
+
+"ui.background" = { bg = "bg" }
+"ui.window" = { bg = "bg_ui" }
+"ui.gutter" = { bg = "bg_ui" }
+"ui.text" = "default"
+"ui.text.focus" = { bg = "sel" }
+# secondary
+"ui.cursor" = { fg = "#eeeeee", bg = "#333333" }
+# it only uses 1 cell, and it must be skimmable,
+# so force max contrast
+"ui.cursor.primary" = { fg = "#ffffff", bg = "#000000" }
+"ui.cursor.match" = { bg = "#cccccc" }
+"ui.debug" = "default"
+# it feels questionable, but it's more consistent and clean than `reversed`;
+# some web-browsers do the same
+"ui.selection" = { fg = "#dddddd", bg = "#555555" }
+"ui.cursorline" = { bg = "sel_weak" }
+"ui.cursorcolumn" = { bg = "sel_weak" }
+"ui.virtual" = "ghost"
+"ui.virtual.ruler" = { bg = "sel_weak" }
+"ui.virtual.inlay-hint" = "ghost"
+# these are ephemeral and user-controllable,
+# are not part of the buffer,
+# should be skimmable,
+# so override FG & BG to guarantee contrast
+# while also signaling that they are special text
+"ui.virtual.jump-label" = { fg = "#000000", bg = "sym" }
+"ui.statusline" = { fg = "default", bg = "bg_ui" }
+"ui.bufferline" = { fg = "default", bg = "bg_ui" }
+"ui.bufferline.active" = { bg = "sel", modifiers = ["bold"] }
+"ui.help" = { fg = "doc", bg = "bg_ui" }
+"ui.highlight" = { bg = "sel" }
+"ui.menu" = { fg = "code", bg = "bg_ui" }
+"ui.menu.selected" = { bg = "sel" }
+"ui.popup" = { fg = "#000000", bg = "#cccccc" }
+"ui.picker.header" = { modifiers = ["bold", "underlined"] }
+
+
+# Tree-Sitter scopes (syntax highlight)
+
+# NOTE: builtin HTML ones can be trivially auto-checked,
+# but custom ones (contain hyphens) need highlighting.
+#"attribute" = {}
+#"tag" = {}
+"tag.error" = { fg = "err", underline = { style = "line" } }
+"constant" = "literal"
+# TO-DO: escapes need highlight, but not unsafe
+"constant.character.escape" = "literal_unsafe"
+# floats are a plague!
+# https://github.com/you-dont-need/You-Dont-Need/issues/13
+"constant.numeric.float" = { fg = "literal_unsafe", bg = "literal_bg_unsafe" }
+"string" = "literal"
+"string.regexp" = { fg = "literal_unsafe", bg = "literal_bg_unsafe" }
+"string.special" = "sym"
+"comment" = "doc"
+# some are mutable and can be misused without triggering warns
+#"variable.builtin" = "literal_unsafe"
+"punctuation" = "default_weak"
+# beware of the Halting Problem!
+"keyword.control.repeat" = { fg = "code_unsafe", bg = "code_bg_unsafe" }
+"markup.heading" = { modifiers = ["bold"] }
+"markup.heading.marker" = "sym"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link" = { fg = "sym", underline = { style = "line" } }
+"markup.quote" = "doc"
+
+"markup.normal" = "default"
+"markup.normal.raw" = "code"
+"markup.heading.raw" = "code"
+"markup.raw" = "code"
+
+"diff.plus" = "green" # + add
+"diff.minus" = "red" # - delete
+"diff.delta" = "yellow" # ± edit
+"diff.delta.moved" = "sym" # -> rename
+"diff.delta.conflict" = "err" # ❌
+
+[palette]
+bg = "#eeeeee"
+bg_ui = "#dddddd"
+default = "#333333"
+default_weak = "#666666"
+ghost = "#999999"
+code = "#336633"
+code_unsafe = "#330000"
+code_bg_unsafe = "#eeddee"
+red = "#880000"
+green = "#007700"
+yellow = "#777700"
+sel = "#cccccc"
+sel_weak = "#e7e7e7"
+err = "#ff0000"
+warn = "#bbaa00"
+diag = "#0066aa"
+literal = "#009933"
+literal_unsafe = "#441100"
+literal_bg_unsafe = "#eeccaa"
+sym = "#00aaff"
+doc = "#770077"

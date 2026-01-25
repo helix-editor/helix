@@ -13,7 +13,7 @@ pub use lsp::{Position, Url};
 
 use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::config::{
-    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
+    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures, RootMarkers,
 };
 use helix_stdx::path;
 use slotmap::SlotMap;
@@ -21,6 +21,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
     collections::HashMap,
+    fs,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -476,6 +477,7 @@ pub enum MethodCall {
     UnregisterCapability(lsp::UnregistrationParams),
     ShowDocument(lsp::ShowDocumentParams),
     WorkspaceDiagnosticRefresh,
+    ShowMessageRequest(lsp::ShowMessageRequestParams),
 }
 
 impl MethodCall {
@@ -508,6 +510,10 @@ impl MethodCall {
                 Self::ShowDocument(params)
             }
             lsp::request::WorkspaceDiagnosticRefresh::METHOD => Self::WorkspaceDiagnosticRefresh,
+            lsp::request::ShowMessageRequest::METHOD => {
+                let params: lsp::ShowMessageRequestParams = params.parse()?;
+                Self::ShowMessageRequest(params)
+            }
             _ => {
                 return Err(Error::Unhandled);
             }
@@ -965,7 +971,7 @@ fn start_client(
 /// * If we stopped at `workspace` instead and `workspace_is_cwd == true` return `workspace`
 pub fn find_lsp_workspace(
     file: &str,
-    root_markers: &[String],
+    root_markers: &RootMarkers,
     root_dirs: &[PathBuf],
     workspace: &Path,
     workspace_is_cwd: bool,
@@ -985,10 +991,16 @@ pub fn find_lsp_workspace(
 
     let mut top_marker = None;
     for ancestor in file.ancestors() {
-        if root_markers
-            .iter()
-            .any(|marker| ancestor.join(marker).exists())
-        {
+        let Ok(mut dir) = fs::read_dir(ancestor) else {
+            continue;
+        };
+
+        if dir.any(|entry| {
+            if let Ok(entry) = entry {
+                return root_markers.is_match(entry.file_name());
+            }
+            false
+        }) {
             top_marker = Some(ancestor);
         }
 
