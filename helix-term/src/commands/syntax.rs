@@ -43,6 +43,7 @@ enum TagKind {
     Interface,
     Macro,
     Module,
+    Section,
     Struct,
     Type,
 }
@@ -56,6 +57,7 @@ impl TagKind {
             Self::Interface => "interface",
             Self::Macro => "macro",
             Self::Module => "module",
+            Self::Section => "section",
             Self::Struct => "struct",
             Self::Type => "type",
         }
@@ -69,6 +71,7 @@ impl TagKind {
             "interface" => Some(TagKind::Interface),
             "macro" => Some(TagKind::Macro),
             "module" => Some(TagKind::Module),
+            "section" => Some(TagKind::Section),
             "struct" => Some(TagKind::Struct),
             "type" => Some(TagKind::Type),
             _ => None,
