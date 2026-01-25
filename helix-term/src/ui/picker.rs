@@ -269,6 +269,8 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
+    /// Called to delete an item from the picker's list.
+    delete_item_fn: Option<PickerDeleteItem<T>>,
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -394,6 +396,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             file_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
+            delete_item_fn: None,
         }
     }
 
@@ -431,6 +434,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn with_initial_cursor(mut self, cursor: u32) -> Self {
         self.cursor = cursor;
+        self
+    }
+
+    pub fn with_delete_item(mut self, f: impl Fn(&mut Editor, &T) -> Vec<T> + 'static) -> Self {
+        self.delete_item_fn = Some(Box::new(f));
         self
     }
 
@@ -1143,6 +1151,20 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             ctrl!('t') => {
                 self.toggle_preview();
             }
+            alt!('d') | key!(Delete) => {
+                if let Some(option) = self.selection() {
+                    if let Some(delete_fn) = &self.delete_item_fn {
+                        let new_items = delete_fn(ctx.editor, option);
+                        let new_len = new_items.len() as u32;
+                        self.matcher.restart(false);
+                        let injector = self.matcher.injector();
+                        for item in new_items {
+                            inject_nucleo_item(&injector, &self.columns, item, &self.editor_data);
+                        }
+                        self.cursor = self.cursor.min(new_len.saturating_sub(1));
+                    }
+                }
+            }
             _ => {
                 self.prompt_handle_event(event, ctx);
             }
@@ -1187,3 +1209,4 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
+type PickerDeleteItem<T> = Box<dyn Fn(&mut Editor, &T) -> Vec<T>>;
