@@ -143,6 +143,7 @@ These are the available options for a language server.
 | `args`                     | A list of arguments to pass to the language server binary                                                                         |
 | `config`                   | Language server initialization options                                                                                            |
 | `timeout`                  | The maximum time a request to the language server may take, in seconds. Defaults to `20`                                          |
+| `formatter-timeout`        | The maximum time a formatting request to the language server may take, in seconds. Defaults to `1`                                |
 | `environment`              | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }`          |
 | `required-root-patterns`   | A list of `glob` patterns to look for in the working directory. The language server is started if at least one of them is found.  |
 
