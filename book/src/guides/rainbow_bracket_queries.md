@@ -36,7 +36,7 @@ taken into consideration.
 > ```js
 > {
 >   // ...
->   arguments: seq("(", repeat($.argument), ")"),
+>   arguments: $ => seq("(", repeat($.argument), ")"),
 >   // ...
 > }
 > ```

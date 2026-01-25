@@ -2097,7 +2097,7 @@ fn select_regex(cx: &mut Context) {
                 selection::select_on_matches(text, doc.selection(view.id), &regex)
             {
                 doc.set_selection(view.id, selection);
-            } else {
+            } else if event == PromptEvent::Validate {
                 cx.editor.set_error("nothing selected");
             }
         },
@@ -3077,8 +3077,17 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     let path = match doc_dir {
         Some(path) => path,
         None => {
-            cx.editor.set_error("current buffer has no path or parent");
-            return;
+            let cwd = helix_stdx::env::current_working_dir();
+            if !cwd.exists() {
+                cx.editor.set_error(
+                    "Current buffer has no parent and current working directory does not exist",
+                );
+                return;
+            }
+            cx.editor.set_error(
+                "Current buffer has no parent, opening file picker in current working directory",
+            );
+            cwd
         }
     };
 
@@ -5205,7 +5214,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
             {
                 doc.set_selection(view.id, selection);
-            } else {
+            } else if event == PromptEvent::Validate {
                 cx.editor.set_error("no selections remaining");
             }
         },
