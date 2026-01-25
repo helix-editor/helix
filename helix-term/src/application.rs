@@ -1118,12 +1118,6 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ShowMessageRequest(params)) => {
-                        impl ui::menu::Item for lsp::MessageActionItem {
-                            type Data = ();
-                            fn format(&self, _data: &Self::Data) -> tui::widgets::Row {
-                                self.title.as_str().into()
-                            }
-                        }
                         if let Some(actions) = params.actions.filter(|a| !a.is_empty()) {
                             let id = id.clone();
                             let select = ui::Select::new(
@@ -1344,5 +1338,12 @@ impl Application {
         }
 
         errs
+    }
+}
+
+impl ui::menu::Item for lsp::MessageActionItem {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> tui::widgets::Row<'_> {
+        self.title.as_str().into()
     }
 }
