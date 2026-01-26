@@ -239,7 +239,7 @@
 | ron | ✓ |  | ✓ | ✓ | ✓ | `ron-lsp` |
 | rpmspec | ✓ |  |  |  |  |  |
 | rshtml | ✓ | ✓ |  |  |  | `rshtml-analyzer`, `vscode-html-language-server`, `superhtml` |
-| rst | ✓ |  |  |  |  |  |
+| rst | ✓ |  |  | ✓ |  |  |
 | ruby | ✓ | ✓ | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
 | rust | ✓ | ✓ | ✓ | ✓ | ✓ | `rust-analyzer` |
 | rust-format-args | ✓ |  |  |  |  |  |
