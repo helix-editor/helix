@@ -1807,7 +1807,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "penrose"
-source = { git = "https://github.com/klukaszek/tree-sitter-penrose", rev = "1a50b8303216b7f8387a8d89fa7333e495d7e923" }
+source = { git = "https://github.com/klukaszek/tree-sitter-penrose", rev = "d9368ff7f743b2ac2145a3342db13b1ad950cba5" }
 
 [[language]]
 name = "perl"
