@@ -1,7 +1,7 @@
 ; SPDX-FileCopyrightText: 2023-2024, Dai López "dpezto"
 ; SPDX-FileCopyrightText: Copied verbatim from https://github.com/dpezto/tree-sitter-gnuplot
 ; SPDX-License-Identifier: MIT
-(comment) @comment @spell
+(comment) @comment
 
 (identifier) @variable
 
@@ -42,7 +42,7 @@
   [
     "?"
     ":"
-  ] @conditional.ternary)
+  ] @keyword.control.conditional)
 
 "sum" @function.builtin
 
@@ -51,7 +51,7 @@
   "in"
   "do"
   "while"
-] @keyword.repeat
+] @keyword.control.repeat
 
 [
   (c_break)
@@ -75,8 +75,8 @@
 
 (c_pause 
   "pause" @keyword
-  "mouse" @field 
-  _? @attribute 
+  "mouse" @keyword
+  _? @attribute
   (","
    _ @attribute)?)
 
@@ -101,19 +101,19 @@
 [
   "if"
   "else"
-] @keyword.conditional
+] @keyword.control.conditional
 
 (plot_element
-  "axes"? @field)
+  "axes"? @keyword)
 
 (cntrparam
-  "auto"? @property)
+  "auto"? @constant.builtin)
 
 (colorbox
   "origin"? @attribute)
 
 (contourfill
-  "auto"? @field)
+  "auto"? @constant.builtin)
 
 (format
   _? @attribute
@@ -121,7 +121,7 @@
   _? @attribute)
 
 (key
-  "auto"? @property)
+  "auto"? @constant.builtin)
 
 (polar
   "r" @attribute)
@@ -144,10 +144,10 @@
       "labels" @attribute
       (_)?)
     "histogram"
-  ] @property)
+  ] @keyword)
 
 (terminal 
-  "name" @property)
+  "name" @keyword)
 
 ; TODO: complete terminals in grammar and then simplify its options here
 (t_cairolatex
@@ -228,7 +228,7 @@
     "zerrorfill"
     "ellipses"
     ("filledcurves"
-     "r" @property)
+     "r" @keyword)
     "fillsteps"
     "histograms"
     "image"
@@ -288,7 +288,7 @@
   "filetype"
   "center"
   "record"
-] @field
+] @keyword
 
 [
   (angles)
@@ -604,13 +604,13 @@
   "flipx"
   "flipy"
   "flipz"
-] @property
+] @keyword
 
 (colorspec
   "palette" @attribute)
 
 (datafile_modifiers
-  "origin"? @field)
+  "origin"? @keyword)
 
 ((datafile_modifiers
    filetype: (identifier) @property)
@@ -642,6 +642,6 @@
 (array_def "array" @keyword.function)
 (array (identifier) @function)
 
-(number) @number
+(number) @constant.numeric
 
 (string_literal) @string
