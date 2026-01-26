@@ -23,3 +23,6 @@
 
 ; References
 (identifier) @local.reference
+; lifetimes / labels
+(lifetime (identifier) @label)
+(label (identifier) @label)
