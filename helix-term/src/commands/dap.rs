@@ -5,7 +5,7 @@ use crate::{
     ui::{self, overlay::overlaid, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use dap::{StackFrame, Thread, ThreadStates};
-use helix_core::syntax::config::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
+use helix_core::syntax::config::{DebugConfigCompletion, DebugTemplate};
 use helix_dap::{self as dap, requests::TerminateArguments};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
@@ -138,52 +138,20 @@ pub fn dap_start_impl(
     }
     .ok_or_else(|| anyhow!("No debug config with given name"))?;
 
-    let mut args: HashMap<&str, Value> = HashMap::new();
-
-    for (k, t) in &template.args {
-        let mut value = t.clone();
-        if let Some(ref params) = params {
-            for (i, x) in params.iter().enumerate() {
-                let mut param = x.to_string();
-                if let Some(DebugConfigCompletion::Advanced(cfg)) = template.completion.get(i) {
-                    if matches!(cfg.completion.as_deref(), Some("filename" | "directory")) {
-                        param = std::fs::canonicalize(x.as_ref())
-                            .ok()
-                            .and_then(|pb| pb.into_os_string().into_string().ok())
-                            .unwrap_or_else(|| x.to_string());
-                    }
-                }
-                // For param #0 replace {0} in args
-                let pattern = format!("{{{}}}", i);
-                value = match value {
-                    // TODO: just use toml::Value -> json::Value
-                    DebugArgumentValue::String(v) => {
-                        DebugArgumentValue::String(v.replace(&pattern, &param))
-                    }
-                    DebugArgumentValue::Array(arr) => DebugArgumentValue::Array(
-                        arr.iter().map(|v| v.replace(&pattern, &param)).collect(),
-                    ),
-                    DebugArgumentValue::Boolean(_) => value,
-                };
-            }
-        }
-
-        match value {
-            DebugArgumentValue::String(string) => {
-                if let Ok(integer) = string.parse::<usize>() {
-                    args.insert(k, to_value(integer).unwrap());
-                } else {
-                    args.insert(k, to_value(string).unwrap());
-                }
-            }
-            DebugArgumentValue::Array(arr) => {
-                args.insert(k, to_value(arr).unwrap());
-            }
-            DebugArgumentValue::Boolean(bool) => {
-                args.insert(k, to_value(bool).unwrap());
-            }
-        }
-    }
+    let mut args: HashMap<&str, Value> = if let Some(params) = params.as_ref() {
+        let preprocessed_params = prepare_dap_params(template, params);
+        template
+            .args
+            .iter()
+            .map(|(k, v)| (k.as_str(), map_value(v, &preprocessed_params)))
+            .collect()
+    } else {
+        template
+            .args
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.clone()))
+            .collect()
+    };
 
     args.insert("cwd", to_value(helix_stdx::env::current_working_dir())?);
 
@@ -216,6 +184,51 @@ pub fn dap_start_impl(
 
     // TODO: either await "initialized" or buffer commands until event is received
     Ok(())
+}
+
+fn prepare_dap_params(template: &DebugTemplate, params: &[std::borrow::Cow<str>]) -> Vec<String> {
+    params
+        .iter()
+        .enumerate()
+        .map(|(i, x)| {
+            let mut param = x.to_string();
+            if let Some(DebugConfigCompletion::Advanced(cfg)) = template.completion.get(i) {
+                if matches!(cfg.completion.as_deref(), Some("filename" | "directory")) {
+                    param = std::fs::canonicalize(x.as_ref())
+                        .ok()
+                        .and_then(|pb| pb.into_os_string().into_string().ok())
+                        .unwrap_or_else(|| x.to_string());
+                }
+            }
+            param
+        })
+        .collect()
+}
+
+fn map_value(value: &Value, params: &[String]) -> Value {
+    match value {
+        Value::String(string) => {
+            let mut string = string.clone();
+            for (i, x) in params.iter().enumerate() {
+                let pattern = format!("{{{}}}", i);
+                string = string.replace(&pattern, x);
+            }
+            if let Ok(integer) = string.parse::<usize>() {
+                to_value(integer).unwrap()
+            } else {
+                to_value(string).unwrap()
+            }
+        }
+        Value::Array(array) => Value::Array(array.iter().map(|x| map_value(x, params)).collect()),
+        Value::Object(object) => Value::Object(
+            object
+                .iter()
+                .map(|(k, v)| (k.clone(), map_value(v, params)))
+                .collect(),
+        ),
+
+        _ => value.clone(),
+    }
 }
 
 pub fn dap_launch(cx: &mut Context) {
@@ -576,15 +589,23 @@ pub fn dap_terminate(cx: &mut Context) {
     cx.editor.set_status("Terminating debug session...");
     let debugger = debugger!(cx.editor);
 
-    let terminate_arguments = Some(TerminateArguments {
-        restart: Some(false),
-    });
+    if debugger
+        .caps
+        .as_ref()
+        .is_some_and(|c| c.supports_terminate_request.unwrap_or_default())
+    {
+        let terminate_arguments = Some(TerminateArguments {
+            restart: Some(false),
+        });
 
-    let request = debugger.terminate(terminate_arguments);
-    dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
-        // editor.set_error(format!("Failed to disconnect: {}", e));
-        editor.debug_adapters.unset_active_client();
-    });
+        let request = debugger.terminate(terminate_arguments);
+        dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
+            // editor.set_error(format!("Failed to disconnect: {}", e));
+            editor.debug_adapters.unset_active_client();
+        });
+    } else {
+        cx.editor.debug_adapters.unset_active_client();
+    }
 }
 
 pub fn dap_enable_exceptions(cx: &mut Context) {

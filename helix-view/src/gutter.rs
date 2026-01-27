@@ -69,7 +69,7 @@ pub fn diagnostic<'doc>(
                 .iter()
                 .take_while(|d| {
                     d.line == line
-                        && d.provider.language_server_id().map_or(true, |id| {
+                        && d.provider.language_server_id().is_none_or(|id| {
                             doc.language_servers_with_feature(LanguageServerFeature::Diagnostics)
                                 .any(|ls| ls.id() == id)
                         })
@@ -279,7 +279,7 @@ fn execution_pause_indicator<'doc>(
 ) -> GutterFn<'doc> {
     let style = theme.get("ui.debug.active");
     let current_stack_frame = editor.current_stack_frame();
-    let frame_line = current_stack_frame.map(|frame| frame.line - 1);
+    let frame_line = current_stack_frame.map(|frame| frame.line.saturating_sub(1));
     let frame_source_path = current_stack_frame.map(|frame| {
         frame
             .source

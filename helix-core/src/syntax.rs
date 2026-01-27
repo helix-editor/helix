@@ -546,8 +546,24 @@ impl Syntax {
         self.inner.root()
     }
 
+    /// Finds the smallest injection layer which fully includes the range `start..=end`.
+    ///
+    /// This is the same as using the last item in the `layers_for_byte_range` iterator.
     pub fn layer_for_byte_range(&self, start: u32, end: u32) -> Layer {
         self.inner.layer_for_byte_range(start, end)
+    }
+
+    /// Returns an iterator of layers which **fully include** the byte range `start..=end`.
+    ///
+    /// The iterator is non-empty and the root is always the first element. Other layers are
+    /// returned in decreasing order based on the size of each layer. I.e. the last element is
+    /// the smallest layer including the byte range.
+    pub fn layers_for_byte_range(
+        &self,
+        start: u32,
+        end: u32,
+    ) -> impl Iterator<Item = Layer> + use<'_> {
+        self.inner.layers_for_byte_range(start, end)
     }
 
     pub fn root_language(&self) -> Language {
@@ -562,15 +578,15 @@ impl Syntax {
         self.inner.tree_for_byte_range(start, end)
     }
 
-    pub fn named_descendant_for_byte_range(&self, start: u32, end: u32) -> Option<Node> {
+    pub fn named_descendant_for_byte_range(&self, start: u32, end: u32) -> Option<Node<'_>> {
         self.inner.named_descendant_for_byte_range(start, end)
     }
 
-    pub fn descendant_for_byte_range(&self, start: u32, end: u32) -> Option<Node> {
+    pub fn descendant_for_byte_range(&self, start: u32, end: u32) -> Option<Node<'_>> {
         self.inner.descendant_for_byte_range(start, end)
     }
 
-    pub fn walk(&self) -> TreeCursor {
+    pub fn walk(&self) -> TreeCursor<'_> {
         self.inner.walk()
     }
 
@@ -1038,7 +1054,7 @@ impl TextObjectQuery {
         let mut cursor = InactiveQueryCursor::new(0..u32::MAX, TREE_SITTER_MATCH_LIMIT)
             .execute_query(&self.query, node, RopeInput::new(slice));
         let capture_node = iter::from_fn(move || {
-            let (mat, _) = cursor.next_matched_node()?;
+            let mat = cursor.next_match()?;
             Some(mat.nodes_for_capture(capture).cloned().collect())
         })
         .filter_map(move |nodes: Vec<_>| {
@@ -1070,12 +1086,12 @@ pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result 
 }
 
 fn node_is_visible(node: &Node) -> bool {
-    node.is_missing() || (node.is_named() && node.grammar().node_kind_is_visible(node.kind_id()))
+    node.is_named() && node.grammar().node_kind_is_visible(node.kind_id())
 }
 
-fn format_anonymous_node_kind(kind: &str) -> Cow<str> {
-    if kind.contains('"') {
-        Cow::Owned(kind.replace('"', "\\\""))
+fn format_anonymous_node_kind(kind: &str) -> Cow<'_, str> {
+    if kind.contains('"') || kind.contains('\\') {
+        Cow::Owned(kind.replace('\\', "\\\\").replace('"', "\\\""))
     } else {
         Cow::Borrowed(kind)
     }
@@ -1130,7 +1146,6 @@ fn pretty_print_tree_impl<W: fmt::Write>(
 }
 
 /// Finds the child of `node` which contains the given byte range.
-
 pub fn child_for_byte_range<'a>(node: &Node<'a>, range: ops::Range<u32>) -> Option<Node<'a>> {
     for child in node.children() {
         let child_range = child.byte_range();
@@ -1226,8 +1241,13 @@ mod test {
         };
 
         test("quantified_nodes", 1..37);
-        // NOTE: Enable after implementing proper node group capturing
-        // test("quantified_nodes_grouped", 1..37);
+        test("quantified_nodes_grouped", 1..37);
+        // TODO: the query for this works instead as
+        // ```
+        // ((line_comment) @capture (line_comment) @capture)
+        // ```
+        // The query used in this test case only captures the first line_comment node.
+        // Determine if this behavior is intentional in tree-sitter.
         // test("multiple_nodes_grouped", 1..37);
     }
 

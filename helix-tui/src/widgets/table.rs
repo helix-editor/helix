@@ -37,8 +37,14 @@ pub struct Cell<'a> {
 impl Cell<'_> {
     /// Set the `Style` of this cell.
     pub fn style(mut self, style: Style) -> Self {
-        self.style = style;
+        self.set_style(style);
         self
+    }
+
+    /// Set the `Style` of this cell.
+    pub fn set_style(&mut self, style: Style) {
+        self.style = style;
+        self.content.patch_style(style);
     }
 }
 
@@ -453,6 +459,9 @@ impl Table<'_> {
             };
             if is_selected {
                 buf.set_style(table_row_area, self.highlight_style);
+                for cell in &mut table_row.cells {
+                    cell.set_style(self.highlight_style);
+                }
             }
             let mut col = table_row_start_col;
             for (width, cell) in columns_widths.iter().zip(table_row.cells.iter()) {

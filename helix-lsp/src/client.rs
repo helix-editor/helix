@@ -10,7 +10,11 @@ use crate::lsp::{
     DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
     WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
-use helix_core::{find_workspace, syntax::config::LanguageServerFeature, ChangeSet, Rope};
+use helix_core::{
+    find_workspace,
+    syntax::config::{LanguageServerFeature, RootMarkers},
+    ChangeSet, Rope,
+};
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
 use parking_lot::Mutex;
@@ -67,7 +71,7 @@ pub struct Client {
 impl Client {
     pub fn try_add_doc(
         self: &Arc<Self>,
-        root_markers: &[String],
+        root_markers: &RootMarkers,
         manual_roots: &[PathBuf],
         doc_path: Option<&std::path::PathBuf>,
         may_support_workspace: bool,
@@ -372,6 +376,7 @@ impl Client {
                 Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::Diagnostics => true, // there's no extra server capability
+            LanguageServerFeature::PullDiagnostics => capabilities.diagnostic_provider.is_some(),
             LanguageServerFeature::RenameSymbol => matches!(
                 capabilities.rename_provider,
                 Some(OneOf::Left(true)) | Some(OneOf::Right(_))
@@ -595,12 +600,15 @@ impl Client {
                     }),
                     did_change_watched_files: Some(lsp::DidChangeWatchedFilesClientCapabilities {
                         dynamic_registration: Some(true),
-                        relative_pattern_support: Some(false),
+                        relative_pattern_support: Some(true),
                     }),
                     file_operations: Some(lsp::WorkspaceFileOperationsClientCapabilities {
                         will_rename: Some(true),
                         did_rename: Some(true),
                         ..Default::default()
+                    }),
+                    diagnostic: Some(lsp::DiagnosticWorkspaceClientCapabilities {
+                        refresh_support: Some(true),
                     }),
                     ..Default::default()
                 }),
@@ -665,6 +673,7 @@ impl Client {
                                     lsp::CodeActionKind::REFACTOR_REWRITE,
                                     lsp::CodeActionKind::SOURCE,
                                     lsp::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                    lsp::CodeActionKind::SOURCE_FIX_ALL,
                                 ]
                                 .iter()
                                 .map(|kind| kind.as_str().to_string())
@@ -678,6 +687,10 @@ impl Client {
                             properties: vec!["edit".to_owned(), "command".to_owned()],
                         }),
                         ..Default::default()
+                    }),
+                    diagnostic: Some(lsp::DiagnosticClientCapabilities {
+                        dynamic_registration: Some(false),
+                        related_document_support: Some(true),
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
@@ -696,8 +709,13 @@ impl Client {
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
+                    show_message: Some(lsp::ShowMessageRequestClientCapabilities {
+                        message_action_item: Some(lsp::MessageActionItemCapabilities {
+                            additional_properties_support: Some(true),
+                        }),
+                    }),
                     work_done_progress: Some(true),
-                    ..Default::default()
+                    show_document: Some(lsp::ShowDocumentClientCapabilities { support: true }),
                 }),
                 general: Some(lsp::GeneralClientCapabilities {
                     position_encodings: Some(vec![
@@ -1227,6 +1245,32 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::RangeFormatting>(params))
+    }
+
+    pub fn text_document_diagnostic(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        previous_result_id: Option<String>,
+    ) -> Option<impl Future<Output = Result<lsp::DocumentDiagnosticReportResult>>> {
+        let capabilities = self.capabilities();
+
+        // Return early if the server does not support pull diagnostic.
+        let identifier = match capabilities.diagnostic_provider.as_ref()? {
+            lsp::DiagnosticServerCapabilities::Options(cap) => cap.identifier.clone(),
+            lsp::DiagnosticServerCapabilities::RegistrationOptions(cap) => {
+                cap.diagnostic_options.identifier.clone()
+            }
+        };
+
+        let params = lsp::DocumentDiagnosticParams {
+            text_document,
+            identifier,
+            previous_result_id,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::DocumentDiagnosticRequest>(params))
     }
 
     pub fn text_document_document_highlight(

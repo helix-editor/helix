@@ -1,11 +1,10 @@
 mod client;
 pub mod registry;
 mod transport;
-mod types;
 
 pub use client::Client;
+pub use helix_dap_types::*;
 pub use transport::{Payload, Response, Transport};
-pub use types::*;
 
 use serde::de::DeserializeOwned;
 
@@ -13,7 +12,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("failed to parse: {0}")]
-    Parse(#[from] serde_json::Error),
+    Parse(Box<dyn std::error::Error + Send + Sync>),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
     #[error("request {0} timed out")]
@@ -29,15 +28,27 @@ pub enum Error {
 }
 pub type Result<T> = core::result::Result<T, Error>;
 
+impl From<serde_json::Error> for Error {
+    fn from(value: serde_json::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
+
+impl From<sonic_rs::Error> for Error {
+    fn from(value: sonic_rs::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
+
 #[derive(Debug)]
 pub enum Request {
-    RunInTerminal(<requests::RunInTerminal as types::Request>::Arguments),
-    StartDebugging(<requests::StartDebugging as types::Request>::Arguments),
+    RunInTerminal(<requests::RunInTerminal as helix_dap_types::Request>::Arguments),
+    StartDebugging(<requests::StartDebugging as helix_dap_types::Request>::Arguments),
 }
 
 impl Request {
     pub fn parse(command: &str, arguments: Option<serde_json::Value>) -> Result<Self> {
-        use crate::types::Request as _;
+        use helix_dap_types::Request as _;
 
         let arguments = arguments.unwrap_or_default();
         let request = match command {

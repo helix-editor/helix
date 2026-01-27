@@ -11,6 +11,7 @@
 "ui.selection" = { bg = "bg_highlight" } 
 "ui.selection.primary" = { bg = "bg_highlight" }  
 "ui.virtual.ruler" = { bg = "bg_highlight" }
+"ui.virtual.jump-label" = { fg = "cyan", modifiers = ["bold"] }
 
 # Markdown Highlighting
 "markup.raw" = { fg = "blue", bg = "bg" } 
@@ -102,7 +103,7 @@
 
 # Popups for documentation or file picker
 "ui.popup" = { fg = "fg", bg = "bg" } 
-"ui.popup.info" = { fg = "fg", bg = "bg" } 
+"ui.popup.info" = { fg = "fg", bg = "bg_alt" } 
 "ui.menu" = { fg = "fg", bg = "bg" } 
 "ui.menu.selected" = { fg = "cyan", bg = "bg_highlight" }
 

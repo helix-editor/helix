@@ -43,6 +43,7 @@ enum TagKind {
     Interface,
     Macro,
     Module,
+    Section,
     Struct,
     Type,
 }
@@ -56,6 +57,7 @@ impl TagKind {
             Self::Interface => "interface",
             Self::Macro => "macro",
             Self::Module => "module",
+            Self::Section => "section",
             Self::Struct => "struct",
             Self::Type => "type",
         }
@@ -69,6 +71,7 @@ impl TagKind {
             "interface" => Some(TagKind::Interface),
             "macro" => Some(TagKind::Macro),
             "module" => Some(TagKind::Module),
+            "section" => Some(TagKind::Section),
             "struct" => Some(TagKind::Struct),
             "type" => Some(TagKind::Type),
             _ => None,
@@ -428,6 +431,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
             Some((tag.start_line, tag.end_line)),
         ))
     })
+    .with_history_register(Some(reg))
     .truncate_start(false);
     cx.push_layer(Box::new(overlaid(picker)));
 }

@@ -208,6 +208,8 @@ pub struct Document {
 
     pub readonly: bool,
 
+    pub previous_diagnostic_id: Option<String>,
+
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
@@ -218,6 +220,8 @@ pub struct Document {
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
+    pub pull_diagnostic_controller: TaskController,
+
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
@@ -745,6 +749,8 @@ impl Document {
             file_blame: None,
             is_blame_potentially_out_of_date: false,
             syn_loader,
+            previous_diagnostic_id: None,
+            pull_diagnostic_controller: TaskController::new(),
         }
     }
 
@@ -1000,7 +1006,7 @@ impl Document {
         };
 
         let identifier = self.path().map(|_| self.identifier());
-        let language_servers = self.language_servers.clone();
+        let language_servers: Vec<_> = self.language_servers.values().cloned().collect();
 
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
@@ -1144,7 +1150,7 @@ impl Document {
                 text: text.clone(),
             };
 
-            for (_, language_server) in language_servers {
+            for language_server in language_servers {
                 if !language_server.is_initialized() {
                     continue;
                 }
@@ -1741,7 +1747,7 @@ impl Document {
         let savepoint_idx = self
             .savepoints
             .iter()
-            .position(|savepoint_ref| savepoint_ref.as_ptr() == savepoint as *const _)
+            .position(|savepoint_ref| std::ptr::eq(savepoint_ref.as_ptr(), savepoint))
             .expect("Savepoint must belong to this document");
 
         let savepoint_ref = self.savepoints.remove(savepoint_idx);
@@ -2251,7 +2257,12 @@ impl Document {
     /// language config with auto pairs configured, returns that;
     /// otherwise, falls back to the global auto pairs config. If the global
     /// config is false, then ignore language settings.
-    pub fn auto_pairs<'a>(&'a self, editor: &'a Editor) -> Option<&'a AutoPairs> {
+    pub fn auto_pairs<'a>(
+        &'a self,
+        editor: &'a Editor,
+        loader: &'a syntax::Loader,
+        view: &View,
+    ) -> Option<&'a AutoPairs> {
         let global_config = (editor.auto_pairs).as_ref();
 
         // NOTE: If the user specifies the global auto pairs config as false, then
@@ -2263,10 +2274,17 @@ impl Document {
             }
         }
 
-        match &self.language {
-            Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
-            None => global_config,
-        }
+        self.syntax
+            .as_ref()
+            .and_then(|syntax| {
+                let selection = self.selection(view.id).primary();
+                let (start, end) = selection.into_byte_range(self.text().slice(..));
+                let layer = syntax.layer_for_byte_range(start as u32, end as u32);
+
+                let lang_config = loader.language(syntax.layer(layer).language).config();
+                lang_config.auto_pairs.as_ref()
+            })
+            .or(global_config)
     }
 
     pub fn snippet_ctx(&self) -> SnippetRenderCtx {
@@ -2369,6 +2387,10 @@ impl Document {
     /// (since it often means inlay hints have been fully deactivated).
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
+    }
+
+    pub fn has_language_server_with_feature(&self, feature: LanguageServerFeature) -> bool {
+        self.language_servers_with_feature(feature).next().is_some()
     }
 }
 

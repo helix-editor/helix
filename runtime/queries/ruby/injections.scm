@@ -21,3 +21,15 @@
   (#set! injection.language "erb"))
  (#eq? @name "ERB"))
 
+; `<command>`
+; %x{<command>}
+(subshell
+  (string_content) @injection.content
+  (#set! injection.language "bash"))
+
+(call
+  method: (identifier) @_method (#any-of? @_method "system" "spawn" "exec")
+  arguments: (argument_list
+    (string
+      (string_content) @injection.content))
+  (#set! injection.language "bash"))

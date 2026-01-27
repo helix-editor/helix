@@ -24,7 +24,13 @@
     (parenthesized_expression (selector_expression field: (field_identifier) @name))
   ]) @reference.call
 
+(const_spec
+  name: (identifier) @name) @definition.constant
+
 (type_spec
+  name: (type_identifier) @name) @definition.type
+
+(type_alias
   name: (type_identifier) @name) @definition.type
 
 (type_identifier) @name @reference.type

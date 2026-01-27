@@ -36,6 +36,8 @@ pub struct Handlers {
     pub document_colors: Sender<lsp::DocumentColorsEvent>,
     pub blame: Sender<BlameEvent>,
     pub word_index: word_index::Handler,
+    pub pull_diagnostics: Sender<lsp::PullDiagnosticsEvent>,
+    pub pull_all_documents_diagnostics: Sender<lsp::PullAllDocumentsDiagnosticsEvent>,
 }
 
 impl Handlers {

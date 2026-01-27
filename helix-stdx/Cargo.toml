@@ -14,6 +14,8 @@ homepage.workspace = true
 [dependencies]
 dunce = "1.0"
 etcetera = "0.10"
+# MSRV: update once the MSRV is >=1.85
+home = "=0.5.9"
 ropey.workspace = true
 which = "8.0"
 regex-cursor = "0.1.5"
@@ -23,10 +25,10 @@ regex-automata = "0.4.10"
 unicode-segmentation.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
 
 [target.'cfg(unix)'.dependencies]
-rustix = { version = "1.0", features = ["fs"] }
+rustix = { version = "1.1", features = ["fs", "thread"] }
 
 [dev-dependencies]
 tempfile.workspace = true

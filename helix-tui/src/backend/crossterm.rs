@@ -14,10 +14,7 @@ use crossterm::{
     terminal::{self, Clear, ClearType},
     Command,
 };
-use helix_view::{
-    editor::Config as EditorConfig,
-    graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle},
-};
+use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
 use once_cell::sync::OnceCell;
 use std::{
     fmt,
@@ -74,17 +71,17 @@ impl Capabilities {
     /// on the $TERM environment variable. If detection fails, returns
     /// a default value where no capability is supported, or just undercurl
     /// if config.undercurl is set.
-    pub fn from_env_or_default(config: &EditorConfig) -> Self {
+    pub fn from_env_or_default(config: &Config) -> Self {
         match termini::TermInfo::from_env() {
             Err(_) => Capabilities {
-                has_extended_underlines: config.undercurl,
+                has_extended_underlines: config.force_enable_extended_underlines,
                 ..Capabilities::default()
             },
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
                 // WezTerm supports underlines but a lot of distros don't properly install its terminfo
-                has_extended_underlines: config.undercurl
+                has_extended_underlines: config.force_enable_extended_underlines
                     || t.extended_cap("Smulx").is_some()
                     || t.extended_cap("Su").is_some()
                     || vte_version() >= Some(5102)
@@ -98,6 +95,7 @@ impl Capabilities {
 /// Terminal backend supporting a wide variety of terminals
 pub struct CrosstermBackend<W: Write> {
     buffer: W,
+    config: Config,
     capabilities: Capabilities,
     supports_keyboard_enhancement_protocol: OnceCell<bool>,
     mouse_capture_enabled: bool,
@@ -108,14 +106,15 @@ impl<W> CrosstermBackend<W>
 where
     W: Write,
 {
-    pub fn new(buffer: W, config: &EditorConfig) -> CrosstermBackend<W> {
+    pub fn new(buffer: W, config: Config) -> CrosstermBackend<W> {
         // helix is not usable without colors, but crossterm will disable
         // them by default if NO_COLOR is set in the environment. Override
         // this behaviour.
         crossterm::style::force_color_output(true);
         CrosstermBackend {
             buffer,
-            capabilities: Capabilities::from_env_or_default(config),
+            capabilities: Capabilities::from_env_or_default(&config),
+            config,
             supports_keyboard_enhancement_protocol: OnceCell::new(),
             mouse_capture_enabled: false,
             supports_bracketed_paste: true,
@@ -157,7 +156,7 @@ impl<W> Backend for CrosstermBackend<W>
 where
     W: Write,
 {
-    fn claim(&mut self, config: Config) -> io::Result<()> {
+    fn claim(&mut self) -> io::Result<()> {
         terminal::enable_raw_mode()?;
         execute!(
             self.buffer,
@@ -173,7 +172,7 @@ where
             Ok(_) => (),
         };
         execute!(self.buffer, terminal::Clear(terminal::ClearType::All))?;
-        if config.enable_mouse_capture {
+        if self.config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
             self.mouse_capture_enabled = true;
         }
@@ -198,15 +197,16 @@ where
             }
             self.mouse_capture_enabled = config.enable_mouse_capture;
         }
+        self.config = config;
 
         Ok(())
     }
 
-    fn restore(&mut self, config: Config) -> io::Result<()> {
+    fn restore(&mut self) -> io::Result<()> {
         // reset cursor shape
         self.buffer
             .write_all(self.capabilities.reset_cursor_command.as_bytes())?;
-        if config.enable_mouse_capture {
+        if self.config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
         if self.supports_keyboard_enhancement_protocol() {
@@ -220,20 +220,6 @@ where
             DisableFocusChange,
             terminal::LeaveAlternateScreen
         )?;
-        terminal::disable_raw_mode()
-    }
-
-    fn force_restore() -> io::Result<()> {
-        let mut stdout = io::stdout();
-
-        // reset cursor shape
-        write!(stdout, "\x1B[0 q")?;
-        // Ignore errors on disabling, this might trigger on windows if we call
-        // disable without calling enable previously
-        let _ = execute!(stdout, DisableMouseCapture);
-        let _ = execute!(stdout, PopKeyboardEnhancementFlags);
-        let _ = execute!(stdout, DisableBracketedPaste);
-        execute!(stdout, DisableFocusChange, terminal::LeaveAlternateScreen)?;
         terminal::disable_raw_mode()
     }
 
@@ -316,11 +302,6 @@ where
         execute!(self.buffer, Show, shape)
     }
 
-    fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
-        crossterm::cursor::position()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
-    }
-
     fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {
         execute!(self.buffer, MoveTo(x, y))
     }
@@ -338,6 +319,14 @@ where
 
     fn flush(&mut self) -> io::Result<()> {
         self.buffer.flush()
+    }
+
+    fn supports_true_color(&self) -> bool {
+        false
+    }
+
+    fn get_theme_mode(&self) -> Option<helix_view::theme::Mode> {
+        None
     }
 }
 

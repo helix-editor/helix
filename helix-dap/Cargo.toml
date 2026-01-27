@@ -15,6 +15,7 @@ homepage.workspace = true
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
 helix-core = { path = "../helix-core" }
+helix-dap-types = { path = "../helix-dap-types" }
 
 anyhow = "1.0"
 log = "0.4"
@@ -26,7 +27,7 @@ slotmap.workspace = true
 futures-executor.workspace = true
 futures-util.workspace = true
 tokio-stream.workspace = true
-
+sonic-rs.workspace = true
 
 [dev-dependencies]
 fern = "0.7"
