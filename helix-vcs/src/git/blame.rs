@@ -147,11 +147,6 @@ pub struct LineBlame {
 }
 
 impl LineBlame {
-    /// Longest variable is: `time-ago` (and `message`)
-    // this is just to reduce allocation by a little bit by specifying the max size we would expect a
-    // variable to be up-front. This function is called every render.
-    const LONGEST_VARIABLE_LENGTH: usize = 7;
-
     /// # Returns
     ///
     /// None => Invalid variable
@@ -192,7 +187,7 @@ impl LineBlame {
         let mut exclude_content_after_variable = false;
         while let Some((ch_idx, ch)) = chars.next() {
             if ch == '{' {
-                let mut variable = String::with_capacity(Self::LONGEST_VARIABLE_LENGTH);
+                let mut variable = String::new();
                 // eat all characters until the end
                 while let Some((_, ch)) = chars.next_if(|(_, ch)| *ch != '}') {
                     variable.push(ch);
