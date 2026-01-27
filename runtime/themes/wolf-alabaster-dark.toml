@@ -35,7 +35,12 @@ diagnostic = { underline = { style = "curl" } }
 
 "ui.cursor" = { bg = "cursor-secondary", fg = "bg" }
 "ui.cursor.primary" = { bg = "active", fg = "bg" }
-"ui.cursor.match" = { bg = "highlight" }
+# Bracket matching: Helix only styles the *other* bracket via ui.match, not the one
+# under the cursor. ui.cursor.match affects cursor appearance, not the bracket itself.
+# Following tonsky's Sublime approach (blue + underline) as closely as Helix allows.
+"ui.cursor.match" = { fg = "active", underline = { style = "line" } }
+"ui.match" = { fg = "active", underline = { style = "line" } }
+"ui.cursorline.primary" = { bg = "cursorline-primary" }
 "ui.cursorline" = { bg = "cursorline" }
 "ui.cursorcolumn" = { bg = "cursorline" }
 
@@ -165,7 +170,8 @@ cursor-secondary = "#7A5B30"  # Dimmed gold - secondary cursors (multi-cursor)
 highlight = "#FF9800"    # Orange - search, warnings
 error-red = "#DFDF8E"    # Yellow - errors (use comment color for visibility)
 panel = "#252526"        # Slightly lighter grey - UI panels, menus, popups
-cursorline = "#1A2022"   # Subtle highlight - cursorline, ruler
+cursorline = "#141819"   # Subtle highlight - secondary cursorline
+cursorline-primary = "#1A2022"  # Primary cursorline (tonsky's original)
 jump-label = "#FF6B35"   # Bright orange - jump destinations
 inlay-hint = "#4A7090"   # Dimmed blue - virtual text (type hints)
 
