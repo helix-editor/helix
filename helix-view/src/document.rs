@@ -215,13 +215,13 @@ pub struct Document {
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
+    pub pull_diagnostic_controller: TaskController,
+
     /// When fetching blame on-demand, if this field is `true` we request the blame for this document again
     pub is_blame_potentially_out_of_date: bool,
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
-    pub pull_diagnostic_controller: TaskController,
-
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 

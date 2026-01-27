@@ -199,7 +199,6 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
-
         render_document(
             surface,
             inner,
