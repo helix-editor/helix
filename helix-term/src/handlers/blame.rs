@@ -11,10 +11,16 @@ use tokio::time::Instant;
 
 use crate::job;
 
+/// Handles showing Git Blame for a single document
 #[derive(Default)]
 pub struct BlameHandler {
+    /// Computed blame for the file. This is in an `Option` because we
+    /// need to be able to `mem::take` it, as we will need an owned instance
+    /// when we only have access to `&mut self`
     file_blame: Option<anyhow::Result<FileBlame>>,
+    /// Document for which we will update the blame
     doc_id: DocumentId,
+    /// If `Some`, when blame is obtained for the file, the user will be notified
     show_blame_for_line_in_statusline: Option<u32>,
 }
 
