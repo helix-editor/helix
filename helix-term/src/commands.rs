@@ -616,6 +616,7 @@ impl MappableCommand {
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
+        goto_compilation_error, "Goto compilation error",
     );
 }
 
@@ -1325,6 +1326,64 @@ fn goto_file_hsplit(cx: &mut Context) {
 
 fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
+}
+
+fn goto_compilation_error(cx: &mut Context) {
+    let (view, doc) = current_ref!(cx.editor);
+    let view_id = view.id;
+    let text = doc.text().slice(..);
+    let line_idx = doc.selection(view_id).primary().cursor_line(text);
+    let line = text.line(line_idx).to_string();
+
+    // Strict regex to avoid catching irrelevant text. Path:line[:col]
+    let pattern = r"([a-zA-Z0-9./\-_\\]+):(\d+)(?::(\d+))?";
+    let re = Regex::new(pattern).unwrap();
+
+    if let Some(caps) = re.captures(&line) {
+        let path_str = caps.get(1).unwrap().as_str();
+        let row = caps.get(2).unwrap().as_str().parse::<usize>().unwrap_or(1);
+        let col = caps.get(3).map(|m| m.as_str().parse::<usize>().unwrap_or(1)).unwrap_or(1);
+
+        let workspace_root = find_workspace().0;
+        let mut path = PathBuf::from(path_str);
+        if !path.is_absolute() {
+             let joined = workspace_root.join(&path);
+             if joined.exists() {
+                 path = joined;
+             }
+        }
+        
+        if !path.is_file() {
+            cx.editor.set_error(format!("File not found: {}", path_str));
+            return;
+        }
+
+        // 1. Move focus to the window ABOVE (the main code window).
+        cx.editor.focus_direction(helix_view::tree::Direction::Up);
+
+        // 2. Open the file in the now-focused window.
+        match cx.editor.open(&path, Action::Replace) {
+            Ok(_) => {
+                let (view, doc) = current!(cx.editor);
+                let text = doc.text().slice(..);
+                let pos = Position::new(row.saturating_sub(1), col_num_saturating_sub_1(col));
+                let char_idx = pos_at_coords(text, pos, true);
+                
+                // 3. Set the cursor position and align.
+                doc.set_selection(view.id, Selection::point(char_idx));
+                align_view(doc, view, Align::Center);
+            }
+            Err(err) => {
+                cx.editor.set_error(format!("Failed to open file: {}", err));
+            }
+        }
+    } else {
+        cx.editor.set_error("No compilation error (path:line) found on this line");
+    }
+}
+
+fn col_num_saturating_sub_1(col: usize) -> usize {
+    col.saturating_sub(1)
 }
 
 /// Goto files in selection.
@@ -6370,19 +6429,23 @@ fn shell_keep_pipe(cx: &mut Context) {
 }
 
 fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<Tendril> {
-    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
+    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input, None)))
 }
 
-async fn shell_impl_async(
+pub(crate) async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
     input: Option<Rope>,
+    current_dir: Option<PathBuf>,
 ) -> anyhow::Result<Tendril> {
     use std::process::Stdio;
     use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
 
     let mut process = Command::new(&shell[0]);
+    if let Some(current_dir) = current_dir {
+        process.current_dir(current_dir);
+    }
     process
         .args(&shell[1..])
         .arg(cmd)
@@ -6421,14 +6484,19 @@ async fn shell_impl_async(
     };
 
     let output = if !output.status.success() {
-        if output.stderr.is_empty() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if stderr.is_empty() && stdout.is_empty() {
             match output.status.code() {
                 Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
                 None => bail!("Shell command failed"),
             }
         }
-        String::from_utf8_lossy(&output.stderr)
-        // Prioritize `stderr` output over `stdout`
+        if !stderr.is_empty() {
+            stderr
+        } else {
+            stdout
+        }
     } else if !output.stderr.is_empty() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         log::debug!("Command printed to stderr: {stderr}");

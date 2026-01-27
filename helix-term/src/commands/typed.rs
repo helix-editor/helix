@@ -1792,6 +1792,39 @@ fn lsp_stop(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
     Ok(())
 }
 
+
+fn compile(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let shell = cx.editor.config().shell.clone();
+    let cmd = args.join(" ");
+    let current_dir = helix_core::find_workspace().0;
+
+    let callback = async move {
+        let output = shell_impl_async(&shell, &cmd, None, Some(current_dir)).await?;
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, _compositor: &mut Compositor| {
+                let text = Rope::from(output.as_ref());
+                let config = editor.config.clone();
+                let syn_loader = editor.syn_loader.clone();
+                let doc = Document::from(text, None, config, syn_loader);
+                let _doc_id = editor.new_file_from_document(Action::HorizontalSplit, doc);
+                editor.set_status("Compilation finished");
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn tree_sitter_scopes(
     cx: &mut compositor::Context,
     _args: Args,
@@ -2531,7 +2564,7 @@ fn run_shell_command(
     let args = args.join(" ");
 
     let callback = async move {
-        let output = shell_impl_async(&shell, &args, None).await?;
+        let output = shell_impl_async(&shell, &args, None, None).await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.trim().is_empty() {
@@ -3180,6 +3213,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
+    },
+    TypableCommand {
+        name: "compile",
+        aliases: &["make"],
+        doc: "Run a compilation command and show output in a split.",
+        fun: compile,
+        completer: SHELL_COMPLETER,
+        signature: SHELL_SIGNATURE,
     },
     TypableCommand {
         name: "quit-all!",
