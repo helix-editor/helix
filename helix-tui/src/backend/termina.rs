@@ -420,6 +420,8 @@ impl Backend for TerminaBackend {
             decreset!(ClearAndEnableAlternateScreen),
         )?;
         self.terminal.flush()?;
+        // reset terminal colors
+        write!(self.terminal, "\x1B]111\x07")?;
         self.terminal.enter_cooked_mode()?;
         Ok(())
     }
