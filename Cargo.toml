@@ -54,8 +54,7 @@ tokio-stream = "0.1.18"
 toml = "0.9"
 termina = "0.1"
 sonic-rs = "0.5"
-# MSRV: update once the MSRV is >=1.85
-globset = "=0.4.16"
+globset = "0.4.18"
 
 [workspace.package]
 version = "25.7.1"
@@ -65,4 +64,4 @@ categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
-rust-version = "1.82"
+rust-version = "1.87"

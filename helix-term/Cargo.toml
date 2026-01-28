@@ -70,8 +70,7 @@ log = "0.4"
 
 # File picker
 nucleo.workspace = true
-# MSRV: update once the MSRV is >=1.85
-ignore = "=0.4.23"
+ignore = "0.4.25"
 grep-regex = "=0.1.13"
 grep-searcher = "=0.1.14"
 grep-matcher = "=0.1.7"
