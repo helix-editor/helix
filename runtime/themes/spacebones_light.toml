@@ -47,7 +47,7 @@
 
 "warning" = { fg = "meta" }
 "error" = { fg = "#e0211d" }
-"info" = { fg = "theme_yellow" }
+"info" = { fg = "theme_blue" }
 "hint" = { fg = "bg2" }
 
 "ui.background" = { bg = "bg0" }
