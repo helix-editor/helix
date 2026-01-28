@@ -54,7 +54,7 @@ use std::{
     collections::{HashMap, HashSet},
     error::Error,
     io::Write,
-    num::NonZeroU8,
+    num::{NonZeroU8, NonZeroUsize},
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -2784,6 +2784,10 @@ Get the `Rect` associated with the currently focused buffer.
 
     module.register_fn("string->editor-mode", string_to_mode);
 
+    module.register_fn("set-editor-count!", |ctx: &mut Context, count: usize| {
+        ctx.editor.count = NonZeroUsize::new(count);
+    });
+
     if generate_sources {
         let mut template_function_type_constructor = |name: &str| {
             builtin_editor_command_module.push_str(&format!(
@@ -2815,6 +2819,8 @@ Get the `Rect` associated with the currently focused buffer.
                 ));
             }
         };
+
+        template_function_arity_1("set-editor-count!", r#"Sets the editor count."#);
 
         template_function_arity_1(
             "string->editor-mode",
