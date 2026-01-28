@@ -2786,6 +2786,7 @@ Get the `Rect` associated with the currently focused buffer.
 
     module.register_fn("set-editor-count!", |ctx: &mut Context, count: usize| {
         ctx.editor.count = NonZeroUsize::new(count);
+        ctx.count = ctx.editor.count;
     });
 
     if generate_sources {
