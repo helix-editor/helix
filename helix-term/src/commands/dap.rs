@@ -339,10 +339,10 @@ fn debug_parameter_prompt(
 
     let completer = match field_type {
         "filename" => |editor: &Editor, input: &str| {
-            ui::completers::filename_with_git_ignore(editor, input, false)
+            ui::completers::filename_with_git_ignore(&editor.theme, input, false)
         },
         "directory" => |editor: &Editor, input: &str| {
-            ui::completers::directory_with_git_ignore(editor, input, false)
+            ui::completers::directory_with_git_ignore(&editor.theme, input, false)
         },
         _ => ui::completers::none,
     };

@@ -40,6 +40,7 @@ use std::{error::Error, path::PathBuf};
 struct Utf8PathBuf {
     path: String,
     is_dir: bool,
+    is_symlink: bool,
 }
 
 impl AsRef<str> for Utf8PathBuf {
@@ -421,8 +422,7 @@ pub mod completers {
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::config::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::theme;
-    use helix_view::{editor::Config, Editor};
+    use helix_view::{editor::Config, theme, Editor, Theme};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::collections::BTreeSet;
@@ -519,15 +519,15 @@ pub mod completers {
     }
 
     pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
-        filename_with_git_ignore(editor, input, true)
+        filename_with_git_ignore(&editor.theme, input, true)
     }
 
     pub fn filename_with_git_ignore(
-        editor: &Editor,
+        theme: &Theme,
         input: &str,
         git_ignore: bool,
     ) -> Vec<Completion> {
-        filename_impl(editor, input, git_ignore, |entry| {
+        filename_impl(theme, input, git_ignore, |entry| {
             let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
             if is_dir {
@@ -570,18 +570,21 @@ pub mod completers {
     }
 
     pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
-        directory_with_git_ignore(editor, input, true)
+        directory_with_git_ignore(&editor.theme, input, true)
     }
 
     pub fn directory_with_git_ignore(
-        editor: &Editor,
+        theme: &Theme,
         input: &str,
         git_ignore: bool,
     ) -> Vec<Completion> {
-        filename_impl(editor, input, git_ignore, |entry| {
+        filename_impl(theme, input, git_ignore, |entry| {
             let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
+            let is_symlinked_dir = !is_dir
+                && entry.path_is_symlink()
+                && std::fs::read_link(entry.path()).is_ok_and(|link| link.is_dir());
 
-            if is_dir {
+            if is_dir || is_symlinked_dir {
                 FileMatch::Accept
             } else {
                 FileMatch::Reject
@@ -602,7 +605,7 @@ pub mod completers {
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     fn filename_impl<F>(
-        editor: &Editor,
+        theme: &Theme,
         input: &str,
         git_ignore: bool,
         filter_fn: F,
@@ -660,7 +663,9 @@ pub mod completers {
                         return None;
                     }
 
-                    let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
+                    let file_type = entry.file_type();
+                    let is_dir = file_type.is_some_and(|entry| entry.is_dir());
+                    let is_symlink = file_type.is_some_and(|entry| entry.is_symlink());
 
                     let path = entry.path();
                     let mut path = if is_tilde {
@@ -679,16 +684,23 @@ pub mod completers {
                     }
 
                     let path = path.into_os_string().into_string().ok()?;
-                    Some(Utf8PathBuf { path, is_dir })
+                    Some(Utf8PathBuf {
+                        path,
+                        is_dir,
+                        is_symlink,
+                    })
                 })
             }) // TODO: unwrap or skip
             .filter(|path| !path.path.is_empty());
 
-        let directory_color = editor.theme.get("ui.text.directory");
+        let directory_color = theme.get("ui.text.directory");
+        let symlink_color = theme.get("ui.text.symlink");
 
         let style_from_file = |file: Utf8PathBuf| {
             if file.is_dir {
                 Span::styled(file.path, directory_color)
+            } else if file.is_symlink {
+                Span::styled(file.path, symlink_color)
             } else {
                 Span::raw(file.path)
             }
@@ -790,8 +802,15 @@ pub mod completers {
 #[cfg(test)]
 mod tests {
     use std::fs::{create_dir, File};
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+    #[cfg(not(unix))]
+    use std::os::windows::fs::symlink_file as symlink;
+
+    use helix_view::Theme;
 
     use super::*;
+    use crate::ui::completers::directory_with_git_ignore;
 
     #[test]
     fn test_get_child_if_single_dir() {
@@ -808,5 +827,33 @@ mod tests {
         File::create(file).unwrap();
 
         assert_eq!(get_child_if_single_dir(root.path()), None);
+    }
+
+    #[test]
+    fn test_directory_with_git_ignore() {
+        let root = tempfile::tempdir().unwrap();
+
+        let dir = root.path().join("dir1");
+        create_dir(&dir).unwrap();
+
+        let file = root.path().join("file");
+        File::create(&file).unwrap();
+
+        let input = format!("{}{}", root.path().display(), std::path::MAIN_SEPARATOR);
+
+        let theme = Theme::default();
+        let completions = directory_with_git_ignore(&theme, input.as_str(), true);
+        assert_eq!(1, completions.len());
+
+        let dir_link = root.path().join("dir1_link");
+        let res = symlink(dir, dir_link);
+        assert!(res.is_ok());
+
+        let file_link = root.path().join("file1_link");
+        let res = symlink(file, file_link);
+        assert!(res.is_ok());
+
+        let completions = directory_with_git_ignore(&theme, input.as_str(), true);
+        assert_eq!(2, completions.len());
     }
 }
