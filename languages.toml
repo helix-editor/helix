@@ -1740,6 +1740,21 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 name = "zig"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev = "6479aa13f32f701c383083d8b28360ebd682fb7d" }
 
+[[grammar]]
+name = "picat"
+source = { git = "https://github.com/dlr-ft/tree-sitter-picat", rev = "ecb6b07d280f2cef8214bc4b999ad83ac1d9205c" }
+
+[[language]]
+name = "picat"
+scope = "source.picat"
+injection-regex = "(pi|picat)"
+language-id = "picat"
+file-types = ["pi", "picat"]
+shebangs = ["picat"]
+comment-token = "%"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
 [[language]]
 name = "prolog"
 scope = "source.prolog"
