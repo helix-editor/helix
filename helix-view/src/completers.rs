@@ -370,3 +370,42 @@ pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
 
     completions
 }
+
+#[derive(Clone)]
+pub struct CommandCompleter {
+    // Arguments with specific completion methods based on their position.
+    positional_args: &'static [Completer],
+
+    // All remaining arguments will use this completion method, if set.
+    var_args: Completer,
+}
+
+impl CommandCompleter {
+    pub const fn none() -> Self {
+        Self {
+            positional_args: &[],
+            var_args: self::none,
+        }
+    }
+
+    pub const fn positional(completers: &'static [Completer]) -> Self {
+        Self {
+            positional_args: completers,
+            var_args: self::none,
+        }
+    }
+
+    pub const fn all(completer: Completer) -> Self {
+        Self {
+            positional_args: &[],
+            var_args: completer,
+        }
+    }
+
+    pub fn for_argument_number(&self, n: usize) -> &Completer {
+        match self.positional_args.get(n) {
+            Some(completer) => completer,
+            _ => &self.var_args,
+        }
+    }
+}
