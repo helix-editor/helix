@@ -29,7 +29,7 @@ unicode-segmentation.workspace = true
 # width definitions in terminals, we need to replace it.
 # For now lets lock the version to avoid rendering glitches
 # when installing without `--locked`
-unicode-width = "=0.1.14"
+unicode-width = "=0.1.12"
 unicode-general-category = "1.1"
 slotmap.workspace = true
 tree-house.workspace = true
