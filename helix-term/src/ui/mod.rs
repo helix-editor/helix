@@ -417,9 +417,9 @@ fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
 pub mod completers {
     use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
-    use helix_core::command_line::{self, Tokenizer};
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::config::LanguageServerFeature;
+    use helix_view::command_line::{self, Tokenizer};
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};

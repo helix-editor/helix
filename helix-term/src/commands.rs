@@ -22,7 +22,6 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    command_line::{self, Args},
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
@@ -45,6 +44,7 @@ use helix_core::{
     Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
+    command_line::{self, Args},
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
     expansion,
