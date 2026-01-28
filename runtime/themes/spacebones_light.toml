@@ -47,7 +47,7 @@
 
 "warning" = { fg = "meta" }
 "error" = { fg = "#e0211d" }
-"info" = { fg = "theme_yellow" }
+"info" = { fg = "theme_blue" }
 "hint" = { fg = "bg2" }
 
 "ui.background" = { bg = "bg0" }
@@ -77,7 +77,7 @@
 
 "diagnostic.warning" = { underline = { style = "curl", color = "meta" } }
 "diagnostic.error" = { underline = { style = "curl", color = "#e0211d" } }
-"diagnostic.info" = { underline = { style = "curl", color = "theme_yellow" } }
+"diagnostic.info" = { underline = { style = "curl", color = "theme_blue" } }
 "diagnostic.hint" = { underline = { style = "curl", color = "bg2" } }
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
