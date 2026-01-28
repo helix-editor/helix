@@ -120,9 +120,20 @@ impl Config {
     pub fn load_default() -> Result<Config, ConfigLoadError> {
         let global_config =
             fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
-        let local_config = fs::read_to_string(helix_loader::workspace_config_file())
-            .map_err(ConfigLoadError::Error);
-        Config::load(global_config, local_config)
+        if let helix_loader::workspace_trust::TrustStatus::Trusted =
+            helix_loader::workspace_trust::quick_query_workspace()
+        {
+            let local_config = fs::read_to_string(helix_loader::workspace_config_file())
+                .map_err(ConfigLoadError::Error);
+            Config::load(global_config, local_config)
+        } else {
+            // HACK
+            let local_config = ConfigLoadError::Error(IOError::new(
+                std::io::ErrorKind::Other,
+                "hacky placeholder",
+            ));
+            Config::load(global_config, Err(local_config))
+        }
     }
 }
 

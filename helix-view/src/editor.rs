@@ -15,6 +15,7 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 use helix_event::dispatch;
+use helix_loader::workspace_trust::TrustStatus;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -428,6 +429,18 @@ pub struct Config {
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
     pub buffer_picker: BufferPickerConfig,
+    /// Which style of selector to use: pop-up selector, command with warning,
+    /// or command with LSP always trusted
+    pub trust_selector: TrustSelector,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum TrustSelector {
+    Simple,
+    #[default]
+    SelectPopUp,
+    AlwaysTrustLsp,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1146,6 +1159,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
+            trust_selector: TrustSelector::default(),
         }
     }
 }
@@ -1620,7 +1634,7 @@ impl Editor {
     }
 
     /// Launch a language server for a given document
-    fn launch_language_servers(&mut self, doc_id: DocumentId) {
+    pub fn launch_language_servers(&mut self, doc_id: DocumentId) {
         if !self.config().lsp.enable {
             return;
         }
@@ -1634,6 +1648,16 @@ impl Editor {
         let (lang, path) = (doc.language.clone(), doc.path().cloned());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
+
+        // Let chains aren't supported in MSRV (let chains were added in 1.88.0)
+        if TrustSelector::AlwaysTrustLsp != self.config.load().trust_selector {
+            if let TrustStatus::Untrusted = helix_loader::workspace_trust::quick_query_workspace() {
+                self.set_warning(
+                "Current directory is not trusted; run `:workspace-trust` to enable all features",
+            );
+                return;
+            };
+        }
 
         // store only successfully started language servers
         let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
