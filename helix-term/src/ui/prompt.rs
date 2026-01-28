@@ -5,10 +5,10 @@ use helix_core::syntax;
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use helix_view::text::Span;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
-use tui::text::Span;
 use tui::widgets::{Block, Widget};
 
 use helix_core::{

@@ -51,6 +51,8 @@ log = "~0.4"
 
 parking_lot.workspace = true
 thiserror.workspace = true
+ignore.workspace = true
+unicode-segmentation.workspace = true
 
 kstring = "2.0"
 

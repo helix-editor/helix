@@ -1,6 +1,6 @@
-use crate::text::StyledGrapheme;
 use helix_core::line_ending::str_is_line_ending;
 use helix_core::unicode::width::UnicodeWidthStr;
+use helix_view::text::StyledGrapheme;
 use unicode_segmentation::UnicodeSegmentation;
 
 const NBSP: &str = "\u{00a0}";

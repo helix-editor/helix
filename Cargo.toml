@@ -56,6 +56,8 @@ termina = "0.1"
 sonic-rs = "0.5"
 # MSRV: update once the MSRV is >=1.85
 globset = "=0.4.16"
+# MSRV: update once the MSRV is >=1.85
+ignore = "=0.4.23"
 
 [workspace.package]
 version = "25.7.1"

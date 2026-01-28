@@ -27,6 +27,8 @@
 
 use std::{borrow::Cow, collections::HashMap, error::Error, fmt, ops, slice, vec};
 
+use crate::completers::CommandCompleter;
+
 /// Splits a command line into the command and arguments parts.
 ///
 /// The third tuple member describes whether the command part is finished. When this boolean is
@@ -67,10 +69,10 @@ pub struct Flag {
     pub doc: &'static str,
     /// The completion values to use when specifying an argument for a flag.
     ///
-    /// This should be set to `None` for boolean flags and `Some(&["foo", "bar", "baz"])` for
+    /// This should be set to `None` for boolean flags. For completions, CommandCompleter infra can be reused.
     /// example for flags which accept options, with the strings corresponding to values that
     /// should be shown in completion.
-    pub completions: Option<&'static [&'static str]>,
+    pub completer: Option<CommandCompleter>,
 }
 
 impl Flag {
@@ -80,7 +82,7 @@ impl Flag {
         name: "",
         doc: "",
         alias: None,
-        completions: None,
+        completer: None,
     };
 }
 
@@ -888,7 +890,7 @@ impl<'a> Args<'a> {
 
     fn flag_awaiting_argument(&self) -> Option<Flag> {
         match self.state {
-            CompletionState::Flag(flag) => flag.filter(|f| f.completions.is_some()),
+            CompletionState::Flag(flag) => flag.filter(|f| f.completer.is_some()),
             _ => None,
         }
     }
@@ -949,7 +951,7 @@ impl<'a> Args<'a> {
             self.signature
                 .flags
                 .iter()
-                .any(|flag| flag.name == name && flag.completions.is_some()),
+                .any(|flag| flag.name == name && flag.completer.is_some()),
             "Args::get_flag was used for '--{name}' but should only be used for flags with arguments, use Args::has_flag instead"
         );
 
@@ -969,7 +971,7 @@ impl<'a> Args<'a> {
             self.signature
                 .flags
                 .iter()
-                .any(|flag| flag.name == name && flag.completions.is_none()),
+                .any(|flag| flag.name == name && flag.completer.is_none()),
             "Args::has_flag was used for '--{name}' but should only be used for flags without arguments, use Args::get_flag instead"
         );
 
@@ -1158,22 +1160,24 @@ mod test {
 
     #[test]
     fn flags() {
+        static FLAGS: &[Flag] = &[
+            Flag {
+                name: "foo",
+                alias: Some('f'),
+                doc: "",
+                completer: None,
+            },
+            Flag {
+                name: "bar",
+                alias: Some('b'),
+                doc: "",
+                completer: None,
+            },
+        ];
+
         let signature = Signature {
             positionals: (1, Some(2)),
-            flags: &[
-                Flag {
-                    name: "foo",
-                    alias: Some('f'),
-                    doc: "",
-                    completions: None,
-                },
-                Flag {
-                    name: "bar",
-                    alias: Some('b'),
-                    doc: "",
-                    completions: Some(&[]),
-                },
-            ],
+            flags: FLAGS,
             ..Signature::DEFAULT
         };
 

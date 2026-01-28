@@ -29,11 +29,12 @@ use helix_view::{
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
+    text::Span,
     Document, Editor, Theme, View,
 };
 use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
 
-use tui::{buffer::Buffer as Surface, text::Span};
+use tui::buffer::Buffer as Surface;
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -717,9 +718,9 @@ impl EditorView {
         theme: &Theme,
     ) {
         use helix_core::diagnostic::Severity;
+        use helix_view::text::Text;
         use tui::{
             layout::Alignment,
-            text::Text,
             widgets::{Paragraph, Widget, Wrap},
         };
 

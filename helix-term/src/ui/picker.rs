@@ -6,7 +6,6 @@ use crate::{
     compositor::{self, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
     ui::{
-        self,
         document::{render_document, LinePos, TextRenderer},
         picker::query::PickerQuery,
         text_decorations::DecorationManager,
@@ -15,6 +14,7 @@ use crate::{
 };
 use futures_util::future::BoxFuture;
 use helix_event::AsyncHook;
+use helix_view::text::{Span, Spans};
 use nucleo::pattern::{CaseMatching, Normalization};
 use nucleo::{Config, Nucleo};
 use thiserror::Error;
@@ -22,7 +22,6 @@ use tokio::sync::mpsc::Sender;
 use tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
-    text::{Span, Spans},
     widgets::{Block, BorderType, Cell, Row, Table},
 };
 
@@ -363,7 +362,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let prompt = Prompt::new(
             "".into(),
             None,
-            ui::completers::none,
+            helix_view::completers::none,
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {},
         );
 

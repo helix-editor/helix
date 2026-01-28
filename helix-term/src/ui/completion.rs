@@ -9,6 +9,7 @@ use crate::{
 use helix_core::snippets::{ActiveSnippet, RenderedSnippet, Snippet};
 use helix_core::{self as core, chars, fuzzy::MATCHER, Change, Transaction};
 use helix_lsp::{lsp, util, OffsetEncoding};
+use helix_view::text::{Span, Spans};
 use helix_view::{
     editor::CompleteAction,
     handlers::lsp::SignatureHelpInvoked,
@@ -20,8 +21,7 @@ use nucleo::{
     pattern::{Atom, AtomKind, CaseMatching, Normalization},
     Config, Utf32Str,
 };
-use tui::text::Spans;
-use tui::{buffer::Buffer as Surface, text::Span};
+use tui::buffer::Buffer as Surface;
 
 use std::cmp::Reverse;
 

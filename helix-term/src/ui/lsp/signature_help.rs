@@ -4,9 +4,9 @@ use arc_swap::ArcSwap;
 use helix_core::syntax::{self, OverlayHighlights};
 use helix_view::graphics::{Margin, Rect, Style};
 use helix_view::input::Event;
+use helix_view::text::Text;
 use tui::buffer::Buffer;
 use tui::layout::Alignment;
-use tui::text::Text;
 use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
 
 use crate::compositor::{Component, Compositor, Context, EventResult};

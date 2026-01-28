@@ -1,10 +1,10 @@
 use crate::{
     buffer::Buffer,
     symbols::line,
-    text::Spans,
     widgets::{Borders, Widget},
 };
 use helix_view::graphics::{Rect, Style};
+use helix_view::text::Spans;
 
 /// Border render type. Defaults to [`BorderType::Plain`].
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

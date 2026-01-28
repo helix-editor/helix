@@ -1603,6 +1603,7 @@ dependencies = [
  "helix-stdx",
  "helix-tui",
  "helix-vcs",
+ "ignore",
  "kstring",
  "libc",
  "log",
@@ -1618,6 +1619,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "toml",
+ "unicode-segmentation",
  "url",
 ]
 

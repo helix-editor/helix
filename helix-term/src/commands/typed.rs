@@ -6,16 +6,16 @@ use crate::job::Job;
 
 use super::*;
 
-use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
 use helix_stdx::path::home_dir;
+use helix_view::command_line::{Args, Flag, Signature, Token, TokenKind};
+use helix_view::completers::{self, CommandCompleter, Completer};
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
-use ui::completers::{self, Completer};
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -27,45 +27,6 @@ pub struct TypableCommand {
     /// What completion methods, if any, does this command have?
     pub completer: CommandCompleter,
     pub signature: Signature,
-}
-
-#[derive(Clone)]
-pub struct CommandCompleter {
-    // Arguments with specific completion methods based on their position.
-    positional_args: &'static [Completer],
-
-    // All remaining arguments will use this completion method, if set.
-    var_args: Completer,
-}
-
-impl CommandCompleter {
-    const fn none() -> Self {
-        Self {
-            positional_args: &[],
-            var_args: completers::none,
-        }
-    }
-
-    const fn positional(completers: &'static [Completer]) -> Self {
-        Self {
-            positional_args: completers,
-            var_args: completers::none,
-        }
-    }
-
-    const fn all(completer: Completer) -> Self {
-        Self {
-            positional_args: &[],
-            var_args: completer,
-        }
-    }
-
-    fn for_argument_number(&self, n: usize) -> &Completer {
-        match self.positional_args.get(n) {
-            Some(completer) => completer,
-            _ => &self.var_args,
-        }
-    }
 }
 
 fn exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -3887,7 +3848,7 @@ fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
             } else {
                 0
             };
-            let arg_len = if flag.completions.is_some() {
+            let arg_len = if flag.completer.is_some() {
                 ARG_PLACEHOLDER.len()
             } else {
                 0
@@ -3921,7 +3882,7 @@ fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
                     } else {
                         ""
                     },
-                    if flag.completions.is_some() {
+                    if flag.completer.is_some() {
                         ARG_PLACEHOLDER
                     } else {
                         ""
@@ -4031,15 +3992,16 @@ pub fn complete_command_args(
                 .into_iter()
                 .map(|(name, _)| ((offset + token.content_start).., format!("--{name}").into()))
                 .collect(),
-                CompletionState::FlagArgument(flag) => fuzzy_match(
-                    &token.content,
-                    flag.completions
-                        .expect("flags in FlagArgument always have completions"),
-                    false,
-                )
-                .into_iter()
-                .map(|(value, _)| ((offset + token.content_start).., (*value).into()))
-                .collect(),
+                CompletionState::FlagArgument(flag) => {
+                    let flag_completer = flag
+                        .completer
+                        .expect("flags in FlagArgument always have completions");
+                    let completer = flag_completer.for_argument_number(0);
+                    completer(editor, &token.content)
+                        .into_iter()
+                        .map(|(range, span)| ((offset + token.content_start + range.start).., span))
+                        .collect()
+                }
             }
         }
         TokenKind::Expand | TokenKind::Expansion(ExpansionKind::Shell) => {
