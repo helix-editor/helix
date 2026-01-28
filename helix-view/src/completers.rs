@@ -24,6 +24,7 @@ impl AsRef<str> for Utf8PathBuf {
     }
 }
 
+/// It does take arguements but have no completions
 pub fn none(_editor: &Editor, _input: &str) -> Vec<Completion> {
     Vec::new()
 }
@@ -371,7 +372,7 @@ pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
     completions
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct CommandCompleter {
     // Arguments with specific completion methods based on their position.
     positional_args: &'static [Completer],
