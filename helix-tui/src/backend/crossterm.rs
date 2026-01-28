@@ -220,6 +220,9 @@ where
             DisableFocusChange,
             terminal::LeaveAlternateScreen
         )?;
+
+        // reset terminal colors
+        write!(self.buffer, "\x1B]111\x07")?;
         terminal::disable_raw_mode()
     }
 
