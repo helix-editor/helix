@@ -63,6 +63,7 @@ use arc_swap::{
 };
 
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
+pub const DEFAULT_AUTO_RELOAD_INTERVAL: u64 = 3000;
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -333,6 +334,10 @@ pub struct Config {
     /// Time delay defaults to false with 3000ms delay. Focus lost defaults to false.
     #[serde(deserialize_with = "deserialize_auto_save")]
     pub auto_save: AutoSave,
+    /// Automatic reload of the modified documents on a periodic time interval and/or when the editor gains focus.
+    /// Time interval defaults to false with 3000ms delay. Focus gained defaults to false.
+    #[serde(deserialize_with = "deserialize_auto_reload")]
+    pub auto_reload: AutoReload,
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
@@ -973,6 +978,52 @@ where
     }
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AutoReload {
+    /// Whether to check for file changes when the editor is focused. Defaults to false.
+    #[serde(default)]
+    pub focus_gained: bool,
+    /// Autosave periodically at some interval. Defaults to disabled.
+    #[serde(default)]
+    pub periodic: AutoReloadPeriodic,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct AutoReloadPeriodic {
+    #[serde(default)]
+    /// Enable auto reload periodically. Defaults to false.
+    pub enable: bool,
+    #[serde(default = "default_auto_reload_interval")]
+    /// Time interval in milliseconds. Defaults to [DEFAULT_AUTO_RELOAD_INTERVAL].
+    pub interval: u64,
+}
+
+pub fn default_auto_reload_interval() -> u64 {
+    DEFAULT_AUTO_RELOAD_INTERVAL
+}
+
+fn deserialize_auto_reload<'de, D>(deserializer: D) -> Result<AutoReload, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize, Serialize)]
+    #[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
+    enum AutoReloadToml {
+        FocusGained(bool),
+        AutoReload(AutoReload),
+    }
+
+    match AutoReloadToml::deserialize(deserializer)? {
+        AutoReloadToml::FocusGained(focus_gained) => Ok(AutoReload {
+            focus_gained,
+            ..Default::default()
+        }),
+        AutoReloadToml::AutoReload(auto_reload) => Ok(auto_reload),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceCharacters {
@@ -1103,6 +1154,7 @@ impl Default for Config {
             auto_format: true,
             default_yank_register: '"',
             auto_save: AutoSave::default(),
+            auto_reload: AutoReload::default(),
             idle_timeout: Duration::from_millis(250),
             completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
