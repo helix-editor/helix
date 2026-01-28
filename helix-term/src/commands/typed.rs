@@ -11,11 +11,11 @@ use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
 use helix_stdx::path::home_dir;
 use helix_view::command_line::{Args, Flag, Signature, Token, TokenKind};
+use helix_view::completers::{self, Completer};
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
-use ui::completers::{self, Completer};
 
 #[derive(Clone)]
 pub struct TypableCommand {

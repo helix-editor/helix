@@ -2084,7 +2084,7 @@ fn select_regex(cx: &mut Context) {
         cx,
         "select:".into(),
         Some(reg),
-        ui::completers::none,
+        helix_view::completers::none,
         move |cx, regex, event| {
             let (view, doc) = current!(cx.editor);
             if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
@@ -2108,7 +2108,7 @@ fn split_selection(cx: &mut Context) {
         cx,
         "split:".into(),
         Some(reg),
-        ui::completers::none,
+        helix_view::completers::none,
         move |cx, regex, event| {
             let (view, doc) = current!(cx.editor);
             if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
@@ -5200,7 +5200,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
         cx,
         if remove { "remove:" } else { "keep:" }.into(),
         Some(reg),
-        ui::completers::none,
+        helix_view::completers::none,
         move |cx, regex, event| {
             let (view, doc) = current!(cx.editor);
             if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {

@@ -339,12 +339,12 @@ fn debug_parameter_prompt(
 
     let completer = match field_type {
         "filename" => |editor: &Editor, input: &str| {
-            ui::completers::filename_with_git_ignore(editor, input, false)
+            helix_view::completers::filename_with_git_ignore(editor, input, false)
         },
         "directory" => |editor: &Editor, input: &str| {
-            ui::completers::directory_with_git_ignore(editor, input, false)
+            helix_view::completers::directory_with_git_ignore(editor, input, false)
         },
-        _ => ui::completers::none,
+        _ => helix_view::completers::none,
     };
 
     Prompt::new(
@@ -653,7 +653,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
                 let mut prompt = Prompt::new(
                     "condition:".into(),
                     None,
-                    ui::completers::none,
+                    helix_view::completers::none,
                     move |cx, input: &str, event: PromptEvent| {
                         if event != PromptEvent::Validate {
                             return;
@@ -695,7 +695,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                 let mut prompt = Prompt::new(
                     "log-message:".into(),
                     None,
-                    ui::completers::none,
+                    helix_view::completers::none,
                     move |cx, input: &str, event: PromptEvent| {
                         if event != PromptEvent::Validate {
                             return;

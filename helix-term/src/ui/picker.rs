@@ -363,7 +363,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let prompt = Prompt::new(
             "".into(),
             None,
-            ui::completers::none,
+            helix_view::completers::none,
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {},
         );
 

@@ -1137,7 +1137,7 @@ pub fn rename_symbol(cx: &mut Context) {
         let prompt = ui::Prompt::new(
             "rename-to:".into(),
             history_register,
-            ui::completers::none,
+            helix_view::completers::none,
             move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
                 if event != PromptEvent::Validate {
                     return;
