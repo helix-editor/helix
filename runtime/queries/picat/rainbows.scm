@@ -1,8 +1,8 @@
 ["(" ")" "[" "]" "{" "}"] @rainbow.bracket
 
 [
-  (array_statement)
-  (list_statement)
+  (array_expression)
+  (list_expression)
   (parameters)
   (arguments)
   (braced_goal)
