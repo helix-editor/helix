@@ -1726,7 +1726,7 @@ source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev 
 
 [[grammar]]
 name = "picat"
-source = { git = "https://github.com/dlr-ft/tree-sitter-picat", rev = "ce27d458945810da5fbd8fad406765d47082edce" }
+source = { git = "https://github.com/dlr-ft/tree-sitter-picat", rev = "ecb6b07d280f2cef8214bc4b999ad83ac1d9205c" }
 
 [[language]]
 name = "picat"
