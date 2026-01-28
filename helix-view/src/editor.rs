@@ -349,6 +349,14 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub completion_timeout: Duration,
+    /// Time in milliseconds after typing before inline completions are requested. Defaults to 150ms.
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
+    pub inline_completion_timeout: Duration,
+    /// Automatically request inline completions while typing. Defaults to true.
+    pub inline_completion_auto_trigger: bool,
     /// Whether to insert the completion suggestion on hover. Defaults to true.
     pub preview_completion_insert: bool,
     pub completion_trigger_len: u8,
@@ -1105,6 +1113,8 @@ impl Default for Config {
             auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
             completion_timeout: Duration::from_millis(250),
+            inline_completion_timeout: Duration::from_millis(150),
+            inline_completion_auto_trigger: true,
             preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
@@ -2347,6 +2357,8 @@ impl Editor {
             doc.set_selection(view.id, selection);
             doc.restore_cursor = false;
         }
+
+        doc.inline_completions.take_and_clear();
     }
 
     pub fn current_stack_frame(&self) -> Option<&dap::StackFrame> {
