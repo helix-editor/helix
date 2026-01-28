@@ -22,7 +22,7 @@ impl<T: Item> Select<T> {
         I: IntoIterator<Item = T>,
         F: Fn(&mut Editor, &T, PromptEvent) + 'static,
     {
-        let message = tui::text::Text::from(message.into()).into();
+        let message = helix_view::text::Text::from(message.into()).into();
         let options: Vec<_> = options.into_iter().collect();
         assert!(!options.is_empty());
         let mut menu = Menu::new(options, data, move |editor, option, event| {

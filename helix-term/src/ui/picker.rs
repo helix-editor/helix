@@ -6,7 +6,6 @@ use crate::{
     compositor::{self, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
     ui::{
-        self,
         document::{render_document, LinePos, TextRenderer},
         picker::query::PickerQuery,
         text_decorations::DecorationManager,
