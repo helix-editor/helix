@@ -31,8 +31,8 @@ pub use select::Select;
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
+use helix_view::text::{Span, Spans};
 use helix_view::Editor;
-use tui::text::{Span, Spans};
 
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
@@ -421,12 +421,12 @@ pub mod completers {
     use helix_core::syntax::config::LanguageServerFeature;
     use helix_view::command_line::{self, Tokenizer};
     use helix_view::document::SCRATCH_BUFFER_NAME;
+    use helix_view::text::Span;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::collections::BTreeSet;
-    use tui::text::Span;
 
     pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
 

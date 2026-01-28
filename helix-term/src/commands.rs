@@ -11,12 +11,10 @@ use helix_stdx::{
     rope::{self, RopeSliceExt},
 };
 use helix_vcs::{FileChange, Hunk};
+use helix_view::text::{Span, Spans};
 pub use lsp::*;
 pub use syntax::*;
-use tui::{
-    text::{Span, Spans},
-    widgets::Cell,
-};
+use tui::widgets::Cell;
 pub use typed::*;
 
 use helix_core::{

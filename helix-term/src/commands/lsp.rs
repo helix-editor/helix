@@ -1,3 +1,4 @@
+use super::{align_view, push_jump, Align, Context, Editor};
 use futures_util::{stream::FuturesOrdered, FutureExt};
 use helix_lsp::{
     block_on,
@@ -8,10 +9,9 @@ use helix_lsp::{
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
     Client, LanguageServerId, OffsetEncoding,
 };
+use helix_view::text::Span;
 use tokio_stream::StreamExt;
-use tui::{text::Span, widgets::Row};
-
-use super::{align_view, push_jump, Align, Context, Editor};
+use tui::widgets::Row;
 
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,

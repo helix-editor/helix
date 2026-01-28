@@ -1,11 +1,11 @@
 use crate::{
     buffer::Buffer,
     layout::Constraint,
-    text::Text,
     widgets::{Block, Widget},
 };
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Rect, Style};
+use helix_view::text::Text;
 
 /// A [`Cell`] contains the [`Text`] to be displayed in a [`Row`] of a [`Table`].
 ///

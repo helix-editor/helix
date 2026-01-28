@@ -10,8 +10,8 @@ use helix_dap::{self as dap, requests::TerminateArguments};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
 
+use helix_view::text::Spans;
 use serde_json::{to_value, Value};
-use tui::text::Spans;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -555,7 +555,7 @@ pub fn dap_variables(cx: &mut Context) {
 
     for scope in scopes.iter() {
         // use helix_view::graphics::Style;
-        use tui::text::Span;
+        use helix_view::text::Span;
         let response = block_on(debugger.variables(scope.variables_reference));
 
         variables.push(Spans::from(Span::styled(
@@ -580,7 +580,7 @@ pub fn dap_variables(cx: &mut Context) {
         }
     }
 
-    let contents = Text::from(tui::text::Text::from(variables));
+    let contents = Text::from(helix_view::text::Text::from(variables));
     let popup = Popup::new("dap-variables", contents);
     cx.replace_or_push_layer("dap-variables", popup);
 }

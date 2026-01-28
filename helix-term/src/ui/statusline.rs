@@ -12,8 +12,8 @@ use helix_view::{
 use crate::ui::ProgressSpinners;
 
 use helix_view::editor::StatusLineElement as StatusLineElementID;
+use helix_view::text::{Span, Spans};
 use tui::buffer::Buffer as Surface;
-use tui::text::{Span, Spans};
 
 pub struct RenderContext<'a> {
     pub editor: &'a Editor,
