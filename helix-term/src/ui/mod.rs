@@ -40,6 +40,7 @@ use std::{error::Error, path::PathBuf};
 struct Utf8PathBuf {
     path: String,
     is_dir: bool,
+    is_symlink: bool,
 }
 
 impl AsRef<str> for Utf8PathBuf {
@@ -658,6 +659,8 @@ pub mod completers {
 
                     let path = entry.path();
                     let is_dir = path.is_dir();
+                    let file_type = entry.file_type();
+                    let is_symlink = file_type.is_some_and(|ft| ft.is_symlink());
                     let mut path = if is_tilde {
                         // if it's a single tilde an absolute path is displayed so that when `TAB` is pressed on
                         // one of the directories the tilde will be replaced with a valid path not with a relative
@@ -674,15 +677,22 @@ pub mod completers {
                     }
 
                     let path = path.into_os_string().into_string().ok()?;
-                    Some(Utf8PathBuf { path, is_dir })
+                    Some(Utf8PathBuf {
+                        path,
+                        is_dir,
+                        is_symlink,
+                    })
                 })
             }) // TODO: unwrap or skip
             .filter(|path| !path.path.is_empty());
 
         let directory_color = editor.theme.get("ui.text.directory");
+        let symlink_color = editor.theme.get("ui.text.symlink");
 
         let style_from_file = |file: Utf8PathBuf| {
-            if file.is_dir {
+            if file.is_symlink {
+                Span::styled(file.path, symlink_color)
+            } else if file.is_dir {
                 Span::styled(file.path, directory_color)
             } else {
                 Span::raw(file.path)
