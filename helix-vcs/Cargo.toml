@@ -2,7 +2,7 @@
 name = "helix-vcs"
 version.workspace = true
 authors.workspace = true
-edition.workspace = true
+edition = "2024"
 license.workspace = true
 rust-version.workspace = true
 categories.workspace = true
