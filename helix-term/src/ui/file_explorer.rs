@@ -60,7 +60,10 @@ fn is_cross_device_error(e: &std::io::Error) -> bool {
     }
     #[cfg(not(any(unix, windows)))]
     {
-        // Fallback: assume cross-device if rename fails with an OS error
+        // Fallback for non-Unix/non-Windows targets: conservatively assume a
+        // cross-device error whenever the I/O error has a raw OS error code.
+        // This may trigger copy+delete fallback for unrelated errors (e.g.,
+        // permission denied), but ensures cross-device moves work on all platforms.
         e.raw_os_error().is_some()
     }
 }
@@ -116,6 +119,16 @@ impl FileExplorer {
                 // Reject empty names (e.g., input was just "/" or "\")
                 if trimmed_input.is_empty() {
                     cx.editor.set_error("Filename cannot be empty");
+                    return;
+                }
+
+                // Reject filenames with leading/trailing whitespace in any component
+                if trimmed_input
+                    .split(['/', std::path::MAIN_SEPARATOR])
+                    .any(|c| c != c.trim())
+                {
+                    cx.editor
+                        .set_error("Filename cannot have leading or trailing whitespace");
                     return;
                 }
 
@@ -370,6 +383,13 @@ impl FileExplorer {
                     return;
                 }
 
+                // Reject filenames with leading/trailing whitespace
+                if input != input.trim() {
+                    cx.editor
+                        .set_error("Filename cannot have leading or trailing whitespace");
+                    return;
+                }
+
                 let new_path = parent.join(input);
 
                 // Check if destination exists
@@ -440,6 +460,13 @@ impl FileExplorer {
                     dest_dir.to_path_buf()
                 };
 
+                // Check if destination exists before creating directories
+                if dest_path.exists() {
+                    cx.editor
+                        .set_error(format!("'{}' already exists", dest_path.display()));
+                    return;
+                }
+
                 // Create parent directories if needed
                 if let Some(parent) = dest_path.parent() {
                     if !parent.exists() {
@@ -449,13 +476,6 @@ impl FileExplorer {
                             return;
                         }
                     }
-                }
-
-                // Check if destination exists
-                if dest_path.exists() {
-                    cx.editor
-                        .set_error(format!("'{}' already exists", dest_path.display()));
-                    return;
                 }
 
                 // Prevent moving a directory into itself or its subdirectories
