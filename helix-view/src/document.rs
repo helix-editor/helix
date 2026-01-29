@@ -2161,16 +2161,14 @@ impl Document {
         };
 
         let tags = if let Some(tags) = &diagnostic.tags {
-            let new_tags = tags
+            tags
                 .iter()
                 .filter_map(|tag| match *tag {
                     lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
                     lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
                     _ => None,
                 })
-                .collect();
-
-            new_tags
+                .collect()
         } else {
             Vec::new()
         };
