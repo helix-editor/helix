@@ -1,6 +1,7 @@
 mod completion;
 mod document;
 pub(crate) mod editor;
+pub mod file_explorer;
 mod info;
 pub mod lsp;
 mod markdown;
@@ -20,6 +21,7 @@ use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
+pub use file_explorer::FileExplorer;
 use helix_stdx::rope;
 use helix_view::theme::Style;
 pub use markdown::Markdown;
@@ -34,7 +36,6 @@ pub use text::Text;
 use helix_view::Editor;
 use tui::text::{Span, Spans};
 
-use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
 struct Utf8PathBuf {
@@ -188,7 +189,7 @@ pub fn raw_regex_prompt(
 }
 
 /// We want to exclude files that the editor can't handle yet
-fn get_excluded_types() -> ignore::types::Types {
+pub(crate) fn get_excluded_types() -> ignore::types::Types {
     use ignore::types::TypesBuilder;
     let mut type_builder = TypesBuilder::new();
     type_builder
@@ -304,114 +305,6 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         });
     }
     picker
-}
-
-type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
-
-pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
-    let directory_style = editor.theme.get("ui.text.directory");
-    let directory_content = directory_content(&root, editor)?;
-
-    let columns = [PickerColumn::new(
-        "path",
-        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
-            let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
-            if *is_dir {
-                Span::styled(format!("{}/", name), *directory_style).into()
-            } else {
-                name.into()
-            }
-        },
-    )];
-    let picker = Picker::new(
-        columns,
-        0,
-        directory_content,
-        (root, directory_style),
-        move |cx, (path, is_dir): &(PathBuf, bool), action| {
-            if *is_dir {
-                let new_root = helix_stdx::path::normalize(path);
-                let callback = Box::pin(async move {
-                    let call: Callback =
-                        Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                            if let Ok(picker) = file_explorer(new_root, editor) {
-                                compositor.push(Box::new(overlay::overlaid(picker)));
-                            }
-                        }));
-                    Ok(call)
-                });
-                cx.jobs.callback(callback);
-            } else if let Err(e) = cx.editor.open(path, action) {
-                let err = if let Some(err) = e.source() {
-                    format!("{}", err)
-                } else {
-                    format!("unable to open \"{}\"", path.display())
-                };
-                cx.editor.set_error(err);
-            }
-        },
-    )
-    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
-
-    Ok(picker)
-}
-
-fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
-    use ignore::WalkBuilder;
-
-    let config = editor.config();
-
-    let mut walk_builder = WalkBuilder::new(root);
-
-    let mut content: Vec<(PathBuf, bool)> = walk_builder
-        .hidden(config.file_explorer.hidden)
-        .parents(config.file_explorer.parents)
-        .ignore(config.file_explorer.ignore)
-        .follow_links(config.file_explorer.follow_symlinks)
-        .git_ignore(config.file_explorer.git_ignore)
-        .git_global(config.file_explorer.git_global)
-        .git_exclude(config.file_explorer.git_exclude)
-        .max_depth(Some(1))
-        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
-        .add_custom_ignore_filename(".helix/ignore")
-        .types(get_excluded_types())
-        .build()
-        .filter_map(|entry| {
-            entry
-                .map(|entry| {
-                    let is_dir = entry
-                        .file_type()
-                        .is_some_and(|file_type| file_type.is_dir());
-                    let mut path = entry.path().to_path_buf();
-                    if is_dir && path != root && config.file_explorer.flatten_dirs {
-                        while let Some(single_child_directory) = get_child_if_single_dir(&path) {
-                            path = single_child_directory;
-                        }
-                    }
-                    (path, is_dir)
-                })
-                .ok()
-                .filter(|entry| entry.0 != root)
-        })
-        .collect();
-
-    content.sort_by(|(path1, is_dir1), (path2, is_dir2)| (!is_dir1, path1).cmp(&(!is_dir2, path2)));
-
-    if root.parent().is_some() {
-        content.insert(0, (root.join(".."), true));
-    }
-
-    Ok(content)
-}
-
-fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
-    let mut entries = path.read_dir().ok()?;
-    let entry = entries.next()?.ok()?;
-    if entries.next().is_none() && entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
-        Some(entry.path())
-    } else {
-        None
-    }
 }
 
 pub mod completers {
@@ -791,7 +684,7 @@ pub mod completers {
 mod tests {
     use std::fs::{create_dir, File};
 
-    use super::*;
+    use super::file_explorer::get_child_if_single_dir;
 
     #[test]
     fn test_get_child_if_single_dir() {
