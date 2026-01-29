@@ -203,6 +203,7 @@
 | pascal | ✓ | ✓ |  |  |  | `pasls` |
 | passwd | ✓ |  |  |  |  |  |
 | pem | ✓ |  |  |  |  |  |
+| penrose | ✓ | ✓ |  |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |  | `perlnavigator` |
 | pest | ✓ | ✓ | ✓ |  |  | `pest-language-server` |
 | php | ✓ | ✓ | ✓ | ✓ | ✓ | `intelephense` |
