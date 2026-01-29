@@ -352,13 +352,12 @@ checksum = "a0474425d51df81997e2f90a21591180b38eccf27292d755f3e30750225c175b"
 
 [[package]]
 name = "etcetera"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26c7b13d0780cb82722fd59f6f57f925e143427e4a75313a6c77243bf5326ae6"
+checksum = "de48cc4d1c1d97a20fd819def54b890cadde72ed3ad0c614822a0a433361be96"
 dependencies = [
  "cfg-if",
- "home",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1259,18 +1258,18 @@ dependencies = [
 
 [[package]]
 name = "grep-matcher"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47a3141a10a43acfedc7c98a60a834d7ba00dfe7bec9071cbfc19b55b292ac02"
+checksum = "36d7b71093325ab22d780b40d7df3066ae4aebb518ba719d38c697a8228a8023"
 dependencies = [
  "memchr",
 ]
 
 [[package]]
 name = "grep-regex"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9edd147c7e3296e7a26bd3a81345ce849557d5a8e48ed88f736074e760f91f7e"
+checksum = "0ce0c256c3ad82bcc07b812c15a45ec1d398122e8e15124f96695234db7112ef"
 dependencies = [
  "bstr",
  "grep-matcher",
@@ -1281,9 +1280,9 @@ dependencies = [
 
 [[package]]
 name = "grep-searcher"
-version = "0.1.14"
+version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9b6c14b3fc2e0a107d6604d3231dec0509e691e62447104bc385a46a7892cda"
+checksum = "ac63295322dc48ebb20a25348147905d816318888e64f531bfc2a2bc0577dc34"
 dependencies = [
  "bstr",
  "encoding_rs",
