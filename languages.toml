@@ -119,6 +119,7 @@ racket = { command = "racket", args = ["-l", "racket-langserver"] }
 regols = { command = "regols" }
 rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
 ripple-lsp = { command = "ripple-language-server", args = ["--stdio"] }
+robotcode = { command = "robotcode", args = ["language-server", "--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
 ron-lsp = { command = "ron-lsp" }
 ruff = { command = "ruff", args = ["server"] }
@@ -2415,7 +2416,7 @@ injection-regex = "robot"
 file-types = ["robot", "resource"]
 comment-token = "#"
 indent = { tab-width = 4, unit = " " }
-language-servers = [ "robotframework_ls" ]
+language-servers = [ "robotcode", "robotframework_ls" ]
 
 [[grammar]]
 name = "robot"
