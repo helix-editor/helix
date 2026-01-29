@@ -4,12 +4,14 @@ use helix_core::unicode::width::UnicodeWidthStr;
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
+pub use compact_str::CompactString;
+
 use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 
 /// One cell of the terminal. Contains one stylized grapheme.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell {
-    pub symbol: String,
+    pub symbol: CompactString,
     pub fg: Color,
     pub bg: Color,
     pub underline_color: Color,
@@ -20,15 +22,15 @@ pub struct Cell {
 impl Cell {
     /// Set the cell's grapheme
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
-        self.symbol.clear();
-        self.symbol.push_str(symbol);
+        self.symbol = CompactString::from(symbol);
         self
     }
 
     /// Set the cell's grapheme to a [char]
     pub fn set_char(&mut self, ch: char) -> &mut Cell {
-        self.symbol.clear();
-        self.symbol.push(ch);
+        let mut buf = [0u8; 4];
+        let s = ch.encode_utf8(&mut buf);
+        self.symbol = CompactString::new(s);
         self
     }
 
@@ -76,20 +78,14 @@ impl Cell {
 
     /// Resets the cell to a default blank state
     pub fn reset(&mut self) {
-        self.symbol.clear();
-        self.symbol.push(' ');
-        self.fg = Color::Reset;
-        self.bg = Color::Reset;
-        self.underline_color = Color::Reset;
-        self.underline_style = UnderlineStyle::Reset;
-        self.modifier = Modifier::empty();
+        *self = Self::default();
     }
 }
 
 impl Default for Cell {
     fn default() -> Cell {
         Cell {
-            symbol: " ".into(),
+            symbol: CompactString::const_new(" "),
             fg: Color::Reset,
             bg: Color::Reset,
             underline_color: Color::Reset,
@@ -109,15 +105,15 @@ impl Default for Cell {
 /// # Examples:
 ///
 /// ```
-/// use helix_tui::buffer::{Buffer, Cell};
+/// use helix_tui::buffer::{Buffer, Cell, CompactString};
 /// use helix_view::graphics::{Rect, Color, UnderlineStyle, Style, Modifier};
 ///
 /// let mut buf = Buffer::empty(Rect{x: 0, y: 0, width: 10, height: 5});
 /// buf[(0, 2)].set_symbol("x");
-/// assert_eq!(buf[(0, 2)].symbol, "x");
+/// assert_eq!(&*buf[(0, 2)].symbol, "x");
 /// buf.set_string(3, 0, "string", Style::default().fg(Color::Red).bg(Color::White));
 /// assert_eq!(buf[(5, 0)], Cell{
-///     symbol: String::from("r"),
+///     symbol: CompactString::from("r"),
 ///     fg: Color::Red,
 ///     bg: Color::White,
 ///     underline_color: Color::Reset,
@@ -125,7 +121,7 @@ impl Default for Cell {
 ///     modifier: Modifier::empty(),
 /// });
 /// buf[(5, 0)].set_char('x');
-/// assert_eq!(buf[(5, 0)].symbol, "x");
+/// assert_eq!(&*buf[(5, 0)].symbol, "x");
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Buffer {

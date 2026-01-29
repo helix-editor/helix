@@ -56,6 +56,7 @@ termina = "0.1"
 sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
+compact_str = "0.8"
 
 [workspace.package]
 version = "25.7.1"
