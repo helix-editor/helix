@@ -5464,14 +5464,16 @@ fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
             let old_idx = selection.primary_index();
             let new_idx = match strategy {
                 ReorderStrategy::SwapForward => (old_idx + rotate_by) % ranges.len(),
-                ReorderStrategy::SwapBackward => (old_idx + ranges.len() - rotate_by) % ranges.len(),
+                ReorderStrategy::SwapBackward => {
+                    (old_idx + ranges.len() - rotate_by) % ranges.len()
+                }
                 _ => 0,
             };
 
             if old_idx < new_idx {
-                ranges[old_idx..new_idx+1].rotate_left(1);
+                ranges[old_idx..new_idx + 1].rotate_left(1);
             } else if old_idx > new_idx {
-                ranges[new_idx..old_idx+1].rotate_right(1);
+                ranges[new_idx..old_idx + 1].rotate_right(1);
             }
 
             new_idx
