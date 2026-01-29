@@ -255,9 +255,9 @@ impl<T: ?Sized> RawBox<T> {
     /// Safety: Only a single mutable reference
     /// created by this function may exist at a given time.
     #[allow(clippy::mut_from_ref)]
-    unsafe fn get(&self) -> &mut T {
+    unsafe fn get(&self) -> &mut T { unsafe {
         &mut *self.0.as_ptr()
-    }
+    }}
 }
 impl<T: ?Sized> From<Box<T>> for RawBox<T> {
     fn from(box_: Box<T>) -> Self {
