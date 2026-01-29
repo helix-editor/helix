@@ -19,6 +19,7 @@
 | bovex | ✓ |  |  |  | ✓ |  |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp`, `csharp-ls` |
+| c3 | ✓ |  |  |  |  | `c3-lsp` |
 | cabal |  |  |  |  |  | `haskell-language-server-wrapper` |
 | caddyfile | ✓ | ✓ | ✓ |  |  |  |
 | cairo | ✓ | ✓ | ✓ |  |  | `cairo-language-server` |

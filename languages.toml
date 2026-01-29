@@ -20,6 +20,7 @@ beancount-language-server = { command = "beancount-language-server" }
 bicep-langserver = { command = "bicep-langserver" }
 bitbake-language-server = { command = "bitbake-language-server" }
 buf = { command = "buf", args = ["lsp", "serve", "--timeout", "0"] }
+c3-lsp = { command = "c3-lsp" }
 cairo-language-server = { command = "cairo-language-server", args = [] }
 circom-lsp = { command = "circom-lsp" }
 cl-lsp = { command = "cl-lsp" }
@@ -775,6 +776,47 @@ args = { processId = "{0}" }
 [[grammar]]
 name = "c-sharp"
 source = { git = "https://github.com/tree-sitter/tree-sitter-c-sharp", rev = "b5eb5742f6a7e9438bee22ce8026d6b927be2cd7" }
+
+[[language]]
+name = "c3"
+scope = "source.c3"
+injection-regex = "c3"
+file-types = [ "c3", "c3i", "c3t" ]
+roots = [ "project.json" ]
+comment-token = "//"
+block-comment-tokens = [
+  { start = "/*", end = "*/" },
+  { start = "<*", end = "*>" },
+]
+indent = { tab-width = 4, unit = "\t" }
+language-servers = [ "c3-lsp" ]
+
+[language.debugger]
+name = "lldb-dap"
+transport = "stdio"
+command = "lldb-dap"
+
+[[language.debugger.templates]]
+name = "binary"
+request = "launch"
+completion = [ { name = "binary", completion = "filename" } ]
+args = { console = "internalConsole", program = "{0}" }
+
+[[language.debugger.templates]]
+name = "attach"
+request = "attach"
+completion = [ "pid" ]
+args = { console = "internalConsole", pid = "{0}" }
+
+[[language.debugger.templates]]
+name = "gdbserver attach"
+request = "attach"
+completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
+args = { console = "internalConsole", attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
+
+[[grammar]]
+name = "c3"
+source = { git = "https://github.com/c3lang/tree-sitter-c3", rev = "main" }
 
 [[language]]
 name = "cel"
