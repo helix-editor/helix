@@ -140,7 +140,7 @@ impl Completion {
             let (view, doc) = current!(editor);
 
             macro_rules! language_server {
-                ($item:expr) => {
+                ($item:expr_2021) => {
                     match editor
                         .language_servers
                         .get_by_id($item.provider)

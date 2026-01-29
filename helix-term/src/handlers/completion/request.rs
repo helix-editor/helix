@@ -296,7 +296,7 @@ fn request_completions_from_language_server(
     context: lsp::CompletionContext,
     priority: i8,
     savepoint: Arc<SavePoint>,
-) -> impl Future<Output = CompletionResponse> {
+) -> impl Future<Output = CompletionResponse> + use<> {
     let provider = ls.id();
     let offset_encoding = ls.offset_encoding();
     let text = doc.text();

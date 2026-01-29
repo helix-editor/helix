@@ -61,7 +61,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                 return;
             };
 
-            let Some(CachedPreview::Document(ref mut doc)) = picker.preview_cache.get_mut(&path)
+            let Some(CachedPreview::Document(doc)) = picker.preview_cache.get_mut(&path)
             else {
                 return;
             };
@@ -94,7 +94,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                         log::info!("picker closed before syntax highlighting finished");
                         return;
                     };
-                    let Some(CachedPreview::Document(ref mut doc)) =
+                    let Some(CachedPreview::Document(doc)) =
                         picker.preview_cache.get_mut(&path)
                     else {
                         return;
