@@ -528,9 +528,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
-            if is_dir {
+            if entry.path().is_dir() {
                 FileMatch::AcceptIncomplete
             } else {
                 FileMatch::Accept
@@ -579,9 +577,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
-            if is_dir {
+            if entry.path().is_dir() {
                 FileMatch::Accept
             } else {
                 FileMatch::Reject
@@ -660,9 +656,8 @@ pub mod completers {
                         return None;
                     }
 
-                    let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
                     let path = entry.path();
+                    let is_dir = path.is_dir();
                     let mut path = if is_tilde {
                         // if it's a single tilde an absolute path is displayed so that when `TAB` is pressed on
                         // one of the directories the tilde will be replaced with a valid path not with a relative
