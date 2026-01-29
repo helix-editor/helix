@@ -816,7 +816,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "c3"
-source = { git = "https://github.com/c3lang/tree-sitter-c3", rev = "main" }
+source = { git = "https://github.com/c3lang/tree-sitter-c3", rev = "15d3502510af0a6c888c663ec8d6aca8791216ce" }
 
 [[language]]
 name = "cel"
