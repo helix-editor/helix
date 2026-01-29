@@ -2,7 +2,7 @@
 name = "xtask"
 version.workspace = true
 authors.workspace = true
-edition = "2024"
+edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 categories.workspace = true
