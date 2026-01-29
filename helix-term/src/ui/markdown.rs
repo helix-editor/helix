@@ -1,9 +1,7 @@
 use crate::compositor::{Component, Context};
 use arc_swap::ArcSwap;
-use tui::{
-    buffer::Buffer as Surface,
-    text::{Span, Spans, Text},
-};
+use helix_view::text::{Span, Spans, Text};
+use tui::buffer::Buffer as Surface;
 
 use std::sync::Arc;
 
@@ -169,7 +167,7 @@ impl Markdown {
         }
     }
 
-    pub fn parse(&self, theme: Option<&Theme>) -> tui::text::Text<'_> {
+    pub fn parse(&self, theme: Option<&Theme>) -> helix_view::text::Text<'_> {
         fn push_line<'a>(spans: &mut Vec<Span<'a>>, lines: &mut Vec<Spans<'a>>) {
             let spans = std::mem::take(spans);
             if !spans.is_empty() {

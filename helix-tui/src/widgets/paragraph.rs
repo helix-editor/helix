@@ -1,7 +1,6 @@
 use crate::{
     buffer::Buffer,
     layout::Alignment,
-    text::{StyledGrapheme, Text},
     widgets::{
         reflow::{LineComposer, LineTruncator, WordWrapper},
         Block, Widget,
@@ -9,6 +8,8 @@ use crate::{
 };
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Rect, Style};
+use helix_view::text::{StyledGrapheme, Text};
+
 use std::iter;
 
 fn get_line_offset(line_width: u16, text_area_width: u16, alignment: Alignment) -> u16 {

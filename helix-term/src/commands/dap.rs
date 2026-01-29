@@ -10,8 +10,8 @@ use helix_dap::{self as dap, requests::TerminateArguments};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
 
+use helix_view::text::Spans;
 use serde_json::{to_value, Value};
-use tui::text::Spans;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -339,12 +339,12 @@ fn debug_parameter_prompt(
 
     let completer = match field_type {
         "filename" => |editor: &Editor, input: &str| {
-            ui::completers::filename_with_git_ignore(editor, input, false)
+            helix_view::completers::filename_with_git_ignore(editor, input, false)
         },
         "directory" => |editor: &Editor, input: &str| {
-            ui::completers::directory_with_git_ignore(editor, input, false)
+            helix_view::completers::directory_with_git_ignore(editor, input, false)
         },
-        _ => ui::completers::none,
+        _ => helix_view::completers::none,
     };
 
     Prompt::new(
@@ -555,7 +555,7 @@ pub fn dap_variables(cx: &mut Context) {
 
     for scope in scopes.iter() {
         // use helix_view::graphics::Style;
-        use tui::text::Span;
+        use helix_view::text::Span;
         let response = block_on(debugger.variables(scope.variables_reference));
 
         variables.push(Spans::from(Span::styled(
@@ -580,7 +580,7 @@ pub fn dap_variables(cx: &mut Context) {
         }
     }
 
-    let contents = Text::from(tui::text::Text::from(variables));
+    let contents = Text::from(helix_view::text::Text::from(variables));
     let popup = Popup::new("dap-variables", contents);
     cx.replace_or_push_layer("dap-variables", popup);
 }
@@ -653,7 +653,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
                 let mut prompt = Prompt::new(
                     "condition:".into(),
                     None,
-                    ui::completers::none,
+                    helix_view::completers::none,
                     move |cx, input: &str, event: PromptEvent| {
                         if event != PromptEvent::Validate {
                             return;
@@ -695,7 +695,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                 let mut prompt = Prompt::new(
                     "log-message:".into(),
                     None,
-                    ui::completers::none,
+                    helix_view::completers::none,
                     move |cx, input: &str, event: PromptEvent| {
                         if event != PromptEvent::Validate {
                             return;

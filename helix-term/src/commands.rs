@@ -11,18 +11,15 @@ use helix_stdx::{
     rope::{self, RopeSliceExt},
 };
 use helix_vcs::{FileChange, Hunk};
+use helix_view::text::{Span, Spans};
 pub use lsp::*;
 pub use syntax::*;
-use tui::{
-    text::{Span, Spans},
-    widgets::Cell,
-};
+use tui::widgets::Cell;
 pub use typed::*;
 
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    command_line::{self, Args},
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
@@ -45,6 +42,7 @@ use helix_core::{
     Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
+    command_line::{self, Args},
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
     expansion,
@@ -2086,7 +2084,7 @@ fn select_regex(cx: &mut Context) {
         cx,
         "select:".into(),
         Some(reg),
-        ui::completers::none,
+        helix_view::completers::none,
         move |cx, regex, event| {
             let (view, doc) = current!(cx.editor);
             if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
@@ -2110,7 +2108,7 @@ fn split_selection(cx: &mut Context) {
         cx,
         "split:".into(),
         Some(reg),
-        ui::completers::none,
+        helix_view::completers::none,
         move |cx, regex, event| {
             let (view, doc) = current!(cx.editor);
             if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
@@ -5202,7 +5200,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
         cx,
         if remove { "remove:" } else { "keep:" }.into(),
         Some(reg),
-        ui::completers::none,
+        helix_view::completers::none,
         move |cx, regex, event| {
             let (view, doc) = current!(cx.editor);
             if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {

@@ -1,6 +1,6 @@
 //! Contents of a terminal screen. A [Buffer] is made up of [Cell]s.
-use crate::text::{Span, Spans};
 use helix_core::unicode::width::UnicodeWidthStr;
+use helix_view::text::{Span, Spans};
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
