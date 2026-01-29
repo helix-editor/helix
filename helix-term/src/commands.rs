@@ -2671,7 +2671,7 @@ fn global_search(cx: &mut Context) {
         },
     )
     .with_preview(|_editor, FileResult { path, line_num, .. }| {
-        Some((path.as_path().into(), Some((*line_num, *line_num))))
+        Some((path.as_path().into(), Some((*line_num, *line_num)), None))
     })
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
@@ -3233,7 +3233,7 @@ fn buffer_picker(cx: &mut Context) {
             let cursor_line = selection.primary().cursor_line(doc.text().slice(..));
             (cursor_line, cursor_line)
         });
-        Some((meta.id.into(), lines))
+        Some((meta.id.into(), lines, None))
     });
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -3324,7 +3324,7 @@ fn jumplist_picker(cx: &mut Context) {
     .with_preview(|editor, meta| {
         let doc = &editor.documents.get(&meta.id)?;
         let line = meta.selection.primary().cursor_line(doc.text().slice(..));
-        Some((meta.id.into(), Some((line, line))))
+        Some((meta.id.into(), Some((line, line)), None))
     });
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -3407,7 +3407,7 @@ fn changed_file_picker(cx: &mut Context) {
             }
         },
     )
-    .with_preview(|_editor, meta| Some((meta.path().into(), None)));
+    .with_preview(|_editor, meta| Some((meta.path().into(), None, None)));
     let injector = picker.injector();
 
     cx.editor
