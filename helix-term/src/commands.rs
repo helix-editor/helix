@@ -2581,11 +2581,9 @@ fn global_search(cx: &mut Context) {
                             Err(_) => return WalkState::Continue,
                         };
 
-                        match entry.file_type() {
-                            Some(entry) if entry.is_file() => {}
-                            // skip everything else
-                            _ => return WalkState::Continue,
-                        };
+                        if !entry.path().is_file() {
+                            return WalkState::Continue;
+                        }
 
                         let mut stop = false;
                         let sink = sinks::UTF8(|line_num, _line_content| {
