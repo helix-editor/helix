@@ -10,13 +10,13 @@ use std::sync::Arc;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use helix_core::{
-    syntax::{self, HighlightEvent, OverlayHighlights},
     RopeSlice, Syntax,
+    syntax::{self, HighlightEvent, OverlayHighlights},
 };
 use helix_view::{
+    Theme,
     graphics::{Margin, Rect, Style},
     theme::Modifier,
-    Theme,
 };
 
 fn styled_multiline_text<'a>(text: &str, style: Style) -> Text<'a> {

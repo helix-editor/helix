@@ -21,7 +21,7 @@ use bitflags::bitflags;
 
 use std::{collections::HashMap, fmt::Debug};
 
-use serde::{de, de::Error as Error_, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de, de::Error as Error_};
 use serde_json::Value;
 pub use url::Url;
 

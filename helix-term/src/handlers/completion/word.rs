@@ -1,15 +1,15 @@
 use std::{borrow::Cow, sync::Arc};
 
 use helix_core::{
-    self as core, chars::char_is_word, completion::CompletionProvider, movement, Transaction,
+    self as core, Transaction, chars::char_is_word, completion::CompletionProvider, movement,
 };
 use helix_event::TaskHandle;
 use helix_stdx::rope::RopeSliceExt as _;
 use helix_view::{
-    document::SavePoint, handlers::completion::ResponseContext, Document, Editor, ViewId,
+    Document, Editor, ViewId, document::SavePoint, handlers::completion::ResponseContext,
 };
 
-use super::{request::TriggerKind, CompletionItem, CompletionItems, CompletionResponse, Trigger};
+use super::{CompletionItem, CompletionItems, CompletionResponse, Trigger, request::TriggerKind};
 
 const COMPLETION_KIND: &str = "word";
 

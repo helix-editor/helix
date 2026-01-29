@@ -1,6 +1,6 @@
 use helix_tui::{
-    backend::{Backend, TestBackend},
     Terminal,
+    backend::{Backend, TestBackend},
 };
 
 #[test]

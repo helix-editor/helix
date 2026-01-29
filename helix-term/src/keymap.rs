@@ -5,8 +5,8 @@ pub use crate::commands::MappableCommand;
 pub use default::default;
 
 use arc_swap::{
-    access::{DynAccess, DynGuard},
     ArcSwap,
+    access::{DynAccess, DynGuard},
 };
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use indexmap::IndexMap;
@@ -461,11 +461,13 @@ mod tests {
                 .len()
                 > 1
         );
-        assert!(!merged_keyamp
-            .get(&Mode::Insert)
-            .and_then(|key_trie| key_trie.node())
-            .unwrap()
-            .is_empty());
+        assert!(
+            !merged_keyamp
+                .get(&Mode::Insert)
+                .and_then(|key_trie| key_trie.node())
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]
@@ -582,7 +584,9 @@ name = "name"
 is_sticky = false
         "#;
         let result = toml::from_str::<KeyTrieNode>(invalid);
-        assert!(result.is_err_and(|error| error.message().contains("Invalid key code 'is_sticky'")));
+        assert!(
+            result.is_err_and(|error| error.message().contains("Invalid key code 'is_sticky'"))
+        );
     }
 
     #[test]

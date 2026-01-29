@@ -4,13 +4,13 @@ use std::{
     str,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use helix_core::{hashmap, syntax::Highlight};
 use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer};
-use toml::{map::Map, Value};
+use toml::{Value, map::Map};
 
 use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};

@@ -19,21 +19,20 @@ use helix_stdx::rope::RopeSliceExt as _;
 use once_cell::sync::OnceCell;
 use ropey::RopeSlice;
 use tree_house::{
-    highlighter,
+    Error, InjectionLanguageMarker, LanguageConfig as SyntaxConfig, Layer, highlighter,
     query_iter::QueryIter,
     tree_sitter::{
-        query::{InvalidPredicateError, UserPredicate},
         Capture, Grammar, InactiveQueryCursor, InputEdit, Node, Pattern, Query, RopeInput, Tree,
+        query::{InvalidPredicateError, UserPredicate},
     },
-    Error, InjectionLanguageMarker, LanguageConfig as SyntaxConfig, Layer,
 };
 
-use crate::{indent::IndentQuery, tree_sitter, ChangeSet, Language};
+use crate::{ChangeSet, Language, indent::IndentQuery, tree_sitter};
 
 pub use tree_house::{
+    Error as HighlighterError, LanguageLoader, TREE_SITTER_MATCH_LIMIT, TreeCursor,
     highlighter::{Highlight, HighlightEvent},
     query_iter::QueryIterEvent,
-    Error as HighlighterError, LanguageLoader, TreeCursor, TREE_SITTER_MATCH_LIMIT,
 };
 
 #[derive(Debug)]
@@ -71,7 +70,9 @@ impl LanguageData {
         let name = &config.language_id;
         let parser_name = config.grammar.as_deref().unwrap_or(name);
         let Some(grammar) = get_language(parser_name)? else {
-            log::info!("Skipping syntax config for '{name}' because the parser's shared library does not exist");
+            log::info!(
+                "Skipping syntax config for '{name}' because the parser's shared library does not exist"
+            );
             return Ok(None);
         };
         let highlight_query_text = read_query(name, "highlights.scm");

@@ -3,8 +3,8 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use cassowary::strength::{REQUIRED, WEAK};
 use cassowary::WeightedRelation::*;
+use cassowary::strength::{REQUIRED, WEAK};
 use cassowary::{Constraint as CassowaryConstraint, Expression, Solver, Variable};
 
 use helix_view::graphics::{Margin, Rect};
