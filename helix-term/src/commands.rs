@@ -35,7 +35,7 @@ use helix_core::{
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    search::{self, CharMatcher},
+    search::{self},
     selection, surround,
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
@@ -46,7 +46,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::Action,
+    editor::{Action, Motion},
     expansion,
     info::Info,
     input::KeyEvent,
@@ -1492,49 +1492,51 @@ fn extend_next_sub_word_end(cx: &mut Context) {
 // This is necessary because the one document can have different line endings inside. And we
 // cannot predict what character to find when <ret> is pressed. On the current line it can be `lf`
 // but on the next line it can be `crlf`. That's why [`find_char_impl`] cannot be applied here.
-fn find_char_line_ending(
-    cx: &mut Context,
+fn find_char_line_ending_motion(
+    editor: &mut Editor,
     count: usize,
     direction: Direction,
     inclusive: bool,
     extend: bool,
 ) {
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        let cursor = range.cursor(text);
+        let cursor_anchor = range.cursor(text);
+        let cursor_head = next_grapheme_boundary(text, cursor_anchor);
         let cursor_line = range.cursor_line(text);
 
-        // Finding the line where we're going to find <ret>. Depends mostly on
-        // `count`, but also takes into account edge cases where we're already at the end
-        // of a line or the beginning of a line
-        let find_on_line = match direction {
+        let pos = match direction {
             Direction::Forward => {
-                let on_edge = line_end_char_index(&text, cursor_line) == cursor;
-                let line = cursor_line + count - 1 + (on_edge as usize);
+                let line_end = line_end_char_index(&text, cursor_line);
+                let on_edge = if inclusive {
+                    line_end == cursor_anchor
+                } else {
+                    line_end == cursor_head || line_end == cursor_anchor
+                };
+                let line = cursor_line + count - 1 + on_edge as usize;
                 if line >= text.len_lines() - 1 {
                     return range;
-                } else {
-                    line
                 }
+                line_end_char_index(&text, line) - !inclusive as usize
             }
             Direction::Backward => {
-                let on_edge = text.line_to_char(cursor_line) == cursor && !inclusive;
-                let line = cursor_line as isize - (count as isize - 1 + on_edge as isize);
-                if line <= 0 {
-                    return range;
+                if inclusive {
+                    let line = cursor_line as isize - count as isize;
+                    if line < 0 {
+                        return range;
+                    }
+                    line_end_char_index(&text, line as usize)
                 } else {
-                    line as usize
+                    let on_edge = text.line_to_char(cursor_line) == cursor_anchor;
+                    let line = cursor_line as isize - count as isize + 1 - on_edge as isize;
+                    if line <= 0 {
+                        return range;
+                    }
+                    text.line_to_char(line as usize)
                 }
             }
-        };
-
-        let pos = match (direction, inclusive) {
-            (Direction::Forward, true) => line_end_char_index(&text, find_on_line),
-            (Direction::Forward, false) => line_end_char_index(&text, find_on_line) - 1,
-            (Direction::Backward, true) => line_end_char_index(&text, find_on_line - 1),
-            (Direction::Backward, false) => text.line_to_char(find_on_line),
         };
 
         if extend {
@@ -1555,112 +1557,56 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
     // TODO: should this be done by grapheme rather than char?  For example,
     // we can't properly handle the line-ending CRLF case here in terms of char.
     cx.on_next_key(move |cx, event| {
-        let ch = match event {
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => {
-                find_char_line_ending(cx, count, direction, inclusive, extend);
-                return;
-            }
+        let motion: Motion = if event.code == KeyCode::Enter {
+            Box::new(move |editor: &mut Editor| {
+                find_char_line_ending_motion(editor, count, direction, inclusive, extend);
+            })
+        } else if let Some(ch) = match event.code {
+            KeyCode::Tab => Some('\t'),
+            KeyCode::Char(ch) => Some(ch),
+            _ => None,
+        } {
+            Box::new(move |editor: &mut Editor| {
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
 
-            KeyEvent {
-                code: KeyCode::Tab, ..
-            } => '\t',
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    let cursor_anchor = range.cursor(text);
+                    let cursor_head = next_grapheme_boundary(text, cursor_anchor);
 
-            KeyEvent {
-                code: KeyCode::Char(ch),
-                ..
-            } => ch,
-            _ => return,
-        };
-        let motion = move |editor: &mut Editor| {
-            match direction {
-                Direction::Forward => {
-                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
-                }
-                Direction::Backward => {
-                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
-                }
-            };
+                    // Exclusive search skips the next char after cursor to enable repeated application
+                    let search_start_pos = match (inclusive, direction) {
+                        (true, Direction::Forward) => cursor_head,
+                        (true, Direction::Backward) => cursor_anchor,
+                        (false, Direction::Forward) => cursor_head + 1,
+                        (false, Direction::Backward) => cursor_anchor - 1,
+                    };
+
+                    search::find_nth_char(count, text, ch, search_start_pos, direction)
+                        // Exclusive search should stop on previous character
+                        .map(|pos| match (inclusive, direction) {
+                            (true, Direction::Forward) => pos,
+                            (true, Direction::Backward) => pos,
+                            (false, Direction::Forward) => pos - 1,
+                            (false, Direction::Backward) => pos + 1,
+                        })
+                        .map_or(range, |pos| {
+                            if extend {
+                                range.put_cursor(text, pos, true)
+                            } else {
+                                Range::point(range.cursor(text)).put_cursor(text, pos, true)
+                            }
+                        })
+                });
+
+                doc.set_selection(view.id, selection);
+            })
+        } else {
+            return;
         };
 
         cx.editor.apply_motion(motion);
     })
-}
-
-//
-
-#[inline]
-fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
-    editor: &mut Editor,
-    search_fn: &F,
-    inclusive: bool,
-    extend: bool,
-    char_matcher: M,
-    count: usize,
-) where
-    F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
-{
-    let (view, doc) = current!(editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-        // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-        // here, but just in terms of chars instead.
-        let search_start_pos = if range.anchor < range.head {
-            range.head - 1
-        } else {
-            range.head
-        };
-
-        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
-            if extend {
-                range.put_cursor(text, pos, true)
-            } else {
-                Range::point(range.cursor(text)).put_cursor(text, pos, true)
-            }
-        })
-    });
-    doc.set_selection(view.id, selection);
-}
-
-fn find_next_char_impl(
-    text: RopeSlice,
-    ch: char,
-    pos: usize,
-    n: usize,
-    inclusive: bool,
-) -> Option<usize> {
-    let pos = (pos + 1).min(text.len_chars());
-    if inclusive {
-        search::find_nth_next(text, ch, pos, n)
-    } else {
-        let n = match text.get_char(pos) {
-            Some(next_ch) if next_ch == ch => n + 1,
-            _ => n,
-        };
-        search::find_nth_next(text, ch, pos, n).map(|n| n.saturating_sub(1))
-    }
-}
-
-fn find_prev_char_impl(
-    text: RopeSlice,
-    ch: char,
-    pos: usize,
-    n: usize,
-    inclusive: bool,
-) -> Option<usize> {
-    if inclusive {
-        search::find_nth_prev(text, ch, pos, n)
-    } else {
-        let n = match text.get_char(pos.saturating_sub(1)) {
-            Some(next_ch) if next_ch == ch => n + 1,
-            _ => n,
-        };
-        search::find_nth_prev(text, ch, pos, n).map(|n| (n + 1).min(text.len_chars()))
-    }
 }
 
 fn find_till_char(cx: &mut Context) {
