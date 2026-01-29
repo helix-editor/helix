@@ -677,7 +677,7 @@ pub(crate) fn code_actions_for_range(
     only: Option<Vec<CodeActionKind>>,
     trigger_kind: CodeActionTriggerKind,
 ) -> Vec<(
-    impl Future<Output = Result<Option<Vec<CodeActionOrCommand>>, helix_lsp::Error>>,
+    impl Future<Output = Result<Option<Vec<CodeActionOrCommand>>, helix_lsp::Error>> + use<>,
     LanguageServerId,
 )> {
     let mut seen_language_servers = HashSet::new();
@@ -1344,7 +1344,9 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
 fn compute_inlay_hints_for_view(
     view: &View,
     doc: &Document,
-) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>> + use<>>>> {
+) -> Option<
+    std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>> + use<>>>,
+> {
     let view_id = view.id;
     let doc_id = view.doc;
 
