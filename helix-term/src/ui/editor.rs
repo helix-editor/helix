@@ -773,7 +773,7 @@ impl EditorView {
     }
 
     /// Apply the highlighting on the lines where a cursor is active
-    pub fn cursorline(doc: &Document, view: &View, theme: &Theme) -> impl Decoration {
+    pub fn cursorline(doc: &Document, view: &View, theme: &Theme) -> impl Decoration + use<> {
         let text = doc.text().slice(..);
         // TODO only highlight the visual line that contains the cursor instead of the full visual line
         let primary_line = doc.selection(view.id).primary().cursor_line(text);
@@ -1340,7 +1340,7 @@ impl EditorView {
         ctx: &mut commands::Context,
         event: KeyEvent,
     ) -> bool {
-        if let Some((on_next_key, kind_)) = self.on_next_key.take() {
+        match self.on_next_key.take() { Some((on_next_key, kind_)) => {
             if kind == kind_ {
                 on_next_key(ctx, event);
                 true
@@ -1348,9 +1348,9 @@ impl EditorView {
                 self.on_next_key = Some((on_next_key, kind_));
                 false
             }
-        } else {
+        } _ => {
             false
-        }
+        }}
     }
 }
 
@@ -1394,7 +1394,7 @@ impl Component for EditorView {
                 // Handling it here but not re-rendering will cause flashing
                 EventResult::Consumed(None)
             }
-            Event::Key(mut key) => {
+            &Event::Key(mut key) => {
                 cx.editor.reset_idle_timer();
                 canonicalize_key(&mut key);
 
@@ -1417,18 +1417,16 @@ impl Component for EditorView {
                                         scroll: None,
                                     };
 
-                                    if let EventResult::Consumed(callback) =
-                                        completion.handle_event(event, &mut cx)
-                                    {
+                                    match completion.handle_event(event, &mut cx)
+                                    { EventResult::Consumed(callback) => {
                                         consumed = true;
                                         Some(callback)
-                                    } else if let EventResult::Consumed(callback) =
-                                        completion.handle_event(&Event::Key(key!(Enter)), &mut cx)
-                                    {
+                                    } _ => { match completion.handle_event(&Event::Key(key!(Enter)), &mut cx)
+                                    { EventResult::Consumed(callback) => {
                                         Some(callback)
-                                    } else {
+                                    } _ => {
                                         None
-                                    }
+                                    }}}}
                                 };
 
                                 if let Some(callback) = res {

@@ -184,11 +184,11 @@ fn buffer_close_by_ids_impl(
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
         .filter_map(|&doc_id| {
-            if let Err(CloseError::BufferModified(name)) = cx.editor.close_document(doc_id, force) {
+            match cx.editor.close_document(doc_id, force) { Err(CloseError::BufferModified(name)) => {
                 Some((doc_id, name))
-            } else {
+            } _ => {
                 None
-            }
+            }}
         })
         .unzip();
 
@@ -2150,14 +2150,14 @@ fn toggle_option(
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
     *value = match value {
-        Value::Bool(ref value) => {
+        &mut Value::Bool(ref value) => {
             ensure!(
                 args.len() == 1,
                 "Bad arguments. For boolean configurations use: `:toggle {key}`"
             );
             Value::Bool(!value)
         }
-        Value::String(ref value) => {
+        &mut Value::String(ref value) => {
             ensure!(
                 args.len() == 2,
                 "Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`",

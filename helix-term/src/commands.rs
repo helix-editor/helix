@@ -2093,13 +2093,12 @@ fn select_regex(cx: &mut Context) {
                 return;
             }
             let text = doc.text().slice(..);
-            if let Some(selection) =
-                selection::select_on_matches(text, doc.selection(view.id), &regex)
-            {
+            match selection::select_on_matches(text, doc.selection(view.id), &regex)
+            { Some(selection) => {
                 doc.set_selection(view.id, selection);
-            } else if event == PromptEvent::Validate {
+            } _ => if event == PromptEvent::Validate {
                 cx.editor.set_error("nothing selected");
-            }
+            }}
         },
     );
 }
@@ -2301,14 +2300,14 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             false
         };
         let wrap_around = search_config.wrap_around;
-        if let Ok(regex) = rope::RegexBuilder::new()
+        match rope::RegexBuilder::new()
             .syntax(
                 rope::Config::new()
                     .case_insensitive(case_insensitive)
                     .multi_line(true),
             )
             .build(&query)
-        {
+        { Ok(regex) => {
             for _ in 0..count {
                 search_impl(
                     cx.editor,
@@ -2320,10 +2319,10 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
                     true,
                 );
             }
-        } else {
+        } _ => {
             let error = format!("Invalid regex: {}", query);
             cx.editor.set_error(error);
-        }
+        }}
     }
 }
 
@@ -3508,11 +3507,11 @@ pub fn command_palette(cx: &mut Context) {
 fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seem to work well with buffer_picker
     cx.callback.push(Box::new(|compositor, cx| {
-        if let Some(picker) = compositor.last_picker.take() {
+        match compositor.last_picker.take() { Some(picker) => {
             compositor.push(picker);
-        } else {
+        } _ => {
             cx.editor.set_error("no last picker")
-        }
+        }}
     }));
 }
 
@@ -5208,13 +5207,12 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
             }
             let text = doc.text().slice(..);
 
-            if let Some(selection) =
-                selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
-            {
+            match selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
+            { Some(selection) => {
                 doc.set_selection(view.id, selection);
-            } else if event == PromptEvent::Validate {
+            } _ => if event == PromptEvent::Validate {
                 cx.editor.set_error("no selections remaining");
-            }
+            }}
         },
     )
 }
@@ -6337,14 +6335,14 @@ fn shell_keep_pipe(cx: &mut Context) {
 
         for (i, range) in selection.ranges().iter().enumerate() {
             let fragment = range.slice(text);
-            if let Err(err) = shell_impl(shell, args.join(" ").as_str(), Some(fragment.into())) {
+            match shell_impl(shell, args.join(" ").as_str(), Some(fragment.into())) { Err(err) => {
                 log::debug!("Shell command failed: {}", err);
-            } else {
+            } _ => {
                 ranges.push(*range);
                 if i >= old_index && index.is_none() {
                     index = Some(ranges.len() - 1);
                 }
-            }
+            }}
         }
 
         if ranges.is_empty() {
@@ -6390,7 +6388,7 @@ async fn shell_impl_async(
             return Err(e.into());
         }
     };
-    let output = if let Some(mut stdin) = process.stdin.take() {
+    let output = match process.stdin.take() { Some(mut stdin) => {
         let input_task = tokio::spawn(async move {
             if let Some(input) = input {
                 helix_view::document::to_writer(&mut stdin, (encoding::UTF_8, false), &input)
@@ -6403,10 +6401,10 @@ async fn shell_impl_async(
             input_task,
         };
         output?
-    } else {
+    } _ => {
         // Process has no stdin, so we just take the output
         process.wait_with_output().await?
-    };
+    }};
 
     let output = if !output.status.success() {
         if output.stderr.is_empty() {

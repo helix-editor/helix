@@ -140,7 +140,7 @@ impl Jobs {
         log::debug!("waiting on jobs...");
         let mut wait_futures = std::mem::take(&mut self.wait_futures);
 
-        while let (Some(job), tail) = wait_futures.into_future().await {
+        while let (Some(job), tail) = StreamExt::into_future(wait_futures).await {
             match job {
                 Ok(callback) => {
                     wait_futures = tail;
