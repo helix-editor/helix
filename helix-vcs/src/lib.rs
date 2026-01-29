@@ -2,7 +2,7 @@
 //! Currently `git` is the only supported provider for diffs, but this architecture allows
 //! for other providers to be added in the future.
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use arc_swap::ArcSwap;
 use std::{
     path::{Path, PathBuf},

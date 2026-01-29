@@ -8,28 +8,27 @@ use std::{
 use dashmap::DashMap;
 use futures_util::FutureExt;
 use grep_regex::RegexMatcherBuilder;
-use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
+use grep_searcher::{BinaryDetection, SearcherBuilder, sinks};
 use helix_core::{
-    syntax::{Loader, QueryIterEvent},
     Rope, RopeSlice, Selection, Syntax, Uri,
+    syntax::{Loader, QueryIterEvent},
 };
 use helix_stdx::{
     path,
     rope::{self, RopeSliceExt},
 };
 use helix_view::{
-    align_view,
-    document::{from_reader, SCRATCH_BUFFER_NAME},
-    Align, Document, DocumentId, Editor,
+    Align, Document, DocumentId, Editor, align_view,
+    document::{SCRATCH_BUFFER_NAME, from_reader},
 };
 use ignore::{DirEntry, WalkBuilder, WalkState};
 
 use crate::{
     filter_picker_entry,
     ui::{
+        Picker, PickerColumn,
         overlay::overlaid,
         picker::{Injector, PathOrId},
-        Picker, PickerColumn,
     },
 };
 
@@ -115,38 +114,41 @@ fn tags_iter<'a>(
 ) -> impl Iterator<Item = Tag> + 'a {
     let mut tags_iter = syntax.tags(text, loader, ..);
 
-    iter::from_fn(move || loop {
-        let QueryIterEvent::Match(mat) = tags_iter.next()? else {
-            continue;
-        };
-        let query = &loader
-            .tag_query(tags_iter.current_language())
-            .expect("must have a tags query to emit matches")
-            .query;
-        let Some(kind) = query
-            .capture_name(mat.capture)
-            .strip_prefix("definition.")
-            .and_then(TagKind::from_name)
-        else {
-            continue;
-        };
-        let range = mat.node.byte_range();
-        if pattern.is_some_and(|pattern| {
-            !pattern.is_match(text.regex_input_at_bytes(range.start as usize..range.end as usize))
-        }) {
-            continue;
+    iter::from_fn(move || {
+        loop {
+            let QueryIterEvent::Match(mat) = tags_iter.next()? else {
+                continue;
+            };
+            let query = &loader
+                .tag_query(tags_iter.current_language())
+                .expect("must have a tags query to emit matches")
+                .query;
+            let Some(kind) = query
+                .capture_name(mat.capture)
+                .strip_prefix("definition.")
+                .and_then(TagKind::from_name)
+            else {
+                continue;
+            };
+            let range = mat.node.byte_range();
+            if pattern.is_some_and(|pattern| {
+                !pattern
+                    .is_match(text.regex_input_at_bytes(range.start as usize..range.end as usize))
+            }) {
+                continue;
+            }
+            let start = text.byte_to_char(range.start as usize);
+            let end = text.byte_to_char(range.end as usize);
+            return Some(Tag {
+                kind,
+                name: text.slice(start..end).to_string(),
+                start,
+                end,
+                start_line: text.char_to_line(start),
+                end_line: text.char_to_line(end),
+                doc: doc.clone(),
+            });
         }
-        let start = text.byte_to_char(range.start as usize);
-        let end = text.byte_to_char(range.end as usize);
-        return Some(Tag {
-            kind,
-            name: text.slice(start..end).to_string(),
-            start,
-            end,
-            start_line: text.char_to_line(start),
-            end_line: text.char_to_line(end),
-            doc: doc.clone(),
-        });
     })
 }
 

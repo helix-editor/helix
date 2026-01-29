@@ -5,8 +5,8 @@ use arc_swap::access::DynAccess;
 use helix_core::NATIVE_LINE_ENDING;
 
 use crate::{
-    clipboard::{ClipboardError, ClipboardProvider, ClipboardType},
     Editor,
+    clipboard::{ClipboardError, ClipboardProvider, ClipboardType},
 };
 
 /// A key-value store for saving sets of values.
@@ -119,7 +119,9 @@ impl Registers {
                 let saved_values = self.inner.entry(name).or_default();
 
                 if !contents_are_saved(saved_values, &contents) {
-                    anyhow::bail!("Failed to push to register {name}: clipboard does not match register contents");
+                    anyhow::bail!(
+                        "Failed to push to register {name}: clipboard does not match register contents"
+                    );
                 }
 
                 saved_values.push(value.clone());
@@ -291,8 +293,8 @@ pub struct RegisterValues<'a> {
 impl<'a> RegisterValues<'a> {
     fn new(
         iter: impl DoubleEndedIterator<Item = Cow<'a, str>>
-            + ExactSizeIterator<Item = Cow<'a, str>>
-            + 'a,
+        + ExactSizeIterator<Item = Cow<'a, str>>
+        + 'a,
     ) -> Self {
         Self {
             iter: Box::new(iter),

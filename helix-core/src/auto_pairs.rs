@@ -1,7 +1,7 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{graphemes, movement::Direction, Range, Rope, Selection, Tendril, Transaction};
+use crate::{Range, Rope, Selection, Tendril, Transaction, graphemes, movement::Direction};
 use std::collections::HashMap;
 
 use smallvec::SmallVec;

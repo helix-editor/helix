@@ -1,7 +1,7 @@
 use helix_core::{
-    indent::{indent_level_for_line, treesitter_indent_for_pos, IndentStyle},
-    syntax::{config::Configuration, Loader},
     Syntax,
+    indent::{IndentStyle, indent_level_for_line, treesitter_indent_for_pos},
+    syntax::{Loader, config::Configuration},
 };
 use helix_stdx::rope::RopeSliceExt;
 use ropey::Rope;
@@ -225,8 +225,8 @@ fn test_treesitter_indent(
                 line.get_slice(..pos).is_some_and(|s| s == suggested_indent),
                 "Wrong indentation for file {:?} on line {}:\n\"{}\" (original line)\n\"{}\" (suggested indentation)\n",
                 test_name,
-                i+1,
-                line.slice(..line.len_chars()-1),
+                i + 1,
+                line.slice(..line.len_chars() - 1),
                 suggested_indent,
             );
         }

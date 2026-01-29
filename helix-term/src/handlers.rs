@@ -10,7 +10,7 @@ use crate::handlers::auto_save::AutoSaveHandler;
 use crate::handlers::diagnostics::PullDiagnosticsHandler;
 use crate::handlers::signature_help::SignatureHelpHandler;
 
-pub use helix_view::handlers::{word_index, Handlers};
+pub use helix_view::handlers::{Handlers, word_index};
 
 use self::document_colors::DocumentColorsHandler;
 

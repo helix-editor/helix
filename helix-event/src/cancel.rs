@@ -1,8 +1,8 @@
 use std::borrow::Borrow;
 use std::future::Future;
+use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::Arc;
 
 use tokio::sync::Notify;
 
@@ -213,7 +213,7 @@ mod tests {
     use futures_executor::block_on;
     use tokio::task::yield_now;
 
-    use crate::{cancelable_future, TaskController};
+    use crate::{TaskController, cancelable_future};
 
     #[test]
     fn immediate_cancel() {

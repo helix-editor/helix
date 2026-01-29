@@ -1,7 +1,7 @@
-use crate::{auto_pairs::AutoPairs, diagnostic::Severity, Language};
+use crate::{Language, auto_pairs::AutoPairs, diagnostic::Severity};
 
 use helix_stdx::rope;
-use serde::{ser::SerializeSeq as _, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeSeq as _};
 use serde_json::Value;
 
 use std::{

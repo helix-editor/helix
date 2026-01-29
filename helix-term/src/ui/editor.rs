@@ -6,30 +6,31 @@ use crate::{
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
-        document::{render_document, LinePos, TextRenderer},
+        Completion, ProgressSpinners,
+        document::{LinePos, TextRenderer, render_document},
         statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
-        Completion, ProgressSpinners,
     },
 };
 
 use helix_core::{
+    Change, Position, Range, Selection, Transaction,
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
-    visual_offset_from_block, Change, Position, Range, Selection, Transaction,
+    visual_offset_from_block,
 };
 use helix_view::{
+    Document, Editor, Theme, View,
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
 };
 use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
 
@@ -1340,17 +1341,18 @@ impl EditorView {
         ctx: &mut commands::Context,
         event: KeyEvent,
     ) -> bool {
-        match self.on_next_key.take() { Some((on_next_key, kind_)) => {
-            if kind == kind_ {
-                on_next_key(ctx, event);
-                true
-            } else {
-                self.on_next_key = Some((on_next_key, kind_));
-                false
+        match self.on_next_key.take() {
+            Some((on_next_key, kind_)) => {
+                if kind == kind_ {
+                    on_next_key(ctx, event);
+                    true
+                } else {
+                    self.on_next_key = Some((on_next_key, kind_));
+                    false
+                }
             }
-        } _ => {
-            false
-        }}
+            _ => false,
+        }
     }
 }
 
@@ -1417,16 +1419,20 @@ impl Component for EditorView {
                                         scroll: None,
                                     };
 
-                                    match completion.handle_event(event, &mut cx)
-                                    { EventResult::Consumed(callback) => {
-                                        consumed = true;
-                                        Some(callback)
-                                    } _ => { match completion.handle_event(&Event::Key(key!(Enter)), &mut cx)
-                                    { EventResult::Consumed(callback) => {
-                                        Some(callback)
-                                    } _ => {
-                                        None
-                                    }}}}
+                                    match completion.handle_event(event, &mut cx) {
+                                        EventResult::Consumed(callback) => {
+                                            consumed = true;
+                                            Some(callback)
+                                        }
+                                        _ => {
+                                            match completion
+                                                .handle_event(&Event::Key(key!(Enter)), &mut cx)
+                                            {
+                                                EventResult::Consumed(callback) => Some(callback),
+                                                _ => None,
+                                            }
+                                        }
+                                    }
                                 };
 
                                 if let Some(callback) = res {

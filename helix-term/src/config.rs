@@ -1,5 +1,5 @@
 use crate::keymap;
-use crate::keymap::{merge_keys, KeyTrie};
+use crate::keymap::{KeyTrie, merge_keys};
 use helix_loader::merge_toml_values;
 use helix_view::{document::Mode, theme};
 use serde::Deserialize;
@@ -93,7 +93,7 @@ impl Config {
             // if any configs are invalid return that first
             (_, Err(ConfigLoadError::BadConfig(err)))
             | (Err(ConfigLoadError::BadConfig(err)), _) => {
-                return Err(ConfigLoadError::BadConfig(err))
+                return Err(ConfigLoadError::BadConfig(err));
             }
             (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
                 let mut keys = keymap::default();

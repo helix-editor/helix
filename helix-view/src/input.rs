@@ -1,5 +1,5 @@
 //! Input event handling, currently backed by termina.
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;

@@ -1,24 +1,24 @@
 use crate::handlers::completion::LspCompletionItem;
-use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
+use crate::ui::{Markdown, Menu, Popup, PromptEvent, menu};
 use crate::{
     compositor::{Component, Context, Event, EventResult},
     handlers::completion::{
-        trigger_auto_completion, CompletionItem, CompletionResponse, ResolveHandler,
+        CompletionItem, CompletionResponse, ResolveHandler, trigger_auto_completion,
     },
 };
 use helix_core::snippets::{ActiveSnippet, RenderedSnippet, Snippet};
-use helix_core::{self as core, chars, fuzzy::MATCHER, Change, Transaction};
-use helix_lsp::{lsp, util, OffsetEncoding};
+use helix_core::{self as core, Change, Transaction, chars, fuzzy::MATCHER};
+use helix_lsp::{OffsetEncoding, lsp, util};
+use helix_view::{Document, Editor, graphics::Rect};
 use helix_view::{
+    ViewId,
     editor::CompleteAction,
     handlers::lsp::SignatureHelpInvoked,
     theme::{Color, Modifier, Style},
-    ViewId,
 };
-use helix_view::{graphics::Rect, Document, Editor};
 use nucleo::{
-    pattern::{Atom, AtomKind, CaseMatching, Normalization},
     Config, Utf32Str,
+    pattern::{Atom, AtomKind, CaseMatching, Normalization},
 };
 use tui::text::Spans;
 use tui::{buffer::Buffer as Surface, text::Span};

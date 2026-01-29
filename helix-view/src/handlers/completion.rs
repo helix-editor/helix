@@ -1,9 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
 use helix_core::completion::CompletionProvider;
-use helix_event::{send_blocking, TaskController};
+use helix_event::{TaskController, send_blocking};
 
-use crate::{document::SavePoint, DocumentId, ViewId};
+use crate::{DocumentId, ViewId, document::SavePoint};
 
 use tokio::sync::mpsc::Sender;
 

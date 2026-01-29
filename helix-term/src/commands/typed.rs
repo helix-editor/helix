@@ -11,7 +11,7 @@ use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
 use helix_stdx::path::home_dir;
-use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
+use helix_view::document::{DEFAULT_LANGUAGE_NAME, read_to_string};
 use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
@@ -183,12 +183,9 @@ fn buffer_close_by_ids_impl(
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
-        .filter_map(|&doc_id| {
-            match cx.editor.close_document(doc_id, force) { Err(CloseError::BufferModified(name)) => {
-                Some((doc_id, name))
-            } _ => {
-                None
-            }}
+        .filter_map(|&doc_id| match cx.editor.close_document(doc_id, force) {
+            Err(CloseError::BufferModified(name)) => Some((doc_id, name)),
+            _ => None,
         })
         .unzip();
 

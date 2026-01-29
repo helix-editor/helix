@@ -3,9 +3,9 @@ use std::fmt::Write;
 use helix_core::syntax::config::LanguageServerFeature;
 
 use crate::{
+    Document, Editor, Theme, View,
     editor::GutterType,
     graphics::{Style, UnderlineStyle},
-    Document, Editor, Theme, View,
 };
 
 fn count_digits(n: usize) -> usize {
@@ -329,12 +329,12 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
+    use crate::DocumentId;
     use crate::document::Document;
     use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig};
     use crate::graphics::Rect;
-    use crate::DocumentId;
     use arc_swap::ArcSwap;
-    use helix_core::{syntax, Rope};
+    use helix_core::{Rope, syntax};
 
     #[test]
     fn test_default_gutter_widths() {

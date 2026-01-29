@@ -1,7 +1,7 @@
 //! Utility functions to traverse the unicode graphemes of a `Rope`'s text contents.
 //!
 //! Based on <https://github.com/cessen/led/blob/c4fa72405f510b7fd16052f90a598c429b3104a6/src/graphemes.rs>
-use ropey::{str_utils::byte_to_char_idx, RopeSlice};
+use ropey::{RopeSlice, str_utils::byte_to_char_idx};
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 use unicode_width::UnicodeWidthStr;
 
@@ -12,8 +12,8 @@ use std::ops::Deref;
 use std::ptr::NonNull;
 use std::{slice, str};
 
-use crate::chars::{char_is_whitespace, char_is_word};
 use crate::LineEnding;
+use crate::chars::{char_is_whitespace, char_is_word};
 
 #[inline]
 pub fn tab_width_at(visual_x: usize, tab_width: u16) -> usize {

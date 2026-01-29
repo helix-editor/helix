@@ -1,4 +1,5 @@
 use crate::{
+    Document, DocumentId, View, ViewId,
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
     document::{
@@ -12,13 +13,12 @@ use crate::{
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
-    Document, DocumentId, View, ViewId,
 };
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
-use futures_util::{future, StreamExt};
+use futures_util::{StreamExt, future};
 use helix_lsp::{Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -35,31 +35,31 @@ use std::{
 };
 
 use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-    time::{sleep, Duration, Instant, Sleep},
+    sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
+    time::{Duration, Instant, Sleep, sleep},
 };
 
-use anyhow::{anyhow, bail, Error};
+use anyhow::{Error, anyhow, bail};
 
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
+    Change, LineEnding, NATIVE_LINE_ENDING, Position, Range, Selection, Uri,
     auto_pairs::AutoPairs,
     diagnostic::DiagnosticProvider,
     syntax::{
         self,
         config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     },
-    Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap::{self as dap, registry::DebugAdapterId};
 use helix_lsp::lsp;
 use helix_stdx::path::canonicalize;
 
-use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, ser::SerializeMap};
 
 use arc_swap::{
-    access::{DynAccess, DynGuard},
     ArcSwap,
+    access::{DynAccess, DynGuard},
 };
 
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
@@ -2390,15 +2390,18 @@ impl Editor {
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
     use helix_core::{
+        Operation, Transaction,
         chars::char_is_whitespace,
         line_ending::{line_end_char_index, str_is_line_ending},
         unicode::segmentation::UnicodeSegmentation,
-        Operation, Transaction,
     };
 
     fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
-        if let [Operation::Retain(move_pos), Operation::Insert( inserted_str), Operation::Retain(_)] =
-            changes
+        if let [
+            Operation::Retain(move_pos),
+            Operation::Insert(inserted_str),
+            Operation::Retain(_),
+        ] = changes
         {
             let mut graphemes = inserted_str.graphemes(true);
             move_pos + inserted_str.len() == pos

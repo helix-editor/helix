@@ -1,14 +1,14 @@
 use std::{collections::HashSet, time::Duration};
 
-use futures_util::{stream::FuturesOrdered, StreamExt};
+use futures_util::{StreamExt, stream::FuturesOrdered};
 use helix_core::{syntax::config::LanguageServerFeature, text_annotations::InlineAnnotation};
 use helix_event::{cancelable_future, register_hook};
 use helix_lsp::lsp;
 use helix_view::{
+    DocumentId, Editor, Theme,
     document::DocumentColorSwatches,
     events::{DocumentDidChange, DocumentDidOpen, LanguageServerExited, LanguageServerInitialized},
-    handlers::{lsp::DocumentColorsEvent, Handlers},
-    DocumentId, Editor, Theme,
+    handlers::{Handlers, lsp::DocumentColorsEvent},
 };
 use tokio::time::Instant;
 

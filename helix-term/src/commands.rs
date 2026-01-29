@@ -20,7 +20,8 @@ use tui::{
 pub use typed::*;
 
 use helix_core::{
-    char_idx_at_visual_offset,
+    Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice, Selection, SmallVec,
+    Syntax, Tendril, Transaction, char_idx_at_visual_offset,
     chars::char_is_word,
     command_line::{self, Args},
     comment,
@@ -32,7 +33,7 @@ use helix_core::{
     indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
-    movement::{self, move_vertically_visual, Direction},
+    movement::{self, Direction, move_vertically_visual},
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
@@ -41,10 +42,10 @@ use helix_core::{
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
-    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
-    Selection, SmallVec, Syntax, Tendril, Transaction,
+    visual_offset_from_block,
 };
 use helix_view::{
+    Document, DocumentId, Editor, ViewId,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
     expansion,
@@ -54,10 +55,9 @@ use helix_view::{
     theme::Style,
     tree,
     view::View,
-    Document, DocumentId, Editor, ViewId,
 };
 
-use anyhow::{anyhow, bail, ensure, Context as _};
+use anyhow::{Context as _, anyhow, bail, ensure};
 use arc_swap::access::DynAccess;
 use insert::*;
 use movement::Movement;
@@ -66,7 +66,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
-    ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
+    ui::{self, Picker, PickerColumn, Popup, Prompt, PromptEvent, overlay::overlaid},
 };
 
 use crate::job::{self, Jobs};
@@ -91,7 +91,7 @@ use serde::de::{self, Deserialize, Deserializer};
 use url::Url;
 
 use grep_regex::RegexMatcherBuilder;
-use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
+use grep_searcher::{BinaryDetection, SearcherBuilder, sinks};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 
 pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
@@ -198,7 +198,7 @@ where
     })
 }
 
-use helix_view::{align_view, Align};
+use helix_view::{Align, align_view};
 
 /// MappableCommands are commands that can be bound to keys, executable in
 /// normal, insert or select mode.
@@ -2093,12 +2093,16 @@ fn select_regex(cx: &mut Context) {
                 return;
             }
             let text = doc.text().slice(..);
-            match selection::select_on_matches(text, doc.selection(view.id), &regex)
-            { Some(selection) => {
-                doc.set_selection(view.id, selection);
-            } _ => if event == PromptEvent::Validate {
-                cx.editor.set_error("nothing selected");
-            }}
+            match selection::select_on_matches(text, doc.selection(view.id), &regex) {
+                Some(selection) => {
+                    doc.set_selection(view.id, selection);
+                }
+                _ => {
+                    if event == PromptEvent::Validate {
+                        cx.editor.set_error("nothing selected");
+                    }
+                }
+            }
         },
     );
 }
@@ -2307,22 +2311,25 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
                     .multi_line(true),
             )
             .build(&query)
-        { Ok(regex) => {
-            for _ in 0..count {
-                search_impl(
-                    cx.editor,
-                    &regex,
-                    movement,
-                    direction,
-                    scrolloff,
-                    wrap_around,
-                    true,
-                );
+        {
+            Ok(regex) => {
+                for _ in 0..count {
+                    search_impl(
+                        cx.editor,
+                        &regex,
+                        movement,
+                        direction,
+                        scrolloff,
+                        wrap_around,
+                        true,
+                    );
+                }
             }
-        } _ => {
-            let error = format!("Invalid regex: {}", query);
-            cx.editor.set_error(error);
-        }}
+            _ => {
+                let error = format!("Invalid regex: {}", query);
+                cx.editor.set_error(error);
+            }
+        }
     }
 }
 
@@ -3507,11 +3514,12 @@ pub fn command_palette(cx: &mut Context) {
 fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seem to work well with buffer_picker
     cx.callback.push(Box::new(|compositor, cx| {
-        match compositor.last_picker.take() { Some(picker) => {
-            compositor.push(picker);
-        } _ => {
-            cx.editor.set_error("no last picker")
-        }}
+        match compositor.last_picker.take() {
+            Some(picker) => {
+                compositor.push(picker);
+            }
+            _ => cx.editor.set_error("no last picker"),
+        }
     }));
 }
 
@@ -5207,12 +5215,16 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
             }
             let text = doc.text().slice(..);
 
-            match selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
-            { Some(selection) => {
-                doc.set_selection(view.id, selection);
-            } _ => if event == PromptEvent::Validate {
-                cx.editor.set_error("no selections remaining");
-            }}
+            match selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove) {
+                Some(selection) => {
+                    doc.set_selection(view.id, selection);
+                }
+                _ => {
+                    if event == PromptEvent::Validate {
+                        cx.editor.set_error("no selections remaining");
+                    }
+                }
+            }
         },
     )
 }
@@ -6335,14 +6347,17 @@ fn shell_keep_pipe(cx: &mut Context) {
 
         for (i, range) in selection.ranges().iter().enumerate() {
             let fragment = range.slice(text);
-            match shell_impl(shell, args.join(" ").as_str(), Some(fragment.into())) { Err(err) => {
-                log::debug!("Shell command failed: {}", err);
-            } _ => {
-                ranges.push(*range);
-                if i >= old_index && index.is_none() {
-                    index = Some(ranges.len() - 1);
+            match shell_impl(shell, args.join(" ").as_str(), Some(fragment.into())) {
+                Err(err) => {
+                    log::debug!("Shell command failed: {}", err);
                 }
-            }}
+                _ => {
+                    ranges.push(*range);
+                    if i >= old_index && index.is_none() {
+                        index = Some(ranges.len() - 1);
+                    }
+                }
+            }
         }
 
         if ranges.is_empty() {
@@ -6388,23 +6403,26 @@ async fn shell_impl_async(
             return Err(e.into());
         }
     };
-    let output = match process.stdin.take() { Some(mut stdin) => {
-        let input_task = tokio::spawn(async move {
-            if let Some(input) = input {
-                helix_view::document::to_writer(&mut stdin, (encoding::UTF_8, false), &input)
-                    .await?;
-            }
-            anyhow::Ok(())
-        });
-        let (output, _) = tokio::join! {
-            process.wait_with_output(),
-            input_task,
-        };
-        output?
-    } _ => {
-        // Process has no stdin, so we just take the output
-        process.wait_with_output().await?
-    }};
+    let output = match process.stdin.take() {
+        Some(mut stdin) => {
+            let input_task = tokio::spawn(async move {
+                if let Some(input) = input {
+                    helix_view::document::to_writer(&mut stdin, (encoding::UTF_8, false), &input)
+                        .await?;
+                }
+                anyhow::Ok(())
+            });
+            let (output, _) = tokio::join! {
+                process.wait_with_output(),
+                input_task,
+            };
+            output?
+        }
+        _ => {
+            // Process has no stdin, so we just take the output
+            process.wait_with_output().await?
+        }
+    };
 
     let output = if !output.status.success() {
         if output.stderr.is_empty() {
@@ -6853,11 +6871,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                         }
                     } else {
                         let to = primary_selection.to();
-                        if range.anchor > to {
-                            range.anchor
-                        } else {
-                            to
-                        }
+                        if range.anchor > to { range.anchor } else { to }
                     };
                     Range::new(anchor, range.head)
                 } else {

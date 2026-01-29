@@ -1,5 +1,5 @@
-use std::collections::btree_map::Entry;
 use std::collections::HashSet;
+use std::collections::btree_map::Entry;
 use std::fmt::Display;
 
 use crate::editor::Action;
@@ -7,11 +7,11 @@ use crate::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
 };
 use crate::{DocumentId, Editor};
-use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
+use helix_core::diagnostic::DiagnosticProvider;
 use helix_event::register_hook;
 use helix_lsp::util::generate_transaction_from_edits;
-use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
+use helix_lsp::{LanguageServerId, OffsetEncoding, lsp};
 
 use super::Handlers;
 
@@ -305,7 +305,10 @@ impl Editor {
 
         if let Some((version, doc)) = version.zip(doc.as_ref()) {
             if version != doc.version() {
-                log::info!("Version ({version}) is out of date for {uri:?} (expected ({})), dropping PublishDiagnostic notification", doc.version());
+                log::info!(
+                    "Version ({version}) is out of date for {uri:?} (expected ({})), dropping PublishDiagnostic notification",
+                    doc.version()
+                );
                 return;
             }
         }

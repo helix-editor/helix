@@ -257,7 +257,12 @@ mod line_ending_tests {
             )),
             Some(LineEnding::LF)
         );
-        assert_eq!(auto_detect_line_ending(&Rope::from_str("a formfeed\u{000C} with a\u{000C} carriage return linefeed\u{000D}\u{000A} and a linefeed\u{000A}")), Some(LineEnding::Crlf));
+        assert_eq!(
+            auto_detect_line_ending(&Rope::from_str(
+                "a formfeed\u{000C} with a\u{000C} carriage return linefeed\u{000D}\u{000A} and a linefeed\u{000A}"
+            )),
+            Some(LineEnding::Crlf)
+        );
     }
 
     #[test]

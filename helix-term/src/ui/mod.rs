@@ -422,7 +422,7 @@ pub mod completers {
     use helix_core::syntax::config::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
-    use helix_view::{editor::Config, Editor};
+    use helix_view::{Editor, editor::Config};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::collections::BTreeSet;
@@ -784,7 +784,7 @@ pub mod completers {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::{create_dir, File};
+    use std::fs::{File, create_dir};
 
     use super::*;
 
