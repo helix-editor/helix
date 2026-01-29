@@ -1625,16 +1625,30 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        let (view, doc) = current_ref!(editor);
+        let has_multiple_selections = doc.selection(view.id).len() > 1;
+
         match editor.cursor() {
-            // all block cursors are drawn manually
+            // Block cursors are always manually rendered via highlight spans
             (pos, CursorKind::Block) => {
                 if self.terminal_focused {
                     (pos, CursorKind::Hidden)
                 } else {
-                    // use terminal cursor when terminal loses focus
+                    // Use terminal cursor as fallback when unfocused
                     (pos, CursorKind::Underline)
                 }
             }
+            // Native cursor: use terminal for single selection, manual for multiple
+            (pos, CursorKind::Native) => {
+                if has_multiple_selections && self.terminal_focused {
+                    // Can't use terminal cursor for multiple selections
+                    (pos, CursorKind::Hidden)
+                } else {
+                    // Pass through to terminal for native cursor rendering
+                    (pos, CursorKind::Native)
+                }
+            }
+            // Bar/Underline: let the terminal render them
             cursor => cursor,
         }
     }
