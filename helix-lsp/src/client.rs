@@ -16,6 +16,7 @@ use helix_core::{
     ChangeSet, Rope,
 };
 use helix_loader::VERSION_AND_GIT_HASH;
+use helix_lsp_types::TextDocumentContentChangeEvent;
 use helix_stdx::path;
 use parking_lot::Mutex;
 use serde::Deserialize;
@@ -521,6 +522,27 @@ impl Client {
         }
     }
 
+    pub fn notify_sync<R: lsp::notification::Notification>(&self, params: R::Params) -> Result<()>
+    where
+        R::Params: serde::Serialize,
+    {
+        let server_tx = self.server_tx.clone();
+
+        let params = serde_json::to_value(params)?;
+
+        let notification = jsonrpc::Notification {
+            jsonrpc: Some(jsonrpc::Version::V2),
+            method: R::METHOD.to_string(),
+            params: Self::value_into_params(params),
+        };
+
+        server_tx
+            .send(Payload::Notification(notification))
+            .map_err(|e| Error::Other(e.into()))?;
+
+        Ok(())
+    }
+
     /// Reply to a language server RPC call.
     pub fn reply(
         &self,
@@ -968,6 +990,51 @@ impl Client {
         new_text: &Rope,
         changes: &ChangeSet,
     ) -> Option<()> {
+        if let Some(content_changes) =
+            self.text_document_did_change_impl(old_text, new_text, changes)
+        {
+            return {
+                self.notify::<lsp::notification::DidChangeTextDocument>(
+                    lsp::DidChangeTextDocumentParams {
+                        text_document,
+                        content_changes,
+                    },
+                );
+                Some(())
+            };
+        }
+        None
+    }
+
+    /// Will send textDocument/didChange notification synchronously
+    pub fn text_document_did_change_sync(
+        &self,
+        text_document: lsp::VersionedTextDocumentIdentifier,
+        old_text: &Rope,
+        new_text: &Rope,
+        changes: &ChangeSet,
+    ) -> Option<Result<()>> {
+        if let Some(content_changes) =
+            self.text_document_did_change_impl(old_text, new_text, changes)
+        {
+            return Some(
+                self.notify_sync::<lsp::notification::DidChangeTextDocument>(
+                    lsp::DidChangeTextDocumentParams {
+                        text_document,
+                        content_changes,
+                    },
+                ),
+            );
+        }
+        None
+    }
+
+    pub fn text_document_did_change_impl(
+        &self,
+        old_text: &Rope,
+        new_text: &Rope,
+        changes: &ChangeSet,
+    ) -> Option<Vec<TextDocumentContentChangeEvent>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support document sync.
@@ -999,11 +1066,7 @@ impl Client {
             kind => unimplemented!("{:?}", kind),
         };
 
-        self.notify::<lsp::notification::DidChangeTextDocument>(lsp::DidChangeTextDocumentParams {
-            text_document,
-            content_changes: changes,
-        });
-        Some(())
+        Some(changes)
     }
 
     pub fn text_document_did_close(&self, text_document: lsp::TextDocumentIdentifier) {
