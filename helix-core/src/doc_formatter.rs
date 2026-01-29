@@ -24,7 +24,7 @@ use helix_stdx::rope::{RopeGraphemes, RopeSliceExt};
 use crate::graphemes::{Grapheme, GraphemeStr};
 use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
-use crate::{Position, RopeSlice};
+use crate::{movement, Change, LineEnding, Position, RopeSlice, Tendril};
 
 #[derive(Debug, Clone, Copy)]
 pub enum GraphemeSource {
@@ -476,4 +476,95 @@ impl<'t> Iterator for DocumentFormatter<'t> {
         }
         Some(grapheme)
     }
+}
+
+pub struct ReflowOpts<'a> {
+    pub width: usize,
+    pub line_ending: LineEnding,
+    pub comment_tokens: &'a [String],
+}
+
+impl ReflowOpts<'_> {
+    fn find_indent<'a>(&self, line: usize, doc: RopeSlice<'a>) -> RopeSlice<'a> {
+        let line_start = doc.line_to_char(line);
+        let mut indent_end = movement::skip_while(doc, line_start, |ch| matches!(ch, ' ' | '\t'))
+            .unwrap_or(line_start);
+        let slice = doc.slice(indent_end..);
+        if let Some(token) = self
+            .comment_tokens
+            .iter()
+            .filter(|token| slice.starts_with(token))
+            .max_by_key(|x| x.len())
+        {
+            indent_end += token.chars().count();
+        }
+        let indent_end = movement::skip_while(doc, indent_end, |ch| matches!(ch, ' ' | '\t'))
+            .unwrap_or(indent_end);
+        return doc.slice(line_start..indent_end);
+    }
+}
+
+/// reflow wraps long lines in text to be less than opts.width.
+pub fn reflow(text: RopeSlice, char_pos: usize, opts: &ReflowOpts) -> Vec<Change> {
+    // A constant so that reflow behaves consistently across
+    // different configurations.
+    const TAB_WIDTH: u16 = 8;
+
+    let line_idx = text.char_to_line(char_pos.min(text.len_chars()));
+    let mut char_pos = text.line_to_char(line_idx);
+
+    let mut col = 0;
+    let mut word_width = 0;
+    let mut last_word_boundary = None;
+    let mut changes = Vec::new();
+    for grapheme in text.slice(char_pos..).graphemes() {
+        let grapheme_chars = grapheme.len_chars();
+        let mut grapheme = Grapheme::new(GraphemeStr::from(Cow::from(grapheme)), col, TAB_WIDTH);
+        if col + grapheme.width() > opts.width && !grapheme.is_whitespace() {
+            if let Some(n) = last_word_boundary {
+                let indent = opts.find_indent(text.char_to_line(n), text);
+                let mut whitespace_start = n;
+                let mut whitespace_end = n;
+                while whitespace_start > 0 && text.char(whitespace_start - 1) == ' ' {
+                    whitespace_start -= 1;
+                }
+                while whitespace_end < text.chars().len() && text.char(whitespace_end) == ' ' {
+                    whitespace_end += 1;
+                }
+                changes.push((
+                    whitespace_start,
+                    whitespace_end,
+                    Some(Tendril::from(format!(
+                        "{}{}",
+                        opts.line_ending.as_str(),
+                        &indent
+                    ))),
+                ));
+
+                col = 0;
+                for g in indent.graphemes() {
+                    let g = Grapheme::new(GraphemeStr::from(Cow::from(g)), col, TAB_WIDTH);
+                    col += g.width();
+                }
+                col += word_width;
+                last_word_boundary = None;
+                grapheme.change_position(col, TAB_WIDTH);
+            }
+        }
+        col += grapheme.width();
+        if grapheme == Grapheme::Newline {
+            col = 0;
+            word_width = 0;
+            last_word_boundary = None;
+        } else if grapheme.is_whitespace() {
+            if word_width > 0 {
+                last_word_boundary = Some(char_pos);
+            }
+            word_width = 0;
+        } else {
+            word_width += grapheme.width();
+        }
+        char_pos += grapheme_chars;
+    }
+    changes
 }
