@@ -1265,12 +1265,16 @@ impl Application {
     }
 
     #[cfg(all(not(feature = "integration"), windows))]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+    pub fn event_stream(
+        &self,
+    ) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin + use<> {
         crossterm::event::EventStream::new()
     }
 
     #[cfg(feature = "integration")]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+    pub fn event_stream(
+        &self,
+    ) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin + use<> {
         use std::{
             pin::Pin,
             task::{Context, Poll},
