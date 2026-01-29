@@ -47,7 +47,7 @@ fn get_clipboard() -> &'static std::sync::Mutex<Option<ClipboardEntry>> {
     CLIPBOARD.get_or_init(|| std::sync::Mutex::new(None))
 }
 
-/// Check if an IO error indicates a cross-device link error (EXDEV on Unix, ERROR_NOT_SAME_DEVICE on Windows)
+/// Check if an IO error indicates a cross-device link error.
 fn is_cross_device_error(e: &std::io::Error) -> bool {
     #[cfg(unix)]
     {
@@ -55,15 +55,11 @@ fn is_cross_device_error(e: &std::io::Error) -> bool {
     }
     #[cfg(windows)]
     {
-        // ERROR_NOT_SAME_DEVICE = 17
-        e.raw_os_error() == Some(17)
+        e.raw_os_error() == Some(17) // ERROR_NOT_SAME_DEVICE
     }
     #[cfg(not(any(unix, windows)))]
     {
-        // Fallback for non-Unix/non-Windows targets: conservatively assume a
-        // cross-device error whenever the I/O error has a raw OS error code.
-        // This may trigger copy+delete fallback for unrelated errors (e.g.,
-        // permission denied), but ensures cross-device moves work on all platforms.
+        // Conservative fallback: assume cross-device for any OS error
         e.raw_os_error().is_some()
     }
 }
@@ -132,8 +128,7 @@ impl FileExplorer {
                     return;
                 }
 
-                // Reject path traversal attempts: inputs containing ".." are not allowed.
-                // This prevents escaping the current directory via sequences like "../../../etc".
+                // Reject ".." path components to prevent directory traversal
                 if trimmed_input
                     .split(['/', std::path::MAIN_SEPARATOR])
                     .any(|c| c == "..")
