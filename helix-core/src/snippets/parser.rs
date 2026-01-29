@@ -120,11 +120,12 @@ fn text<'a>(
             match c {
                 '\\' => {
                     if let Some(&(_, c)) = chars.peek()
-                        && escape_chars.contains(&c) {
-                            chars.next();
-                            res.push(c);
-                            continue;
-                        }
+                        && escape_chars.contains(&c)
+                    {
+                        chars.next();
+                        res.push(c);
+                        continue;
+                    }
                     res.push('\\');
                 }
                 c if term_chars.contains(&c) => return Ok((&input[i..], res)),

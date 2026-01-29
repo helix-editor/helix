@@ -270,9 +270,10 @@ impl Editor {
                                     return false;
                                 };
                                 if let Some(source) = &breakpoint.source
-                                    && source.path.is_none() {
-                                        warn!("DAP breakpoint event missing source path");
-                                    }
+                                    && source.path.is_none()
+                                {
+                                    warn!("DAP breakpoint event missing source path");
+                                }
                                 if breakpoint.line.is_none() {
                                     warn!("DAP breakpoint event missing line");
                                 }

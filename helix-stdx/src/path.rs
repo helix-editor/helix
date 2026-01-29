@@ -22,13 +22,14 @@ where
 {
     let path = path.into();
     if let Ok(home) = home_dir()
-        && let Ok(stripped) = path.strip_prefix(&home) {
-            let mut path = OsString::with_capacity(2 + stripped.as_os_str().len());
-            path.push("~");
-            path.push(MAIN_SEPARATOR_STR);
-            path.push(stripped);
-            return Cow::Owned(PathBuf::from(path));
-        }
+        && let Ok(stripped) = path.strip_prefix(&home)
+    {
+        let mut path = OsString::with_capacity(2 + stripped.as_os_str().len());
+        path.push("~");
+        path.push(MAIN_SEPARATOR_STR);
+        path.push(stripped);
+        return Cow::Owned(PathBuf::from(path));
+    }
 
     path
 }
@@ -46,10 +47,11 @@ where
     let mut components = path.components();
     if let Some(Component::Normal(c)) = components.next()
         && c == "~"
-            && let Ok(mut buf) = home_dir() {
-                buf.push(components);
-                return Cow::Owned(buf);
-            }
+        && let Ok(mut buf) = home_dir()
+    {
+        buf.push(components);
+        return Cow::Owned(buf);
+    }
 
     path
 }

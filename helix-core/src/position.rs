@@ -231,9 +231,10 @@ pub fn visual_offset_from_anchor(
         }
 
         if let Some(anchor_line) = anchor_line
-            && grapheme.visual_pos.row >= anchor_line + max_rows {
-                return Err(VisualOffsetError::PosAfterMaxRow);
-            }
+            && grapheme.visual_pos.row >= anchor_line + max_rows
+        {
+            return Err(VisualOffsetError::PosAfterMaxRow);
+        }
     }
 
     let anchor_line = anchor_line.unwrap_or(last_pos.row);

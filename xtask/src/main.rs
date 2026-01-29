@@ -160,72 +160,71 @@ pub mod tasks {
                 //     bracket, case/else/except keyword, ...): entering it dedents the line. An over-indent on a plain statement (e.g.
                 //     a line after `return` that should leave the block but doesn't) has nothing to correct it and is a real failure.
                 if i + 1 < doc.len_lines()
-                    && let Some(next_pos) = text.line(i + 1).first_non_whitespace_char() {
-                        let next = text.line(i + 1);
-                        let next_trim = next.slice(next_pos..).to_string();
-                        // Lines inside an @opaque body (string/comment) carry literal leading whitespace, not code indent — don't
-                        // assert a typing indent for them.
-                        let next_byte =
-                            text.char_to_byte(text.line_to_char(i + 1) + next_pos) as u32;
+                    && let Some(next_pos) = text.line(i + 1).first_non_whitespace_char()
+                {
+                    let next = text.line(i + 1);
+                    let next_trim = next.slice(next_pos..).to_string();
+                    // Lines inside an @opaque body (string/comment) carry literal leading whitespace, not code indent — don't
+                    // assert a typing indent for them.
+                    let next_byte = text.char_to_byte(text.line_to_char(i + 1) + next_pos) as u32;
 
-                        let next_is_opaque =
-                            is_opaque_interior(indent_query, &syntax, text, next_byte);
-                        let next_is_comment = next_is_opaque
-                            || comment_tokens
-                                .iter()
-                                .any(|tok| next_trim.starts_with(tok.as_str()));
+                    let next_is_opaque = is_opaque_interior(indent_query, &syntax, text, next_byte);
+                    let next_is_comment = next_is_opaque
+                        || comment_tokens
+                            .iter()
+                            .any(|tok| next_trim.starts_with(tok.as_str()));
 
-                        if !next_is_comment {
-                            let typed = treesitter_indent_for_pos(
-                                indent_query,
-                                &syntax,
-                                &loader,
-                                tab_width,
-                                indent_style.indent_width(tab_width),
-                                text,
-                                i,
-                                text.line_to_char(i + 1) - 1,
-                                true,
-                            )
-                            .unwrap()
-                            .to_string(&indent_style, tab_width);
+                    if !next_is_comment {
+                        let typed = treesitter_indent_for_pos(
+                            indent_query,
+                            &syntax,
+                            &loader,
+                            tab_width,
+                            indent_style.indent_width(tab_width),
+                            text,
+                            i,
+                            text.line_to_char(i + 1) - 1,
+                            true,
+                        )
+                        .unwrap()
+                        .to_string(&indent_style, tab_width);
 
-                            let next_actual = next
-                                .get_slice(..next_pos)
-                                .map(|s| s.to_string())
-                                .unwrap_or_default();
+                        let next_actual = next
+                            .get_slice(..next_pos)
+                            .map(|s| s.to_string())
+                            .unwrap_or_default();
 
-                            let typed_cols = typed.chars().count();
-                            let want_cols = next_actual.chars().count();
-                            let leading_outdent = || {
-                                let byte = text.char_to_byte(text.line_to_char(i + 1) + next_pos);
-                                is_outdent_token_at(indent_query, &syntax, text, byte as u32)
-                            };
+                        let typed_cols = typed.chars().count();
+                        let want_cols = next_actual.chars().count();
+                        let leading_outdent = || {
+                            let byte = text.char_to_byte(text.line_to_char(i + 1) + next_pos);
+                            is_outdent_token_at(indent_query, &syntax, text, byte as u32)
+                        };
 
-                            if typed_cols < want_cols {
-                                errors += 1;
-                                println!(
+                        if typed_cols < want_cols {
+                            errors += 1;
+                            println!(
                                     "{file}:{}: typing under-indents: computed {} columns, expected {} | {}",
                                     i + 2,
                                     typed_cols,
                                     want_cols,
                                     next_trim.trim_end(),
                                 );
-                            } else if typed_cols > want_cols && !leading_outdent() {
-                                // Over-indents are reported but not failed: every over-indent sits at a legitimate dedent point, and
-                                // for indent-delimited languages (python after a block) the editor genuinely cannot know how far to
-                                // dedent. Surfaced so a regression shows up in the diff; gate on under-indents only.
-                                over_notes += 1;
-                                println!(
+                        } else if typed_cols > want_cols && !leading_outdent() {
+                            // Over-indents are reported but not failed: every over-indent sits at a legitimate dedent point, and
+                            // for indent-delimited languages (python after a block) the editor genuinely cannot know how far to
+                            // dedent. Surfaced so a regression shows up in the diff; gate on under-indents only.
+                            over_notes += 1;
+                            println!(
                                     "{file}:{}: note: typing over-indents: computed {} columns, expected {} (no leading outdent; review) | {}",
                                     i + 2,
                                     typed_cols,
                                     want_cols,
                                     next_trim.trim_end(),
                                 );
-                            }
                         }
                     }
+                }
             }
         }
 
@@ -353,9 +352,10 @@ pub mod tasks {
                 let off = hl.next_event_offset();
                 let cur = if off == u32::MAX { len } else { off };
                 if cur > start
-                    && let Some(idx) = active.last() {
-                        out.push((start as usize, cur as usize, scopes[*idx as usize].clone()));
-                    }
+                    && let Some(idx) = active.last()
+                {
+                    out.push((start as usize, cur as usize, scopes[*idx as usize].clone()));
+                }
                 if off == u32::MAX {
                     break;
                 }

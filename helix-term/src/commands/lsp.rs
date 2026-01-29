@@ -832,9 +832,10 @@ fn resolve_and_apply_code_actions_of_kind(
             .filter_map(|ca| {
                 // Resolve only when the server left out the edit or command.
                 if (ca.edit.is_none() || ca.command.is_none())
-                    && let Some(future) = ls.resolve_code_action(ca) {
-                        return Some(ResolveStep::Resolve(Box::pin(future)));
-                    }
+                    && let Some(future) = ls.resolve_code_action(ca)
+                {
+                    return Some(ResolveStep::Resolve(Box::pin(future)));
+                }
                 ca.edit.clone().map(ResolveStep::Ready)
             })
             .collect();

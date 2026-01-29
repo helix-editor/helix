@@ -339,9 +339,10 @@ where
 {
     move |input| {
         if let Ok((next_input, value)) = parser.parse(input)
-            && pred_fn(&value) {
-                return Ok((next_input, value));
-            }
+            && pred_fn(&value)
+        {
+            return Ok((next_input, value));
+        }
         Err(input)
     }
 }

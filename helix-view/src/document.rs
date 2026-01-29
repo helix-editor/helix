@@ -1050,10 +1050,11 @@ impl Document {
             // Protect against overwriting changes made externally
             if !force
                 && let Ok(metadata) = fs::metadata(&path).await
-                    && let Ok(mtime) = metadata.modified()
-                        && last_saved_time < mtime {
-                            bail!("file modified by an external process, use :w! to overwrite");
-                        }
+                && let Ok(mtime) = metadata.modified()
+                && last_saved_time < mtime
+            {
+                bail!("file modified by an external process, use :w! to overwrite");
+            }
             let write_path = tokio::fs::read_link(&path)
                 .await
                 .ok()
@@ -1241,9 +1242,10 @@ impl Document {
 
     pub fn detect_editor_config(&mut self) {
         if self.config.load().editor_config
-            && let Some(path) = self.path.as_ref() {
-                self.editor_config = EditorConfig::find(path);
-            }
+            && let Some(path) = self.path.as_ref()
+        {
+            self.editor_config = EditorConfig::find(path);
+        }
     }
 
     pub fn pickup_last_saved_time(&mut self) {
@@ -2190,9 +2192,10 @@ impl Document {
 
         if let Some(lang_conf) = language_config
             && let Some(severity) = severity
-                && severity < lang_conf.diagnostic_severity {
-                    return None;
-                };
+            && severity < lang_conf.diagnostic_severity
+        {
+            return None;
+        };
         use helix_core::diagnostic::{DiagnosticTag, NumberOrString};
 
         let code = match diagnostic.code.clone() {
@@ -2204,8 +2207,7 @@ impl Document {
         };
 
         let tags = if let Some(tags) = &diagnostic.tags {
-            tags
-                .iter()
+            tags.iter()
                 .filter_map(|tag| match *tag {
                     lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
                     lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),

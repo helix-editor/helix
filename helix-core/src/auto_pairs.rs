@@ -151,9 +151,11 @@ pub fn hook_delete(doc: &Rope, range: &Range, pairs: &AutoPairs) -> Option<(Dele
         log::debug!("second_prev: {}, second_next: {}", second_prev, second_next);
 
         if let Some(pair) = pairs.get(second_prev)
-            && pair.open == second_prev && pair.close == second_next {
-                return handle_delete(doc, range);
-            }
+            && pair.open == second_prev
+            && pair.close == second_next
+        {
+            return handle_delete(doc, range);
+        }
     }
 
     let pair = pairs.get(cur)?;

@@ -239,9 +239,10 @@ impl<'t> DocumentFormatter<'t> {
         loop {
             if let Some(&mut (ref mut annotation, highlight)) =
                 self.inline_annotation_graphemes.as_mut()
-                && let Some(grapheme) = annotation.next() {
-                    return Some((grapheme, highlight));
-                }
+                && let Some(grapheme) = annotation.next()
+            {
+                return Some((grapheme, highlight));
+            }
 
             if let Some((annotation, highlight)) =
                 self.annotations.next_inline_annotation_at(char_pos)
