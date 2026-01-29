@@ -1,6 +1,6 @@
+use crate::DynError;
 use crate::helpers;
 use crate::path;
-use crate::DynError;
 
 use helix_term::commands::MappableCommand;
 use helix_term::commands::TYPABLE_COMMAND_LIST;

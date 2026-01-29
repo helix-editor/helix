@@ -1,13 +1,13 @@
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{cancelable_future, register_hook};
-use helix_lsp::{lsp, util::lsp_range_to_range, OffsetEncoding};
+use helix_lsp::{OffsetEncoding, lsp, util::lsp_range_to_range};
 use helix_view::{
+    DocumentId, Editor, ViewId,
     events::{
         ConfigDidChange, DocumentDidChange, DocumentDidOpen, LanguageServerExited,
         LanguageServerInitialized, SelectionDidChange,
     },
     handlers::Handlers,
-    DocumentId, Editor, ViewId,
 };
 
 use crate::job;

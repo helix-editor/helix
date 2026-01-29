@@ -3,8 +3,8 @@ use crate::{
     layout::Alignment,
     text::{StyledGrapheme, Text},
     widgets::{
-        reflow::{LineComposer, LineTruncator, WordWrapper},
         Block, Widget,
+        reflow::{LineComposer, LineTruncator, WordWrapper},
     },
 };
 use helix_core::unicode::width::UnicodeWidthStr;

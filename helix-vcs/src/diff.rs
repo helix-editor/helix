@@ -5,7 +5,7 @@ use helix_core::Rope;
 use helix_event::RenderLockGuard;
 use imara_diff::Algorithm;
 use parking_lot::{RwLock, RwLockReadGuard};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 

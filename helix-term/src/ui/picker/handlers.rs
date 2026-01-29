@@ -1,6 +1,6 @@
 use std::{
     path::Path,
-    sync::{atomic, Arc},
+    sync::{Arc, atomic},
     time::Duration,
 };
 
@@ -61,8 +61,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                 return;
             };
 
-            let Some(CachedPreview::Document(doc)) = picker.preview_cache.get_mut(&path)
-            else {
+            let Some(CachedPreview::Document(doc)) = picker.preview_cache.get_mut(&path) else {
                 return;
             };
 
@@ -94,8 +93,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                         log::info!("picker closed before syntax highlighting finished");
                         return;
                     };
-                    let Some(CachedPreview::Document(doc)) =
-                        picker.preview_cache.get_mut(&path)
+                    let Some(CachedPreview::Document(doc)) = picker.preview_cache.get_mut(&path)
                     else {
                         return;
                     };

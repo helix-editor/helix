@@ -3,6 +3,7 @@
 //!
 //! All positioning is done via `char` offsets into the buffer.
 use crate::{
+    Assoc, ChangeSet, RopeSlice,
     graphemes::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
         prev_grapheme_boundary,
@@ -10,11 +11,10 @@ use crate::{
     line_ending::get_line_ending,
     movement::Direction,
     tree_sitter::Node,
-    Assoc, ChangeSet, RopeSlice,
 };
 use helix_stdx::range::is_subset;
 use helix_stdx::rope::{self, RopeSliceExt};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::{borrow::Cow, iter, slice};
 
 /// A single selection range.

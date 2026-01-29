@@ -1,6 +1,6 @@
 use super::*;
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 pub trait Request {
     type Params: DeserializeOwned + Serialize + Send + Sync + 'static;

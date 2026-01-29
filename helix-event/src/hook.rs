@@ -35,13 +35,15 @@ impl ErasedHook {
             hook: NonNull<Opaque>,
             _event: NonNull<Opaque>,
             result: NonNull<Opaque>,
-        ) { unsafe {
-            let hook: NonNull<F> = hook.cast();
-            let result: NonNull<Result<()>> = result.cast();
-            let hook: &F = hook.as_ref();
-            let res = hook();
-            ptr::write(result.as_ptr(), res)
-        }}
+        ) {
+            unsafe {
+                let hook: NonNull<F> = hook.cast();
+                let result: NonNull<Result<()>> = result.cast();
+                let hook: &F = hook.as_ref();
+                let res = hook();
+                ptr::write(result.as_ptr(), res)
+            }
+        }
 
         unsafe {
             ErasedHook {
@@ -56,14 +58,16 @@ impl ErasedHook {
             hook: NonNull<Opaque>,
             event: NonNull<Opaque>,
             result: NonNull<Opaque>,
-        ) { unsafe {
-            let hook: NonNull<F> = hook.cast();
-            let mut event: NonNull<E> = event.cast();
-            let result: NonNull<Result<()>> = result.cast();
-            let hook: &F = hook.as_ref();
-            let res = hook(event.as_mut());
-            ptr::write(result.as_ptr(), res)
-        }}
+        ) {
+            unsafe {
+                let hook: NonNull<F> = hook.cast();
+                let mut event: NonNull<E> = event.cast();
+                let result: NonNull<Result<()>> = result.cast();
+                let hook: &F = hook.as_ref();
+                let res = hook(event.as_mut());
+                ptr::write(result.as_ptr(), res)
+            }
+        }
 
         unsafe {
             ErasedHook {
