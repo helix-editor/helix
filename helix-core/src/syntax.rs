@@ -1036,20 +1036,20 @@ impl TextObjectQuery {
         node: &Node<'a>,
         slice: RopeSlice<'a>,
     ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
-        self.capture_nodes_any(&[capture_name], node, slice)
+        self.capture_nodes_any(iter::once(capture_name), node, slice)
     }
 
     /// Find the first capture that exists out of all given `capture_names`
     /// and return sub nodes that match this capture.
-    pub fn capture_nodes_any<'a>(
+    pub fn capture_nodes_any<'a, S: AsRef<str>, I: IntoIterator<Item = S>>(
         &'a self,
-        capture_names: &[&str],
+        capture_names: I,
         node: &Node<'a>,
         slice: RopeSlice<'a>,
     ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
         let capture = capture_names
-            .iter()
-            .find_map(|cap| self.query.get_capture(cap))?;
+            .into_iter()
+            .find_map(|cap| self.query.get_capture(cap.as_ref()))?;
 
         let mut cursor = InactiveQueryCursor::new(0..u32::MAX, TREE_SITTER_MATCH_LIMIT)
             .execute_query(&self.query, node, RopeInput::new(slice));
