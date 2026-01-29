@@ -1143,12 +1143,12 @@ impl Application {
                                         editor.language_server_by_id(server_id)
                                         && let Err(err) =
                                             language_server.reply(id.clone(), Ok(json!(reply)))
-                                        {
-                                            log::error!(
+                                    {
+                                        log::error!(
                                                 "Failed to send reply to server '{}' request {id}: {err}",
                                                 language_server.name()
                                             );
-                                        }
+                                    }
                                 },
                             );
                             self.compositor
@@ -1258,7 +1258,9 @@ impl Application {
     }
 
     #[cfg(all(not(feature = "integration"), not(windows)))]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin + use<> {
+    pub fn event_stream(
+        &self,
+    ) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin + use<> {
         use termina::{escape::csi, Terminal as _};
         let reader = self.terminal.backend().terminal().event_reader();
         termina::EventStream::new(reader, |event| {

@@ -183,12 +183,9 @@ fn buffer_close_by_ids_impl(
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
-        .filter_map(|&doc_id| {
-            match cx.editor.close_document(doc_id, force) { Err(CloseError::BufferModified(name)) => {
-                Some((doc_id, name))
-            } _ => {
-                None
-            }}
+        .filter_map(|&doc_id| match cx.editor.close_document(doc_id, force) {
+            Err(CloseError::BufferModified(name)) => Some((doc_id, name)),
+            _ => None,
         })
         .unzip();
 
@@ -1032,12 +1029,13 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview()?;
             } else if let Some(theme_name) = args.first()
-                && let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
-                    if !(true_color || theme.is_16_color()) {
-                        bail!("Unsupported theme: theme requires true color support");
-                    }
-                    cx.editor.set_theme_preview(theme)?;
+                && let Ok(theme) = cx.editor.theme_loader.load(theme_name)
+            {
+                if !(true_color || theme.is_16_color()) {
+                    bail!("Unsupported theme: theme requires true color support");
                 }
+                cx.editor.set_theme_preview(theme)?;
+            }
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
@@ -2748,15 +2746,14 @@ fn move_buffer_impl(
 
     if old_path.exists()
         && let Some(parent) = new_path.parent()
-            && !parent.exists() {
-                if options.force {
-                    std::fs::DirBuilder::new().recursive(true).create(parent)?;
-                } else {
-                    bail!(
-                        "can't move file, parent directory does not exist (use :mv! to create it)"
-                    )
-                }
-            }
+        && !parent.exists()
+    {
+        if options.force {
+            std::fs::DirBuilder::new().recursive(true).create(parent)?;
+        } else {
+            bail!("can't move file, parent directory does not exist (use :mv! to create it)")
+        }
+    }
 
     if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
         bail!("Could not move file: {err}");

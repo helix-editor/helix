@@ -1414,9 +1414,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
                         lsp_targets.push(target);
                     }
                 } else if unresolved_links.insert((link.start, link.end, link.language_server_id))
-                    && let Some(request) = resolve_document_link_request(cx.editor, link) {
-                        resolve_requests.push(request);
-                    }
+                    && let Some(request) = resolve_document_link_request(cx.editor, link)
+                {
+                    resolve_requests.push(request);
+                }
             }
             if !matched {
                 fallback_ranges.push(*selection);
@@ -1440,9 +1441,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
                 match request.await {
                     Ok(link) => {
                         if let Some(target) = link.target
-                            && seen.insert(target.clone()) {
-                                targets.push(target);
-                            }
+                            && seen.insert(target.clone())
+                        {
+                            targets.push(target);
+                        }
                     }
                     Err(err) => log::warn!("Failed to resolve document link: {err}"),
                 }
@@ -2199,12 +2201,16 @@ fn select_regex(cx: &mut Context) {
                 return;
             }
             let text = doc.text().slice(..);
-            match selection::select_on_matches(text, doc.selection(view.id), &regex)
-            { Some(selection) => {
-                doc.set_selection(view.id, selection);
-            } _ => if event == PromptEvent::Validate {
-                cx.editor.set_error("nothing selected");
-            }}
+            match selection::select_on_matches(text, doc.selection(view.id), &regex) {
+                Some(selection) => {
+                    doc.set_selection(view.id, selection);
+                }
+                _ => {
+                    if event == PromptEvent::Validate {
+                        cx.editor.set_error("nothing selected");
+                    }
+                }
+            }
         },
     );
 }
@@ -2392,7 +2398,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
 }
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
-let count = cx.count();
+    let count = cx.count();
     let register = cx
         .register
         .unwrap_or(cx.editor.registers.last_search_register);
@@ -2431,7 +2437,8 @@ let count = cx.count();
             let error = format!("Invalid regex: {}", query);
             cx.editor.set_error(error);
         }
-    }}
+    }
+}
 
 fn search_next(cx: &mut Context) {
     search_next_or_prev_impl(cx, Movement::Move, Direction::Forward);
@@ -3635,11 +3642,12 @@ pub fn command_palette(cx: &mut Context) {
 fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seem to work well with buffer_picker
     cx.callback.push(Box::new(|compositor, cx| {
-        match compositor.last_picker.take() { Some(picker) => {
-            compositor.push(picker);
-        } _ => {
-            cx.editor.set_error("no last picker")
-        }}
+        match compositor.last_picker.take() {
+            Some(picker) => {
+                compositor.push(picker);
+            }
+            _ => cx.editor.set_error("no last picker"),
+        }
     }));
 }
 
@@ -5370,12 +5378,16 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
             }
             let text = doc.text().slice(..);
 
-            match selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
-            { Some(selection) => {
-                doc.set_selection(view.id, selection);
-            } _ => if event == PromptEvent::Validate {
-                cx.editor.set_error("no selections remaining");
-            }}
+            match selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove) {
+                Some(selection) => {
+                    doc.set_selection(view.id, selection);
+                }
+                _ => {
+                    if event == PromptEvent::Validate {
+                        cx.editor.set_error("no selections remaining");
+                    }
+                }
+            }
         },
     )
 }
@@ -5913,10 +5925,11 @@ fn vsplit_new(cx: &mut Context) {
 
 fn wclose(cx: &mut Context) {
     if cx.editor.tree.views().count() == 1
-        && let Err(err) = typed::buffers_remaining_impl(cx.editor) {
-            cx.editor.set_error(err.to_string());
-            return;
-        }
+        && let Err(err) = typed::buffers_remaining_impl(cx.editor)
+    {
+        cx.editor.set_error(err.to_string());
+        return;
+    }
     let view_id = view!(cx.editor).id;
     // close current split
     cx.editor.close(view_id);
@@ -6461,14 +6474,17 @@ fn shell_keep_pipe(cx: &mut Context) {
 
         for (i, range) in selection.ranges().iter().enumerate() {
             let fragment = range.slice(text);
-            match shell_impl(shell, args.join(" ").as_str(), Some(fragment.into())) { Err(err) => {
-                log::debug!("Shell command failed: {}", err);
-            } _ => {
-                ranges.push(*range);
-                if i >= old_index && index.is_none() {
-                    index = Some(ranges.len() - 1);
+            match shell_impl(shell, args.join(" ").as_str(), Some(fragment.into())) {
+                Err(err) => {
+                    log::debug!("Shell command failed: {}", err);
                 }
-            }}
+                _ => {
+                    ranges.push(*range);
+                    if i >= old_index && index.is_none() {
+                        index = Some(ranges.len() - 1);
+                    }
+                }
+            }
         }
 
         if ranges.is_empty() {
@@ -6514,23 +6530,26 @@ async fn shell_impl_async(
             return Err(e.into());
         }
     };
-    let output = match process.stdin.take() { Some(mut stdin) => {
-        let input_task = tokio::spawn(async move {
-            if let Some(input) = input {
-                helix_view::document::to_writer(&mut stdin, (encoding::UTF_8, false), &input)
-                    .await?;
-            }
-            anyhow::Ok(())
-        });
-        let (output, _) = tokio::join! {
-            process.wait_with_output(),
-            input_task,
-        };
-        output?
-    } _ => {
-        // Process has no stdin, so we just take the output
-        process.wait_with_output().await?
-    }};
+    let output = match process.stdin.take() {
+        Some(mut stdin) => {
+            let input_task = tokio::spawn(async move {
+                if let Some(input) = input {
+                    helix_view::document::to_writer(&mut stdin, (encoding::UTF_8, false), &input)
+                        .await?;
+                }
+                anyhow::Ok(())
+            });
+            let (output, _) = tokio::join! {
+                process.wait_with_output(),
+                input_task,
+            };
+            output?
+        }
+        _ => {
+            // Process has no stdin, so we just take the output
+            process.wait_with_output().await?
+        }
+    };
 
     let output = if !output.status.success() {
         if output.stderr.is_empty() {

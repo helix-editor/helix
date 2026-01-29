@@ -123,9 +123,9 @@ impl Args {
                 .files
                 .first_mut()
                 .and_then(|(_, positions)| positions.first_mut())
-            {
-                first_position.row = line_number;
-            }
+        {
+            first_position.row = line_number;
+        }
 
         Ok(args)
     }

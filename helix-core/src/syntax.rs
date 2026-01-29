@@ -361,13 +361,14 @@ impl Loader {
         let mut best_match_position = None;
         for (idx, data) in self.languages.iter().enumerate() {
             if let Some(injection_regex) = &data.config.injection_regex
-                && let Some(mat) = injection_regex.find(text.regex_input()) {
-                    let length = mat.end() - mat.start();
-                    if length > best_match_length {
-                        best_match_position = Some(idx);
-                        best_match_length = length;
-                    }
+                && let Some(mat) = injection_regex.find(text.regex_input())
+            {
+                let length = mat.end() - mat.start();
+                if length > best_match_length {
+                    best_match_position = Some(idx);
+                    best_match_length = length;
                 }
+            }
         }
 
         best_match_position.map(|i| Language(i as u32))
@@ -680,17 +681,16 @@ impl Syntax {
                 });
             } else if capture == rainbow_query.bracket_capture
                 && let Some(scope) = scope_stack.last()
-                    && !scope
-                        .node
-                        .as_ref()
-                        .is_some_and(|node| mat.node.parent().as_ref() != Some(node))
-                    {
-                        let start = source
-                            .byte_to_char(source.floor_char_boundary(byte_range.start as usize));
-                        let end =
-                            source.byte_to_char(source.ceil_char_boundary(byte_range.end as usize));
-                        highlights.push((scope.highlight, start..end));
-                    }
+                && !scope
+                    .node
+                    .as_ref()
+                    .is_some_and(|node| mat.node.parent().as_ref() != Some(node))
+            {
+                let start =
+                    source.byte_to_char(source.floor_char_boundary(byte_range.start as usize));
+                let end = source.byte_to_char(source.ceil_char_boundary(byte_range.end as usize));
+                highlights.push((scope.highlight, start..end));
+            }
         }
 
         OverlayHighlights::Heterogenous { highlights }

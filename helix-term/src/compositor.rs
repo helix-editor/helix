@@ -145,9 +145,10 @@ impl Compositor {
         // If it is a key event, a macro is being recorded, and a macro isn't being replayed,
         // push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording)
-            && cx.editor.macro_replaying.is_empty() {
-                keys.push(*key);
-            }
+            && cx.editor.macro_replaying.is_empty()
+        {
+            keys.push(*key);
+        }
 
         let mut callbacks = Vec::new();
         let mut consumed = false;

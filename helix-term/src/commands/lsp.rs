@@ -792,9 +792,10 @@ pub fn code_action(cx: &mut Context) {
                         let mut resolved_code_action = None;
                         if (code_action.edit.is_none() || code_action.command.is_none())
                             && let Some(future) = language_server.resolve_code_action(code_action)
-                                && let Ok(code_action) = helix_lsp::block_on(future) {
-                                    resolved_code_action = Some(code_action);
-                                }
+                            && let Ok(code_action) = helix_lsp::block_on(future)
+                        {
+                            resolved_code_action = Some(code_action);
+                        }
                         let resolved_code_action =
                             resolved_code_action.as_ref().unwrap_or(code_action);
 
@@ -1287,7 +1288,9 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
 fn compute_inlay_hints_for_view(
     view: &View,
     doc: &Document,
-) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>> + use<>>>> {
+) -> Option<
+    std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>> + use<>>>,
+> {
     let view_id = view.id;
     let doc_id = view.doc;
 

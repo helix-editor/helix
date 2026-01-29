@@ -24,10 +24,10 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         if doc.language_servers().next().is_none()
             && let TrustUntrustStatus::DenyOnce =
                 quick_query_workspace_with_explicit_untrust(event.editor.config().insecure)
-            {
-                let (workspace, _) = helix_loader::find_workspace();
-                job::dispatch_blocking(|_editor, compositor| prompt(workspace, compositor));
-            }
+        {
+            let (workspace, _) = helix_loader::find_workspace();
+            job::dispatch_blocking(|_editor, compositor| prompt(workspace, compositor));
+        }
         Ok(())
     });
 }

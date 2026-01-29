@@ -974,9 +974,10 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     area.height,
                     &cx.editor.theme,
                     &loader,
-                ) {
-                    overlay_highlights.push(overlay);
-                }
+                )
+            {
+                overlay_highlights.push(overlay);
+            }
 
             EditorView::doc_diagnostics_highlights_into(
                 doc,
@@ -1135,9 +1136,9 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                             .editor
                             .registers
                             .push(history_register, self.primary_query().to_string())
-                        {
-                            ctx.editor.set_error(err.to_string());
-                        }
+                    {
+                        ctx.editor.set_error(err.to_string());
+                    }
                     return close_fn(self);
                 }
             }

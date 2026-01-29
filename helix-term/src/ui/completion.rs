@@ -223,9 +223,10 @@ impl Completion {
                                 && let Some(resolved_item) = Self::resolve_completion_item(
                                     language_server,
                                     item.item.clone(),
-                                ) {
-                                    item.item = resolved_item;
-                                };
+                                )
+                            {
+                                item.item = resolved_item;
+                            };
 
                             let encoding = language_server.offset_encoding();
                             let (transaction, snippet) = lsp_item_to_transaction(
@@ -266,14 +267,15 @@ impl Completion {
 
                     // TODO: add additional _edits to completion_changes?
                     if let Some((additional_edits, offset_encoding)) = additional_edits
-                        && !additional_edits.is_empty() {
-                            let transaction = util::generate_transaction_from_edits(
-                                doc.text(),
-                                additional_edits,
-                                offset_encoding, // TODO: should probably transcode in Client
-                            );
-                            doc.apply(&transaction, view.id);
-                        }
+                        && !additional_edits.is_empty()
+                    {
+                        let transaction = util::generate_transaction_from_edits(
+                            doc.text(),
+                            additional_edits,
+                            offset_encoding, // TODO: should probably transcode in Client
+                        );
+                        doc.apply(&transaction, view.id);
+                    }
                     // we could have just inserted a trigger char (like a `crate::` completion for rust
                     // so we want to retrigger immediately when accepting a completion.
                     trigger_auto_completion(editor, true);

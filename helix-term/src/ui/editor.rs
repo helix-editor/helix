@@ -133,9 +133,9 @@ impl EditorView {
             .unwrap_or(config.rainbow_brackets)
             && let Some(overlay) =
                 Self::doc_rainbow_highlights(doc, view_offset.anchor, inner.height, theme, &loader)
-            {
-                overlays.push(overlay);
-            }
+        {
+            overlays.push(overlay);
+        }
 
         if let Some(overlay) = Self::doc_document_link_highlights(doc, theme) {
             overlays.push(overlay);
@@ -145,9 +145,10 @@ impl EditorView {
 
         if is_focused {
             if config.lsp.auto_document_highlight
-                && let Some(overlay) = Self::doc_document_highlights(doc, view, theme) {
-                    overlays.push(overlay);
-                }
+                && let Some(overlay) = Self::doc_document_highlights(doc, view, theme)
+            {
+                overlays.push(overlay);
+            }
             if let Some(tabstops) = Self::tabstop_highlights(doc, theme) {
                 overlays.push(tabstops);
             }
@@ -978,9 +979,10 @@ impl EditorView {
             match keyresult {
                 KeymapResult::NotFound => {
                     if !self.on_next_key(OnKeyCallbackKind::Fallback, cx, event)
-                        && let Some(ch) = event.char() {
-                            commands::insert::insert_char(cx, ch)
-                        }
+                        && let Some(ch) = event.char()
+                    {
+                        commands::insert::insert_char(cx, ch)
+                    }
                 }
                 KeymapResult::Cancelled(pending) => {
                     for ev in pending {
@@ -1410,17 +1412,18 @@ impl EditorView {
         ctx: &mut commands::Context,
         event: KeyEvent,
     ) -> bool {
-        match self.on_next_key.take() { Some((on_next_key, kind_)) => {
-            if kind == kind_ {
-                on_next_key(ctx, event);
-                true
-            } else {
-                self.on_next_key = Some((on_next_key, kind_));
-                false
+        match self.on_next_key.take() {
+            Some((on_next_key, kind_)) => {
+                if kind == kind_ {
+                    on_next_key(ctx, event);
+                    true
+                } else {
+                    self.on_next_key = Some((on_next_key, kind_));
+                    false
+                }
             }
-        } _ => {
-            false
-        }}
+            _ => false,
+        }
     }
 }
 
@@ -1487,31 +1490,36 @@ impl Component for EditorView {
                                         scroll: None,
                                     };
 
-                                    match completion.handle_event(event, &mut cx)
-                                    { EventResult::Consumed(callback) => {
-                                        consumed = true;
-                                        Some(callback)
-                                    } _ => { match completion.handle_event(&Event::Key(key!(Enter)), &mut cx)
-                                    { EventResult::Consumed(callback) => {
-                                        Some(callback)
-                                    } _ => {
-                                        None
-                                    }}}}
-                                };
-
-                                if let Some(callback) = res
-                                    && callback.is_some() {
-                                        // assume close_fn
-                                        if let Some(cb) = self.clear_completion(cx.editor) {
-                                            if consumed {
-                                                cx.on_next_key_callback =
-                                                    Some((cb, OnKeyCallbackKind::Fallback))
-                                            } else {
-                                                self.on_next_key =
-                                                    Some((cb, OnKeyCallbackKind::Fallback));
+                                    match completion.handle_event(event, &mut cx) {
+                                        EventResult::Consumed(callback) => {
+                                            consumed = true;
+                                            Some(callback)
+                                        }
+                                        _ => {
+                                            match completion
+                                                .handle_event(&Event::Key(key!(Enter)), &mut cx)
+                                            {
+                                                EventResult::Consumed(callback) => Some(callback),
+                                                _ => None,
                                             }
                                         }
                                     }
+                                };
+
+                                if let Some(callback) = res
+                                    && callback.is_some()
+                                {
+                                    // assume close_fn
+                                    if let Some(cb) = self.clear_completion(cx.editor) {
+                                        if consumed {
+                                            cx.on_next_key_callback =
+                                                Some((cb, OnKeyCallbackKind::Fallback))
+                                        } else {
+                                            self.on_next_key =
+                                                Some((cb, OnKeyCallbackKind::Fallback));
+                                        }
+                                    }
+                                }
                             }
 
                             // if completion didn't take the event, we pass it onto commands
@@ -1621,10 +1629,11 @@ impl Component for EditorView {
         }
 
         if config.auto_info
-            && let Some(mut info) = cx.editor.autoinfo.take() {
-                info.render(area, surface, cx);
-                cx.editor.autoinfo = Some(info)
-            }
+            && let Some(mut info) = cx.editor.autoinfo.take()
+        {
+            info.render(area, surface, cx);
+            cx.editor.autoinfo = Some(info)
+        }
 
         let key_width = 15u16; // for showing pending keys
         let mut status_msg_width = 0;
