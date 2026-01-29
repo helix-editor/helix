@@ -31,7 +31,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
+use std::{io::Write, mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -1524,7 +1524,15 @@ impl Component for EditorView {
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
-        surface.set_style(area, cx.editor.theme.get("ui.background"));
+        let ui_background = cx.editor.theme.get("ui.background");
+        surface.set_style(area, ui_background);
+        if let Some(Color::Rgb(red, green, blue)) = ui_background.bg {
+            let stdout = std::io::stdout();
+            let mut stdout = stdout.lock();
+
+            write!(stdout, "\x1B]11;#{:02x}{:02x}{:02x}\x07", red, green, blue).unwrap();
+        }
+
         let config = cx.editor.config();
 
         // check if bufferline should be rendered
