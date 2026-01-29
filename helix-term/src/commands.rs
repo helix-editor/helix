@@ -6865,6 +6865,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                 } else {
                     range.with_direction(Direction::Forward)
                 };
+                save_selection(cx);
                 doc_mut!(cx.editor, &doc).set_selection(view, range.into());
             }
         });
