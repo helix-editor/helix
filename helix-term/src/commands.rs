@@ -454,6 +454,12 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_first_diag_workspace, "Goto first diagnostic in workspace",
+        goto_first_error_workspace, "Goto first Error diagnostic in workspace",
+        goto_first_warning_workspace, "Goto first Warning diagnostic in workspace",
+        goto_next_diag_workspace, "Goto next diagnostic in workspace",
+        goto_next_error_workspace, "Goto next Error diagnostic in workspace",
+        goto_next_warning_workspace, "Goto next Warning diagnostic in workspace",
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
@@ -2993,13 +2999,7 @@ fn flip_selections(cx: &mut Context) {
 
 fn ensure_selections_forward(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|r| r.with_direction(Direction::Forward));
-
-    doc.set_selection(view.id, selection);
+    helix_view::ensure_selections_forward(view, doc);
 }
 
 fn enter_insert_mode(cx: &mut Context) {
@@ -4037,6 +4037,54 @@ fn goto_prev_diag(cx: &mut Context) {
             .immediately_show_diagnostic(doc, view.id);
     };
     cx.editor.apply_motion(motion)
+}
+
+fn goto_next_diag_workspace(cx: &mut Context) {
+    goto_next_diag_workspace_impl(cx, None)
+}
+
+fn goto_next_error_workspace(cx: &mut Context) {
+    goto_next_diag_workspace_impl(cx, Some(helix_core::diagnostic::Severity::Error))
+}
+
+fn goto_next_warning_workspace(cx: &mut Context) {
+    goto_next_diag_workspace_impl(cx, Some(helix_core::diagnostic::Severity::Warning))
+}
+
+fn goto_next_diag_workspace_impl(
+    cx: &mut Context,
+    severity_filter: Option<helix_core::diagnostic::Severity>,
+) {
+    let diag = helix_view::next_diagnostic_in_workspace(cx.editor, severity_filter);
+
+    // wrap around
+    let diag =
+        diag.or_else(|| helix_view::first_diagnostic_in_workspace(cx.editor, severity_filter));
+
+    if let Some(diag) = diag {
+        lsp::jump_to_diagnostic(cx, diag.into_owned());
+    }
+}
+
+fn goto_first_diag_workspace(cx: &mut Context) {
+    goto_first_diag_workspace_impl(cx, None)
+}
+
+fn goto_first_error_workspace(cx: &mut Context) {
+    goto_first_diag_workspace_impl(cx, Some(helix_core::diagnostic::Severity::Error))
+}
+
+fn goto_first_warning_workspace(cx: &mut Context) {
+    goto_first_diag_workspace_impl(cx, Some(helix_core::diagnostic::Severity::Warning))
+}
+
+fn goto_first_diag_workspace_impl(
+    cx: &mut Context,
+    severity_filter: Option<helix_core::diagnostic::Severity>,
+) {
+    if let Some(diag) = helix_view::first_diagnostic_in_workspace(cx.editor, severity_filter) {
+        lsp::jump_to_diagnostic(cx, diag.into_owned());
+    }
 }
 
 fn goto_first_change(cx: &mut Context) {
