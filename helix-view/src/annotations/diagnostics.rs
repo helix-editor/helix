@@ -1,7 +1,7 @@
 use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::{FormattedGrapheme, TextFormat};
 use helix_core::text_annotations::LineAnnotation;
-use helix_core::{softwrapped_dimensions, Diagnostic, Position};
+use helix_core::{Diagnostic, Position, softwrapped_dimensions};
 use serde::{Deserialize, Serialize};
 
 use crate::Document;

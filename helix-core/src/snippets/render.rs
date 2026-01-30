@@ -6,12 +6,12 @@ use helix_stdx::Range;
 use ropey::{Rope, RopeSlice};
 use smallvec::SmallVec;
 
-use crate::indent::{normalize_indentation, IndentStyle};
+use crate::indent::{IndentStyle, normalize_indentation};
 use crate::movement::Direction;
-use crate::snippets::elaborate;
 use crate::snippets::TabstopIdx;
+use crate::snippets::elaborate;
 use crate::snippets::{Snippet, SnippetElement, Transform};
-use crate::{selection, Selection, Tendril, Transaction};
+use crate::{Selection, Tendril, Transaction, selection};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TabstopKind {

@@ -1,5 +1,6 @@
 use crate::{backend::Backend, buffer::Cell, terminal::Config};
 use crossterm::{
+    Command,
     cursor::{Hide, MoveTo, SetCursorStyle, Show},
     event::{
         DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
@@ -12,7 +13,6 @@ use crossterm::{
         SetColors, SetForegroundColor,
     },
     terminal::{self, Clear, ClearType},
-    Command,
 };
 use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
 use once_cell::sync::OnceCell;

@@ -10,9 +10,9 @@ use tui::{
 
 use helix_core::Position;
 use helix_view::{
+    Editor,
     graphics::{Margin, Rect},
     input::{MouseEvent, MouseEventKind},
-    Editor,
 };
 
 const MIN_HEIGHT: u16 = 6;

@@ -1,7 +1,7 @@
 use helix_core::Position;
 use helix_view::{
-    graphics::{CursorKind, Rect},
     Editor,
+    graphics::{CursorKind, Rect},
 };
 use tui::buffer::Buffer;
 
