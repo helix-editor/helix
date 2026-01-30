@@ -10,6 +10,21 @@
 (field_identifier) @variable.other.member
 
 ; -------
+; Type definitions
+; -------
+
+(struct_item
+  name: (type_identifier) @type.definition)
+(enum_item
+  name: (type_identifier) @type.definition)
+(trait_item
+  name: (type_identifier) @type.definition)
+(type_item
+  name: (type_identifier) @type.definition)
+(union_item
+  name: (type_identifier) @type.definition)
+
+; -------
 ; Operators
 ; -------
 
@@ -318,23 +333,23 @@
   arguments: (arguments
     (scoped_identifier
       path: _
-      name: (identifier) @function)))
+      name: (identifier) @function.call)))
 
 (call_expression
   function: [
-    ((identifier) @function)
+    ((identifier) @function.call)
     (scoped_identifier
-      name: (identifier) @function)
+      name: (identifier) @function.call)
     (field_expression
-      field: (field_identifier) @function)
+      field: (field_identifier) @function.method.call)
   ])
 (generic_function
   function: [
-    ((identifier) @function)
+    ((identifier) @function.call)
     (scoped_identifier
-      name: (identifier) @function)
+      name: (identifier) @function.call)
     (field_expression
-      field: (field_identifier) @function.method)
+      field: (field_identifier) @function.method.call)
   ])
 
 (function_item
