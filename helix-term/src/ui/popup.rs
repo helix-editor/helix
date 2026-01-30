@@ -328,10 +328,10 @@ impl<T: Component> Component for Popup<T> {
             // TODO: consistently style menu
             cx.editor
                 .theme
-                .try_get("ui.menu")
-                .unwrap_or_else(|| cx.editor.theme.get("ui.text"))
+                .try_get(cx.editor.mode, "ui.menu")
+                .unwrap_or_else(|| cx.editor.theme.get(cx.editor.mode, "ui.text"))
         } else {
-            cx.editor.theme.get("ui.popup")
+            cx.editor.theme.get(cx.editor.mode, "ui.popup")
         };
         surface.clear_with(area, background);
 
@@ -356,7 +356,7 @@ impl<T: Component> Component for Popup<T> {
             let win_height = inner.height as usize;
             let len = child_height as usize;
             let fits = len <= win_height;
-            let scroll_style = cx.editor.theme.get("ui.menu.scroll");
+            let scroll_style = cx.editor.theme.get(cx.editor.mode, "ui.menu.scroll");
 
             if !fits {
                 let scroll_height = win_height.pow(2).div_ceil(len).min(win_height);

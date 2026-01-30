@@ -80,7 +80,7 @@ impl Component for Hover {
         // show header and border only when more than one results
         if let Some(header) = header {
             // header LSP Name
-            let header = header.parse(Some(&cx.editor.theme));
+            let header = header.parse(Some((&cx.editor.theme, cx.editor.mode)));
             let header = Paragraph::new(&header);
             header.render(area.with_height(HEADER_HEIGHT), surface);
 
@@ -95,7 +95,7 @@ impl Component for Hover {
         }
 
         // hover content
-        let contents = contents.parse(Some(&cx.editor.theme));
+        let contents = contents.parse(Some((&cx.editor.theme, cx.editor.mode)));
         let contents_area = area.clip_top(if self.has_header() {
             HEADER_HEIGHT + SEPARATOR_HEIGHT
         } else {

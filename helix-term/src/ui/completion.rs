@@ -133,7 +133,7 @@ impl Completion {
         let preview_completion_insert = editor.config().preview_completion_insert;
         let replace_mode = editor.config().completion_replace;
 
-        let dir_style = editor.theme.get("ui.text.directory");
+        let dir_style = editor.theme.get(editor.mode, "ui.text.directory");
 
         // Then create the menu
         let menu = Menu::new(items, dir_style, move |editor: &mut Editor, item, event| {
@@ -568,7 +568,7 @@ impl Component for Completion {
         };
 
         // clear area
-        let background = cx.editor.theme.get("ui.popup");
+        let background = cx.editor.theme.get(cx.editor.mode, "ui.popup");
         surface.clear_with(doc_area, background);
 
         if cx.editor.popup_border() {

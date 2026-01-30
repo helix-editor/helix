@@ -549,9 +549,9 @@ pub fn dap_variables(cx: &mut Context) {
     let mut variables = Vec::new();
 
     let theme = &cx.editor.theme;
-    let scope_style = theme.get("ui.linenr.selected");
-    let type_style = theme.get("ui.text");
-    let text_style = theme.get("ui.text.focus");
+    let scope_style = theme.get(cx.editor.mode, "ui.linenr.selected");
+    let type_style = theme.get(cx.editor.mode, "ui.text");
+    let text_style = theme.get(cx.editor.mode, "ui.text.focus");
 
     for scope in scopes.iter() {
         // use helix_view::graphics::Style;
