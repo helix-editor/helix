@@ -95,17 +95,25 @@ impl EditorView {
         let mut decorations = DecorationManager::default();
 
         if is_focused && config.cursorline {
-            decorations.add_decoration(Self::cursorline(doc, view, theme));
+            decorations.add_decoration(Self::cursorline(editor, doc, view, theme));
         }
 
         if is_focused && config.cursorcolumn {
-            Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
+            Self::highlight_cursorcolumn(
+                editor,
+                doc,
+                view,
+                surface,
+                theme,
+                inner,
+                &text_annotations,
+            );
         }
 
         // Set DAP highlights, if needed.
         if let Some(frame) = editor.current_stack_frame() {
             let dap_line = frame.line.saturating_sub(1);
-            let style = theme.get("ui.highlight.frameline");
+            let style = theme.get(editor.mode, "ui.highlight.frameline");
             let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
                 if pos.doc_line != dap_line {
                     return;
@@ -192,11 +200,13 @@ impl EditorView {
         decorations.add_decoration(InlineDiagnostics::new(
             doc,
             theme,
+            editor.mode,
             primary_cursor,
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
         render_document(
+            editor,
             surface,
             inner,
             doc,
@@ -211,7 +221,7 @@ impl EditorView {
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
             let x = area.right();
-            let border_style = theme.get("ui.window");
+            let border_style = theme.get(editor.mode, "ui.window");
             for y in area.top()..area.bottom() {
                 surface[(x, y)]
                     .set_symbol(tui::symbols::line::VERTICAL)
@@ -223,7 +233,7 @@ impl EditorView {
         if config.inline_diagnostics.disabled()
             && config.end_of_line_diagnostics == DiagnosticFilter::Disable
         {
-            Self::render_diagnostics(doc, view, inner, surface, theme);
+            Self::render_diagnostics(editor, doc, view, inner, surface, theme);
         }
 
         let statusline_area = view
@@ -247,7 +257,7 @@ impl EditorView {
     ) {
         let editor_rulers = &editor.config().rulers;
         let ruler_theme = theme
-            .try_get("ui.virtual.ruler")
+            .try_get(editor.mode, "ui.virtual.ruler")
             .unwrap_or_else(|| Style::default().bg(Color::Red));
 
         let rulers = doc
@@ -598,19 +608,19 @@ impl EditorView {
             viewport,
             editor
                 .theme
-                .try_get("ui.bufferline.background")
-                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
+                .try_get(editor.mode, "ui.bufferline.background")
+                .unwrap_or_else(|| editor.theme.get(editor.mode, "ui.statusline")),
         );
 
         let bufferline_active = editor
             .theme
-            .try_get("ui.bufferline.active")
-            .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
+            .try_get(editor.mode, "ui.bufferline.active")
+            .unwrap_or_else(|| editor.theme.get(editor.mode, "ui.statusline.active"));
 
         let bufferline_inactive = editor
             .theme
-            .try_get("ui.bufferline")
-            .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
+            .try_get(editor.mode, "ui.bufferline")
+            .unwrap_or_else(|| editor.theme.get(editor.mode, "ui.statusline.inactive"));
 
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
@@ -662,10 +672,10 @@ impl EditorView {
 
         let mut offset = 0;
 
-        let gutter_style = theme.get("ui.gutter");
-        let gutter_selected_style = theme.get("ui.gutter.selected");
-        let gutter_style_virtual = theme.get("ui.gutter.virtual");
-        let gutter_selected_style_virtual = theme.get("ui.gutter.selected.virtual");
+        let gutter_style = theme.get(editor.mode, "ui.gutter");
+        let gutter_selected_style = theme.get(editor.mode, "ui.gutter.selected");
+        let gutter_style_virtual = theme.get(editor.mode, "ui.gutter.virtual");
+        let gutter_selected_style_virtual = theme.get(editor.mode, "ui.gutter.selected.virtual");
 
         for gutter_type in view.gutters() {
             let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
@@ -710,6 +720,7 @@ impl EditorView {
     }
 
     pub fn render_diagnostics(
+        editor: &Editor,
         doc: &Document,
         view: &View,
         viewport: Rect,
@@ -732,13 +743,13 @@ impl EditorView {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 
-        let warning = theme.get("warning");
-        let error = theme.get("error");
-        let info = theme.get("info");
-        let hint = theme.get("hint");
+        let warning = theme.get(editor.mode, "warning");
+        let error = theme.get(editor.mode, "error");
+        let info = theme.get(editor.mode, "info");
+        let hint = theme.get(editor.mode, "hint");
 
         let mut lines = Vec::new();
-        let background_style = theme.get("ui.background");
+        let background_style = theme.get(editor.mode, "ui.background");
         for diagnostic in diagnostics {
             let style = Style::reset()
                 .patch(background_style)
@@ -773,7 +784,12 @@ impl EditorView {
     }
 
     /// Apply the highlighting on the lines where a cursor is active
-    pub fn cursorline(doc: &Document, view: &View, theme: &Theme) -> impl Decoration {
+    pub fn cursorline(
+        editor: &Editor,
+        doc: &Document,
+        view: &View,
+        theme: &Theme,
+    ) -> impl Decoration {
         let text = doc.text().slice(..);
         // TODO only highlight the visual line that contains the cursor instead of the full visual line
         let primary_line = doc.selection(view.id).primary().cursor_line(text);
@@ -790,8 +806,8 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        let primary_style = theme.get("ui.cursorline.primary");
-        let secondary_style = theme.get("ui.cursorline.secondary");
+        let primary_style = theme.get(editor.mode, "ui.cursorline.primary");
+        let secondary_style = theme.get(editor.mode, "ui.cursorline.secondary");
         let viewport = view.area;
 
         move |renderer: &mut TextRenderer, pos: LinePos| {
@@ -806,6 +822,7 @@ impl EditorView {
 
     /// Apply the highlighting on the columns where a cursor is active
     pub fn highlight_cursorcolumn(
+        editor: &Editor,
         doc: &Document,
         view: &View,
         surface: &mut Surface,
@@ -818,13 +835,13 @@ impl EditorView {
         // Manual fallback behaviour:
         // ui.cursorcolumn.{p/s} -> ui.cursorcolumn -> ui.cursorline.{p/s}
         let primary_style = theme
-            .try_get_exact("ui.cursorcolumn.primary")
-            .or_else(|| theme.try_get_exact("ui.cursorcolumn"))
-            .unwrap_or_else(|| theme.get("ui.cursorline.primary"));
+            .try_get_exact(editor.mode, "ui.cursorcolumn.primary")
+            .or_else(|| theme.try_get_exact(editor.mode, "ui.cursorcolumn"))
+            .unwrap_or_else(|| theme.get(editor.mode, "ui.cursorline.primary"));
         let secondary_style = theme
-            .try_get_exact("ui.cursorcolumn.secondary")
-            .or_else(|| theme.try_get_exact("ui.cursorcolumn"))
-            .unwrap_or_else(|| theme.get("ui.cursorline.secondary"));
+            .try_get_exact(editor.mode, "ui.cursorcolumn.secondary")
+            .or_else(|| theme.try_get_exact(editor.mode, "ui.cursorcolumn"))
+            .unwrap_or_else(|| theme.get(editor.mode, "ui.cursorline.secondary"));
 
         let inner_area = view.inner_area(doc);
 
@@ -1524,7 +1541,7 @@ impl Component for EditorView {
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // clear with background color
-        surface.set_style(area, cx.editor.theme.get("ui.background"));
+        surface.set_style(area, cx.editor.theme.get(cx.editor.mode, "ui.background"));
         let config = cx.editor.config();
 
         // check if bufferline should be rendered
@@ -1568,9 +1585,9 @@ impl Component for EditorView {
             status_msg_width = status_msg.width();
             use helix_view::editor::Severity;
             let style = if *severity == Severity::Error {
-                cx.editor.theme.get("error")
+                cx.editor.theme.get(cx.editor.mode, "error")
             } else {
-                cx.editor.theme.get("ui.text")
+                cx.editor.theme.get(cx.editor.mode, "ui.text")
             };
 
             surface.set_string(
@@ -1592,7 +1609,7 @@ impl Component for EditorView {
             for key in &self.pseudo_pending {
                 disp.push_str(&key.key_sequence_format());
             }
-            let style = cx.editor.theme.get("ui.text");
+            let style = cx.editor.theme.get(cx.editor.mode, "ui.text");
             let macro_width = if cx.editor.macro_recording.is_some() {
                 3
             } else {

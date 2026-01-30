@@ -86,8 +86,8 @@ impl<T: Item> Component for Select<T> {
         };
 
         // Message
-        let background = cx.editor.theme.get("ui.background");
-        let text = cx.editor.theme.get("ui.text");
+        let background = cx.editor.theme.get(cx.editor.mode, "ui.background");
+        let text = cx.editor.theme.get(cx.editor.mode, "ui.text");
         let message_box = area.with_height(message_height + 2);
         surface.clear_with(message_box, background.patch(text));
         BLOCK.render(message_box, surface);

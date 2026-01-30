@@ -9,11 +9,11 @@ use helix_view::annotations::diagnostics::{
     DiagnosticFilter, InlineDiagnosticAccumulator, InlineDiagnosticsConfig,
 };
 
-use helix_view::theme::Style;
-use helix_view::{Document, Theme};
-
 use crate::ui::document::{LinePos, TextRenderer};
 use crate::ui::text_decorations::Decoration;
+use helix_view::document::Mode;
+use helix_view::theme::Style;
+use helix_view::{document, Document, Theme};
 
 #[derive(Debug)]
 struct Styles {
@@ -24,12 +24,12 @@ struct Styles {
 }
 
 impl Styles {
-    fn new(theme: &Theme) -> Styles {
+    fn new(theme: &Theme, mode: document::Mode) -> Styles {
         Styles {
-            hint: theme.get("hint"),
-            info: theme.get("info"),
-            warning: theme.get("warning"),
-            error: theme.get("error"),
+            hint: theme.get(mode, "hint"),
+            info: theme.get(mode, "info"),
+            warning: theme.get(mode, "warning"),
+            error: theme.get(mode, "error"),
         }
     }
 
@@ -53,13 +53,14 @@ impl<'a> InlineDiagnostics<'a> {
     pub fn new(
         doc: &'a Document,
         theme: &Theme,
+        mode: Mode,
         cursor: usize,
         config: InlineDiagnosticsConfig,
         eol_diagnostics: DiagnosticFilter,
     ) -> Self {
         InlineDiagnostics {
             state: InlineDiagnosticAccumulator::new(cursor, doc, config),
-            styles: Styles::new(theme),
+            styles: Styles::new(theme, mode),
             eol_diagnostics,
         }
     }

@@ -239,10 +239,10 @@ fn diag_picker(
     });
 
     let styles = DiagnosticStyles {
-        hint: cx.editor.theme.get("hint"),
-        info: cx.editor.theme.get("info"),
-        warning: cx.editor.theme.get("warning"),
-        error: cx.editor.theme.get("error"),
+        hint: cx.editor.theme.get(cx.editor.mode, "hint"),
+        info: cx.editor.theme.get(cx.editor.mode, "info"),
+        warning: cx.editor.theme.get(cx.editor.mode, "warning"),
+        error: cx.editor.theme.get(cx.editor.mode, "error"),
     };
 
     let mut columns = vec![

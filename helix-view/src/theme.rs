@@ -4,6 +4,9 @@ use std::{
     str,
 };
 
+use crate::document;
+use crate::graphics::UnderlineStyle;
+pub use crate::graphics::{Color, Modifier, Style};
 use anyhow::{anyhow, Result};
 use helix_core::{hashmap, syntax::Highlight};
 use helix_loader::merge_toml_values;
@@ -11,9 +14,6 @@ use log::warn;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer};
 use toml::{map::Map, Value};
-
-use crate::graphics::UnderlineStyle;
-pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     let bytes = include_bytes!("../../theme.toml");
@@ -439,23 +439,37 @@ impl Theme {
         &self.name
     }
 
-    pub fn get(&self, scope: &str) -> Style {
-        self.try_get(scope).unwrap_or_default()
+    pub fn get(&self, mode: document::Mode, scope: &str) -> Style {
+        self.try_get(mode, scope).unwrap_or_default()
     }
 
     /// Get the style of a scope, falling back to dot separated broader
     /// scopes. For example if `ui.text.focus` is not defined in the theme,
     /// `ui.text` is tried and then `ui` is tried.
-    pub fn try_get(&self, scope: &str) -> Option<Style> {
-        std::iter::successors(Some(scope), |s| Some(s.rsplit_once('.')?.0))
-            .find_map(|s| self.styles.get(s).copied())
+    pub fn try_get(&self, mode: document::Mode, scope: &str) -> Option<Style> {
+        let scope_with_mode = format!("{scope}.{mode}");
+
+        if let Some(style) = self.styles.get(scope_with_mode.as_str()) {
+            Some(style.clone())
+        } else {
+            std::iter::successors(Some(scope), |s| Some(s.rsplit_once('.')?.0))
+                .find_map(|s| self.styles.get(s).copied())
+        }
     }
 
     /// Get the style of a scope, without falling back to dot separated broader
-    /// scopes. For example if `ui.text.focus` is not defined in the theme, it
-    /// will return `None`, even if `ui.text` is.
-    pub fn try_get_exact(&self, scope: &str) -> Option<Style> {
-        self.styles.get(scope).copied()
+    /// scopes for non-mode selections. For example if `ui.text.focus` is not
+    /// defined in the theme, it will return `None`, even if `ui.text` is.
+    /// However, if `ui.text.insert` is not specifed in the theme, `ui.text`
+    /// will be used instead.
+    pub fn try_get_exact(&self, mode: document::Mode, scope: &'static str) -> Option<Style> {
+        let scope_with_mode = format!("{scope}.{mode}");
+
+        if let Some(style) = self.styles.get(scope_with_mode.as_str()) {
+            Some(style.clone())
+        } else {
+            self.styles.get(scope).copied()
+        }
     }
 
     #[inline]
@@ -774,5 +788,54 @@ mod tests {
     fn out_of_bounds() {
         let highlight = Highlight::new(Theme::rgb_highlight(0, 0, 0).get() - 1);
         Theme::default().highlight(highlight);
+    }
+
+    #[test]
+    fn test_select_color_based_on_mode() {
+        let mut theme = Theme::default();
+
+        // Add fallback color
+        theme.styles.insert(
+            "ui.gutter.selected".to_string(),
+            Style {
+                fg: Some(Color::Red),
+                bg: None,
+                underline_color: None,
+                underline_style: None,
+                add_modifier: Modifier::empty(),
+                sub_modifier: Modifier::empty(),
+            },
+        );
+        // Add theme specific color
+        theme.styles.insert(
+            "ui.gutter.selected.select".to_string(),
+            Style {
+                fg: Some(Color::Blue),
+                bg: None,
+                underline_color: None,
+                underline_style: None,
+                add_modifier: Modifier::empty(),
+                sub_modifier: Modifier::empty(),
+            },
+        );
+
+        assert_eq!(
+            theme
+                .try_get(document::Mode::Normal, "ui.gutter.selected")
+                .map(|s| s.fg),
+            Some(Some(Color::Red))
+        );
+        assert_eq!(
+            theme
+                .try_get(document::Mode::Insert, "ui.gutter.selected")
+                .map(|s| s.fg),
+            Some(Some(Color::Red))
+        );
+        assert_eq!(
+            theme
+                .try_get(document::Mode::Select, "ui.gutter.selected")
+                .map(|s| s.fg),
+            Some(Some(Color::Blue))
+        );
     }
 }
