@@ -397,6 +397,8 @@ impl MappableCommand {
         collapse_selection, "Collapse selection into single cursor",
         flip_selections, "Flip selection cursor and anchor",
         ensure_selections_forward, "Ensure all selections face forward",
+        move_selection_lines_up, "Move selections lines up",
+        move_selection_lines_down, "Move selection lines down",
         insert_mode, "Insert before selection",
         append_mode, "Append after selection",
         command_mode, "Enter command mode",
@@ -2991,6 +2993,252 @@ fn flip_selections(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+fn move_selection_lines_up(cx: &mut Context) {
+    let mut count = cx.count();
+    let (view, doc) = current!(cx.editor);
+
+    let selected_line_blocks = get_lines_blocks(doc, view.id);
+
+    let mut changes: Vec<(usize, usize, Option<_>)> =
+        Vec::with_capacity(2 * selected_line_blocks.len());
+    let mut leftovers: Vec<String> = Vec::with_capacity(count);
+
+    for (i, selected_line_block) in selected_line_blocks.iter().enumerate() {
+        // Unpack
+        let (selected_block, gap) = selected_line_block;
+
+        if i == 0 {
+            // Cap count to the top of the file
+            count = count.min(selected_block.0);
+        }
+
+        match (*gap, leftovers.is_empty()) {
+            (Some(g), false) if g < count => {
+                // Fit a part of the leftovers in the gap, refill the replaced lines
+                // into the leftovers
+
+                let post_selection_start = selected_block.1 + 1;
+                let change_start = doc.text().line_to_char(post_selection_start);
+                let change_end = doc.text().line_to_char(post_selection_start + g);
+                if leftovers.len() >= count - g {
+                    let new_t = leftovers.drain(0..g).collect::<String>();
+                    changes.push((change_start, change_end, Some(new_t.into())));
+                } else {
+                    // We need to accumulate more leftovers before adding them
+                    // on the other side. Just delete what we gathered for now
+                    changes.push((change_start, change_end, None));
+                }
+
+                // Save what was not moved due to space constraints
+                // after the selection (being replaced above)
+                for line_number in post_selection_start..post_selection_start + g {
+                    let line_start = doc.text().line_to_char(line_number);
+                    let line_end = doc.text().line_to_char(line_number + 1);
+                    let line_text = doc.text().slice(line_start..line_end).to_string();
+                    leftovers.push(line_text);
+                }
+            }
+            (Some(g), true) if g < count => {
+                // Delete what's before the selection
+                let start = selected_block.0;
+                let change_start = doc.text().line_to_char(start.saturating_sub(count));
+                let change_end = doc.text().line_to_char(start);
+                changes.push((change_start, change_end, None));
+
+                // Replace everything after the block
+                let block_start = doc.text().line_to_char(start.saturating_sub(count));
+                let block_end = doc.text().line_to_char(start.saturating_sub(count - g));
+                let block_text = doc.text().slice(block_start..block_end).to_string();
+                let post_selection_start = selected_block.1 + 1;
+                let change_start = doc.text().line_to_char(post_selection_start);
+                let change_end = doc.text().line_to_char(post_selection_start + g);
+
+                changes.push((change_start, change_end, Some(block_text.into())));
+
+                // Save what was not moved due to space constraints
+                // Before the selected block:
+                for line_number in start.saturating_sub(count) + g..start {
+                    let line_start = doc.text().line_to_char(line_number);
+                    let line_end = doc.text().line_to_char(line_number + 1);
+                    let line_text = doc.text().slice(line_start..line_end).to_string();
+                    leftovers.push(line_text);
+                }
+                // And after:
+                for line_number in post_selection_start..post_selection_start + g {
+                    let line_start = doc.text().line_to_char(line_number);
+                    let line_end = doc.text().line_to_char(line_number + 1);
+                    let line_text = doc.text().slice(line_start..line_end).to_string();
+                    leftovers.push(line_text);
+                }
+            }
+            (Some(_) | None, _) => {
+                // Enough space, we move our lines from before the selection til after
+                let start = selected_block.0;
+                let selection_end = doc.text().line_to_char(selected_block.1 + 1);
+
+                if !leftovers.is_empty() {
+                    // Pick up what can be inserted from the leftovers
+                    changes.push((
+                        selection_end,
+                        selection_end,
+                        Some(leftovers.drain(..).collect::<String>().into()),
+                    ));
+                } else {
+                    // Delete what's before
+                    let block_start = doc.text().line_to_char(start.saturating_sub(count));
+                    let block_end = doc.text().line_to_char(start);
+                    changes.push((block_start, block_end, None));
+                    // Add it after the selection
+                    let block_text = doc.text().slice(block_start..block_end).to_string();
+                    changes.push((selection_end, selection_end, Some(block_text.into())));
+                }
+            }
+        }
+    }
+    if changes.is_empty() {
+        // Does it hurt to make an empty transaction ?
+        return;
+    }
+    // The changeset has to be sorted, should already be, but make sure it really is
+    changes.sort_unstable_by_key(|(from, _, _)| *from);
+    let transaction = Transaction::change(doc.text(), changes.into_iter());
+    doc.apply(&transaction, view.id);
+}
+
+fn move_selection_lines_down(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let selected_line_blocks = get_lines_blocks_rev(doc, view.id);
+
+    let mut changes: Vec<(usize, usize, Option<_>)> =
+        Vec::with_capacity(2 * selected_line_blocks.len());
+    let mut leftovers: Vec<String> = Vec::with_capacity(count);
+
+    // A pre-processing step:
+    // Check if we want to "add" some newlines at the end of the doc
+    // So we can move lines down beyond the last line
+    if !selected_line_blocks.is_empty() {
+        let last_block = selected_line_blocks[0].0;
+
+        if doc.text().len_lines() <= last_block.1 + 1 + count {
+            let extra_lines = last_block.1 + 1 + count - doc.text().len_lines();
+
+            for _ in 0..extra_lines {
+                leftovers.push(doc.line_ending.as_str().into());
+            }
+            for line_number in (last_block.1 + 1..doc.text().len_lines()).rev() {
+                let mut line_text = doc.text().line(line_number).to_string();
+                if !line_text.ends_with(doc.line_ending.as_str()) {
+                    line_text.push_str(doc.line_ending.as_str());
+                }
+                if line_text.is_empty() {
+                    continue;
+                }
+                leftovers.push(line_text);
+            }
+
+            // remove any text after the last selected block already
+            let change_start = doc
+                .text()
+                .line_to_char(doc.text().len_lines().min(last_block.1 + 1));
+            let change_end = doc.text().len_chars();
+            changes.push((change_start, change_end, None));
+        }
+    }
+
+    // selected_line_blocks is sorted from the end to the start
+    for selected_line_block in selected_line_blocks {
+        let (selected_block, gap) = selected_line_block;
+
+        match (gap, leftovers.is_empty()) {
+            (Some(g), false) if g < count => {
+                // Fit a part of the leftovers in the gap, refill the replaced lines
+                // into the leftovers
+                let change_start = doc.text().line_to_char(selected_block.0.saturating_sub(g));
+                let change_end = doc.text().line_to_char(selected_block.0);
+                if leftovers.len() >= count - g {
+                    let new_t = leftovers.drain(0..g).rev().collect::<String>();
+                    changes.push((change_start, change_end, Some(new_t.into())));
+                } else {
+                    // We need to accumulate more leftovers before adding them
+                    // on the other side. Just delete what we gathered for now
+                    changes.push((change_start, change_end, None));
+                }
+
+                // Save what was not moved due to space constraints
+                // before the selection (being replaced above)
+                for line_number in ((selected_block.0.saturating_sub(g))..selected_block.0).rev() {
+                    leftovers.push(doc.text().line(line_number).to_string());
+                }
+            }
+            (Some(g), true) if g < count => {
+                // Move what we can and keep the rest in "leftovers"
+                let num_lines = doc.text().len_lines();
+                let post_selection_count_end = num_lines.min(selected_block.1 + 1 + count);
+                let post_selection_gap_end = num_lines.min(selected_block.1 + 1 + count - g);
+
+                // Delete what's after the selection
+                let change_start = doc.text().line_to_char(num_lines.min(selected_block.1 + 1));
+                let change_end = doc.text().line_to_char(post_selection_count_end);
+                changes.push((change_start, change_end, None));
+
+                // Replace everything before the selected block with the fitting part from before
+                let move_text_start = doc.text().line_to_char(post_selection_gap_end);
+                let move_text_end = doc.text().line_to_char(post_selection_count_end);
+                let move_text = doc.text().slice(move_text_start..move_text_end).to_string();
+                let change_start = doc.text().line_to_char(selected_block.0.saturating_sub(g));
+                let change_end = doc.text().line_to_char(selected_block.0);
+
+                changes.push((change_start, change_end, Some(move_text.into())));
+
+                // Save what was not moved due to space constraints
+                // After the selected block, in descending order
+                for line_number in
+                    (num_lines.min(selected_block.1 + 1)..post_selection_gap_end).rev()
+                {
+                    leftovers.push(doc.text().line(line_number).to_string());
+                }
+                // and before the block
+                for line_number in (selected_block.0.saturating_sub(g)..selected_block.0).rev() {
+                    leftovers.push(doc.text().line(line_number).to_string());
+                }
+            }
+            (Some(_) | None, _) => {
+                // Enough space, we move our lines from after the selection til before
+                let selection_start = doc.text().line_to_char(selected_block.0);
+
+                if !leftovers.is_empty() {
+                    // Pick up what can be inserted from the leftovers
+                    changes.push((
+                        selection_start,
+                        selection_start,
+                        Some(leftovers.drain(..).rev().collect::<String>().into()),
+                    ));
+                } else {
+                    // Delete what's after
+                    let num_lines = doc.text().len_lines();
+                    let block_start = doc.text().line_to_char(num_lines.min(selected_block.1 + 1));
+                    let block_end = doc
+                        .text()
+                        .line_to_char(num_lines.min(selected_block.1 + 1 + count));
+                    changes.push((block_start, block_end, None));
+                    // Add it before the selection
+                    let block_text = doc.text().slice(block_start..block_end).to_string();
+                    changes.push((selection_start, selection_start, Some(block_text.into())));
+                }
+            }
+        }
+    }
+    if changes.is_empty() {
+        // Does it hurt to make an empty transaction ?
+        return;
+    }
+    // The changeset has to be sorted
+    changes.sort_unstable_by_key(|(from, _, _)| *from);
+    let transaction = Transaction::change(doc.text(), changes.into_iter());
+    doc.apply(&transaction, view.id);
+}
+
 fn ensure_selections_forward(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -4946,6 +5194,90 @@ fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
     lines.sort_unstable(); // sorting by usize so _unstable is preferred
     lines.dedup();
     lines
+}
+
+/// Group the currently selected lines into contiguous, line-wise blocks with
+/// the gap until the next block.
+///
+/// Each returned item is:
+/// - ((start, end), gap)
+///   - start, end: inclusive 0-based line indices of a merged block
+///   - gap: Some(n) Number of lines until the next block. None of the last block
+///     All gaps are non-zero
+///
+/// Returns blocks sorted by increasing start line.
+///
+/// Example:
+/// - Given selected lines: 1,2,3,5,6,9 (0-based)
+///   returns: [((1,3), Some(1)), ((5,6), Some(2)), ((9,9), None)]
+///
+/// See also:
+/// - `get_lines`: returns all selected line indices, deduped
+/// - `get_lines_blocks_rev``: same as this but in reverse order with gaps measured to the previous block
+///
+fn get_lines_blocks(doc: &Document, view_id: ViewId) -> Vec<((usize, usize), Option<usize>)> {
+    // Get all line numbers
+    let mut line_blocks = Vec::with_capacity(doc.selection(view_id).len());
+    doc.selection(view_id)
+        .iter()
+        .for_each(|r| line_blocks.push(r.line_range(doc.text().slice(..))));
+
+    // sorting by usize so _unstable is preferred
+    line_blocks.sort_unstable_by_key(|(from, _to)| *from);
+
+    let mut merged: Vec<((usize, usize), Option<usize>)> = Vec::with_capacity(line_blocks.len());
+    let mut current = line_blocks[0];
+
+    for &(start, stop) in &line_blocks[1..] {
+        if start <= current.1 + 1 {
+            // We can merge and keep only 1 block
+            current = (start.min(current.0), stop.max(current.1));
+        } else {
+            merged.push((current, Some(start - current.1 - 1)));
+            current = (start, stop);
+        }
+    }
+    merged.push((current, None));
+    merged
+}
+
+/// Group the currently selected lines into contiguous, line-wise blocks with
+/// the gap to the previous block.
+///
+/// Returns blocks sorted by decreasing start line.
+///
+/// Example:
+/// - Given selected lines: 1,2,3,5,6,9 (0-based)
+///   returns: [((9,9), Some(2)), ((5,6), Some(1)), ((1,3), None)]
+///
+/// See also:
+/// - `get_lines`: returns all selected line indices, deduped
+/// - `get_lines_blocks``: same as this but in normal order
+///
+fn get_lines_blocks_rev(doc: &Document, view_id: ViewId) -> Vec<((usize, usize), Option<usize>)> {
+    // Get all line numbers
+    let mut line_blocks = Vec::with_capacity(doc.selection(view_id).len());
+    doc.selection(view_id)
+        .iter()
+        .for_each(|r| line_blocks.push(r.line_range(doc.text().slice(..))));
+
+    // sorting by usize so _unstable is preferred
+    line_blocks.sort_unstable_by(|a, b| b.cmp(a));
+
+    let mut merged: Vec<((usize, usize), Option<usize>)> = Vec::with_capacity(line_blocks.len());
+    let mut current = line_blocks[0];
+
+    for &(start, stop) in &line_blocks[1..] {
+        if stop >= current.0 - 1 {
+            // We can merge and keep only 1 block
+            current = (start.min(current.0), stop.max(current.1));
+        } else {
+            merged.push((current, Some(current.0 - stop - 1)));
+            current = (start, stop);
+        }
+    }
+    merged.push((current, None));
+    merged
 }
 
 fn indent(cx: &mut Context) {
