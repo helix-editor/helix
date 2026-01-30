@@ -2569,6 +2569,7 @@ fn global_search(cx: &mut Context) {
                 })
                 .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
                 .add_custom_ignore_filename(".helix/ignore")
+                .add_custom_ignore_filename(".config/helix/ignore")
                 .build_parallel()
                 .run(|| {
                     let mut searcher = searcher.clone();
