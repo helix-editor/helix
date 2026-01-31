@@ -83,9 +83,40 @@ fn lsp_location_to_location(
     })
 }
 
+fn call_hierarchy_item_to_location(
+    item: &lsp::CallHierarchyItem,
+    offset_encoding: OffsetEncoding,
+) -> Option<Location> {
+    let uri = match Uri::try_from(&item.uri) {
+        Ok(uri) => uri,
+        Err(err) => {
+            log::warn!("discarding call hierarchy item with invalid URI: {err}");
+            return None;
+        }
+    };
+    Some(Location {
+        uri,
+        range: item.selection_range,
+        offset_encoding,
+    })
+}
+
 struct SymbolInformationItem {
     location: Location,
     symbol: lsp::SymbolInformation,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum CallHierarchyDirection {
+    Incoming,
+    Outgoing,
+}
+
+#[derive(Debug, Clone)]
+struct CallHierarchyEntry {
+    item: lsp::CallHierarchyItem,
+    location: Location,
+    server_id: LanguageServerId,
 }
 
 struct DiagnosticStyles {
@@ -192,6 +223,143 @@ fn display_symbol_kind(kind: lsp::SymbolKind) -> &'static str {
             ""
         }
     }
+}
+
+fn call_hierarchy_direction_label(direction: CallHierarchyDirection) -> &'static str {
+    match direction {
+        CallHierarchyDirection::Incoming => "incoming",
+        CallHierarchyDirection::Outgoing => "outgoing",
+    }
+}
+
+fn call_hierarchy_picker(
+    direction: CallHierarchyDirection,
+    entries: Vec<CallHierarchyEntry>,
+) -> Picker<CallHierarchyEntry, ()> {
+    let columns = [
+        ui::PickerColumn::new("kind", |item: &CallHierarchyEntry, _| {
+            display_symbol_kind(item.item.kind).into()
+        }),
+        ui::PickerColumn::new("name", |item: &CallHierarchyEntry, _| {
+            item.item.name.as_str().into()
+        }),
+        ui::PickerColumn::new("detail", |item: &CallHierarchyEntry, _| {
+            item.item.detail.as_deref().unwrap_or_default().into()
+        }),
+        ui::PickerColumn::new("path", |item: &CallHierarchyEntry, _| {
+            item.location.uri.to_string().into()
+        }),
+    ];
+
+    Picker::new(columns, 1, entries, (), move |cx, entry, action| {
+        if !matches!(action, Action::Replace) {
+            jump_to_location(cx.editor, &entry.location, action);
+            return;
+        }
+
+        let Some(client) = cx
+            .editor
+            .language_servers
+            .get_by_id(entry.server_id)
+            .cloned()
+        else {
+            cx.editor
+                .set_error("Language server is no longer available");
+            return;
+        };
+
+        let item = entry.item.clone();
+        let location = entry.location.clone();
+        let direction = direction;
+        let server_id = entry.server_id;
+
+        match direction {
+            CallHierarchyDirection::Incoming => {
+                let Some(request) = client.call_hierarchy_incoming(item) else {
+                    cx.editor
+                        .set_error("Language server does not support call hierarchy");
+                    return;
+                };
+                cx.jobs.callback(async move {
+                    let response = request.await?;
+                    let calls = response.unwrap_or_default();
+                    let offset_encoding = client.offset_encoding();
+                    let entries = calls
+                        .into_iter()
+                        .filter_map(|call| {
+                            let item = call.from;
+                            call_hierarchy_item_to_location(&item, offset_encoding).map(
+                                |location| CallHierarchyEntry {
+                                    item,
+                                    location,
+                                    server_id,
+                                },
+                            )
+                        })
+                        .collect::<Vec<_>>();
+
+                    let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+                        if entries.is_empty() {
+                            editor.set_status(format!(
+                                "No {} calls.",
+                                call_hierarchy_direction_label(direction)
+                            ));
+                            jump_to_location(editor, &location, Action::Replace);
+                            return;
+                        }
+
+                        let picker = call_hierarchy_picker(direction, entries);
+                        compositor.push(Box::new(overlaid(picker)));
+                    };
+
+                    Ok(Callback::EditorCompositor(Box::new(call)))
+                });
+            }
+            CallHierarchyDirection::Outgoing => {
+                let Some(request) = client.call_hierarchy_outgoing(item) else {
+                    cx.editor
+                        .set_error("Language server does not support call hierarchy");
+                    return;
+                };
+                cx.jobs.callback(async move {
+                    let response = request.await?;
+                    let calls = response.unwrap_or_default();
+                    let offset_encoding = client.offset_encoding();
+                    let entries = calls
+                        .into_iter()
+                        .filter_map(|call| {
+                            let item = call.to;
+                            call_hierarchy_item_to_location(&item, offset_encoding).map(
+                                |location| CallHierarchyEntry {
+                                    item,
+                                    location,
+                                    server_id,
+                                },
+                            )
+                        })
+                        .collect::<Vec<_>>();
+
+                    let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+                        if entries.is_empty() {
+                            editor.set_status(format!(
+                                "No {} calls.",
+                                call_hierarchy_direction_label(direction)
+                            ));
+                            jump_to_location(editor, &location, Action::Replace);
+                            return;
+                        }
+
+                        let picker = call_hierarchy_picker(direction, entries);
+                        compositor.push(Box::new(overlaid(picker)));
+                    };
+
+                    Ok(Callback::EditorCompositor(Box::new(call)))
+                });
+            }
+        }
+    })
+    .with_preview(|_editor, entry| location_to_file_location(&entry.location))
+    .truncate_start(false)
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -1023,6 +1191,114 @@ pub fn goto_reference(cx: &mut Context) {
                 goto_impl(editor, compositor, locations);
             }
         };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
+}
+
+pub fn call_hierarchy_incoming(cx: &mut Context) {
+    call_hierarchy(cx, CallHierarchyDirection::Incoming);
+}
+
+pub fn call_hierarchy_outgoing(cx: &mut Context) {
+    call_hierarchy(cx, CallHierarchyDirection::Outgoing);
+}
+
+fn call_hierarchy(cx: &mut Context, direction: CallHierarchyDirection) {
+    let (view, doc) = current_ref!(cx.editor);
+
+    let mut seen_language_servers = HashSet::new();
+    let mut futures: FuturesOrdered<_> = doc
+        .language_servers_with_feature(LanguageServerFeature::CallHierarchy)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
+        .map(|language_server| {
+            let server_id = language_server.id();
+            let client = cx.editor.language_servers.get_by_id(server_id).cloned();
+            let offset_encoding = language_server.offset_encoding();
+            let pos = doc.position(view.id, offset_encoding);
+            let request = language_server
+                .prepare_call_hierarchy(doc.identifier(), pos)
+                .unwrap();
+            async move {
+                let Some(client) = client else {
+                    return anyhow::Ok(Vec::new());
+                };
+                let items = request.await?.unwrap_or_default();
+                let mut entries = Vec::new();
+                for item in items {
+                    match direction {
+                        CallHierarchyDirection::Incoming => {
+                            let Some(request) = client.call_hierarchy_incoming(item) else {
+                                continue;
+                            };
+                            let calls = request.await?.unwrap_or_default();
+                            let offset_encoding = client.offset_encoding();
+                            for call in calls {
+                                let item = call.from;
+                                if let Some(location) =
+                                    call_hierarchy_item_to_location(&item, offset_encoding)
+                                {
+                                    entries.push(CallHierarchyEntry {
+                                        item,
+                                        location,
+                                        server_id,
+                                    });
+                                }
+                            }
+                        }
+                        CallHierarchyDirection::Outgoing => {
+                            let Some(request) = client.call_hierarchy_outgoing(item) else {
+                                continue;
+                            };
+                            let calls = request.await?.unwrap_or_default();
+                            let offset_encoding = client.offset_encoding();
+                            for call in calls {
+                                let item = call.to;
+                                if let Some(location) =
+                                    call_hierarchy_item_to_location(&item, offset_encoding)
+                                {
+                                    entries.push(CallHierarchyEntry {
+                                        item,
+                                        location,
+                                        server_id,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                anyhow::Ok(entries)
+            }
+        })
+        .collect();
+
+    if futures.is_empty() {
+        cx.editor
+            .set_error("No configured language server supports call hierarchy");
+        return;
+    }
+
+    cx.jobs.callback(async move {
+        let mut entries = Vec::new();
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok(mut items) => entries.append(&mut items),
+                Err(err) => log::error!("Error requesting call hierarchy: {err}"),
+            }
+        }
+
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if entries.is_empty() {
+                editor.set_status(format!(
+                    "No {} calls.",
+                    call_hierarchy_direction_label(direction)
+                ));
+                return;
+            }
+
+            let picker = call_hierarchy_picker(direction, entries);
+            compositor.push(Box::new(overlaid(picker)));
+        };
+
         Ok(Callback::EditorCompositor(Box::new(call)))
     });
 }
