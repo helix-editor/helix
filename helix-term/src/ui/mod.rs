@@ -24,7 +24,7 @@ use helix_stdx::rope;
 use helix_view::theme::Style;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::{Column as PickerColumn, FileLocation, Picker};
+pub use picker::{tree_picker, Column as PickerColumn, FileLocation, Picker, TreeItem, TreePicker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use select::Select;
