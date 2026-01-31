@@ -18,17 +18,17 @@
 "comment" = "fg-dim"
 
 "variable.parameter" = "cyan"
-"variable.builtin" = "magenta-cooler"
+"variable.builtin" = "magenta-warmer"
 "label" = "fg-dim" # used for language in markdown code blocks
 "keyword" = "magenta-cooler"
 "keyword.directive" = "red-cooler"
 "function" = "magenta"
-"function.macro" = "magenta-warmer"
+"function.macro" = "red-cooler"
 
 punctuation = "fg-dim"
-"tag" = "magenta"
-"attribute" = "cyan-cooler"
-"namespace" = "blue-cooler"
+"tag" = "magenta-cooler"
+"attribute" = "cyan"
+"namespace" = "cyan"
 "special" = "red-cooler"
 
 "markup.heading.marker" = "fg-dim"
@@ -212,9 +212,9 @@ bg-magenta-nuanced = "#2f0c3f"
 bg-cyan-nuanced = "#042837"
 
 # Uncommon accent backgrounds
-bg-ochre = "#442c2f"
+bg-ochre = "#462f20"
 bg-lavender = "#38325c"
-bg-sage = "#0f3d30"
+bg-sage = "#143e32"
 
 # Special purpose
 bg-completion = "#2f447f"

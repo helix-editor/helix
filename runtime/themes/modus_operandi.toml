@@ -18,17 +18,17 @@
 "comment" = "fg-dim"
 
 "variable.parameter" = "cyan"
-"variable.builtin" = "magenta-cooler"
+"variable.builtin" = "magenta-warmer"
 "label" = "fg-dim" # used for language in markdown code blocks
 "keyword" = "magenta-cooler"
 "keyword.directive" = "red-cooler"
 "function" = "magenta"
-"function.macro" = "magenta-warmer"
+"function.macro" = "red-cooler"
 
 punctuation = "fg-dim"
-"tag" = "magenta"
-"attribute" = "cyan-cooler"
-"namespace" = "blue-cooler"
+"tag" = "magenta-cooler"
+"attribute" = "cyan"
+"namespace" = "cyan"
 "special" = "red-cooler"
 
 "markup.heading.marker" = "fg-dim"
@@ -163,7 +163,7 @@ yellow-cooler = "#7a4f2f"
 yellow-faint = "#624416"
 yellow-intense = "#808000"
 blue = "#0031a9"
-blue-warmer = "#354fcf"
+blue-warmer = "#3548cf"
 blue-cooler = "#0000b0"
 blue-faint = "#003497"
 blue-intense = "#0000ff"
@@ -206,7 +206,7 @@ bg-hl-line = "#dae5ec"
 
 bg-mode-line-active = "#c8c8c8"
 fg-mode-line-active = "#000000"
-border-mode-line-active = "#9a9a9a"
+border-mode-line-active = "#5a5a5a"
 bg-mode-line-inactive = "#e6e6e6"
 fg-mode-line-inactive = "#585858"
 
@@ -214,9 +214,9 @@ modeline-err = "#7f0000"
 modeline-warning = "#5f0070"
 modeline-info = "#002580"
 
-bg-tab-bar = "#e6e6e6"
+bg-tab-bar = "#dfdfdf"
 bg-tab-current = "#ffffff"
-bg-tab-other = "#c8c8c8"
+bg-tab-other = "#c2c2c2"
 
 # Diffs
 bg-added = "#c1f2d1"
