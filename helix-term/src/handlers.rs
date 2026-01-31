@@ -18,6 +18,7 @@ mod auto_save;
 pub mod completion;
 pub mod diagnostics;
 mod document_colors;
+mod document_highlight;
 mod prompt;
 mod signature_help;
 mod snippet;
@@ -46,6 +47,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     helix_view::handlers::register_hooks(&handlers);
     completion::register_hooks(&handlers);
     signature_help::register_hooks(&handlers);
+    document_highlight::register_hooks(&handlers);
     auto_save::register_hooks(&handlers);
     diagnostics::register_hooks(&handlers);
     snippet::register_hooks(&handlers);
