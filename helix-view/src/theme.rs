@@ -35,6 +35,14 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
     ..Theme::from(BASE16_DEFAULT_THEME_DATA.clone())
 });
 
+#[derive(Debug, Clone, Copy)]
+pub struct ThemeContext {
+    /// The current editor mode (e.g. insert/select)
+    pub mode: document::Mode,
+    /// When true the editors colors/styles can change with the mode
+    pub color_modes: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Mode {
     Dark,
@@ -439,22 +447,23 @@ impl Theme {
         &self.name
     }
 
-    pub fn get(&self, mode: document::Mode, scope: &str) -> Style {
-        self.try_get(mode, scope).unwrap_or_default()
+    pub fn get(&self, tc: ThemeContext, scope: &str) -> Style {
+        self.try_get(tc, scope).unwrap_or_default()
     }
 
     /// Get the style of a scope, falling back to dot separated broader
     /// scopes. For example if `ui.text.focus` is not defined in the theme,
     /// `ui.text` is tried and then `ui` is tried.
-    pub fn try_get(&self, mode: document::Mode, scope: &str) -> Option<Style> {
-        let scope_with_mode = format!("{scope}.{mode}");
-
-        if let Some(style) = self.styles.get(scope_with_mode.as_str()) {
-            Some(style.clone())
-        } else {
-            std::iter::successors(Some(scope), |s| Some(s.rsplit_once('.')?.0))
-                .find_map(|s| self.styles.get(s).copied())
+    pub fn try_get(&self, tc: ThemeContext, scope: &str) -> Option<Style> {
+        if tc.color_modes {
+            let scope_with_mode = format!("{scope}.{}", tc.mode);
+            if let Some(style) = self.styles.get(scope_with_mode.as_str()) {
+                return Some(style.clone());
+            }
         }
+
+        std::iter::successors(Some(scope), |s| Some(s.rsplit_once('.')?.0))
+            .find_map(|s| self.styles.get(s).copied())
     }
 
     /// Get the style of a scope, without falling back to dot separated broader
@@ -462,14 +471,15 @@ impl Theme {
     /// defined in the theme, it will return `None`, even if `ui.text` is.
     /// However, if `ui.text.insert` is not specifed in the theme, `ui.text`
     /// will be used instead.
-    pub fn try_get_exact(&self, mode: document::Mode, scope: &'static str) -> Option<Style> {
-        let scope_with_mode = format!("{scope}.{mode}");
-
-        if let Some(style) = self.styles.get(scope_with_mode.as_str()) {
-            Some(style.clone())
-        } else {
-            self.styles.get(scope).copied()
+    pub fn try_get_exact(&self, tc: ThemeContext, scope: &'static str) -> Option<Style> {
+        if tc.color_modes {
+            let scope_with_mode = format!("{scope}.{}", tc.mode);
+            if let Some(style) = self.styles.get(scope_with_mode.as_str()) {
+                return Some(style.clone());
+            }
         }
+
+        self.styles.get(scope).copied()
     }
 
     #[inline]
@@ -821,19 +831,37 @@ mod tests {
 
         assert_eq!(
             theme
-                .try_get(document::Mode::Normal, "ui.gutter.selected")
+                .try_get(
+                    ThemeContext {
+                        mode: document::Mode::Normal,
+                        color_modes: true,
+                    },
+                    "ui.gutter.selected"
+                )
                 .map(|s| s.fg),
             Some(Some(Color::Red))
         );
         assert_eq!(
             theme
-                .try_get(document::Mode::Insert, "ui.gutter.selected")
+                .try_get(
+                    ThemeContext {
+                        mode: document::Mode::Insert,
+                        color_modes: true,
+                    },
+                    "ui.gutter.selected"
+                )
                 .map(|s| s.fg),
             Some(Some(Color::Red))
         );
         assert_eq!(
             theme
-                .try_get(document::Mode::Select, "ui.gutter.selected")
+                .try_get(
+                    ThemeContext {
+                        mode: document::Mode::Select,
+                        color_modes: true,
+                    },
+                    "ui.gutter.selected"
+                )
                 .map(|s| s.fg),
             Some(Some(Color::Blue))
         );

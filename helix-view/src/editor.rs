@@ -1172,6 +1172,7 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+use crate::theme::ThemeContext;
 use futures_util::stream::{Flatten, Once};
 
 type Diagnostics = BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>;
@@ -2422,6 +2423,13 @@ impl Editor {
         let (view, doc) = current!(self);
         doc.set_selection(view_id, selection);
         view.ensure_cursor_in_view_center(doc, self.config.load().scrolloff);
+    }
+
+    pub fn theme_context(&self) -> ThemeContext {
+        ThemeContext {
+            mode: self.mode,
+            color_modes: self.config().color_modes,
+        }
     }
 }
 

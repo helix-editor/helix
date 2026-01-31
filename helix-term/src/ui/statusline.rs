@@ -55,12 +55,12 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
         context
             .editor
             .theme
-            .get(context.editor.mode, "ui.statusline")
+            .get(context.editor.theme_context(), "ui.statusline")
     } else {
         context
             .editor
             .theme
-            .get(context.editor.mode, "ui.statusline.inactive")
+            .get(context.editor.theme_context(), "ui.statusline.inactive")
     };
 
     surface.set_style(viewport.with_height(1), base_style);
@@ -184,10 +184,14 @@ where
         // If not focused, explicitly leave an empty space instead of returning None.
         " ".repeat(mode_str.width() + 2)
     };
-    let style = context
-        .editor
-        .theme
-        .get(context.editor.mode, "ui.statusline");
+    let style = if visible {
+        context
+            .editor
+            .theme
+            .get(context.editor.theme_context(), "ui.statusline")
+    } else {
+        Style::default()
+    };
     write(context, Span::styled(content, style));
 }
 
@@ -237,14 +241,26 @@ where
             Severity::Hint if hints > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get(context.editor.mode, "hint")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "hint"),
+                    ),
                 );
                 write(context, format!(" {} ", hints).into());
             }
             Severity::Info if info > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get(context.editor.mode, "info")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "info"),
+                    ),
                 );
                 write(context, format!(" {} ", info).into());
             }
@@ -253,7 +269,10 @@ where
                     context,
                     Span::styled(
                         "●",
-                        context.editor.theme.get(context.editor.mode, "warning"),
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "warning"),
                     ),
                 );
                 write(context, format!(" {} ", warnings).into());
@@ -261,7 +280,13 @@ where
             Severity::Error if errors > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get(context.editor.mode, "error")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "error"),
+                    ),
                 );
                 write(context, format!(" {} ", errors).into());
             }
@@ -313,14 +338,26 @@ where
             Severity::Hint if hints > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get(context.editor.mode, "hint")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "hint"),
+                    ),
                 );
                 write(context, format!(" {} ", hints).into());
             }
             Severity::Info if info > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get(context.editor.mode, "info")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "info"),
+                    ),
                 );
                 write(context, format!(" {} ", info).into());
             }
@@ -329,7 +366,10 @@ where
                     context,
                     Span::styled(
                         "●",
-                        context.editor.theme.get(context.editor.mode, "warning"),
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "warning"),
                     ),
                 );
                 write(context, format!(" {} ", warnings).into());
@@ -337,7 +377,13 @@ where
             Severity::Error if errors > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get(context.editor.mode, "error")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "error"),
+                    ),
                 );
                 write(context, format!(" {} ", errors).into());
             }
@@ -542,7 +588,7 @@ where
     let style = context
         .editor
         .theme
-        .get(context.editor.mode, "ui.statusline.separator");
+        .get(context.editor.theme_context(), "ui.statusline.separator");
 
     write(context, Span::styled(sep.to_string(), style));
 }

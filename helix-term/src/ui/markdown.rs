@@ -13,7 +13,7 @@ use helix_core::{
     syntax::{self, HighlightEvent, OverlayHighlights},
     RopeSlice, Syntax,
 };
-use helix_view::document::Mode;
+use helix_view::theme::ThemeContext;
 use helix_view::{
     graphics::{Margin, Rect, Style},
     theme::Modifier,
@@ -32,7 +32,7 @@ fn styled_multiline_text<'a>(text: &str, style: Style) -> Text<'a> {
 pub fn highlighted_code_block<'a>(
     text: &str,
     language: &str,
-    theme_and_mode: Option<(&Theme, Mode)>,
+    theme_and_context: Option<(&Theme, ThemeContext)>,
     loader: &syntax::Loader,
     // Optional overlay highlights to mix in with the syntax highlights.
     //
@@ -44,14 +44,14 @@ pub fn highlighted_code_block<'a>(
     let mut lines = Vec::new();
 
     let get_theme = |key: &str| -> Style {
-        theme_and_mode
-            .map(|(t, m)| t.get(m, key))
+        theme_and_context
+            .map(|(t, c)| t.get(c, key))
             .unwrap_or_default()
     };
     let text_style = get_theme(Markdown::TEXT_STYLE);
     let code_style = get_theme(Markdown::BLOCK_STYLE);
 
-    let (theme, _) = match theme_and_mode {
+    let (theme, _) = match theme_and_context {
         Some(t) => t,
         None => return styled_multiline_text(text, code_style),
     };
@@ -174,7 +174,7 @@ impl Markdown {
         }
     }
 
-    pub fn parse(&self, theme_and_mode: Option<(&Theme, Mode)>) -> tui::text::Text<'_> {
+    pub fn parse(&self, theme_and_context: Option<(&Theme, ThemeContext)>) -> tui::text::Text<'_> {
         fn push_line<'a>(spans: &mut Vec<Span<'a>>, lines: &mut Vec<Spans<'a>>) {
             let spans = std::mem::take(spans);
             if !spans.is_empty() {
@@ -201,8 +201,8 @@ impl Markdown {
         };
 
         let get_theme = |key: &str| -> Style {
-            theme_and_mode
-                .map(|(t, m)| t.get(m, key))
+            theme_and_context
+                .map(|(t, c)| t.get(c, key))
                 .unwrap_or_default()
         };
         let text_style = get_theme(Self::TEXT_STYLE);
@@ -311,7 +311,7 @@ impl Markdown {
                         let tui_text = highlighted_code_block(
                             &text,
                             language,
-                            theme_and_mode,
+                            theme_and_context,
                             &self.config_loader.load(),
                             None,
                         );
@@ -378,7 +378,7 @@ impl Component for Markdown {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
-        let text = self.parse(Some((&cx.editor.theme, cx.editor.mode)));
+        let text = self.parse(Some((&cx.editor.theme, cx.editor.theme_context())));
 
         let par = Paragraph::new(&text)
             .wrap(Wrap { trim: false })

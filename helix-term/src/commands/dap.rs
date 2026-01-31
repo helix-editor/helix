@@ -502,6 +502,10 @@ pub fn dap_next(cx: &mut Context) {
 }
 
 pub fn dap_variables(cx: &mut Context) {
+    // debugger takes cx.editor as a &mut borrow so this needs to be first
+    // to satisfy the borrow checker.
+    let theme_context = cx.editor.theme_context();
+
     let debugger = debugger!(cx.editor);
 
     if debugger.thread_id.is_none() {
@@ -549,9 +553,9 @@ pub fn dap_variables(cx: &mut Context) {
     let mut variables = Vec::new();
 
     let theme = &cx.editor.theme;
-    let scope_style = theme.get(cx.editor.mode, "ui.linenr.selected");
-    let type_style = theme.get(cx.editor.mode, "ui.text");
-    let text_style = theme.get(cx.editor.mode, "ui.text.focus");
+    let scope_style = theme.get(theme_context, "ui.linenr.selected");
+    let type_style = theme.get(theme_context, "ui.text");
+    let text_style = theme.get(theme_context, "ui.text.focus");
 
     for scope in scopes.iter() {
         // use helix_view::graphics::Style;
