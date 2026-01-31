@@ -1172,6 +1172,7 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+use crate::theme::ThemeContext;
 use futures_util::stream::{Flatten, Once};
 
 type Diagnostics = BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>;
@@ -2385,6 +2386,13 @@ impl Editor {
 
     pub fn get_last_cwd(&mut self) -> Option<&Path> {
         self.last_cwd.as_deref()
+    }
+
+    pub fn theme_context(&self) -> ThemeContext {
+        ThemeContext {
+            mode: self.mode,
+            color_modes: self.config().color_modes,
+        }
     }
 }
 

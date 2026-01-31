@@ -217,7 +217,9 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     let config = editor.config();
     let data = FilePickerData {
         root: root.clone(),
-        directory_style: editor.theme.get("ui.text.directory"),
+        directory_style: editor
+            .theme
+            .get(editor.theme_context(), "ui.text.directory"),
     };
 
     let now = Instant::now();
@@ -309,7 +311,9 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
-    let directory_style = editor.theme.get("ui.text.directory");
+    let directory_style = editor
+        .theme
+        .get(editor.theme_context(), "ui.text.directory");
     let directory_content = directory_content(&root, editor)?;
 
     let columns = [PickerColumn::new(
@@ -679,7 +683,9 @@ pub mod completers {
             }) // TODO: unwrap or skip
             .filter(|path| !path.path.is_empty());
 
-        let directory_color = editor.theme.get("ui.text.directory");
+        let directory_color = editor
+            .theme
+            .get(editor.theme_context(), "ui.text.directory");
 
         let style_from_file = |file: Utf8PathBuf| {
             if file.is_dir {
