@@ -764,10 +764,10 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         frames,
         thread_state,
         move |cx, (index, frame), _action| {
-        let debugger = debugger!(cx.editor);
-        debugger.active_frame = Some(*index);
-        jump_to_stack_frame(cx.editor, frame);
-    },
+            let debugger = debugger!(cx.editor);
+            debugger.active_frame = Some(*index);
+            jump_to_stack_frame(cx.editor, frame);
+        },
     )
     .with_preview(move |_editor, (_index, frame)| {
         frame.source.as_ref().and_then(|source| {

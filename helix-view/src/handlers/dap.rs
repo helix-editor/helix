@@ -1,5 +1,6 @@
 use crate::editor::{Action, Breakpoint};
 use crate::{align_view, Align, Editor};
+use anyhow::bail;
 use dap::requests::DisconnectArguments;
 use dap::requests::ThreadsArguments;
 use helix_core::Selection;
@@ -8,7 +9,6 @@ use helix_dap::{
 };
 use helix_lsp::block_on;
 use log::{error, warn};
-use anyhow::bail;
 use serde_json::{json, Value};
 use std::fmt::Write;
 use std::path::PathBuf;
@@ -96,16 +96,14 @@ pub fn breakpoints_changed(
         if breakpoints.iter().any(|b| b.condition.is_some())
             && !caps.supports_conditional_breakpoints.unwrap_or_default()
         {
-            bail!(
-                "Can't edit breakpoint: debugger does not support conditional breakpoints"
-            )
+            bail!("Can't edit breakpoint: debugger does not support conditional breakpoints")
         }
         if breakpoints.iter().any(|b| b.hit_condition.is_some())
-            && !caps.supports_hit_conditional_breakpoints.unwrap_or_default()
+            && !caps
+                .supports_hit_conditional_breakpoints
+                .unwrap_or_default()
         {
-            bail!(
-                "Can't edit breakpoint: debugger does not support hit conditional breakpoints"
-            )
+            bail!("Can't edit breakpoint: debugger does not support hit conditional breakpoints")
         }
         if breakpoints.iter().any(|b| b.log_message.is_some())
             && !caps.supports_log_points.unwrap_or_default()
@@ -256,11 +254,14 @@ impl Editor {
                                     self.breakpoints.entry(path).or_default().push(Breakpoint {
                                         id: breakpoint.id,
                                         verified: breakpoint.verified,
-                                        message: breakpoint.message,
+                                        message: breakpoint.message.clone(),
                                         line: line.saturating_sub(1),
                                         column: breakpoint.column,
                                         ..Default::default()
                                     });
+                                    if let Some(message) = &breakpoint.message {
+                                        self.set_status(format!("Breakpoint: {}", message));
+                                    }
                                 }
                             }
                             "changed" => {
@@ -277,7 +278,8 @@ impl Editor {
                                     warn!("DAP breakpoint event missing line");
                                 }
                                 for breakpoints in self.breakpoints.values_mut() {
-                                    if let Some(i) = breakpoints.iter().position(|b| b.id == Some(id))
+                                    if let Some(i) =
+                                        breakpoints.iter().position(|b| b.id == Some(id))
                                     {
                                         breakpoints[i].verified = breakpoint.verified;
                                         breakpoints[i].message = breakpoint
@@ -292,6 +294,9 @@ impl Editor {
                                             breakpoint.column.or(breakpoints[i].column);
                                     }
                                 }
+                                if let Some(message) = &breakpoint.message {
+                                    self.set_status(format!("Breakpoint: {}", message));
+                                }
                             }
                             "removed" => {
                                 let Some(id) = breakpoint.id else {
@@ -299,7 +304,8 @@ impl Editor {
                                     return false;
                                 };
                                 for breakpoints in self.breakpoints.values_mut() {
-                                    if let Some(i) = breakpoints.iter().position(|b| b.id == Some(id))
+                                    if let Some(i) =
+                                        breakpoints.iter().position(|b| b.id == Some(id))
                                     {
                                         breakpoints.remove(i);
                                     }
@@ -341,10 +347,7 @@ impl Editor {
                         // TODO: fetch breakpoints (in case we're attaching)
 
                         if let Err(err) = debugger.configuration_done().await {
-                            self.set_error(format!(
-                                "Debugger configuration failed: {}",
-                                err
-                            ));
+                            self.set_error(format!("Debugger configuration failed: {}", err));
                         } else {
                             self.set_status("Debugged application started");
                         }
