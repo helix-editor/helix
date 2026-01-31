@@ -741,32 +741,37 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         }
     };
 
-    let frames = debugger.stack_frames[&thread_id].clone();
+    let frames = debugger.stack_frames[&thread_id]
+        .iter()
+        .cloned()
+        .enumerate()
+        .collect::<Vec<_>>();
+    let thread_state = debugger
+        .thread_states
+        .get(&thread_id)
+        .cloned()
+        .unwrap_or_else(|| "unknown".to_string());
 
-    let columns = [ui::PickerColumn::new("frame", |item: &StackFrame, _| {
-        item.name.as_str().into() // TODO: include thread_states in the label
-    })];
-    let picker = Picker::new(columns, 0, frames, (), move |cx, frame, _action| {
+    let columns = [ui::PickerColumn::new(
+        "frame",
+        |item: &(usize, StackFrame), thread_state: &String| {
+            format!("{} ({})", item.1.name, thread_state).into()
+        },
+    )];
+    let picker = Picker::new(
+        columns,
+        0,
+        frames,
+        thread_state,
+        move |cx, (index, frame), _action| {
         let debugger = debugger!(cx.editor);
-        // TODO: this should be simpler to find
-        let pos = debugger.stack_frames[&thread_id]
-            .iter()
-            .position(|f| f.id == frame.id);
-        debugger.active_frame = pos;
-
-        let frame = debugger.stack_frames[&thread_id]
-            .get(pos.unwrap_or(0))
-            .cloned();
-        if let Some(frame) = &frame {
-            jump_to_stack_frame(cx.editor, frame);
-        }
-    })
-    .with_preview(move |_editor, frame| {
-        frame
-            .source
-            .as_ref()
-            .and_then(|source| source.path.as_ref())
-            .map(|path| {
+        debugger.active_frame = Some(*index);
+        jump_to_stack_frame(cx.editor, frame);
+    },
+    )
+    .with_preview(move |_editor, (_index, frame)| {
+        frame.source.as_ref().and_then(|source| {
+            source.path.as_ref().map(|path| {
                 (
                     path.as_path().into(),
                     Some((
@@ -775,6 +780,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
                     )),
                 )
             })
+        })
     });
     cx.push_layer(Box::new(picker))
 }
