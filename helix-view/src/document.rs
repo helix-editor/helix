@@ -144,6 +144,8 @@ pub struct Document {
     selections: HashMap<ViewId, Selection>,
     view_data: HashMap<ViewId, ViewData>,
     pub active_snippet: Option<ActiveSnippet>,
+    pub linked_editing: HashMap<ViewId, LinkedEditingState>,
+    pub linked_editing_changes: HashMap<ViewId, ChangeSet>,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -218,6 +220,7 @@ pub struct Document {
     pub color_swatch_controller: TaskController,
     /// Per-view task controllers for canceling in-flight document highlight requests.
     pub document_highlight_controllers: HashMap<ViewId, TaskController>,
+    pub linked_editing_controllers: HashMap<ViewId, TaskController>,
     pub pull_diagnostic_controller: TaskController,
     pub document_link_controller: TaskController,
 
@@ -225,6 +228,12 @@ pub struct Document {
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LinkedEditingState {
+    pub ranges: Vec<Range>,
+    pub suppress: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -720,6 +729,8 @@ impl Document {
         Self {
             id: DocumentId::default(),
             active_snippet: None,
+            linked_editing: HashMap::default(),
+            linked_editing_changes: HashMap::default(),
             path: None,
             relative_path: OnceCell::new(),
             encoding,
@@ -756,6 +767,7 @@ impl Document {
             document_links: Vec::new(),
             color_swatch_controller: TaskController::new(),
             document_highlight_controllers: HashMap::new(),
+            linked_editing_controllers: HashMap::new(),
             syn_loader,
             previous_diagnostic_id: None,
             pull_diagnostic_controller: TaskController::new(),
@@ -1409,6 +1421,9 @@ impl Document {
         self.jump_labels.remove(&view_id);
         self.document_highlights.remove(&view_id);
         self.document_highlight_controllers.remove(&view_id);
+        self.linked_editing.remove(&view_id);
+        self.linked_editing_changes.remove(&view_id);
+        self.linked_editing_controllers.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -2380,6 +2395,10 @@ impl Document {
         self.document_highlight_controllers
             .entry(view_id)
             .or_default()
+    }
+
+    pub fn linked_editing_controller(&mut self, view_id: ViewId) -> &mut TaskController {
+        self.linked_editing_controllers.entry(view_id).or_default()
     }
 
     /// Get the inlay hints for this document and `view_id`.
