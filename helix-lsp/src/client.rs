@@ -10,7 +10,11 @@ use crate::lsp::{
     DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
     WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
-use helix_core::{find_workspace, syntax::config::LanguageServerFeature, ChangeSet, Rope};
+use helix_core::{
+    find_workspace,
+    syntax::config::{LanguageServerFeature, RootMarkers},
+    ChangeSet, Rope,
+};
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
 use parking_lot::Mutex;
@@ -67,7 +71,7 @@ pub struct Client {
 impl Client {
     pub fn try_add_doc(
         self: &Arc<Self>,
-        root_markers: &[String],
+        root_markers: &RootMarkers,
         manual_roots: &[PathBuf],
         doc_path: Option<&std::path::PathBuf>,
         may_support_workspace: bool,
@@ -705,9 +709,13 @@ impl Client {
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
+                    show_message: Some(lsp::ShowMessageRequestClientCapabilities {
+                        message_action_item: Some(lsp::MessageActionItemCapabilities {
+                            additional_properties_support: Some(true),
+                        }),
+                    }),
                     work_done_progress: Some(true),
                     show_document: Some(lsp::ShowDocumentClientCapabilities { support: true }),
-                    ..Default::default()
                 }),
                 general: Some(lsp::GeneralClientCapabilities {
                     position_encodings: Some(vec![

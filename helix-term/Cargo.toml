@@ -61,7 +61,7 @@ tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 arc-swap = { version = "1.8.0" }
 termini = "1"
-indexmap = "2.12"
+indexmap = "2.13"
 
 # Logging
 fern = "0.7"
@@ -70,11 +70,10 @@ log = "0.4"
 
 # File picker
 nucleo.workspace = true
-# MSRV: update once the MSRV is >=1.85
-ignore = "=0.4.23"
-grep-regex = "=0.1.13"
-grep-searcher = "=0.1.14"
-grep-matcher = "=0.1.7"
+ignore = "0.4"
+grep-regex = "0.1"
+grep-searcher = "0.1"
+grep-matcher = "0.1"
 # markdown doc rendering
 pulldown-cmark = { version = "0.13", default-features = false }
 # file type detection
@@ -98,7 +97,7 @@ crossterm = { version = "0.28", features = ["event-stream"] }
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.4", features = ["futures-v0_3"] }
-libc = "0.2.179"
+libc = "0.2.180"
 
 [build-dependencies]
 helix-loader = { path = "../helix-loader" }

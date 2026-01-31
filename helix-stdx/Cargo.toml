@@ -13,7 +13,7 @@ homepage.workspace = true
 
 [dependencies]
 dunce = "1.0"
-etcetera = "0.10"
+etcetera.workspace = true
 ropey.workspace = true
 which = "8.0"
 regex-cursor = "0.1.5"
