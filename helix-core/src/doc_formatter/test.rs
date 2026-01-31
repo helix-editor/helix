@@ -9,6 +9,8 @@ impl TextFormat {
             max_wrap: 3,
             max_indent_retain: 4,
             wrap_indicator: ".".into(),
+            wrap_indicator_width: 1,
+            wrap_indicator_on_gutter: false,
             wrap_indicator_highlight: None,
             // use a prime number to allow lining up too often with repeat
             viewport_width: 17,

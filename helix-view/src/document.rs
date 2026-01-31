@@ -12,6 +12,7 @@ use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
+use helix_core::unicode::segmentation::UnicodeSegmentation;
 use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
@@ -2258,11 +2259,25 @@ impl Document {
             .and_then(|soft_wrap| soft_wrap.max_indent_retain)
             .or(editor_soft_wrap.max_indent_retain)
             .unwrap_or(40);
+        let wrap_indicator_on_gutter = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.indicator_on_gutter)
+            .or(config.soft_wrap.indicator_on_gutter)
+            .unwrap_or(false);
         let wrap_indicator = language_soft_wrap
-            .and_then(|soft_wrap| soft_wrap.wrap_indicator.clone())
-            .or_else(|| config.soft_wrap.wrap_indicator.clone())
-            .unwrap_or_else(|| "↪ ".into());
+            .and_then(|soft_wrap| soft_wrap.wrap_indicator.as_deref())
+            .or_else(|| config.soft_wrap.wrap_indicator.as_deref())
+            .unwrap_or("↪ ");
+
         let tab_width = self.tab_width() as u16;
+
+        let wrap_indicator = if wrap_indicator_on_gutter {
+            wrap_indicator.trim_end_matches(" ")
+        } else {
+            wrap_indicator
+        };
+        let wrap_indicator_width =
+            UnicodeSegmentation::graphemes(wrap_indicator, true).count() as u16;
+
         TextFormat {
             soft_wrap: enable_soft_wrap && viewport_width > 10,
             tab_width,
@@ -2271,7 +2286,9 @@ impl Document {
             // avoid spinning forever when the window manager
             // sets the size to something tiny
             viewport_width,
-            wrap_indicator: wrap_indicator.into_boxed_str(),
+            wrap_indicator: wrap_indicator.into(),
+            wrap_indicator_width,
+            wrap_indicator_on_gutter,
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_highlight("ui.virtual.wrap")),
             soft_wrap_at_text_width,
