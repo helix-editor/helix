@@ -71,6 +71,9 @@ name = "arrayvec"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f02882884d3e1bc524fb12c79f107f6ad0e1cfd498c536ffb494301740995dfe"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "autocfg"
@@ -1608,6 +1611,7 @@ version = "25.7.1"
 name = "helix-stdx"
 version = "25.7.1"
 dependencies = [
+ "arrayvec",
  "bitflags",
  "dunce",
  "etcetera",
@@ -1619,6 +1623,7 @@ dependencies = [
  "rustix 1.1.4",
  "serde",
  "serde_json",
+ "smartstring",
  "tempfile",
  "unicode-segmentation",
  "which",
@@ -2641,6 +2646,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fb72c633efbaa2dd666986505016c32c3044395ceaf881518399d2f4127ee29"
 dependencies = [
  "autocfg",
+ "serde",
  "static_assertions",
  "version_check",
 ]
