@@ -326,9 +326,14 @@ impl Editor {
                         }
                         // TODO: fetch breakpoints (in case we're attaching)
 
-                        if debugger.configuration_done().await.is_ok() {
+                        if let Err(err) = debugger.configuration_done().await {
+                            self.set_error(format!(
+                                "Debugger configuration failed: {}",
+                                err
+                            ));
+                        } else {
                             self.set_status("Debugged application started");
-                        }; // TODO: do we need to handle error?
+                        }
 
                         self.debug_adapters.set_active_client(id);
                     }
