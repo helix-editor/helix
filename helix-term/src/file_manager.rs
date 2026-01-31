@@ -399,7 +399,7 @@ fn sort_entries(entries: &mut [DirectoryEntry], sort: DirectorySort) {
                 type_ord
             }
         }),
-        DirectorySort::NameAsc => entries.sort_by_key(|entry| name(entry)),
+        DirectorySort::NameAsc => entries.sort_by_key(&name),
         DirectorySort::NameDesc => entries.sort_by_key(|entry| std::cmp::Reverse(name(entry))),
     }
 }
