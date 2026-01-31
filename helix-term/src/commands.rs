@@ -610,6 +610,7 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
+        keybind_palette, "Open keybinding palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
@@ -3424,6 +3425,14 @@ fn changed_file_picker(cx: &mut Context) {
 }
 
 pub fn command_palette(cx: &mut Context) {
+    cmd_palette(cx, 0)
+}
+
+pub fn keybind_palette(cx: &mut Context) {
+    cmd_palette(cx, 1)
+}
+
+fn cmd_palette(cx: &mut Context, primary_column: usize) {
     let register = cx.register;
     let count = cx.count;
 
@@ -3474,7 +3483,7 @@ pub fn command_palette(cx: &mut Context) {
                 ui::PickerColumn::new("doc", |item: &MappableCommand, _| item.doc().into()),
             ];
 
-            let picker = Picker::new(columns, 0, commands, keymap, move |cx, command, _action| {
+            let picker = Picker::new(columns, primary_column, commands, keymap, move |cx, command, _action| {
                 let mut ctx = Context {
                     register,
                     count,

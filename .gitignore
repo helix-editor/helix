@@ -4,3 +4,5 @@ helix-term/rustfmt.toml
 result
 runtime/grammars
 .DS_Store
+*.log
+mise.toml
