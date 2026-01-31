@@ -302,7 +302,6 @@ impl Client {
     ) -> Result<R::Result>
     where
         R::Arguments: serde::Serialize,
-        R::Result: core::fmt::Debug, // TODO: temporary
     {
         // a future that resolves into the response
         let json = self.call::<R>(params).await?;
