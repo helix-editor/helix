@@ -1,6 +1,7 @@
 use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
+    directory_buffer::{DirectoryBufferState, DirectorySort},
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
@@ -264,6 +265,27 @@ impl Default for FileExplorerConfig {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct FileManagerConfig {
+    /// Show files and directories that start with ".". Defaults to false.
+    pub show_hidden: bool,
+    /// Send deleted files to the system trash instead of permanently deleting them.
+    pub delete_to_trash: bool,
+    /// Sorting behavior for directory buffers.
+    pub sort: DirectorySort,
+}
+
+impl Default for FileManagerConfig {
+    fn default() -> Self {
+        Self {
+            show_hidden: false,
+            delete_to_trash: false,
+            sort: DirectorySort::default(),
+        }
+    }
+}
+
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -362,6 +384,7 @@ pub struct Config {
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
     pub file_explorer: FileExplorerConfig,
+    pub file_manager: FileManagerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
@@ -1110,6 +1133,7 @@ impl Default for Config {
             auto_info: true,
             file_picker: FilePickerConfig::default(),
             file_explorer: FileExplorerConfig::default(),
+            file_manager: FileManagerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
@@ -1182,6 +1206,7 @@ pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
+    pub directory_buffers: HashMap<DocumentId, DirectoryBufferState>,
 
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
     // https://stackoverflow.com/a/66875668
@@ -1332,6 +1357,7 @@ impl Editor {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
+            directory_buffers: HashMap::new(),
             saves: HashMap::new(),
             save_queue: SelectAll::new(),
             write_count: 0,
@@ -1775,6 +1801,7 @@ impl Editor {
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
                     self.documents.remove(&id);
+                    self.directory_buffers.remove(&id);
 
                     // Remove the scratch buffer from any jumplists
                     for (view, _) in self.tree.views_mut() {
@@ -1899,6 +1926,29 @@ impl Editor {
         self.document_by_path(path).map(|doc| doc.id)
     }
 
+    pub fn is_directory_buffer(&self, doc_id: DocumentId) -> bool {
+        self.directory_buffers.contains_key(&doc_id)
+    }
+
+    pub fn directory_buffer_state(&self, doc_id: DocumentId) -> Option<&DirectoryBufferState> {
+        self.directory_buffers.get(&doc_id)
+    }
+
+    pub fn directory_buffer_state_mut(
+        &mut self,
+        doc_id: DocumentId,
+    ) -> Option<&mut DirectoryBufferState> {
+        self.directory_buffers.get_mut(&doc_id)
+    }
+
+    pub fn set_directory_buffer_state(&mut self, doc_id: DocumentId, state: DirectoryBufferState) {
+        self.directory_buffers.insert(doc_id, state);
+    }
+
+    pub fn remove_directory_buffer(&mut self, doc_id: DocumentId) {
+        self.directory_buffers.remove(&doc_id);
+    }
+
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
@@ -1938,6 +1988,18 @@ impl Editor {
         self.switch(id, action);
 
         Ok(id)
+    }
+
+    pub fn open_directory_buffer(
+        &mut self,
+        doc: Document,
+        state: DirectoryBufferState,
+        action: Action,
+    ) -> DocumentId {
+        let id = self.new_document(doc);
+        self.directory_buffers.insert(id, state);
+        self.switch(id, action);
+        id
     }
 
     pub fn close(&mut self, id: ViewId) {
@@ -1998,6 +2060,7 @@ impl Editor {
         }
 
         let doc = self.documents.remove(&doc_id).unwrap();
+        self.directory_buffers.remove(&doc_id);
 
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view

@@ -382,8 +382,16 @@ fn write_impl(
 ) -> anyhow::Result<()> {
     let config = cx.editor.config();
     let jobs = &mut cx.jobs;
-    let (view, doc) = current!(cx.editor);
+    let doc_id = doc!(cx.editor).id();
 
+    if cx.editor.is_directory_buffer(doc_id) {
+        if let Err(err) = crate::file_manager::apply_directory_buffer(cx.editor, doc_id) {
+            cx.editor.set_error(format!("{err}"));
+        }
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
     if doc.trim_trailing_whitespace() {
         trim_trailing_whitespace(doc, view.id);
     }
@@ -842,6 +850,13 @@ pub fn write_all_impl(
         .collect();
 
     for (doc_id, target_view) in saves {
+        if cx.editor.is_directory_buffer(doc_id) {
+            if let Err(err) = crate::file_manager::apply_directory_buffer(cx.editor, doc_id) {
+                cx.editor.set_error(format!("{err}"));
+            }
+            continue;
+        }
+
         let doc = doc_mut!(cx.editor, &doc_id);
         let view = view_mut!(cx.editor, target_view);
 

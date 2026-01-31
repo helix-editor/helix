@@ -37,6 +37,7 @@ use tui::{buffer::Buffer as Surface, text::Span};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
+    file_manager_keymaps: Keymaps,
     on_next_key: Option<(OnKeyCallback, OnKeyCallbackKind)>,
     pseudo_pending: Vec<KeyEvent>,
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
@@ -59,8 +60,17 @@ pub enum InsertEvent {
 
 impl EditorView {
     pub fn new(keymaps: Keymaps) -> Self {
+        let mut file_manager_map = std::collections::HashMap::new();
+        file_manager_map.insert(
+            helix_view::document::Mode::Normal,
+            crate::keymap::file_manager_default(),
+        );
+        let file_manager_keymaps =
+            Keymaps::new(Box::new(arc_swap::access::Constant(file_manager_map)));
+
         Self {
             keymaps,
+            file_manager_keymaps,
             on_next_key: None,
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
@@ -869,11 +879,10 @@ impl EditorView {
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
-        self.pseudo_pending.extend(self.keymaps.pending());
-        let key_result = self.keymaps.get(mode, event);
-        cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
-
-        let mut execute_command = |command: &commands::MappableCommand| {
+        let is_directory_buffer =
+            mode == Mode::Normal && cxt.editor.is_directory_buffer(doc!(cxt.editor).id());
+        let mut execute_command = |command: &commands::MappableCommand,
+                                   cxt: &mut commands::Context| {
             command.execute(cxt);
             helix_event::dispatch(PostCommand { command, cx: cxt });
 
@@ -898,14 +907,44 @@ impl EditorView {
             last_mode = current_mode;
         };
 
+        if is_directory_buffer {
+            let key_result = self.file_manager_keymaps.get(mode, event);
+            cxt.editor.autoinfo = self
+                .file_manager_keymaps
+                .sticky()
+                .map(|node| node.infobox());
+            match &key_result {
+                KeymapResult::Matched(command) => {
+                    execute_command(command, cxt);
+                    return None;
+                }
+                KeymapResult::Pending(node) => {
+                    cxt.editor.autoinfo = Some(node.infobox());
+                    return None;
+                }
+                KeymapResult::MatchedSequence(commands) => {
+                    for command in commands {
+                        execute_command(command, cxt);
+                    }
+                    return None;
+                }
+                KeymapResult::NotFound => {}
+                KeymapResult::Cancelled(_) => return Some(key_result),
+            }
+        }
+
+        self.pseudo_pending.extend(self.keymaps.pending());
+        let key_result = self.keymaps.get(mode, event);
+        cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
+
         match &key_result {
             KeymapResult::Matched(command) => {
-                execute_command(command);
+                execute_command(command, cxt);
             }
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
-                    execute_command(command);
+                    execute_command(command, cxt);
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
