@@ -406,6 +406,17 @@ impl MappableCommand {
         file_explorer, "Open file explorer in workspace root",
         file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
         file_explorer_in_current_directory, "Open file explorer at current working directory",
+        file_manager_select, "Open file or enter directory under cursor in file manager",
+        file_manager_select_horizontal, "Open file or enter directory in a horizontal split in file manager",
+        file_manager_select_vertical, "Open file or enter directory in a vertical split in file manager",
+        file_manager_preview, "Preview file or directory in a vertical split in file manager",
+        file_manager_refresh, "Refresh directory buffer",
+        file_manager_parent, "Go to parent directory in file manager",
+        file_manager_open_cwd, "Open current working directory in file manager",
+        file_manager_cd, "Change working directory to entry under cursor in file manager",
+        file_manager_change_sort, "Change sort order in file manager",
+        file_manager_toggle_hidden, "Toggle hidden files in file manager",
+        file_manager_open_external, "Open entry under cursor in external program",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -3111,8 +3122,8 @@ fn file_explorer(cx: &mut Context) {
         return;
     }
 
-    if let Ok(picker) = ui::file_explorer(root, cx.editor) {
-        cx.push_layer(Box::new(overlaid(picker)));
+    if let Err(err) = crate::file_manager::open_directory_buffer(cx.editor, root, Action::Replace) {
+        cx.editor.set_error(format!("{err}"));
     }
 }
 
@@ -3138,8 +3149,8 @@ fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
-    if let Ok(picker) = ui::file_explorer(path, cx.editor) {
-        cx.push_layer(Box::new(overlaid(picker)));
+    if let Err(err) = crate::file_manager::open_directory_buffer(cx.editor, path, Action::Replace) {
+        cx.editor.set_error(format!("{err}"));
     }
 }
 
@@ -3151,9 +3162,207 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
         return;
     }
 
-    if let Ok(picker) = ui::file_explorer(cwd, cx.editor) {
-        cx.push_layer(Box::new(overlaid(picker)));
+    if let Err(err) = crate::file_manager::open_directory_buffer(cx.editor, cwd, Action::Replace) {
+        cx.editor.set_error(format!("{err}"));
     }
+}
+
+fn file_manager_select(cx: &mut Context) {
+    file_manager_select_impl(cx, Action::Replace);
+}
+
+fn file_manager_select_horizontal(cx: &mut Context) {
+    file_manager_select_impl(cx, Action::HorizontalSplit);
+}
+
+fn file_manager_select_vertical(cx: &mut Context) {
+    file_manager_select_impl(cx, Action::VerticalSplit);
+}
+
+fn file_manager_select_impl(cx: &mut Context, action: Action) {
+    let (view, doc) = current_ref!(cx.editor);
+    let doc_id = doc.id();
+    let view_id = view.id;
+    if !cx.editor.is_directory_buffer(doc_id) {
+        cx.editor.set_error("Not a directory buffer");
+        return;
+    }
+
+    let entry = match crate::file_manager::current_entry_path(cx.editor, doc_id, view_id) {
+        Ok(entry) => entry,
+        Err(err) => {
+            cx.editor.set_error(format!("{err}"));
+            return;
+        }
+    };
+
+    let Some((path, is_dir)) = entry else { return };
+
+    if is_dir {
+        if matches!(action, Action::Replace) {
+            if let Err(err) = crate::file_manager::set_root(cx.editor, doc_id, path) {
+                cx.editor.set_error(format!("{err}"));
+            }
+        } else if let Err(err) = crate::file_manager::open_directory_buffer(cx.editor, path, action)
+        {
+            cx.editor.set_error(format!("{err}"));
+        }
+        return;
+    }
+
+    if let Err(err) = cx.editor.open(&path, action) {
+        cx.editor.set_error(format!("{err}"));
+    }
+}
+
+fn file_manager_preview(cx: &mut Context) {
+    let (view, doc) = current_ref!(cx.editor);
+    let doc_id = doc.id();
+    let view_id = view.id;
+    if !cx.editor.is_directory_buffer(doc_id) {
+        cx.editor.set_error("Not a directory buffer");
+        return;
+    }
+
+    let entry = match crate::file_manager::current_entry_path(cx.editor, doc_id, view_id) {
+        Ok(entry) => entry,
+        Err(err) => {
+            cx.editor.set_error(format!("{err}"));
+            return;
+        }
+    };
+
+    let Some((path, is_dir)) = entry else { return };
+
+    let original_view = view_id;
+    if is_dir {
+        if let Err(err) =
+            crate::file_manager::open_directory_buffer(cx.editor, path, Action::VerticalSplit)
+        {
+            cx.editor.set_error(format!("{err}"));
+        }
+    } else if let Err(err) = cx.editor.open(&path, Action::VerticalSplit) {
+        cx.editor.set_error(format!("{err}"));
+    }
+
+    cx.editor.focus(original_view);
+}
+
+fn file_manager_refresh(cx: &mut Context) {
+    let doc_id = doc!(cx.editor).id();
+    if !cx.editor.is_directory_buffer(doc_id) {
+        cx.editor.set_error("Not a directory buffer");
+        return;
+    }
+    if doc!(cx.editor, &doc_id).is_modified() {
+        cx.editor.set_error("Directory buffer has unsaved changes");
+        return;
+    }
+    if let Err(err) = crate::file_manager::refresh_directory_buffer(cx.editor, doc_id) {
+        cx.editor.set_error(format!("{err}"));
+    }
+}
+
+fn file_manager_parent(cx: &mut Context) {
+    let doc_id = doc!(cx.editor).id();
+    let state = match cx.editor.directory_buffer_state(doc_id) {
+        Some(state) => state,
+        None => {
+            cx.editor.set_error("Not a directory buffer");
+            return;
+        }
+    };
+    if let Some(parent) = state.root.parent().map(|path| path.to_path_buf()) {
+        if let Err(err) = crate::file_manager::set_root(cx.editor, doc_id, parent) {
+            cx.editor.set_error(format!("{err}"));
+        }
+    }
+}
+
+fn file_manager_open_cwd(cx: &mut Context) {
+    let doc_id = doc!(cx.editor).id();
+    if !cx.editor.is_directory_buffer(doc_id) {
+        cx.editor.set_error("Not a directory buffer");
+        return;
+    }
+    let cwd = helix_stdx::env::current_working_dir();
+    if let Err(err) = crate::file_manager::set_root(cx.editor, doc_id, cwd) {
+        cx.editor.set_error(format!("{err}"));
+    }
+}
+
+fn file_manager_cd(cx: &mut Context) {
+    let (view, doc) = current_ref!(cx.editor);
+    let doc_id = doc.id();
+    let view_id = view.id;
+    if !cx.editor.is_directory_buffer(doc_id) {
+        cx.editor.set_error("Not a directory buffer");
+        return;
+    }
+    let entry = match crate::file_manager::current_entry_path(cx.editor, doc_id, view_id) {
+        Ok(entry) => entry,
+        Err(err) => {
+            cx.editor.set_error(format!("{err}"));
+            return;
+        }
+    };
+    let Some((path, is_dir)) = entry else { return };
+    if !is_dir {
+        cx.editor.set_error("Not a directory");
+        return;
+    }
+    if let Err(err) = cx.editor.set_cwd(&path) {
+        cx.editor
+            .set_error(format!("Could not change directory: {err}"));
+    }
+}
+
+fn file_manager_change_sort(cx: &mut Context) {
+    let doc_id = doc!(cx.editor).id();
+    if !cx.editor.is_directory_buffer(doc_id) {
+        cx.editor.set_error("Not a directory buffer");
+        return;
+    }
+    if let Err(err) = crate::file_manager::change_sort(cx.editor, doc_id) {
+        cx.editor.set_error(format!("{err}"));
+    }
+}
+
+fn file_manager_toggle_hidden(cx: &mut Context) {
+    let doc_id = doc!(cx.editor).id();
+    if !cx.editor.is_directory_buffer(doc_id) {
+        cx.editor.set_error("Not a directory buffer");
+        return;
+    }
+    if let Err(err) = crate::file_manager::toggle_hidden(cx.editor, doc_id) {
+        cx.editor.set_error(format!("{err}"));
+    }
+}
+
+fn file_manager_open_external(cx: &mut Context) {
+    let (view, doc) = current_ref!(cx.editor);
+    let doc_id = doc.id();
+    let view_id = view.id;
+    if !cx.editor.is_directory_buffer(doc_id) {
+        cx.editor.set_error("Not a directory buffer");
+        return;
+    }
+    let entry = match crate::file_manager::current_entry_path(cx.editor, doc_id, view_id) {
+        Ok(entry) => entry,
+        Err(err) => {
+            cx.editor.set_error(format!("{err}"));
+            return;
+        }
+    };
+    let Some((path, _is_dir)) = entry else { return };
+    let url = match Url::from_file_path(&path) {
+        Ok(url) => url,
+        Err(_) => {
+            cx.editor.set_error("Unable to open path");
+            return;
+        }
+    };
+    cx.jobs.callback(crate::open_external_url_callback(url));
 }
 
 fn buffer_picker(cx: &mut Context) {

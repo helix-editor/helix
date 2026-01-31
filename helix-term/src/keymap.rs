@@ -15,7 +15,7 @@ use std::{
     sync::Arc,
 };
 
-pub use default::default;
+pub use default::{default, file_manager_default};
 use macros::key;
 
 #[derive(Debug, Clone, Default)]
