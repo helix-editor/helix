@@ -264,9 +264,20 @@ impl Editor {
                                 }
                             }
                             "changed" => {
+                                let Some(id) = breakpoint.id else {
+                                    warn!("DAP breakpoint event missing id");
+                                    return false;
+                                };
+                                if let Some(source) = &breakpoint.source {
+                                    if source.path.is_none() {
+                                        warn!("DAP breakpoint event missing source path");
+                                    }
+                                }
+                                if breakpoint.line.is_none() {
+                                    warn!("DAP breakpoint event missing line");
+                                }
                                 for breakpoints in self.breakpoints.values_mut() {
-                                    if let Some(i) =
-                                        breakpoints.iter().position(|b| b.id == breakpoint.id)
+                                    if let Some(i) = breakpoints.iter().position(|b| b.id == Some(id))
                                     {
                                         breakpoints[i].verified = breakpoint.verified;
                                         breakpoints[i].message = breakpoint
@@ -283,9 +294,12 @@ impl Editor {
                                 }
                             }
                             "removed" => {
+                                let Some(id) = breakpoint.id else {
+                                    warn!("DAP breakpoint event missing id");
+                                    return false;
+                                };
                                 for breakpoints in self.breakpoints.values_mut() {
-                                    if let Some(i) =
-                                        breakpoints.iter().position(|b| b.id == breakpoint.id)
+                                    if let Some(i) = breakpoints.iter().position(|b| b.id == Some(id))
                                     {
                                         breakpoints.remove(i);
                                     }
