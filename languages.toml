@@ -3328,6 +3328,7 @@ file-types = [
   { glob = "_environment-*" }, # https://quarto.org/docs/projects/environment.html#profile-environments
   { glob = "_environment.local" }, # https://quarto.org/docs/projects/environment.html#local-environment
   { glob = "_environment.required" }, # https://quarto.org/docs/projects/environment.html#required-variables
+  { glob = ".bazeliskrc" }, # https://github.com/bazelbuild/bazelisk#bazeliskrc-configuration-file
 ]
 injection-regex = "env"
 comment-token = "#"
