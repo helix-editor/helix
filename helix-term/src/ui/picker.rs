@@ -689,17 +689,23 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 .min(snapshot.matched_item_count().saturating_sub(1))
         }
 
-        let text_style = cx.editor.theme.get(cx.editor.mode, "ui.text");
-        let selected = cx.editor.theme.get(cx.editor.mode, "ui.text.focus");
+        let text_style = cx.editor.theme.get(cx.editor.theme_context(), "ui.text");
+        let selected = cx
+            .editor
+            .theme
+            .get(cx.editor.theme_context(), "ui.text.focus");
         let highlight_style = cx
             .editor
             .theme
-            .get(cx.editor.mode, "special")
+            .get(cx.editor.theme_context(), "special")
             .add_modifier(Modifier::BOLD);
 
         // -- Render the frame:
         // clear area
-        let background = cx.editor.theme.get(cx.editor.mode, "ui.background");
+        let background = cx
+            .editor
+            .theme
+            .get(cx.editor.theme_context(), "ui.background");
         surface.clear_with(area, background);
 
         const BLOCK: Block<'_> = Block::bordered();
@@ -740,7 +746,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let sep_style = cx
             .editor
             .theme
-            .get(cx.editor.mode, "ui.background.separator");
+            .get(cx.editor.theme_context(), "ui.background.separator");
         let borders = BorderType::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
             if let Some(cell) = surface.get_mut(x, inner.y + 1) {
@@ -851,25 +857,29 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // -- Header
         if self.columns.len() > 1 {
             let active_column = self.query.active_column(self.prompt.position());
-            let header_style = cx.editor.theme.get(cx.editor.mode, "ui.picker.header");
+            let header_style = cx
+                .editor
+                .theme
+                .get(cx.editor.theme_context(), "ui.picker.header");
             let header_column_style = cx
                 .editor
                 .theme
-                .get(cx.editor.mode, "ui.picker.header.column");
+                .get(cx.editor.theme_context(), "ui.picker.header.column");
 
             table = table.header(
                 Row::new(self.columns.iter().map(|column| {
                     if column.hidden {
                         Cell::default()
                     } else {
-                        let style =
-                            if active_column.is_some_and(|name| Arc::ptr_eq(name, &column.name)) {
-                                cx.editor
-                                    .theme
-                                    .get(cx.editor.mode, "ui.picker.header.column.active")
-                            } else {
-                                header_column_style
-                            };
+                        let style = if active_column
+                            .is_some_and(|name| Arc::ptr_eq(name, &column.name))
+                        {
+                            cx.editor
+                                .theme
+                                .get(cx.editor.theme_context(), "ui.picker.header.column.active")
+                        } else {
+                            header_column_style
+                        };
 
                         Cell::from(Span::styled(Cow::from(&*column.name), style))
                     }
@@ -894,9 +904,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // -- Render the frame:
         // clear area
-        let background = cx.editor.theme.get(cx.editor.mode, "ui.background");
-        let text = cx.editor.theme.get(cx.editor.mode, "ui.text");
-        let directory = cx.editor.theme.get(cx.editor.mode, "ui.text.directory");
+        let background = cx
+            .editor
+            .theme
+            .get(cx.editor.theme_context(), "ui.background");
+        let text = cx.editor.theme.get(cx.editor.theme_context(), "ui.text");
+        let directory = cx
+            .editor
+            .theme
+            .get(cx.editor.theme_context(), "ui.text.directory");
         surface.clear_with(area, background);
 
         const BLOCK: Block<'_> = Block::bordered();
@@ -987,8 +1003,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 let style = cx
                     .editor
                     .theme
-                    .try_get(cx.editor.mode, "ui.highlight")
-                    .unwrap_or_else(|| cx.editor.theme.get(cx.editor.mode, "ui.selection"));
+                    .try_get(cx.editor.theme_context(), "ui.highlight")
+                    .unwrap_or_else(|| {
+                        cx.editor
+                            .theme
+                            .get(cx.editor.theme_context(), "ui.selection")
+                    });
                 let draw_highlight = move |renderer: &mut TextRenderer, pos: LinePos| {
                     if (start..=end).contains(&pos.doc_line) {
                         let area = Rect::new(

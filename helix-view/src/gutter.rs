@@ -52,10 +52,10 @@ pub fn diagnostic<'doc>(
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    let warning = theme.get(editor.mode, "warning");
-    let error = theme.get(editor.mode, "error");
-    let info = theme.get(editor.mode, "info");
-    let hint = theme.get(editor.mode, "hint");
+    let warning = theme.get(editor.theme_context(), "warning");
+    let error = theme.get(editor.theme_context(), "error");
+    let info = theme.get(editor.theme_context(), "info");
+    let hint = theme.get(editor.theme_context(), "hint");
     let diagnostics = &doc.diagnostics;
 
     Box::new(
@@ -94,9 +94,9 @@ pub fn diff<'doc>(
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    let added = theme.get(editor.mode, "diff.plus.gutter");
-    let deleted = theme.get(editor.mode, "diff.minus.gutter");
-    let modified = theme.get(editor.mode, "diff.delta.gutter");
+    let added = theme.get(editor.theme_context(), "diff.plus.gutter");
+    let deleted = theme.get(editor.theme_context(), "diff.minus.gutter");
+    let modified = theme.get(editor.theme_context(), "diff.delta.gutter");
     if let Some(diff_handle) = doc.diff_handle() {
         let hunks = diff_handle.load();
         let mut hunk_i = 0;
@@ -155,8 +155,8 @@ pub fn line_numbers<'doc>(
     // document or not.  We only draw it if it's not an empty line.
     let draw_last = text.line_to_byte(last_line_in_view) < text.len_bytes();
 
-    let linenr = theme.get(editor.mode, "ui.linenr");
-    let linenr_select = theme.get(editor.mode, "ui.linenr.selected");
+    let linenr = theme.get(editor.theme_context(), "ui.linenr");
+    let linenr_select = theme.get(editor.theme_context(), "ui.linenr.selected");
 
     let current_line = doc
         .text()
@@ -234,9 +234,9 @@ pub fn breakpoints<'doc>(
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    let error = theme.get(editor.mode, "error");
-    let info = theme.get(editor.mode, "info");
-    let breakpoint_style = theme.get(editor.mode, "ui.debug.breakpoint");
+    let error = theme.get(editor.theme_context(), "error");
+    let info = theme.get(editor.theme_context(), "info");
+    let breakpoint_style = theme.get(editor.theme_context(), "ui.debug.breakpoint");
 
     let breakpoints = doc.path().and_then(|path| editor.breakpoints.get(path));
 
@@ -277,7 +277,7 @@ fn execution_pause_indicator<'doc>(
     theme: &Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
-    let style = theme.get(editor.mode, "ui.debug.active");
+    let style = theme.get(editor.theme_context(), "ui.debug.active");
     let current_stack_frame = editor.current_stack_frame();
     let frame_line = current_stack_frame.map(|frame| frame.line.saturating_sub(1));
     let frame_source_path = current_stack_frame.map(|frame| {
