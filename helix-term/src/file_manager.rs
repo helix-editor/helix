@@ -316,7 +316,7 @@ pub fn current_entry_path(
         .text()
         .line(line)
         .to_string()
-        .trim_end_matches(|ch| ch == '\r' || ch == '\n')
+        .trim_end_matches(['\r', '\n'])
         .to_string();
 
     if is_parent_line(&line_text) {
@@ -380,7 +380,7 @@ fn read_directory_entries(
     Ok(entries)
 }
 
-fn sort_entries(entries: &mut Vec<DirectoryEntry>, sort: DirectorySort) {
+fn sort_entries(entries: &mut [DirectoryEntry], sort: DirectorySort) {
     let name = |entry: &DirectoryEntry| entry.relative_path.to_string_lossy().to_string();
     match sort {
         DirectorySort::TypeThenNameAsc => entries.sort_by(|a, b| {
@@ -399,8 +399,8 @@ fn sort_entries(entries: &mut Vec<DirectoryEntry>, sort: DirectorySort) {
                 type_ord
             }
         }),
-        DirectorySort::NameAsc => entries.sort_by(|a, b| name(a).cmp(&name(b))),
-        DirectorySort::NameDesc => entries.sort_by(|a, b| name(b).cmp(&name(a))),
+        DirectorySort::NameAsc => entries.sort_by_key(|entry| name(entry)),
+        DirectorySort::NameDesc => entries.sort_by_key(|entry| std::cmp::Reverse(name(entry))),
     }
 }
 
