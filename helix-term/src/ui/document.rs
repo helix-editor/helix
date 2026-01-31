@@ -245,7 +245,7 @@ impl<'a> TextRenderer<'a> {
             " ".to_owned()
         };
 
-        let text_style = theme.get(editor.mode, "ui.text");
+        let text_style = theme.get(editor.theme_context(), "ui.text");
 
         let indent_width = doc.indent_style.indent_width(tab_width) as u16;
 
@@ -258,15 +258,15 @@ impl<'a> TextRenderer<'a> {
             space,
             tab,
             virtual_tab,
-            whitespace_style: theme.get(editor.mode, "ui.virtual.whitespace"),
+            whitespace_style: theme.get(editor.theme_context(), "ui.virtual.whitespace"),
             indent_width,
             starting_indent: offset.col / indent_width as usize
                 + !offset.col.is_multiple_of(indent_width as usize) as usize
                 + editor_config.indent_guides.skip_levels as usize,
             indent_guide_style: text_style.patch(
                 theme
-                    .try_get(editor.mode, "ui.virtual.indent-guide")
-                    .unwrap_or_else(|| theme.get(editor.mode, "ui.virtual.whitespace")),
+                    .try_get(editor.theme_context(), "ui.virtual.indent-guide")
+                    .unwrap_or_else(|| theme.get(editor.theme_context(), "ui.virtual.whitespace")),
             ),
             text_style,
             draw_indent_guides: editor_config.indent_guides.render,
