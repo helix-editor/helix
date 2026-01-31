@@ -265,7 +265,7 @@ impl Default for FileExplorerConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FileManagerConfig {
     /// Show files and directories that start with ".". Defaults to false.
@@ -276,15 +276,6 @@ pub struct FileManagerConfig {
     pub sort: DirectorySort,
 }
 
-impl Default for FileManagerConfig {
-    fn default() -> Self {
-        Self {
-            show_hidden: false,
-            delete_to_trash: false,
-            sort: DirectorySort::default(),
-        }
-    }
-}
 
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
