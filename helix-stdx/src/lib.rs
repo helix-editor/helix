@@ -6,5 +6,6 @@ pub mod faccess;
 pub mod path;
 pub mod range;
 pub mod rope;
+pub mod string;
 
 pub use range::Range;
