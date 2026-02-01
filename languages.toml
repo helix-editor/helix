@@ -5293,7 +5293,6 @@ indent = { tab-width = 4, unit="    "}
 name = "klog"
 source = { git = "https://github.com/Ansimorph/tree-sitter-klog/", rev = "0b215fe75bdeb8368546e3cee36aca8c19212d06" }
 
-
 # https://docs.tilt.dev/editor.html
 [[language]]
 name = "tilt"
@@ -5306,3 +5305,19 @@ indent = { tab-width = 4, unit = "    " }
 language-servers = ["tilt"]
 formatter = {command = "buildifier"} # Official formatter tool for starlark/bazel
 auto-format = true
+
+[[language]]
+name = "gnuplot"
+scope = "source.gnuplot"
+file-types = [ "gnuplot", "plot", "plt" ]
+injection-regex = "gnuplot"
+indent = { tab-width = 4, unit="    "}
+comment-token = "#"
+[language.auto-pairs]
+'(' = ')'
+'"' = '"'
+"'" = "'"
+
+[[grammar]]
+name = "gnuplot"
+source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
