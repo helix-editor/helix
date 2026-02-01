@@ -11,6 +11,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
 pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
+pub type EditorCallbackFollowup = Box<dyn FnOnce(&mut Editor) -> Option<Job> + Send>;
 
 runtime_local! {
     static JOB_QUEUE: OnceCell<Sender<Callback>> = OnceCell::new();
@@ -35,6 +36,7 @@ pub fn dispatch_blocking(job: impl FnOnce(&mut Editor, &mut Compositor) + Send +
 pub enum Callback {
     EditorCompositor(EditorCompositorCallback),
     Editor(EditorCallback),
+    Followup(EditorCallbackFollowup),
 }
 
 pub type JobFuture = BoxFuture<'static, anyhow::Result<Option<Callback>>>;
@@ -104,15 +106,23 @@ impl Jobs {
         editor: &mut Editor,
         compositor: &mut Compositor,
         call: anyhow::Result<Option<Callback>>,
-    ) {
+    ) -> Option<Job> {
         match call {
-            Ok(None) => {}
+            Ok(None) => None,
             Ok(Some(call)) => match call {
-                Callback::EditorCompositor(call) => call(editor, compositor),
-                Callback::Editor(call) => call(editor),
+                Callback::EditorCompositor(call) => {
+                    call(editor, compositor);
+                    None
+                }
+                Callback::Editor(call) => {
+                    call(editor);
+                    None
+                }
+                Callback::Followup(call) => call(editor),
             },
             Err(e) => {
                 editor.set_error(format!("Async job failed: {}", e));
+                None
             }
         }
     }
@@ -148,14 +158,23 @@ impl Jobs {
                     if let Some(callback) = callback {
                         // clippy doesn't realize this is an error without the derefs
                         #[allow(clippy::needless_option_as_deref)]
-                        match callback {
+                        if let Some(job) = match callback {
                             Callback::EditorCompositor(call) if compositor.is_some() => {
-                                call(editor, compositor.as_deref_mut().unwrap())
+                                call(editor, compositor.as_deref_mut().unwrap());
+                                None
                             }
-                            Callback::Editor(call) => call(editor),
+                            Callback::Editor(call) => {
+                                call(editor);
+                                None
+                            }
+                            Callback::Followup(call) => call(editor),
 
                             // skip callbacks for which we don't have the necessary references
-                            _ => (),
+                            _ => None,
+                        } {
+                            if job.wait {
+                                self.wait_futures.push(job.future);
+                            }
                         }
                     }
                 }
