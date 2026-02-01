@@ -443,6 +443,30 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_write_quit_auto_format_exits_after_format() -> anyhow::Result<()> {
+    let mut file = tempfile::Builder::new().suffix(".rs").tempfile()?;
+
+    let lang_conf = indoc! {r#"
+            [[language]]
+            name = "rust"
+            formatter = { command = "bash", args = [ "-c", "echo new content" ] }
+        "#};
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("#[l|]#et foo = 0;\n")
+        .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf.into())))
+        .build()?;
+
+    test_key_sequences(&mut app, vec![(Some(":x<ret>"), None)], true).await?;
+
+    // file saves with new content and editor exits after save
+    helpers::assert_file_has_content(&mut file, "new content\n")?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_new_path() -> anyhow::Result<()> {
     let mut file1 = tempfile::NamedTempFile::new().unwrap();
     let mut file2 = tempfile::NamedTempFile::new().unwrap();
