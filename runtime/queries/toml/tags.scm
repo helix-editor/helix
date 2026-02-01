@@ -1,2 +1,2 @@
-(table "[" (bare_key) @definition.struct "]")
-(table "[" (dotted_key) @definition.struct "]")
+(table "[" (bare_key) @definition.section "]")
+(table "[" (dotted_key) @definition.section "]")
