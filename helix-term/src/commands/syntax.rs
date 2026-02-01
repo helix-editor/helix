@@ -338,11 +338,9 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
                         Ok(entry) => entry,
                         Err(_) => return WalkState::Continue,
                     };
-                    match entry.file_type() {
-                        Some(entry) if entry.is_file() => {}
-                        // skip everything else
-                        _ => return WalkState::Continue,
-                    };
+                    if !entry.path().is_file() {
+                        return WalkState::Continue;
+                    }
                     let path = entry.path();
                     // If this document is open, skip it because we've already processed it above.
                     if documents.contains(path) {

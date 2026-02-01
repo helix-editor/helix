@@ -19,6 +19,7 @@
 | bovex | ✓ |  |  |  | ✓ |  |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp`, `csharp-ls` |
+| c3 | ✓ |  |  |  |  | `c3-lsp` |
 | cabal |  |  |  |  |  | `haskell-language-server-wrapper` |
 | caddyfile | ✓ | ✓ | ✓ |  |  |  |
 | cairo | ✓ | ✓ | ✓ |  |  | `cairo-language-server` |
@@ -205,10 +206,12 @@
 | pascal | ✓ | ✓ |  |  |  | `pasls` |
 | passwd | ✓ |  |  |  |  |  |
 | pem | ✓ |  |  |  |  |  |
+| penrose | ✓ | ✓ |  |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |  | `perlnavigator` |
 | pest | ✓ | ✓ | ✓ |  |  | `pest-language-server` |
 | php | ✓ | ✓ | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  | ✓ |  |  |
+| picat | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | pip-requirements | ✓ |  |  |  |  |  |
 | pkgbuild | ✓ | ✓ | ✓ |  |  | `termux-language-server`, `bash-language-server` |
 | pkl | ✓ |  | ✓ |  |  | `pkl-lsp` |
@@ -235,7 +238,7 @@
 | rescript | ✓ | ✓ |  |  |  | `rescript-language-server` |
 | ripple | ✓ |  |  | ✓ | ✓ | `ripple-language-server` |
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
-| robot | ✓ |  |  |  |  | `robotframework_ls` |
+| robot | ✓ |  |  |  |  | `robotcode`, `robotframework_ls` |
 | robots.txt | ✓ | ✓ |  | ✓ |  |  |
 | ron | ✓ |  | ✓ | ✓ | ✓ | `ron-lsp` |
 | rpmspec | ✓ |  |  |  |  |  |
@@ -284,9 +287,10 @@
 | textproto | ✓ | ✓ | ✓ |  |  |  |
 | tfvars | ✓ |  | ✓ |  |  | `terraform-ls` |
 | thrift | ✓ |  |  |  |  |  |
+| tilt | ✓ | ✓ | ✓ |  | ✓ | `tilt` |
 | tlaplus | ✓ |  |  |  |  |  |
 | todotxt | ✓ |  |  |  |  |  |
-| toml | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
+| toml | ✓ | ✓ |  | ✓ | ✓ | `taplo`, `tombi` |
 | tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |  |  |

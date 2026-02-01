@@ -2581,11 +2581,9 @@ fn global_search(cx: &mut Context) {
                             Err(_) => return WalkState::Continue,
                         };
 
-                        match entry.file_type() {
-                            Some(entry) if entry.is_file() => {}
-                            // skip everything else
-                            _ => return WalkState::Continue,
-                        };
+                        if !entry.path().is_file() {
+                            return WalkState::Continue;
+                        }
 
                         let mut stop = false;
                         let sink = sinks::UTF8(|line_num, _line_content| {
@@ -6867,6 +6865,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                 } else {
                     range.with_direction(Direction::Forward)
                 };
+                save_selection(cx);
                 doc_mut!(cx.editor, &doc).set_selection(view, range.into());
             }
         });

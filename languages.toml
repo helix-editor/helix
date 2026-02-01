@@ -20,6 +20,7 @@ beancount-language-server = { command = "beancount-language-server" }
 bicep-langserver = { command = "bicep-langserver" }
 bitbake-language-server = { command = "bitbake-language-server" }
 buf = { command = "buf", args = ["lsp", "serve", "--timeout", "0"] }
+c3-lsp = { command = "c3-lsp" }
 cairo-language-server = { command = "cairo-language-server", args = [] }
 circom-lsp = { command = "circom-lsp" }
 cl-lsp = { command = "cl-lsp" }
@@ -119,6 +120,7 @@ racket = { command = "racket", args = ["-l", "racket-langserver"] }
 regols = { command = "regols" }
 rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
 ripple-lsp = { command = "ripple-language-server", args = ["--stdio"] }
+robotcode = { command = "robotcode", args = ["language-server", "--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
 ron-lsp = { command = "ron-lsp" }
 ruff = { command = "ruff", args = ["server"] }
@@ -143,6 +145,7 @@ taplo = { command = "taplo", args = ["lsp", "stdio"] }
 templ = { command = "templ", args = ["lsp"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
+tilt = { command = "tilt", args = ["lsp", "start"] }
 tombi = { command = "tombi", args = ["lsp"] }
 ty = { command = "ty", args = ["server"] }
 typespec = { command = "tsp-server", args = ["--stdio"] }
@@ -775,6 +778,47 @@ args = { processId = "{0}" }
 [[grammar]]
 name = "c-sharp"
 source = { git = "https://github.com/tree-sitter/tree-sitter-c-sharp", rev = "b5eb5742f6a7e9438bee22ce8026d6b927be2cd7" }
+
+[[language]]
+name = "c3"
+scope = "source.c3"
+injection-regex = "c3"
+file-types = [ "c3", "c3i", "c3t" ]
+roots = [ "project.json" ]
+comment-token = "//"
+block-comment-tokens = [
+  { start = "/*", end = "*/" },
+  { start = "<*", end = "*>" },
+]
+indent = { tab-width = 4, unit = "\t" }
+language-servers = [ "c3-lsp" ]
+
+[language.debugger]
+name = "lldb-dap"
+transport = "stdio"
+command = "lldb-dap"
+
+[[language.debugger.templates]]
+name = "binary"
+request = "launch"
+completion = [ { name = "binary", completion = "filename" } ]
+args = { console = "internalConsole", program = "{0}" }
+
+[[language.debugger.templates]]
+name = "attach"
+request = "attach"
+completion = [ "pid" ]
+args = { console = "internalConsole", pid = "{0}" }
+
+[[language.debugger.templates]]
+name = "gdbserver attach"
+request = "attach"
+completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
+args = { console = "internalConsole", attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
+
+[[grammar]]
+name = "c3"
+source = { git = "https://github.com/c3lang/tree-sitter-c3", rev = "15d3502510af0a6c888c663ec8d6aca8791216ce" }
 
 [[language]]
 name = "cel"
@@ -1740,6 +1784,21 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 name = "zig"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev = "6479aa13f32f701c383083d8b28360ebd682fb7d" }
 
+[[grammar]]
+name = "picat"
+source = { git = "https://github.com/dlr-ft/tree-sitter-picat", rev = "ecb6b07d280f2cef8214bc4b999ad83ac1d9205c" }
+
+[[language]]
+name = "picat"
+scope = "source.picat"
+injection-regex = "(pi|picat)"
+language-id = "picat"
+file-types = ["pi", "picat"]
+shebangs = ["picat"]
+comment-token = "%"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
 [[language]]
 name = "prolog"
 scope = "source.prolog"
@@ -1812,6 +1871,18 @@ injection-regex = "glsl"
 [[grammar]]
 name = "glsl"
 source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "88408ffc5e27abcffced7010fc77396ae3636d7e" }
+
+[[language]]
+name = "penrose"
+scope = "source.penrose"
+auto-format = false
+file-types = ["substance", "style", "domain"]
+comment-tokens = "--"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "penrose"
+source = { git = "https://github.com/klukaszek/tree-sitter-penrose", rev = "d9368ff7f743b2ac2145a3342db13b1ad950cba5" }
 
 [[language]]
 name = "perl"
@@ -2388,7 +2459,7 @@ injection-regex = "robot"
 file-types = ["robot", "resource"]
 comment-token = "#"
 indent = { tab-width = 4, unit = " " }
-language-servers = [ "robotframework_ls" ]
+language-servers = [ "robotcode", "robotframework_ls" ]
 
 [[grammar]]
 name = "robot"
@@ -2808,7 +2879,7 @@ source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569
 name = "starlark"
 scope = "source.starlark"
 injection-regex = "(starlark|bzl|bazel|buck)"
-file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUCK" }, { glob = "BUILD.*" }, { glob = "Tiltfile" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }, { glob = "PACKAGE" }]
+file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUCK" }, { glob = "BUILD.*" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }, { glob = "PACKAGE" }]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = [ "starpls" ]
@@ -3258,6 +3329,7 @@ file-types = [
   { glob = "_environment-*" }, # https://quarto.org/docs/projects/environment.html#profile-environments
   { glob = "_environment.local" }, # https://quarto.org/docs/projects/environment.html#local-environment
   { glob = "_environment.required" }, # https://quarto.org/docs/projects/environment.html#required-variables
+  { glob = ".bazeliskrc" }, # https://github.com/bazelbuild/bazelisk#bazeliskrc-configuration-file
 ]
 injection-regex = "env"
 comment-token = "#"
@@ -5220,6 +5292,19 @@ indent = { tab-width = 4, unit="    "}
 [[grammar]]
 name = "klog"
 source = { git = "https://github.com/Ansimorph/tree-sitter-klog/", rev = "0b215fe75bdeb8368546e3cee36aca8c19212d06" }
+
+# https://docs.tilt.dev/editor.html
+[[language]]
+name = "tilt"
+scope = "source.tilt"
+injection-regex = "[Tt]ilt(file)?"
+file-types = [{ glob = "Tiltfile" }, "tiltfile"]
+comment-token = "#"
+grammar = "python" # Uses starlark as grammar
+indent = { tab-width = 4, unit = "    " }
+language-servers = ["tilt"]
+formatter = {command = "buildifier"} # Official formatter tool for starlark/bazel
+auto-format = true
 
 [[language]]
 name = "gnuplot"
