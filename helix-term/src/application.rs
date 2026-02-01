@@ -339,7 +339,9 @@ impl Application {
                     self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.callbacks.recv() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback)));
+                    if let Some(job) = self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback))) {
+                        self.jobs.add(job);
+                    }
                     self.render().await;
                 }
                 Some(msg) = self.jobs.status_messages.recv() => {
@@ -354,7 +356,9 @@ impl Application {
                     helix_event::request_redraw();
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    if let Some(job) = self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback) {
+                        self.jobs.add(job);
+                    }
                     self.render().await;
                 }
                 event = self.editor.wait_event() => {
