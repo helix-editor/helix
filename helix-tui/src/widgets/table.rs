@@ -4,7 +4,7 @@ use crate::{
     text::Text,
     widgets::{Block, Widget},
 };
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::unicode;
 use helix_view::graphics::{Rect, Style};
 
 /// A [`Cell`] contains the [`Text`] to be displayed in a [`Row`] of a [`Table`].
@@ -273,8 +273,10 @@ impl<'a> Table<'a> {
     fn get_columns_widths(&self, max_width: u16, has_selection: bool) -> Vec<u16> {
         let mut constraints = Vec::with_capacity(self.widths.len() * 2 + 1);
         if has_selection {
-            let highlight_symbol_width =
-                self.highlight_symbol.map(|s| s.width() as u16).unwrap_or(0);
+            let highlight_symbol_width = self
+                .highlight_symbol
+                .map(|s| unicode::width(s) as u16)
+                .unwrap_or(0);
             constraints.push(Constraint::Length(highlight_symbol_width));
         }
         for constraint in self.widths {
@@ -384,7 +386,7 @@ impl Table<'_> {
         let has_selection = state.selected.is_some();
         let columns_widths = self.get_columns_widths(table_area.width, has_selection);
         let highlight_symbol = self.highlight_symbol.unwrap_or("");
-        let blank_symbol = " ".repeat(highlight_symbol.width());
+        let blank_symbol = " ".repeat(unicode::width(highlight_symbol));
         let mut current_height = 0;
         let mut rows_height = table_area.height;
 
@@ -402,7 +404,7 @@ impl Table<'_> {
             );
             let mut col = table_area.left();
             if has_selection {
-                col += (highlight_symbol.width() as u16).min(table_area.width);
+                col += (unicode::width(highlight_symbol) as u16).min(table_area.width);
             }
             for (width, cell) in columns_widths.iter().zip(header.cells.iter()) {
                 render_cell(

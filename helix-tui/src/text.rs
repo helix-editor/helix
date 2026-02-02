@@ -46,8 +46,7 @@
 //!     Span::raw(" title"),
 //! ]);
 //! ```
-use helix_core::line_ending::str_is_line_ending;
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::{line_ending::str_is_line_ending, unicode};
 use helix_view::graphics::Style;
 use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
@@ -108,8 +107,10 @@ impl<'a> Span<'a> {
     }
 
     /// Returns the width of the content held by this span.
+    #[inline]
+    #[must_use]
     pub fn width(&self) -> usize {
-        self.content.width()
+        unicode::width(&self.content)
     }
 
     /// Returns an iterator over the graphemes held by this span.
