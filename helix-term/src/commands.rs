@@ -1327,17 +1327,54 @@ fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
 }
 
-/// Returns true when a selection overlaps an LSP document link range.
-fn selection_overlaps_document_link(
-    selection: &Range,
-    link: &helix_view::document::DocumentLink,
-) -> bool {
-    if selection.is_empty() {
-        let pos = selection.from();
-        link.start <= pos && pos < link.end
-    } else {
-        selection.from() < link.end && selection.to() > link.start
+/// Request document links for the current document.
+fn request_document_links(doc: &Document) -> Vec<helix_view::document::DocumentLink> {
+    let text = doc.text().clone();
+    let mut seen_language_servers = HashSet::new();
+    let mut links = Vec::new();
+
+    for language_server in doc
+        .language_servers_with_feature(LanguageServerFeature::DocumentLinks)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
+    {
+        let offset_encoding = language_server.offset_encoding();
+        let language_server_id = language_server.id();
+        let Some(future) = language_server.text_document_document_link(doc.identifier(), None)
+        else {
+            continue;
+        };
+
+        match helix_lsp::block_on(future) {
+            Ok(Some(items)) => {
+                for link in items {
+                    let Some(start) =
+                        helix_lsp::util::lsp_pos_to_pos(&text, link.range.start, offset_encoding)
+                    else {
+                        continue;
+                    };
+                    let Some(end) =
+                        helix_lsp::util::lsp_pos_to_pos(&text, link.range.end, offset_encoding)
+                    else {
+                        continue;
+                    };
+                    if start > end {
+                        continue;
+                    }
+                    links.push(helix_view::document::DocumentLink {
+                        start,
+                        end,
+                        link,
+                        language_server_id,
+                    });
+                }
+            }
+            Ok(None) => {}
+            Err(err) => log::error!("document link request failed: {err}"),
+        }
     }
+
+    links.sort_by_key(|link| (link.start, link.end));
+    links
 }
 
 /// Resolve a document link target, using the LSP resolve request when needed.
@@ -1383,13 +1420,21 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let mut lsp_targets_seen = HashSet::new();
     let mut fallback_ranges = Vec::new();
 
-    if doc.document_links.is_empty() {
+    let document_links = request_document_links(doc);
+
+    if document_links.is_empty() {
         fallback_ranges.extend_from_slice(&selections);
     } else {
         for selection in &selections {
             let mut matched = false;
-            for link in &doc.document_links {
-                if !selection_overlaps_document_link(selection, link) {
+            for link in &document_links {
+                let overlaps = if selection.is_empty() {
+                    let pos = selection.from();
+                    link.start <= pos && pos < link.end
+                } else {
+                    selection.from() < link.end && selection.to() > link.start
+                };
+                if !overlaps {
                     continue;
                 }
                 matched = true;
