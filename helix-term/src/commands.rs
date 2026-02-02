@@ -5455,7 +5455,7 @@ fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
             (selection.primary_index() + ranges.len() - rotate_by) % ranges.len()
         }
         ReorderStrategy::Reverse => {
-            if rotate_by % 2 == 0 {
+            if rotate_by.is_multiple_of(2) {
                 // nothing changed, if we reverse something an even
                 // amount of times, the output will be the same
                 return;
