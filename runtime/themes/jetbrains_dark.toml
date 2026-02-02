@@ -5,6 +5,7 @@
 string = "green171"
 comment = "blue133"
 "comment.block.documentation" = "green130"
+"comment.line.documentation" = "green130"
 "variable.builtin" = "red207"
 "variable.other.member" = "red199"
 label = "red199"
@@ -46,7 +47,8 @@ tag = "red213"
 "ui.menu" = { bg = "blue48" }
 "ui.menu.selected" = { bg = "blue110" }
 "ui.menu.scroll" = { fg = "blue81", bg = "blue48" }
-"ui.selection" = { bg = "blue131" }
+"ui.selection" = { fg = "black", bg = "blue214" }
+"ui.selection.primary" = { bg = "blue131" }
 "ui.cursorline.primary" = { bg = "blue46" }
 "ui.cursorline.secondary" = { bg = "blue46" }
 "ui.cursorcolumn.primary" = { bg = "blue46" }
@@ -95,5 +97,6 @@ blue171 = "#A1A3AB"
 blue173 = "#375fad"
 blue184 = "#2aacb8"
 blue196 = "#bcbec4"
+blue214 = "#ced0d6"
 blue245 = "#56a8f5"
 blue247 = "#57aaf7"

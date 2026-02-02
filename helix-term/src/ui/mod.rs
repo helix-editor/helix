@@ -9,6 +9,7 @@ pub mod overlay;
 pub mod picker;
 pub mod popup;
 pub mod prompt;
+mod select;
 mod spinner;
 mod statusline;
 mod text;
@@ -26,6 +27,7 @@ pub use menu::Menu;
 pub use picker::{Column as PickerColumn, FileLocation, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
+pub use select::Select;
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
@@ -38,6 +40,7 @@ use std::{error::Error, path::PathBuf};
 struct Utf8PathBuf {
     path: String,
     is_dir: bool,
+    is_symlink: bool,
 }
 
 impl AsRef<str> for Utf8PathBuf {
@@ -185,6 +188,22 @@ pub fn raw_regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
+/// We want to exclude files that the editor can't handle yet
+fn get_excluded_types() -> ignore::types::Types {
+    use ignore::types::TypesBuilder;
+    let mut type_builder = TypesBuilder::new();
+    type_builder
+        .add(
+            "compressed",
+            "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
+        )
+        .expect("Invalid type definition");
+    type_builder.negate("all");
+    type_builder
+        .build()
+        .expect("failed to build excluded_types")
+}
+
 #[derive(Debug)]
 pub struct FilePickerData {
     root: PathBuf,
@@ -193,7 +212,7 @@ pub struct FilePickerData {
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
 pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
-    use ignore::{types::TypesBuilder, WalkBuilder};
+    use ignore::WalkBuilder;
     use std::time::Instant;
 
     let config = editor.config();
@@ -208,7 +227,8 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
 
     let mut walk_builder = WalkBuilder::new(&root);
-    walk_builder
+
+    let mut files = walk_builder
         .hidden(config.file_picker.hidden)
         .parents(config.file_picker.parents)
         .ignore(config.file_picker.ignore)
@@ -218,31 +238,18 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .git_exclude(config.file_picker.git_exclude)
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .max_depth(config.file_picker.max_depth)
-        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
-
-    walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
-    walk_builder.add_custom_ignore_filename(".helix/ignore");
-
-    // We want to exclude files that the editor can't handle yet
-    let mut type_builder = TypesBuilder::new();
-    type_builder
-        .add(
-            "compressed",
-            "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
-        )
-        .expect("Invalid type definition");
-    type_builder.negate("all");
-    let excluded_types = type_builder
+        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks))
+        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
+        .add_custom_ignore_filename(".helix/ignore")
+        .types(get_excluded_types())
         .build()
-        .expect("failed to build excluded_types");
-    walk_builder.types(excluded_types);
-    let mut files = walk_builder.build().filter_map(|entry| {
-        let entry = entry.ok()?;
-        if !entry.file_type()?.is_file() {
-            return None;
-        }
-        Some(entry.into_path())
-    });
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            if !entry.path().is_file() {
+                return None;
+            }
+            Some(entry.into_path())
+        });
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
     let columns = [PickerColumn::new(
@@ -304,7 +311,7 @@ type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
-    let directory_content = directory_content(&root)?;
+    let directory_content = directory_content(&root, editor)?;
 
     let columns = [PickerColumn::new(
         "path",
@@ -350,22 +357,62 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     Ok(picker)
 }
 
-fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
-    let mut content: Vec<_> = std::fs::read_dir(path)?
-        .flatten()
-        .map(|entry| {
-            (
-                entry.path(),
-                entry.file_type().is_ok_and(|file_type| file_type.is_dir()),
-            )
+fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+    use ignore::WalkBuilder;
+
+    let config = editor.config();
+
+    let mut walk_builder = WalkBuilder::new(root);
+
+    let mut content: Vec<(PathBuf, bool)> = walk_builder
+        .hidden(config.file_explorer.hidden)
+        .parents(config.file_explorer.parents)
+        .ignore(config.file_explorer.ignore)
+        .follow_links(config.file_explorer.follow_symlinks)
+        .git_ignore(config.file_explorer.git_ignore)
+        .git_global(config.file_explorer.git_global)
+        .git_exclude(config.file_explorer.git_exclude)
+        .max_depth(Some(1))
+        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
+        .add_custom_ignore_filename(".helix/ignore")
+        .types(get_excluded_types())
+        .build()
+        .filter_map(|entry| {
+            entry
+                .map(|entry| {
+                    let path = entry.path();
+                    let is_dir = path.is_dir();
+                    let mut path = path.to_path_buf();
+                    if is_dir && path != root && config.file_explorer.flatten_dirs {
+                        while let Some(single_child_directory) = get_child_if_single_dir(&path) {
+                            path = single_child_directory;
+                        }
+                    }
+                    (path, is_dir)
+                })
+                .ok()
+                .filter(|entry| entry.0 != root)
         })
         .collect();
 
     content.sort_by(|(path1, is_dir1), (path2, is_dir2)| (!is_dir1, path1).cmp(&(!is_dir2, path2)));
-    if path.parent().is_some() {
-        content.insert(0, (path.join(".."), true));
+
+    if root.parent().is_some() {
+        content.insert(0, (root.join(".."), true));
     }
+
     Ok(content)
+}
+
+fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
+    let mut entries = path.read_dir().ok()?;
+    let entry = entries.next()?.ok()?;
+    let entry_path = entry.path();
+    if entries.next().is_none() && entry_path.is_dir() {
+        Some(entry_path)
+    } else {
+        None
+    }
 }
 
 pub mod completers {
@@ -482,9 +529,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
-            if is_dir {
+            if entry.path().is_dir() {
                 FileMatch::AcceptIncomplete
             } else {
                 FileMatch::Accept
@@ -533,9 +578,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
-            if is_dir {
+            if entry.path().is_dir() {
                 FileMatch::Accept
             } else {
                 FileMatch::Reject
@@ -614,9 +657,10 @@ pub mod completers {
                         return None;
                     }
 
-                    let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
                     let path = entry.path();
+                    let is_dir = path.is_dir();
+                    let file_type = entry.file_type();
+                    let is_symlink = file_type.is_some_and(|ft| ft.is_symlink());
                     let mut path = if is_tilde {
                         // if it's a single tilde an absolute path is displayed so that when `TAB` is pressed on
                         // one of the directories the tilde will be replaced with a valid path not with a relative
@@ -633,15 +677,22 @@ pub mod completers {
                     }
 
                     let path = path.into_os_string().into_string().ok()?;
-                    Some(Utf8PathBuf { path, is_dir })
+                    Some(Utf8PathBuf {
+                        path,
+                        is_dir,
+                        is_symlink,
+                    })
                 })
             }) // TODO: unwrap or skip
             .filter(|path| !path.path.is_empty());
 
         let directory_color = editor.theme.get("ui.text.directory");
+        let symlink_color = editor.theme.get("ui.text.symlink");
 
         let style_from_file = |file: Utf8PathBuf| {
-            if file.is_dir {
+            if file.is_symlink {
+                Span::styled(file.path, symlink_color)
+            } else if file.is_dir {
                 Span::styled(file.path, directory_color)
             } else {
                 Span::raw(file.path)
@@ -692,7 +743,8 @@ pub mod completers {
                 .flatten()
                 .filter_map(|res| {
                     let entry = res.ok()?;
-                    if entry.metadata().ok()?.is_file() {
+                    let metadata = entry.metadata().ok()?;
+                    if metadata.is_file() || metadata.is_symlink() {
                         entry.file_name().into_string().ok()
                     } else {
                         None
@@ -737,5 +789,29 @@ pub mod completers {
         }
 
         completions
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs::{create_dir, File};
+
+    use super::*;
+
+    #[test]
+    fn test_get_child_if_single_dir() {
+        let root = tempfile::tempdir().unwrap();
+
+        assert_eq!(get_child_if_single_dir(root.path()), None);
+
+        let dir = root.path().join("dir1");
+        create_dir(&dir).unwrap();
+
+        assert_eq!(get_child_if_single_dir(root.path()), Some(dir));
+
+        let file = root.path().join("file");
+        File::create(file).unwrap();
+
+        assert_eq!(get_child_if_single_dir(root.path()), None);
     }
 }

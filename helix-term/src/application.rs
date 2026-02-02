@@ -30,31 +30,40 @@ use crate::{
 };
 
 use log::{debug, error, info, warn};
-#[cfg(not(feature = "integration"))]
-use std::io::stdout;
-use std::{io::stdin, path::Path, sync::Arc};
+use std::{
+    io::{stdin, IsTerminal},
+    path::Path,
+    sync::Arc,
+};
 
-#[cfg(not(windows))]
-use anyhow::Context;
-use anyhow::Error;
+#[cfg_attr(windows, allow(unused_imports))]
+use anyhow::{Context, Error};
 
-use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(all(not(windows), not(feature = "integration")))]
+use tui::backend::TerminaBackend;
+
+#[cfg(all(windows, not(feature = "integration")))]
 use tui::backend::CrosstermBackend;
 
 #[cfg(feature = "integration")]
 use tui::backend::TestBackend;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(all(not(windows), not(feature = "integration")))]
+type TerminalBackend = TerminaBackend;
+#[cfg(all(windows, not(feature = "integration")))]
 type TerminalBackend = CrosstermBackend<std::io::Stdout>;
-
 #[cfg(feature = "integration")]
 type TerminalBackend = TestBackend;
+
+#[cfg(not(windows))]
+type TerminalEvent = termina::Event;
+#[cfg(windows)]
+type TerminalEvent = crossterm::event::Event;
 
 type Terminal = tui::terminal::Terminal<TerminalBackend>;
 
@@ -68,6 +77,8 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+
+    theme_mode: Option<theme::Mode>,
 }
 
 #[cfg(feature = "integration")]
@@ -103,14 +114,18 @@ impl Application {
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
-        #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
+        #[cfg(all(not(windows), not(feature = "integration")))]
+        let backend = TerminaBackend::new((&config.editor).into())
+            .context("failed to create terminal backend")?;
+        #[cfg(all(windows, not(feature = "integration")))]
+        let backend = CrosstermBackend::new(std::io::stdout(), (&config.editor).into());
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
 
+        let theme_mode = backend.get_theme_mode();
         let terminal = Terminal::new(backend)?;
-        let area = terminal.size().expect("couldn't get terminal size");
+        let area = terminal.size();
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
@@ -123,13 +138,20 @@ impl Application {
             })),
             handlers,
         );
-        Self::load_configured_theme(&mut editor, &config.load());
+        Self::load_configured_theme(
+            &mut editor,
+            &config.load(),
+            terminal.backend().supports_true_color(),
+            theme_mode,
+        );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
         let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
         compositor.push(editor_view);
+
+        let jobs = Jobs::new();
 
         if args.load_tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
@@ -240,8 +262,9 @@ impl Application {
             editor,
             config,
             signals,
-            jobs: Jobs::new(),
+            jobs,
             lsp_progress: LspProgressMap::new(),
+            theme_mode,
         };
 
         Ok(app)
@@ -282,7 +305,7 @@ impl Application {
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         self.render().await;
 
@@ -295,7 +318,7 @@ impl Application {
 
     pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -356,6 +379,8 @@ impl Application {
     }
 
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
+        let old_editor_config = self.editor.config();
+
         match config_event {
             ConfigEvent::Refresh => self.refresh_config(),
 
@@ -365,7 +390,7 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
-                if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
+                if let Err(err) = self.terminal.reconfigure((&app_config.editor).into()) {
                     self.editor.set_error(err.to_string());
                 };
                 self.config.store(Arc::new(app_config));
@@ -374,7 +399,7 @@ impl Application {
 
         // Update all the relevant members in the editor after updating
         // the configuration.
-        self.editor.refresh_config();
+        self.editor.refresh_config(&old_editor_config);
 
         // reset view position in case softwrap was enabled/disabled
         let scrolloff = self.editor.config().scrolloff;
@@ -384,34 +409,38 @@ impl Application {
         }
     }
 
-    /// refresh language config after config change
-    fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let lang_loader = helix_core::config::user_lang_loader()?;
-
-        self.editor.syn_loader.store(Arc::new(lang_loader));
-        let loader = self.editor.syn_loader.load();
-        for document in self.editor.documents.values_mut() {
-            document.detect_language(&loader);
-            let diagnostics = Editor::doc_diagnostics(
-                &self.editor.language_servers,
-                &self.editor.diagnostics,
-                document,
-            );
-            document.replace_diagnostics(diagnostics, &[], None);
-        }
-
-        Ok(())
-    }
-
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
-            self.refresh_language_config()?;
-            // Refresh theme after config change
-            Self::load_configured_theme(&mut self.editor, &default_config);
-            self.terminal
-                .reconfigure(default_config.editor.clone().into())?;
+
+            // Update the syntax language loader before setting the theme. Setting the theme will
+            // call `Loader::set_scopes` which must be done before the documents are re-parsed for
+            // the sake of locals highlighting.
+            let lang_loader = helix_core::config::user_lang_loader()?;
+            self.editor.syn_loader.store(Arc::new(lang_loader));
+            Self::load_configured_theme(
+                &mut self.editor,
+                &default_config,
+                self.terminal.backend().supports_true_color(),
+                self.theme_mode,
+            );
+
+            // Re-parse any open documents with the new language config.
+            let lang_loader = self.editor.syn_loader.load();
+            for document in self.editor.documents.values_mut() {
+                // Re-detect .editorconfig
+                document.detect_editor_config();
+                document.detect_language(&lang_loader);
+                let diagnostics = Editor::doc_diagnostics(
+                    &self.editor.language_servers,
+                    &self.editor.diagnostics,
+                    document,
+                );
+                document.replace_diagnostics(diagnostics, &[], None);
+            }
+
+            self.terminal.reconfigure((&default_config.editor).into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -428,12 +457,18 @@ impl Application {
     }
 
     /// Load the theme set in configuration
-    fn load_configured_theme(editor: &mut Editor, config: &Config) {
-        let true_color = config.editor.true_color || crate::true_color();
+    fn load_configured_theme(
+        editor: &mut Editor,
+        config: &Config,
+        terminal_true_color: bool,
+        mode: Option<theme::Mode>,
+    ) {
+        let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
         let theme = config
             .theme
             .as_ref()
-            .and_then(|theme| {
+            .and_then(|theme_config| {
+                let theme = theme_config.choose(mode);
                 editor
                     .theme_loader
                     .load(theme)
@@ -501,7 +536,7 @@ impl Application {
                 // https://github.com/neovim/neovim/issues/12322
                 // https://github.com/neovim/neovim/pull/13084
                 for retries in 1..=10 {
-                    match self.claim_term().await {
+                    match self.terminal.claim() {
                         Ok(()) => break,
                         Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
                         Err(_) => continue,
@@ -509,7 +544,7 @@ impl Application {
                 }
 
                 // redraw the terminal
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
                 self.compositor.resize(area);
                 self.terminal.clear().expect("couldn't clear terminal");
 
@@ -571,16 +606,41 @@ impl Application {
         doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
 
         let lines = doc_save_event.text.len_lines();
-        let bytes = doc_save_event.text.len_bytes();
+        let size = doc_save_event.text.len_bytes();
+
+        enum Size {
+            Bytes(u16),
+            HumanReadable(f32, &'static str),
+        }
+
+        impl std::fmt::Display for Size {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Bytes(bytes) => write!(f, "{bytes}B"),
+                    Self::HumanReadable(size, suffix) => write!(f, "{size:.1}{suffix}"),
+                }
+            }
+        }
+
+        let size = if size < 1024 {
+            Size::Bytes(size as u16)
+        } else {
+            const SUFFIX: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
+            let mut size = size as f32;
+            let mut i = 0;
+            while i < SUFFIX.len() - 1 && size >= 1024.0 {
+                size /= 1024.0;
+                i += 1;
+            }
+            Size::HumanReadable(size, SUFFIX[i])
+        };
 
         self.editor
             .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
         self.editor.set_status(format!(
-            "'{}' written, {}L {}B",
+            "'{}' written, {lines}L {size}",
             get_relative_path(&doc_save_event.path).to_string_lossy(),
-            lines,
-            bytes
         ));
     }
 
@@ -602,8 +662,8 @@ impl Application {
                 // limit render calls for fast language server messages
                 helix_event::request_redraw();
             }
-            EditorEvent::DebuggerEvent(payload) => {
-                let needs_render = self.editor.handle_debugger_message(payload).await;
+            EditorEvent::DebuggerEvent((id, payload)) => {
+                let needs_render = self.editor.handle_debugger_message(id, payload).await;
                 if needs_render {
                     self.render().await;
                 }
@@ -625,7 +685,10 @@ impl Application {
         false
     }
 
-    pub async fn handle_terminal_events(&mut self, event: std::io::Result<CrosstermEvent>) {
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<TerminalEvent>) {
+        #[cfg(not(windows))]
+        use termina::escape::csi;
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -633,20 +696,51 @@ impl Application {
         };
         // Handle key events
         let should_redraw = match event.unwrap() {
-            CrosstermEvent::Resize(width, height) => {
+            #[cfg(not(windows))]
+            termina::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
+                self.terminal
+                    .resize(Rect::new(0, 0, cols, rows))
+                    .expect("Unable to resize terminal");
+
+                let area = self.terminal.size();
+
+                self.compositor.resize(area);
+
+                self.compositor
+                    .handle_event(&Event::Resize(cols, rows), &mut cx)
+            }
+            #[cfg(not(windows))]
+            // Ignore keyboard release events.
+            termina::Event::Key(termina::event::KeyEvent {
+                kind: termina::event::KeyEventKind::Release,
+                ..
+            }) => false,
+            #[cfg(not(windows))]
+            termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
+                Self::load_configured_theme(
+                    &mut self.editor,
+                    &self.config.load(),
+                    self.terminal.backend().supports_true_color(),
+                    Some(mode.into()),
+                );
+                true
+            }
+            #[cfg(windows)]
+            TerminalEvent::Resize(width, height) => {
                 self.terminal
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
 
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
 
                 self.compositor.resize(area);
 
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
+            #[cfg(windows)]
             // Ignore keyboard release events.
-            CrosstermEvent::Key(crossterm::event::KeyEvent {
+            crossterm::event::Event::Key(crossterm::event::KeyEvent {
                 kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
@@ -735,15 +829,7 @@ impl Application {
                         );
                     }
                     Notification::ShowMessage(params) => {
-                        if self.config.load().editor.lsp.display_messages {
-                            match params.typ {
-                                lsp::MessageType::ERROR => self.editor.set_error(params.message),
-                                lsp::MessageType::WARNING => {
-                                    self.editor.set_warning(params.message)
-                                }
-                                _ => self.editor.set_status(params.message),
-                            }
-                        }
+                        self.handle_show_message(params.typ, params.message);
                     }
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
@@ -1011,6 +1097,62 @@ impl Application {
                         let result = self.handle_show_document(params, offset_encoding);
                         Ok(json!(result))
                     }
+                    Ok(MethodCall::WorkspaceDiagnosticRefresh) => {
+                        let language_server = language_server!().id();
+
+                        let documents: Vec<_> = self
+                            .editor
+                            .documents
+                            .values()
+                            .filter(|x| x.supports_language_server(language_server))
+                            .map(|x| x.id())
+                            .collect();
+
+                        for document in documents {
+                            handlers::diagnostics::request_document_diagnostics(
+                                &mut self.editor,
+                                document,
+                            );
+                        }
+
+                        Ok(serde_json::Value::Null)
+                    }
+                    Ok(MethodCall::ShowMessageRequest(params)) => {
+                        if let Some(actions) = params.actions.filter(|a| !a.is_empty()) {
+                            let id = id.clone();
+                            let select = ui::Select::new(
+                                params.message,
+                                actions,
+                                (),
+                                move |editor, action, event| {
+                                    let reply = match event {
+                                        ui::PromptEvent::Update => return,
+                                        ui::PromptEvent::Validate => Some(action.clone()),
+                                        ui::PromptEvent::Abort => None,
+                                    };
+                                    if let Some(language_server) =
+                                        editor.language_server_by_id(server_id)
+                                    {
+                                        if let Err(err) =
+                                            language_server.reply(id.clone(), Ok(json!(reply)))
+                                        {
+                                            log::error!(
+                                                "Failed to send reply to server '{}' request {id}: {err}",
+                                                language_server.name()
+                                            );
+                                        }
+                                    }
+                                },
+                            );
+                            self.compositor
+                                .replace_or_push("lsp-show-message-request", select);
+                            // Avoid sending a reply. The `Select` callback above sends the reply.
+                            return;
+                        } else {
+                            self.handle_show_message(params.typ, params.message);
+                            Ok(serde_json::Value::Null)
+                        }
+                    }
                 };
 
                 let language_server = language_server!();
@@ -1022,6 +1164,16 @@ impl Application {
                 }
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
+        }
+    }
+
+    fn handle_show_message(&mut self, message_type: lsp::MessageType, message: String) {
+        if self.config.load().editor.lsp.display_messages {
+            match message_type {
+                lsp::MessageType::ERROR => self.editor.set_error(message),
+                lsp::MessageType::WARNING => self.editor.set_warning(message),
+                _ => self.editor.set_status(message),
+            }
         }
     }
 
@@ -1089,36 +1241,60 @@ impl Application {
         lsp::ShowDocumentResult { success: true }
     }
 
-    async fn claim_term(&mut self) -> std::io::Result<()> {
-        let terminal_config = self.config.load().editor.clone().into();
-        self.terminal.claim(terminal_config)
-    }
-
     fn restore_term(&mut self) -> std::io::Result<()> {
-        let terminal_config = self.config.load().editor.clone().into();
         use helix_view::graphics::CursorKind;
         self.terminal
             .backend_mut()
             .show_cursor(CursorKind::Block)
             .ok();
-        self.terminal.restore(terminal_config)
+        self.terminal.restore()
+    }
+
+    #[cfg(all(not(feature = "integration"), not(windows)))]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+        use termina::{escape::csi, Terminal as _};
+        let reader = self.terminal.backend().terminal().event_reader();
+        termina::EventStream::new(reader, |event| {
+            // Accept either non-escape sequences or theme mode updates.
+            !event.is_escape()
+                || matches!(
+                    event,
+                    termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(_)))
+                )
+        })
+    }
+
+    #[cfg(all(not(feature = "integration"), windows))]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+        crossterm::event::EventStream::new()
+    }
+
+    #[cfg(feature = "integration")]
+    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+        use std::{
+            pin::Pin,
+            task::{Context, Poll},
+        };
+
+        /// A dummy stream that never polls as ready.
+        pub struct DummyEventStream;
+
+        impl Stream for DummyEventStream {
+            type Item = std::io::Result<TerminalEvent>;
+
+            fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                Poll::Pending
+            }
+        }
+
+        DummyEventStream
     }
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
-        self.claim_term().await?;
-
-        // Exit the alternate screen and disable raw mode before panicking
-        let hook = std::panic::take_hook();
-        std::panic::set_hook(Box::new(move |info| {
-            // We can't handle errors properly inside this closure.  And it's
-            // probably not a good idea to `unwrap()` inside a panic handler.
-            // So we just ignore the `Result`.
-            let _ = TerminalBackend::force_restore();
-            hook(info);
-        }));
+        self.terminal.claim()?;
 
         self.event_loop(input_stream).await;
 
@@ -1162,5 +1338,12 @@ impl Application {
         }
 
         errs
+    }
+}
+
+impl ui::menu::Item for lsp::MessageActionItem {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> tui::widgets::Row<'_> {
+        self.title.as_str().into()
     }
 }

@@ -2,6 +2,17 @@
 
 To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./configuration.md) file, or select it during runtime using `:theme <name>`.
 
+Separate themes can be configured for light and dark modes. On terminals supporting [mode 2031 dark/light detection](https://github.com/contour-terminal/contour/blob/master/docs/vt-extensions/color-palette-update-notifications.md), the theme mode is detected from the terminal.
+
+```toml
+[theme]
+dark = "catppuccin_frappe"
+light = "catppuccin_latte"
+## Optional. Used if the terminal doesn't declare a preference.
+## Defaults to the theme set for `dark` if not specified.
+# fallback = "catppuccin_frappe"
+```
+
 ## Creating a theme
 
 Create a file with the name of your theme as the file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes` or `%AppData%\helix\themes` on Windows). The directory might have to be created beforehand.
@@ -130,6 +141,17 @@ inherits = "boo_berry"
 berry = "#2A2A4D"
 ```
 
+### Rainbow
+
+The `rainbow` key is used for rainbow highlight for matching brackets.
+The key is a list of styles.
+
+```toml
+rainbow = ["#ff0000", "#ffa500", "#fff000", { fg = "#00ff00", modifiers = ["bold"] }]
+```
+
+Colors from the palette and modifiers may be used.
+
 ### Scopes
 
 The following is a list of scopes available to use for styling:
@@ -171,8 +193,10 @@ We use a similar set of scopes as
 
 - `comment` - Code comments
   - `line` - Single line comments (`//`)
+    - `documentation` - Line documentation comments (e.g. `///` in Rust)
   - `block` - Block comments (e.g. (`/* */`)
-    - `documentation` - Documentation comments (e.g. `///` in Rust)
+    - `documentation` - Block documentation comments (e.g. `/** */` in Rust)
+  - `unused` - Unused variables and patterns, e.g. `_` and `_foo`
 
 - `variable` - Variables
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
@@ -306,6 +330,7 @@ These scopes are used for theming the editor interface:
 | `ui.text.inactive`                | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`                    | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.text.directory`               | Directory names in prompt completion                                                           |
+| `ui.text.symlink`                 | Symlink names in prompt completion                                                             |
 | `ui.virtual.ruler`                | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
 | `ui.virtual.whitespace`           | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`         | Vertical indent width guides                                                                   |

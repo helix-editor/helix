@@ -1,9 +1,9 @@
+use crate::handlers::completion::LspCompletionItem;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 use crate::{
     compositor::{Component, Context, Event, EventResult},
     handlers::completion::{
-        trigger_auto_completion, CompletionItem, CompletionResponse, LspCompletionItem,
-        ResolveHandler,
+        trigger_auto_completion, CompletionItem, CompletionResponse, ResolveHandler,
     },
 };
 use helix_core::snippets::{ActiveSnippet, RenderedSnippet, Snippet};
@@ -28,7 +28,7 @@ use std::cmp::Reverse;
 impl menu::Item for CompletionItem {
     type Data = Style;
 
-    fn format(&self, dir_style: &Self::Data) -> menu::Row {
+    fn format(&self, dir_style: &Self::Data) -> menu::Row<'_> {
         let deprecated = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
@@ -76,7 +76,7 @@ impl menu::Item for CompletionItem {
                         // digit hex code at the end for the color. The extra 1 digit is for the '#'
                         text.get(text.len().checked_sub(7)?..)
                     })
-                    .and_then(Color::from_hex)
+                    .and_then(|c| Color::from_hex(c).ok())
                     .map_or("color".into(), |color| {
                         Spans::from(vec![
                             Span::raw("color "),

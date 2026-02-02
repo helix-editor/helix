@@ -13,8 +13,8 @@ _hx() {
         return 0
         ;;
     --health)
-        languages=$(hx --health | tail -n '+7' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g')
-        mapfile -t COMPREPLY < <(compgen -W """$languages""" -- "$cur")
+        languages=$(hx --health all-languages | tail -n '+2' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g')
+        mapfile -t COMPREPLY < <(compgen -W """clipboard languages all-languages all $languages""" -- "$cur")
         return 0
         ;;
     esac

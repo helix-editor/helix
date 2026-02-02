@@ -1,0 +1,18 @@
+# NeoNotte84 Theme
+#
+# Author: b52es (https://github.com/b52es)
+# Inspired by Catppuccin Mocha and Tokyo Night.
+
+# Inherits from neonotte.toml and applies a few modifications.
+inherits = "neonotte"
+
+# Syntax highlighting overrides
+# ---------------------------
+"comment" = { fg = "comment_alt", modifiers = ["italic"] }
+
+# Palette overrides
+# -----------------
+[palette]
+magenta = "#f578de"
+yellow = "#ffd866"
+comment_alt = "#647a8c"
