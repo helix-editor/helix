@@ -1,3 +1,5 @@
+# Author: Ricardo Fernández Serrata <rudxain@gmail.com>
+
 error = "err"
 warning = "warn"
 hint = "diag"
