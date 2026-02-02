@@ -1,6 +1,6 @@
 //! Contents of a terminal screen. A [Buffer] is made up of [Cell]s.
 use crate::text::{Span, Spans};
-use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
+use helix_core::unicode;
 use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
@@ -36,7 +36,7 @@ impl Cell {
             );
             self.symbol.push(REPLACEMENT_CHARACTER);
         }
-        self.width = self.symbol.width() as u8;
+        self.width = unicode::width(&self.symbol) as u8;
         self
     }
 
@@ -52,7 +52,7 @@ impl Cell {
                 symbol.len()
             );
             self.symbol.push(REPLACEMENT_CHARACTER);
-            self.width = REPLACEMENT_CHARACTER.width().unwrap_or(1) as u8;
+            self.width = unicode::width(&self.symbol) as u8;
         } else {
             self.width = width;
         }
@@ -68,7 +68,7 @@ impl Cell {
     pub fn set_char(&mut self, ch: char) -> &mut Cell {
         self.symbol.clear();
         self.symbol.push(ch);
-        self.width = ch.width().unwrap_or(0) as u8;
+        self.width = unicode::width(&self.symbol) as u8;
         self
     }
 
@@ -191,7 +191,7 @@ impl Buffer {
         let height = lines.len() as u16;
         let width = lines
             .iter()
-            .map(|i| i.as_ref().width() as u16)
+            .map(|i| unicode::width(i.as_ref()) as u16)
             .max()
             .unwrap_or_default();
         let mut buffer = Buffer::empty(Rect {
@@ -347,7 +347,7 @@ impl Buffer {
         let max_x_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
 
         for s in string.graphemes(true) {
-            let grapheme_width = s.width();
+            let grapheme_width = unicode::width(s);
             if grapheme_width == 0 {
                 continue;
             }
@@ -416,7 +416,11 @@ impl Buffer {
         let mut graphemes = string.grapheme_indices(true);
 
         if truncate_start {
-            for _ in 0..graphemes.next().map(|(_, g)| g.width()).unwrap_or_default() {
+            for _ in 0..graphemes
+                .next()
+                .map(|(_, g)| unicode::width(g))
+                .unwrap_or_default()
+            {
                 self.content[index].set_symbol("…");
                 index += 1;
                 rendered_width += 1;
@@ -424,7 +428,7 @@ impl Buffer {
         }
 
         for (byte_offset, s) in graphemes {
-            let grapheme_width = s.width();
+            let grapheme_width = unicode::width(s);
             if truncate_end && rendered_width + grapheme_width >= width {
                 break;
             }
@@ -481,7 +485,7 @@ impl Buffer {
         let max_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
         if !truncate_start {
             for (byte_offset, s) in graphemes {
-                let width = s.width();
+                let width = unicode::width(s);
                 if width == 0 {
                     continue;
                 }
@@ -500,14 +504,14 @@ impl Buffer {
                 index += width;
                 x_offset += width;
             }
-            if ellipsis && x_offset - (x as usize) < string.width() {
+            if ellipsis && x_offset - (x as usize) < unicode::width(string) {
                 self.content[index].set_symbol("…");
             }
         } else {
             let mut start_index = self.index_of(x, y);
             let mut index = self.index_of(max_offset as u16, y);
 
-            let content_width = string.width();
+            let content_width = unicode::width(string);
             let truncated = content_width > width;
             if ellipsis && truncated {
                 self.content[start_index].set_symbol("…");
@@ -517,7 +521,7 @@ impl Buffer {
                 index -= width - content_width;
             }
             for (byte_offset, s) in graphemes.rev() {
-                let width = s.width();
+                let width = unicode::width(s);
                 if width == 0 {
                     continue;
                 }
@@ -560,7 +564,7 @@ impl Buffer {
         }
         for span in spans.0.iter().rev() {
             for s in span.content.graphemes(true).rev() {
-                let width = s.width();
+                let width = unicode::width(s);
                 if width == 0 {
                     continue;
                 }
@@ -847,7 +851,7 @@ mod tests {
         let mut buffer = Buffer::empty(area);
 
         // U+200B is the zero-width space codepoint
-        assert_eq!("\u{200B}".width(), 0);
+        assert_eq!(unicode::width("\u{200B}"), 0);
 
         // Leading grapheme with zero width
         let s = "\u{200B}a";
