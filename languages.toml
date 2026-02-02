@@ -1306,6 +1306,7 @@ file-types = [
   { glob = "xinitrc" }, # /etc/X11/xinit/xinitrc
   { glob = ".xserverrc" }, # ~/.xserverrc
   { glob = "xserverrc" }, # /etc/X11/xinit/xserverrc
+  { glob = "direnvrc" }, # ~/.config/direnv/direnvrc
 ]
 shebangs = ["sh", "bash", "dash", "zsh"]
 comment-token = "#"
