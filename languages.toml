@@ -2566,7 +2566,8 @@ injection-regex = "sql"
 
 [[grammar]]
 name = "sql"
-source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "b9d109588d5b5ed986c857464830c2f0bef53f18" }
+# from gh-pages branch, as the main branch does not provide the `src` directory
+source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "86e3d03837d282544439620eb74d224586074b8b" }
 
 [[language]]
 name = "gdscript"
