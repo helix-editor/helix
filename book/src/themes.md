@@ -240,7 +240,8 @@ We use a similar set of scopes as
 
 - `namespace`
 
-- `special` - `derive` in Rust, etc.
+- `special` - `derive` in Rust, bolded query-match in pickers (includes file explorer), etc.
+See also [#2380]
 
 - `markup`
   - `heading`
@@ -364,3 +365,4 @@ These scopes are used for theming the editor interface:
 | `tabstop`                         | Snippet placeholder                                                                            |
 
 [editor-section]: ./configuration.md#editor-section
+[#2380]: https://github.com/helix-editor/helix/issues/2380
