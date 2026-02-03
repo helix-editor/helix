@@ -1035,7 +1035,11 @@ impl Document {
 
             // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
             let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
-            let is_symlink = tokio::fs::symlink_metadata(&write_path).await?.is_symlink();
+            let is_symlink = match tokio::fs::symlink_metadata(&write_path).await {
+                Ok(meta) => meta.is_symlink(),
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
+                Err(err) => return Err(err.into()),
+            };
             let must_copy = is_hardlink || is_symlink;
             let backup = if path.exists() && atomic_save {
                 let path_ = write_path.clone();
