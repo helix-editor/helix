@@ -100,6 +100,14 @@ impl JumpList {
         self.jumps.iter()
     }
 
+    pub fn peek_previous_doc_id(&mut self, count: usize) -> Option<DocumentId> {
+        let idx = self.current.checked_sub(count)?;
+        if let Some(v) = self.jumps.get(idx) {
+            return Some(v.0);
+        }
+        None
+    }
+
     /// Applies a [`Transaction`] of changes to the jumplist.
     /// This is necessary to ensure that changes to documents do not leave jump-list
     /// selections pointing to parts of the text which no longer exist.

@@ -195,3 +195,16 @@ async fn test_changes_in_splits_apply_to_all_views() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_changes_in_splits_jumplist_sync() -> anyhow::Result<()> {
+    test((
+        "#[test|]#",
+        "<C-w>sgf<C-w>wd<C-w>w<C-o><C-w>qd",
+        "#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    Ok(())
+}

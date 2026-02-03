@@ -5685,6 +5685,21 @@ fn jump_backward(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let doc_id = doc.id();
 
+    if let Some(id) = view.jumps.peek_previous_doc_id(count) {
+        let mut sync_id = id;
+        if sync_id == doc_id {
+            // peek again, backward() may skip this jump, if it is the current location
+            if let Some(id) = view.jumps.peek_previous_doc_id(count - 1) {
+                sync_id = id;
+            }
+        }
+        if sync_id != doc_id {
+            let jump_doc = doc_mut!(cx.editor, &sync_id);
+            view.sync_changes(jump_doc);
+        }
+    }
+
+    let (view, doc) = current!(cx.editor);
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
         view.doc = *id;
         let selection = selection.clone();
