@@ -870,7 +870,34 @@ impl EditorView {
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
+
         let key_result = self.keymaps.get(mode, event);
+
+        #[cfg(scancode)]
+        let key_result = {
+            if !matches!(
+                key_result,
+                KeymapResult::NotFound | KeymapResult::Cancelled(_)
+            ) {
+                key_result
+            } else {
+                match key_result {
+                    KeymapResult::NotFound => {
+                        self.keymaps.get(mode, cxt.editor.scancode_apply(event))
+                    }
+                    KeymapResult::Cancelled(mut keys) => {
+                        // replay previous keys and try again by scancode
+                        let _ = keys.pop();
+                        for key in keys {
+                            let _ = self.keymaps.get(mode, key);
+                        }
+                        self.keymaps.get(mode, cxt.editor.scancode_apply(event))
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        };
+
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
         let mut execute_command = |command: &commands::MappableCommand| {
@@ -943,6 +970,13 @@ impl EditorView {
     }
 
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
+        #[cfg(scancode)]
+        // dont use scancode on macros replaying
+        let event = if cxt.editor.macro_replaying.is_empty() {
+            cxt.editor.scancode_apply(event)
+        } else {
+            event
+        };
         match (event, cxt.editor.count) {
             // If the count is already started and the input is a number, always continue the count.
             (key!(i @ '0'..='9'), Some(count)) => {

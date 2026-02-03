@@ -14,6 +14,9 @@ homepage.workspace = true
 default = []
 term = ["termina", "crossterm"]
 unicode-lines = []
+scancode-query = ["keyboard_query"]
+scancode-evdev = ["evdev"]
+scancode-hidapi = ["hidapi"]
 
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
@@ -53,6 +56,11 @@ parking_lot.workspace = true
 thiserror.workspace = true
 
 kstring = "2.0"
+
+keyboard_query = { version = "0.1", optional = true }
+evdev = { version = "0.13", features = ["tokio"], optional = true }
+hidapi = { version = "2.6", optional = true }
+
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
