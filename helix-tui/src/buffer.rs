@@ -1,17 +1,16 @@
 //! Contents of a terminal screen. A [Buffer] is made up of [Cell]s.
 use crate::text::{Span, Spans};
 use helix_core::unicode::width::UnicodeWidthStr;
+use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
-pub use compact_str::CompactString;
-
-use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
+pub type Symbol = arrayvec::ArrayString<28>;
 
 /// One cell of the terminal. Contains one stylized grapheme.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell {
-    pub symbol: CompactString,
+    pub symbol: Symbol,
     pub fg: Color,
     pub bg: Color,
     pub underline_color: Color,
@@ -22,15 +21,15 @@ pub struct Cell {
 impl Cell {
     /// Set the cell's grapheme
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
-        self.symbol = CompactString::from(symbol);
+        self.symbol.clear();
+        self.symbol.push_str(symbol);
         self
     }
 
     /// Set the cell's grapheme to a [char]
     pub fn set_char(&mut self, ch: char) -> &mut Cell {
-        let mut buf = [0u8; 4];
-        let s = ch.encode_utf8(&mut buf);
-        self.symbol = CompactString::new(s);
+        self.symbol.clear();
+        self.symbol.push(ch);
         self
     }
 
@@ -85,7 +84,7 @@ impl Cell {
 impl Default for Cell {
     fn default() -> Cell {
         Cell {
-            symbol: CompactString::const_new(" "),
+            symbol: Symbol::from(" ").unwrap(),
             fg: Color::Reset,
             bg: Color::Reset,
             underline_color: Color::Reset,
@@ -105,7 +104,7 @@ impl Default for Cell {
 /// # Examples:
 ///
 /// ```
-/// use helix_tui::buffer::{Buffer, Cell, CompactString};
+/// use helix_tui::buffer::{Buffer, Cell, Symbol};
 /// use helix_view::graphics::{Rect, Color, UnderlineStyle, Style, Modifier};
 ///
 /// let mut buf = Buffer::empty(Rect{x: 0, y: 0, width: 10, height: 5});
@@ -113,7 +112,7 @@ impl Default for Cell {
 /// assert_eq!(&*buf[(0, 2)].symbol, "x");
 /// buf.set_string(3, 0, "string", Style::default().fg(Color::Red).bg(Color::White));
 /// assert_eq!(buf[(5, 0)], Cell{
-///     symbol: CompactString::from("r"),
+///     symbol: Symbol::from("r").unwrap(),
 ///     fg: Color::Red,
 ///     bg: Color::White,
 ///     underline_color: Color::Reset,
