@@ -961,7 +961,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("goto-line", goto_line_impl);
 
     builtin_typable_command_module.push_str(
-        &r#"
+        r#"
 (provide goto-column)
 
 ;;@doc
@@ -972,7 +972,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     );
 
     builtin_typable_command_module.push_str(
-        &r#"
+        r#"
 (provide goto-line)
 
 ;;@doc
@@ -1069,12 +1069,12 @@ fn ws_render(config: &mut WhitespaceConfig, option: HashMap<SteelVal, bool>) -> 
 
     let mut base = match config.render {
         WhitespaceRender::Basic(v) => RenderFlags {
-            default: Some(v.clone()),
-            space: Some(v.clone()),
-            nbsp: Some(v.clone()),
-            nnbsp: Some(v.clone()),
-            tab: Some(v.clone()),
-            newline: Some(v.clone()),
+            default: Some(v),
+            space: Some(v),
+            nbsp: Some(v),
+            nnbsp: Some(v),
+            tab: Some(v),
+            newline: Some(v),
         },
         WhitespaceRender::Specific { .. } => RenderFlags::default(),
     };
@@ -1304,14 +1304,14 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn("sw-wrap-at-text-width", wrap_at_text_width);
 
     module
-        .register_fn("raw-whitespace", || WhitespaceConfig::default())
+        .register_fn("raw-whitespace", WhitespaceConfig::default)
         .register_fn("register-whitespace", HelixConfiguration::whitespace)
         .register_fn("ws-visible", ws_visible)
         .register_fn("ws-chars", ws_chars)
         .register_fn("ws-render", ws_render);
 
     module
-        .register_fn("raw-indent-guides", || IndentGuidesConfig::default())
+        .register_fn("raw-indent-guides", IndentGuidesConfig::default)
         .register_fn("register-indent-guides", HelixConfiguration::indent_guides)
         .register_fn("ig-render", ig_render)
         .register_fn("ig-character", ig_character)
@@ -2207,7 +2207,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 "#,
         );
 
-        builtin_configuration_module.push_str(&format!(
+        builtin_configuration_module.push_str(
             r#"
 
 (provide whitespace)
@@ -2259,9 +2259,9 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         *helix.config*
         (foldl (lambda (func config) (func config)) (helix.raw-whitespace) args)))
 "#,
-        ));
+        );
 
-        builtin_configuration_module.push_str(&format!(
+        builtin_configuration_module.push_str(
             r#"
 
 (provide indent-guides)
@@ -2294,7 +2294,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         *helix.config*
         (foldl (lambda (func config) (func config)) (helix.raw-indent-guides) args)))
 "#,
-        ));
+        );
 
         let mut template_function_arity_1 = |name: &str, doc: &str| {
             let doc = format_docstring(doc);
@@ -3300,7 +3300,7 @@ impl super::PluginSystem for SteelScriptingEngine {
 fn patch_callbacks(ctx: &mut Context<'_>) {
     for callback in std::mem::take(&mut ctx.callback) {
         let callback = async move {
-            let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+            let call: Box<LocalJobCallback> = Box::new(
                 move |editor: &mut Editor, compositor: &mut Compositor, jobs| {
                     callback(
                         compositor,
@@ -4210,7 +4210,7 @@ impl HelixConfiguration {
                     _ => anyhow::bail!("Unknown status line element: {}", s),
                 };
 
-                return Ok(value);
+                Ok(value)
             } else {
                 anyhow::bail!("Cannot convert value to status line element: {}", val)
             }
@@ -4218,7 +4218,7 @@ impl HelixConfiguration {
 
         fn steel_list_to_elements(val: &SteelVal) -> anyhow::Result<Vec<StatusLineElement>> {
             if let SteelVal::ListV(l) = val {
-                return l.iter().map(steel_to_elements).collect();
+                l.iter().map(steel_to_elements).collect()
             } else {
                 anyhow::bail!(
                     "Cannot convert value to vec of status line element: {}",
@@ -4237,7 +4237,7 @@ impl HelixConfiguration {
                     _ => anyhow::bail!("Unknown severity label: {}", s),
                 };
 
-                return Ok(value);
+                Ok(value)
             } else {
                 anyhow::bail!("Cannot convert value to severity: {}", val)
             }
@@ -4245,7 +4245,7 @@ impl HelixConfiguration {
 
         fn steel_list_to_severity_vec(val: &SteelVal) -> anyhow::Result<Vec<Severity>> {
             if let SteelVal::ListV(l) = val {
-                return l.iter().map(steel_to_severity).collect();
+                l.iter().map(steel_to_severity).collect()
             } else {
                 anyhow::bail!(
                     "Cannot convert value to vec of status line element: {}",
@@ -4551,7 +4551,7 @@ fn run_initialization_script(
 
 impl Custom for PromptEvent {}
 
-impl<'a> CustomReference for Context<'a> {}
+impl CustomReference for Context<'_> {}
 
 steel::custom_reference!(Context<'a>);
 
@@ -4757,7 +4757,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         on_next_key_callback: None,
                         jobs,
                     };
-                    let res = enter_engine(|guard| {
+                    enter_engine(|guard| {
                         if !is_current_generation(generation) {
                             return;
                         }
@@ -4781,8 +4781,6 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                     });
 
                     patch_callbacks(&mut ctx);
-
-                    res
                 };
                 job::dispatch_blocking_jobs(callback);
 
@@ -4811,7 +4809,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         on_next_key_callback: None,
                         jobs,
                     };
-                    let res = enter_engine(|guard| {
+                    enter_engine(|guard| {
                         if !is_current_generation(generation) {
                             return;
                         }
@@ -4834,8 +4832,6 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                     });
 
                     patch_callbacks(&mut ctx);
-
-                    res
                 };
                 job::dispatch_blocking_jobs(callback);
 
@@ -4863,7 +4859,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         on_next_key_callback: None,
                         jobs,
                     };
-                    let res = enter_engine(|guard| {
+                    enter_engine(|guard| {
                         if !is_current_generation(generation) {
                             return;
                         }
@@ -4886,8 +4882,6 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                     });
 
                     patch_callbacks(&mut ctx);
-
-                    res
                 };
                 job::dispatch_blocking_jobs(callback);
 
@@ -4915,7 +4909,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                         on_next_key_callback: None,
                         jobs,
                     };
-                    let res = enter_engine(|guard| {
+                    enter_engine(|guard| {
                         if !is_current_generation(generation) {
                             return;
                         }
@@ -4938,8 +4932,6 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                     });
 
                     patch_callbacks(&mut ctx);
-
-                    res
                 };
                 job::dispatch_blocking_jobs(callback);
 
@@ -5754,7 +5746,7 @@ fn acquire_context_lock(
         let cloned_func = rooted.value();
         let cloned_place = rooted_place.as_ref().map(|x| x.value());
 
-        let res = enter_engine(|guard| {
+        enter_engine(|guard| {
             if let Err(e) = guard
                 .with_mut_reference::<Context, Context>(&mut ctx)
                 // Block until the other thread is finished in its critical
@@ -5803,8 +5795,6 @@ fn acquire_context_lock(
         });
 
         patch_callbacks(&mut ctx);
-
-        res
     };
     job::dispatch_blocking_jobs(callback);
 
@@ -5931,7 +5921,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     engine.register_fn("SteelDynamicComponent?", |object: SteelVal| {
         if let SteelVal::Custom(v) = object {
             if let Some(wrapped) = v.read().as_any_ref().downcast_ref::<BoxDynComponent>() {
-                return wrapped.inner.as_any().is::<SteelDynamicComponent>();
+                wrapped.inner.as_any().is::<SteelDynamicComponent>()
             } else {
                 false
             }
@@ -5967,7 +5957,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
                     let cloned_func = callback_fn_guard.value();
 
-                    let res = with_interrupt_handler(|| {
+                    with_interrupt_handler(|| {
                         enter_engine(|guard| {
                             if let Err(e) = guard
                                 .with_mut_reference::<Context, Context>(&mut ctx)
@@ -5988,8 +5978,6 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                     });
 
                     patch_callbacks(&mut ctx);
-
-                    res
                 },
             );
 
@@ -6076,7 +6064,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
                         let cloned_func = rooted.value();
 
-                        let res = enter_engine(|guard| {
+                        enter_engine(|guard| {
                             if let Err(e) = guard
                                 .with_mut_reference::<Context, Context>(&mut ctx)
                                 .consume(move |engine, args| {
@@ -6090,8 +6078,6 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                         });
 
                         patch_callbacks(&mut ctx);
-
-                        res
                     }
                 }
             })
@@ -6222,7 +6208,7 @@ fn get_selection(cx: &mut Context) -> String {
 // TODO: Replace with eval-string
 pub fn run_expression_in_engine(cx: &mut Context, text: String) -> anyhow::Result<()> {
     let callback = async move {
-        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+        let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor, jobs: &mut job::Jobs| {
                 let mut ctx = Context {
                     register: None,
@@ -6281,7 +6267,7 @@ pub fn load_buffer(cx: &mut Context) -> anyhow::Result<()> {
     };
 
     let callback = async move {
-        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+        let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor, jobs: &mut job::Jobs| {
                 let mut ctx = Context {
                     register: None,
@@ -6419,7 +6405,7 @@ fn cx_register_value(cx: &mut Context, name: char) -> Vec<String> {
 }
 
 fn cx_document_exists(cx: &mut Context, doc_id: DocumentId) -> bool {
-    cx.editor.documents.get(&doc_id).is_some()
+    cx.editor.documents.contains_key(&doc_id)
 }
 
 fn document_path(cx: &mut Context, doc_id: DocumentId) -> Option<String> {
@@ -6474,7 +6460,7 @@ fn push_component(cx: &mut Context, component: &mut WrappedDynComponent) {
     let inner = component.inner.take().unwrap();
 
     let callback = async move {
-        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+        let call: Box<LocalJobCallback> = Box::new(
             move |_editor: &mut Editor, compositor: &mut Compositor, _| compositor.push(inner),
         );
         Ok(call)
@@ -6484,7 +6470,7 @@ fn push_component(cx: &mut Context, component: &mut WrappedDynComponent) {
 
 fn pop_last_component_by_name(cx: &mut Context, name: SteelString) {
     let callback = async move {
-        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+        let call: Box<LocalJobCallback> = Box::new(
             move |_editor: &mut Editor, compositor: &mut Compositor, _jobs: &mut job::Jobs| {
                 compositor.remove_by_dynamic_name(&name);
             },
@@ -6557,7 +6543,7 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
     let current_gen = load_generation();
 
     let callback = async move {
-        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+        let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
                 let mut ctx = Context {
                     register: None,
@@ -6570,7 +6556,7 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
 
                 let cloned_func = rooted.value();
 
-                let res = enter_engine(|guard| {
+                enter_engine(|guard| {
                     if !is_current_generation(current_gen) {
                         return;
                     }
@@ -6589,8 +6575,6 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
                 });
 
                 patch_callbacks(&mut ctx);
-
-                res
             },
         );
         Ok(call)
@@ -6608,7 +6592,7 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
 
         tokio::time::sleep(tokio::time::Duration::from_millis(delay as u64)).await;
 
-        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+        let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
                 let mut ctx = Context {
                     register: None,
@@ -6621,7 +6605,7 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
 
                 let cloned_func = rooted.value();
 
-                let res = enter_engine(|guard| {
+                enter_engine(|guard| {
                     if !is_current_generation(current_gen) {
                         return;
                     }
@@ -6640,8 +6624,6 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
                 });
 
                 patch_callbacks(&mut ctx);
-
-                res
             },
         );
         Ok(call)
@@ -6661,7 +6643,7 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
     let callback = async move {
         let future_value = value.as_future().unwrap().await;
 
-        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+        let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
                 let mut ctx = Context {
                     register: None,
@@ -6682,7 +6664,7 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                             engine.call_function_with_args(cloned_func.clone(), vec![inner])
                         };
 
-                        let res = enter_engine(|guard| {
+                        enter_engine(|guard| {
                             if !is_current_generation(current_gen) {
                                 return;
                             }
@@ -6696,8 +6678,6 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                         });
 
                         patch_callbacks(&mut ctx);
-
-                        res
                     }
                     Err(e) => enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e)),
                 }
@@ -6782,7 +6762,7 @@ pub fn custom_insert_newline(cx: &mut Context, indent: String) {
                 let on_auto_pair = doc
                     .auto_pairs(cx.editor, loader, view)
                     .and_then(|pairs| pairs.get(prev))
-                    .map_or(false, |pair| pair.open == prev && pair.close == curr);
+                    .is_some_and(|pair| pair.open == prev && pair.close == curr);
 
                 let local_offs = if on_auto_pair {
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
@@ -7006,6 +6986,8 @@ fn lsp_reply_ok(
         })
 }
 
+type LocalJobCallback = dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs);
+
 fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
     cx: &mut Context,
     future: impl std::future::Future<Output = Result<T, helix_lsp::Error>> + 'static,
@@ -7016,7 +6998,7 @@ fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
         // from the lsp call
         let res = future.await?;
 
-        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+        let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
                 let mut ctx = Context {
                     register: None,

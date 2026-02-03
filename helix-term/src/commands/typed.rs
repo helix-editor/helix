@@ -3852,7 +3852,7 @@ fn execute_command_line(
                 cx: &mut ctx,
             });
 
-            return Ok(());
+            Ok(())
         } else if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
             execute_command(cx, cmd, rest, event)
         } else {

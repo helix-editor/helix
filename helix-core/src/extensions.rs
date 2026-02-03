@@ -172,6 +172,12 @@ pub mod steel_implementations {
         }
     }
 
+    impl std::fmt::Display for SteelRopeSlice {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            self.to_slice().fmt(f)
+        }
+    }
+
     impl SteelRopeSlice {
         pub fn from_string(string: SteelString) -> Self {
             Self {
@@ -335,10 +341,6 @@ pub mod steel_implementations {
 
         pub fn byte_to_char(&self, pos: usize) -> Result<usize, RopeyError> {
             Ok(self.to_slice().try_byte_to_char(pos)?)
-        }
-
-        pub fn to_string(&self) -> String {
-            self.to_slice().to_string()
         }
 
         pub fn len_chars(&self) -> usize {

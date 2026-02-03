@@ -109,6 +109,7 @@ impl ScriptingEngine {
         event_reader: TerminalEventReaderHandle,
     ) {
         // Set up a flag to disable steel, even on the current build?
+        #[allow(clippy::if_same_then_else, reason = "not the same with steel feature")]
         if configuration.load().editor.enable_steel {
             PLUGIN_PRECEDENCE
                 .set(vec![

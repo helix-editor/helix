@@ -554,7 +554,7 @@ area : Rect?
         }
     );
 
-    builtin_components_module.push_str(&format!(
+    builtin_components_module.push_str(
         r#"
 (provide render-native-component)
 ;;@doc
@@ -562,7 +562,7 @@ area : Rect?
 (define (render-native-component component area buffer)
     (helix.components.render-native-component component area buffer *helix.cx*))
                     "#,
-    ));
+    );
 
     module.register_fn(
         "markdown-component",
@@ -575,7 +575,7 @@ area : Rect?
         },
     );
 
-    builtin_components_module.push_str(&format!(
+    builtin_components_module.push_str(
         r#"
 (provide markdown-component)
 ;;@doc
@@ -583,7 +583,7 @@ area : Rect?
 (define (markdown-component text)
     (helix.components.markdown-component *helix.cx* text))
                     "#,
-    ));
+    );
 
     register!("overlaid", |component: &mut WrappedDynComponent| {
         let inner: Option<Box<dyn Component + Send + Sync + 'static>> =
@@ -745,7 +745,9 @@ block: Block?
         |buffer: &mut Buffer, area: Rect| {
             for x in area.left()..area.right() {
                 for y in area.top()..area.bottom() {
-                    buffer.get_mut(x, y).map(|x| x.reset());
+                    if let Some(cell) = buffer.get_mut(x, y) {
+                        cell.reset()
+                    };
                 }
             }
         },
@@ -1969,7 +1971,7 @@ impl Component for SteelDynamicComponent {
             )
         };
 
-        let res = enter_engine(|guard| {
+        enter_engine(|guard| {
             if let Err(e) = guard
                 .with_mut_reference::<tui::buffer::Buffer, tui::buffer::Buffer>(frame)
                 .with_mut_reference::<Context, Context>(&mut ctx)
@@ -1997,8 +1999,6 @@ impl Component for SteelDynamicComponent {
         });
 
         super::patch_callbacks(&mut ctx);
-
-        res
     }
 
     // TODO: Pass in event as well? Need to have immutable reference type
@@ -2086,10 +2086,7 @@ impl Component for SteelDynamicComponent {
                                 compositor.pop();
                             })),
                         ),
-                        _ => match event {
-                            // ctrl!('c') | key!(Esc) => close_fn,
-                            _ => compositor::EventResult::Ignored(None),
-                        },
+                        _ => compositor::EventResult::Ignored(None),
                     }
                 }
                 Err(e) => {
