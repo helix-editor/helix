@@ -1,5 +1,6 @@
 use helix_core::Position;
 use helix_view::{
+    editor::PickerLayout,
     graphics::{CursorKind, Rect},
     Editor,
 };
@@ -15,11 +16,37 @@ pub struct Overlay<T> {
     pub calc_child_size: Box<dyn Fn(Rect) -> Rect>,
 }
 
+/// Apply overlay based on the configured picker layout
+pub fn overlaid_with_layout<T>(content: T, layout: PickerLayout) -> Overlay<T> {
+    match layout {
+        PickerLayout::Popup => overlaid(content),
+        PickerLayout::Ivy => overlaid_ivy(content),
+    }
+}
+
 /// Surrounds the component with a margin of 5% on each side, and an additional 2 rows at the bottom
 pub fn overlaid<T>(content: T) -> Overlay<T> {
     Overlay {
         content,
         calc_child_size: Box::new(|rect: Rect| clip_rect_relative(rect.clip_bottom(2), 90, 90)),
+    }
+}
+
+/// Bottom-anchored panel (ivy-style), taking up to 40% of the screen height
+/// Leaves 2 rows at the bottom for the statusline
+pub fn overlaid_ivy<T>(content: T) -> Overlay<T> {
+    Overlay {
+        content,
+        calc_child_size: Box::new(|rect: Rect| {
+            let available = rect.clip_bottom(2);
+            let height = (available.height * 40 / 100).max(10).min(available.height);
+            Rect {
+                x: available.x,
+                y: available.y + available.height.saturating_sub(height),
+                width: available.width,
+                height,
+            }
+        }),
     }
 }
 

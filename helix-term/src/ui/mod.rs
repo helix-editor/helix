@@ -336,7 +336,9 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     let call: Callback =
                         Callback::EditorCompositor(Box::new(move |editor, compositor| {
                             if let Ok(picker) = file_explorer(new_root, editor) {
-                                compositor.push(Box::new(overlay::overlaid(picker)));
+                                let layout = editor.config().picker.layout;
+                                compositor
+                                    .push(Box::new(overlay::overlaid_with_layout(picker, layout)));
                             }
                         }));
                     Ok(call)

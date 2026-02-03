@@ -194,6 +194,14 @@ Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 [insert mode]: ./keymap.md#insert-mode
 [select mode]: ./keymap.md#select--extend-mode
 
+### `[editor.picker]` Section
+
+Set the layout style for all pickers (file picker, global search, symbol picker, etc.).
+
+| Key | Description | Default |
+|--|--|---------|
+|`layout` | Layout style for the picker. `popup` for centered overlay, `ivy` for bottom panel | `popup`
+
 ### `[editor.file-picker]` Section
 
 Set options for file picker and global search. Ignoring a file means it is
