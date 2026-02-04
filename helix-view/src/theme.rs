@@ -131,6 +131,59 @@ impl Loader {
         Ok(theme)
     }
 
+    /// Loads a theme from a direct file path.
+    pub fn load_from_file(&self, path: &std::path::Path) -> Result<Theme> {
+        let (theme, warnings) = self.load_from_file_with_warnings(path)?;
+
+        for warning in &warnings {
+            warn!("Theme '{}': {}", path.display(), warning);
+        }
+
+        Ok(theme)
+    }
+
+    /// Loads a theme from a direct file path, returning any warnings
+    pub fn load_from_file_with_warnings(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<(Theme, Vec<String>)> {
+        let mut visited_paths = HashSet::new();
+        visited_paths.insert(path.to_path_buf());
+
+        let theme_toml = self.load_toml(path.to_path_buf())?;
+        let inherits = theme_toml.get("inherits");
+
+        let theme_toml = if let Some(parent_theme_name) = inherits {
+            let parent_theme_name = parent_theme_name.as_str().ok_or_else(|| {
+                anyhow!("Expected 'inherits' to be a string: {}", parent_theme_name)
+            })?;
+
+            let parent_theme_toml = match parent_theme_name {
+                "default" => DEFAULT_THEME_DATA.clone(),
+                "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
+                _ => self.load_theme(parent_theme_name, &mut visited_paths)?,
+            };
+
+            self.merge_themes(parent_theme_toml, theme_toml)
+        } else {
+            theme_toml
+        };
+
+        let (theme, warnings) = Theme::from_toml(theme_toml);
+
+        let theme_name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown");
+
+        let theme = Theme {
+            name: theme_name.into(),
+            ..theme
+        };
+
+        Ok((theme, warnings))
+    }
+
     /// Loads a theme searching directories in priority order, returning any warnings
     pub fn load_with_warnings(&self, name: &str) -> Result<(Theme, Vec<String>)> {
         if name == "default" {
