@@ -1129,6 +1129,9 @@ mod tests {
 
         // Zero-width chars shouldn't take space
         assert_eq!(&*buffer[(0, 0)].symbol, "a");
+        // ZWJ attaches to the preceding character
+        assert_eq!(&*buffer[(1, 0)].symbol, "b\u{200D}");
+        assert_eq!(&*buffer[(2, 0)].symbol, "c");
     }
 
     #[test]
