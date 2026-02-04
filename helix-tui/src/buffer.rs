@@ -26,10 +26,10 @@ impl Cell {
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
         self.symbol.clear();
         if self.symbol.try_push_str(symbol).is_err() {
-            log::warn!(
+            log::error!(
                 "Grapheme exceeded Symbol capacity ({} bytes, max 28): {:?}",
                 symbol.len(),
-                symbol.chars().collect::<String>()
+                symbol
             );
             self.symbol.push(REPLACEMENT_CHARACTER);
         }
@@ -39,10 +39,7 @@ impl Cell {
     /// Set the cell's grapheme to a [char]
     pub fn set_char(&mut self, ch: char) -> &mut Cell {
         self.symbol.clear();
-        if self.symbol.try_push(ch).is_err() {
-            // Should never happen (chars are max 4 bytes)
-            self.symbol.push(REPLACEMENT_CHARACTER);
-        }
+        self.symbol.try_push(ch).unwrap();
         self
     }
 
@@ -1233,7 +1230,7 @@ mod tests {
         buffer.set_string(0, 0, &extreme, Style::default());
 
         // Should use replacement character
-        assert_eq!(&*buffer[(0, 0)].symbol, "\u{FFFD}");
+        assert_eq!(&*buffer[(0, 0)].symbol, REPLACEMENT_CHARACTER.to_string());
     }
 
     #[test]
@@ -1254,7 +1251,7 @@ mod tests {
         buffer.set_string(0, 0, &absurd, Style::default());
 
         // Should use replacement character
-        assert_eq!(&*buffer[(0, 0)].symbol, "\u{FFFD}");
+        assert_eq!(&*buffer[(0, 0)].symbol, REPLACEMENT_CHARACTER.to_string());
     }
 
     #[test]
@@ -1269,6 +1266,6 @@ mod tests {
         buffer.set_string(0, 0, &chain, Style::default());
 
         // Should use replacement character
-        assert_eq!(&*buffer[(0, 0)].symbol, "\u{FFFD}");
+        assert_eq!(&*buffer[(0, 0)].symbol, REPLACEMENT_CHARACTER.to_string());
     }
 }
