@@ -18,18 +18,31 @@ pub struct Cell {
     pub modifier: Modifier,
 }
 
+/// Char when attempting to set symbol that exceeds capacity: �
+const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
+
 impl Cell {
     /// Set the cell's grapheme
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
         self.symbol.clear();
-        self.symbol.push_str(symbol);
+        if self.symbol.try_push_str(symbol).is_err() {
+            log::warn!(
+                "Grapheme exceeded Symbol capacity ({} bytes, max 28): {:?}",
+                symbol.len(),
+                symbol.chars().collect::<String>()
+            );
+            self.symbol.push(REPLACEMENT_CHARACTER);
+        }
         self
     }
 
     /// Set the cell's grapheme to a [char]
     pub fn set_char(&mut self, ch: char) -> &mut Cell {
         self.symbol.clear();
-        self.symbol.push(ch);
+        if self.symbol.try_push(ch).is_err() {
+            // Should never happen (chars are max 4 bytes)
+            self.symbol.push(REPLACEMENT_CHARACTER);
+        }
         self
     }
 
@@ -1207,11 +1220,8 @@ mod tests {
         assert_eq!(&*buffer[(0, 0)].symbol, " ");
     }
 
-    // ======== Fail due to too big for ArrayString<28>
-
     #[test]
-    #[should_panic] // to big for ArrayString<28>
-    fn adversarial_extreme_zalgo() {
+    fn adversarial_extreme_zalgo_uses_replacement() {
         // Extreme zalgo: many combining characters exceed capacity
         let mut extreme = String::from("X");
         for _ in 0..50 {
@@ -1222,12 +1232,12 @@ mod tests {
         let mut buffer = Buffer::empty(area);
         buffer.set_string(0, 0, &extreme, Style::default());
 
-        assert_eq!(&*buffer[(0, 0)].symbol, extreme);
+        // Should use replacement character
+        assert_eq!(&*buffer[(0, 0)].symbol, "\u{FFFD}");
     }
 
     #[test]
-    #[should_panic] // to big for ArrayString<28>
-    fn adversarial_extremely_long_grapheme() {
+    fn adversarial_extremely_long_grapheme_uses_replacement() {
         let mut absurd = String::from("o");
         for i in 0..100 {
             let combining = match i % 4 {
@@ -1243,12 +1253,12 @@ mod tests {
         let mut buffer = Buffer::empty(area);
         buffer.set_string(0, 0, &absurd, Style::default());
 
-        assert_eq!(&*buffer[(0, 0)].symbol, absurd);
+        // Should use replacement character
+        assert_eq!(&*buffer[(0, 0)].symbol, "\u{FFFD}");
     }
 
     #[test]
-    #[should_panic] // to big for ArrayString<28>
-    fn adversarial_long_zwj_chain() {
+    fn adversarial_long_zwj_chain_uses_replacement() {
         let mut chain = String::from("👨");
         for _ in 0..10 {
             chain.push_str("\u{200D}👨");
@@ -1258,6 +1268,7 @@ mod tests {
         let mut buffer = Buffer::empty(area);
         buffer.set_string(0, 0, &chain, Style::default());
 
-        assert_eq!(&*buffer[(0, 0)].symbol, chain);
+        // Should use replacement character
+        assert_eq!(&*buffer[(0, 0)].symbol, "\u{FFFD}");
     }
 }
