@@ -5658,47 +5658,11 @@ fn match_brackets(cx: &mut Context) {
 //
 
 fn jump_forward(cx: &mut Context) {
-    let count = cx.count();
-    let config = cx.editor.config();
-    let view = view_mut!(cx.editor);
-    let doc_id = view.doc;
-
-    if let Some((id, selection)) = view.jumps.forward(count) {
-        view.doc = *id;
-        let selection = selection.clone();
-        let (view, doc) = current!(cx.editor); // refetch doc
-
-        if doc.id() != doc_id {
-            view.add_to_history(doc_id);
-        }
-
-        doc.set_selection(view.id, selection);
-        // Document we switch to might not have been opened in the view before
-        doc.ensure_view_init(view.id);
-        view.ensure_cursor_in_view_center(doc, config.scrolloff);
-    };
+    cx.editor.jump_forward(cx.editor.tree.focus, cx.count());
 }
 
 fn jump_backward(cx: &mut Context) {
-    let count = cx.count();
-    let config = cx.editor.config();
-    let (view, doc) = current!(cx.editor);
-    let doc_id = doc.id();
-
-    if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
-        view.doc = *id;
-        let selection = selection.clone();
-        let (view, doc) = current!(cx.editor); // refetch doc
-
-        if doc.id() != doc_id {
-            view.add_to_history(doc_id);
-        }
-
-        doc.set_selection(view.id, selection);
-        // Document we switch to might not have been opened in the view before
-        doc.ensure_view_init(view.id);
-        view.ensure_cursor_in_view_center(doc, config.scrolloff);
-    };
+    cx.editor.jump_backward(cx.editor.tree.focus, cx.count());
 }
 
 fn save_selection(cx: &mut Context) {
