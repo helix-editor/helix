@@ -1015,4 +1015,246 @@ mod tests {
         };
         assert_eq!(one, merged);
     }
+
+    // ==================== Unicode / Emoji Tests ====================
+
+    #[test]
+    fn cell_set_symbol_various_unicode() {
+        let test_cases = ["🔥", "👩‍💻", "🇫🇷", "👋🏽", "e\u{0301}", "한", "👨‍👩‍👧‍👦"];
+
+        for symbol in test_cases {
+            let mut cell = Cell::default();
+            cell.set_symbol(symbol);
+            assert_eq!(cell.symbol, *symbol);
+        }
+    }
+
+    #[test]
+    fn buffer_set_string_double_width_and_emoji() {
+        let area = Rect::new(0, 0, 12, 1);
+        let mut buffer = Buffer::empty(area);
+
+        // Mix of emojis, CJK, and ASCII
+        buffer.set_string(0, 0, "🔥漢a", Style::default());
+
+        assert_eq!(&*buffer[(0, 0)].symbol, "🔥");
+        assert_eq!(&*buffer[(1, 0)].symbol, " "); // Covered by emoji
+        assert_eq!(&*buffer[(2, 0)].symbol, "漢");
+        assert_eq!(&*buffer[(3, 0)].symbol, " "); // Covered by CJK
+        assert_eq!(&*buffer[(4, 0)].symbol, "a");
+    }
+
+    #[test]
+    fn buffer_set_string_combining_diacritics() {
+        // "Eĥoŝanĝo ĉiuĵaŭde" using combining marks
+        let text = "Eh\u{0302}os\u{0302}ang\u{0302}o c\u{0302}iuj\u{0302}au\u{0306}de";
+        let area = Rect::new(0, 0, 20, 1);
+        let mut buffer = Buffer::empty(area);
+
+        buffer.set_string(0, 0, text, Style::default());
+
+        let graphemes: Vec<_> = text.graphemes(true).collect();
+        for (i, &g) in graphemes.iter().enumerate() {
+            assert_eq!(&*buffer[(i as u16, 0)].symbol, g);
+        }
+    }
+
+    #[test]
+    fn buffer_diffing_with_emoji() {
+        let prev = Buffer::with_lines(vec!["🔥test"]);
+        let next = Buffer::with_lines(vec!["xxtest"]);
+
+        let diff = prev.diff(&next);
+
+        // Should update positions where the emoji was
+        assert!(diff.iter().any(|(x, _, c)| *x == 0 && &*c.symbol == "x"));
+    }
+
+    #[test]
+    fn buffer_truncation_with_wide_chars() {
+        let area = Rect::new(0, 0, 5, 1);
+        let mut buffer = Buffer::empty(area);
+
+        // "AAAA" (4) + "漢" (2) = 6, but buffer is 5 wide
+        buffer.set_string(0, 0, "AAAA漢", Style::default());
+
+        // Should not partially render the wide char
+        assert_eq!(&*buffer[(4, 0)].symbol, " ");
+    }
+
+    #[test]
+    fn buffer_overwrite_emoji_and_ascii() {
+        let area = Rect::new(0, 0, 8, 1);
+        let mut buffer = Buffer::empty(area);
+
+        // Write emoji then overwrite with ASCII
+        buffer.set_string(0, 0, "🔥🚀", Style::default());
+        buffer.set_string(0, 0, "abcd", Style::default());
+
+        assert_eq!(&*buffer[(0, 0)].symbol, "a");
+        assert_eq!(&*buffer[(1, 0)].symbol, "b");
+
+        // Write ASCII then overwrite with emoji
+        buffer.set_string(0, 0, "abcd", Style::default());
+        buffer.set_string(0, 0, "🔥🚀", Style::default());
+
+        assert_eq!(&*buffer[(0, 0)].symbol, "🔥");
+        assert_eq!(&*buffer[(2, 0)].symbol, "🚀");
+    }
+
+    // ==================== Adversarial Unicode Tests ====================
+    // These test valid but unusual Unicode that stresses edge cases
+
+    #[test]
+    fn adversarial_zalgo_text() {
+        // Base character with stacked combining marks
+        let zalgo = "X\u{0303}\u{0304}\u{0305}";
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+
+        buffer.set_string(0, 0, zalgo, Style::default());
+
+        assert_eq!(&*buffer[(0, 0)].symbol, zalgo);
+        assert_eq!(&*buffer[(1, 0)].symbol, " ");
+    }
+
+    #[test]
+    fn adversarial_zero_width_chars() {
+        // Zero-width joiners and spaces
+        let text = "a\u{200B}b\u{200D}c";
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+
+        buffer.set_string(0, 0, text, Style::default());
+
+        // Zero-width chars shouldn't take space
+        assert_eq!(&*buffer[(0, 0)].symbol, "a");
+    }
+
+    #[test]
+    fn adversarial_bidi_and_formatting() {
+        // RTL override and BOM
+        let bidi = "\u{202E}abc\u{202C}";
+        let bom = "\u{FEFF}text";
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+
+        buffer.set_string(0, 0, bidi, Style::default());
+        assert_eq!(&*buffer[(0, 0)].symbol, "a");
+
+        buffer.set_string(0, 0, bom, Style::default());
+        assert_eq!(&*buffer[(0, 0)].symbol, "t");
+    }
+
+    #[test]
+    fn adversarial_supplementary_planes() {
+        // High codepoints from supplementary planes
+        let supp = "\u{10000}𝄞𒀀𓀀";
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+
+        buffer.set_string(0, 0, supp, Style::default());
+
+        assert!(!buffer[(0, 0)].symbol.is_empty());
+    }
+
+    #[test]
+    fn adversarial_regional_indicators() {
+        // Unpaired and triple regional indicators
+        let single_ri = "\u{1F1E6}";
+        let three = "\u{1F1FA}\u{1F1F8}\u{1F1E6}"; // US flag + orphan
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+
+        buffer.set_string(0, 0, single_ri, Style::default());
+        assert_eq!(&*buffer[(0, 0)].symbol, single_ri);
+
+        buffer.set_string(0, 0, three, Style::default());
+        assert!(!buffer[(0, 0)].symbol.is_empty());
+    }
+
+    #[test]
+    fn adversarial_tag_sequence_england() {
+        // Subdivision flag using tag sequence
+        let england = "🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+
+        buffer.set_string(0, 0, england, Style::default());
+        assert_eq!(&*buffer[(0, 0)].symbol, england);
+    }
+
+    #[test]
+    fn adversarial_private_use_and_specials() {
+        // PUA and replacement characters
+        let pua = "\u{E000}\u{FFFD}\u{FFFC}";
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+
+        buffer.set_string(0, 0, pua, Style::default());
+        assert_eq!(&*buffer[(0, 0)].symbol, "\u{E000}");
+    }
+
+    #[test]
+    fn adversarial_empty_string() {
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+
+        buffer.set_string(0, 0, "", Style::default());
+        assert_eq!(&*buffer[(0, 0)].symbol, " ");
+    }
+
+    // ======== Fail due to too big for ArrayString<28>
+
+    #[test]
+    #[should_panic] // to big for ArrayString<28>
+    fn adversarial_extreme_zalgo() {
+        // Extreme zalgo: many combining characters exceed capacity
+        let mut extreme = String::from("X");
+        for _ in 0..50 {
+            extreme.push('\u{0303}');
+        }
+
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+        buffer.set_string(0, 0, &extreme, Style::default());
+
+        assert_eq!(&*buffer[(0, 0)].symbol, extreme);
+    }
+
+    #[test]
+    #[should_panic] // to big for ArrayString<28>
+    fn adversarial_extremely_long_grapheme() {
+        let mut absurd = String::from("o");
+        for i in 0..100 {
+            let combining = match i % 4 {
+                0 => '\u{0300}',
+                1 => '\u{0301}',
+                2 => '\u{0302}',
+                _ => '\u{0303}',
+            };
+            absurd.push(combining);
+        }
+
+        let area = Rect::new(0, 0, 10, 1);
+        let mut buffer = Buffer::empty(area);
+        buffer.set_string(0, 0, &absurd, Style::default());
+
+        assert_eq!(&*buffer[(0, 0)].symbol, absurd);
+    }
+
+    #[test]
+    #[should_panic] // to big for ArrayString<28>
+    fn adversarial_long_zwj_chain() {
+        let mut chain = String::from("👨");
+        for _ in 0..10 {
+            chain.push_str("\u{200D}👨");
+        }
+
+        let area = Rect::new(0, 0, 50, 1);
+        let mut buffer = Buffer::empty(area);
+        buffer.set_string(0, 0, &chain, Style::default());
+
+        assert_eq!(&*buffer[(0, 0)].symbol, chain);
+    }
 }
