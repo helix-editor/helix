@@ -144,9 +144,9 @@
 | jq | ✓ | ✓ |  |  |  | `jq-lsp` |
 | jsdoc | ✓ |  |  |  |  |  |
 | json | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
-| json-ld | ✓ | ✓ | ✓ |  |  | `vscode-json-language-server` |
-| json5 | ✓ |  |  |  |  |  |
-| jsonc | ✓ |  | ✓ |  | ✓ | `vscode-json-language-server` |
+| json-ld | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
+| json5 | ✓ | ✓ | ✓ |  | ✓ |  |
+| jsonc | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ |  |  | `julia` |
