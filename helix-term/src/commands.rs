@@ -6752,9 +6752,20 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     if labels.is_empty() {
         return;
     }
-    let alphabet_char = |i| {
+    let alphabet_char = |i, use_fullwidth: bool| {
         let mut res = Tendril::new();
-        res.push(alphabet[i]);
+        let ch = alphabet[i];
+        // Use full-width characters for wide characters to prevent rendering issues
+        let display_ch = if use_fullwidth {
+            match ch {
+                'a'..='z' => char::from_u32(ch as u32 - 'a' as u32 + 'ａ' as u32).unwrap_or(ch),
+                'A'..='Z' => char::from_u32(ch as u32 - 'A' as u32 + 'Ａ' as u32).unwrap_or(ch),
+                _ => ch,
+            }
+        } else {
+            ch
+        };
+        res.push(display_ch);
         res
     };
 
@@ -6764,11 +6775,13 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         .iter()
         .enumerate()
         .flat_map(|(i, range)| {
+            let pos = range.from();
+            let use_fullwidth = text.char(pos).width().unwrap_or(1) >= 2;
             [
-                Overlay::new(range.from(), alphabet_char(i / alphabet.len())),
+                Overlay::new(pos, alphabet_char(i / alphabet.len(), use_fullwidth)),
                 Overlay::new(
-                    graphemes::next_grapheme_boundary(text, range.from()),
-                    alphabet_char(i % alphabet.len()),
+                    graphemes::next_grapheme_boundary(text, pos),
+                    alphabet_char(i % alphabet.len(), use_fullwidth),
                 ),
             ]
         })
