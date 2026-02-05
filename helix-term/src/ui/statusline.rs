@@ -463,11 +463,11 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let title = {
-        let path = context.doc.path();
-        let path = path
+        let path = context
+            .doc
+            .path()
             .as_ref()
-            .map(|p| p.to_string_lossy())
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+            .map_or_else(|| SCRATCH_BUFFER_NAME.into(), |p| p.to_string_lossy());
         format!(" {} ", path)
     };
 

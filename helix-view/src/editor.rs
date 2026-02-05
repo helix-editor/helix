@@ -1631,14 +1631,14 @@ impl Editor {
         let Some(doc_url) = doc.url() else {
             return;
         };
-        let (lang, path) = (doc.language.clone(), doc.path().cloned());
+        let (lang, path) = (doc.language.clone(), doc.path());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
         // store only successfully started language servers
         let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
-                .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
+                .get(language, path, root_dirs, config.lsp.snippets)
                 .filter_map(|(lang, client)| match client {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
@@ -2153,12 +2153,12 @@ impl Editor {
 
     pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
         self.documents()
-            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+            .find(|doc| doc.path().is_some_and(|p| p == path.as_ref()))
     }
 
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
         self.documents_mut()
-            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+            .find(|doc| doc.path().is_some_and(|p| p == path.as_ref()))
     }
 
     /// Returns all supported diagnostics for the document

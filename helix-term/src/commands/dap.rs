@@ -389,14 +389,13 @@ fn debug_parameter_prompt(
 
 pub fn dap_toggle_breakpoint(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let path = match doc.path() {
-        Some(path) => path.clone(),
-        None => {
-            cx.editor
-                .set_error("Can't set breakpoint: document has no path");
-            return;
-        }
+
+    let Some(path) = doc.pathbuf() else {
+        cx.editor
+            .set_error("Can't set breakpoint: document has no path");
+        return;
     };
+
     let text = doc.text().slice(..);
     let line = doc.selection(view.id).primary().cursor_line(text);
     dap_toggle_breakpoint_impl(cx, path, line);
@@ -644,9 +643,8 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
 // TODO: both edit condition and edit log need to be stable: we might get new breakpoints from the debugger which can change offsets
 pub fn dap_edit_condition(cx: &mut Context) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
-        let path = match doc!(cx.editor).path() {
-            Some(path) => path.clone(),
-            None => return,
+        let Some(path) = doc!(cx.editor).pathbuf() else {
+            return;
         };
         let callback = Box::pin(async move {
             let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
@@ -686,9 +684,8 @@ pub fn dap_edit_condition(cx: &mut Context) {
 
 pub fn dap_edit_log(cx: &mut Context) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
-        let path = match doc!(cx.editor).path() {
-            Some(path) => path.clone(),
-            None => return,
+        let Some(path) = doc!(cx.editor).pathbuf() else {
+            return;
         };
         let callback = Box::pin(async move {
             let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {

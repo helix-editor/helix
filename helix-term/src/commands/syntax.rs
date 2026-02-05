@@ -318,11 +318,9 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
         let pattern = Arc::new(pattern);
         let injector = injector.clone();
         let loader = editor.syn_loader.load();
-        let documents: HashSet<_> = editor
-            .documents()
-            .filter_map(Document::path)
-            .cloned()
-            .collect();
+
+        let documents: HashSet<_> = editor.documents().filter_map(Document::pathbuf).collect();
+
         async move {
             let searcher = state.searcher_builder.build();
             state.walk_builder.build_parallel().run(|| {
