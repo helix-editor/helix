@@ -1211,6 +1211,11 @@ impl Document {
         };
     }
 
+    /// Return the last saved time of the document.
+    pub fn get_last_saved_time(&self) -> SystemTime {
+        self.last_saved_time
+    }
+
     // Detect if the file is readonly and change the readonly field if necessary (unix only)
     pub fn detect_readonly(&mut self) {
         // Allows setting the flag for files the user cannot modify, like root files
