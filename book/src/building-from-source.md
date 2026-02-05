@@ -78,6 +78,12 @@ ln -Tsf $PWD/runtime ~/.config/helix/runtime
 
 #### Windows
 
+**Compile and install from source using powershell**
+
+```ps
+cargo install --profile opt --config "build.rustflags=['-C', 'target-cpu=native']" --path helix-term --locked
+```
+
 Either set the `HELIX_RUNTIME` environment variable to point to the runtime files using the Windows setting (search for
 `Edit environment variables for your account`) or use the `setx` command in
 Cmd:
