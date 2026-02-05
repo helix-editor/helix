@@ -228,7 +228,7 @@
   command: _ @keyword.control.import
   path: (curly_group_path) @string)
 (biblatex_include
-  "\\addbibresource" @include
+  "\\addbibresource" @keyword.control.import
   glob: (curly_group_glob_pattern) @string.regex)
 
 (graphics_include
