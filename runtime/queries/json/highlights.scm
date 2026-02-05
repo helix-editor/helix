@@ -13,7 +13,7 @@
 
 (comment) @comment
 
-"," @punctuation.delimiter
+["," ":"] @punctuation.delimiter
 [
   "["
   "]"
