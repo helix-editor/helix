@@ -174,6 +174,23 @@ impl Default for GutterLineNumbersConfig {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PickerLayout {
+    /// Centered popup (default)
+    #[default]
+    Popup,
+    /// Bottom panel (ivy-style)
+    Ivy,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PickerConfig {
+    /// Layout style for pickers. Defaults to "popup".
+    pub layout: PickerLayout,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
@@ -360,6 +377,8 @@ pub struct Config {
     pub continue_comments: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    /// General picker configuration (layout, etc.)
+    pub picker: PickerConfig,
     pub file_picker: FilePickerConfig,
     pub file_explorer: FileExplorerConfig,
     /// Configuration of the statusline elements
@@ -1108,6 +1127,7 @@ impl Default for Config {
             preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
+            picker: PickerConfig::default(),
             file_picker: FilePickerConfig::default(),
             file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
