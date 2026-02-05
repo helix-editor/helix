@@ -1012,7 +1012,50 @@ impl Client {
         })
     }
 
-    // will_save / will_save_wait_until
+    pub fn text_document_will_save(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        reason: lsp::TextDocumentSaveReason,
+    ) {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match &capabilities.text_document_sync.as_ref() {
+            Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                will_save: Some(true),
+                ..
+            })) => {
+                self.notify::<lsp::notification::WillSaveTextDocument>(
+                    lsp::WillSaveTextDocumentParams {
+                        text_document,
+                        reason,
+                    },
+                );
+            }
+            _ => (),
+        };
+    }
+
+    pub fn text_document_will_save_wait_until(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        reason: lsp::TextDocumentSaveReason,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::TextEdit>>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match &capabilities.text_document_sync.as_ref() {
+            Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                will_save_wait_until: Some(true),
+                ..
+            })) => Some(self.call_with_timeout::<lsp::request::WillSaveWaitUntil>(
+                &lsp::WillSaveTextDocumentParams {
+                    text_document,
+                    reason,
+                },
+                5,
+            )),
+            _ => None,
+        }
+    }
 
     pub fn text_document_did_save(
         &self,
