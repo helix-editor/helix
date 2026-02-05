@@ -54,9 +54,9 @@
   (#set! "scope" "all")
 )
 (if_statement
-  "else" @else
+  "else" @_else
   alternative: (if_statement) @indent
-  (#not-same-line? @indent @else)
+  (#not-same-line? @indent @_else)
   (#set! "scope" "all")
 )
 
@@ -70,9 +70,9 @@
   (#set! "scope" "all")
 )
 (if_element
-  "else" @else
+  "else" @_else
   alternative: (if_element) @indent
-  (#not-same-line? @indent @else)
+  (#not-same-line? @indent @_else)
   (#set! "scope" "all")
 )
 

@@ -9,8 +9,8 @@
 ;  - Slick: 'sql', 'sqlu'
 (interpolated_string_expression 
   interpolator: 
-    ((identifier) @interpolator 
-     (#any-of? @interpolator "fr" "infix" "sql" "sqlu"))
+    ((identifier) @_interpolator 
+     (#any-of? @_interpolator "fr" "infix" "sql" "sqlu"))
   (interpolated_string) @injection.content
   (#set! injection.language "sql"))
 

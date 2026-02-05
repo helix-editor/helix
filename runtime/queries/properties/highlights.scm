@@ -19,10 +19,10 @@
   (#match? @constant.numeric.integer "^-?[0-9]+$"))
 
 ((value) @constant.numeric.float
-  (#match? @constant.numeric.float "^-?[0-9]+\.[0-9]$"))
+  (#match? @constant.numeric.float "^-?[0-9]+\\.[0-9]$"))
 
 ((value) @string.special.path
-  (#match? @string.special.path "^(\.{1,2})?/"))
+  (#match? @string.special.path "^(\\.{1,2})?/"))
 
 (substitution
   (key) @function

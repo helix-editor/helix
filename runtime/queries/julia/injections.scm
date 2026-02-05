@@ -31,12 +31,12 @@
 
 (
   (prefixed_string_literal
-    prefix: (identifier) @function.macro) @injection.content
-  (#eq? @function.macro "r")
+    prefix: (identifier) @_function.macro) @injection.content
+  (#eq? @_function.macro "r")
   (#set! injection.language "regex"))
 
 (
   (prefixed_string_literal
-    prefix: (identifier) @function.macro) @injection.content
-  (#eq? @function.macro "md")
+    prefix: (identifier) @_function.macro) @injection.content
+  (#eq? @_function.macro "md")
   (#set! injection.language "markdown"))

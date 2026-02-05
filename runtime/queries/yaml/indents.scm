@@ -12,14 +12,14 @@
 ; - foo
 ; - bar
 ; - baz
-((block_sequence_item) @item @indent.always @extend
-  (#not-one-line? @item))
+((block_sequence_item) @_item @indent.always @extend
+  (#not-one-line? @_item))
 
 ; map pair where without a key
 ;
 ; foo:
 ((block_mapping_pair
-    key: (_) @key
+    key: (_)
     !value
   ) @indent.always @extend
 )
@@ -29,8 +29,8 @@
 ; foo:
 ;   bar: baz
 ((block_mapping_pair
-    key: (_) @key
-    value: (_) @val
-    (#not-same-line? @key @val)
+    key: (_) @_key
+    value: (_) @_val
+    (#not-same-line? @_key @_val)
   ) @indent.always @extend
 )

@@ -1,5 +1,3 @@
-; inherits: html
-
 [
   (if_statement)
   (else_if_block)

@@ -43,16 +43,6 @@
   (block) @indent @extend
   (#set! "scope" "all"))
 
-(ERROR
-  "try"
-  .
-  ":"
-  (ERROR
-    (block
-      (expression_statement
-        (identifier) @_except) @indent.branch))
-  (#eq? @_except "except"))
-
 [
   (if_statement)
   (for_statement)

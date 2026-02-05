@@ -6,9 +6,9 @@
 (procedure (parameters (parameter (identifier) @parameter.inside) @parameter.around))
 
 ((procedure_declaration
-  (attributes (attribute "@" "(" (identifier) @attr_name ")"))
+  (attributes (attribute "@" "(" (identifier) @_attr_name ")"))
   (identifier) (procedure (block) @test.inside)) @test.around
- (#match? @attr_name "test"))
+ (#match? @_attr_name "test"))
 
 (comment) @comment.inside
 (comment)+ @comment.around

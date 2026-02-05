@@ -1,11 +1,11 @@
 ((heredoc_body
   (literal_content) @injection.content
-  (heredoc_end) @name
+  (heredoc_end) @_name
   (#set! injection.language "sql"))
-  (#eq? @name "SQL"))
+  (#eq? @_name "SQL"))
 
 ((heredoc_body
   (literal_content) @injection.content
-  (heredoc_end) @name
+  (heredoc_end) @_name
   (#set! injection.language "html"))
-  (#eq? @name "HTML"))
+  (#eq? @_name "HTML"))

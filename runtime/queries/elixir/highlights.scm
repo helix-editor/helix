@@ -87,7 +87,7 @@
 ; Note that we explicitly target sigil quoted start/end, so they are not overridden by delimiters
 
 (sigil
-  (sigil_name) @__name__
+  (sigil_name)
   quoted_start: _ @string.special
   quoted_end: _ @string.special) @string.special
 

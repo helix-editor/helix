@@ -13,7 +13,7 @@
 (["begin" "end" "this"]) @keyword
 (["input" "output" "inout" "ref"]) @keyword
 (["alias" "and" "assert" "assign" "assume" "before" "bind" "binsof" "break"
-  "case" "checker" "class" "class" "clocking" "config" "const" "constraint"
+  "case" "checker" "class" "clocking" "config" "const" "constraint"
   "cover" "covergroup" "coverpoint" "cross" "default" "defparam" "disable"
   "do" "else" "endcase" "endchecker" "endclass" "endclocking" "endconfig"
   "endfunction" "endgenerate" "endgroup" "endinterface" "endmodule"

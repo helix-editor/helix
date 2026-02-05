@@ -39,7 +39,7 @@
   @parameter.around)
 
 (arguments
-  "," @_arguments_start
+  ","
   . (_) @parameter.inside
   @parameter.around)
 (arguments

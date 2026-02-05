@@ -11,7 +11,7 @@
 ;    ]
 ;
 (table
-  (bare_key) @table-name (#eq? @table-name "tasks")
+  (bare_key) @_table-name (#eq? @_table-name "tasks")
   (pair (_) [
     ((string) @injection.shebang @injection.content (#set! injection.language "bash"))
     ((array (string) @injection.shebang @injection.content (#set! injection.language "bash")))
@@ -26,8 +26,8 @@
 ;    run = "this is bash"
 ;
 (table
-  (dotted_key (bare_key) @table-name (#eq? @table-name "tasks"))
-  (pair (bare_key) @key-name (#eq? @key-name "run") [
+  (dotted_key (bare_key) @_table-name (#eq? @_table-name "tasks"))
+  (pair (bare_key) @_key-name (#eq? @_key-name "run") [
     ((string) @injection.shebang @injection.content (#set! injection.language "bash"))
     ((array (string) @injection.shebang @injection.content (#set! injection.language "bash")))
   ])
