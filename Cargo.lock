@@ -1534,6 +1534,7 @@ dependencies = [
  "nucleo",
  "once_cell",
  "open",
+ "parking_lot",
  "pulldown-cmark",
  "same-file",
  "serde",
