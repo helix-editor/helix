@@ -139,6 +139,10 @@ impl EditorView {
             }
         }
 
+        if let Some(overlay) = Self::doc_document_link_highlights(doc, theme) {
+            overlays.push(overlay);
+        }
+
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
 
         if is_focused {
@@ -457,6 +461,39 @@ impl EditorView {
                 ranges: error_vec,
             },
         ]);
+    }
+
+    pub fn doc_document_link_highlights(
+        doc: &Document,
+        theme: &Theme,
+    ) -> Option<OverlayHighlights> {
+        let highlight = theme
+            .find_highlight_exact("markup.link.url")
+            .or_else(|| theme.find_highlight_exact("markup.link"))?;
+
+        if doc.document_links.is_empty() {
+            return None;
+        }
+
+        let mut ranges: Vec<ops::Range<usize>> = Vec::new();
+        for link in &doc.document_links {
+            if link.start >= link.end {
+                continue;
+            }
+
+            match ranges.last_mut() {
+                Some(existing_range) if link.start <= existing_range.end => {
+                    existing_range.end = existing_range.end.max(link.end);
+                }
+                _ => ranges.push(link.start..link.end),
+            }
+        }
+
+        if ranges.is_empty() {
+            return None;
+        }
+
+        Some(OverlayHighlights::Homogeneous { highlight, ranges })
     }
 
     /// Get highlight spans for selections in a document view.
