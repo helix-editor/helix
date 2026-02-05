@@ -378,6 +378,8 @@ pub struct Config {
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
     #[serde(default)]
+    pub nullspace: NullspaceConfig,
+    #[serde(default)]
     pub whitespace: WhitespaceConfig,
     /// Persistently display open buffers along the top
     pub bufferline: BufferLine,
@@ -838,6 +840,22 @@ impl std::str::FromStr for GutterType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
+pub struct NullspaceConfig {
+    pub enable: bool,
+    pub pattern: String,
+}
+
+impl Default for NullspaceConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            pattern: String::from("╲"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct WhitespaceConfig {
     pub render: WhitespaceRender,
     pub characters: WhitespaceCharacters,
@@ -1118,6 +1136,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
+            nullspace: NullspaceConfig::default(),
             whitespace: WhitespaceConfig::default(),
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
