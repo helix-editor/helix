@@ -11,6 +11,10 @@
 | `:buffer-close-others!`, `:bco!`, `:bcloseother!` | Force close all buffers but the currently focused one. |
 | `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers without quitting. |
 | `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Force close all buffers ignoring unsaved changes without quitting. |
+| `:buffer-close-right`, `:bcr`, `:bcloseright` | Close all to the right buffers without quitting. |
+| `:buffer-close-right!`, `:bcr!`, `:bcloseright!` | Force close all buffers to the right ignoring unsaved changes without quitting. |
+| `:buffer-close-left`, `:bcl`, `:bcloseleft` | Close all to the left buffers without quitting. |
+| `:buffer-close-left!`, `:bcl!`, `:bcloseleft!` | Force close all buffers to the left ignoring unsaved changes without quitting. |
 | `:buffer-next`, `:bn`, `:bnext` | Goto next buffer. |
 | `:buffer-previous`, `:bp`, `:bprev` | Goto previous buffer. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
