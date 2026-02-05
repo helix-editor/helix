@@ -33,9 +33,14 @@ diagnostic = { underline = { style = "curl" } }
 "ui.text" = { fg = "fg" }
 "ui.text.focus" = { fg = "active", modifiers = ["bold"] }
 
-"ui.cursor" = { bg = "active", fg = "bg" }
+"ui.cursor" = { bg = "cursor-secondary", fg = "bg" }
 "ui.cursor.primary" = { bg = "active", fg = "bg" }
-"ui.cursor.match" = { bg = "highlight" }
+# Bracket matching: Helix only styles the *other* bracket via ui.match, not the one
+# under the cursor. ui.cursor.match affects cursor appearance, not the bracket itself.
+# Following tonsky's Sublime approach (blue + underline) as closely as Helix allows.
+"ui.cursor.match" = { fg = "active", underline = { style = "line" } }
+"ui.match" = { fg = "active", underline = { style = "line" } }
+"ui.cursorline.primary" = { bg = "cursorline-primary" }
 "ui.cursorline" = { bg = "cursorline" }
 "ui.cursorcolumn" = { bg = "cursorline" }
 
@@ -96,12 +101,17 @@ diagnostic = { underline = { style = "curl" } }
 "comment.block" = { fg = "comment" }
 
 "function" = { fg = "definition" }
-"function.builtin" = { fg = "definition" }
+# Helix uses function.builtin only at call sites (no builtin definitions exist),
+# so we treat it as a call—unhighlighted per tonsky's philosophy.
+"function.builtin" = { fg = "fg" }
 "function.method" = { fg = "definition" }
+"function.call" = { fg = "fg" }
+"function.method.call" = { fg = "fg" }
 
 "constructor" = { fg = "definition" }
-"type" = { fg = "definition" }
-"type.builtin" = { fg = "definition" }
+"type" = { fg = "fg" }
+"type.definition" = { fg = "definition" }
+"type.builtin" = { fg = "fg" }
 
 # These are NOT highlighted (Alabaster philosophy: keywords are obvious)
 "keyword" = { fg = "fg" }
@@ -122,7 +132,7 @@ diagnostic = { underline = { style = "curl" } }
 "tag" = { fg = "definition" }
 "tag.error" = { fg = "error-red", underline = { style = "line" } }
 "attribute" = { fg = "fg" }
-"namespace" = { fg = "definition" }
+"namespace" = { fg = "fg" }
 "label" = { fg = "constant" }
 
 # MARKUP - For markdown/documentation
@@ -156,10 +166,12 @@ punctuation = "#8C8C8C"  # Grey - dimmed operators/brackets
 selection = "#1E3A5F"    # Very dark blue - secondary selections (subtle)
 selection-primary = "#4A7BA7"  # Bright blue - primary selection (clearly distinct)
 active = "#CD974B"       # Golden brown - cursor, active elements (original Alabaster Dark)
+cursor-secondary = "#7A5B30"  # Dimmed gold - secondary cursors (multi-cursor)
 highlight = "#FF9800"    # Orange - search, warnings
 error-red = "#DFDF8E"    # Yellow - errors (use comment color for visibility)
 panel = "#252526"        # Slightly lighter grey - UI panels, menus, popups
-cursorline = "#1A2022"   # Subtle highlight - cursorline, ruler
+cursorline = "#141819"   # Subtle highlight - secondary cursorline
+cursorline-primary = "#1A2022"  # Primary cursorline (tonsky's original)
 jump-label = "#FF6B35"   # Bright orange - jump destinations
 inlay-hint = "#4A7090"   # Dimmed blue - virtual text (type hints)
 
