@@ -6764,11 +6764,30 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         .iter()
         .enumerate()
         .flat_map(|(i, range)| {
+            // Prefer "lower" chars of the given alphabeth.
+            // Use all possible combinations of lower chars before extending
+            // the used subset upwards.
+            // E.g., "abc..." will lead to label sequence
+            // "aa", "ba", "ab", "bb", "ca", "cb", "ac", "bc", "cc", ...
+            // Labels are generated in a square manner as illustrated by the
+            // schematic below.
+            //    a  b  c  d
+            // a  0  1  4  9
+            // b  2  3  5 10
+            // c  6  7  8 11
+            // d 12 13 14 15
+            // The column index determines the leading (outer) char,
+            // the row index determines the trailing (inner) char.
+            let base = (i as f64).sqrt() as usize;
+            let offset = i - base * base;
+
+            let outer = if offset < base { base } else { offset - base };
+            let inner = if offset < base { offset } else { base };
             [
-                Overlay::new(range.from(), alphabet_char(i / alphabet.len())),
+                Overlay::new(range.from(), alphabet_char(outer)),
                 Overlay::new(
                     graphemes::next_grapheme_boundary(text, range.from()),
-                    alphabet_char(i % alphabet.len()),
+                    alphabet_char(inner),
                 ),
             ]
         })
@@ -6784,7 +6803,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     let doc = doc.id();
     cx.on_next_key(move |cx, event| {
         let alphabet = &cx.editor.config().jump_label_alphabet;
-        let Some(i) = event
+        let Some(outer) = event
             .char()
             .filter(|_| event.modifiers.is_empty())
             .and_then(|ch| alphabet.iter().position(|&it| it == ch))
@@ -6792,12 +6811,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
             return;
         };
-        let outer = i * alphabet.len();
-        // Bail if the given character cannot be a jump label.
-        if outer > labels.len() {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
-            return;
-        }
+
         cx.on_next_key(move |cx, event| {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
             let alphabet = &cx.editor.config().jump_label_alphabet;
@@ -6808,7 +6822,18 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
             else {
                 return;
             };
-            if let Some(mut range) = labels.get(outer + inner).copied() {
+            // Mapping back a label to an index requires to distinguish 2 cases
+            // (see label generation above for illustration):
+            // 1. We are in the new column
+            //    => size of inner square + pos in column.
+            // 2. We are in the new row (including corner)
+            //    => size of extended inner square + pos in row.
+            let index = if outer > inner {
+                outer*outer + inner
+            } else {
+                inner*(inner+1) + outer
+            };
+            if let Some(mut range) = labels.get(index).copied() {
                 range = if behaviour == Movement::Extend {
                     let anchor = if range.anchor < range.head {
                         let from = primary_selection.from();
