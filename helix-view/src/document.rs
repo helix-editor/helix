@@ -997,7 +997,7 @@ impl Document {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
                     if force {
-                        std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                        fs::DirBuilder::new().recursive(true).create(parent).await?;
                     } else {
                         bail!("can't save file, parent directory does not exist (use :w! to create it)");
                     }
@@ -1014,7 +1014,7 @@ impl Document {
                     }
                 }
             }
-            let write_path = tokio::fs::read_link(&path)
+            let write_path = fs::read_link(&path)
                 .await
                 .ok()
                 .and_then(|p| {
@@ -1074,7 +1074,7 @@ impl Document {
             };
 
             let write_result: anyhow::Result<_> = async {
-                let mut dst = tokio::fs::File::create(&write_path).await?;
+                let mut dst = fs::File::create(&write_path).await?;
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
                 dst.sync_all().await?;
                 Ok(())
@@ -1091,30 +1091,32 @@ impl Document {
                     let mut delete = true;
                     if write_result.is_err() {
                         // Restore backup
-                        let _ = tokio::fs::copy(&backup, &write_path).await.map_err(|e| {
+                        if let Err(e) = fs::copy(&backup, &write_path).await {
                             delete = false;
-                            log::error!("Failed to restore backup on write failure: {e}")
-                        });
+                            log::error!("Failed to restore backup on write failure: {e}");
+                        }
                     }
 
                     if delete {
                         // Delete backup
-                        let _ = tokio::fs::remove_file(backup)
-                            .await
-                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
+                        if let Err(e) = fs::remove_file(backup).await {
+                            log::error!("Failed to remove backup file on write: {e}");
+                        }
                     }
                 } else if write_result.is_err() {
                     // restore backup
-                    let _ = tokio::fs::rename(&backup, &write_path)
-                        .await
-                        .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
+                    if let Err(e) = fs::rename(&backup, &write_path).await {
+                        log::error!("Failed to restore backup on write failure: {e}");
+                    }
                 } else {
                     // copy metadata and delete backup
-                    let _ = tokio::task::spawn_blocking(move || {
-                        let _ = copy_metadata(&backup, &write_path)
-                            .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
-                        let _ = std::fs::remove_file(backup)
-                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
+                    _ = tokio::task::spawn_blocking(move || {
+                        if let Err(e) = copy_metadata(&backup, &write_path) {
+                            log::error!("Failed to copy metadata on write: {e}");
+                        }
+                        if let Err(e) = std::fs::remove_file(backup) {
+                            log::error!("Failed to remove backup file on write: {e}");
+                        }
                     })
                     .await;
                 }
