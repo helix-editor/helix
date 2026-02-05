@@ -2482,6 +2482,7 @@ fn run_shell_command(
         return Ok(());
     }
 
+    let follow_cursor = cx.editor.config().popup_follow_cursor;
     let shell = cx.editor.config().shell.clone();
     let args = args.join(" ");
 
@@ -2494,9 +2495,12 @@ fn run_shell_command(
                         format!("```sh\n{}\n```", output.trim_end()),
                         editor.syn_loader.clone(),
                     );
-                    let popup = Popup::new("shell", contents).position(Some(
-                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
-                    ));
+                    let mut popup = Popup::new("shell", contents);
+                    if !follow_cursor {
+                        popup = popup.position(Some(
+                            helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                        ));
+                    }
                     compositor.replace_or_push("shell", popup);
                 }
                 editor.set_status("Command run");
