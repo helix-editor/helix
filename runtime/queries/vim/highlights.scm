@@ -17,7 +17,7 @@
   "finally"
   "endtry"
   "throw"
-] @keyword.control.except
+] @keyword.control.exception
 
 [
   "for"
