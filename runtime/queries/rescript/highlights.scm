@@ -117,7 +117,7 @@
 [
   (true)
   (false)
-] @constant.builtin
+] @constant.builtin.boolean
 
 (number) @constant.numeric
 (polyvar) @constant
