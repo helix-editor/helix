@@ -331,7 +331,7 @@ Options for rendering whitespace with visible characters. Use `:set whitespace.r
 | Key | Description | Default |
 |-----|-------------|---------|
 | `render` | Whether to render whitespace. May either be `all` or `none`, or a table with sub-keys `space`, `nbsp`, `nnbsp`, `tab`, and `newline` | `"none"` |
-| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `nnbsp`, `newline` or `tabpad` | See example below |
+| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `nnbsp`, `newline`, `tabpad`, or `tabend` | See example below |
 
 Example
 
@@ -352,7 +352,9 @@ nbsp = "⍽"
 nnbsp = "␣"
 tab = "→"
 newline = "⏎"
-tabpad = "·" # Tabs will look like "→···" (depending on tab width)
+tabpad = "·"
+tabend = "←" # Tabs will look like "→··←" (depending on tab width)
+             # if tabend is not specified, it defaults to tabpad
 ```
 
 ### `[editor.indent-guides]` Section
