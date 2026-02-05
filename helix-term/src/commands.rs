@@ -2097,7 +2097,7 @@ fn select_regex(cx: &mut Context) {
                 selection::select_on_matches(text, doc.selection(view.id), &regex)
             {
                 doc.set_selection(view.id, selection);
-            } else {
+            } else if event == PromptEvent::Validate {
                 cx.editor.set_error("nothing selected");
             }
         },
@@ -2581,11 +2581,9 @@ fn global_search(cx: &mut Context) {
                             Err(_) => return WalkState::Continue,
                         };
 
-                        match entry.file_type() {
-                            Some(entry) if entry.is_file() => {}
-                            // skip everything else
-                            _ => return WalkState::Continue,
-                        };
+                        if !entry.path().is_file() {
+                            return WalkState::Continue;
+                        }
 
                         let mut stop = false;
                         let sink = sinks::UTF8(|line_num, _line_content| {
@@ -5214,7 +5212,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
             {
                 doc.set_selection(view.id, selection);
-            } else {
+            } else if event == PromptEvent::Validate {
                 cx.editor.set_error("no selections remaining");
             }
         },
@@ -5457,7 +5455,7 @@ fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
             (selection.primary_index() + ranges.len() - rotate_by) % ranges.len()
         }
         ReorderStrategy::Reverse => {
-            if rotate_by % 2 == 0 {
+            if rotate_by.is_multiple_of(2) {
                 // nothing changed, if we reverse something an even
                 // amount of times, the output will be the same
                 return;
@@ -5660,47 +5658,11 @@ fn match_brackets(cx: &mut Context) {
 //
 
 fn jump_forward(cx: &mut Context) {
-    let count = cx.count();
-    let config = cx.editor.config();
-    let view = view_mut!(cx.editor);
-    let doc_id = view.doc;
-
-    if let Some((id, selection)) = view.jumps.forward(count) {
-        view.doc = *id;
-        let selection = selection.clone();
-        let (view, doc) = current!(cx.editor); // refetch doc
-
-        if doc.id() != doc_id {
-            view.add_to_history(doc_id);
-        }
-
-        doc.set_selection(view.id, selection);
-        // Document we switch to might not have been opened in the view before
-        doc.ensure_view_init(view.id);
-        view.ensure_cursor_in_view_center(doc, config.scrolloff);
-    };
+    cx.editor.jump_forward(cx.editor.tree.focus, cx.count());
 }
 
 fn jump_backward(cx: &mut Context) {
-    let count = cx.count();
-    let config = cx.editor.config();
-    let (view, doc) = current!(cx.editor);
-    let doc_id = doc.id();
-
-    if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
-        view.doc = *id;
-        let selection = selection.clone();
-        let (view, doc) = current!(cx.editor); // refetch doc
-
-        if doc.id() != doc_id {
-            view.add_to_history(doc_id);
-        }
-
-        doc.set_selection(view.id, selection);
-        // Document we switch to might not have been opened in the view before
-        doc.ensure_view_init(view.id);
-        view.ensure_cursor_in_view_center(doc, config.scrolloff);
-    };
+    cx.editor.jump_backward(cx.editor.tree.focus, cx.count());
 }
 
 fn save_selection(cx: &mut Context) {
@@ -6867,6 +6829,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                 } else {
                     range.with_direction(Direction::Forward)
                 };
+                save_selection(cx);
                 doc_mut!(cx.editor, &doc).set_selection(view, range.into());
             }
         });

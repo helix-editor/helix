@@ -1,7 +1,8 @@
 ## Package managers
 
 - [Linux](#linux)
-  - [Ubuntu/Debian](#ubuntudebian)
+  - [Debian](#debian)
+  - [Ubuntu/Mint](#ubuntumint)
   - [Fedora/RHEL](#fedorarhel)
   - [Arch Linux extra](#arch-linux-extra)
   - [NixOS](#nixos)
@@ -23,7 +24,16 @@
 
 The following third party repositories are available:
 
-### Ubuntu/Debian
+### Debian
+
+```sh
+sudo apt install hx
+```
+
+If you are running a system older than Debian 13, follow the steps for
+[Ubuntu/Mint](#ubuntumint).
+
+### Ubuntu/Mint
 
 Install the Debian package [from the release page](https://github.com/helix-editor/helix/releases/latest).
 

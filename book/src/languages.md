@@ -58,7 +58,7 @@ These configuration keys are available:
 | `injection-regex`     | regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential [language injection][treesitter-language-injection] site. |
 | `file-types`          | The filetypes of the language, for example `["yml", "yaml"]`. See the file-type detection section below. |
 | `shebangs`            | The interpreters from the shebang line, for example `["sh", "bash"]` |
-| `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
+| `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock`, `*.csproj` |
 | `auto-format`         | Whether to autoformat this language when saving               |
 | `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `error`, `warning`, `info`, `hint`) |
 | `comment-tokens`      | The tokens to use as a comment token, either a single token `"//"` or an array `["//", "///", "//!"]` (the first token will be used for commenting). Also configurable as `comment-token` for backwards compatibility|

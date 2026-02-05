@@ -829,15 +829,7 @@ impl Application {
                         );
                     }
                     Notification::ShowMessage(params) => {
-                        if self.config.load().editor.lsp.display_messages {
-                            match params.typ {
-                                lsp::MessageType::ERROR => self.editor.set_error(params.message),
-                                lsp::MessageType::WARNING => {
-                                    self.editor.set_warning(params.message)
-                                }
-                                _ => self.editor.set_status(params.message),
-                            }
-                        }
+                        self.handle_show_message(params.typ, params.message);
                     }
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
@@ -1125,6 +1117,42 @@ impl Application {
 
                         Ok(serde_json::Value::Null)
                     }
+                    Ok(MethodCall::ShowMessageRequest(params)) => {
+                        if let Some(actions) = params.actions.filter(|a| !a.is_empty()) {
+                            let id = id.clone();
+                            let select = ui::Select::new(
+                                params.message,
+                                actions,
+                                (),
+                                move |editor, action, event| {
+                                    let reply = match event {
+                                        ui::PromptEvent::Update => return,
+                                        ui::PromptEvent::Validate => Some(action.clone()),
+                                        ui::PromptEvent::Abort => None,
+                                    };
+                                    if let Some(language_server) =
+                                        editor.language_server_by_id(server_id)
+                                    {
+                                        if let Err(err) =
+                                            language_server.reply(id.clone(), Ok(json!(reply)))
+                                        {
+                                            log::error!(
+                                                "Failed to send reply to server '{}' request {id}: {err}",
+                                                language_server.name()
+                                            );
+                                        }
+                                    }
+                                },
+                            );
+                            self.compositor
+                                .replace_or_push("lsp-show-message-request", select);
+                            // Avoid sending a reply. The `Select` callback above sends the reply.
+                            return;
+                        } else {
+                            self.handle_show_message(params.typ, params.message);
+                            Ok(serde_json::Value::Null)
+                        }
+                    }
                 };
 
                 let language_server = language_server!();
@@ -1136,6 +1164,16 @@ impl Application {
                 }
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
+        }
+    }
+
+    fn handle_show_message(&mut self, message_type: lsp::MessageType, message: String) {
+        if self.config.load().editor.lsp.display_messages {
+            match message_type {
+                lsp::MessageType::ERROR => self.editor.set_error(message),
+                lsp::MessageType::WARNING => self.editor.set_warning(message),
+                _ => self.editor.set_status(message),
+            }
         }
     }
 
@@ -1300,5 +1338,12 @@ impl Application {
         }
 
         errs
+    }
+}
+
+impl ui::menu::Item for lsp::MessageActionItem {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> tui::widgets::Row<'_> {
+        self.title.as_str().into()
     }
 }

@@ -2492,7 +2492,7 @@ fn run_shell_command(
         let output = shell_impl_async(&shell, &args, None).await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
-                if !output.is_empty() {
+                if !output.trim().is_empty() {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output.trim_end()),
                         editor.syn_loader.clone(),
@@ -2592,6 +2592,24 @@ fn clear_register(
             .set_error(format!("Register {} not found", register));
     }
     Ok(())
+}
+
+fn set_register(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(
+        args[0].chars().count() == 1,
+        format!("Invalid register {}", &args[0])
+    );
+
+    let register = args[0].chars().next().unwrap_or_default();
+    cx.editor.registers.write(register, vec![args[1].into()])
 }
 
 fn redraw(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -3723,6 +3741,18 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::all(completers::register),
         signature: Signature {
             positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "set-register",
+        aliases: &[],
+        doc: "Set contents of the given register.",
+        fun: set_register,
+        completer: CommandCompleter::positional(&[completers::register, completers::none]),
+        signature: Signature {
+            positionals: (2, Some(2)),
+            raw_after: Some(1),
             ..Signature::DEFAULT
         },
     },

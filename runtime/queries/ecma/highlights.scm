@@ -121,17 +121,17 @@
   "else"
   "switch"
   "case"
-  "while"
 ] @keyword.control.conditional
 
 [
+  "while"
   "for"
 ] @keyword.control.repeat
 
 [
   "import"
   "export"
-] @keyword.control.import 
+] @keyword.control.import
 
 [
   "return"
@@ -201,7 +201,7 @@
 ; javascript and typescript grammars without conflicts.
 (arrow_function
   parameter: (identifier) @variable.parameter)
-  
+
 ; Function and method calls
 ;--------------------------
 

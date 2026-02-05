@@ -1,0 +1,7 @@
+# Author : tangowithfoxtrot
+# Eldritch theme with a transparent background
+
+inherits = "eldritch"
+
+"ui.background" = { }
+"ui.popup"      = { modifiers = ["italic"] }

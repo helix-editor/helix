@@ -2,10 +2,10 @@ use crate::{
     registry::DebugAdapterId,
     requests::{DisconnectArguments, TerminateArguments},
     transport::{Payload, Request, Response, Transport},
-    types::*,
     Error, Result,
 };
 use helix_core::syntax::config::{DebugAdapterConfig, DebuggerQuirks};
+use helix_dap_types::*;
 
 use serde_json::Value;
 
@@ -249,7 +249,7 @@ impl Client {
     }
 
     /// Execute a RPC request on the debugger.
-    pub fn call<R: crate::types::Request>(
+    pub fn call<R: helix_dap_types::Request>(
         &self,
         arguments: R::Arguments,
     ) -> impl Future<Output = Result<Value>>
@@ -288,7 +288,10 @@ impl Client {
         }
     }
 
-    pub async fn request<R: crate::types::Request>(&self, params: R::Arguments) -> Result<R::Result>
+    pub async fn request<R: helix_dap_types::Request>(
+        &self,
+        params: R::Arguments,
+    ) -> Result<R::Result>
     where
         R::Arguments: serde::Serialize,
         R::Result: core::fmt::Debug, // TODO: temporary
@@ -450,7 +453,7 @@ impl Client {
     }
 
     pub fn threads(&self) -> impl Future<Output = Result<Value>> {
-        self.call::<requests::Threads>(())
+        self.call::<requests::Threads>(Some(requests::ThreadsArguments {}))
     }
 
     pub async fn scopes(&self, frame_id: usize) -> Result<Vec<Scope>> {
