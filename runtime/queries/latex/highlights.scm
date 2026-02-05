@@ -204,7 +204,7 @@
 ((generic_command
   command: (command_name) @_name
   .
-  arg: (curly_group (_) @markup.link.uri))
+  arg: (curly_group (_) @markup.link.url))
   (#match? @_name "^(\\\\url|\\\\href)$"))
 
 ;; File inclusion commands
