@@ -18,6 +18,14 @@ pub struct Cell {
 }
 
 impl Cell {
+    #[must_use]
+    pub fn new(symbol: &str) -> Self {
+        Self {
+            symbol: symbol.to_string(),
+            ..Default::default()
+        }
+    }
+
     /// Set the cell's grapheme
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
         self.symbol.clear();

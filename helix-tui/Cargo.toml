@@ -28,3 +28,13 @@ log = "~0.4"
 
 [target.'cfg(windows)'.dependencies]
 crossterm = { version = "0.28", optional = true }
+
+[dev-dependencies]
+criterion.workspace = true
+
+[lib]
+bench = false
+
+[[bench]]
+name = "tui"
+harness = false
