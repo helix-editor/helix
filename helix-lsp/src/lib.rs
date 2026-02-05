@@ -702,6 +702,7 @@ impl Registry {
         doc_path: Option<&'a std::path::PathBuf>,
         root_dirs: &'a [PathBuf],
         enable_snippets: bool,
+        autostart: bool,
     ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
         language_config.language_servers.iter().filter_map(
             move |LanguageServerFeatures { name, .. }| {
@@ -723,6 +724,10 @@ impl Registry {
                     }) {
                         return Some((name.to_owned(), Ok(client.clone())));
                     }
+                } else if !autostart {
+                    // If autostart LSP turned off, do not automatically start a client for server
+                    // Try emulate the empty clients list behavior for disable LSP
+                    return None;
                 }
                 match self.start_client(
                     name.clone(),
