@@ -713,8 +713,17 @@ pub enum StatusLineElement {
     /// Indicator for selected register
     Register,
 
-    /// The base of current working directory
+    /// The path of current working directory
     CurrentWorkingDirectory,
+
+    /// The basename of current working directory
+    CurrentWorkingDirectoryName,
+
+    /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
+    WorkspaceDirectory,
+
+    /// Basename of the workspace directory
+    WorkspaceDirectoryName,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
