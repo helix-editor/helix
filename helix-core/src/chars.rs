@@ -63,7 +63,7 @@ pub fn char_is_whitespace(ch: char) -> bool {
 
 #[inline]
 pub fn char_is_punctuation(ch: char) -> bool {
-    use unicode_general_category::{get_general_category, GeneralCategory};
+    use unicode_general_category::{GeneralCategory, get_general_category};
 
     matches!(
         get_general_category(ch),
@@ -96,8 +96,7 @@ mod test {
         #[cfg(feature = "unicode-lines")]
         const EOL_TEST_CASE: &str = "\n\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}";
         const WORD_TEST_CASE: &str = "_hello_world_あいうえおー1234567890１２３４５６７８９０";
-        const PUNCTUATION_TEST_CASE: &str =
-            "!\"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~！”＃＄％＆’（）＊＋、。：；＜＝＞？＠「」＾｀｛｜｝～";
+        const PUNCTUATION_TEST_CASE: &str = "!\"#$%&\'()*+,-./:;<=>?@[\\]^`{|}~！”＃＄％＆’（）＊＋、。：；＜＝＞？＠「」＾｀｛｜｝～";
         const WHITESPACE_TEST_CASE: &str = "  　   ";
 
         for ch in EOL_TEST_CASE.chars() {
