@@ -415,6 +415,7 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
+    pub enable_diagnostics: bool,
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
@@ -1139,6 +1140,7 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
+            enable_diagnostics: true,
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Enable(Severity::Hint),
             clipboard_provider: ClipboardProvider::default(),
