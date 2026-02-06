@@ -37,10 +37,8 @@
 (register) @variable
 
 ; Numbers
-[
-  (number)
-  (float_literal)
-] @number
+(number) @constant.numeric.integer
+(float_literal) @constant.numeric.float
 
 ; Strings
 (string) @string
