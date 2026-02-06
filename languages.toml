@@ -173,6 +173,7 @@ teal-language-server = { command = "teal-language-server" }
 wasm-language-tools = { command = "wat_server" }
 sourcepawn-studio = { command = "sourcepawn-studio" }
 luau = { command = "luau-lsp", args = ["lsp"] }
+ebnfer = { command = "ebnfer" }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -5323,3 +5324,17 @@ comment-token = "#"
 [[grammar]]
 name = "gnuplot"
 source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
+
+[[language]]
+name = "ebnf"
+scope = "source.ebnf"
+file-types = ["ebnf"]
+injection-regex = "ebnf"
+language-servers = ["ebnfer"]
+indent = { tab-width = 4, unit = "    " }
+block-comment-tokens = { end = "*)", start = "(*" }
+
+
+[[grammar]]
+name = "ebnf"
+source = { git = "https://github.com/RubixDev/ebnf/", rev = "8e635b0b723c620774dfb8abf382a7f531894b40", subpath = "crates/tree-sitter-ebnf" }
