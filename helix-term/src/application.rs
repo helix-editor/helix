@@ -835,9 +835,7 @@ impl Application {
                         log::info!("window/logMessage: {:?}", params);
                     }
                     Notification::ProgressMessage(params)
-                        if !self
-                            .compositor
-                            .has_component(std::any::type_name::<ui::Prompt>()) =>
+                        if !self.compositor.has_component::<ui::Prompt>() =>
                     {
                         let editor_view = self
                             .compositor

@@ -321,6 +321,10 @@ impl<T: Item + 'static> Component for Menu<T> {
         EventResult::Ignored(None)
     }
 
+    fn is_menu(&self) -> bool {
+        true
+    }
+
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         if viewport != self.viewport || self.recalculate {
             self.recalculate_size(viewport);

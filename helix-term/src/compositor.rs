@@ -73,6 +73,10 @@ pub trait Component: Any + AnyComponent {
     fn id(&self) -> Option<&'static str> {
         None
     }
+
+    fn is_menu(&self) -> bool {
+        false
+    }
 }
 
 pub struct Compositor {
@@ -137,9 +141,7 @@ impl Compositor {
     }
 
     pub fn remove_type<T: 'static>(&mut self) {
-        let type_name = std::any::type_name::<T>();
-        self.layers
-            .retain(|component| component.type_name() != type_name);
+        self.layers.retain(|component| !component.as_any().is::<T>());
     }
     pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
         // If it is a key event, a macro is being recorded, and a macro isn't being replayed,
@@ -183,8 +185,7 @@ impl Compositor {
 
     pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         if !cx.editor.config().commandline {
-            let should_show =
-                self.has_component(std::any::type_name::<crate::ui::Prompt>());
+            let should_show = self.has_component::<crate::ui::Prompt>();
             if cx.editor.commandline_visible != should_show {
                 cx.editor.commandline_visible = should_show;
                 cx.editor.needs_redraw = true;
@@ -205,18 +206,16 @@ impl Compositor {
         (None, CursorKind::Hidden)
     }
 
-    pub fn has_component(&self, type_name: &str) -> bool {
+    pub fn has_component<T: 'static>(&self) -> bool {
         self.layers
             .iter()
-            .any(|component| component.type_name() == type_name)
+            .any(|component| component.as_any().is::<T>())
     }
 
     pub fn find<T: 'static>(&mut self) -> Option<&mut T> {
-        let type_name = std::any::type_name::<T>();
         self.layers
             .iter_mut()
-            .find(|component| component.type_name() == type_name)
-            .and_then(|component| component.as_any_mut().downcast_mut())
+            .find_map(|component| component.as_any_mut().downcast_mut())
     }
 
     pub fn find_id<T: 'static>(&mut self, id: &'static str) -> Option<&mut T> {
