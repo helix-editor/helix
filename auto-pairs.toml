@@ -1,0 +1,868 @@
+# Auto-pairs configuration for languages.
+#
+# This file defines the default auto-pairs for each language. These are merged
+# with user configuration from ~/.config/helix/auto-pairs.toml and workspace
+# .helix/auto-pairs.toml files.
+#
+# Each language section completely replaces the default pairs - there is no
+# merging of individual pairs within a language.
+#
+# If a language has an explicit `auto-pairs` section in languages.toml (either
+# built-in or user-defined), that takes precedence over this file.
+#
+# Format:
+#   [language-name]
+#   pairs = [
+#     { open = "(", close = ")" },
+#     { open = "\"", close = "\"", kind = "quote" },
+#     { open = "<!--", close = "-->", kind = "delimiter" },
+#   ]
+#
+# Supported `kind` values: "bracket", "quote", "delimiter", "custom"
+# If omitted, kind is auto-detected based on whether open == close.
+#
+# Languages that match the default exactly are not listed here and will
+# automatically use the default pairs.
+
+# Default pairs applied to languages without a specific configuration
+[default]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+]
+
+[rust]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "|", close = "|" },
+]
+
+[c]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[cpp]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+]
+
+[zig]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "|", close = "|" },
+]
+
+[html]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "<!--", close = "-->", kind = "delimiter" },
+]
+
+[xml]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "<!--", close = "-->", kind = "delimiter" },
+]
+
+[javascript]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "<", close = ">" },
+]
+
+[typescript]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "<", close = ">" },
+]
+
+[jsx]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "<", close = ">" },
+]
+
+[tsx]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "<", close = ">" },
+]
+
+[css]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[scss]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "#{", close = "}", kind = "delimiter" },
+]
+
+[vue]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "<!--", close = "-->", kind = "delimiter" },
+  { open = "{{", close = "}}", kind = "delimiter" },
+]
+
+[svelte]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "<!--", close = "-->", kind = "delimiter" },
+]
+
+[jinja]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "<!--", close = "-->", kind = "delimiter" },
+  { open = "{%", close = "%}", kind = "delimiter" },
+  { open = "{{", close = "}}", kind = "delimiter" },
+  { open = "{#", close = "#}", kind = "delimiter" },
+]
+
+[twig]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "<!--", close = "-->", kind = "delimiter" },
+  { open = "{%", close = "%}", kind = "delimiter" },
+  { open = "{{", close = "}}", kind = "delimiter" },
+  { open = "{#", close = "#}", kind = "delimiter" },
+]
+
+[htmldjango]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "<!--", close = "-->", kind = "delimiter" },
+  { open = "{%", close = "%}", kind = "delimiter" },
+  { open = "{{", close = "}}", kind = "delimiter" },
+  { open = "{#", close = "#}", kind = "delimiter" },
+]
+
+[erb]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "<!--", close = "-->", kind = "delimiter" },
+  { open = "<%", close = "%>", kind = "delimiter" },
+  { open = "<%=", close = "%>", kind = "delimiter" },
+  { open = "<%-", close = "%>", kind = "delimiter" },
+]
+
+[ejs]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "<!--", close = "-->", kind = "delimiter" },
+  { open = "<%", close = "%>", kind = "delimiter" },
+  { open = "<%=", close = "%>", kind = "delimiter" },
+  { open = "<%-", close = "%>", kind = "delimiter" },
+]
+
+[python]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote", allowed-contexts = ["code", "string"] },
+  { open = "\"\"\"", close = "\"\"\"", kind = "quote", allowed-contexts = ["code", "string"] },
+  { open = "'", close = "'", kind = "quote", allowed-contexts = ["code", "string"] },
+  { open = "'''", close = "'''", kind = "quote", allowed-contexts = ["code", "string"] },
+]
+
+[ruby]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "|", close = "|" },
+  { open = "#{", close = "}", kind = "delimiter" },
+]
+
+[lua]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "[[", close = "]]", kind = "quote" },
+]
+
+[perl]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[php]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<?php", close = "?>", kind = "delimiter" },
+  { open = "<?=", close = "?>", kind = "delimiter" },
+]
+
+[clojure]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "{", close = "}" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[common-lisp]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[scheme]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[racket]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "{", close = "}" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[fennel]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "{", close = "}" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[janet]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "{", close = "}" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+]
+
+[haskell]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "{-", close = "-}", kind = "delimiter" },
+]
+
+[ocaml]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "(*", close = "*)", kind = "delimiter" },
+]
+
+[elixir]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "#{", close = "}", kind = "delimiter" },
+  { open = "<%", close = "%>", kind = "delimiter" },
+  { open = "<%=", close = "%>", kind = "delimiter" },
+]
+
+[erlang]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<<", close = ">>", kind = "delimiter" },
+]
+
+[gleam]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "<", close = ">" },
+]
+
+[java]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote", allowed-contexts = ["code", "string"] },
+  { open = "\"\"\"", close = "\"\"\"", kind = "quote", allowed-contexts = ["code", "string"] },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+]
+
+[kotlin]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "${", close = "}", kind = "delimiter" },
+]
+
+[scala]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[groovy]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "${", close = "}", kind = "delimiter" },
+]
+
+[csharp]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+]
+
+[fsharp]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "(*", close = "*)", kind = "delimiter" },
+]
+
+[bash]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+  { open = "$(", close = ")", kind = "delimiter" },
+  { open = "${", close = "}", kind = "delimiter" },
+]
+
+[fish]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[nix]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "''", close = "''", kind = "quote" },
+]
+
+[toml]
+pairs = [
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[yaml]
+pairs = [
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[json]
+pairs = [
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[markdown]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "delimiter" },
+  { open = "**", close = "**", kind = "delimiter" },
+  { open = "__", close = "__", kind = "delimiter" },
+  { open = "*", close = "*", kind = "delimiter" },
+  { open = "_", close = "_", kind = "delimiter" },
+  { open = "~~", close = "~~", kind = "delimiter" },
+  { open = "```", close = "```", kind = "delimiter" },
+]
+
+[markdown-rustdoc]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "delimiter" },
+  { open = "**", close = "**", kind = "delimiter" },
+  { open = "__", close = "__", kind = "delimiter" },
+  { open = "*", close = "*", kind = "delimiter" },
+  { open = "_", close = "_", kind = "delimiter" },
+  { open = "~~", close = "~~", kind = "delimiter" },
+  { open = "```", close = "```", kind = "delimiter" },
+]
+
+["markdown.inline"]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "`", close = "`", kind = "delimiter" },
+  { open = "**", close = "**", kind = "delimiter" },
+  { open = "__", close = "__", kind = "delimiter" },
+  { open = "*", close = "*", kind = "delimiter" },
+  { open = "_", close = "_", kind = "delimiter" },
+  { open = "~~", close = "~~", kind = "delimiter" },
+  { open = "```", close = "```", kind = "delimiter" },
+]
+
+[latex]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "$", close = "$", kind = "quote" },
+  { open = "$$", close = "$$", kind = "quote" },
+  { open = "\\(", close = "\\)", kind = "delimiter" },
+  { open = "\\[", close = "\\]", kind = "delimiter" },
+  { open = "\\{", close = "\\}", kind = "delimiter" },
+]
+
+[typst]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "$", close = "$", kind = "quote" },
+  { open = "<", close = ">" },
+]
+
+[sql]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[graphql]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[swift]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "\\(", close = ")", kind = "delimiter" },
+]
+
+[dart]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "<", close = ">" },
+  { open = "${", close = "}", kind = "delimiter" },
+]
+
+[r]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[julia]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "$(", close = ")", kind = "delimiter" },
+]
+
+[nim]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[crystal]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+  { open = "|", close = "|" },
+  { open = "#{", close = "}", kind = "delimiter" },
+]
+
+[odin]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[elisp]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[hy]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[dune]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[sml]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[ocaml-interface]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[nickel]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[lean]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "⟨", close = "⟩" },
+]
+
+[unison]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "`", close = "`", kind = "quote" },
+]
+
+[agda]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[adl]
+pairs = [
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[fidl]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[wit]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[ohm]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[pest]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[tsq]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[glimmer]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[gjs]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[gts]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[spade]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[tact]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+]
+
+[dtd]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "[", close = "]" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[msbuild]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "<", close = ">" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
+
+[bovex]
+pairs = [
+  { open = "(", close = ")" },
+  { open = "{", close = "}" },
+  { open = "[", close = "]" },
+  { open = "\"", close = "\"", kind = "quote" },
+  { open = "'", close = "'", kind = "quote" },
+]
