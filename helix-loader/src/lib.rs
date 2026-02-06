@@ -235,11 +235,54 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
     }
 }
 
+/// Check if a directory is owned by the current user
+fn is_owned_by_current_user(path: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        match std::fs::metadata(path) {
+            Ok(metadata) => {
+                let current_uid = rustix::process::getuid().as_raw();
+                metadata.uid() == current_uid
+            }
+            Err(_) => false,
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        use std::fs::metadata;
+        // On Windows, we check if the current process has write access to the directory
+        // as a proxy for ownership
+        match metadata(path) {
+            Ok(_) => {
+                // Try to open a test file to verify permissions
+                match std::fs::File::create(path.join(".helix_permission_test")) {
+                    Ok(file) => {
+                        drop(file);
+                        let _ = std::fs::remove_file(path.join(".helix_permission_test"));
+                        true
+                    }
+                    Err(_) => false,
+                }
+            }
+            Err(_) => false,
+        }
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    {
+        // On other platforms, we assume ownership if the directory exists and is readable
+        Path::new(path).exists()
+    }
+}
+
 /// Finds the current workspace folder.
 /// Used as a ceiling dir for LSP root resolution, the filepicker and potentially as a future filewatching root
 ///
 /// This function starts searching the FS upward from the CWD
-/// and returns the first directory that contains either `.git`, `.svn`, `.jj` or `.helix`.
+/// and returns the first directory that contains either `.git`, `.svn`, `.jj` or `.helix`,
+/// and is owned by the current user.
 /// If no workspace was found returns (CWD, true).
 /// Otherwise (workspace, false) is returned
 pub fn find_workspace() -> (PathBuf, bool) {
@@ -250,6 +293,10 @@ pub fn find_workspace() -> (PathBuf, bool) {
 pub fn find_workspace_in(dir: impl AsRef<Path>) -> (PathBuf, bool) {
     let dir = dir.as_ref();
     for ancestor in dir.ancestors() {
+        if !is_owned_by_current_user(ancestor) {
+            continue;
+        }
+
         if ancestor.join(".git").exists()
             || ancestor.join(".svn").exists()
             || ancestor.join(".jj").exists()
