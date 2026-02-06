@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use helix_core::indent::IndentStyle;
 use helix_core::{coords_at_pos, encoding, unicode::width::UnicodeWidthStr, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
@@ -118,6 +120,43 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
         &context.parts.center,
         center_width,
     );
+
+    // When commandline is hidden and this is the focused view, render status
+    // messages in the center of the statusline instead of the command line row.
+    if !config.commandline && context.focused {
+        if let Some((status_msg, severity)) = &context.editor.status_msg {
+            use helix_core::unicode::width::UnicodeWidthChar;
+            use helix_view::editor::Severity;
+
+            let style = if *severity == Severity::Error {
+                context.editor.theme.get("error")
+            } else {
+                base_style
+            };
+
+            let max_width = center_max_width as usize;
+            let msg: Cow<str> = if status_msg.width() > max_width && max_width > 1 {
+                let mut truncated = String::new();
+                let mut w = 0;
+                for ch in status_msg.chars() {
+                    let cw = UnicodeWidthChar::width(ch).unwrap_or(0);
+                    if w + cw + 1 > max_width {
+                        break;
+                    }
+                    truncated.push(ch);
+                    w += cw;
+                }
+                truncated.push('\u{2026}'); // "…"
+                Cow::Owned(truncated)
+            } else {
+                Cow::Borrowed(status_msg.as_ref())
+            };
+
+            let msg_width = msg.width() as u16;
+            let x = viewport.x + viewport.width / 2 - msg_width / 2;
+            surface.set_string(x, viewport.y, &msg, style);
+        }
+    }
 }
 
 fn append<'a>(buffer: &mut Spans<'a>, mut span: Span<'a>, base_style: Style) {

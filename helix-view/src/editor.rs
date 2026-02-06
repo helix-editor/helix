@@ -428,6 +428,10 @@ pub struct Config {
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
     pub buffer_picker: BufferPickerConfig,
+    /// Whether to always show the command line at the bottom. When `false`, the
+    /// command line row is hidden unless a prompt is open or a status message is
+    /// displayed, giving the editor one extra line.
+    pub commandline: bool,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1146,6 +1150,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
+            commandline: true,
         }
     }
 }
@@ -1247,6 +1252,8 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+    /// Whether the command line row is currently visible (used when `commandline = false`).
+    pub commandline_visible: bool,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1325,7 +1332,9 @@ impl Editor {
         let auto_pairs = (&conf.auto_pairs).into();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
-        area.height -= 1;
+        if conf.commandline {
+            area.height -= 1;
+        }
 
         Self {
             mode: Mode::Normal,
@@ -1368,6 +1377,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            commandline_visible: conf.commandline,
         }
     }
 
@@ -1379,6 +1389,15 @@ impl Editor {
     pub fn menu_border(&self) -> bool {
         self.config().popup_border == PopupBorderConfig::All
             || self.config().popup_border == PopupBorderConfig::Menu
+    }
+
+    /// Returns the height of the command line area (0 or 1).
+    pub fn commandline_height(&self) -> u16 {
+        if self.config().commandline || self.commandline_visible {
+            1
+        } else {
+            0
+        }
     }
 
     pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {

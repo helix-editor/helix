@@ -182,6 +182,15 @@ impl Compositor {
     }
 
     pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        if !cx.editor.config().commandline {
+            let should_show =
+                self.has_component(std::any::type_name::<crate::ui::Prompt>());
+            if cx.editor.commandline_visible != should_show {
+                cx.editor.commandline_visible = should_show;
+                cx.editor.needs_redraw = true;
+            }
+        }
+
         for layer in &mut self.layers {
             layer.render(area, surface, cx);
         }
