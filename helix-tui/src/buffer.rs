@@ -3,6 +3,7 @@ use crate::text::{Span, Spans};
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 use std::cmp::min;
+use std::sync::Once;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub type Symbol = arrayvec::ArrayString<28>;
@@ -20,17 +21,20 @@ pub struct Cell {
 
 /// Char when attempting to set symbol that exceeds capacity: �
 const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
+static SIZE_EXCEEDED_LOG: Once = Once::new();
 
 impl Cell {
     /// Set the cell's grapheme
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
         self.symbol.clear();
         if self.symbol.try_push_str(symbol).is_err() {
-            log::error!(
-                "Grapheme exceeded Symbol capacity ({} bytes, max 28): {:?}",
-                symbol.len(),
-                symbol
-            );
+            SIZE_EXCEEDED_LOG.call_once(|| {
+                log::error!(
+                    "Grapheme exceeded Symbol capacity ({} bytes, max 28): {:?}",
+                    symbol.len(),
+                    symbol
+                );
+            });
             self.symbol.push(REPLACEMENT_CHARACTER);
         }
         self
