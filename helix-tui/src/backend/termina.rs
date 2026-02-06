@@ -583,6 +583,11 @@ impl Backend for TerminaBackend {
         )
     }
 
+    fn set_title(&mut self, title: &str) -> io::Result<()> {
+        write!(self.terminal, "{}", Osc::SetWindowTitle(title))?;
+        self.flush()
+    }
+
     fn clear(&mut self) -> io::Result<()> {
         write!(
             self.terminal,
