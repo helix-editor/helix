@@ -42,6 +42,8 @@ pub struct Prompt {
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
+    history_pattern: Option<String>,
+    user_edited: bool,
     completion_fn: CompletionFn,
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
@@ -98,6 +100,8 @@ impl Prompt {
             selection: None,
             history_register,
             history_pos: None,
+            history_pattern: None,
+            user_edited: true,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
@@ -344,27 +348,40 @@ impl Prompt {
         register: char,
         direction: CompletionDirection,
     ) {
+        if self.line.is_empty() {
+            self.history_pattern = None;
+            self.history_pos = None;
+        } else if self.user_edited {
+            self.history_pattern = Some(self.line.clone());
+            self.history_pos = None;
+        }
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let mut values = match cx.editor.registers.read(register, cx.editor) {
-            Some(values) if values.len() > 0 => values.rev(),
+
+        let values: Vec<_> = match cx.editor.registers.read(register, cx.editor) {
+            Some(values) if values.len() > 0 => {
+                if let Some(pattern) = &self.history_pattern {
+                    values.filter(|the| the.contains(pattern)).rev().collect()
+                } else {
+                    values.rev().collect()
+                }
+            }
             _ => return,
         };
+        if values.is_empty() {
+            return;
+        }
 
         let end = values.len().saturating_sub(1);
 
         let index = match direction {
             CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
-            CompletionDirection::Backward => self
-                .history_pos
-                .unwrap_or_else(|| values.len())
-                .saturating_sub(1),
+            CompletionDirection::Backward => {
+                self.history_pos.unwrap_or(values.len()).saturating_sub(1)
+            }
         }
         .min(end);
 
-        self.line = values.nth(index).unwrap().to_string();
-        // Appease the borrow checker.
-        drop(values);
-
+        self.line = values.into_iter().nth(index).unwrap().to_string();
         self.history_pos = Some(index);
 
         self.move_end();
@@ -616,6 +633,7 @@ impl Component for Prompt {
             compositor.pop();
         })));
 
+        let mut user_edited = true;
         match event {
             ctrl!('c') | key!(Esc) => {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
@@ -702,11 +720,13 @@ impl Component for Prompt {
                 }
             }
             ctrl!('p') | key!(Up) => {
+                user_edited = false;
                 if let Some(register) = self.history_register {
                     self.change_history(cx, register, CompletionDirection::Backward);
                 }
             }
             ctrl!('n') | key!(Down) => {
+                user_edited = false;
                 if let Some(register) = self.history_register {
                     self.change_history(cx, register, CompletionDirection::Forward);
                 }
@@ -754,6 +774,7 @@ impl Component for Prompt {
             }
             _ => (),
         };
+        self.user_edited = user_edited;
 
         EventResult::Consumed(None)
     }
