@@ -1,6 +1,8 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
+use helix_core::{
+    command_line::Token, diagnostic::Severity, pos_at_coords, syntax, Range, Selection,
+};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -11,6 +13,7 @@ use helix_view::{
     align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
     editor::{ConfigEvent, EditorEvent},
+    expansion,
     graphics::Rect,
     theme,
     tree::Layout,
@@ -300,8 +303,9 @@ impl Application {
         self.editor.cursor_cache.reset();
 
         if let Some(title_format) = &self.editor.config().title_format {
-            // TODO: Evaluate expansions
-            self.terminal.set_title(&title_format).unwrap();
+            // TODO: Handle errors here (we shouldn't crash the editor for an invalid expansion)
+            let title = expansion::expand(&self.editor, Token::expand(title_format)).unwrap();
+            self.terminal.set_title(&title).unwrap();
         }
 
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
