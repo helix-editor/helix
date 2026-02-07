@@ -194,6 +194,73 @@ cd "$SRC_DIR"
 cargo install --path helix-term --locked
 ok "Helix built and installed to $CARGO_BIN/hx"
 
+# ── Language servers ────────────────────────────────────────────────────
+info "Installing language servers..."
+
+# Python: ruff (linting/formatting) + jedi (completions/navigation)
+if command -v pip3 >/dev/null 2>&1; then
+    pip3 install --quiet --upgrade ruff jedi-language-server 2>/dev/null \
+        && ok "Python LSPs installed (ruff + jedi)" \
+        || warn "Failed to install Python LSPs via pip3"
+elif command -v brew >/dev/null 2>&1; then
+    brew install ruff 2>/dev/null && ok "ruff installed via brew" || warn "Failed to install ruff"
+    pip3 install --quiet jedi-language-server 2>/dev/null \
+        && ok "jedi-language-server installed" \
+        || warn "Failed to install jedi-language-server (pip3 not available)"
+else
+    warn "pip3 not found. Install Python LSPs manually: pip3 install ruff jedi-language-server"
+fi
+
+# C/C++: clangd
+if command -v clangd >/dev/null 2>&1; then
+    ok "clangd already installed"
+else
+    case "$(uname -s)" in
+        Darwin)
+            if command -v brew >/dev/null 2>&1; then
+                info "Installing clangd via brew (llvm)..."
+                brew install llvm 2>/dev/null \
+                    && ok "clangd installed via brew" \
+                    || warn "Failed to install llvm. Try: xcode-select --install"
+            else
+                warn "Install clangd with: xcode-select --install  OR  brew install llvm"
+            fi
+            ;;
+        Linux)
+            if command -v apt >/dev/null 2>&1; then
+                sudo apt install -y clangd 2>/dev/null && ok "clangd installed" || warn "Failed to install clangd"
+            elif command -v dnf >/dev/null 2>&1; then
+                sudo dnf install -y clang-tools-extra 2>/dev/null && ok "clangd installed" || warn "Failed to install clangd"
+            elif command -v pacman >/dev/null 2>&1; then
+                sudo pacman -S --noconfirm clang 2>/dev/null && ok "clangd installed" || warn "Failed to install clangd"
+            else
+                warn "Install clangd using your system package manager."
+            fi
+            ;;
+    esac
+fi
+
+# TOML: taplo
+if command -v taplo >/dev/null 2>&1; then
+    ok "taplo already installed"
+elif command -v brew >/dev/null 2>&1; then
+    brew install taplo 2>/dev/null && ok "taplo installed" || warn "Failed to install taplo"
+elif command -v cargo >/dev/null 2>&1; then
+    cargo install taplo-cli 2>/dev/null && ok "taplo installed via cargo" || warn "Failed to install taplo"
+else
+    warn "Install taplo manually for TOML language support"
+fi
+
+# C#: csharp-ls
+if command -v dotnet >/dev/null 2>&1; then
+    dotnet tool install --global csharp-ls 2>/dev/null \
+        || dotnet tool update --global csharp-ls 2>/dev/null
+    ok "csharp-ls installed"
+else
+    warn "dotnet not found. Skipping C# language server."
+    warn "  Install .NET SDK first, then run: dotnet tool install --global csharp-ls"
+fi
+
 # ── Symlink runtime ─────────────────────────────────────────────────────────
 info "Setting up runtime directory..."
 mkdir -p "$CONFIG_DIR"
