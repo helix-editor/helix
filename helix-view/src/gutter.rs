@@ -46,7 +46,7 @@ impl GutterType {
 }
 
 pub fn diagnostic<'doc>(
-    _editor: &'doc Editor,
+    editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
@@ -57,10 +57,11 @@ pub fn diagnostic<'doc>(
     let info = theme.get("info");
     let hint = theme.get("hint");
     let diagnostics = &doc.diagnostics;
+    let is_insert = editor.mode() == crate::document::Mode::Insert;
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
-            if !first_visual_line {
+            if is_insert || !first_visual_line {
                 return None;
             }
             use helix_core::diagnostic::Severity;

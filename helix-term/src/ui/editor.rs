@@ -23,7 +23,7 @@ use helix_core::{
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    annotations::diagnostics::DiagnosticFilter,
+    annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
@@ -139,7 +139,9 @@ impl EditorView {
             }
         }
 
-        Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
+        if editor.mode() != Mode::Insert {
+            Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
+        }
 
         if is_focused {
             if let Some(tabstops) = Self::tabstop_highlights(doc, theme) {
@@ -185,16 +187,30 @@ impl EditorView {
         }
         let width = view.inner_width(doc);
         let config = doc.config.load();
+        let is_insert = editor.mode() == Mode::Insert;
         let enable_cursor_line = view
             .diagnostics_handler
             .show_cursorline_diagnostics(doc, view.id);
-        let inline_diagnostic_config = config.inline_diagnostics.prepare(width, enable_cursor_line);
+        let inline_diagnostic_config = if is_insert {
+            InlineDiagnosticsConfig {
+                cursor_line: DiagnosticFilter::Disable,
+                other_lines: DiagnosticFilter::Disable,
+                ..config.inline_diagnostics.prepare(width, enable_cursor_line)
+            }
+        } else {
+            config.inline_diagnostics.prepare(width, enable_cursor_line)
+        };
+        let eol_diagnostics = if is_insert {
+            DiagnosticFilter::Disable
+        } else {
+            config.end_of_line_diagnostics
+        };
         decorations.add_decoration(InlineDiagnostics::new(
             doc,
             theme,
             primary_cursor,
             inline_diagnostic_config,
-            config.end_of_line_diagnostics,
+            eol_diagnostics,
         ));
         render_document(
             surface,
