@@ -1539,5 +1539,105 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
+=              CHAPTER 14.1 RUN SHELL COMMANDS                  =
+=================================================================
+
+ Run shell commands directly within Helix
+ using :run-shell-command, also aliased as :sh. This command
+ executes in the parent terminal and prints the output in a new
+ popup window.
+
+ For example, on a Linux system, type in Helix
+     :sh date
+ to show the date in a new popup. Use ESC to remove the popup.
+
+ Commands performing side effects work. For example,
+ type
+     :sh touch hello.txt
+ to create a file hello.txt at the location from which Helix was
+ opened initially.
+
+
+
+
+=================================================================
+=          CHAPTER 14.2 INSERT SHELL COMMAND OUTPUT             =
+=================================================================
+
+ The :insert-output command inserts a shell command output before
+ each active selection. Similarly, the :append-output appends a
+ shell command output after each active selection.
+
+ Go to the next line starting with -->, move to the space
+ character at the end of the line, and enter
+     :append-output date
+ to append the date at the end of the line.
+
+ --> insert date at the end of line: 
+
+ The :insert-output command is aliased as ! in normal mode. Move
+ to the end of the next line starting with --> , and type !date
+ to insert the date at the end of the line.
+
+ --> insert date at the end of line: 
+
+ Similarly, the :append-output is aliased as Alt-! .
+
+=================================================================
+=          CHAPTER 14.3 PIPE INPUT TO SHELL COMMAND             =
+=================================================================
+
+ The :pipe-to command is used to pipe the current selection(s)
+ to a shell command, as would be done by
+     echo "<selection contents>" | <command>
+ This can be useful e.g. for scripting. If you have a Linux like
+ system with spd-say text-to-speech installed, move to the line
+ starting by -->, select the text on the line, and enter
+     :pipe-to spd-say -e
+ to read out loud the text.
+
+ --> hello world
+
+ The :pipe command is used to pipe the selection(s) to a shell
+ command, and then replace the selection(s) with the output of
+ the command. This can be used for example to apply external
+ commands to modify text in helix.
+
+ On a linux system with jq installed, move to the line starting
+ with a { , select the whole line content pressing x, and enter
+     :pipe jq 
+ to replace the line with its jq-formatted version.
+
+ {"field1": "f1", "field2": {"part1":"f21", "part2": "f22"}}
+
+ The :pipe command is aliased as | , and pipe-to as Alt-| .
+ Select the line starting with { below with x, and type |jq to
+ format it.
+ 
+ {"field1": "f1", "field2": {"part1":"f21", "part2": "f22"}}
+
+=================================================================
+=                     CHAPTER 14.3 RECAP                        =
+=================================================================
+
+ * Shell commands can be run from helix, showing output in a
+ popup, with :sh.
+
+ * Shell commands can be run from helix and their output inserted
+ (resp. appended) using :insert-output (resp :append-output),
+ also aliased as ! (resp Alt-!).
+
+ * Selections can be piped to a shell command and the output 
+ can overwrite the selection (resp. be discarded) using :pipe
+ (resp. :pipe-to), also aliased as | (resp. Alt-| ). Remember
+ that this is piping the selection(s) as the pipe operator would
+ do in bash, not providing the data as arguments.
+
+
+
+
+
+
+=================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
