@@ -1,31 +1,12 @@
 use crate::{
     buffer::Buffer,
-    symbols::line,
     text::Spans,
-    widgets::{Borders, Widget},
+    widgets::{
+        borders::{BorderType, Borders},
+        Widget,
+    },
 };
 use helix_view::graphics::{Rect, Style};
-
-/// Border render type. Defaults to [`BorderType::Plain`].
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum BorderType {
-    #[default]
-    Plain,
-    Rounded,
-    Double,
-    Thick,
-}
-
-impl BorderType {
-    pub fn line_symbols(border_type: Self) -> line::Set {
-        match border_type {
-            Self::Plain => line::NORMAL,
-            Self::Rounded => line::ROUNDED,
-            Self::Double => line::DOUBLE,
-            Self::Thick => line::THICK,
-        }
-    }
-}
 
 /// Base widget to be used with all upper level ones. It may be used to display a box border around
 /// the widget and/or add a title.
