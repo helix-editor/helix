@@ -2509,6 +2509,26 @@ fn run_shell_command(
     Ok(())
 }
 
+fn run_shell_command_interactive(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    ensure!(!args.is_empty(), "No command provided");
+
+    let shell = cx.editor.config().shell.clone();
+    let cmd = args.join(" ");
+
+    let callback = async move {
+        Ok(Callback::InteractiveShellCommand { shell, cmd })
+    };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
 fn reset_diff_change(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3716,6 +3736,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["sh", "!"],
         doc: "Run a shell command",
         fun: run_shell_command,
+        completer: SHELL_COMPLETER,
+        signature: SHELL_SIGNATURE,
+    },
+    TypableCommand {
+        name: "run-shell-command-interactive",
+        aliases: &["shi"],
+        doc: "Run a shell command with full terminal access (interactive).",
+        fun: run_shell_command_interactive,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
     },

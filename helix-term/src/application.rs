@@ -24,7 +24,7 @@ use crate::{
     compositor::{Compositor, Event},
     config::Config,
     handlers,
-    job::Jobs,
+    job::{Callback, Jobs},
     keymap::Keymaps,
     ui::{self, overlay::overlaid},
 };
@@ -339,8 +339,16 @@ impl Application {
                     self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.callbacks.recv() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback)));
-                    self.render().await;
+                    match callback {
+                        Callback::InteractiveShellCommand { shell, cmd } => {
+                            self.run_interactive_shell_command(&shell, &cmd);
+                            self.render().await;
+                        }
+                        callback => {
+                            self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback)));
+                            self.render().await;
+                        }
+                    }
                 }
                 Some(msg) = self.jobs.status_messages.recv() => {
                     let severity = match msg.severity{
@@ -354,8 +362,16 @@ impl Application {
                     helix_event::request_redraw();
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render().await;
+                    match callback {
+                        Ok(Some(Callback::InteractiveShellCommand { shell, cmd })) => {
+                            self.run_interactive_shell_command(&shell, &cmd);
+                            self.render().await;
+                        }
+                        callback => {
+                            self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                            self.render().await;
+                        }
+                    }
                 }
                 event = self.editor.wait_event() => {
                     let _idle_handled = self.handle_editor_event(event).await;
@@ -1246,6 +1262,63 @@ impl Application {
             .show_cursor(CursorKind::Block)
             .ok();
         self.terminal.restore()
+    }
+
+    fn run_interactive_shell_command(&mut self, shell: &[String], cmd: &str) {
+        // Restore terminal (leave alternate screen, disable raw mode)
+        if let Err(err) = self.restore_term() {
+            log::error!("Failed to restore terminal: {}", err);
+            self.editor
+                .set_error(format!("Failed to restore terminal: {}", err));
+            return;
+        }
+
+        // Clear the terminal screen before running the command
+        print!("\x1B[2J\x1B[H");
+        let _ = std::io::Write::flush(&mut std::io::stdout());
+
+        // Spawn child with inherited stdio (full terminal access)
+        let result = std::process::Command::new(&shell[0])
+            .args(&shell[1..])
+            .arg(cmd)
+            .status();
+
+        // Show exit status + wait for keypress
+        {
+            use std::io::{Read, Write};
+            let status_msg = match &result {
+                Ok(status) if status.success() => String::new(),
+                Ok(status) => format!("\n[Process exited with {}]", status),
+                Err(e) => format!("\n[Failed to run command: {}]", e),
+            };
+            if !status_msg.is_empty() {
+                let _ = std::io::stderr().write_all(status_msg.as_bytes());
+            }
+            let _ = std::io::stderr().write_all(b"\nPress ENTER to return to helix...");
+            let _ = std::io::stderr().flush();
+            // Flush any stale input left by the child process
+            #[cfg(unix)]
+            unsafe {
+                libc::tcflush(libc::STDIN_FILENO, libc::TCIFLUSH);
+            }
+            let _ = std::io::stdin().read(&mut [0u8]);
+        }
+
+        // Reclaim terminal (enter alternate screen, enable raw mode)
+        for retries in 1..=10 {
+            match self.terminal.claim() {
+                Ok(()) => break,
+                Err(err) if retries == 10 => {
+                    log::error!("Failed to claim terminal: {}", err);
+                }
+                Err(_) => continue,
+            }
+        }
+
+        // Resize + clear + redraw
+        let area = self.terminal.size();
+        self.compositor.resize(area);
+        self.terminal.clear().expect("couldn't clear terminal");
     }
 
     #[cfg(all(not(feature = "integration"), not(windows)))]

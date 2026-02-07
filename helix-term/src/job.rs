@@ -35,6 +35,7 @@ pub fn dispatch_blocking(job: impl FnOnce(&mut Editor, &mut Compositor) + Send +
 pub enum Callback {
     EditorCompositor(EditorCompositorCallback),
     Editor(EditorCallback),
+    InteractiveShellCommand { shell: Vec<String>, cmd: String },
 }
 
 pub type JobFuture = BoxFuture<'static, anyhow::Result<Option<Callback>>>;
@@ -110,6 +111,9 @@ impl Jobs {
             Ok(Some(call)) => match call {
                 Callback::EditorCompositor(call) => call(editor, compositor),
                 Callback::Editor(call) => call(editor),
+                Callback::InteractiveShellCommand { .. } => {
+                    log::error!("InteractiveShellCommand callback reached handle_callback unexpectedly");
+                }
             },
             Err(e) => {
                 editor.set_error(format!("Async job failed: {}", e));
