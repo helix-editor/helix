@@ -9,15 +9,15 @@ use helix_view::graphics::{CursorKind, Rect};
 #[cfg(all(feature = "termina", not(windows)))]
 mod termina;
 #[cfg(all(feature = "termina", not(windows)))]
-pub use self::termina::TerminaBackend;
+pub use termina::TerminaBackend;
 
 #[cfg(all(feature = "termina", windows))]
 mod crossterm;
 #[cfg(all(feature = "termina", windows))]
-pub use self::crossterm::CrosstermBackend;
+pub use crossterm::CrosstermBackend;
 
 mod test;
-pub use self::test::TestBackend;
+pub use test::TestBackend;
 
 /// Representation of a terminal backend.
 pub trait Backend {
