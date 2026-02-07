@@ -50,8 +50,10 @@ const fn byte_from_hex(mut h: [u8; 2]) -> Option<u8> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 /// UNSTABLE
+#[derive(Default)]
 pub enum CursorKind {
     /// █
+    #[default]
     Block,
     /// |
     Bar,
@@ -61,12 +63,6 @@ pub enum CursorKind {
     Hidden,
     /// Use the terminal's native/default cursor shape configured by the user.
     Native,
-}
-
-impl Default for CursorKind {
-    fn default() -> Self {
-        Self::Block
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

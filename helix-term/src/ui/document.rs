@@ -258,7 +258,7 @@ impl<'a> TextRenderer<'a> {
             whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
             starting_indent: offset.col / indent_width as usize
-                + (offset.col % indent_width as usize != 0) as usize
+                + !offset.col.is_multiple_of(indent_width as usize) as usize
                 + editor_config.indent_guides.skip_levels as usize,
             indent_guide_style: text_style.patch(
                 theme

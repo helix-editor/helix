@@ -19,6 +19,7 @@
 | bovex | ✓ |  |  |  | ✓ |  |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp`, `csharp-ls` |
+| c3 | ✓ |  |  |  |  | `c3-lsp` |
 | cabal |  |  |  |  |  | `haskell-language-server-wrapper` |
 | caddyfile | ✓ | ✓ | ✓ |  |  |  |
 | cairo | ✓ | ✓ | ✓ |  |  | `cairo-language-server` |
@@ -98,6 +99,7 @@
 | glimmer | ✓ |  |  |  |  | `ember-language-server` |
 | glsl | ✓ | ✓ | ✓ |  |  | `glsl_analyzer`, `glsld` |
 | gn | ✓ |  |  |  |  |  |
+| gnuplot | ✓ |  |  |  |  |  |
 | go | ✓ | ✓ | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | go-format-string | ✓ |  |  |  | ✓ |  |
 | godot-resource | ✓ | ✓ |  |  |  |  |
@@ -161,6 +163,7 @@
 | ldif | ✓ |  |  |  |  |  |
 | lean | ✓ |  |  |  |  | `lake` |
 | ledger | ✓ |  |  |  |  |  |
+| less | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
 | llvm | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |  |  |
@@ -203,10 +206,12 @@
 | pascal | ✓ | ✓ |  |  |  | `pasls` |
 | passwd | ✓ |  |  |  |  |  |
 | pem | ✓ |  |  |  |  |  |
+| penrose | ✓ | ✓ |  |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |  | `perlnavigator` |
 | pest | ✓ | ✓ | ✓ |  |  | `pest-language-server` |
 | php | ✓ | ✓ | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  | ✓ |  |  |
+| picat | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | pip-requirements | ✓ |  |  |  |  |  |
 | pkgbuild | ✓ | ✓ | ✓ |  |  | `termux-language-server`, `bash-language-server` |
 | pkl | ✓ |  | ✓ |  |  | `pkl-lsp` |
@@ -233,12 +238,12 @@
 | rescript | ✓ | ✓ |  |  |  | `rescript-language-server` |
 | ripple | ✓ |  |  | ✓ | ✓ | `ripple-language-server` |
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
-| robot | ✓ |  |  |  |  | `robotframework_ls` |
+| robot | ✓ |  |  |  |  | `robotcode`, `robotframework_ls` |
 | robots.txt | ✓ | ✓ |  | ✓ |  |  |
 | ron | ✓ |  | ✓ | ✓ | ✓ | `ron-lsp` |
 | rpmspec | ✓ |  |  |  |  |  |
 | rshtml | ✓ | ✓ |  |  |  | `rshtml-analyzer`, `vscode-html-language-server`, `superhtml` |
-| rst | ✓ |  |  |  |  |  |
+| rst | ✓ |  |  | ✓ |  |  |
 | ruby | ✓ | ✓ | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
 | rust | ✓ | ✓ | ✓ | ✓ | ✓ | `rust-analyzer` |
 | rust-format-args | ✓ |  |  |  |  |  |
@@ -252,7 +257,7 @@
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
 | slint | ✓ | ✓ | ✓ |  |  | `slint-lsp` |
 | slisp | ✓ |  |  | ✓ |  |  |
-| smali | ✓ |  | ✓ |  |  |  |
+| smali | ✓ |  | ✓ |  |  | `smalisp` |
 | smithy | ✓ |  |  |  |  | `cs` |
 | sml | ✓ |  |  |  |  |  |
 | snakemake | ✓ |  | ✓ |  |  | `pylsp` |
@@ -282,9 +287,10 @@
 | textproto | ✓ | ✓ | ✓ |  |  |  |
 | tfvars | ✓ |  | ✓ |  |  | `terraform-ls` |
 | thrift | ✓ |  |  |  |  |  |
+| tilt | ✓ | ✓ | ✓ |  | ✓ | `tilt` |
 | tlaplus | ✓ |  |  |  |  |  |
 | todotxt | ✓ |  |  |  |  |  |
-| toml | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
+| toml | ✓ | ✓ |  | ✓ | ✓ | `taplo`, `tombi` |
 | tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |  |  |
