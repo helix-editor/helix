@@ -56,5 +56,6 @@ pub use line::Spans;
 mod span;
 pub use span::Span;
 
+#[allow(clippy::module_inception)]
 mod text;
 pub use text::Text;
