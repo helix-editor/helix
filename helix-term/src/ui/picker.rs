@@ -52,13 +52,13 @@ use helix_view::{
     Document, DocumentId, Editor,
 };
 
-use self::handlers::{DynamicQueryChange, DynamicQueryHandler, PreviewHighlightHandler};
+use self::handlers::{DynamicQueryChange, DynamicQueryHandler};
 
 pub const ID: &str = "picker";
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
-pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
+pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 1024 * 1024;
 
 #[derive(PartialEq, Eq, Hash)]
 pub enum PathOrId<'a> {
@@ -266,9 +266,9 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
-    /// An event handler for syntax highlighting the currently previewed file.
-    preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
+    /// Whether grammars have been pre-warmed for visible items
+    grammars_pre_warmed: bool,
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -392,8 +392,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
-            preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
+            grammars_pre_warmed: false,
         }
     }
 
@@ -580,6 +580,50 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         }
     }
 
+    /// Pre-warm tree-sitter grammars for the first visible items in the picker.
+    /// Grammar loading (dlopen + query compilation) is expensive on first use (~85ms for C++).
+    /// By triggering it in the background when the picker first renders, the grammars are
+    /// cached by the time the user scrolls to a file.
+    fn pre_warm_grammars(&mut self, editor: &Editor) {
+        if self.grammars_pre_warmed {
+            return;
+        }
+        self.grammars_pre_warmed = true;
+
+        let file_fn = match self.file_fn.as_ref() {
+            Some(f) => f,
+            None => return,
+        };
+
+        let loader = editor.syn_loader.load();
+        let mut languages = Vec::new();
+        let snapshot = self.matcher.snapshot();
+        let count = snapshot.matched_item_count().min(20);
+        for i in 0..count {
+            if let Some(item) = snapshot.get_matched_item(i) {
+                if let Some((PathOrId::Path(path), _)) = file_fn(editor, item.data) {
+                    if let Some(lang) = loader.language_for_filename(path) {
+                        if !languages.contains(&lang) {
+                            languages.push(lang);
+                        }
+                    }
+                }
+            }
+        }
+
+        if languages.is_empty() {
+            return;
+        }
+
+        let loader_arc = editor.syn_loader.load_full();
+        tokio::task::spawn_blocking(move || {
+            let empty = helix_core::Rope::new();
+            for lang in languages {
+                let _ = helix_core::Syntax::new(empty.slice(..), lang, &loader_arc);
+            }
+        });
+    }
+
     /// Get (cached) preview for the currently selected item. If a document corresponding
     /// to the path is already open in the editor, it is used instead.
     fn get_preview<'picker, 'editor>(
@@ -596,13 +640,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
 
                 if self.preview_cache.contains_key(path) {
-                    // NOTE: we use `HashMap::get_key_value` here instead of indexing so we can
-                    // retrieve the `Arc<Path>` key. The `path` in scope here is a `&Path` and
-                    // we can cheaply clone the key for the preview highlight handler.
-                    let (path, preview) = self.preview_cache.get_key_value(path).unwrap();
-                    if matches!(preview, CachedPreview::Document(doc) if doc.syntax().is_none()) {
-                        helix_event::send_blocking(&self.preview_highlight_handler, path.clone());
-                    }
+                    let preview = self.preview_cache.get(path).unwrap();
                     return Some((Preview::Cached(preview), range));
                 }
 
@@ -642,26 +680,19 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             if content_type.is_binary() {
                                 return Ok(CachedPreview::Binary);
                             }
-                            let mut doc = Document::open(
-                                &path,
-                                None,
-                                false,
+                            let mut file = std::fs::File::open(&path)?;
+                            let (rope, encoding, has_bom) =
+                                helix_view::document::from_reader(&mut file, None)?;
+                            let mut doc = Document::from(
+                                rope,
+                                Some((encoding, has_bom)),
                                 editor.config.clone(),
                                 editor.syn_loader.clone(),
-                            )
-                            .or(Err(std::io::Error::new(
-                                std::io::ErrorKind::NotFound,
-                                "Cannot open document",
-                            )))?;
+                            );
+                            doc.set_path(Some(&path));
                             let loader = editor.syn_loader.load();
-                            if let Some(language_config) = doc.detect_language_config(&loader) {
-                                doc.language = Some(language_config);
-                                // Asynchronously highlight the new document
-                                helix_event::send_blocking(
-                                    &self.preview_highlight_handler,
-                                    path.clone(),
-                                );
-                            }
+                            let language_config = doc.detect_language_config(&loader);
+                            doc.set_language(language_config, &loader);
                             Ok(CachedPreview::Document(Box::new(doc)))
                         } else {
                             Err(std::io::Error::new(
@@ -881,6 +912,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        self.pre_warm_grammars(cx.editor);
+
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");

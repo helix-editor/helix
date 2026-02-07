@@ -1,5 +1,4 @@
 use std::{
-    path::Path,
     sync::{atomic, Arc},
     time::Duration,
 };
@@ -9,108 +8,7 @@ use tokio::time::Instant;
 
 use crate::{job, ui::overlay::Overlay};
 
-use super::{CachedPreview, DynQueryCallback, Picker};
-
-pub(super) struct PreviewHighlightHandler<T: 'static + Send + Sync, D: 'static + Send + Sync> {
-    trigger: Option<Arc<Path>>,
-    phantom_data: std::marker::PhantomData<(T, D)>,
-}
-
-impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Default for PreviewHighlightHandler<T, D> {
-    fn default() -> Self {
-        Self {
-            trigger: None,
-            phantom_data: Default::default(),
-        }
-    }
-}
-
-impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
-    for PreviewHighlightHandler<T, D>
-{
-    type Event = Arc<Path>;
-
-    fn handle_event(
-        &mut self,
-        path: Self::Event,
-        timeout: Option<tokio::time::Instant>,
-    ) -> Option<tokio::time::Instant> {
-        if self
-            .trigger
-            .as_ref()
-            .is_some_and(|trigger| trigger == &path)
-        {
-            // If the path hasn't changed, don't reset the debounce
-            timeout
-        } else {
-            self.trigger = Some(path);
-            Some(Instant::now() + Duration::from_millis(150))
-        }
-    }
-
-    fn finish_debounce(&mut self) {
-        let Some(path) = self.trigger.take() else {
-            return;
-        };
-
-        job::dispatch_blocking(move |editor, compositor| {
-            let Some(Overlay {
-                content: picker, ..
-            }) = compositor.find::<Overlay<Picker<T, D>>>()
-            else {
-                return;
-            };
-
-            let Some(CachedPreview::Document(ref mut doc)) = picker.preview_cache.get_mut(&path)
-            else {
-                return;
-            };
-
-            if doc.syntax().is_some() {
-                return;
-            }
-
-            let Some(language) = doc.language_config().map(|config| config.language()) else {
-                return;
-            };
-
-            let loader = editor.syn_loader.load();
-            let text = doc.text().clone();
-
-            tokio::task::spawn_blocking(move || {
-                let syntax = match helix_core::Syntax::new(text.slice(..), language, &loader) {
-                    Ok(syntax) => syntax,
-                    Err(err) => {
-                        log::info!("highlighting picker preview failed: {err}");
-                        return;
-                    }
-                };
-
-                job::dispatch_blocking(move |editor, compositor| {
-                    let Some(Overlay {
-                        content: picker, ..
-                    }) = compositor.find::<Overlay<Picker<T, D>>>()
-                    else {
-                        log::info!("picker closed before syntax highlighting finished");
-                        return;
-                    };
-                    let Some(CachedPreview::Document(ref mut doc)) =
-                        picker.preview_cache.get_mut(&path)
-                    else {
-                        return;
-                    };
-                    let diagnostics = helix_view::Editor::doc_diagnostics(
-                        &editor.language_servers,
-                        &editor.diagnostics,
-                        doc,
-                    );
-                    doc.replace_diagnostics(diagnostics, &[], None);
-                    doc.syntax = Some(syntax);
-                });
-            });
-        });
-    }
-}
+use super::{DynQueryCallback, Picker};
 
 pub(super) struct DynamicQueryChange {
     pub query: Arc<str>,
