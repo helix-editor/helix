@@ -10,7 +10,7 @@
 
 </div>
 
-> Personal fork of [helix-editor/helix](https://github.com/helix-editor/helix) — a [Kakoune](https://github.com/mawww/kakoune) / [Neovim](https://github.com/neovim/neovim) inspired editor, written in Rust.
+> My personal fork of [helix-editor/helix](https://github.com/helix-editor/helix)
 
 ![Screenshot](./screenshot.png)
 
