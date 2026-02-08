@@ -632,9 +632,9 @@
   | Oranges | 3      |
      | Donuts  | 4      |
 
-
-
-
+ Note: On macOS, you may need to configure your terminal to use
+       Option as Alt (e.g. macos-option-as-alt = left).
+       This is also true for future Alt- commands.
 
 =================================================================
 =                        CHAPTER 5 RECAP                        =
