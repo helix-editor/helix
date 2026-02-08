@@ -91,6 +91,7 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
 dashmap = "6.0"
+mimalloc = "0.1"
 
 [target.'cfg(windows)'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream"] }

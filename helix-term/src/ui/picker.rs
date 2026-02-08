@@ -30,7 +30,7 @@ use tui::widgets::Widget;
 
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io::Read,
     path::Path,
     sync::{
@@ -44,6 +44,7 @@ use helix_core::{
     char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
     text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
 };
+use helix_core::Syntax;
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
@@ -269,6 +270,12 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
     /// Whether grammars have been pre-warmed for visible items
     grammars_pre_warmed: bool,
+    /// Receiver for completed syntax highlighting from background tasks
+    syntax_rx: tokio::sync::mpsc::UnboundedReceiver<(Arc<Path>, Syntax)>,
+    /// Sender for completed syntax highlighting (cloned into background tasks)
+    syntax_tx: tokio::sync::mpsc::UnboundedSender<(Arc<Path>, Syntax)>,
+    /// Paths currently being syntax-highlighted in background
+    pending_previews: HashSet<Arc<Path>>,
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -373,6 +380,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .collect();
 
         let query = PickerQuery::new(columns.iter().map(|col| &col.name).cloned(), default_column);
+        let (syntax_tx, syntax_rx) = tokio::sync::mpsc::unbounded_channel();
 
         Self {
             columns,
@@ -394,6 +402,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             file_fn: None,
             dynamic_query_handler: None,
             grammars_pre_warmed: false,
+            syntax_rx,
+            syntax_tx,
+            pending_previews: HashSet::new(),
         }
     }
 
@@ -624,10 +635,157 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         });
     }
 
+    /// Poll for completed syntax highlighting from background tasks and apply them
+    /// to the cached preview documents.
+    fn poll_syntax_updates(&mut self) {
+        while let Ok((path, syntax)) = self.syntax_rx.try_recv() {
+            self.pending_previews.remove(&path);
+            if let Some(CachedPreview::Document(doc)) = self.preview_cache.get_mut(&path) {
+                doc.syntax = Some(syntax);
+            }
+        }
+    }
+
+    /// Spawn a background task to compute syntax highlighting for a cached preview document.
+    fn spawn_syntax_highlight(&mut self, path: Arc<Path>, editor: &Editor) {
+        if self.pending_previews.contains(&path) {
+            return;
+        }
+
+        // Extract the data we need from the cached document without holding the borrow
+        let (text, language_config, language) = match self.preview_cache.get(&path) {
+            Some(CachedPreview::Document(doc)) if doc.syntax.is_none() => {
+                let loader = editor.syn_loader.load();
+                let language_config = doc.detect_language_config(&loader);
+                match language_config.as_ref() {
+                    Some(config) => (doc.text().clone(), language_config.clone(), config.language()),
+                    None => return,
+                }
+            }
+            _ => return,
+        };
+
+        // Set the language config on the document (for language scope, etc.) but NOT syntax
+        if let Some(CachedPreview::Document(doc)) = self.preview_cache.get_mut(&path) {
+            doc.language = language_config;
+        }
+
+        let loader_arc = editor.syn_loader.load_full();
+        let tx = self.syntax_tx.clone();
+        let path_clone = path.clone();
+        self.pending_previews.insert(path);
+
+        tokio::task::spawn_blocking(move || {
+            if let Ok(syntax) = Syntax::new(text.slice(..), language, &loader_arc) {
+                let _ = tx.send((path_clone, syntax));
+                helix_event::request_redraw();
+            }
+        });
+    }
+
+    /// Load a preview for the given path and cache it. Returns true if the preview was loaded
+    /// (or was already cached), false if the path is an editor document.
+    fn load_preview_for_path(&mut self, path: &Path, editor: &Editor) -> bool {
+        if editor.document_by_path(path).is_some() {
+            return false;
+        }
+        if self.preview_cache.contains_key(path) {
+            return true;
+        }
+
+        let path: Arc<Path> = path.into();
+        let preview = std::fs::metadata(&path)
+            .and_then(|metadata| {
+                if metadata.is_dir() {
+                    let files = super::directory_content(&path, editor)?;
+                    let file_names: Vec<_> = files
+                        .iter()
+                        .filter_map(|(file_path, is_dir)| {
+                            let name = file_path
+                                .strip_prefix(&path)
+                                .map(|p| Some(p.as_os_str()))
+                                .unwrap_or_else(|_| file_path.file_name())?
+                                .to_string_lossy();
+                            if *is_dir {
+                                Some((format!("{}/", name), true))
+                            } else {
+                                Some((name.into_owned(), false))
+                            }
+                        })
+                        .collect();
+                    Ok(CachedPreview::Directory(file_names))
+                } else if metadata.is_file() {
+                    if metadata.len() > MAX_FILE_SIZE_FOR_PREVIEW {
+                        return Ok(CachedPreview::LargeFile);
+                    }
+                    let content_type = std::fs::File::open(&path).and_then(|file| {
+                        // Read up to 1kb to detect the content type
+                        let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
+                        let content_type =
+                            content_inspector::inspect(&self.read_buffer[..n]);
+                        self.read_buffer.clear();
+                        Ok(content_type)
+                    })?;
+                    if content_type.is_binary() {
+                        return Ok(CachedPreview::Binary);
+                    }
+                    let mut file = std::fs::File::open(&path)?;
+                    let (rope, encoding, has_bom) =
+                        helix_view::document::from_reader(&mut file, None)?;
+                    let mut doc = Document::from(
+                        rope,
+                        Some((encoding, has_bom)),
+                        editor.config.clone(),
+                        editor.syn_loader.clone(),
+                    );
+                    doc.set_path(Some(&path));
+                    // Phase 1: cache document WITHOUT syntax (instant)
+                    // Phase 2: syntax is computed async via spawn_syntax_highlight()
+                    Ok(CachedPreview::Document(Box::new(doc)))
+                } else {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "Neither a dir, nor a file",
+                    ))
+                }
+            })
+            .unwrap_or(CachedPreview::NotFound);
+        self.preview_cache.insert(path.clone(), preview);
+        // Spawn async syntax highlighting for the newly cached document
+        self.spawn_syntax_highlight(path, editor);
+        true
+    }
+
+    /// Ensure the preview for the currently selected item is loaded and syntax highlighting
+    /// is initiated. Must be called before `get_preview` to avoid borrow conflicts.
+    fn ensure_preview_loaded(&mut self, editor: &Editor) {
+        // Collect the path info while self is borrowed immutably, then do mutable ops
+        let path: Option<Arc<Path>> = (|| {
+            let current = self.selection()?;
+            let file_fn = self.file_fn.as_ref()?;
+            let (path_or_id, _range) = file_fn(editor, current)?;
+            match path_or_id {
+                PathOrId::Path(path) if editor.document_by_path(path).is_none() => {
+                    Some(Arc::from(path))
+                }
+                _ => None,
+            }
+        })();
+
+        if let Some(path) = path {
+            if !self.preview_cache.contains_key(&*path) {
+                self.load_preview_for_path(&path, editor);
+            } else {
+                self.spawn_syntax_highlight(path, editor);
+            }
+        }
+    }
+
     /// Get (cached) preview for the currently selected item. If a document corresponding
     /// to the path is already open in the editor, it is used instead.
+    /// Call `ensure_preview_loaded` before this to ensure the preview is ready.
     fn get_preview<'picker, 'editor>(
-        &'picker mut self,
+        &'picker self,
         editor: &'editor Editor,
     ) -> Option<(Preview<'picker, 'editor>, Option<(usize, usize)>)> {
         let current = self.selection()?;
@@ -639,71 +797,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     return Some((Preview::EditorDocument(doc), range));
                 }
 
-                if self.preview_cache.contains_key(path) {
-                    let preview = self.preview_cache.get(path).unwrap();
-                    return Some((Preview::Cached(preview), range));
-                }
-
-                let path: Arc<Path> = path.into();
-                let preview = std::fs::metadata(&path)
-                    .and_then(|metadata| {
-                        if metadata.is_dir() {
-                            let files = super::directory_content(&path, editor)?;
-                            let file_names: Vec<_> = files
-                                .iter()
-                                .filter_map(|(file_path, is_dir)| {
-                                    let name = file_path
-                                        .strip_prefix(&path)
-                                        .map(|p| Some(p.as_os_str()))
-                                        .unwrap_or_else(|_| file_path.file_name())?
-                                        .to_string_lossy();
-                                    if *is_dir {
-                                        Some((format!("{}/", name), true))
-                                    } else {
-                                        Some((name.into_owned(), false))
-                                    }
-                                })
-                                .collect();
-                            Ok(CachedPreview::Directory(file_names))
-                        } else if metadata.is_file() {
-                            if metadata.len() > MAX_FILE_SIZE_FOR_PREVIEW {
-                                return Ok(CachedPreview::LargeFile);
-                            }
-                            let content_type = std::fs::File::open(&path).and_then(|file| {
-                                // Read up to 1kb to detect the content type
-                                let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
-                                let content_type =
-                                    content_inspector::inspect(&self.read_buffer[..n]);
-                                self.read_buffer.clear();
-                                Ok(content_type)
-                            })?;
-                            if content_type.is_binary() {
-                                return Ok(CachedPreview::Binary);
-                            }
-                            let mut file = std::fs::File::open(&path)?;
-                            let (rope, encoding, has_bom) =
-                                helix_view::document::from_reader(&mut file, None)?;
-                            let mut doc = Document::from(
-                                rope,
-                                Some((encoding, has_bom)),
-                                editor.config.clone(),
-                                editor.syn_loader.clone(),
-                            );
-                            doc.set_path(Some(&path));
-                            let loader = editor.syn_loader.load();
-                            let language_config = doc.detect_language_config(&loader);
-                            doc.set_language(language_config, &loader);
-                            Ok(CachedPreview::Document(Box::new(doc)))
-                        } else {
-                            Err(std::io::Error::new(
-                                std::io::ErrorKind::NotFound,
-                                "Neither a dir, nor a file",
-                            ))
-                        }
-                    })
-                    .unwrap_or(CachedPreview::NotFound);
-                self.preview_cache.insert(path.clone(), preview);
-                Some((Preview::Cached(&self.preview_cache[&path]), range))
+                let preview = self.preview_cache.get(path)?;
+                Some((Preview::Cached(preview), range))
             }
             PathOrId::Id(id) => {
                 let doc = editor.documents.get(&id).unwrap();
@@ -913,6 +1008,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         self.pre_warm_grammars(cx.editor);
+        // Ensure preview is loaded and syntax highlighting is started
+        self.ensure_preview_loaded(cx.editor);
 
         // -- Render the frame:
         // clear area
@@ -1039,10 +1136,55 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             );
         }
     }
+
+    /// Pre-fetch previews for items adjacent to the current selection.
+    /// This ensures that when the user scrolls one step, the preview is already cached.
+    fn prefetch_adjacent_previews(&mut self, editor: &Editor) {
+        // Collect paths to pre-fetch first (to avoid borrow conflict with self.file_fn)
+        let paths_to_prefetch: Vec<Arc<Path>> = {
+            let file_fn = match self.file_fn.as_ref() {
+                Some(f) => f,
+                None => return,
+            };
+
+            let snapshot = self.matcher.snapshot();
+            let len = snapshot.matched_item_count();
+            if len == 0 {
+                return;
+            }
+
+            let offsets: &[i64] = &[-1, 1, 2];
+            offsets
+                .iter()
+                .filter_map(|&offset| {
+                    let idx = self.cursor as i64 + offset;
+                    if idx < 0 || idx >= len as i64 || idx as u32 == self.cursor {
+                        return None;
+                    }
+                    let item = snapshot.get_matched_item(idx as u32)?;
+                    if let Some((PathOrId::Path(path), _)) = file_fn(editor, item.data) {
+                        if !self.preview_cache.contains_key(path)
+                            && editor.document_by_path(path).is_none()
+                        {
+                            return Some(Arc::from(path));
+                        }
+                    }
+                    None
+                })
+                .collect()
+        };
+
+        for path in paths_to_prefetch {
+            self.load_preview_for_path(&path, editor);
+        }
+    }
 }
 
 impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I, D> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // Poll for completed syntax highlights from background tasks
+        self.poll_syntax_updates();
+
         // +---------+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
@@ -1180,6 +1322,9 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 self.prompt_handle_event(event, ctx);
             }
         }
+
+        // Pre-fetch previews for adjacent items after cursor movement
+        self.prefetch_adjacent_previews(ctx.editor);
 
         EventResult::Consumed(None)
     }

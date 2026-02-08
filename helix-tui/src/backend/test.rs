@@ -69,7 +69,7 @@ impl TestBackend {
 
     pub fn assert_buffer(&self, expected: &Buffer) {
         assert_eq!(expected.area, self.buffer.area);
-        let diff = expected.diff(&self.buffer);
+        let diff: Vec<_> = expected.diff(&self.buffer).collect();
         if diff.is_empty() {
             return;
         }

@@ -151,8 +151,7 @@ where
     pub fn flush(&mut self) -> io::Result<()> {
         let previous_buffer = &self.buffers[1 - self.current];
         let current_buffer = &self.buffers[self.current];
-        let updates = previous_buffer.diff(current_buffer);
-        self.backend.draw(updates.into_iter())
+        self.backend.draw(previous_buffer.diff(current_buffer))
     }
 
     /// Updates the Terminal so that internal buffers match the requested size. Requested size will

@@ -693,31 +693,54 @@ impl Buffer {
     /// Next:    `aコ`
     /// Updates: `0: a, 1: コ` (double width symbol at index 1 - skip index 2)
     /// ```
-    pub fn diff<'a>(&self, other: &'a Buffer) -> Vec<(u16, u16, &'a Cell)> {
-        let previous_buffer = &self.content;
-        let next_buffer = &other.content;
-        let width = self.area.width;
+    pub fn diff<'a>(&self, other: &'a Buffer) -> BufferDiff<'_, 'a> {
+        BufferDiff {
+            previous: &self.content,
+            next: &other.content,
+            width: self.area.width,
+            index: 0,
+            invalidated: 0,
+            to_skip: 0,
+        }
+    }
+}
 
-        let mut updates: Vec<(u16, u16, &Cell)> = vec![];
-        // Cells invalidated by drawing/replacing preceding multi-width characters:
-        let mut invalidated: usize = 0;
-        // Cells from the current buffer to skip due to preceding multi-width characters taking their
-        // place (the skipped cells should be blank anyway):
-        let mut to_skip: usize = 0;
-        for (i, (current, previous)) in next_buffer.iter().zip(previous_buffer.iter()).enumerate() {
-            if (current != previous || invalidated > 0) && to_skip == 0 {
-                let x = (i % width as usize) as u16;
-                let y = (i / width as usize) as u16;
-                updates.push((x, y, &next_buffer[i]));
-            }
+/// Zero-allocation iterator over cells that differ between two buffers.
+pub struct BufferDiff<'prev, 'next> {
+    previous: &'prev [Cell],
+    next: &'next [Cell],
+    width: u16,
+    index: usize,
+    invalidated: usize,
+    to_skip: usize,
+}
+
+impl<'prev, 'next> Iterator for BufferDiff<'prev, 'next> {
+    type Item = (u16, u16, &'next Cell);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let len = self.previous.len().min(self.next.len());
+        while self.index < len {
+            let i = self.index;
+            let current = &self.next[i];
+            let previous = &self.previous[i];
+            self.index += 1;
+
+            let emit = (current != previous || self.invalidated > 0) && self.to_skip == 0;
 
             let current_width = current.symbol.width();
-            to_skip = current_width.saturating_sub(1);
+            self.to_skip = current_width.saturating_sub(1);
 
             let affected_width = std::cmp::max(current_width, previous.symbol.width());
-            invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
+            self.invalidated = std::cmp::max(affected_width, self.invalidated).saturating_sub(1);
+
+            if emit {
+                let x = (i % self.width as usize) as u16;
+                let y = (i / self.width as usize) as u16;
+                return Some((x, y, current));
+            }
         }
-        updates
+        None
     }
 }
 
@@ -853,7 +876,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 40);
         let prev = Buffer::empty(area);
         let next = Buffer::empty(area);
-        let diff = prev.diff(&next);
+        let diff: Vec<_> = prev.diff(&next).collect();
         assert_eq!(diff, vec![]);
     }
 
@@ -862,7 +885,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 40);
         let prev = Buffer::empty(area);
         let next = Buffer::filled(area, Cell::default().set_symbol("a"));
-        let diff = prev.diff(&next);
+        let diff: Vec<_> = prev.diff(&next).collect();
         assert_eq!(diff.len(), 40 * 40);
     }
 
@@ -871,7 +894,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 40);
         let prev = Buffer::filled(area, Cell::default().set_symbol("a"));
         let next = Buffer::filled(area, Cell::default().set_symbol("a"));
-        let diff = prev.diff(&next);
+        let diff: Vec<_> = prev.diff(&next).collect();
         assert_eq!(diff, vec![]);
     }
 
@@ -891,7 +914,7 @@ mod tests {
             "│      │  ",
             "└──────┘  ",
         ]);
-        let diff = prev.diff(&next);
+        let diff: Vec<_> = prev.diff(&next).collect();
         assert_eq!(
             diff,
             vec![
@@ -914,7 +937,7 @@ mod tests {
             "┌称号──┐  ",
             "└──────┘  ",
         ]);
-        let diff = prev.diff(&next);
+        let diff: Vec<_> = prev.diff(&next).collect();
         assert_eq!(
             diff,
             vec![
@@ -932,7 +955,7 @@ mod tests {
         let prev = Buffer::with_lines(vec!["┌称号──┐"]);
         let next = Buffer::with_lines(vec!["┌─称号─┐"]);
 
-        let diff = prev.diff(&next);
+        let diff: Vec<_> = prev.diff(&next).collect();
         assert_eq!(
             diff,
             vec![(1, 0, &cell("─")), (2, 0, &cell("称")), (4, 0, &cell("号")),]

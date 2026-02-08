@@ -22,14 +22,11 @@ default-members = [
 ]
 
 [profile.release]
-lto = "thin"
-
-[profile.opt]
-inherits = "release"
 lto = "fat"
 codegen-units = 1
 strip = true
 opt-level = 3
+panic = "abort"
 
 [profile.integration]
 inherits = "test"
