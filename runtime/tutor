@@ -1051,8 +1051,8 @@ lines.
  --> How much would would a wouldchuck chuck
  --> if a wouldchuck could chuck would?
 
-
-
+ Note: The primary selection can be hard to see in some themes.
+       Check the status bar (bottom right) for the active index.
 
 =================================================================
 =             10.2 CYCLING THE CONTENT OF SELECTIONS            =
