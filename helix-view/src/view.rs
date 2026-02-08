@@ -60,7 +60,7 @@ impl JumpList {
         self.push_impl(jump);
     }
 
-    pub fn forward(&mut self, count: usize) -> Option<&Jump> {
+    pub(crate) fn forward(&mut self, count: usize) -> Option<&Jump> {
         if self.current + count < self.jumps.len() {
             self.current += count;
             self.jumps.get(self.current)
@@ -70,7 +70,12 @@ impl JumpList {
     }
 
     // Taking view and doc to prevent unnecessary cloning when jump is not required.
-    pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
+    pub(crate) fn backward(
+        &mut self,
+        view_id: ViewId,
+        doc: &mut Document,
+        count: usize,
+    ) -> Option<&Jump> {
         if let Some(mut current) = self.current.checked_sub(count) {
             if self.current == self.jumps.len() {
                 let jump = (doc.id(), doc.selection(view_id).clone());
@@ -80,13 +85,11 @@ impl JumpList {
             self.current = current;
 
             // Avoid jumping to the current location.
-            let jump @ (doc_id, selection) = self.jumps.get(self.current)?;
+            let (doc_id, selection) = self.jumps.get(self.current)?;
             if doc.id() == *doc_id && doc.selection(view_id) == selection {
                 self.current = self.current.checked_sub(1)?;
-                self.jumps.get(self.current)
-            } else {
-                Some(jump)
             }
+            self.jumps.get(self.current)
         } else {
             None
         }
@@ -662,6 +665,12 @@ impl View {
     }
 
     pub fn sync_changes(&mut self, doc: &mut Document) {
+        if let Some(transaction) = self.changes_to_sync(doc) {
+            self.apply(&transaction, doc);
+        }
+    }
+
+    pub(crate) fn changes_to_sync(&mut self, doc: &mut Document) -> Option<Transaction> {
         let latest_revision = doc.get_current_revision();
         let current_revision = *self
             .doc_revisions
@@ -669,19 +678,10 @@ impl View {
             .or_insert(latest_revision);
 
         if current_revision == latest_revision {
-            return;
+            return None;
         }
 
-        log::debug!(
-            "Syncing view {:?} between {} and {}",
-            self.id,
-            current_revision,
-            latest_revision
-        );
-
-        if let Some(transaction) = doc.history.get_mut().changes_since(current_revision) {
-            self.apply(&transaction, doc);
-        }
+        doc.history.get_mut().changes_since(current_revision)
     }
 }
 

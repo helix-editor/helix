@@ -2386,6 +2386,43 @@ impl Editor {
     pub fn get_last_cwd(&mut self) -> Option<&Path> {
         self.last_cwd.as_deref()
     }
+
+    pub fn jump_forward(&mut self, view_id: ViewId, count: usize) {
+        if let Some((doc_id, selection)) = view_mut!(self, view_id).jumps.forward(count).cloned() {
+            self.jump_to(view_id, doc_id, selection);
+        }
+    }
+
+    pub fn jump_backward(&mut self, view_id: ViewId, count: usize) {
+        let view = view_mut!(self, view_id);
+        if let Some((doc_id, selection)) = view
+            .jumps
+            .backward(view_id, doc_mut!(self, &view.doc), count)
+            .cloned()
+        {
+            self.jump_to(view_id, doc_id, selection);
+        }
+    }
+
+    fn jump_to(&mut self, view_id: ViewId, dest_doc_id: DocumentId, mut selection: Selection) {
+        let view = view_mut!(self, view_id);
+        let old_doc_id = view.doc;
+        if old_doc_id != dest_doc_id {
+            let new_doc = doc_mut!(self, &dest_doc_id);
+            if let Some(transaction) = view.changes_to_sync(new_doc) {
+                let text = new_doc.text().slice(..);
+                selection = selection.map(transaction.changes()).ensure_invariants(text);
+            }
+            self.replace_document_in_view(view_id, dest_doc_id);
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: old_doc_id,
+            });
+        }
+        let (view, doc) = current!(self);
+        doc.set_selection(view_id, selection);
+        view.ensure_cursor_in_view_center(doc, self.config.load().scrolloff);
+    }
 }
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
