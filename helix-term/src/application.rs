@@ -303,9 +303,13 @@ impl Application {
         self.editor.cursor_cache.reset();
 
         if let Some(title_format) = &self.editor.config().title_format {
-            // TODO: Handle errors here (we shouldn't crash the editor for an invalid expansion)
-            let title = expansion::expand(&self.editor, Token::expand(title_format)).unwrap();
-            self.terminal.set_title(&title).unwrap();
+            match expansion::expand(&self.editor, Token::expand(title_format)) {
+                Ok(title) => self.terminal.set_title(&title).unwrap(),
+                Err(err) => {
+                    log::error!("Failed to expand title args: {err}");
+                    self.terminal.set_title(&err.to_string()).unwrap();
+                }
+            }
         }
 
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
