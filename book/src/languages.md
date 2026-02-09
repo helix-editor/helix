@@ -7,8 +7,8 @@ in `languages.toml` files.
 
 There are three possible locations for a `languages.toml` file:
 
-1. In the Helix source code, which lives in the
-   [Helix repository](https://github.com/helix-editor/helix/blob/master/languages.toml).
+1. In the Silicon source code, which lives in the
+   [Silicon repository](https://github.com/silicon-editor/silicon/blob/master/languages.toml).
    It provides the default configurations for languages and language servers.
 
 2. In your [configuration directory](./configuration.md). This overrides values
@@ -16,7 +16,7 @@ There are three possible locations for a `languages.toml` file:
    auto-formatting for Rust:
 
    ```toml
-   # in <config_dir>/helix/languages.toml
+   # in <config_dir>/silicon/languages.toml
 
    [language-server.mylang-lsp]
    command = "mylang-lsp"
@@ -26,9 +26,9 @@ There are three possible locations for a `languages.toml` file:
    auto-format = false
    ```
 
-3. In a `.helix` folder in your project. Language configuration may also be
+3. In a `.silicon` folder in your project. Language configuration may also be
    overridden local to a project by creating a `languages.toml` file in a
-   `.helix` folder. Its settings will be merged with the language configuration
+   `.silicon` folder. Its settings will be merged with the language configuration
    in the configuration directory and the built-in configuration.
 
 ## Language configuration
@@ -72,13 +72,13 @@ These configuration keys are available:
 | `rulers`              | Overrides the `editor.rulers` config key for the language. |
 | `path-completion`     | Overrides the `editor.path-completion` config key for the language. |
 | `word-completion`     | Overrides the [`editor.word-completion`](./editor.md#editorword-completion-section) configuration for the language. |
-| `workspace-lsp-roots`     | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml`. Overwrites the setting of the same name in `config.toml` if set. |
-| `persistent-diagnostic-sources` | An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.
+| `workspace-lsp-roots`     | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.silicon/config.toml`. Overwrites the setting of the same name in `config.toml` if set. |
+| `persistent-diagnostic-sources` | An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Silicon can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.
 | `rainbow-brackets` | Overrides the `editor.rainbow-brackets` config key for the language |
 
 ### File-type detection and the `file-types` key
 
-Helix determines which language configuration to use based on the `file-types` key
+Silicon determines which language configuration to use based on the `file-types` key
 from the above section. `file-types` is a list of strings or tables, for
 example:
 
@@ -86,7 +86,7 @@ example:
 file-types = ["toml", { glob = "Makefile" }, { glob = ".git/config" }, { glob = ".github/workflows/*.yaml" } ]
 ```
 
-When determining a language configuration to use, Helix searches the file-types
+When determining a language configuration to use, Silicon searches the file-types
 with the following priorities:
 
 1. Glob: values in `glob` tables are checked against the full path of the given
@@ -158,7 +158,7 @@ config = { format = { "semicolons" = "insert", "insertSpaceBeforeFunctionParenth
 
 ### Configuring Language Servers for a language
 
-The `language-servers` attribute in a language tells helix which language servers are used for this language.
+The `language-servers` attribute in a language tells silicon which language servers are used for this language.
 
 They have to be defined in the `[language-server]` table as described in the previous section.
 
@@ -238,12 +238,12 @@ git repository:
 | ---    | -----------                                               |
 | `git`  | A git remote URL from which the grammar should be cloned  |
 | `rev`  | The revision (commit hash or tag) which should be fetched |
-| `subpath` | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `hx --grammar build` to the correct path for compilation. When omitted, the root of repository is used |
+| `subpath` | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `si --grammar build` to the correct path for compilation. When omitted, the root of repository is used |
 
 ### Choosing grammars
 
 You may use a top-level `use-grammars` key to control which grammars are
-fetched and built when using `hx --grammar fetch` and `hx --grammar build`.
+fetched and built when using `si --grammar fetch` and `si --grammar build`.
 
 ```toml
 # Note: this key must come **before** the [[language]] and [[grammar]] sections

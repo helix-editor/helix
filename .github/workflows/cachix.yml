@@ -22,7 +22,7 @@ jobs:
     - name: Authenticate with Cachix
       uses: cachix/cachix-action@v16
       with:
-        name: helix
+        name: silicon
         authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
     - name: Build nix flake

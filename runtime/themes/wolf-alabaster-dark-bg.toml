@@ -1,9 +1,9 @@
 # wolf-alabaster-dark-bg.toml
 #
 # Author: Wolf <wolf@zv.cx>
-# Project: https://github.com/wolf/alabaster-for-helix
+# Project: https://github.com/wolf/alabaster-for-silicon
 #
-# This is the dark "BG" (background) variant of Alabaster for Helix.
+# This is the dark "BG" (background) variant of Alabaster for Silicon.
 # Uses background colors for syntax highlighting while keeping text mostly light grey.
 #
 # Based on tonsky's "Alabaster BG" variant adapted for dark backgrounds.

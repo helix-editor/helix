@@ -1,9 +1,9 @@
 # wolf-alabaster-dark-mono.toml
 #
 # Author: Wolf <wolf@zv.cx>
-# Project: https://github.com/wolf/alabaster-for-helix
+# Project: https://github.com/wolf/alabaster-for-silicon
 #
-# This is the dark "Mono" (monochromatic) variant of Alabaster for Helix.
+# This is the dark "Mono" (monochromatic) variant of Alabaster for Silicon.
 # Uses minimal color - mostly grayscale with subtle backgrounds for strings/constants.
 # Only errors and search results use color.
 #

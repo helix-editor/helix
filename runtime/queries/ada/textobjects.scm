@@ -6,10 +6,10 @@
 ;;    mii     (v)isually select (i)nside an (i)f statement (or loop)
 ;;
 ;; For navigations using textobjects, check link below:
-;; https://docs.helix-editor.com/master/usage.html#navigating-using-tree-sitter-textobjects
+;; https://docs.silicon-editor.com/master/usage.html#navigating-using-tree-sitter-textobjects
 ;;
 ;; For Textobject queries explanation, check out link below:
-;; https://docs.helix-editor.com/master/guides/textobject.html
+;; https://docs.silicon-editor.com/master/guides/textobject.html
 
 (subprogram_body) @function.around
 (subprogram_body (non_empty_declarative_part) @function.inside)

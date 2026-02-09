@@ -17,7 +17,7 @@ jobs:
   check:
     name: Check (msrv)
     runs-on: ubuntu-latest
-    if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
+    if: github.repository == 'silicon-editor/silicon' || github.event_name != 'schedule'
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -44,11 +44,11 @@ jobs:
   test:
     name: Test Suite
     runs-on: ${{ matrix.os }}
-    if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
+    if: github.repository == 'silicon-editor/silicon' || github.event_name != 'schedule'
     timeout-minutes: 30
     env:
       RUST_BACKTRACE: 1
-      HELIX_LOG_LEVEL: info
+      SILICON_LOG_LEVEL: info
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -82,7 +82,7 @@ jobs:
   lints:
     name: Lints
     runs-on: ubuntu-latest
-    if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
+    if: github.repository == 'silicon-editor/silicon' || github.event_name != 'schedule'
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -118,7 +118,7 @@ jobs:
   docs:
     name: Docs
     runs-on: ubuntu-latest
-    if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
+    if: github.repository == 'silicon-editor/silicon' || github.event_name != 'schedule'
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6

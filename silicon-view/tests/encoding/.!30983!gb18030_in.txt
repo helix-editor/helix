@@ -1,0 +1,4 @@
+Generated from WHATWG indexes.json; see LICENSE-WHATWG.
+
+This is a generated file. Please do not edit.
+Instead, please regenerate using generate-encoding-data.py

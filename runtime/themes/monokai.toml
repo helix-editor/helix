@@ -81,7 +81,7 @@
 "ui.statusline" = { fg = "active_text", bg = "#414339" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
-# Malformed ANSI: grey2, bg3. See 'https://github.com/helix-editor/helix/issues/5709'
+# Malformed ANSI: grey2, bg3. See 'https://github.com/silicon-editor/silicon/issues/5709'
 # "ui.bufferline" = { fg = "grey2", bg = "bg3" }
 "ui.bufferline.active" = { fg = "active_text", bg = "selection", modifiers = [
   "bold",

@@ -1,3 +1,3 @@
 # Ecosystem
 
-This section has information related to the wider Helix ecosystem. 
+This section has information related to the wider Silicon ecosystem. 

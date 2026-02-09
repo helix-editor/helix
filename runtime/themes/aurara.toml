@@ -1,5 +1,5 @@
 # aurara
-# a messy mix of aura (dark, soft), noctis, and liberal use of helix's text styling
+# a messy mix of aura (dark, soft), noctis, and liberal use of silicon's text styling
 # Author : rahil/rathewolf <rahil627@berkeley.edu>
 
 # aura ported by:
@@ -11,7 +11,7 @@
 
 # noctis ported by:
 # Author: 0rphee
-# who used this template: https://github.com/n0s4/helix-theme-template
+# who used this template: https://github.com/n0s4/silicon-theme-template
 
 # noctis originally by:
 # Author: Liviu Schera and contributors
@@ -51,7 +51,7 @@
 # NOTE:
 # blinking doesn't work with italics, another reason to not italicize comments
 # see keys here:
-  # https://github.com/helix-editor/helix/blob/master/book/src/themes.md#scopes
+  # https://github.com/silicon-editor/silicon/blob/master/book/src/themes.md#scopes
 # can fetch syntax highlighting tests from here:
   # https://github.com/sharkdp/bat
 
@@ -79,7 +79,7 @@
 'diagnostic.deprecated' = { modifiers = ["crossed_out"] } # took this from default theme
 
 # UI ==============================
-# For styling helix itself.
+# For styling silicon itself.
 
 # 'ui' = { bg = 'bg-ui' }
   # doesn't work.. :/

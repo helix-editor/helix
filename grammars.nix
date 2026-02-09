@@ -53,7 +53,7 @@
     stdenv.mkDerivation {
       # see https://github.com/NixOS/nixpkgs/blob/fbdd1a7c0bc29af5325e0d7dd70e804a972eb465/pkgs/development/tools/parsing/tree-sitter/grammar.nix
 
-      pname = "helix-tree-sitter-${grammar.name}";
+      pname = "silicon-tree-sitter-${grammar.name}";
       version = grammar.source.rev;
 
       src = source;
@@ -122,7 +122,7 @@
     (name: artifact: "ln -s ${artifact}/${name}${sharedLibExtension} $out/${name}${sharedLibExtension}")
     (lib.filterAttrs (n: v: lib.isDerivation v) overlaidGrammars);
 in
-  runCommand "consolidated-helix-grammars" {} ''
+  runCommand "consolidated-silicon-grammars" {} ''
     mkdir -p $out
     ${builtins.concatStringsSep "\n" grammarLinks}
   ''

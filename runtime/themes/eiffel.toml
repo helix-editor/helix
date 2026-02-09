@@ -89,7 +89,7 @@
 "ui.gutter" = { bg = "ui_background" }
 "ui.gutter.selected" = { bg = "ui_background_accent" }
 "ui.help" = { fg = "ui_text", bg = "ui_menu" }
-"ui.highlight" = { fg = "ui_highlight_line_text", bg = "ui_highlight_line" } # fg is not respected https://github.com/helix-editor/helix/issues/11141 
+"ui.highlight" = { fg = "ui_highlight_line_text", bg = "ui_highlight_line" } # fg is not respected https://github.com/silicon-editor/silicon/issues/11141 
 "ui.highlight.frameline" = { fg = "ui_highlight_line_text", bg = "ui_highlight_line" }
 "ui.linenr" = "ui_text_dim"
 "ui.linenr.selected" = { fg = "ui_text_dim", bg = "ui_background_accent" }

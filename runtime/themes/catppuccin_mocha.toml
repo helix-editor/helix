@@ -1,4 +1,4 @@
-# NOTE: For contributors looking to modify the theme, please submit a pull request at https://github.com/catppuccin/helix instead of updating this file. Changes are frequently synchronized from the catppuccin/helix theme repository.
+# NOTE: For contributors looking to modify the theme, please submit a pull request at https://github.com/catppuccin/silicon instead of updating this file. Changes are frequently synchronized from the catppuccin/silicon theme repository.
 # Syntax highlighting
 # -------------------
 "attribute" = "yellow"

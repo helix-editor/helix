@@ -1,15 +1,15 @@
-# Using Helix
+# Using Silicon
 
-For a full interactive introduction to Helix, refer to the
-[tutor](https://github.com/helix-editor/helix/blob/master/runtime/tutor) which
-can be accessed via the command `hx --tutor` or `:tutor`.
+For a full interactive introduction to Silicon, refer to the
+[tutor](https://github.com/silicon-editor/silicon/blob/master/runtime/tutor) which
+can be accessed via the command `si --tutor` or `:tutor`.
 
 > 💡 Currently, not all functionality is fully documented, please refer to the
 > [key mappings](./keymap.md) list.
 
 ## Modes
 
-Helix is a modal editor, meaning it has different modes for different tasks. The main modes are:
+Silicon is a modal editor, meaning it has different modes for different tasks. The main modes are:
 
 * [Normal mode](./keymap.md#normal-mode): For navigation and editing commands. This is the default mode.
 * [Insert mode](./keymap.md#insert-mode): For typing text directly into the document. Access by typing `i` in normal mode.
@@ -21,11 +21,11 @@ Buffers are in-memory representations of files. You can have multiple buffers op
 
 ## Selection-first editing
 
-Inspired by [Kakoune](http://kakoune.org/), Helix follows the `selection → action` model. This means that whatever you are going to act on (a word, a paragraph, a line, etc.) is selected first and the action itself (delete, change, yank, etc.) comes second. A cursor is simply a single width selection.
+Inspired by [Kakoune](http://kakoune.org/), Silicon follows the `selection → action` model. This means that whatever you are going to act on (a word, a paragraph, a line, etc.) is selected first and the action itself (delete, change, yank, etc.) comes second. A cursor is simply a single width selection.
 
 ## Multiple selections
 
-Also inspired by Kakoune, multiple selections are a core mode of interaction in Helix. For example, the standard way of replacing multiple instances of a word is to first select all instances (so there is one selection per instance) and then use the change action (`c`) to edit them all at the same time.
+Also inspired by Kakoune, multiple selections are a core mode of interaction in Silicon. For example, the standard way of replacing multiple instances of a word is to first select all instances (so there is one selection per instance) and then use the change action (`c`) to edit them all at the same time.
 
 ## Motions
 

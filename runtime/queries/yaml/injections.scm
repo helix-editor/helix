@@ -18,7 +18,7 @@
 ;   See the License for the specific language governing permissions and
 ;   limitations under the License.
 
-; Modified for Helix from https://github.com/nvim-treesitter/nvim-treesitter/blob/master/queries/yaml/injections.scm
+; Modified for Silicon from https://github.com/nvim-treesitter/nvim-treesitter/blob/master/queries/yaml/injections.scm
 
 ;; GitHub actions: run
 ;; Buildkite: command, commands

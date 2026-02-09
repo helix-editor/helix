@@ -1,6 +1,6 @@
 ## Selecting and manipulating text with textobjects
 
-In Helix, textobjects are a way to select, manipulate and operate on a piece of
+In Silicon, textobjects are a way to select, manipulate and operate on a piece of
 text in a structured way. They allow you to refer to blocks of text based on
 their structure or purpose, such as a word, sentence, paragraph, or even a
 function or block of code.

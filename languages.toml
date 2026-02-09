@@ -1,5 +1,5 @@
 # Language support configuration.
-# See the languages documentation: https://docs.helix-editor.com/master/languages.html
+# See the languages documentation: https://docs.silicon-editor.com/master/languages.html
 
 use-grammars = { except = [ "wren", "gemini" ] }
 
@@ -33,7 +33,7 @@ crystalline = { command = "crystalline", args = ["--stdio"] }
 cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
 csharp-ls = { command = "csharp-ls" }
 cuelsp = { command = "cuelsp" }
-dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
+dart = { command = "dart", args = ["language-server", "--client-id=silicon"] }
 dhall-lsp-server = { command = "dhall-lsp-server" }
 djlsp = { command = "djlsp" }
 docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
@@ -228,7 +228,7 @@ watcher = "server"
 [language-server.typescript-language-server]
 command = "typescript-language-server"
 args = ["--stdio"]
-config.hostInfo = "helix"
+config.hostInfo = "silicon"
 
 [language-server.typescript-language-server.config.typescript.inlayHints]
 includeInlayEnumMemberValueHints = true
@@ -2262,7 +2262,7 @@ source = { git = "https://github.com/mtoohey31/tree-sitter-gitattributes", rev =
 [[language]]
 name = "git-ignore"
 scope = "source.gitignore"
-file-types = [{ glob = ".gitignore_global" }, { glob = "git/ignore" }, { glob = ".git/info/exclude" }, { glob = ".ignore" }, { glob = "CODEOWNERS" }, { glob = ".config/helix/ignore" }, { glob = ".helix/ignore" }, { glob = ".*ignore" }, { glob = ".git-blame-ignore-revs" }]
+file-types = [{ glob = ".gitignore_global" }, { glob = "git/ignore" }, { glob = ".git/info/exclude" }, { glob = ".ignore" }, { glob = "CODEOWNERS" }, { glob = ".config/silicon/ignore" }, { glob = ".silicon/ignore" }, { glob = ".*ignore" }, { glob = ".git-blame-ignore-revs" }]
 injection-regex = "git-ignore"
 comment-token = "#"
 grammar = "gitignore"
@@ -3768,7 +3768,7 @@ comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = ["just-lsp"]
 # auto-format = true
-# formatter = { command = "just", args = ["--dump"] } # Please see: https://github.com/helix-editor/helix/issues/9703
+# formatter = { command = "just", args = ["--dump"] } # Please see: https://github.com/silicon-editor/silicon/issues/9703
 
 [[grammar]]
 name = "just"
@@ -5177,8 +5177,8 @@ source = { git = "https://github.com/mi2ebi/tree-sitter-bovex", rev = "de7657a9c
 [[language]]
 name = "haxe"
 scope = "source.haxe"
-injection-regex = "hx|haxe"
-file-types = ["hx"]
+injection-regex = "si|haxe"
+file-types = ["si"]
 roots = ["haxelib.json", "project.xml", "build.hxml"]
 shebangs = []
 auto-format = true

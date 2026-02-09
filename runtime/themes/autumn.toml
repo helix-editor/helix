@@ -4,7 +4,7 @@
 # color scheme for the Komodo IDE and then ported to Vim by Kenneth Love
 # and Chris Jones. Later, Yorick Peterse improved their work. See:
 # <https://github.com/YorickPeterse/Autumn.vim>
-# Jens Getreu ported and optimised the color theme for the Helix editor.
+# Jens Getreu ported and optimised the color theme for the Silicon editor.
 # Author: Jens Getreu <getreu at web.de>
 
 "attribute" = "my_turquoise1"
@@ -68,7 +68,7 @@
 "ui.statusline.select" = { fg = "my_gray7", bg = "my_black", modifiers = ["bold"] }
 "ui.text.focus" = "my_white1"
 "ui.text" = "my_white1"
-# Invalid modifier: "normal". See 'https://github.com/helix-editor/helix/issues/5709'
+# Invalid modifier: "normal". See 'https://github.com/silicon-editor/silicon/issues/5709'
 "ui.virtual.inlay-hint" = { fg = "my_gray4", bg="my_black" } #, modifiers = ["normal"] }
 # "ui.virtual.inlay-hint.parameter" = { fg = "my_gray4", modifiers = ["normal"] }
 "ui.virtual.inlay-hint.parameter" = "my_gray4"

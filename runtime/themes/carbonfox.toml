@@ -2,7 +2,7 @@
 # License: MIT License
 # Carbonfox
 #
-# Based on Helix's Nightfox port with changes to align it to Nightfox's Carbonfox theme
+# Based on Silicon's Nightfox port with changes to align it to Nightfox's Carbonfox theme
 # Any 'custom' colors are replicating the result of the linear color blending done in the original
 # Neovim theme.
 # https://github.com/EdenEast/nightfox.nvim/blob/d3e8b1acc095baf57af81bb5e89fe7c4359eb619/lua/nightfox/lib/color.lua#L236-L247

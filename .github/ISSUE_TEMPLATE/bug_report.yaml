@@ -23,21 +23,21 @@ body:
 
         I tried this:
 
-        1. `hx`
+        1. `si`
 
         I expected this to happen:
 
         Instead, this happened:
   - type: textarea
-    id: helix-log
+    id: silicon-log
     attributes:
-      label: Helix log
-      description: See `hx -h` for log file path. If you can reproduce the issue run `RUST_BACKTRACE=1 hx -vv` to generate a more detailed log file.
+      label: Silicon log
+      description: See `si -h` for log file path. If you can reproduce the issue run `RUST_BACKTRACE=1 si -vv` to generate a more detailed log file.
       value: |
-        <details><summary>~/.cache/helix/helix.log</summary>
+        <details><summary>~/.cache/silicon/silicon.log</summary>
 
         ```
-        please provide a copy of `~/.cache/helix/helix.log` here if possible, you may need to redact some of the lines
+        please provide a copy of `~/.cache/silicon/silicon.log` here if possible, you may need to redact some of the lines
         ```
 
         </details>
@@ -60,19 +60,19 @@ body:
     attributes:
       label: Installation Method
       description: >
-        How you installed Helix - from a package manager like Homebrew or the
+        How you installed Silicon - from a package manager like Homebrew or the
         AUR, built from source, downloaded a binary from the releases page, etc.
       placeholder: "source / brew / nixpkgs / flake / releases page"
     validations:
       required: true
   - type: input
-    id: helix-version
+    id: silicon-version
     attributes:
-      label: Helix Version
+      label: Silicon Version
       description: >
-        Helix version (`hx -V` if using a release, `git describe` if building
+        Silicon version (`si -V` if using a release, `git describe` if building
         from master).
-        **Make sure that you are using the [latest helix release](https://github.com/helix-editor/helix/releases) or a newer master build**
-      placeholder: "helix 22.12 (5eaa6d97)"
+        **Make sure that you are using the [latest silicon release](https://github.com/silicon-editor/silicon/releases) or a newer master build**
+      placeholder: "silicon 22.12 (5eaa6d97)"
     validations:
       required: true

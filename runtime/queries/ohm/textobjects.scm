@@ -1,4 +1,4 @@
-; See: https://docs.helix-editor.com/guides/textobject.html
+; See: https://docs.silicon-editor.com/guides/textobject.html
 
 ; function.inside & around
 ; ------------------------

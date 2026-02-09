@@ -4,7 +4,7 @@
 # color scheme for the Komodo IDE and then ported to Vim by Kenneth Love
 # and Chris Jones. Later, Yorick Peterse improved their work. See:
 # <https://github.com/YorickPeterse/Autumn.vim>
-# Jens Getreu ported and optimised the color theme for the Helix editor.
+# Jens Getreu ported and optimised the color theme for the Silicon editor.
 # Author: Jens Getreu <getreu at web.de>
 
 inherits = "autumn"

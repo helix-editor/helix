@@ -1,8 +1,8 @@
 ;; Maps AST nodes (left) to highlighting classes (right)
-;; See https://docs.helix-editor.com/themes.html#scopes
+;; See https://docs.silicon-editor.com/themes.html#scopes
 ;; for the supported scopes.
-;; Don't forget to run the command `hx --grammar fetch` to fetch the grammars,
-;; and `hx --grammar build` to build any out-of-date grammars.
+;; Don't forget to run the command `si --grammar fetch` to fetch the grammars,
+;; and `si --grammar build` to build any out-of-date grammars.
 
 "fn" @keyword.function
 "return" @keyword.control.return

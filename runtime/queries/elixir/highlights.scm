@@ -1,6 +1,6 @@
 ; The following code originates mostly from
 ; https://github.com/elixir-lang/tree-sitter-elixir, with minor edits to
-; align the captures with helix. The following should be considered
+; align the captures with silicon. The following should be considered
 ; Copyright 2021 The Elixir Team
 ;
 ; Licensed under the Apache License, Version 2.0 (the "License");

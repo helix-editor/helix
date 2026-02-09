@@ -1,6 +1,6 @@
 #!/bin/sh
-# install.sh — one-liner installer for Rani367/helix fork
-# Usage: curl -sSf https://raw.githubusercontent.com/Rani367/helix/master/install.sh | sh
+# install.sh — one-liner installer for Rani367/silicon fork
+# Usage: curl -sSf https://raw.githubusercontent.com/Rani367/silicon/master/install.sh | sh
 set -e
 
 # ── Color helpers (disabled when piped) ──────────────────────────────────────
@@ -17,13 +17,13 @@ warn()  { printf "${YELLOW}[warn]${RESET}  %s\n" "$*"; }
 err()   { printf "${RED}[error]${RESET} %s\n" "$*" >&2; }
 
 # ── Constants ────────────────────────────────────────────────────────────────
-FORK_URL="https://github.com/Rani367/helix.git"
-SRC_DIR="$HOME/.helix-src"
+FORK_URL="https://github.com/Rani367/silicon.git"
+SRC_DIR="$HOME/.silicon-src"
 MSRV="1.87"
 CARGO_BIN="$HOME/.cargo/bin"
 
 # Config dir: XDG on all Unix (matches etcetera::choose_base_strategy)
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/helix"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/silicon"
 
 # ── Root warning ─────────────────────────────────────────────────────────────
 if [ "$(id -u)" -eq 0 ]; then
@@ -115,56 +115,56 @@ case ":$PATH:" in
         ;;
 esac
 
-# ── Remove existing Helix installations ──────────────────────────────────────
-info "Checking for existing Helix installations..."
+# ── Remove existing Silicon installations ──────────────────────────────────────
+info "Checking for existing Silicon installations..."
 
 # Homebrew
-if command -v brew >/dev/null 2>&1 && brew list helix >/dev/null 2>&1; then
-    info "Removing Homebrew helix..."
-    brew uninstall helix
-    ok "Homebrew helix removed"
+if command -v brew >/dev/null 2>&1 && brew list silicon >/dev/null 2>&1; then
+    info "Removing Homebrew silicon..."
+    brew uninstall silicon
+    ok "Homebrew silicon removed"
 fi
 
 # apt
-if command -v apt >/dev/null 2>&1 && dpkg -l helix 2>/dev/null | grep -q '^ii'; then
-    info "Removing apt helix..."
-    sudo apt remove -y helix
-    ok "apt helix removed"
+if command -v apt >/dev/null 2>&1 && dpkg -l silicon 2>/dev/null | grep -q '^ii'; then
+    info "Removing apt silicon..."
+    sudo apt remove -y silicon
+    ok "apt silicon removed"
 fi
 
 # pacman
-if command -v pacman >/dev/null 2>&1 && pacman -Qi helix >/dev/null 2>&1; then
-    info "Removing pacman helix..."
-    sudo pacman -Rns --noconfirm helix
-    ok "pacman helix removed"
+if command -v pacman >/dev/null 2>&1 && pacman -Qi silicon >/dev/null 2>&1; then
+    info "Removing pacman silicon..."
+    sudo pacman -Rns --noconfirm silicon
+    ok "pacman silicon removed"
 fi
 
 # dnf
-if command -v dnf >/dev/null 2>&1 && dnf list installed helix >/dev/null 2>&1; then
-    info "Removing dnf helix..."
-    sudo dnf remove -y helix
-    ok "dnf helix removed"
+if command -v dnf >/dev/null 2>&1 && dnf list installed silicon >/dev/null 2>&1; then
+    info "Removing dnf silicon..."
+    sudo dnf remove -y silicon
+    ok "dnf silicon removed"
 fi
 
 # snap
-if command -v snap >/dev/null 2>&1 && snap list helix >/dev/null 2>&1; then
-    info "Removing snap helix..."
-    sudo snap remove helix
-    ok "snap helix removed"
+if command -v snap >/dev/null 2>&1 && snap list silicon >/dev/null 2>&1; then
+    info "Removing snap silicon..."
+    sudo snap remove silicon
+    ok "snap silicon removed"
 fi
 
 # flatpak
-if command -v flatpak >/dev/null 2>&1 && flatpak list --app | grep -q com.helix_editor.Helix; then
-    info "Removing flatpak helix..."
-    flatpak uninstall -y com.helix_editor.Helix
-    ok "flatpak helix removed"
+if command -v flatpak >/dev/null 2>&1 && flatpak list --app | grep -q com.silicon_editor.Silicon; then
+    info "Removing flatpak silicon..."
+    flatpak uninstall -y com.silicon_editor.Silicon
+    ok "flatpak silicon removed"
 fi
 
-# cargo (old helix-term install)
-if command -v cargo >/dev/null 2>&1 && cargo install --list 2>/dev/null | grep -q '^helix-term'; then
-    info "Removing cargo helix-term..."
-    cargo uninstall helix-term
-    ok "cargo helix-term removed"
+# cargo (old silicon-term install)
+if command -v cargo >/dev/null 2>&1 && cargo install --list 2>/dev/null | grep -q '^silicon-term'; then
+    info "Removing cargo silicon-term..."
+    cargo uninstall silicon-term
+    ok "cargo silicon-term removed"
 fi
 
 # ── Clone or update source ───────────────────────────────────────────────────
@@ -189,10 +189,10 @@ else
 fi
 
 # ── Build ────────────────────────────────────────────────────────────────────
-info "Building Helix (this may take a few minutes)..."
+info "Building Silicon (this may take a few minutes)..."
 cd "$SRC_DIR"
-cargo install --path helix-term --locked
-ok "Helix built and installed to $CARGO_BIN/hx"
+cargo install --path silicon-term --locked
+ok "Silicon built and installed to $CARGO_BIN/si"
 
 # ── Language servers ────────────────────────────────────────────────────
 info "Installing language servers..."
@@ -280,11 +280,11 @@ ok "Runtime symlinked: $RUNTIME_TARGET -> $SRC_DIR/runtime"
 
 # ── Verify ───────────────────────────────────────────────────────────────────
 info "Verifying installation..."
-if command -v hx >/dev/null 2>&1; then
-    hx --health
+if command -v si >/dev/null 2>&1; then
+    si --health
     printf "\n"
-    ok "Helix installed successfully!"
-    info "Run ${BOLD}hx${RESET} to start editing."
+    ok "Silicon installed successfully!"
+    info "Run ${BOLD}si${RESET} to start editing."
 else
-    warn "hx not found in PATH. You may need to restart your shell or add $CARGO_BIN to PATH."
+    warn "si not found in PATH. You may need to restart your shell or add $CARGO_BIN to PATH."
 fi

@@ -1,6 +1,6 @@
 # Adding Rainbow Bracket Queries
 
-Helix uses `rainbows.scm` tree-sitter query files to provide rainbow bracket
+Silicon uses `rainbows.scm` tree-sitter query files to provide rainbow bracket
 functionality.
 
 Tree-sitter queries are documented in the tree-sitter online documentation.

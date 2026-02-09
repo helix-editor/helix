@@ -1,7 +1,7 @@
 ## Using the jumplist
 
-To help with quick navigation, Helix maintains a list of "jumps" called the jumplist.
-Whenever you make a significant movement (see next section), Helix stores your selections from before the move as a jump.
+To help with quick navigation, Silicon maintains a list of "jumps" called the jumplist.
+Whenever you make a significant movement (see next section), Silicon stores your selections from before the move as a jump.
 A jump serves as a kind of checkpoint, allowing you to jump to a separate location, make edits, and return to where you were with your previous selections.
 This way, the jumplist tracks both your previous location and your selections.
 You can manually save a jump by using `Ctrl-s`.

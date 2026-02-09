@@ -1,8 +1,8 @@
 # Author: Michael McClintock <michael.mcclintock@hey.com>
 # License: MIT
 
-# Yo - Themes for Helix inspired by Zenbones & Alabaster with Radix Colors.
-# https://github.com/mrmcc3/yo-theme-helix
+# Yo - Themes for Silicon inspired by Zenbones & Alabaster with Radix Colors.
+# https://github.com/mrmcc3/yo-theme-silicon
 
 # background/text
 "ui.background" = { fg = "p11", bg = "p2" }

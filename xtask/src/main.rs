@@ -19,10 +19,10 @@ pub mod tasks {
     }
 
     pub fn querycheck(languages: impl Iterator<Item = String>) -> Result<(), DynError> {
-        use helix_core::syntax::LanguageData;
+        use silicon_core::syntax::LanguageData;
 
         let languages_to_check: HashSet<_> = languages.collect();
-        let loader = helix_core::config::default_lang_loader();
+        let loader = silicon_core::config::default_lang_loader();
         for (_language, lang_data) in loader.languages() {
             if !languages_to_check.is_empty()
                 && !languages_to_check.contains(&lang_data.config().language_id)
@@ -46,7 +46,7 @@ pub mod tasks {
     }
 
     pub fn themecheck(themes: impl Iterator<Item = String>) -> Result<(), DynError> {
-        use helix_view::theme::Loader;
+        use silicon_view::theme::Loader;
 
         let themes_to_check: HashSet<_> = themes.collect();
 

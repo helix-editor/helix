@@ -1,4 +1,4 @@
-; See: https://docs.helix-editor.com/master/themes.html#syntax-highlighting
+; See: https://docs.silicon-editor.com/master/themes.html#syntax-highlighting
 
 ; attribute
 ; ---------

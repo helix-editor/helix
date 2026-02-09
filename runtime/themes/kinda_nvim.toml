@@ -3,7 +3,7 @@
 # Author : Strash familev.imen.otchestvovich@gmail.com
 # License: MIT
 # 
-# GitHub : https://github.com/strash/kinda_nvim.hx
+# GitHub : https://github.com/strash/kinda_nvim.si
 
 "ui.background" = { bg ="bg", fg = "fg_4" }
 "ui.background.separator" = { bg = "bg", fg = "fg_4" }

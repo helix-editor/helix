@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=Helix
+Name=Silicon
 GenericName=Text Editor
 GenericName[ar]=مُحَرِّرُ نُصُوص
 GenericName[de]=Texteditor
@@ -75,8 +75,8 @@ Comment[vi]=Soạn thảo tập tin văn bản
 Comment[wa]=Asspougnî des fitchîs tecses
 Comment[zh_CN]=编辑文本文件
 Comment[zh_TW]=編輯文字檔
-TryExec=hx
-Exec=hx %F
+TryExec=si
+Exec=si %F
 Terminal=true
 Type=Application
 Keywords=Text;editor;
@@ -85,7 +85,7 @@ Keywords[fr]=Texte;éditeur;
 Keywords[ru]=текст;текстовый редактор;
 Keywords[sr]=Текст;едитор;
 Keywords[tr]=Metin;düzenleyici;
-Icon=helix
+Icon=silicon
 Categories=Utility;TextEditor;ConsoleOnly
 StartupNotify=false
 MimeType=text/english;text/plain;text/x-makefile;text/x-c++hdr;text/x-c++src;text/x-chdr;text/x-csrc;text/x-java;text/x-moc;text/x-pascal;text/x-tcl;text/x-tex;application/x-shellscript;text/x-c;text/x-c++;

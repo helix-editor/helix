@@ -1,4 +1,4 @@
-; queries for helix to do automatic indentation upon hitting enter
+; queries for silicon to do automatic indentation upon hitting enter
 ; TODO: needs more work, cover more cases
 [
   (entity)

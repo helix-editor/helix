@@ -12,8 +12,8 @@ homepage.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-helix-term = { path = "../helix-term" }
-helix-core = { path = "../helix-core" }
-helix-view = { path = "../helix-view" }
-helix-loader = { path = "../helix-loader" }
+silicon-term = { path = "../silicon-term" }
+silicon-core = { path = "../silicon-core" }
+silicon-view = { path = "../silicon-view" }
+silicon-loader = { path = "../silicon-loader" }
 toml.workspace = true

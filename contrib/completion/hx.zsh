@@ -1,5 +1,5 @@
-#compdef _hx hx
-# Zsh completion script for Helix editor
+#compdef _hx si
+# Zsh completion script for Silicon editor
 
 _hx() {
 	_arguments -C \
@@ -25,7 +25,7 @@ _hx() {
 
 	case "$state" in
 	health)
-		local languages=($(hx --health all-languages | tail -n '+2' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g;s/[✘✓]//g'))
+		local languages=($(si --health all-languages | tail -n '+2' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g;s/[✘✓]//g'))
 		_values 'language' $languages
 		;;
 	grammar)

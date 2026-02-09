@@ -79,7 +79,7 @@
             (content) @injection.content))))
   ])
 
-; ================ Recipe language specified - Helix only ================
+; ================ Recipe language specified - Silicon only ================
 
 ; Set highlighting for recipes that specify a language using builtin shebang matching
 (recipe_body

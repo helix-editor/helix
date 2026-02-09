@@ -2,10 +2,10 @@ use crate::helpers;
 use crate::path;
 use crate::DynError;
 
-use helix_term::commands::MappableCommand;
-use helix_term::commands::TYPABLE_COMMAND_LIST;
-use helix_term::health::TsFeature;
-use helix_view::document::Mode;
+use silicon_term::commands::MappableCommand;
+use silicon_term::commands::TYPABLE_COMMAND_LIST;
+use silicon_term::health::TsFeature;
+use silicon_view::document::Mode;
 
 use std::collections::HashSet;
 use std::fs;
@@ -56,7 +56,7 @@ pub fn typable_commands() -> Result<String, DynError> {
 
 pub fn static_commands() -> Result<String, DynError> {
     let mut md = String::new();
-    let keymap = helix_term::keymap::default();
+    let keymap = silicon_term::keymap::default();
     let keymaps = [
         ("normal", keymap[&Mode::Normal].reverse_map()),
         ("select", keymap[&Mode::Select].reverse_map()),
@@ -130,7 +130,7 @@ pub fn lang_features() -> Result<String, DynError> {
     cols.push("Default language servers".to_owned());
 
     md.push_str(&md_table_heading(&cols));
-    let config = helix_core::config::default_lang_config();
+    let config = silicon_core::config::default_lang_config();
 
     let mut langs = config
         .language

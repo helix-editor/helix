@@ -1,4 +1,4 @@
-; See: https://docs.helix-editor.com/guides/indent.html
+; See: https://docs.silicon-editor.com/guides/indent.html
 
 ; indent
 ; ------

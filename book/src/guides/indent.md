@@ -1,6 +1,6 @@
 ## Adding indent queries
 
-Helix uses tree-sitter to correctly indent new lines. This requires a
+Silicon uses tree-sitter to correctly indent new lines. This requires a
 tree-sitter grammar and an `indent.scm` query file placed in
 `runtime/queries/{language}/indents.scm`. The indentation for a line is
 calculated by traversing the syntax tree from the lowest node at the
@@ -13,7 +13,7 @@ Note that it matters where these added indents begin. For example,
 multiple indent level increases that start on the same line only increase
 the total indent level by 1. See [Capture types](#capture-types).
 
-By default, Helix uses the `hybrid` indentation heuristic. This means that
+By default, Silicon uses the `hybrid` indentation heuristic. This means that
 indent queries are not used to compute the expected absolute indentation of a
 line but rather the expected difference in indentation between the new and an
 already existing line. This difference is then added to the actual indentation
@@ -24,7 +24,7 @@ the `tree-sitter` heuristic is used.
 
 ## Indent queries
 
-When Helix is inserting a new line through `o`, `O`, or `<ret>`, to determine
+When Silicon is inserting a new line through `o`, `O`, or `<ret>`, to determine
 the indent level for the new line, the query in `indents.scm` is run on the
 document. The starting position of the query is the end of the line above where
 a new line will be inserted.
@@ -173,7 +173,7 @@ the cursor on a line feed ends up being the entire inside of the class. Because
 of this, it will miss the entire function node and its indent capture, leading
 to an indent level one too small.
 
-To address this case, `@extend` tells helix to "extend" the captured node's span
+To address this case, `@extend` tells silicon to "extend" the captured node's span
 to the line feed and every consecutive line that has a greater indent level than
 the line of the node.
 

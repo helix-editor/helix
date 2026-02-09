@@ -15,7 +15,7 @@ env:
   # a release, allowing for manual inspection of the output. This mode is
   # activated if the CI run was triggered by events other than pushed tags, or
   # if the repository is a fork.
-  preview: ${{ !startsWith(github.ref, 'refs/tags/') || github.repository != 'helix-editor/helix' }}
+  preview: ${{ !startsWith(github.ref, 'refs/tags/') || github.repository != 'silicon-editor/silicon' }}
 
 jobs:
   fetch-grammars:
@@ -31,7 +31,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Fetch tree-sitter grammars
-        run: cargo run --package=helix-loader --bin=hx-loader
+        run: cargo run --package=silicon-loader --bin=si-loader
 
       - name: Bundle grammars
         run: tar cJf grammars.tar.xz -C runtime/grammars/sources .
@@ -170,21 +170,21 @@ jobs:
 
           export VERSION="$name"
           export ARCH=${build%-linux}
-          export APP=helix
-          export OUTPUT="helix-$VERSION-$ARCH.AppImage"
-          export UPDATE_INFORMATION="gh-releases-zsync|$GITHUB_REPOSITORY_OWNER|helix|latest|$APP-*-$ARCH.AppImage.zsync"
+          export APP=silicon
+          export OUTPUT="silicon-$VERSION-$ARCH.AppImage"
+          export UPDATE_INFORMATION="gh-releases-zsync|$GITHUB_REPOSITORY_OWNER|silicon|latest|$APP-*-$ARCH.AppImage.zsync"
 
-          mkdir -p "$APP.AppDir"/usr/{bin,lib/helix}
+          mkdir -p "$APP.AppDir"/usr/{bin,lib/silicon}
 
-          cp "target/${{ matrix.target }}/opt/hx" "$APP.AppDir/usr/bin/hx"
+          cp "target/${{ matrix.target }}/opt/si" "$APP.AppDir/usr/bin/si"
           rm -rf runtime/grammars/sources
-          cp -r runtime "$APP.AppDir/usr/lib/helix/runtime"
+          cp -r runtime "$APP.AppDir/usr/lib/silicon/runtime"
 
           cat << 'EOF' > "$APP.AppDir/AppRun"
           #!/bin/sh
 
           APPDIR="$(dirname "$(readlink -f "${0}")")"
-          HELIX_RUNTIME="$APPDIR/usr/lib/helix/runtime" exec "$APPDIR/usr/bin/hx" "$@"
+          SILICON_RUNTIME="$APPDIR/usr/lib/silicon/runtime" exec "$APPDIR/usr/bin/si" "$@"
           EOF
           chmod 755 "$APP.AppDir/AppRun"
 
@@ -193,8 +193,8 @@ jobs:
           chmod +x linuxdeploy-x86_64.AppImage
 
           ./linuxdeploy-x86_64.AppImage \
-              --appdir "$APP.AppDir" -d contrib/Helix.desktop \
-              -i contrib/helix.png --output appimage
+              --appdir "$APP.AppDir" -d contrib/Silicon.desktop \
+              -i contrib/silicon.png --output appimage
 
           mv "$APP-$VERSION-$ARCH.AppImage" \
               "$APP-$VERSION-$ARCH.AppImage.zsync" dist
@@ -205,7 +205,7 @@ jobs:
         run: |
           cargo install cargo-deb
           mkdir -p target/release
-          cp target/${{ matrix.target }}/opt/hx target/release/
+          cp target/${{ matrix.target }}/opt/si target/release/
           cargo deb --no-build
           mkdir -p dist
           mv target/debian/*.deb dist/
@@ -215,9 +215,9 @@ jobs:
         run: |
           mkdir -p dist
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp "target/${{ matrix.target }}/opt/hx.exe" "dist/"
+            cp "target/${{ matrix.target }}/opt/si.exe" "dist/"
           else
-            cp "target/${{ matrix.target }}/opt/hx" "dist/"
+            cp "target/${{ matrix.target }}/opt/si" "dist/"
           fi
           if [ -d runtime/grammars/sources ]; then
             rm -rf runtime/grammars/sources
@@ -259,17 +259,17 @@ jobs:
               if [[ $platform =~ "windows" ]]; then
                   exe=".exe"
               fi
-              pkgname=helix-$tag-$platform
+              pkgname=silicon-$tag-$platform
               mkdir -p $pkgname
               cp $source/LICENSE $source/README.md $pkgname
               mkdir $pkgname/contrib
               cp -r $source/contrib/completion $pkgname/contrib
               mv bins-$platform/runtime $pkgname/
-              mv bins-$platform/hx$exe $pkgname
-              chmod +x $pkgname/hx$exe
+              mv bins-$platform/si$exe $pkgname
+              chmod +x $pkgname/si$exe
 
               if [[ "$platform" = "x86_64-linux" ]]; then
-                  mv bins-$platform/helix-*.AppImage* dist/
+                  mv bins-$platform/silicon-*.AppImage* dist/
                   mv bins-$platform/*.deb dist/
               fi
 
@@ -280,7 +280,7 @@ jobs:
               fi
           done
 
-          tar cJf dist/helix-$tag-source.tar.xz -C $source .
+          tar cJf dist/silicon-$tag-source.tar.xz -C $source .
           mv dist $source/
 
       - name: Upload binaries to release

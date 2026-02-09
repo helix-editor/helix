@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bash completion script for Helix editor
+# Bash completion script for Silicon editor
 
 _hx() {
     local cur prev languages
@@ -13,7 +13,7 @@ _hx() {
         return 0
         ;;
     --health)
-        languages=$(hx --health all-languages | tail -n '+2' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g')
+        languages=$(si --health all-languages | tail -n '+2' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g')
         mapfile -t COMPREPLY < <(compgen -W """clipboard languages all-languages all $languages""" -- "$cur")
         return 0
         ;;
@@ -29,4 +29,4 @@ _hx() {
         return 0
         ;;
     esac
-} && complete -o filenames -F _hx hx
+} && complete -o filenames -F _hx si

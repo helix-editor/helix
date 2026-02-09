@@ -20,14 +20,14 @@
     pkgsFor = eachSystem (system:
       import nixpkgs {
         localSystem.system = system;
-        overlays = [(import rust-overlay) self.overlays.helix];
+        overlays = [(import rust-overlay) self.overlays.silicon];
       });
     gitRev = self.rev or self.dirtyRev or null;
   in {
     packages = eachSystem (system: {
-      inherit (pkgsFor.${system}) helix;
+      inherit (pkgsFor.${system}) silicon;
       /*
-      The default Helix build. Uses the latest stable Rust toolchain, and unstable
+      The default Silicon build. Uses the latest stable Rust toolchain, and unstable
       nixpkgs.
 
       The build inputs can be overridden with the following:
@@ -38,18 +38,18 @@
 
       packages.${system}.default.overrideAttrs { buildType = "debug"; };
       */
-      default = self.packages.${system}.helix;
+      default = self.packages.${system}.silicon;
     });
     checks =
       lib.mapAttrs (system: pkgs: let
-        # Get Helix's MSRV toolchain to build with by default.
+        # Get Silicon's MSRV toolchain to build with by default.
         msrvToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         msrvPlatform = pkgs.makeRustPlatform {
           cargo = msrvToolchain;
           rustc = msrvToolchain;
         };
       in {
-        helix = self.packages.${system}.helix.override {
+        silicon = self.packages.${system}.silicon.override {
           rustPlatform = msrvPlatform;
         };
       })
@@ -63,7 +63,7 @@
           platformRustFlagsEnv = lib.optionalString pkgs.stdenv.isLinux "-Clink-arg=-Wl,--no-rosegment";
         in
           pkgs.mkShell {
-            inputsFrom = [self.checks.${system}.helix];
+            inputsFrom = [self.checks.${system}.silicon];
             nativeBuildInputs = with pkgs;
               [
                 lld
@@ -81,15 +81,15 @@
       pkgsFor;
 
     overlays = {
-      helix = final: prev: {
-        helix = final.callPackage ./default.nix {inherit gitRev;};
+      silicon = final: prev: {
+        silicon = final.callPackage ./default.nix {inherit gitRev;};
       };
 
-      default = self.overlays.helix;
+      default = self.overlays.silicon;
     };
   };
   nixConfig = {
-    extra-substituters = ["https://helix.cachix.org"];
-    extra-trusted-public-keys = ["helix.cachix.org-1:ejp9KQpR1FBI2onstMQ34yogDm4OgU2ru6lIwPvuCVs="];
+    extra-substituters = ["https://silicon.cachix.org"];
+    extra-trusted-public-keys = ["silicon.cachix.org-1:ejp9KQpR1FBI2onstMQ34yogDm4OgU2ru6lIwPvuCVs="];
   };
 }

@@ -4,14 +4,14 @@
 - [Default registers](#default-registers)
 - [Special registers](#special-registers)
 
-In Helix, registers are storage locations for text and other data, such as the
+In Silicon, registers are storage locations for text and other data, such as the
 result of a search. Registers can be used to cut, copy, and paste text, similar
 to the clipboard in other text editors. Usage is similar to Vim, with `"` being
 used to select a register.
 
 ### User-defined registers
 
-Helix allows you to create your own named registers for storing text, for
+Silicon allows you to create your own named registers for storing text, for
 example:
 
 - `"ay` - Yank the current selection to register `a`.
@@ -49,6 +49,6 @@ Some registers have special behavior when read from and written to.
 
 When yanking multiple selections to the clipboard registers, the selections
 are joined with newlines. Pasting from these registers will paste multiple
-selections if the clipboard was last yanked to by the Helix session. Otherwise
+selections if the clipboard was last yanked to by the Silicon session. Otherwise
 the clipboard contents are pasted as one selection.
 

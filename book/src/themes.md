@@ -15,7 +15,7 @@ light = "catppuccin_latte"
 
 ## Creating a theme
 
-Create a file with the name of your theme as the file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes` or `%AppData%\helix\themes` on Windows). The directory might have to be created beforehand.
+Create a file with the name of your theme as the file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/silicon/themes` or `%AppData%\silicon\themes` on Windows). The directory might have to be created beforehand.
 
 > 💡 The names "default" and "base16_default" are reserved for built-in themes
 > and cannot be overridden by user-defined themes.
@@ -43,9 +43,9 @@ If the key contains a dot `'.'`, it must be quoted to prevent it being parsed as
 ```
 
 For inspiration, you can find the default `theme.toml`
-[here](https://github.com/helix-editor/helix/blob/master/theme.toml) and
+[here](https://github.com/silicon-editor/silicon/blob/master/theme.toml) and
 user-submitted themes
-[here](https://github.com/helix-editor/helix/blob/master/runtime/themes).
+[here](https://github.com/silicon-editor/silicon/blob/master/runtime/themes).
 
 
 ## The details of theme creation
@@ -365,4 +365,4 @@ These scopes are used for theming the editor interface:
 | `tabstop`                         | Snippet placeholder                                                                            |
 
 [editor-section]: ./configuration.md#editor-section
-[#2380]: https://github.com/helix-editor/helix/issues/2380
+[#2380]: https://github.com/silicon-editor/silicon/issues/2380

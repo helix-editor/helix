@@ -68,7 +68,7 @@
 "ui.menu.selected" = { fg = "dark_red", bg = "light_blue" }
 "ui.selection" = { bg = "lightgoldenrod1" }
 "ui.selection.primary" = { bg = "lightgoldenrod2" }
-# Malformed ANSI: highlight. See 'https://github.com/helix-editor/helix/issues/5709'
+# Malformed ANSI: highlight. See 'https://github.com/silicon-editor/silicon/issues/5709'
 # "ui.virtual.whitespace" = "highlight"
 "ui.virtual.ruler" = { bg = "gray95" }
 "ui.virtual.inlay-hint" = { fg = "gray75" }

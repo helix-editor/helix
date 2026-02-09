@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-HELIX_RUNTIME=/usr/lib/helix/runtime exec /usr/lib/helix/hx "$@"
+SILICON_RUNTIME=/usr/lib/silicon/runtime exec /usr/lib/silicon/si "$@"

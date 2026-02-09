@@ -1,6 +1,6 @@
 # author: Gael Lopes Da Silva
 # project: Yellowed
-# github: https://github.com/Gael-Lopes-Da-Silva/YellowedHelix
+# github: https://github.com/Gael-Lopes-Da-Silva/YellowedSilicon
 
 "attribute"                       = { fg = "text" }
 "type"                            = { fg = "text" }

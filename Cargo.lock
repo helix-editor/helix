@@ -1349,279 +1349,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "helix-core"
-version = "25.7.1"
-dependencies = [
- "anyhow",
- "arc-swap",
- "bitflags",
- "chrono",
- "encoding_rs",
- "foldhash 0.2.0",
- "globset",
- "helix-loader",
- "helix-parsec",
- "helix-stdx",
- "imara-diff 0.2.0",
- "indoc",
- "log",
- "nucleo",
- "once_cell",
- "parking_lot",
- "quickcheck",
- "regex",
- "regex-cursor",
- "ropey",
- "serde",
- "serde_json",
- "slotmap",
- "smallvec",
- "smartstring",
- "textwrap",
- "toml",
- "tree-house",
- "unicode-general-category",
- "unicode-segmentation",
- "unicode-width 0.1.12",
- "url",
-]
-
-[[package]]
-name = "helix-dap"
-version = "25.7.1"
-dependencies = [
- "anyhow",
- "fern",
- "futures-executor",
- "futures-util",
- "helix-core",
- "helix-dap-types",
- "helix-stdx",
- "log",
- "serde",
- "serde_json",
- "slotmap",
- "sonic-rs",
- "thiserror",
- "tokio",
- "tokio-stream",
-]
-
-[[package]]
-name = "helix-dap-types"
-version = "25.7.1"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "helix-event"
-version = "25.7.1"
-dependencies = [
- "anyhow",
- "foldhash 0.2.0",
- "futures-executor",
- "hashbrown 0.16.1",
- "log",
- "once_cell",
- "parking_lot",
- "tokio",
-]
-
-[[package]]
-name = "helix-loader"
-version = "25.7.1"
-dependencies = [
- "anyhow",
- "cc",
- "etcetera",
- "helix-stdx",
- "log",
- "once_cell",
- "serde",
- "tempfile",
- "threadpool",
- "toml",
- "tree-house",
-]
-
-[[package]]
-name = "helix-lsp"
-version = "25.7.1"
-dependencies = [
- "anyhow",
- "arc-swap",
- "futures-executor",
- "futures-util",
- "globset",
- "helix-core",
- "helix-loader",
- "helix-lsp-types",
- "helix-stdx",
- "log",
- "parking_lot",
- "serde",
- "serde_json",
- "slotmap",
- "sonic-rs",
- "thiserror",
- "tokio",
- "tokio-stream",
-]
-
-[[package]]
-name = "helix-lsp-types"
-version = "0.95.1"
-dependencies = [
- "bitflags",
- "serde",
- "serde_json",
- "url",
-]
-
-[[package]]
-name = "helix-parsec"
-version = "25.7.1"
-
-[[package]]
-name = "helix-stdx"
-version = "25.7.1"
-dependencies = [
- "bitflags",
- "dunce",
- "etcetera",
- "once_cell",
- "regex-automata",
- "regex-cursor",
- "ropey",
- "rustix 1.1.3",
- "tempfile",
- "unicode-segmentation",
- "which",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "helix-term"
-version = "25.7.1"
-dependencies = [
- "anyhow",
- "arc-swap",
- "chrono",
- "content_inspector",
- "crossterm",
- "dashmap",
- "fern",
- "futures-util",
- "grep-matcher",
- "grep-regex",
- "grep-searcher",
- "helix-core",
- "helix-dap",
- "helix-event",
- "helix-loader",
- "helix-lsp",
- "helix-stdx",
- "helix-tui",
- "helix-vcs",
- "helix-view",
- "ignore",
- "indexmap",
- "indoc",
- "libc",
- "log",
- "mimalloc",
- "nucleo",
- "once_cell",
- "open",
- "pulldown-cmark",
- "same-file",
- "serde",
- "serde_json",
- "signal-hook 0.4.3",
- "signal-hook-tokio",
- "smallvec",
- "tempfile",
- "termina",
- "termini",
- "thiserror",
- "tokio",
- "tokio-stream",
- "toml",
- "url",
-]
-
-[[package]]
-name = "helix-tui"
-version = "25.7.1"
-dependencies = [
- "bitflags",
- "cassowary",
- "crossterm",
- "helix-core",
- "helix-view",
- "log",
- "once_cell",
- "termina",
- "termini",
- "unicode-segmentation",
-]
-
-[[package]]
-name = "helix-vcs"
-version = "25.7.1"
-dependencies = [
- "anyhow",
- "arc-swap",
- "gix",
- "helix-core",
- "helix-event",
- "imara-diff 0.2.0",
- "log",
- "parking_lot",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "helix-view"
-version = "25.7.1"
-dependencies = [
- "anyhow",
- "arc-swap",
- "bitflags",
- "chardetng",
- "clipboard-win",
- "crossterm",
- "futures-util",
- "helix-core",
- "helix-dap",
- "helix-event",
- "helix-loader",
- "helix-lsp",
- "helix-stdx",
- "helix-tui",
- "helix-vcs",
- "kstring",
- "libc",
- "log",
- "once_cell",
- "parking_lot",
- "rustix 1.1.3",
- "serde",
- "serde_json",
- "slotmap",
- "tempfile",
- "termina",
- "thiserror",
- "tokio",
- "tokio-stream",
- "toml",
- "url",
-]
-
-[[package]]
 name = "hermit-abi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2615,6 +2342,279 @@ dependencies = [
 ]
 
 [[package]]
+name = "silicon-core"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "bitflags",
+ "chrono",
+ "encoding_rs",
+ "foldhash 0.2.0",
+ "globset",
+ "imara-diff 0.2.0",
+ "indoc",
+ "log",
+ "nucleo",
+ "once_cell",
+ "parking_lot",
+ "quickcheck",
+ "regex",
+ "regex-cursor",
+ "ropey",
+ "serde",
+ "serde_json",
+ "silicon-loader",
+ "silicon-parsec",
+ "silicon-stdx",
+ "slotmap",
+ "smallvec",
+ "smartstring",
+ "textwrap",
+ "toml",
+ "tree-house",
+ "unicode-general-category",
+ "unicode-segmentation",
+ "unicode-width 0.1.12",
+ "url",
+]
+
+[[package]]
+name = "silicon-dap"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "fern",
+ "futures-executor",
+ "futures-util",
+ "log",
+ "serde",
+ "serde_json",
+ "silicon-core",
+ "silicon-dap-types",
+ "silicon-stdx",
+ "slotmap",
+ "sonic-rs",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
+name = "silicon-dap-types"
+version = "25.7.1"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "silicon-event"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "foldhash 0.2.0",
+ "futures-executor",
+ "hashbrown 0.16.1",
+ "log",
+ "once_cell",
+ "parking_lot",
+ "tokio",
+]
+
+[[package]]
+name = "silicon-loader"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "cc",
+ "etcetera",
+ "log",
+ "once_cell",
+ "serde",
+ "silicon-stdx",
+ "tempfile",
+ "threadpool",
+ "toml",
+ "tree-house",
+]
+
+[[package]]
+name = "silicon-lsp"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "futures-executor",
+ "futures-util",
+ "globset",
+ "log",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "silicon-core",
+ "silicon-loader",
+ "silicon-lsp-types",
+ "silicon-stdx",
+ "slotmap",
+ "sonic-rs",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
+name = "silicon-lsp-types"
+version = "0.95.1"
+dependencies = [
+ "bitflags",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "silicon-parsec"
+version = "25.7.1"
+
+[[package]]
+name = "silicon-stdx"
+version = "25.7.1"
+dependencies = [
+ "bitflags",
+ "dunce",
+ "etcetera",
+ "once_cell",
+ "regex-automata",
+ "regex-cursor",
+ "ropey",
+ "rustix 1.1.3",
+ "tempfile",
+ "unicode-segmentation",
+ "which",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "silicon-term"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "chrono",
+ "content_inspector",
+ "crossterm",
+ "dashmap",
+ "fern",
+ "futures-util",
+ "grep-matcher",
+ "grep-regex",
+ "grep-searcher",
+ "ignore",
+ "indexmap",
+ "indoc",
+ "libc",
+ "log",
+ "mimalloc",
+ "nucleo",
+ "once_cell",
+ "open",
+ "pulldown-cmark",
+ "same-file",
+ "serde",
+ "serde_json",
+ "signal-hook 0.4.3",
+ "signal-hook-tokio",
+ "silicon-core",
+ "silicon-dap",
+ "silicon-event",
+ "silicon-loader",
+ "silicon-lsp",
+ "silicon-stdx",
+ "silicon-tui",
+ "silicon-vcs",
+ "silicon-view",
+ "smallvec",
+ "tempfile",
+ "termina",
+ "termini",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "toml",
+ "url",
+]
+
+[[package]]
+name = "silicon-tui"
+version = "25.7.1"
+dependencies = [
+ "bitflags",
+ "cassowary",
+ "crossterm",
+ "log",
+ "once_cell",
+ "silicon-core",
+ "silicon-view",
+ "termina",
+ "termini",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "silicon-vcs"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "gix",
+ "imara-diff 0.2.0",
+ "log",
+ "parking_lot",
+ "silicon-core",
+ "silicon-event",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "silicon-view"
+version = "25.7.1"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "bitflags",
+ "chardetng",
+ "clipboard-win",
+ "crossterm",
+ "futures-util",
+ "kstring",
+ "libc",
+ "log",
+ "once_cell",
+ "parking_lot",
+ "rustix 1.1.3",
+ "serde",
+ "serde_json",
+ "silicon-core",
+ "silicon-dap",
+ "silicon-event",
+ "silicon-loader",
+ "silicon-lsp",
+ "silicon-stdx",
+ "silicon-tui",
+ "silicon-vcs",
+ "slotmap",
+ "tempfile",
+ "termina",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "toml",
+ "url",
+]
+
+[[package]]
 name = "simdutf8"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3401,10 +3401,10 @@ checksum = "1e9df38ee2d2c3c5948ea468a8406ff0db0b29ae1ffde1bcf20ef305bcc95c51"
 name = "xtask"
 version = "25.7.1"
 dependencies = [
- "helix-core",
- "helix-loader",
- "helix-term",
- "helix-view",
+ "silicon-core",
+ "silicon-loader",
+ "silicon-term",
+ "silicon-view",
  "toml",
 ]
 

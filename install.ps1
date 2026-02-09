@@ -1,5 +1,5 @@
-# install.ps1 — one-liner installer for Rani367/helix fork (Windows)
-# Usage: irm https://raw.githubusercontent.com/Rani367/helix/master/install.ps1 | iex
+# install.ps1 — one-liner installer for Rani367/silicon fork (Windows)
+# Usage: irm https://raw.githubusercontent.com/Rani367/silicon/master/install.ps1 | iex
 #Requires -Version 5.1
 $ErrorActionPreference = 'Stop'
 
@@ -10,11 +10,11 @@ function Write-Warn  { param([string]$Msg) Write-Host "[warn]  $Msg" -Foreground
 function Write-Err   { param([string]$Msg) Write-Host "[error] $Msg" -ForegroundColor Red }
 
 # ── Constants ────────────────────────────────────────────────────────────────
-$ForkUrl   = 'https://github.com/Rani367/helix.git'
-$SrcDir    = Join-Path $env:USERPROFILE '.helix-src'
+$ForkUrl   = 'https://github.com/Rani367/silicon.git'
+$SrcDir    = Join-Path $env:USERPROFILE '.silicon-src'
 $Msrv      = '1.87'
 $CargoBin  = Join-Path $env:USERPROFILE '.cargo\bin'
-$ConfigDir = Join-Path $env:APPDATA 'helix'
+$ConfigDir = Join-Path $env:APPDATA 'silicon'
 
 # ── Helper: check if command exists ──────────────────────────────────────────
 function Test-Command {
@@ -102,46 +102,46 @@ if ($env:PATH -notlike "*$CargoBin*") {
     Write-Warn '  Restart your terminal or add it manually.'
 }
 
-# ── Remove existing Helix installations ──────────────────────────────────────
-Write-Info 'Checking for existing Helix installations...'
+# ── Remove existing Silicon installations ──────────────────────────────────────
+Write-Info 'Checking for existing Silicon installations...'
 
 # winget
 if (Test-Command 'winget') {
-    $wingetList = & winget list --id Helix.Helix 2>$null
-    if ($LASTEXITCODE -eq 0 -and $wingetList -match 'Helix\.Helix') {
-        Write-Info 'Removing winget Helix...'
-        & winget uninstall --id Helix.Helix --silent
-        Write-Ok 'winget Helix removed'
+    $wingetList = & winget list --id Silicon.Silicon 2>$null
+    if ($LASTEXITCODE -eq 0 -and $wingetList -match 'Silicon\.Silicon') {
+        Write-Info 'Removing winget Silicon...'
+        & winget uninstall --id Silicon.Silicon --silent
+        Write-Ok 'winget Silicon removed'
     }
 }
 
 # scoop
 if (Test-Command 'scoop') {
-    $scoopList = & scoop list 2>$null | Select-String -Pattern '^helix\b'
+    $scoopList = & scoop list 2>$null | Select-String -Pattern '^silicon\b'
     if ($scoopList) {
-        Write-Info 'Removing scoop helix...'
-        & scoop uninstall helix
-        Write-Ok 'scoop helix removed'
+        Write-Info 'Removing scoop silicon...'
+        & scoop uninstall silicon
+        Write-Ok 'scoop silicon removed'
     }
 }
 
 # chocolatey
 if (Test-Command 'choco') {
-    $chocoList = & choco list --local-only helix 2>$null
-    if ($LASTEXITCODE -eq 0 -and $chocoList -match 'helix') {
-        Write-Info 'Removing chocolatey helix...'
-        & choco uninstall helix -y
-        Write-Ok 'chocolatey helix removed'
+    $chocoList = & choco list --local-only silicon 2>$null
+    if ($LASTEXITCODE -eq 0 -and $chocoList -match 'silicon') {
+        Write-Info 'Removing chocolatey silicon...'
+        & choco uninstall silicon -y
+        Write-Ok 'chocolatey silicon removed'
     }
 }
 
-# cargo (old helix-term install)
+# cargo (old silicon-term install)
 if (Test-Command 'cargo') {
     $cargoList = & cargo install --list 2>$null
-    if ($cargoList -match '^helix-term') {
-        Write-Info 'Removing cargo helix-term...'
-        & cargo uninstall helix-term
-        Write-Ok 'cargo helix-term removed'
+    if ($cargoList -match '^silicon-term') {
+        Write-Info 'Removing cargo silicon-term...'
+        & cargo uninstall silicon-term
+        Write-Ok 'cargo silicon-term removed'
     }
 }
 
@@ -168,11 +168,11 @@ if (Test-Path $SrcDir) {
 }
 
 # ── Build ────────────────────────────────────────────────────────────────────
-Write-Info 'Building Helix (this may take a few minutes)...'
+Write-Info 'Building Silicon (this may take a few minutes)...'
 Push-Location $SrcDir
-& cargo install --path helix-term --locked
+& cargo install --path silicon-term --locked
 Pop-Location
-Write-Ok "Helix built and installed to $CargoBin\hx.exe"
+Write-Ok "Silicon built and installed to $CargoBin\si.exe"
 
 # ── Set up runtime (directory junction) ──────────────────────────────────────
 Write-Info 'Setting up runtime directory...'
@@ -211,11 +211,11 @@ try {
 
 # ── Verify ───────────────────────────────────────────────────────────────────
 Write-Info 'Verifying installation...'
-if (Test-Command 'hx') {
-    & hx --health
+if (Test-Command 'si') {
+    & si --health
     Write-Host ''
-    Write-Ok 'Helix installed successfully!'
-    Write-Info 'Run `hx` to start editing.'
+    Write-Ok 'Silicon installed successfully!'
+    Write-Info 'Run `si` to start editing.'
 } else {
-    Write-Warn "hx not found in PATH. Restart your terminal or add $CargoBin to your PATH."
+    Write-Warn "si not found in PATH. Restart your terminal or add $CargoBin to your PATH."
 }

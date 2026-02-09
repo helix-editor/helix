@@ -149,8 +149,8 @@
  ((variable) @constant.builtin.boolean
   (#match? @constant.builtin.boolean "^(true|false)$"))
 
- ; The former one works for `tree-sitter highlight` but not in Helix/Kakoune.
- ; The latter two work in Helix (but not Kakoune) and are a good compromise between not highlighting anything at all
+ ; The former one works for `tree-sitter highlight` but not in Silicon/Kakoune.
+ ; The latter two work in Silicon (but not Kakoune) and are a good compromise between not highlighting anything at all
  ; as an operator and leaving it to the child nodes, and highlighting everything as an operator.
  (exp_ticked (_) @operator)
  (exp_ticked (exp_name (variable) @operator))

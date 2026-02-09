@@ -239,7 +239,7 @@
 
 ; pkgs.writers.writeFSharp[Bin] name content
 ; No query available for f-sharp as of the time of writing
-; See: https://github.com/helix-editor/helix/issues/4943
+; See: https://github.com/silicon-editor/silicon/issues/4943
 ; ((apply_expression
 ;    function: (apply_expression function: (_) @_func)
 ;    argument: (indented_string_expression (string_fragment) @injection.content))

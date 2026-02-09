@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::path;
-use helix_term::health::TsFeature;
+use silicon_term::health::TsFeature;
 
 /// Get the list of languages that support a particular tree-sitter
 /// based feature.
@@ -11,7 +11,7 @@ pub fn ts_lang_support(feat: TsFeature) -> Vec<String> {
     find_files(&queries_dir, feat.runtime_filename())
         .iter()
         .map(|f| {
-            // .../helix/runtime/queries/python/highlights.scm
+            // .../silicon/runtime/queries/python/highlights.scm
             let tail = f.strip_prefix(&queries_dir).unwrap(); // python/highlights.scm
             let lang = tail.components().next().unwrap(); // python
             lang.as_os_str().to_string_lossy().to_string()

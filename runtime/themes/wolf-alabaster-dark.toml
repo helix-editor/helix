@@ -1,12 +1,12 @@
 # wolf-alabaster-dark.toml
 #
 # Author: Wolf <wolf@zv.cx>
-# Project: https://github.com/wolf/alabaster-for-helix
-# Download: https://raw.githubusercontent.com/wolf/alabaster-for-helix/main/helix/dot-config/helix/themes/wolf-alabaster-dark.toml
+# Project: https://github.com/wolf/alabaster-for-silicon
+# Download: https://raw.githubusercontent.com/wolf/alabaster-for-silicon/main/silicon/dot-config/silicon/themes/wolf-alabaster-dark.toml
 #
-# This is a dark-background theme especically for the Helix editor.
+# This is a dark-background theme especically for the Silicon editor.
 #
-# The most important part here is the syntax stuff, but the theme includes UI stuff specifically for Helix, as well.
+# The most important part here is the syntax stuff, but the theme includes UI stuff specifically for Silicon, as well.
 #
 # What I care about is:
 #   * Readable syntax, no matter the language
@@ -17,7 +17,7 @@
 # I started from a couple important sources:
 #   * The [priorities and ideas](https://tonsky.me/blog/syntax-highlighting/) behind the Alabaster Theme (which exists for many editors) by Nikita Prokopov
 #   * His [actual repo implementing the theme](https://github.com/tonsky/sublime-scheme-alabaster)
-#   * A [theme template](https://github.com/joegm/helix-theme-template) on GitHub provided by joegm
+#   * A [theme template](https://github.com/joegm/silicon-theme-template) on GitHub provided by joegm
 
 # I don't consider this to be done! I absolutely want feedback. I absolutely will continue to tinker.
 

@@ -1,8 +1,8 @@
 # Author: Rosé Pine <hi@rosepinetheme.com>
-# Upstream: https://github.com/rose-pine/helix
+# Upstream: https://github.com/rose-pine/silicon
 # Contributing:
-#   Please submit changes to https://github.com/rose-pine/helix.
-#   The Rosé Pine team will update Helix, including you as a co-author.
+#   Please submit changes to https://github.com/rose-pine/silicon.
+#   The Rosé Pine team will update Silicon, including you as a co-author.
 
 inherits = "rose_pine"
 

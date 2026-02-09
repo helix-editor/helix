@@ -1,6 +1,6 @@
 # Author : 0rphee <0rph3e@proton.me>
 
-# Template written with the help of https://github.com/n0s4/helix-theme-template
+# Template written with the help of https://github.com/n0s4/silicon-theme-template
 # Keep in mind that I made this to fit Haskell and Python syntax, it may not work so well with other languages.
 
 ## GENERAL ==============================
@@ -21,7 +21,7 @@
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # UI ==============================
-# For styling helix itself.
+# For styling silicon itself.
 
 'ui.background' = { fg = "autocomp-green", bg = "dark-green" } # Default background color.
 'ui.window' = { fg = "mid-green" } # Window border between splits.

@@ -1,6 +1,6 @@
-## Adding new languages to Helix
+## Adding new languages to Silicon
 
-In order to add a new language to Helix, you will need to follow the steps
+In order to add a new language to Silicon, you will need to follow the steps
 below.
 
 ## Language configuration
@@ -16,7 +16,7 @@ below.
 
 > 💡 If you are adding a new Language Server configuration, make sure to update
 > the
-> [Language Server Wiki](https://github.com/helix-editor/helix/wiki/Language-Server-Configurations)
+> [Language Server Wiki](https://github.com/silicon-editor/silicon/wiki/Language-Server-Configurations)
 > with the installation instructions.
 
 ## Grammar configuration
@@ -36,14 +36,14 @@ below.
 3. Refer to the
    [tree-sitter website](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights)
    for more information on writing queries.
-4. A list of highlight captures can be found [on the themes page](https://docs.helix-editor.com/themes.html#scopes).
+4. A list of highlight captures can be found [on the themes page](https://docs.silicon-editor.com/themes.html#scopes).
 
 ## Common issues
 
-- If you encounter errors when running Helix after switching branches, you may
-  need to update the tree-sitter grammars. Run the command `hx --grammar fetch`
-  to fetch the grammars and `hx --grammar build` to build any out-of-date
+- If you encounter errors when running Silicon after switching branches, you may
+  need to update the tree-sitter grammars. Run the command `si --grammar fetch`
+  to fetch the grammars and `si --grammar build` to build any out-of-date
   grammars.
 - If a parser is causing a segfault, or you want to remove it, make sure to
   remove the compiled parser located at `runtime/grammars/<name>.so`.
-- If you are attempting to add queries and Helix is unable to locate them, ensure that the environment variable `HELIX_RUNTIME` is set to the location of the `runtime` folder you're developing in.
+- If you are attempting to add queries and Silicon is unable to locate them, ensure that the environment variable `SILICON_RUNTIME` is set to the location of the `runtime` folder you're developing in.

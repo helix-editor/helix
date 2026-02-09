@@ -1,0 +1,110 @@
+[package]
+name = "silicon-term"
+description = "A post-modern text editor."
+include = ["src/**/*", "README.md"]
+default-run = "si"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[package.metadata.deb]
+# generate a .deb in target/debian/ with the command: cargo deb --no-build
+name = "silicon"
+assets = [
+  { source = "target/release/si", dest = "/usr/lib/silicon/", mode = "755" },
+  { source = "../contrib/hx_launcher.sh", dest = "/usr/bin/si", mode = "755" },
+  { source = "../runtime/*", dest = "/usr/lib/silicon/runtime/", mode = "644" },
+  { source = "../runtime/grammars/*", dest = "/usr/lib/silicon/runtime/grammars/", mode = "644" }, # to avoid sources/
+  { source = "../runtime/queries/**/*", dest = "/usr/lib/silicon/runtime/queries/", mode = "644" },
+  { source = "../runtime/themes/**/*", dest = "/usr/lib/silicon/runtime/themes/", mode = "644" },
+  { source = "../README.md", dest = "/usr/share/doc/silicon/", mode = "644" },
+  { source = "../contrib/completion/si.bash", dest = "/usr/share/bash-completion/completions/si", mode = "644" },
+  { source = "../contrib/completion/si.fish", dest = "/usr/share/fish/vendor_completions.d/si.fish", mode = "644" },
+  { source = "../contrib/completion/si.zsh", dest = "/usr/share/zsh/vendor-completions/_hx", mode = "644" },
+  { source = "../contrib/Silicon.desktop", dest = "/usr/share/applications/Silicon.desktop", mode = "644" },
+  { source = "../contrib/silicon.png", dest = "/usr/share/icons/hicolor/256x256/apps/silicon.png", mode = "644" },
+]
+
+[features]
+default = ["git"]
+unicode-lines = ["silicon-core/unicode-lines", "silicon-view/unicode-lines"]
+integration = ["silicon-event/integration_test"]
+git = ["silicon-vcs/git"]
+
+[[bin]]
+name = "si"
+path = "src/main.rs"
+
+[dependencies]
+silicon-stdx = { path = "../silicon-stdx" }
+silicon-core = { path = "../silicon-core" }
+silicon-event = { path = "../silicon-event" }
+silicon-view = { path = "../silicon-view" }
+silicon-lsp = { path = "../silicon-lsp" }
+silicon-dap = { path = "../silicon-dap" }
+silicon-vcs = { path = "../silicon-vcs" }
+silicon-loader = { path = "../silicon-loader" }
+
+anyhow = "1"
+once_cell = "1.21"
+
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
+tui = { path = "../silicon-tui", package = "silicon-tui", default-features = false, features = ["termina", "crossterm"] }
+termina = { workspace = true, features = ["event-stream"] }
+signal-hook = "0.4"
+tokio-stream = "0.1"
+futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
+arc-swap = { version = "1.8.0" }
+termini = "1"
+indexmap = "2.13"
+
+# Logging
+fern = "0.7"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+log = "0.4"
+
+# File picker
+nucleo.workspace = true
+ignore = "0.4"
+grep-regex = "0.1"
+grep-searcher = "0.1"
+grep-matcher = "0.1"
+# markdown doc rendering
+pulldown-cmark = { version = "0.13", default-features = false }
+# file type detection
+content_inspector = "0.2.4"
+thiserror.workspace = true
+
+# opening URLs
+open = "5.3.3"
+url = "2.5.4"
+
+# config
+toml.workspace = true
+
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+dashmap = "6.0"
+mimalloc = "0.1"
+
+[target.'cfg(windows)'.dependencies]
+crossterm = { version = "0.28", features = ["event-stream"] }
+
+[target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
+signal-hook-tokio = { version = "0.4", features = ["futures-v0_3"] }
+libc = "0.2.180"
+
+[build-dependencies]
+silicon-loader = { path = "../silicon-loader" }
+
+[dev-dependencies]
+smallvec = "1.15"
+indoc = "2.0.6"
+tempfile.workspace = true
+same-file = "1.0.1"

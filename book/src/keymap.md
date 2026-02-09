@@ -25,11 +25,11 @@
 
 > 💡 Mappings marked (**TS**) require a tree-sitter grammar for the file type.
 
-> ⚠️ Some terminals' default key mappings conflict with Helix's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the [wiki](https://github.com/helix-editor/helix/wiki/Terminal-Support) for known conflicts.
+> ⚠️ Some terminals' default key mappings conflict with Silicon's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the [wiki](https://github.com/silicon-editor/silicon/wiki/Terminal-Support) for known conflicts.
 
 ## Normal mode
 
-Normal mode is the default mode when you launch helix. You can return to it from other modes by pressing the `Escape` key.
+Normal mode is the default mode when you launch silicon. You can return to it from other modes by pressing the `Escape` key.
 
 ### Movement
 
@@ -181,7 +181,7 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 | `Space`  | Enter [space mode](#space-mode)                    | N/A            |
 
 These modes (except command mode) can be configured by
-[remapping keys](https://docs.helix-editor.com/remapping.html#minor-modes).
+[remapping keys](https://docs.silicon-editor.com/remapping.html#minor-modes).
 
 #### View mode
 
@@ -383,7 +383,7 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 
 Accessed by typing `i` in [normal mode](#normal-mode).
 
-Insert mode bindings are minimal by default. Helix is designed to
+Insert mode bindings are minimal by default. Silicon is designed to
 be a modal editor, and this is reflected in the user experience and internal
 mechanics. Changes to the text are only saved for undos when
 escaping from insert mode to normal mode.

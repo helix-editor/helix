@@ -1,4 +1,4 @@
-; Indentation queries for helix
+; Indentation queries for silicon
 [
   (function_expression)
   (array_literal)

@@ -1,6 +1,6 @@
 # Summary
 
-[Helix](./title-page.md)
+[Silicon](./title-page.md)
 
 - [Installation](./install.md)
   - [Package Managers](./package-managers.md)
@@ -18,7 +18,7 @@
   - [Language support](./lang-support.md)
 - [Ecosystem](./ecosystem.md)
   - [Migrating from Vim](./from-vim.md)
-  - [Helix mode in other software](./other-software.md)
+  - [Silicon mode in other software](./other-software.md)
 - [Configuration](./configuration.md)
   - [Editor](./editor.md)
   - [Themes](./themes.md)

@@ -3,7 +3,7 @@
 # Author : Strash familev.imen.otchestvovich@gmail.com
 # License: MIT
 # 
-# GitHub : https://github.com/strash/kinda_nvim.hx
+# GitHub : https://github.com/strash/kinda_nvim.si
 
 inherits = "kinda_nvim"
 
