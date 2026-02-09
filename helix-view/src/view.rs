@@ -495,9 +495,9 @@ impl View {
         let enable_cursor_line = self
             .diagnostics_handler
             .show_cursorline_diagnostics(doc, self.id);
-        let enable_diagnostics = config.enable_diagnostics;
+        let enable_diagnostics = config.diagnostics.enable;
         let inline_diagnotstics_config =
-            config.inline_diagnostics.prepare(width, enable_cursor_line);
+            config.diagnostics.inline.prepare(width, enable_cursor_line);
         if !inline_diagnotstics_config.disabled() && enable_diagnostics {
             let cursor = doc
                 .selection(self.id)
