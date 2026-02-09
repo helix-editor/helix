@@ -1,7 +1,11 @@
-use crate::syntax::{
-    config::{Configuration, LanguageConfiguration},
-    Loader, LoaderError,
+use crate::{
+    auto_pairs::{AutoPairsRegistry, AutoPairsRegistryError},
+    syntax::{
+        config::{Configuration, LanguageConfiguration},
+        Loader, LoaderError,
+    },
 };
+use helix_loader::config::AutoPairsConfigError;
 
 /// Language configuration based on built-in languages.toml.
 pub fn default_lang_config() -> Configuration {
@@ -20,6 +24,8 @@ pub enum LanguageLoaderError {
     DeserializeError(toml::de::Error),
     ConfigError(toml::de::Error, String),
     LoaderError(LoaderError),
+    AutoPairsError(AutoPairsRegistryError),
+    AutoPairsConfigError(AutoPairsConfigError),
 }
 
 impl std::fmt::Display for LanguageLoaderError {
@@ -30,6 +36,10 @@ impl std::fmt::Display for LanguageLoaderError {
                 write!(f, "Failed to parse language config {context}: {err}")
             }
             Self::LoaderError(err) => write!(f, "Failed to compile language config: {err}"),
+            Self::AutoPairsError(err) => write!(f, "Failed to load auto-pairs config: {err}"),
+            Self::AutoPairsConfigError(err) => {
+                write!(f, "Failed to load auto-pairs config: {err}")
+            }
         }
     }
 }
@@ -39,6 +49,13 @@ impl std::error::Error for LanguageLoaderError {}
 /// Language configuration based on user configured languages.toml.
 pub fn user_lang_config() -> Result<Configuration, toml::de::Error> {
     helix_loader::config::user_lang_config()?.try_into()
+}
+
+/// Load the auto-pairs registry from auto-pairs.toml.
+pub fn auto_pairs_registry() -> Result<AutoPairsRegistry, LanguageLoaderError> {
+    let config_val = helix_loader::config::auto_pairs_config()
+        .map_err(LanguageLoaderError::AutoPairsConfigError)?;
+    AutoPairsRegistry::from_toml(&config_val).map_err(LanguageLoaderError::AutoPairsError)
 }
 
 /// Language configuration loader based on user configured languages.toml.
@@ -60,5 +77,7 @@ pub fn user_lang_loader() -> Result<Loader, LanguageLoaderError> {
         }
         LanguageLoaderError::ConfigError(e, String::new())
     })?;
-    Loader::new(config).map_err(LanguageLoaderError::LoaderError)
+
+    let registry = auto_pairs_registry()?;
+    Loader::new_with_auto_pairs(config, registry).map_err(LanguageLoaderError::LoaderError)
 }
