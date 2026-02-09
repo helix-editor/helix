@@ -1,6 +1,6 @@
 <div align="center">
 
-<img alt="Silicon" src="logo_anim.gif" width="128">
+<img alt="Silicon" src="logo_anim.gif" width="256">
 
 <h1>Silicon</h1>
 
