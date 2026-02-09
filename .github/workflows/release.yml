@@ -15,7 +15,7 @@ env:
   # a release, allowing for manual inspection of the output. This mode is
   # activated if the CI run was triggered by events other than pushed tags, or
   # if the repository is a fork.
-  preview: ${{ !startsWith(github.ref, 'refs/tags/') || github.repository != 'silicon-editor/silicon' }}
+  preview: ${{ !startsWith(github.ref, 'refs/tags/') || github.repository != 'helix-editor/silicon' }}
 
 jobs:
   fetch-grammars:

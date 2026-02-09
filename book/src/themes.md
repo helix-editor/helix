@@ -43,9 +43,9 @@ If the key contains a dot `'.'`, it must be quoted to prevent it being parsed as
 ```
 
 For inspiration, you can find the default `theme.toml`
-[here](https://github.com/silicon-editor/silicon/blob/master/theme.toml) and
+[here](https://github.com/helix-editor/silicon/blob/master/theme.toml) and
 user-submitted themes
-[here](https://github.com/silicon-editor/silicon/blob/master/runtime/themes).
+[here](https://github.com/helix-editor/silicon/blob/master/runtime/themes).
 
 
 ## The details of theme creation
@@ -365,4 +365,4 @@ These scopes are used for theming the editor interface:
 | `tabstop`                         | Snippet placeholder                                                                            |
 
 [editor-section]: ./configuration.md#editor-section
-[#2380]: https://github.com/silicon-editor/silicon/issues/2380
+[#2380]: https://github.com/helix-editor/silicon/issues/2380

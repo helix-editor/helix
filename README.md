@@ -10,7 +10,7 @@
 
 </div>
 
-> My personal fork of [silicon-editor/silicon](https://github.com/silicon-editor/silicon)
+> My personal fork of [helix-editor/helix](https://github.com/helix-editor/helix)
 
 ![Screenshot](./screenshot.png)
 
@@ -19,13 +19,13 @@
 **macOS / Linux:**
 
 ```sh
-curl -sSf https://raw.githubusercontent.com/Rani367/silicon/master/install.sh | sh
+curl -sSf https://raw.githubusercontent.com/Rani367/Silicon/master/install.sh | sh
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/Rani367/silicon/master/install.ps1 | iex
+irm https://raw.githubusercontent.com/Rani367/Silicon/master/install.ps1 | iex
 ```
 
 The scripts handle everything: prerequisites, removing old installations, cloning, building, and runtime setup. Re-run to update.
@@ -37,4 +37,4 @@ The scripts handle everything: prerequisites, removing old installations, clonin
 - Built-in language server support
 - Smart, incremental syntax highlighting and code editing via tree-sitter
 
-For documentation, see the upstream [website](https://silicon-editor.com) and [docs](https://docs.silicon-editor.com/).
+For documentation, see the upstream [website](https://helix-editor.com) and [docs](https://docs.helix-editor.com/).

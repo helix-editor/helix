@@ -28,7 +28,7 @@ RUSTFLAGS="-C target-feature=-crt-static"
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/silicon-editor/silicon
+   git clone https://github.com/helix-editor/silicon
    cd silicon
    ```
 
@@ -143,7 +143,7 @@ si --health
 ```
 
 For more information on the health check results refer to
-[Health check](https://github.com/silicon-editor/silicon/wiki/Healthcheck).
+[Health check](https://github.com/helix-editor/silicon/wiki/Healthcheck).
 
 ### Configure the desktop shortcut
 

@@ -1,5 +1,5 @@
-# install.ps1 — one-liner installer for Rani367/silicon fork (Windows)
-# Usage: irm https://raw.githubusercontent.com/Rani367/silicon/master/install.ps1 | iex
+# install.ps1 — one-liner installer for Rani367/Silicon fork (Windows)
+# Usage: irm https://raw.githubusercontent.com/Rani367/Silicon/master/install.ps1 | iex
 #Requires -Version 5.1
 $ErrorActionPreference = 'Stop'
 
@@ -10,7 +10,7 @@ function Write-Warn  { param([string]$Msg) Write-Host "[warn]  $Msg" -Foreground
 function Write-Err   { param([string]$Msg) Write-Host "[error] $Msg" -ForegroundColor Red }
 
 # ── Constants ────────────────────────────────────────────────────────────────
-$ForkUrl   = 'https://github.com/Rani367/silicon.git'
+$ForkUrl   = 'https://github.com/Rani367/Silicon.git'
 $SrcDir    = Join-Path $env:USERPROFILE '.silicon-src'
 $Msrv      = '1.87'
 $CargoBin  = Join-Path $env:USERPROFILE '.cargo\bin'

@@ -9,12 +9,12 @@ Note that:
 
 - To take full advantage of Silicon, install the language servers for your
   preferred programming languages. See the
-  [wiki](https://github.com/silicon-editor/silicon/wiki/Language-Server-Configurations)
+  [wiki](https://github.com/helix-editor/silicon/wiki/Language-Server-Configurations)
   for instructions.
 
 ## Pre-built binaries
 
-Download pre-built binaries from the [GitHub Releases page](https://github.com/silicon-editor/silicon/releases).
+Download pre-built binaries from the [GitHub Releases page](https://github.com/helix-editor/silicon/releases).
 The tarball contents include an `si` binary and a `runtime` directory.
 To set up Silicon:
 

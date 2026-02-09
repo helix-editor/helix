@@ -72,7 +72,7 @@ body:
       description: >
         Silicon version (`si -V` if using a release, `git describe` if building
         from master).
-        **Make sure that you are using the [latest silicon release](https://github.com/silicon-editor/silicon/releases) or a newer master build**
+        **Make sure that you are using the [latest silicon release](https://github.com/helix-editor/silicon/releases) or a newer master build**
       placeholder: "silicon 22.12 (5eaa6d97)"
     validations:
       required: true

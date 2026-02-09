@@ -1,5 +1,5 @@
 # Language support configuration.
-# See the languages documentation: https://docs.silicon-editor.com/master/languages.html
+# See the languages documentation: https://docs.helix-editor.com/master/languages.html
 
 use-grammars = { except = [ "wren", "gemini" ] }
 
@@ -3768,7 +3768,7 @@ comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = ["just-lsp"]
 # auto-format = true
-# formatter = { command = "just", args = ["--dump"] } # Please see: https://github.com/silicon-editor/silicon/issues/9703
+# formatter = { command = "just", args = ["--dump"] } # Please see: https://github.com/helix-editor/silicon/issues/9703
 
 [[grammar]]
 name = "just"

@@ -1,7 +1,7 @@
 # Using Silicon
 
 For a full interactive introduction to Silicon, refer to the
-[tutor](https://github.com/silicon-editor/silicon/blob/master/runtime/tutor) which
+[tutor](https://github.com/helix-editor/silicon/blob/master/runtime/tutor) which
 can be accessed via the command `si --tutor` or `:tutor`.
 
 > 💡 Currently, not all functionality is fully documented, please refer to the

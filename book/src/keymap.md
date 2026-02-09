@@ -25,7 +25,7 @@
 
 > 💡 Mappings marked (**TS**) require a tree-sitter grammar for the file type.
 
-> ⚠️ Some terminals' default key mappings conflict with Silicon's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the [wiki](https://github.com/silicon-editor/silicon/wiki/Terminal-Support) for known conflicts.
+> ⚠️ Some terminals' default key mappings conflict with Silicon's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the [wiki](https://github.com/helix-editor/silicon/wiki/Terminal-Support) for known conflicts.
 
 ## Normal mode
 
@@ -181,7 +181,7 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 | `Space`  | Enter [space mode](#space-mode)                    | N/A            |
 
 These modes (except command mode) can be configured by
-[remapping keys](https://docs.silicon-editor.com/remapping.html#minor-modes).
+[remapping keys](https://docs.helix-editor.com/remapping.html#minor-modes).
 
 #### View mode
 

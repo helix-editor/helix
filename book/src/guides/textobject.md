@@ -49,4 +49,4 @@ doesn't make sense in a navigation context.
 
 [tree-sitter-queries]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html
 [tree-sitter-captures]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html#capturing-nodes
-[textobject-examples]: https://github.com/search?q=repo%3Asilicon-editor%2Fsilicon+path%3A%2A%2A/textobjects.scm&type=Code&ref=advsearch&l=&l=
+[textobject-examples]: https://github.com/search?q=repo%3Ahelix-editor%2Fsilicon+path%3A%2A%2A/textobjects.scm&type=Code&ref=advsearch&l=&l=

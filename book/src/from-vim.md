@@ -73,7 +73,7 @@ delete to line end:
 * vim: `D`
 * silicon: `vgld` or `t<ret>d`
 
-Note: `v` is used along with `gl` (go to line end), because [`gl` does not select text](https://github.com/silicon-editor/silicon/issues/1630).
+Note: `v` is used along with `gl` (go to line end), because [`gl` does not select text](https://github.com/helix-editor/silicon/issues/1630).
 `t<ret>` selects "'til" the newline represented by `<ret>`.
 
 delete entire line:
@@ -126,7 +126,7 @@ setting a bookmark (bookmarking a location):
 * vim: `ma` to set bookmark with name a. Use `` `a `` to go back to this bookmarked location.
 * silicon: there are no named bookmarks, but you can save a location in the jumplist with `C-s`, then jump back to that location by opening the jumplist picker with `<space>-j`, or back in the jumplist with `C-o` and forward with `C-i`
 
-Silicon allows [some limited movement in `insert` mode](https://docs.silicon-editor.com/keymap.html#insert-mode) without switching to `normal` mode.
+Silicon allows [some limited movement in `insert` mode](https://docs.helix-editor.com/keymap.html#insert-mode) without switching to `normal` mode.
 
 Unlike Vim, under Silicon, the cursor shape is the same (block) in insert mode and normal mode by default.
 This can be adjusted in configuration:

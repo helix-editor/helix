@@ -1,6 +1,6 @@
 #!/bin/sh
-# install.sh — one-liner installer for Rani367/silicon fork
-# Usage: curl -sSf https://raw.githubusercontent.com/Rani367/silicon/master/install.sh | sh
+# install.sh — one-liner installer for Rani367/Silicon fork
+# Usage: curl -sSf https://raw.githubusercontent.com/Rani367/Silicon/master/install.sh | sh
 set -e
 
 # ── Color helpers (disabled when piped) ──────────────────────────────────────
@@ -17,7 +17,7 @@ warn()  { printf "${YELLOW}[warn]${RESET}  %s\n" "$*"; }
 err()   { printf "${RED}[error]${RESET} %s\n" "$*" >&2; }
 
 # ── Constants ────────────────────────────────────────────────────────────────
-FORK_URL="https://github.com/Rani367/silicon.git"
+FORK_URL="https://github.com/Rani367/Silicon.git"
 SRC_DIR="$HOME/.silicon-src"
 MSRV="1.87"
 CARGO_BIN="$HOME/.cargo/bin"
