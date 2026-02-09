@@ -113,6 +113,7 @@ pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
 protols = { command = "protols", args = [] }
 basedpyright = { command = "basedpyright-langserver", args = ["--stdio"], config = {} }
 pylyzer = { command = "pylyzer", args = ["--server"] }
+pytest-language-server = { command = "pytest-language-server" }
 qmlls = { command = "qmlls" }
 quint-language-server = { command = "quint-language-server", args = ["--stdio"] }
 r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
