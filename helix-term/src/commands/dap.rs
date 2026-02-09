@@ -70,7 +70,7 @@ fn thread_picker(
                     frame.line.saturating_sub(1),
                     frame.end_line.unwrap_or(frame.line).saturating_sub(1),
                 ));
-                Some((path.into(), pos))
+                Some((path.into(), pos, None))
             });
             compositor.push(Box::new(picker));
         },
@@ -773,6 +773,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
                         frame.line.saturating_sub(1),
                         frame.end_line.unwrap_or(frame.line).saturating_sub(1),
                     )),
+                    None,
                 )
             })
     });
