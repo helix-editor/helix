@@ -113,6 +113,7 @@ pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
 protols = { command = "protols", args = [] }
 basedpyright = { command = "basedpyright-langserver", args = ["--stdio"], config = {} }
 pylyzer = { command = "pylyzer", args = ["--server"] }
+pytest-language-server = { command = "pytest-language-server" }
 qmlls = { command = "qmlls" }
 quint-language-server = { command = "quint-language-server", args = ["--stdio"] }
 r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
@@ -2159,6 +2160,7 @@ source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = 
 
 [[language]]
 name = "docker-compose"
+language-id = "dockercompose"
 scope = "source.yaml.docker-compose"
 roots = ["docker-compose.yaml", "docker-compose.yml", "compose.yaml", "compose.yml"]
 language-servers = [ "docker-compose-langserver", "yaml-language-server", "docker-language-server" ]
@@ -5082,6 +5084,7 @@ comment-token = ".."
 
 [[language]]
 name = "docker-bake"
+language-id = "dockerbake"
 scope = "source.docker-bake"
 injection-regex = "docker-bake"
 grammar = "hcl"
