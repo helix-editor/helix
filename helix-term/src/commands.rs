@@ -32,7 +32,7 @@ use helix_core::{
     indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
-    movement::{self, move_vertically_visual, Direction},
+    movement::{self, Direction, Movement},
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
@@ -60,7 +60,6 @@ use helix_view::{
 use anyhow::{anyhow, bail, ensure, Context as _};
 use arc_swap::access::DynAccess;
 use insert::*;
-use movement::Movement;
 
 use crate::{
     compositor::{self, Component, Compositor},
@@ -306,16 +305,28 @@ impl MappableCommand {
         no_op, "Do nothing",
         move_char_left, "Move left",
         move_char_right, "Move right",
+        move_same_line_char_left, "Move left within in the same line only",
+        move_same_line_char_right, "Move right within in the same line only",
         move_line_up, "Move up",
         move_line_down, "Move down",
+        move_anchored_line_up, "Move up with newline anchoring behaviour",
+        move_anchored_line_down, "Move down with newline anchoring behaviour",
         move_visual_line_up, "Move up",
         move_visual_line_down, "Move down",
+        move_anchored_visual_line_up, "Move up with newline anchoring behaviour",
+        move_anchored_visual_line_down, "Move down with newline anchoring behaviour",
         extend_char_left, "Extend left",
         extend_char_right, "Extend right",
+        extend_same_line_char_left, "Extend left within the same line only",
+        extend_same_line_char_right, "Extend right within the same line only",
         extend_line_up, "Extend up",
         extend_line_down, "Extend down",
+        extend_anchored_line_up, "Extend up with newline anchoring behaviour",
+        extend_anchored_line_down, "Extend down with newline anchoring behaviour",
         extend_visual_line_up, "Extend up",
         extend_visual_line_down, "Extend down",
+        extend_anchored_visual_line_up, "Extend up with newline anchoring behaviour",
+        extend_anchored_visual_line_down, "Extend down with newline anchoring behaviour",
         copy_selection_on_next_line, "Copy selection on next line",
         copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to start of next word",
@@ -399,6 +410,7 @@ impl MappableCommand {
         ensure_selections_forward, "Ensure all selections face forward",
         insert_mode, "Insert before selection",
         append_mode, "Append after selection",
+        append_mode_same_line, "Append after selection within the same line only",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffer's directory",
@@ -747,7 +759,10 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
     doc.set_selection(view.id, selection);
 }
 
-use helix_core::movement::{move_horizontally, move_vertically};
+use helix_core::movement::{
+    move_horizontally, move_horizontally_same_line, move_vertically, move_vertically_anchored,
+    move_vertically_anchored_visual, move_vertically_visual,
+};
 
 fn move_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Move)
@@ -757,12 +772,48 @@ fn move_char_right(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Forward, Movement::Move)
 }
 
+fn move_same_line_char_left(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally_same_line,
+        Direction::Backward,
+        Movement::Move,
+    )
+}
+
+fn move_same_line_char_right(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally_same_line,
+        Direction::Forward,
+        Movement::Move,
+    )
+}
+
 fn move_line_up(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Backward, Movement::Move)
 }
 
 fn move_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Move)
+}
+
+fn move_anchored_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Backward,
+        Movement::Move,
+    )
+}
+
+fn move_anchored_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Forward,
+        Movement::Move,
+    )
 }
 
 fn move_visual_line_up(cx: &mut Context) {
@@ -783,6 +834,24 @@ fn move_visual_line_down(cx: &mut Context) {
     )
 }
 
+fn move_anchored_visual_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored_visual,
+        Direction::Backward,
+        Movement::Move,
+    )
+}
+
+fn move_anchored_visual_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored_visual,
+        Direction::Forward,
+        Movement::Move,
+    )
+}
+
 fn extend_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Extend)
 }
@@ -791,12 +860,48 @@ fn extend_char_right(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Forward, Movement::Extend)
 }
 
+fn extend_same_line_char_left(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally_same_line,
+        Direction::Backward,
+        Movement::Extend,
+    )
+}
+
+fn extend_same_line_char_right(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_horizontally_same_line,
+        Direction::Forward,
+        Movement::Extend,
+    )
+}
+
 fn extend_line_up(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Backward, Movement::Extend)
 }
 
 fn extend_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Extend)
+}
+
+fn extend_anchored_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Backward,
+        Movement::Extend,
+    )
+}
+
+fn extend_anchored_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Forward,
+        Movement::Extend,
+    )
 }
 
 fn extend_visual_line_up(cx: &mut Context) {
@@ -812,6 +917,24 @@ fn extend_visual_line_down(cx: &mut Context) {
     move_impl(
         cx,
         move_vertically_visual,
+        Direction::Forward,
+        Movement::Extend,
+    )
+}
+
+fn extend_anchored_visual_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored_visual,
+        Direction::Backward,
+        Movement::Extend,
+    )
+}
+
+fn extend_anchored_visual_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored_visual,
         Direction::Forward,
         Movement::Extend,
     )
@@ -3054,6 +3177,33 @@ fn append_mode(cx: &mut Context) {
             graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
         )
     });
+    doc.set_selection(view.id, selection);
+}
+
+fn append_mode_same_line(cx: &mut Context) {
+    enter_insert_mode(cx);
+    let (view, doc) = current!(cx.editor);
+    doc.restore_cursor = true;
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let forward_range = range.with_direction(Direction::Forward);
+        let range_end = forward_range.cursor(text);
+        let line = text.char_to_line(range_end);
+        let line_end_char_index = line_end_char_index(&text, line);
+        let is_at_end_of_line = range_end == line_end_char_index;
+
+        let new_range_end = if is_at_end_of_line {
+            range_end
+        } else {
+            range.to()
+        };
+        Range::new(
+            range.from(),
+            graphemes::next_grapheme_boundary(doc.text().slice(..), new_range_end),
+        )
+    });
+
     doc.set_selection(view.id, selection);
 }
 
