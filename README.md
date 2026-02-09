@@ -1,12 +1,8 @@
 <div align="center">
 
-<h1>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="logo_light.svg">
-  <img alt="Silicon" height="128" src="logo_light.svg">
-</picture>
-</h1>
+<img alt="Silicon" src="logo_anim.gif" width="128">
+
+<h1>Silicon</h1>
 
 </div>
 
