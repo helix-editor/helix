@@ -409,6 +409,36 @@ async fn match_around_closest_ts() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn match_inside_closest_ts() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("foo.rs", None),
+        (
+            r#"fn main() {func(#["|]#string");}"#,
+            "mim",
+            r##"fn main() {func("#[string|]#");}"##,
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn match_mix_closest_ts() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("foo.rs", None),
+        (
+            r#"fn main() {func("st#[|r]#ing");}"#,
+            "mimmammimmam",
+            r#"fn main() {func#[|("string")]#;}"#,
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
 /// Ensure the very initial cursor in an opened file is the width of
 /// the first grapheme
 #[tokio::test(flavor = "multi_thread")]
