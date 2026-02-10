@@ -616,6 +616,8 @@ impl MappableCommand {
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
+        toggle_terminal_panel, "Toggle terminal panel",
+        new_terminal_tab, "Open new terminal tab",
     );
 }
 
@@ -6963,4 +6965,14 @@ fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
     } else {
         syntax_workspace_symbol_picker(cx);
     }
+}
+
+fn toggle_terminal_panel(cx: &mut Context) {
+    let callback = async move { Ok(crate::job::Callback::OpenTerminalPanel) };
+    cx.jobs.callback(callback);
+}
+
+fn new_terminal_tab(cx: &mut Context) {
+    let callback = async move { Ok(crate::job::Callback::NewTerminalTab) };
+    cx.jobs.callback(callback);
 }

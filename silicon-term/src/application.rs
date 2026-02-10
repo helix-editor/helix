@@ -730,7 +730,6 @@ impl Application {
         #[cfg(not(windows))]
         use termina::escape::csi;
 
-        use silicon_view::input::KeyEvent;
         use silicon_view::keyboard::{KeyCode, KeyModifiers};
 
         let mut cx = crate::compositor::Context {
@@ -801,30 +800,6 @@ impl Application {
             ref event => {
                 // Convert to our Event type for key checking.
                 let silicon_event: Event = event.clone().into();
-
-                // Check for Ctrl+Backtick (toggle terminal panel).
-                if let Event::Key(KeyEvent {
-                    code: KeyCode::Char('`'),
-                    modifiers,
-                }) = &silicon_event
-                {
-                    if modifiers.contains(KeyModifiers::CONTROL)
-                        && !modifiers.contains(KeyModifiers::ALT)
-                    {
-                        if modifiers.contains(KeyModifiers::SHIFT) {
-                            // Ctrl+Shift+Backtick → new terminal tab
-                            let area = self.terminal.size();
-                            self.terminal_panel.visible = true;
-                            self.terminal_panel.focused = true;
-                            self.terminal_panel.spawn_terminal(area);
-                            return self.render().await;
-                        }
-                        // Ctrl+Backtick → toggle terminal panel
-                        let area = self.terminal.size();
-                        self.terminal_panel.toggle(area);
-                        return self.render().await;
-                    }
-                }
 
                 // Handle mouse events for terminal panel focus and scroll.
                 if self.terminal_panel.visible {
@@ -1404,10 +1379,7 @@ impl Application {
                 self.render().await;
             }
             Callback::OpenTerminalPanel => {
-                if !self.terminal_panel.visible {
-                    self.terminal_panel.toggle(area);
-                }
-                self.terminal_panel.focused = true;
+                self.terminal_panel.toggle(area);
                 self.render().await;
             }
             Callback::NewTerminalTab => {
