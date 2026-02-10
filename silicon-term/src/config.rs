@@ -27,7 +27,7 @@ pub struct ConfigRaw {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            theme: None,
+            theme: Some(theme::Config::constant("onedark")),
             keys: keymap::default(),
             editor: silicon_view::editor::Config::default(),
         }

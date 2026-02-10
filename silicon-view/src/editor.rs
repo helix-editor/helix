@@ -216,7 +216,7 @@ impl Default for FilePickerConfig {
             git_ignore: true,
             git_global: true,
             git_exclude: true,
-            max_depth: None,
+            max_depth: Some(24),
         }
     }
 }
@@ -611,16 +611,11 @@ impl Default for StatusLineConfig {
                 E::Mode,
                 E::Spinner,
                 E::FileName,
-                E::ReadOnlyIndicator,
                 E::FileModificationIndicator,
             ],
             center: vec![],
             right: vec![
-                E::Diagnostics,
-                E::Selections,
-                E::Register,
                 E::Position,
-                E::FileEncoding,
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
@@ -641,9 +636,9 @@ pub struct ModeConfig {
 impl Default for ModeConfig {
     fn default() -> Self {
         Self {
-            normal: String::from("NOR"),
-            insert: String::from("INS"),
-            select: String::from("SEL"),
+            normal: String::from("-- NORMAL --"),
+            insert: String::from("-- INSERT --"),
+            select: String::from("-- SELECT --"),
         }
     }
 }
@@ -1095,7 +1090,7 @@ impl Default for Config {
             } else {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
-            line_number: LineNumber::Absolute,
+            line_number: LineNumber::Relative,
             cursorline: false,
             cursorcolumn: false,
             gutters: GutterConfig::default(),
@@ -1105,13 +1100,13 @@ impl Default for Config {
             path_completion: true,
             word_completion: WordCompletion::default(),
             auto_format: true,
-            default_yank_register: '"',
+            default_yank_register: '+',
             auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
             completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
             completion_trigger_len: 2,
-            auto_info: true,
+            auto_info: false,
             file_picker: FilePickerConfig::default(),
             file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
@@ -1127,7 +1122,7 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap {
-                enable: Some(false),
+                enable: Some(true),
                 ..SoftWrap::default()
             },
             text_width: 80,
@@ -1150,7 +1145,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
-            commandline: true,
+            commandline: false,
         }
     }
 }

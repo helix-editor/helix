@@ -61,6 +61,14 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn constant(name: &str) -> Self {
+        Self {
+            light: name.to_owned(),
+            dark: name.to_owned(),
+            fallback: None,
+        }
+    }
+
     pub fn choose(&self, preference: Option<Mode>) -> &str {
         match preference {
             Some(Mode::Light) => &self.light,
