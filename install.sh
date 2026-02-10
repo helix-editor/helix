@@ -1,5 +1,5 @@
 #!/bin/sh
-# install.sh — one-liner installer for Rani367/Silicon fork
+# install.sh — one-liner installer for Silicon (downloads pre-built binary)
 # Usage: curl -sSf https://raw.githubusercontent.com/Rani367/Silicon/master/install.sh | sh
 set -e
 
@@ -17,105 +17,106 @@ warn()  { printf "${YELLOW}[warn]${RESET}  %s\n" "$*"; }
 err()   { printf "${RED}[error]${RESET} %s\n" "$*" >&2; }
 
 # ── Constants ────────────────────────────────────────────────────────────────
-FORK_URL="https://github.com/Rani367/Silicon.git"
-SRC_DIR="$HOME/.silicon-src"
-MSRV="1.87"
-CARGO_BIN="$HOME/.cargo/bin"
+GITHUB_REPO="Rani367/Silicon"
+BIN_DIR="$HOME/.local/bin"
 
-# Config dir: XDG on all Unix (matches etcetera::choose_base_strategy)
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/silicon"
+# ── Platform detection ───────────────────────────────────────────────────────
+detect_platform() {
+    OS="$(uname -s)"
+    ARCH="$(uname -m)"
+
+    case "$OS" in
+        Linux)  OS_NAME="linux" ;;
+        Darwin) OS_NAME="macos" ;;
+        *)
+            err "Unsupported OS: $OS"
+            err "Pre-built binaries are available for Linux and macOS."
+            err "For Windows, use install.ps1. For other platforms, build from source."
+            exit 1
+            ;;
+    esac
+
+    case "$ARCH" in
+        x86_64|amd64)   ARCH_NAME="x86_64" ;;
+        aarch64|arm64)   ARCH_NAME="aarch64" ;;
+        *)
+            err "Unsupported architecture: $ARCH"
+            err "Pre-built binaries are available for x86_64 and aarch64."
+            exit 1
+            ;;
+    esac
+
+    PLATFORM="${ARCH_NAME}-${OS_NAME}"
+    ok "Detected platform: $PLATFORM"
+}
+
+# ── Data directory (matches etcetera crate behavior) ─────────────────────────
+detect_data_dir() {
+    case "$(uname -s)" in
+        Darwin)
+            DATA_DIR="$HOME/Library/Application Support/silicon"
+            ;;
+        *)
+            DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/silicon"
+            ;;
+    esac
+}
+
+# ── Prerequisites ────────────────────────────────────────────────────────────
+check_prerequisites() {
+    if ! command -v curl >/dev/null 2>&1; then
+        err "curl is required but not found."
+        case "$(uname -s)" in
+            Darwin) err "  Install with: brew install curl" ;;
+            Linux)
+                if command -v apt >/dev/null 2>&1; then
+                    err "  Install with: sudo apt install curl"
+                elif command -v dnf >/dev/null 2>&1; then
+                    err "  Install with: sudo dnf install curl"
+                elif command -v pacman >/dev/null 2>&1; then
+                    err "  Install with: sudo pacman -S curl"
+                fi
+                ;;
+        esac
+        exit 1
+    fi
+
+    if ! command -v tar >/dev/null 2>&1; then
+        err "tar is required but not found."
+        exit 1
+    fi
+
+    # xz support check (macOS has it built-in, Linux may need xz-utils)
+    if ! command -v xz >/dev/null 2>&1; then
+        err "xz is required for extracting archives but not found."
+        case "$(uname -s)" in
+            Linux)
+                if command -v apt >/dev/null 2>&1; then
+                    err "  Install with: sudo apt install xz-utils"
+                elif command -v dnf >/dev/null 2>&1; then
+                    err "  Install with: sudo dnf install xz"
+                elif command -v pacman >/dev/null 2>&1; then
+                    err "  Install with: sudo pacman -S xz"
+                fi
+                ;;
+        esac
+        exit 1
+    fi
+
+    ok "Prerequisites satisfied (curl, tar, xz)"
+}
 
 # ── Root warning ─────────────────────────────────────────────────────────────
 if [ "$(id -u)" -eq 0 ]; then
-    warn "Running as root. The build artifacts will be owned by root."
-    warn "Consider running as a normal user instead."
+    warn "Running as root. Consider running as a normal user instead."
 fi
 
-# ── Prerequisites ────────────────────────────────────────────────────────────
+# ── Main ─────────────────────────────────────────────────────────────────────
+detect_platform
+detect_data_dir
+check_prerequisites
 
-# git
-if ! command -v git >/dev/null 2>&1; then
-    err "git is not installed."
-    case "$(uname -s)" in
-        Darwin) err "  Install with: xcode-select --install  OR  brew install git" ;;
-        Linux)
-            if command -v apt >/dev/null 2>&1; then
-                err "  Install with: sudo apt install git"
-            elif command -v dnf >/dev/null 2>&1; then
-                err "  Install with: sudo dnf install git"
-            elif command -v pacman >/dev/null 2>&1; then
-                err "  Install with: sudo pacman -S git"
-            else
-                err "  Install git using your system package manager."
-            fi
-            ;;
-    esac
-    exit 1
-fi
-ok "git found"
-
-# cargo / rustc
-if ! command -v cargo >/dev/null 2>&1 || ! command -v rustc >/dev/null 2>&1; then
-    warn "Rust toolchain not found. Installing via rustup..."
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    # Source the env so cargo is available in this session
-    . "$CARGO_BIN/env" 2>/dev/null || export PATH="$CARGO_BIN:$PATH"
-    if ! command -v cargo >/dev/null 2>&1; then
-        err "Failed to install Rust. Please install manually: https://rustup.rs"
-        exit 1
-    fi
-    ok "Rust installed"
-else
-    ok "cargo found"
-fi
-
-# Rust version >= MSRV
-rust_version="$(rustc --version | sed 's/rustc \([0-9]*\.[0-9]*\).*/\1/')"
-rust_major="$(echo "$rust_version" | cut -d. -f1)"
-rust_minor="$(echo "$rust_version" | cut -d. -f2)"
-msrv_major="$(echo "$MSRV" | cut -d. -f1)"
-msrv_minor="$(echo "$MSRV" | cut -d. -f2)"
-
-if [ "$rust_major" -lt "$msrv_major" ] 2>/dev/null || \
-   { [ "$rust_major" -eq "$msrv_major" ] && [ "$rust_minor" -lt "$msrv_minor" ]; } 2>/dev/null; then
-    warn "Rust $rust_version is below minimum $MSRV. Running rustup update..."
-    rustup update stable
-    ok "Rust updated"
-else
-    ok "Rust $rust_version >= $MSRV"
-fi
-
-# C compiler (non-fatal)
-if ! command -v cc >/dev/null 2>&1 && \
-   ! command -v gcc >/dev/null 2>&1 && \
-   ! command -v clang >/dev/null 2>&1; then
-    warn "No C compiler found (cc/gcc/clang). Tree-sitter grammars may fail to build."
-    case "$(uname -s)" in
-        Darwin) warn "  Install with: xcode-select --install" ;;
-        Linux)
-            if command -v apt >/dev/null 2>&1; then
-                warn "  Install with: sudo apt install build-essential"
-            elif command -v dnf >/dev/null 2>&1; then
-                warn "  Install with: sudo dnf install gcc"
-            elif command -v pacman >/dev/null 2>&1; then
-                warn "  Install with: sudo pacman -S base-devel"
-            fi
-            ;;
-    esac
-else
-    ok "C compiler found"
-fi
-
-# PATH check
-case ":$PATH:" in
-    *":$CARGO_BIN:"*) ;;
-    *)
-        warn "\$HOME/.cargo/bin is not in your PATH."
-        warn "  Add to your shell profile:  export PATH=\"\$HOME/.cargo/bin:\$PATH\""
-        ;;
-esac
-
-# ── Remove existing Silicon installations ──────────────────────────────────────
+# ── Remove existing Silicon installations ──────────────────────────────────
 info "Checking for existing Silicon installations..."
 
 # Homebrew
@@ -167,34 +168,91 @@ if command -v cargo >/dev/null 2>&1 && cargo install --list 2>/dev/null | grep -
     ok "cargo silicon-term removed"
 fi
 
-# ── Clone or update source ───────────────────────────────────────────────────
-if [ -d "$SRC_DIR" ]; then
-    if [ -d "$SRC_DIR/.git" ]; then
-        info "Updating existing source in $SRC_DIR..."
-        cd "$SRC_DIR"
-        git fetch --depth 1 origin master
-        git reset --hard origin/master
-        ok "Source updated"
-    else
-        warn "$SRC_DIR exists but is not a git repo. Removing and re-cloning..."
-        rm -rf "$SRC_DIR"
-        info "Cloning $FORK_URL into $SRC_DIR..."
-        git clone --depth 1 "$FORK_URL" "$SRC_DIR"
-        ok "Source cloned"
-    fi
-else
-    info "Cloning $FORK_URL into $SRC_DIR..."
-    git clone --depth 1 "$FORK_URL" "$SRC_DIR"
-    ok "Source cloned"
+# Previous binary installs
+if [ -f "$BIN_DIR/si" ]; then
+    info "Removing previous $BIN_DIR/si..."
+    rm -f "$BIN_DIR/si"
+    ok "Previous binary removed"
 fi
 
-# ── Build ────────────────────────────────────────────────────────────────────
-info "Building Silicon (this may take a few minutes)..."
-cd "$SRC_DIR"
-cargo install --path silicon-term --locked
-ok "Silicon built and installed to $CARGO_BIN/si"
+# ── Fetch latest release ────────────────────────────────────────────────────
+info "Fetching latest release..."
+RELEASE_JSON="$(curl -sSf "https://api.github.com/repos/$GITHUB_REPO/releases/latest")" || {
+    err "Failed to fetch release info from GitHub."
+    err "Check your internet connection or visit https://github.com/$GITHUB_REPO/releases"
+    exit 1
+}
 
-# ── Language servers ────────────────────────────────────────────────────
+# Extract tag name (portable: no jq dependency)
+TAG="$(echo "$RELEASE_JSON" | grep '"tag_name"' | head -1 | sed 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')"
+if [ -z "$TAG" ]; then
+    err "Could not determine latest release version."
+    err "Visit https://github.com/$GITHUB_REPO/releases to download manually."
+    exit 1
+fi
+ok "Latest release: $TAG"
+
+# ── Download ─────────────────────────────────────────────────────────────────
+ARCHIVE_NAME="silicon-${TAG}-${PLATFORM}.tar.xz"
+DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/download/$TAG/$ARCHIVE_NAME"
+
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
+
+info "Downloading $ARCHIVE_NAME..."
+HTTP_CODE="$(curl -sSL -w '%{http_code}' -o "$TMPDIR/$ARCHIVE_NAME" "$DOWNLOAD_URL")"
+if [ "$HTTP_CODE" != "200" ]; then
+    err "Download failed (HTTP $HTTP_CODE)"
+    err "URL: $DOWNLOAD_URL"
+    err "No pre-built binary available for $PLATFORM."
+    exit 1
+fi
+ok "Downloaded $(du -h "$TMPDIR/$ARCHIVE_NAME" | cut -f1 | tr -d '[:space:]')"
+
+# ── Extract ──────────────────────────────────────────────────────────────────
+info "Extracting..."
+tar xJf "$TMPDIR/$ARCHIVE_NAME" -C "$TMPDIR"
+
+# The archive contains a directory like silicon-25.7.1-aarch64-macos/
+EXTRACT_DIR="$TMPDIR/silicon-${TAG}-${PLATFORM}"
+if [ ! -d "$EXTRACT_DIR" ]; then
+    # Try to find the extracted directory
+    EXTRACT_DIR="$(find "$TMPDIR" -maxdepth 1 -type d -name 'silicon-*' | head -1)"
+fi
+
+if [ ! -f "$EXTRACT_DIR/si" ]; then
+    err "Binary not found in archive. Contents:"
+    ls -la "$TMPDIR"
+    exit 1
+fi
+
+# ── Install binary ───────────────────────────────────────────────────────────
+info "Installing binary to $BIN_DIR/si..."
+mkdir -p "$BIN_DIR"
+cp "$EXTRACT_DIR/si" "$BIN_DIR/si"
+chmod +x "$BIN_DIR/si"
+ok "Binary installed: $BIN_DIR/si"
+
+# PATH check
+case ":$PATH:" in
+    *":$BIN_DIR:"*) ;;
+    *)
+        warn "\$HOME/.local/bin is not in your PATH."
+        warn "  Add to your shell profile:  export PATH=\"\$HOME/.local/bin:\$PATH\""
+        ;;
+esac
+
+# ── Install runtime ─────────────────────────────────────────────────────────
+info "Installing runtime to $DATA_DIR..."
+mkdir -p "$DATA_DIR"
+
+if [ -d "$DATA_DIR/runtime" ]; then
+    rm -rf "$DATA_DIR/runtime"
+fi
+cp -r "$EXTRACT_DIR/runtime" "$DATA_DIR/runtime"
+ok "Runtime installed: $DATA_DIR/runtime"
+
+# ── Language servers ─────────────────────────────────────────────────────────
 info "Installing language servers..."
 
 # Python: ruff (linting/formatting) + jedi (completions/navigation)
@@ -261,23 +319,6 @@ else
     warn "  Install .NET SDK first, then run: dotnet tool install --global csharp-ls"
 fi
 
-# ── Symlink runtime ─────────────────────────────────────────────────────────
-info "Setting up runtime directory..."
-mkdir -p "$CONFIG_DIR"
-
-RUNTIME_TARGET="$CONFIG_DIR/runtime"
-
-if [ -L "$RUNTIME_TARGET" ]; then
-    rm "$RUNTIME_TARGET"
-elif [ -d "$RUNTIME_TARGET" ]; then
-    BACKUP="$RUNTIME_TARGET.bak.$(date +%s)"
-    warn "Existing runtime directory found. Backing up to $BACKUP"
-    mv "$RUNTIME_TARGET" "$BACKUP"
-fi
-
-ln -sf "$SRC_DIR/runtime" "$RUNTIME_TARGET"
-ok "Runtime symlinked: $RUNTIME_TARGET -> $SRC_DIR/runtime"
-
 # ── Verify ───────────────────────────────────────────────────────────────────
 info "Verifying installation..."
 if command -v si >/dev/null 2>&1; then
@@ -285,6 +326,12 @@ if command -v si >/dev/null 2>&1; then
     printf "\n"
     ok "Silicon installed successfully!"
     info "Run ${BOLD}si${RESET} to start editing."
+elif [ -x "$BIN_DIR/si" ]; then
+    "$BIN_DIR/si" --health
+    printf "\n"
+    ok "Silicon installed successfully!"
+    info "Add $BIN_DIR to your PATH, then run ${BOLD}si${RESET} to start editing."
 else
-    warn "si not found in PATH. You may need to restart your shell or add $CARGO_BIN to PATH."
+    err "Installation failed. Binary not found."
+    exit 1
 fi

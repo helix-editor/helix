@@ -1,4 +1,4 @@
-# install.ps1 — one-liner installer for Rani367/Silicon fork (Windows)
+# install.ps1 — one-liner installer for Silicon (downloads pre-built binary)
 # Usage: irm https://raw.githubusercontent.com/Rani367/Silicon/master/install.ps1 | iex
 #Requires -Version 5.1
 $ErrorActionPreference = 'Stop'
@@ -10,11 +10,10 @@ function Write-Warn  { param([string]$Msg) Write-Host "[warn]  $Msg" -Foreground
 function Write-Err   { param([string]$Msg) Write-Host "[error] $Msg" -ForegroundColor Red }
 
 # ── Constants ────────────────────────────────────────────────────────────────
-$ForkUrl   = 'https://github.com/Rani367/Silicon.git'
-$SrcDir    = Join-Path $env:USERPROFILE '.silicon-src'
-$Msrv      = '1.87'
-$CargoBin  = Join-Path $env:USERPROFILE '.cargo\bin'
-$ConfigDir = Join-Path $env:APPDATA 'silicon'
+$GitHubRepo = 'Rani367/Silicon'
+$Platform   = 'x86_64-windows'
+$BinDir     = Join-Path $env:LOCALAPPDATA 'Programs\silicon'
+$DataDir    = Join-Path $env:APPDATA 'silicon'
 
 # ── Helper: check if command exists ──────────────────────────────────────────
 function Test-Command {
@@ -22,87 +21,7 @@ function Test-Command {
     $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
-# ── Helper: compare version strings (major.minor) ───────────────────────────
-function Compare-Version {
-    param([string]$Current, [string]$Required)
-    $c = $Current -split '\.'
-    $r = $Required -split '\.'
-    $cMajor = [int]$c[0]; $cMinor = [int]$c[1]
-    $rMajor = [int]$r[0]; $rMinor = [int]$r[1]
-    if ($cMajor -lt $rMajor) { return -1 }
-    if ($cMajor -gt $rMajor) { return 1 }
-    if ($cMinor -lt $rMinor) { return -1 }
-    if ($cMinor -gt $rMinor) { return 1 }
-    return 0
-}
-
-# ── Prerequisites ────────────────────────────────────────────────────────────
-
-# git
-if (-not (Test-Command 'git')) {
-    Write-Err 'git is not installed.'
-    if (Test-Command 'winget') {
-        Write-Err '  Install with: winget install Git.Git'
-    } else {
-        Write-Err '  Download from: https://git-scm.com/download/win'
-    }
-    exit 1
-}
-Write-Ok 'git found'
-
-# cargo / rustc
-if (-not (Test-Command 'cargo') -or -not (Test-Command 'rustc')) {
-    Write-Warn 'Rust toolchain not found. Installing via rustup...'
-    $rustupInit = Join-Path $env:TEMP 'rustup-init.exe'
-    Invoke-WebRequest -Uri 'https://win.rustup.rs/x86_64' -OutFile $rustupInit -UseBasicParsing
-    & $rustupInit -y
-    Remove-Item $rustupInit -ErrorAction SilentlyContinue
-
-    # Refresh PATH for this session
-    $env:PATH = "$CargoBin;$env:PATH"
-
-    if (-not (Test-Command 'cargo')) {
-        Write-Err 'Failed to install Rust. Please install manually: https://rustup.rs'
-        exit 1
-    }
-    Write-Ok 'Rust installed'
-} else {
-    Write-Ok 'cargo found'
-}
-
-# Rust version >= MSRV
-$rustVersionOutput = & rustc --version
-if ($rustVersionOutput -match 'rustc (\d+\.\d+)') {
-    $rustVersion = $Matches[1]
-    if ((Compare-Version $rustVersion $Msrv) -lt 0) {
-        Write-Warn "Rust $rustVersion is below minimum $Msrv. Running rustup update..."
-        & rustup update stable
-        Write-Ok 'Rust updated'
-    } else {
-        Write-Ok "Rust $rustVersion >= $Msrv"
-    }
-}
-
-# MSVC build tools (non-fatal)
-$hasVS = $null -ne (Get-Command 'cl.exe' -ErrorAction SilentlyContinue) -or
-         (Test-Path 'C:\Program Files\Microsoft Visual Studio') -or
-         (Test-Path 'C:\Program Files (x86)\Microsoft Visual Studio') -or
-         (Test-Path "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe")
-if (-not $hasVS) {
-    Write-Warn 'MSVC build tools not detected. Tree-sitter grammars may fail to build.'
-    Write-Warn '  Install "Desktop development with C++" from: https://visualstudio.microsoft.com/visual-cpp-build-tools/'
-}
-else {
-    Write-Ok 'MSVC build tools found'
-}
-
-# PATH check
-if ($env:PATH -notlike "*$CargoBin*") {
-    Write-Warn "$CargoBin is not in your PATH."
-    Write-Warn '  Restart your terminal or add it manually.'
-}
-
-# ── Remove existing Silicon installations ──────────────────────────────────────
+# ── Remove existing Silicon installations ──────────────────────────────────
 Write-Info 'Checking for existing Silicon installations...'
 
 # winget
@@ -145,77 +64,111 @@ if (Test-Command 'cargo') {
     }
 }
 
-# ── Clone or update source ───────────────────────────────────────────────────
-if (Test-Path $SrcDir) {
-    if (Test-Path (Join-Path $SrcDir '.git')) {
-        Write-Info "Updating existing source in $SrcDir..."
-        Push-Location $SrcDir
-        & git fetch --depth 1 origin master
-        & git reset --hard origin/master
-        Pop-Location
-        Write-Ok 'Source updated'
-    } else {
-        Write-Warn "$SrcDir exists but is not a git repo. Removing and re-cloning..."
-        Remove-Item -Recurse -Force $SrcDir
-        Write-Info "Cloning $ForkUrl into $SrcDir..."
-        & git clone --depth 1 $ForkUrl $SrcDir
-        Write-Ok 'Source cloned'
-    }
-} else {
-    Write-Info "Cloning $ForkUrl into $SrcDir..."
-    & git clone --depth 1 $ForkUrl $SrcDir
-    Write-Ok 'Source cloned'
+# Previous binary installs
+$SiBin = Join-Path $BinDir 'si.exe'
+if (Test-Path $SiBin) {
+    Write-Info "Removing previous $SiBin..."
+    Remove-Item -Force $SiBin
+    Write-Ok 'Previous binary removed'
 }
 
-# ── Build ────────────────────────────────────────────────────────────────────
-Write-Info 'Building Silicon (this may take a few minutes)...'
-Push-Location $SrcDir
-& cargo install --path silicon-term --locked
-Pop-Location
-Write-Ok "Silicon built and installed to $CargoBin\si.exe"
-
-# ── Set up runtime (directory junction) ──────────────────────────────────────
-Write-Info 'Setting up runtime directory...'
-if (-not (Test-Path $ConfigDir)) {
-    New-Item -ItemType Directory -Path $ConfigDir -Force | Out-Null
-}
-
-$RuntimeTarget = Join-Path $ConfigDir 'runtime'
-$RuntimeSource = Join-Path $SrcDir 'runtime'
-
-# Remove existing symlink/junction
-if (Test-Path $RuntimeTarget) {
-    $item = Get-Item $RuntimeTarget -Force
-    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-        # It's a symlink or junction — remove it
-        $item.Delete()
-    } else {
-        # It's a real directory — back it up
-        $backup = "$RuntimeTarget.bak.$(Get-Date -Format 'yyyyMMddHHmmss')"
-        Write-Warn "Existing runtime directory found. Backing up to $backup"
-        Rename-Item $RuntimeTarget $backup
-    }
-}
-
-# Try directory junction first (no admin required), fall back to copy
+# ── Fetch latest release ────────────────────────────────────────────────────
+Write-Info 'Fetching latest release...'
 try {
-    & cmd /c mklink /J "$RuntimeTarget" "$RuntimeSource" | Out-Null
-    if (-not (Test-Path $RuntimeTarget)) { throw 'Junction failed' }
-    Write-Ok "Runtime junction created: $RuntimeTarget -> $RuntimeSource"
+    $releaseInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/$GitHubRepo/releases/latest" -UseBasicParsing
+    $tag = $releaseInfo.tag_name
 } catch {
-    Write-Warn 'Directory junction failed. Copying runtime directory instead...'
-    Copy-Item -Recurse -Force $RuntimeSource $RuntimeTarget
-    Write-Ok "Runtime copied to $RuntimeTarget"
-    Write-Warn 'Note: You will need to re-run this script after updates to refresh the runtime.'
+    Write-Err 'Failed to fetch release info from GitHub.'
+    Write-Err "Check your internet connection or visit https://github.com/$GitHubRepo/releases"
+    exit 1
+}
+
+if (-not $tag) {
+    Write-Err 'Could not determine latest release version.'
+    Write-Err "Visit https://github.com/$GitHubRepo/releases to download manually."
+    exit 1
+}
+Write-Ok "Latest release: $tag"
+
+# ── Download ─────────────────────────────────────────────────────────────────
+$archiveName = "silicon-$tag-$Platform.zip"
+$downloadUrl = "https://github.com/$GitHubRepo/releases/download/$tag/$archiveName"
+
+$tmpDir = Join-Path $env:TEMP "silicon-install-$(Get-Random)"
+New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
+
+try {
+    Write-Info "Downloading $archiveName..."
+    $archivePath = Join-Path $tmpDir $archiveName
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath -UseBasicParsing
+    $size = [math]::Round((Get-Item $archivePath).Length / 1MB, 1)
+    Write-Ok "Downloaded ${size}MB"
+
+    # ── Extract ──────────────────────────────────────────────────────────────
+    Write-Info 'Extracting...'
+    Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force
+
+    # The archive contains a directory like silicon-25.7.1-x86_64-windows/
+    $extractDir = Join-Path $tmpDir "silicon-$tag-$Platform"
+    if (-not (Test-Path $extractDir)) {
+        $extractDir = Get-ChildItem -Path $tmpDir -Directory -Filter 'silicon-*' | Select-Object -First 1 -ExpandProperty FullName
+    }
+
+    $siBinary = Join-Path $extractDir 'si.exe'
+    if (-not (Test-Path $siBinary)) {
+        Write-Err "Binary not found in archive."
+        Get-ChildItem -Path $tmpDir -Recurse | Format-Table Name, Length
+        exit 1
+    }
+
+    # ── Install binary ───────────────────────────────────────────────────────
+    Write-Info "Installing binary to $BinDir\si.exe..."
+    if (-not (Test-Path $BinDir)) {
+        New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
+    }
+    Copy-Item -Force $siBinary (Join-Path $BinDir 'si.exe')
+    Write-Ok "Binary installed: $BinDir\si.exe"
+
+    # PATH check and update
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($userPath -notlike "*$BinDir*") {
+        Write-Info "Adding $BinDir to user PATH..."
+        [Environment]::SetEnvironmentVariable('Path', "$BinDir;$userPath", 'User')
+        $env:PATH = "$BinDir;$env:PATH"
+        Write-Ok 'PATH updated (restart terminal for full effect)'
+    }
+
+    # ── Install runtime ──────────────────────────────────────────────────────
+    Write-Info "Installing runtime to $DataDir..."
+    if (-not (Test-Path $DataDir)) {
+        New-Item -ItemType Directory -Path $DataDir -Force | Out-Null
+    }
+
+    $runtimeTarget = Join-Path $DataDir 'runtime'
+    $runtimeSource = Join-Path $extractDir 'runtime'
+
+    if (Test-Path $runtimeTarget) {
+        Remove-Item -Recurse -Force $runtimeTarget
+    }
+    Copy-Item -Recurse -Force $runtimeSource $runtimeTarget
+    Write-Ok "Runtime installed: $runtimeTarget"
+
+} finally {
+    # Cleanup temp directory
+    if (Test-Path $tmpDir) {
+        Remove-Item -Recurse -Force $tmpDir -ErrorAction SilentlyContinue
+    }
 }
 
 # ── Verify ───────────────────────────────────────────────────────────────────
 Write-Info 'Verifying installation...'
-if (Test-Command 'si') {
-    & si --health
+$siPath = Join-Path $BinDir 'si.exe'
+if (Test-Path $siPath) {
+    & $siPath --health
     Write-Host ''
     Write-Ok 'Silicon installed successfully!'
     Write-Info 'Run `si` to start editing.'
 } else {
-    Write-Warn "si not found in PATH. Restart your terminal or add $CargoBin to your PATH."
+    Write-Err 'Installation failed. Binary not found.'
+    exit 1
 }

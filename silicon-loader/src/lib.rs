@@ -33,9 +33,10 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
 ///
 /// 1. sibling directory to `CARGO_MANIFEST_DIR` (if environment variable is set)
 /// 2. subdirectory of user config directory (always included)
-/// 3. `SILICON_RUNTIME` (if environment variable is set)
-/// 4. `SILICON_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
-/// 5. subdirectory of path to silicon executable (always included)
+/// 3. subdirectory of user data directory (always included)
+/// 4. `SILICON_RUNTIME` (if environment variable is set)
+/// 5. `SILICON_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
+/// 6. subdirectory of path to silicon executable (always included)
 ///
 /// Postcondition: returns at least two paths (they might not exist).
 fn prioritize_runtime_dirs() -> Vec<PathBuf> {
@@ -51,6 +52,9 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
 
     let conf_rt_dir = config_dir().join(RT_DIR);
     rt_dirs.push(conf_rt_dir);
+
+    let data_rt_dir = data_dir().join(RT_DIR);
+    rt_dirs.push(data_rt_dir);
 
     if let Ok(dir) = std::env::var("SILICON_RUNTIME") {
         let dir = path::expand_tilde(Path::new(&dir));
@@ -120,6 +124,14 @@ pub fn config_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
     let mut path = strategy.config_dir();
+    path.push("silicon");
+    path
+}
+
+pub fn data_dir() -> PathBuf {
+    // TODO: allow env var override
+    let strategy = choose_base_strategy().expect("Unable to find the data directory!");
+    let mut path = strategy.data_dir();
     path.push("silicon");
     path
 }
