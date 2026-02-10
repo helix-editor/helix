@@ -322,6 +322,7 @@ Search specific options.
 |--|--|---------|
 | `smart-case` | Enable smart case regex searching (case-insensitive unless pattern contains upper case characters) | `true` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
+| `fuzzy` | Enable fuzzy matching for global search (like fzf) instead of regex. Characters match in order with anything in between. | `true` |
 
 ### `[editor.whitespace]` Section
 

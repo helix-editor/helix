@@ -584,6 +584,8 @@ pub struct SearchConfig {
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
+    /// Whether global search should use fuzzy matching (like fzf) instead of regex. Defaults to true.
+    pub fuzzy: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1155,6 +1157,7 @@ impl Default for SearchConfig {
         Self {
             wrap_around: true,
             smart_case: true,
+            fuzzy: true,
         }
     }
 }

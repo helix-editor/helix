@@ -42,7 +42,8 @@ use std::{
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
     char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
-    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
+    syntax::OverlayHighlights, text_annotations::TextAnnotations,
+    unicode::segmentation::UnicodeSegmentation, Position,
 };
 use helix_view::{
     editor::Action,
@@ -79,6 +80,9 @@ impl From<DocumentId> for PathOrId<'_> {
 }
 
 type FileCallback<T> = Box<dyn for<'a> Fn(&'a Editor, &'a T) -> Option<FileLocation<'a>>>;
+
+type PreviewHighlightFn =
+    Box<dyn Fn(&Document, (usize, usize), &str) -> Vec<std::ops::Range<usize>>>;
 
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
@@ -223,6 +227,12 @@ impl<T, D> Column<T, D> {
         self
     }
 
+    /// Hide the column from display while still using it for matching/filtering.
+    pub fn hide(mut self) -> Self {
+        self.hidden = true;
+        self
+    }
+
     fn format<'a>(&self, item: &'a T, data: &'a D) -> Cell<'a> {
         (self.format)(item, data)
     }
@@ -266,6 +276,8 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
+    /// Given a document, a line range, and the query, return char ranges to highlight in the preview.
+    preview_highlight_fn: Option<PreviewHighlightFn>,
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
@@ -392,6 +404,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
+            preview_highlight_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
         }
@@ -421,6 +434,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // assumption: if we have a preview we are matching paths... If this is ever
         // not true this could be a separate builder function
         self.matcher.update_config(Config::DEFAULT.match_paths());
+        self
+    }
+
+    pub fn with_preview_highlights(
+        mut self,
+        f: impl Fn(&Document, (usize, usize), &str) -> Vec<std::ops::Range<usize>> + 'static,
+    ) -> Self {
+        self.preview_highlight_fn = Some(Box::new(f));
         self
     }
 
@@ -764,6 +785,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
             Row::new(self.columns.iter().map(|column| {
                 if column.hidden {
+                    if column.filter {
+                        matcher_index += 1;
+                    }
                     return Cell::default();
                 }
 
@@ -897,6 +921,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let inner = inner.inner(margin);
         BLOCK.render(area, surface);
 
+        let query = self.primary_query();
+        let preview_highlight_fn = self.preview_highlight_fn.take();
+
         if let Some((preview, range)) = self.get_preview(cx.editor) {
             let doc = match preview.document() {
                 Some(doc)
@@ -970,6 +997,22 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 &mut overlay_highlights,
             );
 
+            if let (Some(ref hfn), Some((start, end))) = (&preview_highlight_fn, range) {
+                if !query.is_empty() {
+                    let ranges = hfn(doc, (start, end), &query);
+                    if !ranges.is_empty() {
+                        if let Some(highlight) =
+                            cx.editor.theme.find_highlight_exact("special")
+                        {
+                            overlay_highlights.push(OverlayHighlights::Homogeneous {
+                                highlight,
+                                ranges,
+                            });
+                        }
+                    }
+                }
+            }
+
             let mut decorations = DecorationManager::default();
 
             if let Some((start, end)) = range {
@@ -1005,6 +1048,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 decorations,
             );
         }
+
+        self.preview_highlight_fn = preview_highlight_fn;
     }
 }
 
