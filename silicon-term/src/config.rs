@@ -168,6 +168,7 @@ mod tests {
         assert_eq!(
             Config::load_test(sample_keymaps),
             Config {
+                theme: None,
                 keys,
                 ..Default::default()
             }
