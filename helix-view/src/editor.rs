@@ -360,6 +360,7 @@ pub struct Config {
     pub continue_comments: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    /// Whether to open a directory with the File Picker or File Explorer by default. Defaults to `file_picker`.
     pub default_directory_opener: DefaultDirOpener,
     pub file_picker: FilePickerConfig,
     pub file_explorer: FileExplorerConfig,

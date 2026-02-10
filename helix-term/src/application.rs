@@ -161,7 +161,7 @@ impl Application {
         } else if !args.files.is_empty() {
             let mut files_it = args.files.into_iter().peekable();
 
-            // If the first file is a directory, skip it and open a picker
+            // If the first file is a directory, skip it and open the default dir opener
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
                 match editor.config().default_directory_opener {
                     DefaultDirOpener::FilePicker => {
