@@ -1139,30 +1139,25 @@ fn dynamic_set_option(
 fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/configuration");
 
-    module.register_fn(
-        "register-lsp-notification-handler",
-        register_lsp_notification_callback,
-    );
-
-    module.register_fn("register-lsp-call-handler", register_lsp_call_callback);
-
-    module.register_fn_with_ctx(CTX, "update-configuration!", |ctx: &mut Context| {
-        ctx.editor
-            .config_events
-            .0
-            .send(ConfigEvent::Change)
-            .unwrap();
-    });
-
-    module.register_fn_with_ctx(CTX, "get-config-option-value", get_option_value);
-
-    module.register_fn_with_ctx(
-        CTX,
-        "set-configuration-for-file!",
-        set_configuration_for_file,
-    );
-
     module
+        .register_fn(
+            "register-lsp-notification-handler",
+            register_lsp_notification_callback,
+        )
+        .register_fn("register-lsp-call-handler", register_lsp_call_callback)
+        .register_fn_with_ctx(CTX, "update-configuration!", |ctx: &mut Context| {
+            ctx.editor
+                .config_events
+                .0
+                .send(ConfigEvent::Change)
+                .unwrap();
+        })
+        .register_fn_with_ctx(CTX, "get-config-option-value", get_option_value)
+        .register_fn_with_ctx(
+            CTX,
+            "set-configuration-for-file!",
+            set_configuration_for_file,
+        )
         .register_fn(
             "get-language-config",
             HelixConfiguration::get_language_config,
@@ -1170,33 +1165,27 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn(
             "set-language-config!",
             HelixConfiguration::update_individual_language_config,
-        );
-
-    module.register_fn_with_ctx(
-        CONFIG,
-        "get-lsp-config",
-        HelixConfiguration::get_language_server_config,
-    );
-
-    module.register_fn_with_ctx(
-        CONFIG,
-        "set-lsp-config!",
-        HelixConfiguration::update_language_server_config,
-    );
-
-    module.register_fn_with_ctx(
-        CONFIG,
-        "update-language-config!",
-        HelixConfiguration::update_language_config,
-    );
-
-    module.register_fn_with_ctx(
-        CTX,
-        "refresh-all-language-configs!",
-        update_configuration_for_all_open_documents,
-    );
-
-    module
+        )
+        .register_fn_with_ctx(
+            CONFIG,
+            "get-lsp-config",
+            HelixConfiguration::get_language_server_config,
+        )
+        .register_fn_with_ctx(
+            CONFIG,
+            "set-lsp-config!",
+            HelixConfiguration::update_language_server_config,
+        )
+        .register_fn_with_ctx(
+            CONFIG,
+            "update-language-config!",
+            HelixConfiguration::update_language_config,
+        )
+        .register_fn_with_ctx(
+            CTX,
+            "refresh-all-language-configs!",
+            update_configuration_for_all_open_documents,
+        )
         .register_fn_with_ctx(CONFIG, "raw-cursor-shape", CursorShapeConfig::default)
         .register_fn(
             "raw-cursor-shape-set!",
@@ -1711,7 +1700,7 @@ impl super::PluginSystem for SteelScriptingEngine {
                     with_interrupt_handler(|| {
                         guard.with_mut_reference::<Context, Context>(cx).consume(
                             move |engine, arguments| {
-                                let context = arguments[0].clone();
+                                let context = arguments.into_iter().next().unwrap();
                                 engine.update_value(CTX, context);
                                 engine
                                     .call_function_by_name_with_args_from_mut_slice(name, &mut args)
@@ -1775,17 +1764,18 @@ impl super::PluginSystem for SteelScriptingEngine {
                             jobs: cx.jobs,
                         };
 
+                        let ctx_guard = &mut ctx;
+
                         // Install interrupt handler here during the duration
                         // of the function call
-                        let res = match with_interrupt_handler(|| {
-                            guard
-                                .with_mut_reference(&mut ctx)
-                                .consume(move |engine, arguments| {
-                                    let context = arguments[0].clone();
+                        let res = match with_interrupt_handler(move || {
+                            guard.with_mut_reference(ctx_guard).consume_once(
+                                move |engine, arguments| {
+                                    let context = arguments.into_iter().next().unwrap();
                                     engine.update_value(CTX, context);
-                                    // TODO: Fix this clone
-                                    engine.call_function_by_name_with_args(command, args.clone())
-                                })
+                                    engine.call_function_by_name_with_args(command, args)
+                                },
+                            )
                         }) {
                             Ok(res) => {
                                 match &res {
@@ -1968,8 +1958,8 @@ impl super::PluginSystem for SteelScriptingEngine {
                 with_interrupt_handler(|| {
                     guard
                         .with_mut_reference::<Context, Context>(&mut ctx)
-                        .consume(move |engine, arguments| {
-                            let context = arguments[0].clone();
+                        .consume_once(move |engine, arguments| {
+                            let context = arguments.into_iter().next().unwrap();
                             engine.update_value(CTX, context);
 
                             let params = serde_json::to_value(&params)
@@ -3380,300 +3370,308 @@ impl OnModeSwitchEvent {
 impl Custom for OnModeSwitchEvent {}
 impl Custom for MappableCommand {}
 
-// Don't take the function name, just take the function itself?
 fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecoverableResult {
     let rooted = callback_fn.as_rooted();
     let generation = load_generation();
 
     match event_kind.as_str() {
-        "on-mode-switch" => {
-            register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
-                if let Err(e) = enter_engine(|guard| {
-                    if !is_current_generation(generation) {
-                        return Ok(SteelVal::Void);
-                    }
-
-                    let minimized_event = OnModeSwitchEvent {
-                        old_mode: event.old_mode,
-                        new_mode: event.new_mode,
-                    };
-
-                    guard.with_mut_reference(event.cx).consume(|engine, args| {
-                        let context = args[0].clone();
-                        engine.update_value(CTX, context);
-                        let mut args = [minimized_event.into_steelval().unwrap()];
-                        engine.call_function_with_args_from_mut_slice(
-                            rooted.value().clone(),
-                            &mut args,
-                        )
-                    })
-                }) {
-                    event.cx.editor.set_error(e.to_string());
-                }
-
-                Ok(())
-            });
-
-            Ok(SteelVal::Void).into()
-        }
-        "post-insert-char" => {
-            register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
-                if let Err(e) = enter_engine(|guard| {
-                    if !is_current_generation(generation) {
-                        return Ok(SteelVal::Void);
-                    }
-
-                    guard.with_mut_reference(event.cx).consume(|engine, args| {
-                        let context = args[0].clone();
-                        engine.update_value(CTX, context);
-                        let mut args = [event.c.into()];
-                        engine.call_function_with_args_from_mut_slice(
-                            rooted.value().clone(),
-                            &mut args,
-                        )
-                    })
-                }) {
-                    event.cx.editor.set_error(e.to_string());
-                }
-
-                Ok(())
-            });
-
-            Ok(SteelVal::Void).into()
-        }
+        "on-mode-switch" => register_on_mode_switch(generation, rooted),
+        "post-insert-char" => register_post_insert_char(generation, rooted),
         // Register hook - on save?
-        "post-command" => {
-            register_hook!(move |event: &mut PostCommand<'_, '_>| {
-                if let Err(e) = enter_engine(|guard| {
-                    if !is_current_generation(generation) {
-                        return Ok(SteelVal::Void);
-                    }
-
-                    guard.with_mut_reference(event.cx).consume(|engine, args| {
-                        let context = args[0].clone();
-                        engine.update_value(CTX, context);
-                        let mut args = [event.command.name().into_steelval().unwrap()];
-                        engine.call_function_with_args_from_mut_slice(
-                            rooted.value().clone(),
-                            &mut args,
-                        )
-                    })
-                }) {
-                    event.cx.editor.set_error(e.to_string());
-                }
-
-                Ok(())
-            });
-
-            Ok(SteelVal::Void).into()
-        }
-
-        "document-focus-lost" => {
-            // TODO: Pass the information from the event in here - the doc id
-            // is probably the most helpful so that way we can look the document up
-            // and act accordingly?
-            register_hook!(move |event: &mut DocumentFocusLost<'_>| {
-                let cloned_func = rooted.value().clone();
-                let doc_id = event.doc;
-
-                let callback = move |editor: &mut Editor,
-                                     _compositor: &mut Compositor,
-                                     jobs: &mut job::Jobs| {
-                    let mut ctx = Context {
-                        register: None,
-                        count: None,
-                        editor,
-                        callback: Vec::new(),
-                        on_next_key_callback: None,
-                        jobs,
-                    };
-                    enter_engine(|guard| {
-                        if !is_current_generation(generation) {
-                            return;
-                        }
-
-                        if let Err(e) = guard
-                            .with_mut_reference::<Context, Context>(&mut ctx)
-                            .consume(move |engine, args| {
-                                let context = args[0].clone();
-                                engine.update_value(CTX, context);
-                                let mut args = [doc_id.into_steelval().unwrap()];
-
-                                // TODO: Do something with this error!
-                                engine.call_function_with_args_from_mut_slice(
-                                    cloned_func.clone(),
-                                    &mut args,
-                                )
-                            })
-                        {
-                            present_error_inside_engine_context(&mut ctx, guard, e);
-                        }
-                    });
-
-                    patch_callbacks(&mut ctx);
-                };
-                job::dispatch_blocking_jobs(callback);
-
-                Ok(())
-            });
-
-            Ok(SteelVal::Void).into()
-        }
-
-        "selection-did-change" => {
-            // TODO: Pass the information from the event in here - the doc id
-            // is probably the most helpful so that way we can look the document up
-            // and act accordingly?
-            register_hook!(move |event: &mut SelectionDidChange<'_>| {
-                let cloned_func = rooted.value().clone();
-                let view_id = event.view;
-
-                let callback = move |editor: &mut Editor,
-                                     _compositor: &mut Compositor,
-                                     jobs: &mut job::Jobs| {
-                    let mut ctx = Context {
-                        register: None,
-                        count: None,
-                        editor,
-                        callback: Vec::new(),
-                        on_next_key_callback: None,
-                        jobs,
-                    };
-                    enter_engine(|guard| {
-                        if !is_current_generation(generation) {
-                            return;
-                        }
-
-                        if let Err(e) = guard
-                            .with_mut_reference::<Context, Context>(&mut ctx)
-                            .consume(move |engine, args| {
-                                let context = args[0].clone();
-                                engine.update_value(CTX, context);
-                                // TODO: Reuse this allocation
-                                let mut args = [view_id.into_steelval().unwrap()];
-                                engine.call_function_with_args_from_mut_slice(
-                                    cloned_func.clone(),
-                                    &mut args,
-                                )
-                            })
-                        {
-                            present_error_inside_engine_context(&mut ctx, guard, e);
-                        }
-                    });
-
-                    patch_callbacks(&mut ctx);
-                };
-                job::dispatch_blocking_jobs(callback);
-
-                Ok(())
-            });
-
-            Ok(SteelVal::Void).into()
-        }
-
-        "document-opened" => {
-            // TODO: Share this code with the above since most of it is
-            // exactly the same
-            register_hook!(move |event: &mut DocumentDidOpen<'_>| {
-                let cloned_func = rooted.value().clone();
-                let doc_id = event.doc;
-
-                let callback = move |editor: &mut Editor,
-                                     _compositor: &mut Compositor,
-                                     jobs: &mut job::Jobs| {
-                    let mut ctx = Context {
-                        register: None,
-                        count: None,
-                        editor,
-                        callback: Vec::new(),
-                        on_next_key_callback: None,
-                        jobs,
-                    };
-                    enter_engine(|guard| {
-                        if !is_current_generation(generation) {
-                            return;
-                        }
-
-                        if let Err(e) = guard
-                            .with_mut_reference::<Context, Context>(&mut ctx)
-                            .consume(move |engine, args| {
-                                let context = args[0].clone();
-                                engine.update_value(CTX, context);
-                                // TODO: Reuse this allocation if possible
-                                let mut args = [doc_id.into_steelval().unwrap()];
-                                engine.call_function_with_args_from_mut_slice(
-                                    cloned_func.clone(),
-                                    &mut args,
-                                )
-                            })
-                        {
-                            present_error_inside_engine_context(&mut ctx, guard, e);
-                        }
-                    });
-
-                    patch_callbacks(&mut ctx);
-                };
-                job::dispatch_blocking_jobs(callback);
-
-                Ok(())
-            });
-
-            Ok(SteelVal::Void).into()
-        }
-
-        "document-saved" => {
-            // TODO: Share this code with the above since most of it is
-            // exactly the same
-            register_hook!(move |event: &mut DocumentSaved<'_>| {
-                let cloned_func = rooted.value().clone();
-                let doc_id = event.doc;
-
-                let callback = move |editor: &mut Editor,
-                                     _compositor: &mut Compositor,
-                                     jobs: &mut job::Jobs| {
-                    let mut ctx = Context {
-                        register: None,
-                        count: None,
-                        editor,
-                        callback: Vec::new(),
-                        on_next_key_callback: None,
-                        jobs,
-                    };
-                    enter_engine(|guard| {
-                        if !is_current_generation(generation) {
-                            return;
-                        }
-
-                        if let Err(e) = guard
-                            .with_mut_reference::<Context, Context>(&mut ctx)
-                            .consume(move |engine, args| {
-                                let context = args[0].clone();
-                                engine.update_value(CTX, context);
-                                // TODO: Reuse this allocation if possible
-                                let mut args = [doc_id.into_steelval().unwrap()];
-                                engine.call_function_with_args_from_mut_slice(
-                                    cloned_func.clone(),
-                                    &mut args,
-                                )
-                            })
-                        {
-                            present_error_inside_engine_context(&mut ctx, guard, e);
-                        }
-                    });
-
-                    patch_callbacks(&mut ctx);
-                };
-                job::dispatch_blocking_jobs(callback);
-
-                Ok(())
-            });
-
-            Ok(SteelVal::Void).into()
-        }
-
+        "post-command" => register_post_command(generation, rooted),
+        "document-focus-lost" => register_document_focus_lost(generation, rooted),
+        "selection-did-change" => register_selection_did_change(generation, rooted),
+        "document-opened" => register_document_opened(generation, rooted),
+        "document-saved" => register_document_saved(generation, rooted),
         _ => steelerr!(Generic => "Unable to register hook: Unknown event type: {}", event_kind)
             .into(),
     }
+}
+
+fn register_document_saved(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    // TODO: Share this code with the above since most of it is
+    // exactly the same
+    register_hook!(move |event: &mut DocumentSaved<'_>| {
+        let cloned_func = rooted.value().clone();
+        let doc_id = event.doc;
+
+        let callback = move |editor: &mut Editor,
+                             _compositor: &mut Compositor,
+                             jobs: &mut job::Jobs| {
+            let mut ctx = Context {
+                register: None,
+                count: None,
+                editor,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs,
+            };
+            enter_engine(|guard| {
+                if !is_current_generation(generation) {
+                    return;
+                }
+
+                if let Err(e) = guard
+                    .with_mut_reference::<Context, Context>(&mut ctx)
+                    .consume_once(move |engine, args| {
+                        let context = args.into_iter().next().unwrap();
+                        engine.update_value(CTX, context);
+                        let mut args = [doc_id.into_steelval().unwrap()];
+                        engine
+                            .call_function_with_args_from_mut_slice(cloned_func.clone(), &mut args)
+                    })
+                {
+                    present_error_inside_engine_context(&mut ctx, guard, e);
+                }
+            });
+
+            patch_callbacks(&mut ctx);
+        };
+        job::dispatch_blocking_jobs(callback);
+
+        Ok(())
+    });
+    Ok(SteelVal::Void).into()
+}
+
+fn register_document_opened(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    // TODO: Share this code with the above since most of it is
+    // exactly the same
+    register_hook!(move |event: &mut DocumentDidOpen<'_>| {
+        let cloned_func = rooted.value().clone();
+        let doc_id = event.doc;
+
+        let callback = move |editor: &mut Editor,
+                             _compositor: &mut Compositor,
+                             jobs: &mut job::Jobs| {
+            let mut ctx = Context {
+                register: None,
+                count: None,
+                editor,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs,
+            };
+            enter_engine(|guard| {
+                if !is_current_generation(generation) {
+                    return;
+                }
+
+                if let Err(e) = guard
+                    .with_mut_reference::<Context, Context>(&mut ctx)
+                    .consume(move |engine, args| {
+                        let context = args[0].clone();
+                        engine.update_value(CTX, context);
+                        // TODO: Reuse this allocation if possible
+                        let mut args = [doc_id.into_steelval().unwrap()];
+                        engine
+                            .call_function_with_args_from_mut_slice(cloned_func.clone(), &mut args)
+                    })
+                {
+                    present_error_inside_engine_context(&mut ctx, guard, e);
+                }
+            });
+
+            patch_callbacks(&mut ctx);
+        };
+        job::dispatch_blocking_jobs(callback);
+
+        Ok(())
+    });
+    Ok(SteelVal::Void).into()
+}
+
+fn register_selection_did_change(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    // TODO: Pass the information from the event in here - the doc id
+    // is probably the most helpful so that way we can look the document up
+    // and act accordingly?
+    register_hook!(move |event: &mut SelectionDidChange<'_>| {
+        let cloned_func = rooted.value().clone();
+        let view_id = event.view;
+
+        let callback = move |editor: &mut Editor,
+                             _compositor: &mut Compositor,
+                             jobs: &mut job::Jobs| {
+            let mut ctx = Context {
+                register: None,
+                count: None,
+                editor,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs,
+            };
+            enter_engine(|guard| {
+                if !is_current_generation(generation) {
+                    return;
+                }
+
+                if let Err(e) = guard
+                    .with_mut_reference::<Context, Context>(&mut ctx)
+                    .consume_once(move |engine, args| {
+                        let context = args.into_iter().next().unwrap();
+                        engine.update_value(CTX, context);
+                        let mut args = [view_id.into_steelval().unwrap()];
+                        engine
+                            .call_function_with_args_from_mut_slice(cloned_func.clone(), &mut args)
+                    })
+                {
+                    present_error_inside_engine_context(&mut ctx, guard, e);
+                }
+            });
+
+            patch_callbacks(&mut ctx);
+        };
+        job::dispatch_blocking_jobs(callback);
+
+        Ok(())
+    });
+    Ok(SteelVal::Void).into()
+}
+
+fn register_document_focus_lost(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    // TODO: Pass the information from the event in here - the doc id
+    // is probably the most helpful so that way we can look the document up
+    // and act accordingly?
+    register_hook!(move |event: &mut DocumentFocusLost<'_>| {
+        let cloned_func = rooted.value().clone();
+        let doc_id = event.doc;
+
+        let callback = move |editor: &mut Editor,
+                             _compositor: &mut Compositor,
+                             jobs: &mut job::Jobs| {
+            let mut ctx = Context {
+                register: None,
+                count: None,
+                editor,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs,
+            };
+            enter_engine(|guard| {
+                if !is_current_generation(generation) {
+                    return;
+                }
+
+                if let Err(e) = guard
+                    .with_mut_reference::<Context, Context>(&mut ctx)
+                    .consume(move |engine, args| {
+                        let context = args[0].clone();
+                        engine.update_value(CTX, context);
+                        let mut args = [doc_id.into_steelval().unwrap()];
+
+                        // TODO: Do something with this error!
+                        engine
+                            .call_function_with_args_from_mut_slice(cloned_func.clone(), &mut args)
+                    })
+                {
+                    present_error_inside_engine_context(&mut ctx, guard, e);
+                }
+            });
+
+            patch_callbacks(&mut ctx);
+        };
+        job::dispatch_blocking_jobs(callback);
+
+        Ok(())
+    });
+    Ok(SteelVal::Void).into()
+}
+
+fn register_post_command(generation: usize, rooted: RootedSteelVal) -> steel::UnRecoverableResult {
+    register_hook!(move |event: &mut PostCommand<'_, '_>| {
+        if let Err(e) = enter_engine(|guard| {
+            if !is_current_generation(generation) {
+                return Ok(SteelVal::Void);
+            }
+
+            guard
+                .with_mut_reference(event.cx)
+                .consume_once(|engine, args| {
+                    let context = args.into_iter().next().unwrap();
+                    engine.update_value(CTX, context);
+                    let mut args = [event.command.name().into_steelval().unwrap()];
+                    engine.call_function_with_args_from_mut_slice(rooted.value().clone(), &mut args)
+                })
+        }) {
+            event.cx.editor.set_error(e.to_string());
+        }
+
+        Ok(())
+    });
+    Ok(SteelVal::Void).into()
+}
+
+fn register_post_insert_char(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
+        if let Err(e) = enter_engine(|guard| {
+            if !is_current_generation(generation) {
+                return Ok(SteelVal::Void);
+            }
+
+            guard
+                .with_mut_reference(event.cx)
+                .consume_once(|engine, args| {
+                    let context = args.into_iter().next().unwrap();
+                    engine.update_value(CTX, context);
+                    let mut args = [event.c.into()];
+                    engine.call_function_with_args_from_mut_slice(rooted.value().clone(), &mut args)
+                })
+        }) {
+            event.cx.editor.set_error(e.to_string());
+        }
+
+        Ok(())
+    });
+
+    Ok(SteelVal::Void).into()
+}
+
+fn register_on_mode_switch(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
+        if let Err(e) = enter_engine(|guard| {
+            if !is_current_generation(generation) {
+                return Ok(SteelVal::Void);
+            }
+
+            let minimized_event = OnModeSwitchEvent {
+                old_mode: event.old_mode,
+                new_mode: event.new_mode,
+            };
+
+            guard
+                .with_mut_reference(event.cx)
+                .consume_once(|engine, args| {
+                    let context = args.into_iter().next().unwrap();
+                    engine.update_value(CTX, context);
+                    let mut args = [minimized_event.into_steelval().unwrap()];
+                    engine.call_function_with_args_from_mut_slice(rooted.value().clone(), &mut args)
+                })
+        }) {
+            event.cx.editor.set_error(e.to_string());
+        }
+
+        Ok(())
+    });
+
+    Ok(SteelVal::Void).into()
 }
 
 fn configure_lsp_globals() {
@@ -4683,33 +4681,21 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                         };
                         cx.editor.set_error(err);
                     }
-                    Ok(_) => {
-                        let mut ctx = Context {
-                            register: None,
-                            count: None,
-                            editor: cx.editor,
-                            callback: Vec::new(),
-                            on_next_key_callback: None,
-                            jobs: cx.jobs,
-                        };
-
+                    Ok(_) => with_ephemeral_context(cx, |ctx| {
                         let cloned_func = rooted.value();
-
                         enter_engine(|guard| {
                             if let Err(e) = guard
-                                .with_mut_reference::<Context, Context>(&mut ctx)
+                                .with_mut_reference::<Context, Context>(ctx)
                                 .consume(move |engine, args| {
                                     let context = args[0].clone();
                                     engine.update_value(CTX, context);
                                     engine.call_function_with_args(cloned_func.clone(), Vec::new())
                                 })
                             {
-                                present_error_inside_engine_context(&mut ctx, guard, e);
+                                present_error_inside_engine_context(ctx, guard, e);
                             }
                         });
-
-                        patch_callbacks(&mut ctx);
-                    }
+                    }),
                 }
             })
             .with_preview(|_editor, path| Some((PathOrId::Path(path), None)));
@@ -4738,6 +4724,29 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     GLOBAL_OFFSET.store(engine.globals().len(), Ordering::Relaxed);
 
     engine
+}
+
+fn make_ephemeral_context<'a, 'b>(cx: &'a mut compositor::Context<'b>) -> Context<'a> {
+    Context {
+        register: None,
+        count: None,
+        editor: cx.editor,
+        callback: Vec::new(),
+        on_next_key_callback: None,
+        jobs: cx.jobs,
+    }
+}
+
+/// Creates a command context from a compositor context, and patches any callbacks
+/// created back on to the local job queue.
+fn with_ephemeral_context<'a, 'b, O>(
+    cx: &'a mut compositor::Context<'b>,
+    thunk: impl FnOnce(&mut Context<'_>) -> O,
+) -> O {
+    let mut context = make_ephemeral_context(cx);
+    let res = thunk(&mut context);
+    patch_callbacks(&mut context);
+    res
 }
 
 fn get_highlighted_text(cx: &mut Context) -> String {
