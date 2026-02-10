@@ -1,0 +1,17 @@
+[package]
+name = "silicon-terminal"
+description = "Terminal emulation panel for Silicon editor"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+alacritty_terminal = "0.25"
+silicon-core = { path = "../silicon-core" }
+silicon-view = { path = "../silicon-view" }
+tui = { path = "../silicon-tui", package = "silicon-tui", default-features = false }
+tokio = { version = "1", features = ["sync"] }
+parking_lot.workspace = true
+log = "0.4"

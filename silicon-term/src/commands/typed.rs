@@ -2523,8 +2523,73 @@ fn run_shell_command_interactive(
     let cmd = args.join(" ");
 
     let callback = async move {
-        Ok(Callback::InteractiveShellCommand { shell, cmd })
+        Ok(Callback::RunInTerminal { shell, cmd })
     };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
+fn open_terminal(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let callback = async move { Ok(Callback::OpenTerminalPanel) };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
+fn new_terminal_tab(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let callback = async move { Ok(Callback::NewTerminalTab) };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
+fn close_terminal_tab(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let callback = async move { Ok(Callback::CloseTerminalTab) };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
+fn next_terminal_tab(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let callback = async move { Ok(Callback::NextTerminalTab) };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
+fn prev_terminal_tab(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let callback = async move { Ok(Callback::PrevTerminalTab) };
     cx.jobs.callback(callback);
     Ok(())
 }
@@ -3833,6 +3898,61 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (1, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal",
+        aliases: &["term"],
+        doc: "Open the terminal panel.",
+        fun: open_terminal,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-new",
+        aliases: &["tnew"],
+        doc: "Open a new terminal tab.",
+        fun: new_terminal_tab,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-close",
+        aliases: &["tclose"],
+        doc: "Close the active terminal tab.",
+        fun: close_terminal_tab,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-next",
+        aliases: &["tnext-tab"],
+        doc: "Switch to the next terminal tab.",
+        fun: next_terminal_tab,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-prev",
+        aliases: &["tprev-tab"],
+        doc: "Switch to the previous terminal tab.",
+        fun: prev_terminal_tab,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
     },

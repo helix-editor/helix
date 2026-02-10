@@ -4,6 +4,7 @@ members = [
   "silicon-core",
   "silicon-view",
   "silicon-term",
+  "silicon-terminal",
   "silicon-tui",
   "silicon-lsp-types",
   "silicon-lsp",

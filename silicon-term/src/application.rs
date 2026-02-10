@@ -79,6 +79,8 @@ pub struct Application {
     lsp_progress: LspProgressMap,
 
     theme_mode: Option<theme::Mode>,
+
+    terminal_panel: silicon_terminal::TerminalPanel,
 }
 
 #[cfg(feature = "integration")]
@@ -256,6 +258,8 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        let terminal_panel = silicon_terminal::TerminalPanel::new();
+
         let app = Self {
             compositor,
             terminal,
@@ -265,6 +269,7 @@ impl Application {
             jobs,
             lsp_progress: LspProgressMap::new(),
             theme_mode,
+            terminal_panel,
         };
 
         Ok(app)
@@ -294,13 +299,36 @@ impl Application {
 
         let surface = self.terminal.current_buffer_mut();
 
-        self.compositor.render(area, surface, &mut cx);
-        let (pos, kind) = self.compositor.cursor(area, &self.editor);
-        // reset cursor cache
-        self.editor.cursor_cache.reset();
+        // Split area between editor and terminal panel when panel is visible.
+        if self.terminal_panel.visible {
+            let panel_height = self.terminal_panel.panel_height(area);
+            let editor_area = area.clip_bottom(panel_height);
+            let terminal_area = Rect::new(
+                area.x,
+                editor_area.bottom(),
+                area.width,
+                panel_height,
+            );
 
-        let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
-        self.terminal.draw(pos, kind).unwrap();
+            self.compositor.render(editor_area, surface, &mut cx);
+            self.terminal_panel.render(terminal_area, surface);
+
+            // Cursor: use terminal panel cursor when focused, editor cursor otherwise.
+            let (pos, kind) = if self.terminal_panel.focused {
+                self.terminal_panel.cursor(terminal_area)
+            } else {
+                self.compositor.cursor(editor_area, &self.editor)
+            };
+            self.editor.cursor_cache.reset();
+            let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
+            self.terminal.draw(pos, kind).unwrap();
+        } else {
+            self.compositor.render(area, surface, &mut cx);
+            let (pos, kind) = self.compositor.cursor(area, &self.editor);
+            self.editor.cursor_cache.reset();
+            let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
+            self.terminal.draw(pos, kind).unwrap();
+        }
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
@@ -339,16 +367,7 @@ impl Application {
                     self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.callbacks.recv() => {
-                    match callback {
-                        Callback::InteractiveShellCommand { shell, cmd } => {
-                            self.run_interactive_shell_command(&shell, &cmd);
-                            self.render().await;
-                        }
-                        callback => {
-                            self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback)));
-                            self.render().await;
-                        }
-                    }
+                    self.handle_terminal_callback_or_other(callback).await;
                 }
                 Some(msg) = self.jobs.status_messages.recv() => {
                     let severity = match msg.severity{
@@ -363,14 +382,17 @@ impl Application {
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     match callback {
-                        Ok(Some(Callback::InteractiveShellCommand { shell, cmd })) => {
-                            self.run_interactive_shell_command(&shell, &cmd);
+                        Ok(Some(cb)) => self.handle_terminal_callback_or_other(cb).await,
+                        other => {
+                            self.jobs.handle_callback(&mut self.editor, &mut self.compositor, other);
                             self.render().await;
                         }
-                        callback => {
-                            self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                            self.render().await;
-                        }
+                    }
+                }
+                // Terminal panel wakeup — PTY produced output.
+                Some(()) = self.terminal_panel.wakeup_rx.recv() => {
+                    if self.terminal_panel.poll_events() {
+                        self.render().await;
                     }
                 }
                 event = self.editor.wait_event() => {
@@ -562,6 +584,9 @@ impl Application {
                 // redraw the terminal
                 let area = self.terminal.size();
                 self.compositor.resize(area);
+                if self.terminal_panel.visible {
+                    self.terminal_panel.resize(area);
+                }
                 self.terminal.clear().expect("couldn't clear terminal");
 
                 self.render().await;
@@ -705,11 +730,15 @@ impl Application {
         #[cfg(not(windows))]
         use termina::escape::csi;
 
+        use silicon_view::input::KeyEvent;
+        use silicon_view::keyboard::{KeyCode, KeyModifiers};
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
+
         // Handle key events
         let should_redraw = match event.unwrap() {
             #[cfg(not(windows))]
@@ -721,6 +750,11 @@ impl Application {
                 let area = self.terminal.size();
 
                 self.compositor.resize(area);
+
+                // Also resize the terminal panel.
+                if self.terminal_panel.visible {
+                    self.terminal_panel.resize(area);
+                }
 
                 self.compositor
                     .handle_event(&Event::Resize(cols, rows), &mut cx)
@@ -751,6 +785,10 @@ impl Application {
 
                 self.compositor.resize(area);
 
+                if self.terminal_panel.visible {
+                    self.terminal_panel.resize(area);
+                }
+
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
@@ -760,7 +798,100 @@ impl Application {
                 kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
-            event => self.compositor.handle_event(&event.into(), &mut cx),
+            ref event => {
+                // Convert to our Event type for key checking.
+                let silicon_event: Event = event.clone().into();
+
+                // Check for Ctrl+Backtick (toggle terminal panel).
+                if let Event::Key(KeyEvent {
+                    code: KeyCode::Char('`'),
+                    modifiers,
+                }) = &silicon_event
+                {
+                    if modifiers.contains(KeyModifiers::CONTROL)
+                        && !modifiers.contains(KeyModifiers::ALT)
+                    {
+                        if modifiers.contains(KeyModifiers::SHIFT) {
+                            // Ctrl+Shift+Backtick → new terminal tab
+                            let area = self.terminal.size();
+                            self.terminal_panel.visible = true;
+                            self.terminal_panel.focused = true;
+                            self.terminal_panel.spawn_terminal(area);
+                            return self.render().await;
+                        }
+                        // Ctrl+Backtick → toggle terminal panel
+                        let area = self.terminal.size();
+                        self.terminal_panel.toggle(area);
+                        return self.render().await;
+                    }
+                }
+
+                // Handle mouse events for terminal panel focus and scroll.
+                if self.terminal_panel.visible {
+                    if let Event::Mouse(mouse) = &silicon_event {
+                        use silicon_view::input::MouseEventKind;
+
+                        let area = self.terminal.size();
+                        let panel_height = self.terminal_panel.panel_height(area);
+                        let terminal_top = area.height.saturating_sub(panel_height);
+
+                        if mouse.row >= terminal_top {
+                            // Click/scroll is in the terminal panel area.
+                            match mouse.kind {
+                                MouseEventKind::Down(_) => {
+                                    self.terminal_panel.focused = true;
+                                    return self.render().await;
+                                }
+                                MouseEventKind::ScrollUp => {
+                                    self.terminal_panel.focused = true;
+                                    self.terminal_panel.handle_scroll(1);
+                                    return self.render().await;
+                                }
+                                MouseEventKind::ScrollDown => {
+                                    self.terminal_panel.focused = true;
+                                    self.terminal_panel.handle_scroll(-1);
+                                    return self.render().await;
+                                }
+                                _ => {}
+                            }
+                        } else {
+                            // Click is in the editor area — unfocus terminal.
+                            if matches!(mouse.kind, MouseEventKind::Down(_)) && self.terminal_panel.focused {
+                                self.terminal_panel.unfocus();
+                            }
+                        }
+                    }
+                }
+
+                // When terminal panel is focused, intercept tab-switching keys,
+                // then forward all other keys to the PTY.
+                if self.terminal_panel.focused {
+                    if let Event::Key(key) = &silicon_event {
+                        // Ctrl+Shift+] → next terminal tab
+                        if key.code == KeyCode::Char(']')
+                            && key.modifiers.contains(KeyModifiers::CONTROL)
+                            && key.modifiers.contains(KeyModifiers::SHIFT)
+                        {
+                            self.terminal_panel.next_tab();
+                            return self.render().await;
+                        }
+                        // Ctrl+Shift+[ → previous terminal tab
+                        if key.code == KeyCode::Char('[')
+                            && key.modifiers.contains(KeyModifiers::CONTROL)
+                            && key.modifiers.contains(KeyModifiers::SHIFT)
+                        {
+                            self.terminal_panel.prev_tab();
+                            return self.render().await;
+                        }
+
+                        self.terminal_panel.handle_key_event(key);
+                        return self.render().await;
+                    }
+                }
+
+                // Otherwise, dispatch to compositor (editor gets the event).
+                self.compositor.handle_event(&silicon_event, &mut cx)
+            }
         };
 
         if should_redraw && !self.editor.should_close() {
@@ -1264,61 +1395,48 @@ impl Application {
         self.terminal.restore()
     }
 
-    fn run_interactive_shell_command(&mut self, shell: &[String], cmd: &str) {
-        // Restore terminal (leave alternate screen, disable raw mode)
-        if let Err(err) = self.restore_term() {
-            log::error!("Failed to restore terminal: {}", err);
-            self.editor
-                .set_error(format!("Failed to restore terminal: {}", err));
-            return;
-        }
-
-        // Clear the terminal screen before running the command
-        print!("\x1B[2J\x1B[H");
-        let _ = std::io::Write::flush(&mut std::io::stdout());
-
-        // Spawn child with inherited stdio (full terminal access)
-        let result = std::process::Command::new(&shell[0])
-            .args(&shell[1..])
-            .arg(cmd)
-            .status();
-
-        // Show exit status + wait for keypress
-        {
-            use std::io::{Read, Write};
-            let status_msg = match &result {
-                Ok(status) if status.success() => String::new(),
-                Ok(status) => format!("\n[Process exited with {}]", status),
-                Err(e) => format!("\n[Failed to run command: {}]", e),
-            };
-            if !status_msg.is_empty() {
-                let _ = std::io::stderr().write_all(status_msg.as_bytes());
-            }
-            let _ = std::io::stderr().write_all(b"\nPress ENTER to return to silicon...");
-            let _ = std::io::stderr().flush();
-            // Flush any stale input left by the child process
-            #[cfg(unix)]
-            unsafe {
-                libc::tcflush(libc::STDIN_FILENO, libc::TCIFLUSH);
-            }
-            let _ = std::io::stdin().read(&mut [0u8]);
-        }
-
-        // Reclaim terminal (enter alternate screen, enable raw mode)
-        for retries in 1..=10 {
-            match self.terminal.claim() {
-                Ok(()) => break,
-                Err(err) if retries == 10 => {
-                    log::error!("Failed to claim terminal: {}", err);
-                }
-                Err(_) => continue,
-            }
-        }
-
-        // Resize + clear + redraw
+    /// Handle a callback that may be a terminal panel callback.
+    async fn handle_terminal_callback_or_other(&mut self, callback: Callback) {
         let area = self.terminal.size();
-        self.compositor.resize(area);
-        self.terminal.clear().expect("couldn't clear terminal");
+        match callback {
+            Callback::RunInTerminal { shell, cmd } => {
+                self.terminal_panel.run_command(&cmd, &shell, area);
+                self.render().await;
+            }
+            Callback::OpenTerminalPanel => {
+                if !self.terminal_panel.visible {
+                    self.terminal_panel.toggle(area);
+                }
+                self.terminal_panel.focused = true;
+                self.render().await;
+            }
+            Callback::NewTerminalTab => {
+                self.terminal_panel.visible = true;
+                self.terminal_panel.focused = true;
+                self.terminal_panel.spawn_terminal(area);
+                self.render().await;
+            }
+            Callback::CloseTerminalTab => {
+                self.terminal_panel.close_active();
+                self.render().await;
+            }
+            Callback::NextTerminalTab => {
+                self.terminal_panel.next_tab();
+                self.render().await;
+            }
+            Callback::PrevTerminalTab => {
+                self.terminal_panel.prev_tab();
+                self.render().await;
+            }
+            callback => {
+                self.jobs.handle_callback(
+                    &mut self.editor,
+                    &mut self.compositor,
+                    Ok(Some(callback)),
+                );
+                self.render().await;
+            }
+        }
     }
 
     #[cfg(all(not(feature = "integration"), not(windows)))]

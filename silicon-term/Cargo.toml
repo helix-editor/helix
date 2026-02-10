@@ -49,6 +49,7 @@ silicon-lsp = { path = "../silicon-lsp" }
 silicon-dap = { path = "../silicon-dap" }
 silicon-vcs = { path = "../silicon-vcs" }
 silicon-loader = { path = "../silicon-loader" }
+silicon-terminal = { path = "../silicon-terminal" }
 
 anyhow = "1"
 once_cell = "1.21"

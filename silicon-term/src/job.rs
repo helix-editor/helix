@@ -35,7 +35,12 @@ pub fn dispatch_blocking(job: impl FnOnce(&mut Editor, &mut Compositor) + Send +
 pub enum Callback {
     EditorCompositor(EditorCompositorCallback),
     Editor(EditorCallback),
-    InteractiveShellCommand { shell: Vec<String>, cmd: String },
+    RunInTerminal { shell: Vec<String>, cmd: String },
+    OpenTerminalPanel,
+    NewTerminalTab,
+    CloseTerminalTab,
+    NextTerminalTab,
+    PrevTerminalTab,
 }
 
 pub type JobFuture = BoxFuture<'static, anyhow::Result<Option<Callback>>>;
@@ -111,8 +116,13 @@ impl Jobs {
             Ok(Some(call)) => match call {
                 Callback::EditorCompositor(call) => call(editor, compositor),
                 Callback::Editor(call) => call(editor),
-                Callback::InteractiveShellCommand { .. } => {
-                    log::error!("InteractiveShellCommand callback reached handle_callback unexpectedly");
+                Callback::RunInTerminal { .. }
+                | Callback::OpenTerminalPanel
+                | Callback::NewTerminalTab
+                | Callback::CloseTerminalTab
+                | Callback::NextTerminalTab
+                | Callback::PrevTerminalTab => {
+                    log::error!("Terminal callback reached handle_callback unexpectedly");
                 }
             },
             Err(e) => {
