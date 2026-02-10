@@ -1186,7 +1186,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "refresh-all-language-configs!",
             update_configuration_for_all_open_documents,
         )
-        .register_fn_with_ctx(CONFIG, "raw-cursor-shape", CursorShapeConfig::default)
+        .register_fn("raw-cursor-shape", CursorShapeConfig::default)
         .register_fn(
             "raw-cursor-shape-set!",
             |value: SteelVal, mode: String, shape: String| -> anyhow::Result<SteelVal> {
