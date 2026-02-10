@@ -28,6 +28,9 @@ strip = true
 opt-level = 3
 panic = "abort"
 
+[profile.opt]
+inherits = "release"
+
 [profile.integration]
 inherits = "test"
 package.silicon-core.opt-level = 2
