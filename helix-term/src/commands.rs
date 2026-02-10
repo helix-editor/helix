@@ -2477,33 +2477,69 @@ fn global_search(cx: &mut Context) {
     #[derive(Debug)]
     struct FileResult {
         path: PathBuf,
-        /// 0 indexed line start
-        line_start: usize,
-        /// 0 indexed line end
-        line_end: usize,
+        /// 0 indexed lines
+        line_num: usize,
+        /// The content of the matching line (for fuzzy ranking)
+        content: String,
     }
 
     impl FileResult {
-        fn new(path: &Path, line_start: usize, line_end: usize) -> Self {
+        fn new(path: &Path, line_num: usize, content: &str) -> Self {
             Self {
                 path: path.to_path_buf(),
-                line_start,
-                line_end,
+                line_num,
+                content: content.trim().to_string(),
             }
         }
     }
 
     struct GlobalSearchConfig {
         smart_case: bool,
+        fuzzy: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
         directory_style: Style,
         number_style: Style,
         colon_style: Style,
     }
 
+    /// Converts a fuzzy pattern to a regex pattern.
+    /// Uses a limited gap between characters to prevent overly loose matching.
+    /// For example, "fnmain" becomes "f.{0,10}?n.{0,10}?m.{0,10}?a.{0,10}?i.{0,10}?n"
+    fn fuzzy_to_regex(pattern: &str) -> String {
+        let mut regex = String::new();
+        let mut chars = pattern.chars().peekable();
+
+        while let Some(c) = chars.next() {
+            // Escape regex special characters
+            match c {
+                '.' | '+' | '*' | '?' | '^' | '$' | '(' | ')' | '[' | ']' | '{' | '}' | '|'
+                | '\\' => {
+                    regex.push('\\');
+                    regex.push(c);
+                }
+                ' ' => {
+                    // Spaces act as word separators - allow larger gap
+                    regex.push_str(".{0,50}?");
+                }
+                _ => {
+                    regex.push(c);
+                }
+            }
+            // Add limited gap between characters (max 10 chars) to prevent overly loose matches
+            if chars.peek().is_some() && c != ' ' {
+                regex.push_str(".{0,10}?");
+            }
+        }
+
+        regex
+    }
+
     let config = cx.editor.config();
+    let search_fuzzy = config.search.fuzzy;
+    let search_smart_case = config.search.smart_case;
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
+        fuzzy: config.search.fuzzy,
         file_picker_config: config.file_picker.clone(),
         directory_style: cx.editor.theme.get("ui.text.directory"),
         number_style: cx.editor.theme.get("constant.numeric.integer"),
@@ -2530,10 +2566,12 @@ fn global_search(cx: &mut Context) {
                 Span::styled(directories, config.directory_style),
                 Span::raw(filename),
                 Span::styled(":", config.colon_style),
-                Span::styled((item.line_start + 1).to_string(), config.number_style),
+                Span::styled((item.line_num + 1).to_string(), config.number_style),
             ]))
         }),
-        PickerColumn::hidden("contents"),
+        PickerColumn::new("contents", |item: &FileResult, _config: &GlobalSearchConfig| {
+            Cell::from(item.content.as_str())
+        }),
     ];
 
     let get_files = |query: &str,
@@ -2555,10 +2593,16 @@ fn global_search(cx: &mut Context) {
             .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
             .collect();
 
+        // Convert to fuzzy regex if fuzzy mode is enabled
+        let search_pattern = if config.fuzzy {
+            fuzzy_to_regex(query)
+        } else {
+            query.to_string()
+        };
+
         let matcher = match RegexMatcherBuilder::new()
             .case_smart(config.smart_case)
-            .multi_line(true)
-            .build(query)
+            .build(&search_pattern)
         {
             Ok(matcher) => {
                 // Clear any "Failed to compile regex" errors out of the statusline.
@@ -2580,7 +2624,6 @@ fn global_search(cx: &mut Context) {
         async move {
             let searcher = SearcherBuilder::new()
                 .binary_detection(BinaryDetection::quit(b'\x00'))
-                .multi_line(true)
                 .build();
             WalkBuilder::new(search_root)
                 .hidden(config.file_picker_config.hidden)
@@ -2613,11 +2656,13 @@ fn global_search(cx: &mut Context) {
                         }
 
                         let mut stop = false;
-                        let sink = sinks::UTF8(|line_start, line_content| {
-                            let line_start = line_start as usize - 1;
-                            let line_end = line_start + line_content.lines().count() - 1;
+                        let sink = sinks::UTF8(|line_num, line_content| {
                             stop = injector
-                                .push(FileResult::new(entry.path(), line_start, line_end))
+                                .push(FileResult::new(
+                                    entry.path(),
+                                    line_num as usize - 1,
+                                    line_content,
+                                ))
                                 .is_err();
 
                             Ok(!stop)
@@ -2632,18 +2677,11 @@ fn global_search(cx: &mut Context) {
                             // there is already a buffer for this file
                             // search the buffer instead of the file because it's faster
                             // and captures new edits without requiring a save
-                            if searcher.multi_line_with_matcher(&matcher) {
-                                // in this case a continuous buffer is required
-                                // convert the rope to a string
-                                let text = doc.to_string();
-                                searcher.search_slice(&matcher, text.as_bytes(), sink)
-                            } else {
-                                searcher.search_reader(
-                                    &matcher,
-                                    RopeReader::new(doc.slice(..)),
-                                    sink,
-                                )
-                            }
+                            searcher.search_reader(
+                                &matcher,
+                                RopeReader::new(doc.slice(..)),
+                                sink,
+                            )
                         } else {
                             searcher.search_path(&matcher, entry.path(), sink)
                         };
@@ -2671,14 +2709,7 @@ fn global_search(cx: &mut Context) {
         1, // contents
         [],
         config,
-        move |cx,
-              FileResult {
-                  path,
-                  line_start,
-                  line_end,
-                  ..
-              },
-              action| {
+        move |cx, FileResult { path, line_num, .. }, action| {
             let doc = match cx.editor.open(path, action) {
                 Ok(id) => doc_mut!(cx.editor, &id),
                 Err(e) => {
@@ -2688,18 +2719,17 @@ fn global_search(cx: &mut Context) {
                 }
             };
 
-            let line_start = *line_start;
-            let line_end = *line_end;
+            let line_num = *line_num;
             let view = view_mut!(cx.editor);
             let text = doc.text();
-            if line_start >= text.len_lines() {
+            if line_num >= text.len_lines() {
                 cx.editor.set_error(
                     "The line you jumped to does not exist anymore because the file has changed.",
                 );
                 return;
             }
-            let start = text.line_to_char(line_start);
-            let end = text.line_to_char((line_end + 1).min(text.len_lines()));
+            let start = text.line_to_char(line_num);
+            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
 
             doc.set_selection(view.id, Selection::single(start, end));
             if action.align_view(view, doc.id()) {
@@ -2707,15 +2737,69 @@ fn global_search(cx: &mut Context) {
             }
         },
     )
-    .with_preview(
-        |_editor,
-         FileResult {
-             path,
-             line_start,
-             line_end,
-             ..
-         }| { Some((path.as_path().into(), Some((*line_start, *line_end)))) },
-    )
+    .with_preview(|_editor, FileResult { path, line_num, .. }| {
+        Some((path.as_path().into(), Some((*line_num, *line_num))))
+    })
+    .with_preview_highlights(move |doc, (start, end), query| {
+        if query.is_empty() {
+            return Vec::new();
+        }
+        let text = doc.text().slice(..);
+        let mut ranges = Vec::new();
+
+        for line_idx in start..=end {
+            if line_idx >= text.len_lines() {
+                break;
+            }
+            let line_start = text.line_to_char(line_idx);
+            let line = text.line(line_idx);
+
+            if search_fuzzy {
+                let case_insensitive =
+                    search_smart_case && !query.chars().any(|c| c.is_uppercase());
+                let mut query_chars = query.chars().filter(|c| *c != ' ');
+                let mut current = query_chars.next();
+                for (i, ch) in line.chars().enumerate() {
+                    if let Some(qc) = current {
+                        let matches = if case_insensitive {
+                            ch.to_lowercase().eq(qc.to_lowercase())
+                        } else {
+                            ch == qc
+                        };
+                        if matches {
+                            let idx = line_start + i;
+                            ranges.push(idx..idx + 1);
+                            current = query_chars.next();
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                let line_text: String = line.chars().collect();
+                let mut builder = grep_regex::RegexMatcherBuilder::new();
+                if search_smart_case {
+                    builder.case_smart(true);
+                }
+                if let Ok(matcher) = builder.build(query) {
+                    use grep_matcher::Matcher;
+                    let mut start_pos = 0;
+                    while let Ok(Some(m)) = matcher.find_at(line_text.as_bytes(), start_pos) {
+                        let char_start = line_text[..m.start()].chars().count();
+                        let char_end = line_text[..m.end()].chars().count();
+                        if char_start < char_end {
+                            ranges.push((line_start + char_start)..(line_start + char_end));
+                        }
+                        if m.end() == start_pos {
+                            break;
+                        }
+                        start_pos = m.end();
+                    }
+                }
+            }
+        }
+        ranges
+    })
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
 
