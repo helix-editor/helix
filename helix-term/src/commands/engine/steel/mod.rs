@@ -1368,7 +1368,11 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             HelixConfiguration::completion_replace,
         )
         .register_fn_with_ctx(CONFIG, "auto-info", HelixConfiguration::auto_info)
-        .register_fn("#%raw-cursor-shape", HelixConfiguration::cursor_shape)
+        .register_fn_with_ctx(
+            CONFIG,
+            "#%raw-cursor-shape",
+            HelixConfiguration::cursor_shape,
+        )
         .register_fn("true-color", HelixConfiguration::true_color)
         .register_fn_with_ctx(
             CONFIG,
