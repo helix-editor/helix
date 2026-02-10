@@ -28,7 +28,7 @@ use crate::{
 
 use super::{
     enter_engine, format_docstring, is_current_generation, load_generation,
-    present_error_inside_engine_context, WrappedDynComponent,
+    present_error_inside_engine_context, WrappedDynComponent, CTX,
 };
 
 #[derive(Clone)]
@@ -1981,7 +1981,7 @@ impl Component for SteelDynamicComponent {
                     let buffer = arg_iter.next().unwrap();
                     let context = arg_iter.next().unwrap();
 
-                    engine.update_value("*helix.cx*", context);
+                    engine.update_value(CTX, context);
 
                     (thunk)(engine, buffer)
                 })
@@ -2060,7 +2060,7 @@ impl Component for SteelDynamicComponent {
                     .with_mut_reference::<Context, Context>(&mut ctx)
                     .consume(move |engine, arguments| {
                         let context = arguments[0].clone();
-                        engine.update_value("*helix.cx*", context);
+                        engine.update_value(CTX, context);
 
                         thunk(engine)
                     })

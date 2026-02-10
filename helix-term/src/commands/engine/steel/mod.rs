@@ -95,6 +95,9 @@ static IDENTIFIERS_AVAILABLE_AFTER_BOOT: Lazy<Mutex<HashSet<InternedString>>> =
 
 static EVENT_READER: OnceCell<EventReader> = OnceCell::new();
 
+static CTX: &str = "*helix.cx*";
+static CONFIG: &str = "*helix.config*";
+
 fn install_event_reader(event_reader: TerminalEventReaderHandle) {
     #[cfg(feature = "integration")]
     {}
@@ -577,7 +580,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     // These just accept the context, no arguments
     for command in MappableCommand::STATIC_COMMAND_LIST {
         if let MappableCommand::Static { name, fun, doc } = command {
-            module.register_fn(name, fun);
+            module.register_fn_with_ctx(CTX, name, fun);
 
             if generate_sources {
                 let docstring = format_docstring(doc);
@@ -587,8 +590,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
 (provide {})
 ;;@doc
 {}
-(define ({})
-    (helix.static.{} *helix.cx*))
+(define {} helix.static.{})
 "#,
                     name, docstring, name, name
                 ));
@@ -596,7 +598,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         }
     }
 
-    let mut template_function_arity_1 = |name: &str, doc: &str| {
+    let mut template_function = |name: &str, doc: &str| {
         if generate_sources {
             let docstring = format_docstring(doc);
 
@@ -605,177 +607,136 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
 (provide {})
 ;;@doc
 {}
-(define ({} arg)
-    (helix.static.{} *helix.cx* arg))
+(define {} helix.static.{})
 "#,
                 name, docstring, name, name
             ));
         }
     };
 
-    macro_rules! function1 {
+    macro_rules! function {
         ($name:expr, $function:expr, $doc:expr) => {{
-            module.register_fn($name, $function);
-            template_function_arity_1($name, $doc);
+            module.register_fn_with_ctx(CTX, $name, $function);
+            template_function($name, $doc);
         }};
     }
 
     // Adhoc static commands that probably needs evaluating
     // Arity 1
-    function1!(
+    function!(
         "insert_char",
         insert_char,
         "Insert a given character at the cursor cursor position"
     );
-    function1!(
+    function!(
         "insert_string",
         insert_string,
         "Insert a given string at the current cursor position"
     );
 
-    function1!(
+    function!(
         "set-current-selection-object!",
         set_selection,
         "Update the selection object to the current selection within the editor"
     );
-    function1!(
+    function!(
         "push-range-to-selection!",
         push_range_to_selection,
         "Push a new range to a selection. The new selection will be the primary one"
     );
-    function1!(
+    function!(
         "set-current-selection-primary-index!",
         set_selection_primary_index,
         "Set the primary index of the current selection"
     );
-    function1!(
+    function!(
         "remove-current-selection-range!",
         remove_selection_range,
         "Remove a range from the current selection"
     );
 
-    function1!(
+    function!(
         "regex-selection",
         regex_selection,
         "Run the given regex within the existing buffer"
     );
 
-    function1!(
+    function!(
         "replace-selection-with",
         replace_selection,
         "Replace the existing selection with the given string"
     );
 
-    function1!(
+    function!(
         "enqueue-expression-in-engine",
         run_expression_in_engine,
         "Enqueue an expression to run at the top level context, 
         after the existing function context has exited."
     );
 
-    function1!(
+    function!(
         "get-current-line-character",
         current_line_character,
         "Returns the current column number with the given position encoding"
     );
 
-    let mut template_function_arity_0 = |name: &str, doc: &str| {
-        if generate_sources {
-            let docstring = format_docstring(doc);
-
-            builtin_static_command_module.push_str(&format!(
-                r#"
-(provide {})
-;;@doc
-{}
-(define ({})
-    (helix.static.{} *helix.cx*))
-"#,
-                name, docstring, name, name
-            ));
-        }
-    };
-
-    macro_rules! function0 {
-        ($name:expr, $function:expr, $doc:expr) => {{
-            module.register_fn($name, $function);
-            template_function_arity_0($name, $doc);
-        }};
-    }
-
-    function0!(
+    function!(
         "cx->current-file",
         current_path,
         "Get the currently focused file path"
     );
 
-    function0!(
+    function!(
         "current_selection",
         get_selection,
         "Returns the current selection as a string"
     );
-    function0!(
+    function!(
         "current-selection->string",
         get_selection,
         "Returns the current selection as a string"
     );
-    function0!("load-buffer!", load_buffer, "Evaluates the current buffer");
-    function0!(
+    function!("load-buffer!", load_buffer, "Evaluates the current buffer");
+    function!(
         "current-highlighted-text!",
         get_highlighted_text,
         "Returns the currently highlighted text as a string"
     );
-    function0!(
+    function!(
         "get-current-line-number",
         current_line_number,
         "Returns the current line number"
     );
-    function0!(
+    function!(
         "get-current-column-number",
         current_column_number,
         "Returns the visual current column number of unicode graphemes"
     );
-    function0!(
+    function!(
         "current-selection-object",
         current_selection,
         "Returns the current selection object"
     );
-    function0!(
+    function!(
         "get-helix-cwd",
         get_helix_cwd,
         "Returns the current working directly that helix is using"
     );
-    function0!(
+    function!(
         "move-window-far-left",
         move_window_to_the_left,
         "Moves the current window to the far left"
     );
-    function0!(
+    function!(
         "move-window-far-right",
         move_window_to_the_right,
         "Moves the current window to the far right"
     );
 
-    let mut template_function_no_context = |name: &str, doc: &str| {
-        if generate_sources {
-            let docstring = format_docstring(doc);
-
-            builtin_static_command_module.push_str(&format!(
-                r#"
-(provide {})
-;;@doc
-{}
-(define {} helix.static.{})                
-            "#,
-                name, docstring, name, name
-            ))
-        }
-    };
-
     macro_rules! no_context {
         ($name:expr, $function:expr, $doc:expr) => {{
             module.register_fn($name, $function);
-            template_function_no_context($name, $doc);
+            template_function($name, $doc);
         }};
     }
 
@@ -839,35 +800,24 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
     module.register_fn("get-init-scm-path", get_init_scm_path);
 
-    template_function_no_context(
+    template_function(
         "get-helix-scm-path",
         "Returns the path to the helix.scm file as a string",
     );
-    template_function_no_context(
+    template_function(
         "get-init-scm-path",
         "Returns the path to the init.scm file as a string",
     );
 
     if generate_sources {
-        if let Some(mut target_directory) = alternative_runtime_search_path() {
-            if !target_directory.exists() {
-                std::fs::create_dir_all(&target_directory).unwrap();
-            }
-
-            target_directory.push("static.scm");
-
-            std::fs::write(target_directory, &builtin_static_command_module).unwrap();
-        }
-
-        engine.register_steel_module(
-            "helix/static.scm".to_string(),
-            builtin_static_command_module,
-        );
-    }
-
-    if generate_sources {
+        generate_module("static.scm", &builtin_static_command_module);
         configure_lsp_builtins("static", &module);
     }
+
+    engine.register_steel_module(
+        "helix/static.scm".to_string(),
+        builtin_static_command_module,
+    );
 
     engine.register_module(module);
 }
@@ -935,7 +885,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
             (command.fun)(&mut cx, verified_args, PromptEvent::Validate)
         };
 
-        module.register_fn(command.name, func);
+        module.register_fn_with_ctx(CTX, command.name, func);
 
         if generate_sources {
             // Create an ephemeral builtin module to reference until I figure out how
@@ -947,7 +897,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 ;;@doc
 {}
 (define ({} . args)
-    (helix.{} *helix.cx* args))
+    (helix.{} args))
 "#,
                 command.name,
                 format_docstring(command.doc),
@@ -957,8 +907,8 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
         }
     }
 
-    module.register_fn("goto-column", goto_column_impl);
-    module.register_fn("goto-line", goto_line_impl);
+    module.register_fn_with_ctx(CTX, "goto-column", goto_column_impl);
+    module.register_fn_with_ctx(CTX, "goto-line", goto_line_impl);
 
     builtin_typable_command_module.push_str(
         r#"
@@ -967,7 +917,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 ;;@doc
 ;; Move the cursor to the given character index within the same line
 (define (goto-column col [extend #false])
-    (helix.goto-column *helix.cx* col extend))
+    (helix.goto-column col extend))
 "#,
     );
 
@@ -978,30 +928,19 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 ;;@doc
 ;; Move the cursor to the given line
 (define (goto-line line [extend #false])
-    (helix.goto-line *helix.cx* line extend))
+    (helix.goto-line line extend))
 "#,
     );
 
     if generate_sources {
-        if let Some(mut target_directory) = alternative_runtime_search_path() {
-            if !target_directory.exists() {
-                std::fs::create_dir_all(&target_directory).unwrap();
-            }
-
-            target_directory.push("commands.scm");
-
-            std::fs::write(target_directory, &builtin_typable_command_module).unwrap();
-        }
-
-        engine.register_steel_module(
-            "helix/commands.scm".to_string(),
-            builtin_typable_command_module,
-        );
-    }
-
-    if generate_sources {
+        generate_module("commands.scm", &builtin_typable_command_module);
         configure_lsp_builtins("typed", &module);
     }
+
+    engine.register_steel_module(
+        "helix/commands.scm".to_string(),
+        builtin_typable_command_module,
+    );
 
     engine.register_module(module);
 }
@@ -1207,7 +1146,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
     module.register_fn("register-lsp-call-handler", register_lsp_call_callback);
 
-    module.register_fn("update-configuration!", |ctx: &mut Context| {
+    module.register_fn_with_ctx(CTX, "update-configuration!", |ctx: &mut Context| {
         ctx.editor
             .config_events
             .0
@@ -1215,46 +1154,50 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             .unwrap();
     });
 
-    module.register_fn("get-config-option-value", get_option_value);
+    module.register_fn_with_ctx(CTX, "get-config-option-value", get_option_value);
 
-    module.register_fn("set-configuration-for-file!", set_configuration_for_file);
+    module.register_fn_with_ctx(
+        CTX,
+        "set-configuration-for-file!",
+        set_configuration_for_file,
+    );
 
     module
         .register_fn(
             "get-language-config",
             HelixConfiguration::get_language_config,
         )
-        // .register_fn(
-        //     "get-language-config-by-filename",
-        //     HelixConfiguration::get_individual_language_config_for_filename,
-        // )
         .register_fn(
             "set-language-config!",
             HelixConfiguration::update_individual_language_config,
         );
 
-    module.register_fn(
+    module.register_fn_with_ctx(
+        CONFIG,
         "get-lsp-config",
         HelixConfiguration::get_language_server_config,
     );
 
-    module.register_fn(
+    module.register_fn_with_ctx(
+        CONFIG,
         "set-lsp-config!",
         HelixConfiguration::update_language_server_config,
     );
 
-    module.register_fn(
+    module.register_fn_with_ctx(
+        CONFIG,
         "update-language-config!",
         HelixConfiguration::update_language_config,
     );
 
-    module.register_fn(
+    module.register_fn_with_ctx(
+        CTX,
         "refresh-all-language-configs!",
         update_configuration_for_all_open_documents,
     );
 
     module
-        .register_fn("raw-cursor-shape", CursorShapeConfig::default)
+        .register_fn_with_ctx(CONFIG, "raw-cursor-shape", CursorShapeConfig::default)
         .register_fn(
             "raw-cursor-shape-set!",
             |value: SteelVal, mode: String, shape: String| -> anyhow::Result<SteelVal> {
@@ -1283,7 +1226,11 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
     module
         .register_fn("raw-file-picker", FilePickerConfig::default)
-        .register_fn("register-file-picker", HelixConfiguration::file_picker)
+        .register_fn_with_ctx(
+            CONFIG,
+            "register-file-picker",
+            HelixConfiguration::file_picker,
+        )
         .register_fn("fp-hidden", fp_hidden)
         .register_fn("fp-follow-symlinks", fp_follow_symlinks)
         .register_fn("fp-deduplicate-links", fp_deduplicate_links)
@@ -1296,7 +1243,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
     module
         .register_fn("raw-soft-wrap", SoftWrap::default)
-        .register_fn("register-soft-wrap", HelixConfiguration::soft_wrap)
+        .register_fn_with_ctx(CONFIG, "register-soft-wrap", HelixConfiguration::soft_wrap)
         .register_fn("sw-enable", sw_enable)
         .register_fn("sw-max-wrap", sw_max_wrap)
         .register_fn("sw-max-indent-retain", sw_max_indent_retain)
@@ -1306,6 +1253,11 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     module
         .register_fn("raw-whitespace", WhitespaceConfig::default)
         .register_fn("register-whitespace", HelixConfiguration::whitespace)
+        .register_fn_with_ctx(
+            CONFIG,
+            "register-whitespace",
+            HelixConfiguration::whitespace,
+        )
         .register_fn("ws-visible", ws_visible)
         .register_fn("ws-chars", ws_chars)
         .register_fn("ws-render", ws_render);
@@ -1313,25 +1265,36 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     module
         .register_fn("raw-indent-guides", IndentGuidesConfig::default)
         .register_fn("register-indent-guides", HelixConfiguration::indent_guides)
+        .register_fn_with_ctx(
+            CONFIG,
+            "register-indent-guides",
+            HelixConfiguration::indent_guides,
+        )
         .register_fn("ig-render", ig_render)
         .register_fn("ig-character", ig_character)
         .register_fn("ig-skip-levels", ig_skip_levels);
 
     module
-        .register_fn("scrolloff", HelixConfiguration::scrolloff)
-        .register_fn("scroll_lines", HelixConfiguration::scroll_lines)
-        .register_fn("mouse", HelixConfiguration::mouse)
-        .register_fn("shell", HelixConfiguration::shell)
-        .register_fn(
+        .register_fn_with_ctx(CONFIG, "scrolloff", HelixConfiguration::scrolloff)
+        .register_fn_with_ctx(CONFIG, "scroll_lines", HelixConfiguration::scroll_lines)
+        .register_fn_with_ctx(CONFIG, "mouse", HelixConfiguration::mouse)
+        .register_fn_with_ctx(CONFIG, "shell", HelixConfiguration::shell)
+        .register_fn_with_ctx(
+            CONFIG,
             "jump-label-alphabet",
             HelixConfiguration::jump_label_alphabet,
         )
-        .register_fn("line-number", HelixConfiguration::line_number)
-        .register_fn("cursorline", HelixConfiguration::cursorline)
-        .register_fn("cursorcolumn", HelixConfiguration::cursorcolumn)
-        .register_fn("middle-click-paste", HelixConfiguration::middle_click_paste)
-        .register_fn("auto-pairs", HelixConfiguration::auto_pairs)
-        .register_fn(
+        .register_fn_with_ctx(CONFIG, "line-number", HelixConfiguration::line_number)
+        .register_fn_with_ctx(CONFIG, "cursorline", HelixConfiguration::cursorline)
+        .register_fn_with_ctx(CONFIG, "cursorcolumn", HelixConfiguration::cursorcolumn)
+        .register_fn_with_ctx(
+            CONFIG,
+            "middle-click-paste",
+            HelixConfiguration::middle_click_paste,
+        )
+        .register_fn_with_ctx(CONFIG, "auto-pairs", HelixConfiguration::auto_pairs)
+        .register_fn_with_ctx(
+            CTX,
             "#%editor-auto-pairs",
             |ctx: &mut Context, auto_pairs: AutoPairConfig| {
                 ctx.editor.auto_pairs = auto_pairs.into();
@@ -1346,1060 +1309,137 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         })
         // TODO: Finish this up
         .register_fn("auto-save-default", AutoSave::default)
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "auto-save-after-delay-enable",
             HelixConfiguration::auto_save_after_delay_enable,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "inline-diagnostics-cursor-line-enable",
             HelixConfiguration::inline_diagnostics_cursor_line_enable,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "inline-diagnostics-other-lines-enable",
             HelixConfiguration::inline_diagnostics_other_lines_enable,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "inline-diagnostics-end-of-line-enable",
             HelixConfiguration::inline_diagnostics_end_of_line_enable,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "inline-diagnostics-min-diagnostics-width",
             HelixConfiguration::inline_diagnostics_min_diagnostic_width,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "inline-diagnostics-prefix-len",
             HelixConfiguration::inline_diagnostics_prefix_len,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "inline-diagnostics-max-wrap",
             HelixConfiguration::inline_diagnostics_max_wrap,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "inline-diagnostics-max-diagnostics",
             HelixConfiguration::inline_diagnostics_max_diagnostics,
         )
-        .register_fn("auto-completion", HelixConfiguration::auto_completion)
-        .register_fn("auto-format", HelixConfiguration::auto_format)
-        .register_fn("auto-save", HelixConfiguration::auto_save)
-        .register_fn("text-width", HelixConfiguration::text_width)
-        .register_fn("idle-timeout", HelixConfiguration::idle_timeout)
-        .register_fn("completion-timeout", HelixConfiguration::completion_timeout)
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
+            "auto-completion",
+            HelixConfiguration::auto_completion,
+        )
+        .register_fn_with_ctx(CONFIG, "auto-format", HelixConfiguration::auto_format)
+        .register_fn_with_ctx(CONFIG, "auto-save", HelixConfiguration::auto_save)
+        .register_fn_with_ctx(CONFIG, "text-width", HelixConfiguration::text_width)
+        .register_fn_with_ctx(CONFIG, "idle-timeout", HelixConfiguration::idle_timeout)
+        .register_fn_with_ctx(
+            CONFIG,
+            "completion-timeout",
+            HelixConfiguration::completion_timeout,
+        )
+        .register_fn_with_ctx(
+            CONFIG,
             "preview-completion-insert",
             HelixConfiguration::preview_completion_insert,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "completion-trigger-len",
             HelixConfiguration::completion_trigger_len,
         )
-        .register_fn("completion-replace", HelixConfiguration::completion_replace)
-        .register_fn("auto-info", HelixConfiguration::auto_info)
+        .register_fn_with_ctx(
+            CONFIG,
+            "completion-replace",
+            HelixConfiguration::completion_replace,
+        )
+        .register_fn_with_ctx(CONFIG, "auto-info", HelixConfiguration::auto_info)
         .register_fn("#%raw-cursor-shape", HelixConfiguration::cursor_shape)
         .register_fn("true-color", HelixConfiguration::true_color)
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "insert-final-newline",
             HelixConfiguration::insert_final_newline,
         )
-        .register_fn("color-modes", HelixConfiguration::color_modes)
-        .register_fn("gutters", HelixConfiguration::gutters)
-        .register_fn("statusline", HelixConfiguration::statusline)
-        .register_fn("undercurl", HelixConfiguration::undercurl)
-        .register_fn("search", HelixConfiguration::search)
-        .register_fn("lsp", HelixConfiguration::lsp)
-        .register_fn("terminal", HelixConfiguration::terminal)
-        .register_fn("rulers", HelixConfiguration::rulers)
-        .register_fn("bufferline", HelixConfiguration::bufferline)
-        .register_fn(
+        .register_fn_with_ctx(CONFIG, "color-modes", HelixConfiguration::color_modes)
+        .register_fn_with_ctx(CONFIG, "gutters", HelixConfiguration::gutters)
+        .register_fn_with_ctx(CONFIG, "statusline", HelixConfiguration::statusline)
+        .register_fn_with_ctx(CONFIG, "undercurl", HelixConfiguration::undercurl)
+        .register_fn_with_ctx(CONFIG, "search", HelixConfiguration::search)
+        .register_fn_with_ctx(CONFIG, "lsp", HelixConfiguration::lsp)
+        .register_fn_with_ctx(CONFIG, "terminal", HelixConfiguration::terminal)
+        .register_fn_with_ctx(CONFIG, "rulers", HelixConfiguration::rulers)
+        .register_fn_with_ctx(CONFIG, "bufferline", HelixConfiguration::bufferline)
+        .register_fn_with_ctx(
+            CONFIG,
             "workspace-lsp-roots",
             HelixConfiguration::workspace_lsp_roots,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "default-line-ending",
             HelixConfiguration::default_line_ending,
         )
-        .register_fn("smart-tab", HelixConfiguration::smart_tab)
-        .register_fn("rainbow-brackets", HelixConfiguration::rainbow_brackets);
+        .register_fn_with_ctx(CONFIG, "smart-tab", HelixConfiguration::smart_tab)
+        .register_fn_with_ctx(
+            CONFIG,
+            "rainbow-brackets",
+            HelixConfiguration::rainbow_brackets,
+        );
 
     // Keybinding stuff
     module
-        .register_fn("keybindings", HelixConfiguration::keybindings)
-        .register_fn("get-keybindings", HelixConfiguration::get_keybindings)
-        .register_fn("set-keybindings!", HelixConfiguration::set_keybindings)
-        .register_fn("set-option!", dynamic_set_option);
+        .register_fn_with_ctx(CONFIG, "keybindings", HelixConfiguration::keybindings)
+        .register_fn_with_ctx(
+            CONFIG,
+            "get-keybindings",
+            HelixConfiguration::get_keybindings,
+        )
+        .register_fn_with_ctx(
+            CONFIG,
+            "set-keybindings!",
+            HelixConfiguration::set_keybindings,
+        )
+        .register_fn_with_ctx(CONFIG, "set-option!", dynamic_set_option);
+
+    let builtin_configuration_module = include_str!("configuration.scm").to_string();
 
     if generate_sources {
-        let mut builtin_configuration_module =
-            r#"(require-builtin helix/core/configuration as helix.)
-
-(provide statusline)
-
-;;@doc
-;; Configuration of the statusline elements.
-;; The following status line elements can be configured:
-;;
-;; Key	                        Description
-;; -------------------------------------------------------------------------------------------
-;; mode	                        The current editor mode (mode.normal/mode.insert/mode.select)
-;; spinner	                    A progress spinner indicating LSP activity
-;; file-name	                The path/name of the opened file
-;; file-absolute-path	        The absolute path/name of the opened file
-;; file-base-name	            The basename of the opened file
-;; file-modification-indicator	The indicator to show whether the file is modified (a [+] appears when there are unsaved changes)
-;; file-encoding	            The encoding of the opened file if it differs from UTF-8
-;; file-line-ending	            The file line endings (CRLF or LF)
-;; file-indent-style	        The file indentation style
-;; read-only-indicator	        An indicator that shows [readonly] when a file cannot be written
-;; total-line-numbers	        The total line numbers of the opened file
-;; file-type	                The type of the opened file
-;; diagnostics	                The number of warnings and/or errors
-;; workspace-diagnostics	    The number of warnings and/or errors on workspace
-;; selections	                The primary selection index out of the number of active selections
-;; primary-selection-length	    The number of characters currently in primary selection
-;; position	                    The cursor position
-;; position-percentage	        The cursor position as a percentage of the total number of lines
-;; separator	                The string defined in editor.statusline.separator (defaults to "│")
-;; spacer	                    Inserts a space between elements (multiple/contiguous spacers may be specified)
-;; version-control	            The current branch name or detached commit hash of the opened workspace
-;; register	                    The current selected register
-(define (statusline #:left [left (list "mode" "spinner" "file-name" "read-only-indicator" "file-modification-indicator")]
-                    #:center [center '()]
-                    #:right [right (list "diagnostics" "selections" "register" "position" "file-encoding")]
-                    #:separator [separator "|"]
-                    #:mode-normal [mode-normal "NOR"]
-                    #:mode-insert [mode-insert "INS"]
-                    #:mode-select [mode-select "SEL"]
-                    #:diagnostics [diagnostics (list "warning" "error")]
-                    #:workspace-diagnostics [workspace-diagnostics (list "warning" "error")])
-        (helix.statusline *helix.config*
-            (hash 'left left
-                  'center center
-                  'right right
-                  'separator separator
-                  'mode-normal mode-normal
-                  'mode-insert mode-insert
-                  'mode-select mode-select
-                  'diagnostics diagnostics
-                  'workspace-diagnostics workspace-diagnostics)))
-
-(provide indent-heuristic)
-;;@doc
-;; Which indent heuristic to use when a new line is inserted
-;; Defaults to `"hybrid"`
-;; Valid options are:
-;; * "simple"
-;; * "tree-sitter"
-;; * "hybrid"
-(define (indent-heuristic kind)
-    (set-option! 'indent-heuristic kind))
-
-(provide atomic-save)
-
-;;@doc
-;; Whether to use atomic operations to write documents to disk.
-;; This prevents data loss if the editor is interrupted while writing the file, but may
-;; confuse some file watching/hot reloading programs. Defaults to `#true`.
-(define (atomic-save bool-opt)
-    (set-option! 'atomic-save bool-opt))
-
-(provide lsp)
-
-;;@doc
-;; Blanket LSP configuration
-;; The options are provided in a hashmap, and provided options will be merged
-;; with the defaults. The options are as follows:
-;;
-;; Enables LSP
-;; * enable: bool
-;;
-;; Display LSP messagess from $/progress below statusline
-;; * display-progress-messages: bool
-;; 
-;; Display LSP messages from window/showMessage below statusline
-;; * display-messages: bool
-;;
-;; Enable automatic pop up of signature help (parameter hints)
-;; * auto-signature-help: bool
-;;
-;; Display docs under signature help popup
-;; * display-signature-help-docs: bool
-;; 
-;; Display inlay hints
-;; * display-inlay-hints: bool
-;; 
-;; Maximum displayed length of inlay hints (excluding the added trailing `…`).
-;; If it's `None`, there's no limit
-;; * inlay-hints-length-limit: Option<NonZeroU8>
-;;
-;; Display document color swatches
-;; * display-color-swatches: bool
-;;
-;; Whether to enable snippet support
-;; * snippets: bool
-;;
-;; Whether to include declaration in the goto reference query
-;; * goto_reference_include_declaration: bool
-;;
-;;```scheme
-;; (lsp (hash 'display-inlay-hints #t))
-;;```
-;;
-;; The defaults shown from the rust side are as follows:
-;; ```rust
-;;         LspConfig {
-;;            enable: true,
-;;            display_progress_messages: false,
-;;            display_messages: true,
-;;            auto_signature_help: true,
-;;            display_signature_help_docs: true,
-;;            display_inlay_hints: false,
-;;            inlay_hints_length_limit: None,
-;;            snippets: true,
-;;            goto_reference_include_declaration: true,
-;;            display_color_swatches: true,
-;;        }
-;;
-;; ```
-(define (lsp configuration)
-    (helix.lsp *helix.config* configuration))
-
-(provide search)
-
-;;@doc
-;; Search configuration
-;; Accepts two keywords, #:smart-case and #:wrap-around, both default to true.
-;;
-;; ```scheme
-;; (search #:smart-case #t #:wrap-around #t)
-;; (search #:smart-case #f #:wrap-around #f)
-;; ```
-(define (search #:smart-case [smart-case #t] #:wrap-around [wrap-around #true])
-    (helix.search *helix.config* smart-case wrap-around))
-
-(provide auto-pairs)
-
-;;@doc
-;; Automatic insertion of pairs to parentheses, brackets,
-;; etc. Optionally, this can be a list of pairs to specify a
-;; global list of characters to pair, or a hashmap of character to character.
-;; Defaults to true.
-;;
-;; ```scheme
-;; (auto-pairs #f)
-;; (auto-pairs #t)
-;; (auto-pairs (list '(#\{ . #\})))
-;; (auto-pairs (list '(#\{ #\})))
-;; (auto-pairs (list (cons #\{ #\})))
-;; (auto-pairs (hash #\{ #\}))
-;; ```
-(define (auto-pairs bool-or-map-or-pairs)
-    (when (hash? bool-or-map-or-pairs)
-        (helix.auto-pairs *helix.config* (helix.auto-pairs-map bool-or-map-or-pairs))
-        (helix.#%editor-auto-pairs *helix.cx* (helix.auto-pairs-map bool-or-map-or-pairs)))
-
-    (when (bool? bool-or-map-or-pairs)
-        (helix.auto-pairs *helix.config* (helix.auto-pairs-default bool-or-map-or-pairs))
-        (helix.#%editor-auto-pairs *helix.cx* (helix.auto-pairs-default bool-or-map-or-pairs)))
-
-    (when (list? bool-or-map-or-pairs)
-        (helix.auto-pairs *helix.config*
-            (helix.auto-pairs-map
-                (#%prim.transduce bool-or-map-or-pairs
-                    (into-hashmap))))
-
-        (helix.#%editor-auto-pairs *helix.cx*
-            (helix.auto-pairs-map
-                (#%prim.transduce bool-or-map-or-pairs
-                    (into-hashmap))))))
-
-(provide continue-comments)
-
-;;@doc
-;; Whether comments should be continued.
-(define (continue-comments bool)
-    (set-option! 'continue-comments bool))
-
-(provide popup-border)
-
-;;@doc
-;; Set the popup border.
-;; Valid options are:
-;; * "none"
-;; * "all"
-;; * "popup"
-;; * "menu"
-(define (popup-border option)
-    (set-option! 'popup-border option))
-
-(provide register-lsp-notification-handler)
-
-;;@doc
-;; Register a callback to be called on LSP notifications sent from the server -> client
-;; that aren't currently handled by Helix as a built in.
-;;
-;; ```scheme
-;; (register-lsp-notification-handler lsp-name event-name handler)
-;; ```
-;;
-;; * lsp-name : string?
-;; * event-name : string?
-;; * function : (-> hash? any?) ;; Function where the first argument is the parameters
-;;
-;; # Examples
-;; ```
-;; (register-lsp-notification-handler "dart"
-;;                                    "dart/textDocument/publishClosingLabels"
-;;                                    (lambda (args) (displayln args)))
-;; ```
-(define register-lsp-notification-handler helix.register-lsp-notification-handler)
-
-(provide register-lsp-call-handler)
-
-;;@doc
-;; Register a callback to be called on LSP calls sent from the server -> client
-;; that aren't currently handled by Helix as a built in.
-;;
-;; ```scheme
-;; (register-lsp-call-handler lsp-name event-name handler)
-;; ```
-;;
-;; * lsp-name : string?
-;; * event-name : string?
-;; * function : (-> hash? any?) ;; Function where the first argument is the parameters
-;;
-;; # Examples
-;; ```
-;; (register-lsp-call-handler "dart"
-;;                                    "dart/textDocument/publishClosingLabels"
-;;                                    (lambda (call-id args) (displayln args)))
-;; ```
-(define register-lsp-call-handler helix.register-lsp-call-handler)
-
-
-;;@doc
-;; Set a configuration option by key name.
-(provide set-option!)
-(define (set-option! key value)
-    (helix.set-option! *helix.config* key value))
-                
-(provide define-lsp)
-
-;;@doc
-;; Syntax:
-;;
-;; Registers an lsp configuration. This is a thin wrapper around passing
-;; a hashmap manually to `set-lsp-config!`, and has a slightly more elegant
-;; API.
-;;
-;; Examples:
-;; ```scheme
-;; (define-lsp "steel-language-server" (command steel-language-server) (args '()))
-;; (define-lsp "rust-analyzer" (config (experimental (hash 'testExplorer #t 'runnables '("cargo")))))
-;; (define-lsp "tinymist" (config (exportPdf "onType") (outputPath "$root/$dir/$name")))
-;; ```
-(define-syntax define-lsp
-  (syntax-rules (#%crunch #%name #%conf)
-    ;; Other generic keys
-    [(_ #%crunch #%name name #%conf conf (key (inner-key value) ...))
-     (set-lsp-config! name
-                      (hash-insert conf
-                                   (quote key)
-                                   (transduce (list (list (quote inner-key) value) ...)
-                                              (into-hashmap))))]
-
-    [(_ #%crunch #%name name #%conf conf (key (inner-key value) ...) remaining ...)
-     ;  ;; Crunch the remaining stuff
-     (define-lsp #%crunch
-          #%name
-          name
-          #%conf
-          (hash-insert conf
-                       (quote key)
-                       (transduce (list (list (quote inner-key) value) ...) (into-hashmap)))
-          remaining ...)]
-
-    ;; Other generic keys
-    [(_ #%crunch #%name name #%conf conf (key value))
-     (set-lsp-config! name (hash-insert conf (quote key) value))]
-
-    [(_ #%crunch #%name name #%conf conf (key value) remaining ...)
-     ;  ;; Crunch the remaining stuff
-     (define-lsp #%crunch #%name name #%conf (hash-insert conf (quote key) value) remaining ...)]
-
-    [(_ name (key value ...) ...)
-     (define-lsp #%crunch #%name name #%conf (hash "name" name) (key value ...) ...)]
-
-    [(_ name (key value)) (define-lsp #%crunch #%name name #%conf (hash "name" name) (key value))]
-
-    [(_ name (key value) ...) (define-lsp #%crunch #%name name #%conf (hash "name" name) (key value) ...)]))
-
-(provide define-language)
-
-;;@doc
-;; Syntax:
-;; 
-;; Defines a language configuration.
-;; This is a thin wrapper around calling `update-language-config!` with a hash
-;; of arguments, and has a slightly more elegant syntax.
-;;
-;; ```scheme
-;; (define-language "scheme"
-;;                 (formatter (command "raco") (args '("fmt" "-i")))
-;;                 (auto-format #true)
-;;                 (language-servers '("steel-language-server")))
-;;
-;; ```
-(define-syntax define-language
-  (syntax-rules (#%crunch #%name #%conf)
-
-    ;; Other generic keys
-    [(_ #%crunch #%name name #%conf conf (key (inner-key value) ...))
-     (update-language-config! name
-                              (hash-insert conf
-                                           (quote key)
-                                           (transduce (list (list (quote inner-key) value) ...)
-                                                      (into-hashmap))))]
-
-    [(_ #%crunch #%name name #%conf conf (key (inner-key value) ...) remaining ...)
-     ;  ;; Crunch the remaining stuff
-     (define-language #%crunch
-               #%name
-               name
-               #%conf
-               (hash-insert conf
-                            (quote key)
-                            (transduce (list (list (quote inner-key) value) ...) (into-hashmap)))
-               remaining ...)]
-
-    ;; Other generic keys
-    [(_ #%crunch #%name name #%conf conf (key value))
-     (update-language-config! name (hash-insert conf (quote key) value))]
-
-    [(_ #%crunch #%name name #%conf conf (key value) remaining ...)
-     ;  ;; Crunch the remaining stuff
-     (define-language #%crunch #%name name #%conf (hash-insert conf (quote key) value) remaining ...)]
-
-    [(_ name (key value ...) ...)
-     (define-language #%crunch #%name name #%conf (hash "name" name) (key value ...) ...)]
-
-    [(_ name (key value)) (language #%crunch #%name name #%conf (hash "name" name) (key value))]
-
-    [(_ name (key value) ...)
-     (define-language #%crunch #%name name #%conf (hash "name" name) (key value) ...)]))
-"#
-            .to_string();
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide cursor-shape)
-;;@doc
-;; Shape for cursor in each mode
-;;
-;; (cursor-shape #:normal (normal 'block)
-;;               #:select (select 'block)
-;;               #:insert (insert 'block))
-;;
-;; # Examples
-;; 
-;; ```scheme
-;; (cursor-shape #:normal 'block #:select 'underline #:insert 'bar)
-;; ```
-(define (cursor-shape #:normal (normal 'block)
-                      #:select (select 'block)
-                      #:insert (insert 'block))
-    (define cursor-shape-config (helix.raw-cursor-shape))
-    (helix.raw-cursor-shape-set! cursor-shape-config 'normal normal)
-    (helix.raw-cursor-shape-set! cursor-shape-config 'select select)
-    (helix.raw-cursor-shape-set! cursor-shape-config 'insert insert)
-    (helix.#%raw-cursor-shape *helix.config* cursor-shape-config))                
-            "#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide refresh-all-language-configs!)
-(define (refresh-all-language-configs!)
-    (helix.refresh-all-language-configs! *helix.cx*))
-            "#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide update-configuration!)
-(define (update-configuration!)
-    (helix.update-configuration! *helix.config*))
-"#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide get-config-option-value)
-(define (get-config-option-value arg)
-    (helix.get-config-option-value *helix.cx* arg))
-"#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide set-configuration-for-file!)
-(define (set-configuration-for-file! path config)
-    (helix.set-configuration-for-file! *helix.cx* path config))
-"#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide get-lsp-config)
-
-;;@doc
-;; Get the lsp configuration for a language server.
-;;
-;; Returns a hashmap which can be passed to `set-lsp-config!`
-(define (get-lsp-config lsp)
-    (helix.get-lsp-config *helix.config* lsp))
-            "#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide set-lsp-config!)
-;;@doc
-;; Sets the language server config for a specific language server.
-;;
-;; ```scheme
-;; (set-lsp-config! lsp config)
-;; ```
-;; * lsp : string?
-;; * config: hash?
-;;
-;; This will overlay the existing configuration, much like the existing
-;; toml definition does.
-;;
-;; Available options for the config hash are:
-;; ```scheme
-;; (hash "command" "<command>"
-;;       "args" (list "args" ...)
-;;       "environment" (hash "ENV" "VAR" ...)
-;;       "config" (hash ...)
-;;       "timeout" 100 ;; number
-;;       "required-root-patterns" (listof "pattern" ...))
-;;
-;; ```
-;;
-;; # Examples
-;; ```
-;; (set-lsp-config! "jdtls"
-;;    (hash "args" (list "-data" "/home/matt/code/java-scratch/workspace")))
-;; ```
-(define (set-lsp-config! lsp config)
-    (helix.set-lsp-config! *helix.config* lsp config))
-"#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide update-language-config!)
-(define (update-language-config! lsp config)
-    (helix.update-language-config! *helix.config* lsp config)
-    (refresh-all-language-configs!))
-"#,
-        );
-
-        // Register the get keybindings function
-        builtin_configuration_module.push_str(
-            r#"
-(provide get-keybindings)
-(define (get-keybindings)
-    (helix.get-keybindings *helix.config*))
-"#,
-        );
-
-        let mut template_whitespace = |name: &str| {
-            builtin_configuration_module.push_str(&format!(
-                r#"
-(provide {})
-(define ({} arg)
-    (lambda (picker) 
-            (helix.{} picker arg)
-            picker))
-"#,
-                name, name, name
-            ))
-        };
-        let whitespace_functions = &["ws-visible", "ws-chars", "ws-render"];
-
-        for name in whitespace_functions {
-            template_whitespace(name);
-        }
-
-        let mut template_indent_guides = |name: &str| {
-            builtin_configuration_module.push_str(&format!(
-                r#"
-(provide {})
-(define ({} arg)
-    (lambda (picker) 
-            (helix.{} picker arg)
-            picker))
-"#,
-                name, name, name
-            ))
-        };
-        let indent_guides_functions = &["ig-render", "ig-character", "ig-skip-levels"];
-
-        for name in indent_guides_functions {
-            template_indent_guides(name);
-        }
-
-        let mut template_soft_wrap = |name: &str| {
-            builtin_configuration_module.push_str(&format!(
-                r#"
-(provide {})
-(define ({} arg)
-    (lambda (picker) 
-            (helix.{} picker arg)
-            picker))
-"#,
-                name, name, name
-            ));
-        };
-
-        let soft_wrap_functions = &[
-            "sw-enable",
-            "sw-max-wrap",
-            "sw-max-indent-retain",
-            "sw-wrap-indicator",
-            "sw-wrap-at-text-width",
-        ];
-
-        for name in soft_wrap_functions {
-            template_soft_wrap(name);
-        }
-
-        let mut template_file_picker_function = |name: &str| {
-            builtin_configuration_module.push_str(&format!(
-                r#"
-(provide {})
-(define ({} arg)
-    (lambda (picker) 
-            (helix.{} picker arg)
-            picker))
-"#,
-                name, name, name
-            ));
-        };
-
-        let file_picker_functions = &[
-            "fp-hidden",
-            "fp-follow-symlinks",
-            "fp-deduplicate-links",
-            "fp-parents",
-            "fp-ignore",
-            "fp-git-ignore",
-            "fp-git-global",
-            "fp-git-exclude",
-            "fp-max-depth",
-        ];
-
-        for name in file_picker_functions {
-            template_file_picker_function(name);
-        }
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide file-picker-kw)
-;;@doc
-;; Sets the configuration for the file picker using keywords.
-;;
-;; ```scheme
-;; (file-picker-kw #:hidden #t
-;;                 #:follow-symlinks #t
-;;                 #:deduplicate-links #t
-;;                 #:parents #t
-;;                 #:ignore #t
-;;                 #:git-ignore #t
-;;                 #:git-exclude #t
-;;                 #:git-global #t
-;;                 #:max-depth #f) ;; Expects either #f or an int?
-;; ```
-;; By default, max depth is `#f` while everything else is an int?
-;;
-;; To use this, call this in your `init.scm` or `helix.scm`:
-;;
-;; # Examples
-;; ```scheme
-;; (file-picker-kw #:hidden #f)
-;; ```
-(define (file-picker-kw
-            #:hidden [hidden #t]
-            #:follow-symlinks [follow-symlinks #t]
-            #:deduplicate-links [deduplicate-links #t]
-            #:parents [parents #t]
-            #:ignore [ignore #t]
-            #:git-ignore [git-ignore #t]
-            #:git-global [git-global #t]
-            #:git-exclude [git-exclude #t]
-            #:max-depth [max-depth #f])
-
-    (define picker (helix.raw-file-picker))
-    (unless hidden (helix.fp-hidden picker hidden))
-    (unless follow-symlinks (helix.fp-follow-symlinks picker follow-symlinks))
-    (unless deduplicate-links (helix.fp-deduplicate-links picker deduplicate-links))
-    (unless parents (helix.fp-parents picker parents))
-    (unless ignore (helix.fp-ignore picker ignore))
-    (unless git-ignore (helix.fp-git-ignore picker git-ignore))
-    (unless git-global (helix.fp-git-global picker git-global))
-    (unless git-exclude (helix.fp-git-exclude picker git-exclude))
-    (when max-depth (helix.fp-max-depth picker max-depth))
-    (helix.register-file-picker *helix.config* picker))
-            "#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide file-picker)
-;;@doc
-;; Sets the configuration for the file picker using var args.
-;;
-;; ```scheme
-;; (file-picker . args)
-;; ```
-;;
-;; The args are expected to be something of the value:
-;; ```scheme
-;; (-> FilePickerConfiguration? bool?)    
-;; ```
-;;
-;; These other functions in this module which follow this behavior are all
-;; prefixed `fp-`, and include:
-;;
-;; * fp-hidden
-;; * fp-follow-symlinks
-;; * fp-deduplicate-links
-;; * fp-parents
-;; * fp-ignore
-;; * fp-git-ignore
-;; * fp-git-global
-;; * fp-git-exclude
-;; * fp-max-depth
-;; 
-;; By default, max depth is `#f` while everything else is an int?
-;;
-;; To use this, call this in your `init.scm` or `helix.scm`:
-;;
-;; # Examples
-;; ```scheme
-;; (file-picker (fp-hidden #f) (fp-parents #f))
-;; ```
-(define (file-picker . args)
-    (helix.register-file-picker
-        *helix.config*
-        (foldl (lambda (func config) (func config)) (helix.raw-file-picker) args)))
-"#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-(provide soft-wrap-kw)
-;;@doc
-;; Sets the configuration for soft wrap using keyword args.
-;;
-;; ```scheme
-;; (soft-wrap-kw #:enable #f
-;;               #:max-wrap 20
-;;               #:max-indent-retain 40
-;;               #:wrap-indicator "↪"
-;;               #:wrap-at-text-width #f)
-;; ```
-;;
-;; The options are as follows:
-;;
-;; * #:enable:
-;;   Soft wrap lines that exceed viewport width. Default to off
-;; * #:max-wrap:
-;;   Maximum space left free at the end of the line.
-;;   This space is used to wrap text at word boundaries. If that is not possible within this limit
-;;   the word is simply split at the end of the line.
-;;
-;;   This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-;;
-;;   Default to 20
-;; * #:max-indent-retain
-;;   Maximum number of indentation that can be carried over from the previous line when softwrapping.
-;;   If a line is indented further then this limit it is rendered at the start of the viewport instead.
-;;
-;;   This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-;; 
-;;   Default to 40
-;; * #:wrap-indicator
-;;   Indicator placed at the beginning of softwrapped lines
-;; 
-;;   Defaults to ↪
-;; * #:wrap-at-text-width
-;;   Softwrap at `text_width` instead of viewport width if it is shorter
-;; 
-;; # Examples
-;; ```scheme
-;; (soft-wrap-kw #:sw-enable #t)
-;; ```
-(define (soft-wrap-kw #:enable [enable #f]
-                      #:max-wrap [max-wrap 20]
-                      #:max-indent-retain [max-indent-retain 40]
-                      #:wrap-indicator [wrap-indicator 4]
-                      #:wrap-at-text-width [wrap-at-text-width #f])
-    (define sw (helix.raw-soft-wrap))
-    (helix.sw-enable sw enable)
-    (helix.sw-max-wrap sw max-wrap)
-    (helix.sw-max-indent-retain sw max-indent-retain)
-    (helix.sw-wrap-indicator sw wrap-indicator)
-    (helix.sw-wrap-at-text-width sw wrap-at-text-width)
-    (helix.register-soft-wrap *helix.config* sw))
-"#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-
-(provide soft-wrap)
-;;@doc
-;; Sets the configuration for soft wrap using var args.
-;;
-;; ```scheme
-;; (soft-wrap . args)
-;; ```
-;;
-;; The args are expected to be something of the value:
-;; ```scheme
-;; (-> SoftWrapConfiguration? bool?)    
-;; ```
-;; The options are as follows:
-;;
-;; * sw-enable:
-;;   Soft wrap lines that exceed viewport width. Default to off
-;; * sw-max-wrap:
-;;   Maximum space left free at the end of the line.
-;;   This space is used to wrap text at word boundaries. If that is not possible within this limit
-;;   the word is simply split at the end of the line.
-;;
-;;   This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-;;
-;;   Default to 20
-;; * sw-max-indent-retain
-;;   Maximum number of indentation that can be carried over from the previous line when softwrapping.
-;;   If a line is indented further then this limit it is rendered at the start of the viewport instead.
-;;
-;;   This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-;; 
-;;   Default to 40
-;; * sw-wrap-indicator
-;;   Indicator placed at the beginning of softwrapped lines
-;; 
-;;   Defaults to ↪
-;; * sw-wrap-at-text-width
-;;   Softwrap at `text_width` instead of viewport width if it is shorter
-;;
-;; # Examples
-;; ```scheme
-;; (soft-wrap (sw-enable #t))
-;; ```
-(define (soft-wrap . args)
-    (helix.register-soft-wrap
-        *helix.config*
-        (foldl (lambda (func config) (func config)) (helix.raw-soft-wrap) args)))
-"#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-
-(provide whitespace)
-;;@doc
-;; Sets the configuration for whitespace using var args.
-;;
-;; ```scheme
-;; (whitespace . args)
-;; ```
-;;
-;; The args are expected to be something of the value:
-;; ```scheme
-;; (-> WhitespaceConfiguration? bool?)    
-;; ```
-;; The options are as follows:
-;;
-;; * ws-visible:
-;;   Show all visible whitespace, defaults to false
-;; * ws-render:
-;;   manually disable or enable characters
-;;   render options (specified in hashmap):
-;;```scheme
-;;   (hash
-;;     'space #f
-;;     'nbsp #f
-;;     'nnbsp #f
-;;     'tab #f
-;;     'newline #f)
-;;```
-;; * ws-chars:
-;;   manually set visible whitespace characters with a hashmap
-;;   character options (specified in hashmap):
-;;```scheme
-;;   (hash
-;;     'space #\·
-;;     'nbsp #\⍽
-;;     'nnbsp #\␣
-;;     'tab #\→
-;;     'newline #\⏎
-;;     ; Tabs will look like "→···" (depending on tab width)
-;;     'tabpad #\·)
-;;```
-;; # Examples
-;; ```scheme
-;; (whitespace (ws-visible #t) (ws-chars (hash 'space #\·)) (ws-render (hash 'tab #f)))
-;; ```
-(define (whitespace . args)
-    (helix.register-whitespace
-        *helix.config*
-        (foldl (lambda (func config) (func config)) (helix.raw-whitespace) args)))
-"#,
-        );
-
-        builtin_configuration_module.push_str(
-            r#"
-
-(provide indent-guides)
-;;@doc
-;; Sets the configuration for indent-guides using args
-;;
-;; ```scheme
-;; (indent-guides . args)
-;; ```
-;;
-;; The args are expected to be something of the value:
-;; ```scheme
-;; (-> IndentGuidesConfig? bool?)
-;; ```
-;; The options are as follows:
-;;
-;; * ig-render:
-;;   Show indent guides, defaults to false
-;; * ig-character:
-;;   character used for indent guides, defaults to "╎"
-;; * ig-skip-levels:
-;;   amount of levels to skip, defaults to 1
-;;
-;; # Examples
-;; ```scheme
-;; (indent-guides (ig-render #t) (ig-character #\|) (ig-skip-levels 1))
-;; ```
-(define (indent-guides . args)
-    (helix.register-indent-guides
-        *helix.config*
-        (foldl (lambda (func config) (func config)) (helix.raw-indent-guides) args)))
-"#,
-        );
-
-        let mut template_function_arity_1 = |name: &str, doc: &str| {
-            let doc = format_docstring(doc);
-            builtin_configuration_module.push_str(&format!(
-                r#"
-(provide {})
-;;@doc
-;;{}
-(define ({} arg)
-    (helix.{} *helix.config* arg))
-"#,
-                name, doc, name, name
-            ));
-        };
-
-        let functions = &[
-            ("scrolloff", "Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5."),
-            ("scroll_lines", "Number of lines to scroll at once. Defaults to 3
-"),
-            ("mouse", "Mouse support. Defaults to true."),
-            ("shell", r#"Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise."#),
-            ("jump-label-alphabet", r#"The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. Defaults to "abcdefghijklmnopqrstuvwxyz""#),
-            ("line-number", "Line number mode. Defaults to 'absolute, set to 'relative for relative line numbers"),
-            ("cursorline", "Highlight the lines cursors are currently on. Defaults to false"),
-            ("cursorcolumn", "Highlight the columns cursors are currently on. Defaults to false"),
-            ("middle-click-paste", "Middle click paste support. Defaults to true"),
-            ("auto-completion", "Automatic auto-completion, automatically pop up without user trigger. Defaults to true."),
-            // TODO: Put in path_completion
-            ("auto-format", "Automatic formatting on save. Defaults to true."),
-            ("auto-save", r#"Automatic save on focus lost and/or after delay.
-Time delay in milliseconds since last edit after which auto save timer triggers.
-Time delay defaults to false with 3000ms delay. Focus lost defaults to false.
-                "#),
-            ("text-width", "Set a global text_width"),
-            ("idle-timeout", r#"Time in milliseconds since last keypress before idle timers trigger.
-Used for various UI timeouts. Defaults to 250ms."#),
-            ("completion-timeout", r#"
-Time in milliseconds after typing a word character before auto completions
-are shown, set to 5 for instant. Defaults to 250ms.
-                "#),
-            ("preview-completion-insert", "Whether to insert the completion suggestion on hover. Defaults to true."),
-            ("completion-trigger-len", "Length to trigger completions"),
-            ("completion-replace", r#"Whether to instruct the LSP to replace the entire word when applying a completion
- or to only insert new text
-"#),
-            ("auto-info", "Whether to display infoboxes. Defaults to true."),
-            // ("cursor-shape", "Shape for cursor in each mode"),
-            ("true-color", "Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`."),
-            ("insert-final-newline", "Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`"),
-            ("color-modes", "Whether to color modes with different colors. Defaults to `false`."),
-            ("gutters", "Gutter configuration"),
-            ("undercurl", "Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`."),
-            ("terminal", "Terminal config"),
-            ("rulers", "Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers"),
-            ("bufferline", "Persistently display open buffers along the top"),
-            ("workspace-lsp-roots", "Workspace specific lsp ceiling dirs"),
-            ("default-line-ending", "Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`."),
-            ("smart-tab", "Enables smart tab"),
-            ("rainbow-brackets", "Enabled rainbow brackets"),
-            ("keybindings", "Keybindings config"),
-            ("set-keybindings!", "Override the global keybindings with the provided keymap"),
-            ("inline-diagnostics-cursor-line-enable", "Inline diagnostics cursor line"),
-            ("inline-diagnostics-other-lines-enable", "Inline diagnostics other lines"),
-            ("inline-diagnostics-end-of-line-enable", "Inline diagnostics end of line"),
-            ("inline-diagnostics-min-diagnostics-width", "Inline diagnostics min diagnostics width"),
-            ("inline-diagnostics-prefix-len", "Inline diagnostics prefix length"),
-            ("inline-diagnostics-max-wrap", "Inline diagnostics maximum wrap"),
-            ("inline-diagnostics-max-diagnostics", "Inline diagnostics max diagnostics"),
-            // language configuration functions
-            ("get-language-config", "Get the configuration for a specific language"),
-            // ("get-language-config-by-filename", "Get the language configuration for a specific file"),
-            ("set-language-config!", "Set the language configuration"),
-        ];
-
-        for (func, doc) in functions {
-            template_function_arity_1(func, doc);
-        }
-
-        if let Some(mut target_directory) = alternative_runtime_search_path() {
-            if !target_directory.exists() {
-                std::fs::create_dir_all(&target_directory).unwrap();
-            }
-
-            target_directory.push("configuration.scm");
-
-            std::fs::write(target_directory, &builtin_configuration_module).unwrap();
-        }
-
-        engine.register_steel_module(
-            "helix/configuration.scm".to_string(),
-            builtin_configuration_module,
-        );
-    }
-
-    if generate_sources {
+        generate_module("configuration.scm", &builtin_configuration_module);
         configure_lsp_builtins("configuration", &module);
     }
 
-    engine.register_module(module);
-}
+    engine.register_steel_module(
+        "helix/configuration.scm".to_string(),
+        builtin_configuration_module,
+    );
 
-fn _languages_api(_engine: &mut Engine, _generate_sources: bool) {
-    // TODO: Just look at the `cx.editor.syn_loader` for how to
-    // manipulate the languages bindings
-    todo!()
+    engine.register_module(module);
 }
 
 // TODO:
@@ -2427,33 +1467,29 @@ fn load_high_level_keymap_api(engine: &mut Engine, generate_sources: bool) {
     let keymap = include_str!("keymaps.scm");
 
     if generate_sources {
-        if let Some(mut target_directory) = alternative_runtime_search_path() {
-            if !target_directory.exists() {
-                std::fs::create_dir_all(&target_directory).unwrap();
-            }
-
-            target_directory.push("keymaps.scm");
-
-            std::fs::write(target_directory, keymap).unwrap();
-        }
+        generate_module("keymaps.scm", keymap);
     }
 
     engine.register_steel_module("helix/keymaps.scm".to_string(), keymap.to_string());
+}
+
+fn generate_module(filename: &str, module: &str) {
+    if let Some(mut target_directory) = alternative_runtime_search_path() {
+        if !target_directory.exists() {
+            std::fs::create_dir_all(&target_directory).unwrap();
+        }
+
+        target_directory.push(filename);
+
+        std::fs::write(target_directory, module).unwrap();
+    }
 }
 
 fn load_high_level_theme_api(engine: &mut Engine, generate_sources: bool) {
     let theme = include_str!("themes.scm");
 
     if generate_sources {
-        if let Some(mut target_directory) = alternative_runtime_search_path() {
-            if !target_directory.exists() {
-                std::fs::create_dir_all(&target_directory).unwrap();
-            }
-
-            target_directory.push("themes.scm");
-
-            std::fs::write(target_directory, theme).unwrap();
-        }
+        generate_module("themes.scm", theme)
     }
 
     engine.register_steel_module("helix/themes.scm".to_string(), theme.to_string());
@@ -2500,434 +1536,128 @@ fn current_buffer_area(cx: &mut Context) -> Option<helix_view::graphics::Rect> {
 fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/editor");
 
-    let mut builtin_editor_command_module =
-        "(require-builtin helix/core/editor as helix.)".to_string();
+    let builtin_editor_command_module = include_str!("editor.scm").to_string();
 
     module.register_fn("register-hook", register_hook);
 
-    if generate_sources {
-        let doc = r#"
+    module
+        .register_fn("Action/Load", || Action::Load)
+        .register_fn("Action/Replace", || Action::Replace)
+        .register_fn("Action/HorizontalSplit", || Action::HorizontalSplit)
+        .register_fn("Action/VerticalSplit", || Action::VerticalSplit);
 
-(provide register-hook)
-;;@doc
-;; Register a hook to be called after the event kind fired. It is not possible
-;; to unregister a hook once it has been registered. Any values that are captured
-;; through the callback function for this hook are considered to be rooted,
-;; and will not be freed for the duration of the runtime.
-;;
-;; ```scheme
-;; (register-hook event-kind callback-fn)
-;;
-;; event-kind - symbol?
-;; callback-fn - function?
-;; ```
-;;
-;; The valid events are as follows:
-;; * 'on-mode-switch
-;; * 'post-insert-char
-;; * 'post-command
-;; * 'document-focus-lost
-;; * 'selection-did-change
-;; * 'document-opened
-;; * 'document-saved
-;;
-;; Each of these expects a function with a slightly different signature to accept
-;; the event payload.
-;;
-;; ## on-mode-switch
-;;
-;; Expects a function with one argument to accept the `OnModeSwitchEvent`.
-;;
-;; ### Example:
-;; ```scheme
-;; (register-hook 'on-mode-switch (lambda (switch-event) (log::info! (mode-switch-old switch-event))))
-;; ```
-;;
-;; ## post-insert-char
-;;
-;; Expects a function with one argument to accept the character (`char?`).
-;; 
-;; ```scheme
-;; (register-hook 'post-insert-char
-;;          (lambda (char) (log::info! char)))
-;; ```
-;;
-;; ## post-command
-;;
-;; Post command expects a function with one argument to accept the name of the command that was called.
-;; Note, this does not provide the arguments for the command, just the name of the command.
-;;
-;; ```scheme
-;; (register-hook 'post-command
-;;                (lambda (command-name) (log::info! command-name)))
-;; ```
-;;
-;; ## document-focus-lost
-;;
-;; Expects a function with one argument to accept the doc id of the document that has lost focus.
-;;
-;; ## selection-did-change
-;;
-;; Expects a function with one argument to accept the view id.
-;;
-;; ## document-opened
-;;
-;; Expects a function with one argument to accept the doc id of the document that was just opened.
-;;
-;; ## document-saved
-;;
-;; Expects a function with one argument to accept the doc id of the document that was just saved.
-(define (register-hook event-kind callback-fn)
-    (helix.register-hook event-kind callback-fn))
-
-            
-        "#;
-
-        builtin_editor_command_module.push_str(doc);
-    }
-
-    let mut template_function_arity_0 = |name: &str, doc: &str| {
-        let doc = format_docstring(doc);
-        builtin_editor_command_module.push_str(&format!(
-            r#"
-(provide {})
-;;@doc
-{}
-(define ({})
-    (helix.{} *helix.cx*))
-"#,
-            name, doc, name, name
-        ));
-    };
-
-    macro_rules! register_0 {
-        ($name:expr, $func:expr, $doc:expr) => {
-            module.register_fn($name, $func);
-            template_function_arity_0($name, $doc);
-        };
-    }
-
-    // Types
-    module.register_fn("Action/Load", || Action::Load);
-    module.register_fn("Action/Replace", || Action::Replace);
-    module.register_fn("Action/HorizontalSplit", || Action::HorizontalSplit);
-    module.register_fn("Action/VerticalSplit", || Action::VerticalSplit);
-
-    // Arity 0
-    register_0!(
-        "editor-focus",
-        cx_current_focus,
-        r#"
-Get the current focus of the editor, as a `ViewId`.
-
-```scheme
-(editor-focus) -> ViewId
-```
-        "#
-    );
-
-    register_0!(
-        "editor-mode",
-        cx_get_mode,
-        r#"
-Get the current mode of the editor
-
-```scheme
-(editor-mode) -> Mode?
-```
-        "#
-    );
-
-    register_0!(
-        "cx->themes",
-        get_themes,
-        "DEPRECATED: Please use `themes->list`"
-    );
-
-    register_0!(
-        "editor-count",
-        |cx: &mut Context| { cx.editor.count.map(|x| x.get()).unwrap_or(1) },
-        "Get the count"
-    );
-
-    register_0!(
-        "themes->list",
-        get_themes,
-        r#"
-Get the current themes as a list of strings.
-
-```scheme
-(themes->list) -> (listof string?)
-```
-        "#
-    );
-
-    register_0!(
-        "editor-all-documents",
-        cx_editor_all_documents,
-        r#"
-Get a list of all of the document ids that are currently open.
-
-```scheme
-(editor-all-documents) -> (listof DocumentId?)
-```
-        "#
-    );
-    register_0!(
-        "cx->cursor",
-        |cx: &mut Context| cx.editor.cursor(),
-        r#"DEPRECATED: Please use `current-cursor`"#
-    );
-
-    register_0!(
-        "current-cursor",
-        |cx: &mut Context| cx.editor.cursor(),
-        r#"Gets the primary cursor position in screen coordinates,
-or `#false` if the primary cursor is not visible on screen.
-
-```scheme
-(current-cursor) -> (listof? (or Position? #false) CursorKind)
-```
-        "#
-    );
-
-    register_0!(
-        "editor-focused-buffer-area",
-        current_buffer_area,
-        r#"
-Get the `Rect` associated with the currently focused buffer.
-
-```scheme
-(editor-focused-buffer-area) -> (or Rect? #false)
-```
-        "#
-    );
-    register_0!(
-        "selected-register!",
-        |cx: &mut Context| cx
-            .editor
-            .selected_register
-            .unwrap_or(cx.editor.config().default_yank_register),
-        r#"Get currently selected register"#
-    );
-
-    // Arity 1
-    module.register_fn("editor->doc-id", cx_get_document_id);
-    module.register_fn("editor-switch!", cx_switch);
-    module.register_fn("editor-set-focus!", |cx: &mut Context, view_id: ViewId| {
-        cx.editor.focus(view_id)
-    });
-    module.register_fn("editor-set-mode!", cx_set_mode);
-    module.register_fn("editor-doc-in-view?", cx_is_document_in_view);
-    module.register_fn("set-scratch-buffer-name!", set_scratch_buffer_name);
-
-    // Get the last saved time of the document
-    module.register_fn(
-        "editor-document-last-saved",
-        |cx: &mut Context, doc: DocumentId| -> Option<SystemTime> {
-            cx.editor.documents.get(&doc).map(|x| x.last_saved_time())
-        },
-    );
-
-    module.register_fn("editor-document->language", cx_get_document_language);
-
-    module.register_fn(
-        "editor-document-dirty?",
-        |cx: &mut Context, doc: DocumentId| -> Option<bool> {
-            cx.editor.documents.get(&doc).map(|x| x.is_modified())
-        },
-    );
-
-    module.register_fn(
-        "editor-document-reload",
-        |cx: &mut Context, doc: DocumentId| -> anyhow::Result<()> {
-            for (view, _) in cx.editor.tree.views_mut() {
-                if let Some(x) = cx.editor.documents.get_mut(&doc) {
-                    x.reload(view, &cx.editor.diff_providers)?;
-                }
-            }
-            Ok(())
-        },
-    );
-
-    module.register_fn("set-buffer-uri!", set_buffer_uri);
-
-    module.register_fn("editor-doc-exists?", cx_document_exists);
-
-    // Arity 2
-    module.register_fn("editor-switch-action!", cx_switch_action);
-    module.register_fn(
-        "set-register!",
-        |cx: &mut Context, name: char, value: Vec<String>| cx.editor.registers.write(name, value),
-    );
-
-    // Arity 1
-    module.register_fn("editor->text", document_id_to_text);
-    module.register_fn("editor-document->path", document_path);
-    module.register_fn("register->value", cx_register_value);
-
-    module.register_fn("set-editor-clip-right!", |cx: &mut Context, right: u16| {
-        cx.editor.editor_clipping.right = Some(right);
-    });
-    module.register_fn("set-editor-clip-left!", |cx: &mut Context, left: u16| {
-        cx.editor.editor_clipping.left = Some(left);
-    });
-    module.register_fn("set-editor-clip-top!", |cx: &mut Context, top: u16| {
-        cx.editor.editor_clipping.top = Some(top);
-    });
-    module.register_fn(
-        "set-editor-clip-bottom!",
-        |cx: &mut Context, bottom: u16| {
-            cx.editor.editor_clipping.bottom = Some(bottom);
-        },
-    );
-
-    module.register_fn("string->editor-mode", string_to_mode);
-
-    module.register_fn("set-editor-count!", |ctx: &mut Context, count: usize| {
-        ctx.editor.count = NonZeroUsize::new(count);
-        ctx.count = ctx.editor.count;
-    });
-
-    if generate_sources {
-        let mut template_function_type_constructor = |name: &str| {
-            builtin_editor_command_module.push_str(&format!(
-                r#"
-(provide {})
-(define {} helix.{})
-"#,
-                name, name, name
-            ));
-        };
-
-        template_function_type_constructor("Action/Load");
-        template_function_type_constructor("Action/Replace");
-        template_function_type_constructor("Action/HorizontalSplit");
-        template_function_type_constructor("Action/VerticalSplit");
-
-        let mut template_function_arity_1 = |name: &str, doc: &str| {
-            if generate_sources {
-                let docstring = format_docstring(doc);
-                builtin_editor_command_module.push_str(&format!(
-                    r#"
-(provide {})
-;;@doc
-{}
-(define ({} arg)
-    (helix.{} *helix.cx* arg))
-"#,
-                    name, docstring, name, name
-                ));
-            }
-        };
-
-        template_function_arity_1("set-editor-count!", r#"Sets the editor count."#);
-
-        template_function_arity_1(
-            "string->editor-mode",
-            r#"
-Create an editor mode from a string, or false if it string was not one of
-"normal", "insert", or "select"
-
-```scheme
-(string->editor-mode "normal") -> (or Mode? #f)
-```
-        "#,
-        );
-
-        template_function_arity_1("editor->doc-id", "Get the document from a given view.");
-        template_function_arity_1("editor-switch!", "Open the document in a vertical split.");
-        template_function_arity_1("editor-set-focus!", "Set focus on the view.");
-        template_function_arity_1("editor-set-mode!", "Set the editor mode.");
-        template_function_arity_1(
-            "editor-doc-in-view?",
-            "Check whether the current view contains a document.",
-        );
-        template_function_arity_1(
-            "set-scratch-buffer-name!",
-            "Set the name of a scratch buffer.",
-        );
-
-        // TODO: Lift this up
-        template_function_arity_1("set-buffer-uri!", "Set the URI of the buffer");
-        template_function_arity_1("editor-doc-exists?", "Check if a document exists.");
-
-        template_function_arity_1(
+    module
+        .register_fn_with_ctx(CTX, "editor-focus", cx_current_focus)
+        .register_fn_with_ctx(CTX, "editor-mode", cx_get_mode)
+        .register_fn_with_ctx(CTX, "cx->themes", get_themes)
+        .register_fn_with_ctx(CTX, "editor-count", |cx: &mut Context| {
+            cx.editor.count.map(|x| x.get()).unwrap_or(1)
+        })
+        .register_fn_with_ctx(CTX, "themes->list", get_themes)
+        .register_fn_with_ctx(CTX, "editor-all-documents", cx_editor_all_documents)
+        .register_fn_with_ctx(CTX, "cx->cursor", |cx: &mut Context| cx.editor.cursor())
+        .register_fn_with_ctx(CTX, "current-cursor", |cx: &mut Context| cx.editor.cursor())
+        .register_fn_with_ctx(CTX, "editor-focused-buffer-area", current_buffer_area)
+        .register_fn_with_ctx(CTX, "editor-focused-buffer-area", current_buffer_area)
+        .register_fn_with_ctx(CTX, "selected-register!", |cx: &mut Context| {
+            cx.editor
+                .selected_register
+                .unwrap_or(cx.editor.config().default_yank_register)
+        })
+        .register_fn_with_ctx(CTX, "editor->doc-id", cx_get_document_id)
+        .register_fn_with_ctx(CTX, "editor-switch!", cx_switch)
+        .register_fn_with_ctx(
+            CTX,
+            "editor-set-focus!",
+            |cx: &mut Context, view_id: ViewId| cx.editor.focus(view_id),
+        )
+        .register_fn_with_ctx(CTX, "editor-set-mode!", cx_set_mode)
+        .register_fn_with_ctx(CTX, "editor-doc-in-view?", cx_is_document_in_view)
+        .register_fn_with_ctx(CTX, "set-scratch-buffer-name!", set_scratch_buffer_name)
+        // Get the last saved time of the document
+        .register_fn_with_ctx(
+            CTX,
             "editor-document-last-saved",
-            "Check when a document was last saved (returns a `SystemTime`)",
-        );
-
-        template_function_arity_1(
-            "editor-document->language",
-            "Get the language for the document",
-        );
-
-        template_function_arity_1(
+            |cx: &mut Context, doc: DocumentId| -> Option<SystemTime> {
+                cx.editor.documents.get(&doc).map(|x| x.last_saved_time())
+            },
+        )
+        .register_fn_with_ctx(CTX, "editor-document->language", cx_get_document_language)
+        .register_fn_with_ctx(
+            CTX,
             "editor-document-dirty?",
-            "Check if a document has unsaved changes",
-        );
-
-        template_function_arity_1("editor-document-reload", "Reload a document.");
-
-        template_function_arity_1("editor->text", "Get the document as a rope.");
-        template_function_arity_1("editor-document->path", "Get the path to a document.");
-        template_function_arity_1(
-            "register->value",
-            "Get register value as a list of strings.",
-        );
-        template_function_arity_1(
-            "set-editor-clip-top!",
-            "Set the editor clipping at the top.",
-        );
-        template_function_arity_1(
+            |cx: &mut Context, doc: DocumentId| -> Option<bool> {
+                cx.editor.documents.get(&doc).map(|x| x.is_modified())
+            },
+        )
+        .register_fn_with_ctx(
+            CTX,
+            "editor-document-reload",
+            |cx: &mut Context, doc: DocumentId| -> anyhow::Result<()> {
+                for (view, _) in cx.editor.tree.views_mut() {
+                    if let Some(x) = cx.editor.documents.get_mut(&doc) {
+                        x.reload(view, &cx.editor.diff_providers)?;
+                    }
+                }
+                Ok(())
+            },
+        )
+        .register_fn_with_ctx(CTX, "set-buffer-uri!", set_buffer_uri)
+        .register_fn_with_ctx(CTX, "editor-doc-exists?", cx_document_exists)
+        .register_fn_with_ctx(CTX, "editor-switch-action!", cx_switch_action)
+        .register_fn_with_ctx(
+            CTX,
+            "set-register!",
+            |cx: &mut Context, name: char, value: Vec<String>| {
+                cx.editor.registers.write(name, value)
+            },
+        )
+        .register_fn_with_ctx(CTX, "editor->text", document_id_to_text)
+        .register_fn_with_ctx(CTX, "editor-document->path", document_path)
+        .register_fn_with_ctx(CTX, "register->value", cx_register_value)
+        .register_fn_with_ctx(
+            CTX,
             "set-editor-clip-right!",
-            "Set the editor clipping at the right.",
-        );
-        template_function_arity_1(
+            |cx: &mut Context, right: u16| {
+                cx.editor.editor_clipping.right = Some(right);
+            },
+        )
+        .register_fn_with_ctx(
+            CTX,
             "set-editor-clip-left!",
-            "Set the editor clipping at the left.",
-        );
-        template_function_arity_1(
+            |cx: &mut Context, left: u16| {
+                cx.editor.editor_clipping.left = Some(left);
+            },
+        )
+        .register_fn_with_ctx(CTX, "set-editor-clip-top!", |cx: &mut Context, top: u16| {
+            cx.editor.editor_clipping.top = Some(top);
+        })
+        .register_fn_with_ctx(
+            CTX,
             "set-editor-clip-bottom!",
-            "Set the editor clipping at the bottom.",
+            |cx: &mut Context, bottom: u16| {
+                cx.editor.editor_clipping.bottom = Some(bottom);
+            },
+        )
+        .register_fn_with_ctx(CTX, "string->editor-mode", string_to_mode)
+        .register_fn_with_ctx(
+            CTX,
+            "set-editor-count!",
+            |ctx: &mut Context, count: usize| {
+                ctx.editor.count = NonZeroUsize::new(count);
+                ctx.count = ctx.editor.count;
+            },
         );
 
-        let mut template_function_arity_2 = |name: &str| {
-            builtin_editor_command_module.push_str(&format!(
-                r#"
-(provide {})
-(define ({} arg1 arg2)
-    (helix.{} *helix.cx* arg1 arg2))
-"#,
-                name, name, name
-            ));
-        };
-
-        template_function_arity_2("editor-switch-action!");
-        template_function_arity_2("set-register!");
-
-        if let Some(mut target_directory) = alternative_runtime_search_path() {
-            if !target_directory.exists() {
-                std::fs::create_dir_all(&target_directory).unwrap_or_else(|err| {
-                    panic!("Failed to create directory {:?}: {}", target_directory, err)
-                });
-            }
-
-            target_directory.push("editor.scm");
-
-            std::fs::write(target_directory, &builtin_editor_command_module).unwrap();
-        }
-
-        engine.register_steel_module(
-            "helix/editor.scm".to_string(),
-            builtin_editor_command_module,
-        );
-    }
-
-    // Generate the lsp configuration
     if generate_sources {
+        generate_module("editor.scm", &builtin_editor_command_module);
         configure_lsp_builtins("editor", &module);
     }
+
+    engine.register_steel_module(
+        "helix/editor.scm".to_string(),
+        builtin_editor_command_module,
+    );
 
     engine.register_module(module);
 }
@@ -2982,7 +1712,7 @@ impl super::PluginSystem for SteelScriptingEngine {
                         guard.with_mut_reference::<Context, Context>(cx).consume(
                             move |engine, arguments| {
                                 let context = arguments[0].clone();
-                                engine.update_value("*helix.cx*", context);
+                                engine.update_value(CTX, context);
                                 engine
                                     .call_function_by_name_with_args_from_mut_slice(name, &mut args)
                             },
@@ -3052,7 +1782,7 @@ impl super::PluginSystem for SteelScriptingEngine {
                                 .with_mut_reference(&mut ctx)
                                 .consume(move |engine, arguments| {
                                     let context = arguments[0].clone();
-                                    engine.update_value("*helix.cx*", context);
+                                    engine.update_value(CTX, context);
                                     // TODO: Fix this clone
                                     engine.call_function_by_name_with_args(command, args.clone())
                                 })
@@ -3240,7 +1970,7 @@ impl super::PluginSystem for SteelScriptingEngine {
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, arguments| {
                             let context = arguments[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                            engine.update_value(CTX, context);
 
                             let params = serde_json::to_value(&params)
                                 .map_err(|e| SteelErr::new(ErrorKind::Generic, e.to_string()))
@@ -4506,7 +3236,7 @@ fn run_initialization_script(
             log::info!("Loading helix.scm from context: {:?}", helix_init_path);
             let res = guard.run_with_reference_from_path(
                 cx,
-                "*helix.cx*",
+                CTX,
                 &format!(r#"(require {:?})"#, helix_module_path.to_str().unwrap()),
                 helix_init_path,
             );
@@ -4527,7 +3257,7 @@ fn run_initialization_script(
         if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
             let res = guard.run_with_reference_from_path::<Context, Context>(
                 cx,
-                "*helix.cx*",
+                CTX,
                 &contents,
                 helix_module_path,
             );
@@ -4670,7 +3400,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
 
                     guard.with_mut_reference(event.cx).consume(|engine, args| {
                         let context = args[0].clone();
-                        engine.update_value("*helix.cx*", context);
+                        engine.update_value(CTX, context);
                         let mut args = [minimized_event.into_steelval().unwrap()];
                         engine.call_function_with_args_from_mut_slice(
                             rooted.value().clone(),
@@ -4695,7 +3425,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
 
                     guard.with_mut_reference(event.cx).consume(|engine, args| {
                         let context = args[0].clone();
-                        engine.update_value("*helix.cx*", context);
+                        engine.update_value(CTX, context);
                         let mut args = [event.c.into()];
                         engine.call_function_with_args_from_mut_slice(
                             rooted.value().clone(),
@@ -4721,7 +3451,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
 
                     guard.with_mut_reference(event.cx).consume(|engine, args| {
                         let context = args[0].clone();
-                        engine.update_value("*helix.cx*", context);
+                        engine.update_value(CTX, context);
                         let mut args = [event.command.name().into_steelval().unwrap()];
                         engine.call_function_with_args_from_mut_slice(
                             rooted.value().clone(),
@@ -4766,7 +3496,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
                                 let context = args[0].clone();
-                                engine.update_value("*helix.cx*", context);
+                                engine.update_value(CTX, context);
                                 let mut args = [doc_id.into_steelval().unwrap()];
 
                                 // TODO: Do something with this error!
@@ -4818,7 +3548,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
                                 let context = args[0].clone();
-                                engine.update_value("*helix.cx*", context);
+                                engine.update_value(CTX, context);
                                 // TODO: Reuse this allocation
                                 let mut args = [view_id.into_steelval().unwrap()];
                                 engine.call_function_with_args_from_mut_slice(
@@ -4868,7 +3598,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
                                 let context = args[0].clone();
-                                engine.update_value("*helix.cx*", context);
+                                engine.update_value(CTX, context);
                                 // TODO: Reuse this allocation if possible
                                 let mut args = [doc_id.into_steelval().unwrap()];
                                 engine.call_function_with_args_from_mut_slice(
@@ -4918,7 +3648,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
                                 let context = args[0].clone();
-                                engine.update_value("*helix.cx*", context);
+                                engine.update_value(CTX, context);
                                 // TODO: Reuse this allocation if possible
                                 let mut args = [doc_id.into_steelval().unwrap()];
                                 engine.call_function_with_args_from_mut_slice(
@@ -4954,8 +3684,8 @@ fn configure_lsp_globals() {
     let mut output = String::new();
 
     let names = &[
-        "*helix.cx*",
-        "*helix.config*",
+        CTX,
+        CONFIG,
         "*helix.id*",
         "register-hook!",
         "log::info!",
@@ -5530,18 +4260,10 @@ last-line : int?
     );
 
     if generate_sources {
-        if let Some(mut target_directory) = alternative_runtime_search_path() {
-            if !target_directory.exists() {
-                std::fs::create_dir_all(&target_directory).unwrap();
-            }
-
-            target_directory.push("misc.scm");
-
-            std::fs::write(target_directory, &builtin_misc_module).unwrap();
-        }
-
-        engine.register_steel_module("helix/misc.scm".to_string(), builtin_misc_module);
+        generate_module("misc.scm", &builtin_misc_module);
     }
+
+    engine.register_steel_module("helix/misc.scm".to_string(), builtin_misc_module);
 
     if generate_sources {
         configure_lsp_builtins("misc", &module);
@@ -5569,101 +4291,10 @@ pub fn generate_cog_file() {
 }
 
 pub fn load_ext_api(engine: &mut Engine, generate_sources: bool) {
-    let ext_api = r#"
-(require "helix/editor.scm")
-(require "helix/misc.scm")
-(require-builtin helix/core/text as text.)
-(require "steel/sync")
-
-(provide eval-buffer
-         evalp
-         running-on-main-thread?
-         hx.with-context
-         hx.block-on-task)
-
-(define (get-document-as-slice)
-  (let* ([focus (editor-focus)]
-         [focus-doc-id (editor->doc-id focus)])
-    (text.rope->string (editor->text focus-doc-id))))
-
-;;@doc
-;; Eval the current buffer, morally equivalent to load-buffer!
-(define (eval-buffer)
-  (eval-string (get-document-as-slice)))
-
-;;@doc
-;; Eval prompt
-(define (evalp)
-  (push-component! (prompt "" (lambda (expr) (set-status! (eval-string expr))))))
-
-;;@doc
-;; Check what the main thread id is, compare to the main thread
-(define (running-on-main-thread?)
-  (= (current-thread-id) *helix.id*))
-
-;;@doc
-;; If running on the main thread already, just do nothing.
-;; Check the ID of the engine, and if we're already on the
-;; main thread, just continue as is - i.e. just block. This does
-;; not block on the function if this is running on another thread.
-;;
-;; ```scheme
-;; (hx.with-context thunk)
-;; ```
-;; thunk : (-> any?) ;; Function that has no arguments
-;;
-;; # Examples
-;; ```scheme
-;; (spawn-native-thread
-;;   (lambda () 
-;;     (hx.with-context (lambda () (theme "nord")))))
-;; ```
-(define (hx.with-context thunk)
-  (if (running-on-main-thread?)
-      (thunk)
-      (begin
-        (define task (task #f))
-        ;; Send on the main thread
-        (acquire-context-lock thunk task)
-        task)))
-
-;;@doc
-;; Block on the given function.
-;; ```scheme
-;; (hx.block-on-task thunk)
-;; ```
-;; thunk : (-> any?) ;; Function that has no arguments
-;;
-;; # Examples
-;; ```scheme
-;; (define thread
-;;   (spawn-native-thread
-;;     (lambda () 
-;;       (hx.block-on-task (lambda () (theme "nord") 10)))))
-;;
-;; ;; Some time later, in a different context - if done at the same time,
-;; ;; this will deadline, since the join depends on the callback previously
-;; ;; executing.
-;; (equal? (thread-join! thread) 10) ;; => #true
-;; ```
-(define (hx.block-on-task thunk)
-  (if (running-on-main-thread?) (thunk) (block-on-task (hx.with-context thunk))))
-    "#;
-
-    if let Some(mut target_directory) = alternative_runtime_search_path() {
-        if generate_sources {
-            if !target_directory.exists() {
-                std::fs::create_dir_all(&target_directory).unwrap_or_else(|err| {
-                    panic!("Failed to create directory {:?}: {}", target_directory, err)
-                });
-            }
-
-            target_directory.push("ext.scm");
-
-            std::fs::write(target_directory, ext_api).unwrap();
-        }
+    let ext_api = include_str!("ext.scm");
+    if generate_sources {
+        generate_module("ext.scm", &ext_api);
     }
-
     engine.register_steel_module("helix/ext.scm".to_string(), ext_api.to_string());
 }
 
@@ -5753,7 +4384,7 @@ fn acquire_context_lock(
                 // section...
                 .consume(move |engine, args| {
                     let context = args[0].clone();
-                    engine.update_value("*helix.cx*", context);
+                    engine.update_value(CTX, context);
 
                     let mut lock = None;
 
@@ -5811,8 +4442,8 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
         engine.add_search_directory(dir.to_owned());
     }
 
-    engine.register_value("*helix.cx*", SteelVal::Void);
-    engine.register_value("*helix.config*", SteelVal::Void);
+    engine.register_value(CTX, SteelVal::Void);
+    engine.register_value(CONFIG, SteelVal::Void);
     engine.register_value(
         "*helix.id*",
         SteelVal::IntV(engine.engine_id().as_usize() as _),
@@ -5964,7 +4595,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                                 .consume(move |engine, args| {
                                     let context = args[0].clone();
 
-                                    engine.update_value("*helix.cx*", context);
+                                    engine.update_value(CTX, context);
 
                                     engine.call_function_with_args(
                                         cloned_func.clone(),
@@ -6069,7 +4700,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                                 .with_mut_reference::<Context, Context>(&mut ctx)
                                 .consume(move |engine, args| {
                                     let context = args[0].clone();
-                                    engine.update_value("*helix.cx*", context);
+                                    engine.update_value(CTX, context);
                                     engine.call_function_with_args(cloned_func.clone(), Vec::new())
                                 })
                             {
@@ -6224,7 +4855,7 @@ pub fn run_expression_in_engine(cx: &mut Context, text: String) -> anyhow::Resul
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
                             let context = args[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                            engine.update_value(CTX, context);
 
                             engine.compile_and_run_raw_program(text.clone())
                         })
@@ -6283,7 +4914,7 @@ pub fn load_buffer(cx: &mut Context) -> anyhow::Result<()> {
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
                             let context = args[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                            engine.update_value(CTX, context);
 
                             match path.clone() {
                                 Some(path) => engine.compile_and_run_raw_program_with_path(
@@ -6524,7 +5155,7 @@ fn enqueue_on_next_key(cx: &mut Context, callback_fn: SteelVal) {
                     .with_mut_reference::<Context, Context>(ctx)
                     .consume(move |engine, args| {
                         let context = args[0].clone();
-                        engine.update_value("*helix.cx*", context);
+                        engine.update_value(CTX, context);
 
                         engine.call_function_with_args_from_mut_slice(
                             cloned_func.clone(),
@@ -6565,7 +5196,7 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
                             let context = args[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                            engine.update_value(CTX, context);
 
                             engine.call_function_with_args(cloned_func.clone(), Vec::new())
                         })
@@ -6614,7 +5245,7 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
                             let context = args[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                            engine.update_value(CTX, context);
 
                             engine.call_function_with_args(cloned_func.clone(), Vec::new())
                         })
@@ -6660,7 +5291,7 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                     Ok(inner) => {
                         let callback = move |engine: &mut Engine, args: Vec<SteelVal>| {
                             let context = args[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                            engine.update_value(CTX, context);
                             engine.call_function_with_args(cloned_func.clone(), vec![inner])
                         };
 
@@ -7017,7 +5648,7 @@ fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
                                 let context = args[0].clone();
-                                engine.update_value("*helix.cx*", context);
+                                engine.update_value(CTX, context);
 
                                 engine.call_function_with_args(
                                     cloned_func.clone(),
