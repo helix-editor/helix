@@ -31,4 +31,4 @@ repository.
 
 [Code Navigation Systems]: https://tree-sitter.github.io/tree-sitter/4-code-navigation.html
 [tree-sitter-captures]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/index.html
-[example-queries]: https://github.com/search?q=repo%3Ahelix-editor%2Fsilicon+path%3A%2A%2A/tags.scm&type=Code
+[example-queries]: https://github.com/search?q=repo%3ARani367%2FSilicon+path%3A%2A%2A/tags.scm&type=Code

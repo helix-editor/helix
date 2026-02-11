@@ -4,11 +4,10 @@ language = "en"
 src = "src"
 
 [output.html]
-cname = "docs.helix-editor.com"
 default-theme = "colibri"
 preferred-dark-theme = "colibri"
-git-repository-url = "https://github.com/helix-editor/silicon"
-edit-url-template = "https://github.com/helix-editor/silicon/edit/master/book/{path}"
+git-repository-url = "https://github.com/Rani367/Silicon"
+edit-url-template = "https://github.com/Rani367/Silicon/edit/master/book/{path}"
 additional-css = ["custom.css"]
 
 [output.html.search]

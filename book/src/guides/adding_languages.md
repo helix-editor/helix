@@ -16,7 +16,7 @@ below.
 
 > 💡 If you are adding a new Language Server configuration, make sure to update
 > the
-> [Language Server Wiki](https://github.com/helix-editor/silicon/wiki/Language-Server-Configurations)
+> [Language Server Wiki](https://github.com/Rani367/Silicon/wiki/Language-Server-Configurations)
 > with the installation instructions.
 
 ## Grammar configuration
@@ -36,7 +36,7 @@ below.
 3. Refer to the
    [tree-sitter website](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights)
    for more information on writing queries.
-4. A list of highlight captures can be found [on the themes page](https://docs.helix-editor.com/themes.html#scopes).
+4. A list of highlight captures can be found [on the themes page](../themes.md#scopes).
 
 ## Common issues
 

@@ -16,11 +16,15 @@ jobs:
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v2
         with:
-          # mdbook-version: 'latest'
           mdbook-version: '0.4.43'
 
-      - run: mdbook build book
-      
+      - name: Build site
+        run: |
+          mdbook build book
+          mkdir -p _site/docs
+          cp -r website/* _site/
+          cp -r book/book/* _site/docs/
+
       - name: Set output directory
         run: |
           OUTDIR=$(basename ${{ github.ref }})
@@ -31,11 +35,11 @@ jobs:
         if: startswith(github.ref, 'refs/tags/')
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./book/book
+          publish_dir: ./_site
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./book/book
+          publish_dir: ./_site
           destination_dir: ./${{ env.OUTDIR }}

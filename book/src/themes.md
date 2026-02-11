@@ -43,9 +43,9 @@ If the key contains a dot `'.'`, it must be quoted to prevent it being parsed as
 ```
 
 For inspiration, you can find the default `theme.toml`
-[here](https://github.com/helix-editor/silicon/blob/master/theme.toml) and
+[here](https://github.com/Rani367/Silicon/blob/master/theme.toml) and
 user-submitted themes
-[here](https://github.com/helix-editor/silicon/blob/master/runtime/themes).
+[here](https://github.com/Rani367/Silicon/blob/master/runtime/themes).
 
 
 ## The details of theme creation
@@ -241,7 +241,7 @@ We use a similar set of scopes as
 - `namespace`
 
 - `special` - `derive` in Rust, bolded query-match in pickers (includes file explorer), etc.
-See also [#2380]
+See also the `special` key under `ui.text` in the theme configuration above.
 
 - `markup`
   - `heading`
@@ -365,4 +365,3 @@ These scopes are used for theming the editor interface:
 | `tabstop`                         | Snippet placeholder                                                                            |
 
 [editor-section]: ./configuration.md#editor-section
-[#2380]: https://github.com/helix-editor/silicon/issues/2380
