@@ -174,6 +174,18 @@ impl Default for GutterLineNumbersConfig {
     }
 }
 
+/// File picker types where git-hide-untracked can be applied
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FilePickerType {
+    /// Changed files picker (space+g)
+    Changed,
+    /// Global search (space+/)
+    Search,
+    /// Regular file picker (space+f)
+    Files,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
@@ -200,6 +212,10 @@ pub struct FilePickerConfig {
     /// Enables reading `.git/info/exclude` files.
     /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to true.
     pub git_exclude: bool,
+    /// File picker types where untracked git files should be hidden.
+    /// Possible values: "changed" (space+g), "search" (space+/), "files" (space+f).
+    /// Defaults to empty (show untracked files everywhere).
+    pub git_hide_untracked: Vec<FilePickerType>,
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
@@ -216,6 +232,7 @@ impl Default for FilePickerConfig {
             git_ignore: true,
             git_global: true,
             git_exclude: true,
+            git_hide_untracked: Vec::new(),
             max_depth: None,
         }
     }
