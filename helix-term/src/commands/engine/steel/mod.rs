@@ -542,34 +542,26 @@ fn add_reverse_mapping(key: usize, label: String) {
 
 fn load_component_api(engine: &mut Engine, generate_sources: bool) {
     let module = helix_component_module(generate_sources);
-
-    if generate_sources {
-        configure_lsp_builtins("component", &module);
-    }
-
     engine.register_module(module);
 }
 
 fn load_keymap_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/keymaps");
 
-    module.register_fn("helix-empty-keymap", empty_keymap);
-    module.register_fn("helix-default-keymap", default_keymap);
-    module.register_fn("helix-merge-keybindings", merge_keybindings);
-    module.register_fn("helix-string->keymap", string_to_embedded_keymap);
-    module.register_fn("keymap?", is_keymap);
-    module.register_fn("helix-deep-copy-keymap", deep_copy_keymap);
-    module.register_fn("query-keymap", query_keybindings);
-
-    module.register_fn(
-        "#%add-extension-or-labeled-keymap",
-        add_extension_or_labeled_keymap,
-    );
-
-    module.register_fn("#%add-reverse-mapping", add_reverse_mapping);
-
-    // This should be associated with a corresponding scheme module to wrap this up
-    module.register_fn("keymap-update-documentation!", update_documentation);
+    module
+        .register_fn("helix-empty-keymap", empty_keymap)
+        .register_fn("helix-default-keymap", default_keymap)
+        .register_fn("helix-merge-keybindings", merge_keybindings)
+        .register_fn("helix-string->keymap", string_to_embedded_keymap)
+        .register_fn("keymap?", is_keymap)
+        .register_fn("helix-deep-copy-keymap", deep_copy_keymap)
+        .register_fn("query-keymap", query_keybindings)
+        .register_fn(
+            "#%add-extension-or-labeled-keymap",
+            add_extension_or_labeled_keymap,
+        )
+        .register_fn("#%add-reverse-mapping", add_reverse_mapping)
+        .register_fn("keymap-update-documentation!", update_documentation);
 
     if generate_sources {
         configure_lsp_builtins("keymap", &module)
