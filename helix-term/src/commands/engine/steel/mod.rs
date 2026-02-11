@@ -55,6 +55,7 @@ use std::{
     error::Error,
     io::Write,
     num::{NonZeroU8, NonZeroUsize},
+    ops::{Deref, DerefMut},
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -332,6 +333,25 @@ where
 
         res
     }
+}
+
+/// Calls the the given function `func` in the engine, with an updated `Context`,
+/// with the given arguments `args`. This will update the CTX global in place
+/// so that functions can reference it without needing it passed in to the function
+/// directly.
+pub fn call_with_context_and_args(
+    engine: &mut Engine,
+    ctx: &mut Context,
+    func: SteelVal,
+    args: &mut [SteelVal],
+) -> Result<SteelVal, SteelErr> {
+    engine
+        .with_mut_reference(ctx)
+        .consume_once(|engine, inner_args| {
+            let context = inner_args.into_iter().next().unwrap();
+            engine.update_value(CTX, context);
+            engine.call_function_with_args_from_mut_slice(func, args)
+        })
 }
 
 pub struct SafepointHandler {
@@ -1758,61 +1778,36 @@ impl super::PluginSystem for SteelScriptingEngine {
                         .map(|x| x.into_steelval().unwrap())
                         .collect::<Vec<_>>();
 
-                    let res = {
-                        let mut ctx = Context {
-                            register: None,
-                            count: std::num::NonZeroUsize::new(1),
-                            editor: cx.editor,
-                            callback: Vec::new(),
-                            on_next_key_callback: None,
-                            jobs: cx.jobs,
-                        };
+                    let mut ctx = with_context_guard(cx);
 
-                        let ctx_guard = &mut ctx;
-
-                        // Install interrupt handler here during the duration
-                        // of the function call
-                        let res = match with_interrupt_handler(move || {
-                            guard.with_mut_reference(ctx_guard).consume_once(
-                                move |engine, arguments| {
-                                    let context = arguments.into_iter().next().unwrap();
-                                    engine.update_value(CTX, context);
-                                    engine.call_function_by_name_with_args(command, args)
-                                },
-                            )
-                        }) {
-                            Ok(res) => {
-                                match &res {
-                                    SteelVal::Void => {}
-                                    SteelVal::StringV(s) => {
-                                        ctx.editor.set_status(s.as_str().to_owned());
-                                    }
-                                    _ => {
-                                        ctx.editor.set_status(res.to_string());
-                                    }
+                    // Install interrupt handler here during the duration
+                    // of the function call
+                    match with_interrupt_handler(|| {
+                        guard.with_mut_reference(&mut ctx.ctx).consume_once(
+                            move |engine, arguments| {
+                                let context = arguments.into_iter().next().unwrap();
+                                engine.update_value(CTX, context);
+                                engine.call_function_by_name_with_args(command, args)
+                            },
+                        )
+                    }) {
+                        Ok(res) => {
+                            match &res {
+                                SteelVal::Void => {}
+                                SteelVal::StringV(s) => {
+                                    ctx.editor.set_status(s.as_str().to_owned());
                                 }
-
-                                Ok(res)
+                                _ => {
+                                    ctx.editor.set_status(res.to_string());
+                                }
                             }
-                            Err(e) => Err(e),
-                        };
 
-                        patch_callbacks(&mut ctx);
-
-                        res
-                    };
-
-                    res
+                            Ok(res)
+                        }
+                        Err(e) => Err(e),
+                    }
                 }) {
-                    let mut ctx = Context {
-                        register: None,
-                        count: None,
-                        editor: cx.editor,
-                        callback: Vec::new(),
-                        on_next_key_callback: None,
-                        jobs: cx.jobs,
-                    };
-
+                    let mut ctx = with_context_guard(cx);
                     enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e));
                 };
             }
@@ -1913,14 +1908,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         call_id: jsonrpc::Id,
         params: helix_lsp::jsonrpc::Params,
     ) -> Option<Result<serde_json::Value, jsonrpc::Error>> {
-        let mut ctx = Context {
-            register: None,
-            count: None,
-            editor: cx.editor,
-            callback: Vec::new(),
-            on_next_key_callback: None,
-            jobs: cx.jobs,
-        };
+        let mut ctx = make_ephemeral_context(cx);
 
         let language_server_name = ctx
             .editor
@@ -3402,38 +3390,30 @@ fn register_document_saved(
         let cloned_func = rooted.value().clone();
         let doc_id = event.doc;
 
-        let callback = move |editor: &mut Editor,
-                             _compositor: &mut Compositor,
-                             jobs: &mut job::Jobs| {
-            let mut ctx = Context {
-                register: None,
-                count: None,
-                editor,
-                callback: Vec::new(),
-                on_next_key_callback: None,
-                jobs,
+        let callback =
+            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut compositor_context = compositor::Context {
+                    editor,
+                    jobs,
+                    scroll: None,
+                };
+                let mut ctx = with_context_guard(&mut compositor_context);
+
+                enter_engine(|guard| {
+                    if !is_current_generation(generation) {
+                        return;
+                    }
+
+                    if let Err(e) = call_with_context_and_args(
+                        guard,
+                        &mut ctx,
+                        cloned_func,
+                        &mut [doc_id.into_steelval().unwrap()],
+                    ) {
+                        present_error_inside_engine_context(&mut ctx, guard, e);
+                    }
+                });
             };
-            enter_engine(|guard| {
-                if !is_current_generation(generation) {
-                    return;
-                }
-
-                if let Err(e) = guard
-                    .with_mut_reference::<Context, Context>(&mut ctx)
-                    .consume_once(move |engine, args| {
-                        let context = args.into_iter().next().unwrap();
-                        engine.update_value(CTX, context);
-                        let mut args = [doc_id.into_steelval().unwrap()];
-                        engine
-                            .call_function_with_args_from_mut_slice(cloned_func.clone(), &mut args)
-                    })
-                {
-                    present_error_inside_engine_context(&mut ctx, guard, e);
-                }
-            });
-
-            patch_callbacks(&mut ctx);
-        };
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
@@ -3451,39 +3431,30 @@ fn register_document_opened(
         let cloned_func = rooted.value().clone();
         let doc_id = event.doc;
 
-        let callback = move |editor: &mut Editor,
-                             _compositor: &mut Compositor,
-                             jobs: &mut job::Jobs| {
-            let mut ctx = Context {
-                register: None,
-                count: None,
-                editor,
-                callback: Vec::new(),
-                on_next_key_callback: None,
-                jobs,
+        let callback =
+            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut compositor_context = compositor::Context {
+                    editor,
+                    jobs,
+                    scroll: None,
+                };
+                let mut ctx = with_context_guard(&mut compositor_context);
+
+                enter_engine(|guard| {
+                    if !is_current_generation(generation) {
+                        return;
+                    }
+
+                    if let Err(e) = call_with_context_and_args(
+                        guard,
+                        &mut ctx,
+                        cloned_func,
+                        &mut [doc_id.into_steelval().unwrap()],
+                    ) {
+                        present_error_inside_engine_context(&mut ctx, guard, e);
+                    }
+                });
             };
-            enter_engine(|guard| {
-                if !is_current_generation(generation) {
-                    return;
-                }
-
-                if let Err(e) = guard
-                    .with_mut_reference::<Context, Context>(&mut ctx)
-                    .consume(move |engine, args| {
-                        let context = args[0].clone();
-                        engine.update_value(CTX, context);
-                        // TODO: Reuse this allocation if possible
-                        let mut args = [doc_id.into_steelval().unwrap()];
-                        engine
-                            .call_function_with_args_from_mut_slice(cloned_func.clone(), &mut args)
-                    })
-                {
-                    present_error_inside_engine_context(&mut ctx, guard, e);
-                }
-            });
-
-            patch_callbacks(&mut ctx);
-        };
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
@@ -3502,38 +3473,30 @@ fn register_selection_did_change(
         let cloned_func = rooted.value().clone();
         let view_id = event.view;
 
-        let callback = move |editor: &mut Editor,
-                             _compositor: &mut Compositor,
-                             jobs: &mut job::Jobs| {
-            let mut ctx = Context {
-                register: None,
-                count: None,
-                editor,
-                callback: Vec::new(),
-                on_next_key_callback: None,
-                jobs,
+        let callback =
+            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut compositor_context = compositor::Context {
+                    editor,
+                    jobs,
+                    scroll: None,
+                };
+                let mut ctx = with_context_guard(&mut compositor_context);
+
+                enter_engine(|guard| {
+                    if !is_current_generation(generation) {
+                        return;
+                    }
+
+                    if let Err(e) = call_with_context_and_args(
+                        guard,
+                        &mut ctx,
+                        cloned_func,
+                        &mut [view_id.into_steelval().unwrap()],
+                    ) {
+                        present_error_inside_engine_context(&mut ctx, guard, e);
+                    }
+                });
             };
-            enter_engine(|guard| {
-                if !is_current_generation(generation) {
-                    return;
-                }
-
-                if let Err(e) = guard
-                    .with_mut_reference::<Context, Context>(&mut ctx)
-                    .consume_once(move |engine, args| {
-                        let context = args.into_iter().next().unwrap();
-                        engine.update_value(CTX, context);
-                        let mut args = [view_id.into_steelval().unwrap()];
-                        engine
-                            .call_function_with_args_from_mut_slice(cloned_func.clone(), &mut args)
-                    })
-                {
-                    present_error_inside_engine_context(&mut ctx, guard, e);
-                }
-            });
-
-            patch_callbacks(&mut ctx);
-        };
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
@@ -3552,40 +3515,30 @@ fn register_document_focus_lost(
         let cloned_func = rooted.value().clone();
         let doc_id = event.doc;
 
-        let callback = move |editor: &mut Editor,
-                             _compositor: &mut Compositor,
-                             jobs: &mut job::Jobs| {
-            let mut ctx = Context {
-                register: None,
-                count: None,
-                editor,
-                callback: Vec::new(),
-                on_next_key_callback: None,
-                jobs,
+        let callback =
+            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut compositor_context = compositor::Context {
+                    editor,
+                    jobs,
+                    scroll: None,
+                };
+                let mut ctx = with_context_guard(&mut compositor_context);
+
+                enter_engine(|guard| {
+                    if !is_current_generation(generation) {
+                        return;
+                    }
+
+                    if let Err(e) = call_with_context_and_args(
+                        guard,
+                        &mut ctx,
+                        cloned_func,
+                        &mut [doc_id.into_steelval().unwrap()],
+                    ) {
+                        present_error_inside_engine_context(&mut ctx, guard, e);
+                    }
+                });
             };
-            enter_engine(|guard| {
-                if !is_current_generation(generation) {
-                    return;
-                }
-
-                if let Err(e) = guard
-                    .with_mut_reference::<Context, Context>(&mut ctx)
-                    .consume(move |engine, args| {
-                        let context = args[0].clone();
-                        engine.update_value(CTX, context);
-                        let mut args = [doc_id.into_steelval().unwrap()];
-
-                        // TODO: Do something with this error!
-                        engine
-                            .call_function_with_args_from_mut_slice(cloned_func.clone(), &mut args)
-                    })
-                {
-                    present_error_inside_engine_context(&mut ctx, guard, e);
-                }
-            });
-
-            patch_callbacks(&mut ctx);
-        };
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
@@ -3600,14 +3553,12 @@ fn register_post_command(generation: usize, rooted: RootedSteelVal) -> steel::Un
                 return Ok(SteelVal::Void);
             }
 
-            guard
-                .with_mut_reference(event.cx)
-                .consume_once(|engine, args| {
-                    let context = args.into_iter().next().unwrap();
-                    engine.update_value(CTX, context);
-                    let mut args = [event.command.name().into_steelval().unwrap()];
-                    engine.call_function_with_args_from_mut_slice(rooted.value().clone(), &mut args)
-                })
+            call_with_context_and_args(
+                guard,
+                event.cx,
+                rooted.value().clone(),
+                &mut [event.command.name().into_steelval().unwrap()],
+            )
         }) {
             event.cx.editor.set_error(e.to_string());
         }
@@ -3627,14 +3578,12 @@ fn register_post_insert_char(
                 return Ok(SteelVal::Void);
             }
 
-            guard
-                .with_mut_reference(event.cx)
-                .consume_once(|engine, args| {
-                    let context = args.into_iter().next().unwrap();
-                    engine.update_value(CTX, context);
-                    let mut args = [event.c.into()];
-                    engine.call_function_with_args_from_mut_slice(rooted.value().clone(), &mut args)
-                })
+            call_with_context_and_args(
+                guard,
+                event.cx,
+                rooted.value().clone(),
+                &mut [event.c.into()],
+            )
         }) {
             event.cx.editor.set_error(e.to_string());
         }
@@ -3660,14 +3609,12 @@ fn register_on_mode_switch(
                 new_mode: event.new_mode,
             };
 
-            guard
-                .with_mut_reference(event.cx)
-                .consume_once(|engine, args| {
-                    let context = args.into_iter().next().unwrap();
-                    engine.update_value(CTX, context);
-                    let mut args = [minimized_event.into_steelval().unwrap()];
-                    engine.call_function_with_args_from_mut_slice(rooted.value().clone(), &mut args)
-                })
+            call_with_context_and_args(
+                guard,
+                event.cx,
+                rooted.value().clone(),
+                &mut [minimized_event.into_steelval().unwrap()],
+            )
         }) {
             event.cx.editor.set_error(e.to_string());
         }
@@ -4690,8 +4637,8 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                         enter_engine(|guard| {
                             if let Err(e) = guard
                                 .with_mut_reference::<Context, Context>(ctx)
-                                .consume(move |engine, args| {
-                                    let context = args[0].clone();
+                                .consume_once(move |engine, args| {
+                                    let context = args.into_iter().next().unwrap();
                                     engine.update_value(CTX, context);
                                     engine.call_function_with_args(cloned_func.clone(), Vec::new())
                                 })
@@ -4733,11 +4680,47 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 fn make_ephemeral_context<'a, 'b>(cx: &'a mut compositor::Context<'b>) -> Context<'a> {
     Context {
         register: None,
-        count: None,
+        count: std::num::NonZeroUsize::new(1),
         editor: cx.editor,
         callback: Vec::new(),
         on_next_key_callback: None,
         jobs: cx.jobs,
+    }
+}
+
+fn with_context_guard<'a, 'b>(cx: &'a mut compositor::Context<'b>) -> ContextGuard<'a> {
+    ContextGuard {
+        ctx: Context {
+            register: None,
+            count: std::num::NonZeroUsize::new(1),
+            editor: cx.editor,
+            callback: Vec::new(),
+            on_next_key_callback: None,
+            jobs: cx.jobs,
+        },
+    }
+}
+
+struct ContextGuard<'a> {
+    ctx: Context<'a>,
+}
+
+impl<'a> Drop for ContextGuard<'a> {
+    fn drop(&mut self) {
+        patch_callbacks(&mut self.ctx);
+    }
+}
+
+impl<'a> Deref for ContextGuard<'a> {
+    type Target = Context<'a>;
+    fn deref(&self) -> &Self::Target {
+        &self.ctx
+    }
+}
+
+impl<'a> DerefMut for ContextGuard<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.ctx
     }
 }
 
@@ -4869,7 +4852,6 @@ pub fn run_expression_in_engine(cx: &mut Context, text: String) -> anyhow::Resul
                         .consume(move |engine, args| {
                             let context = args[0].clone();
                             engine.update_value(CTX, context);
-
                             engine.compile_and_run_raw_program(text.clone())
                         })
                 });
@@ -4913,34 +4895,30 @@ pub fn load_buffer(cx: &mut Context) -> anyhow::Result<()> {
     let callback = async move {
         let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor, jobs: &mut job::Jobs| {
-                let mut ctx = Context {
-                    register: None,
-                    count: None,
+                let mut cx = compositor::Context {
                     editor,
-                    callback: Vec::new(),
-                    on_next_key_callback: None,
+                    scroll: None,
                     jobs,
                 };
 
-                let output = enter_engine(|guard| {
-                    guard
-                        .with_mut_reference::<Context, Context>(&mut ctx)
-                        .consume(move |engine, args| {
-                            let context = args[0].clone();
-                            engine.update_value(CTX, context);
+                let output = with_ephemeral_context(&mut cx, move |ctx| {
+                    enter_engine(move |guard| {
+                        guard
+                            .with_mut_reference::<Context, Context>(ctx)
+                            .consume_once(move |engine, args| {
+                                let context = args.into_iter().next().unwrap();
+                                engine.update_value(CTX, context);
 
-                            match path.clone() {
-                                Some(path) => engine.compile_and_run_raw_program_with_path(
-                                    // TODO: Figure out why I have to clone this text here.
-                                    text.clone(),
-                                    PathBuf::from(path),
-                                ),
-                                None => engine.compile_and_run_raw_program(text.clone()),
-                            }
-                        })
+                                match path.clone() {
+                                    Some(path) => engine.compile_and_run_raw_program_with_path(
+                                        text,
+                                        PathBuf::from(path),
+                                    ),
+                                    None => engine.compile_and_run_raw_program(text.clone()),
+                                }
+                            })
+                    })
                 });
-
-                patch_callbacks(&mut ctx);
 
                 match output {
                     Ok(output) => {
@@ -4955,7 +4933,9 @@ pub fn load_buffer(cx: &mut Context) -> anyhow::Result<()> {
                         ));
                         compositor.replace_or_push("engine", popup);
                     }
-                    Err(e) => enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e)),
+                    Err(e) => with_ephemeral_context(&mut cx, |ctx| {
+                        enter_engine(|x| present_error_inside_engine_context(ctx, x, e))
+                    }),
                 }
             },
         );
@@ -5189,14 +5169,13 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
     let callback = async move {
         let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
-                let mut ctx = Context {
-                    register: None,
-                    count: None,
+                let mut compositor_context = compositor::Context {
                     editor,
-                    callback: Vec::new(),
-                    on_next_key_callback: None,
                     jobs,
+                    scroll: None,
                 };
+
+                let mut ctx = with_context_guard(&mut compositor_context);
 
                 let cloned_func = rooted.value();
 
@@ -5217,8 +5196,6 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
                         present_error_inside_engine_context(&mut ctx, guard, e);
                     }
                 });
-
-                patch_callbacks(&mut ctx);
             },
         );
         Ok(call)
@@ -5289,23 +5266,25 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
 
         let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
-                let mut ctx = Context {
-                    register: None,
-                    count: None,
+                let mut compositor_context = compositor::Context {
                     editor,
-                    callback: Vec::new(),
-                    on_next_key_callback: None,
                     jobs,
+                    scroll: None,
                 };
+
+                let mut ctx = with_context_guard(&mut compositor_context);
 
                 let cloned_func = rooted.value();
 
                 match future_value {
                     Ok(inner) => {
                         let callback = move |engine: &mut Engine, args: Vec<SteelVal>| {
-                            let context = args[0].clone();
+                            let context = args.into_iter().next().unwrap();
                             engine.update_value(CTX, context);
-                            engine.call_function_with_args(cloned_func.clone(), vec![inner])
+                            engine.call_function_with_args_from_mut_slice(
+                                cloned_func.clone(),
+                                &mut [inner],
+                            )
                         };
 
                         enter_engine(|guard| {
@@ -5320,8 +5299,6 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                                 present_error_inside_engine_context(&mut ctx, guard, e);
                             }
                         });
-
-                        patch_callbacks(&mut ctx);
                     }
                     Err(e) => enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e)),
                 }
@@ -5644,14 +5621,13 @@ fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
 
         let call: Box<LocalJobCallback> = Box::new(
             move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
-                let mut ctx = Context {
-                    register: None,
-                    count: None,
+                let mut compositor_context = compositor::Context {
                     editor,
-                    callback: Vec::new(),
-                    on_next_key_callback: None,
                     jobs,
+                    scroll: None,
                 };
+
+                let mut ctx = with_context_guard(&mut compositor_context);
 
                 let cloned_func = rooted.value();
 
@@ -5668,8 +5644,6 @@ fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
                                     vec![result.clone()],
                                 )
                             });
-
-                        patch_callbacks(&mut ctx);
 
                         if let Err(e) = res {
                             present_error_inside_engine_context(&mut ctx, guard, e);

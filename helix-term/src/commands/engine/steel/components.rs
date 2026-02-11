@@ -28,7 +28,7 @@ use crate::{
 
 use super::{
     enter_engine, format_docstring, is_current_generation, load_generation,
-    present_error_inside_engine_context, WrappedDynComponent, CTX,
+    present_error_inside_engine_context, with_context_guard, WrappedDynComponent, CTX,
 };
 
 #[derive(Clone)]
@@ -1953,14 +1953,7 @@ impl Component for SteelDynamicComponent {
             return;
         }
 
-        let mut ctx = Context {
-            register: None,
-            count: None,
-            editor: ctx.editor,
-            callback: Vec::new(),
-            on_next_key_callback: None,
-            jobs: ctx.jobs,
-        };
+        let mut ctx = with_context_guard(ctx);
 
         // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
         // attempting to render
@@ -1997,8 +1990,6 @@ impl Component for SteelDynamicComponent {
                 );
             }
         });
-
-        super::patch_callbacks(&mut ctx);
     }
 
     // TODO: Pass in event as well? Need to have immutable reference type
