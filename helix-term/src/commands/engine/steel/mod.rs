@@ -72,7 +72,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     config::Config,
     events::{OnModeSwitch, PostCommand, PostInsertChar},
-    job::{self, Callback},
+    job::{self, Callback, Jobs},
     keymap::{self, merge_keys, KeyTrie, KeymapResult, MappableCommand},
     ui::{self, picker::PathOrId, PickerColumn, Popup, Prompt, PromptEvent},
 };
@@ -352,6 +352,27 @@ pub fn call_with_context_and_args(
             engine.update_value(CTX, context);
             engine.call_function_with_args_from_mut_slice(func, args)
         })
+}
+
+/// Calls the given function `func` in the engine, provided that
+/// the current generation matches the existing generation. THis will update
+/// the CTX global in place so that functions can reference it without
+/// needing it passed in to the function directly.
+pub fn generation_call_with_args(
+    generation: usize,
+    ctx: &mut Context,
+    func: SteelVal,
+    args: &mut [SteelVal],
+) {
+    if let Err(e) = enter_engine(|guard| {
+        if !is_current_generation(generation) {
+            return Ok(SteelVal::Void);
+        }
+
+        call_with_context_and_args(guard, ctx, func, args)
+    }) {
+        ctx.editor.set_error(e.to_string());
+    }
 }
 
 pub struct SafepointHandler {
@@ -3380,6 +3401,31 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
     }
 }
 
+fn construct_callback<const N: usize>(
+    generation: usize,
+    func: SteelVal,
+    mut args: [SteelVal; N],
+) -> impl FnOnce(&mut Editor, &mut Compositor, &mut Jobs) + Send + 'static {
+    move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+        let mut compositor_context = compositor::Context {
+            editor,
+            jobs,
+            scroll: None,
+        };
+        let mut ctx = with_context_guard(&mut compositor_context);
+
+        enter_engine(|guard| {
+            if !is_current_generation(generation) {
+                return;
+            }
+
+            if let Err(e) = call_with_context_and_args(guard, &mut ctx, func, &mut args) {
+                present_error_inside_engine_context(&mut ctx, guard, e);
+            }
+        });
+    }
+}
+
 fn register_document_saved(
     generation: usize,
     rooted: RootedSteelVal,
@@ -3389,31 +3435,8 @@ fn register_document_saved(
     register_hook!(move |event: &mut DocumentSaved<'_>| {
         let cloned_func = rooted.value().clone();
         let doc_id = event.doc;
-
         let callback =
-            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
-                let mut compositor_context = compositor::Context {
-                    editor,
-                    jobs,
-                    scroll: None,
-                };
-                let mut ctx = with_context_guard(&mut compositor_context);
-
-                enter_engine(|guard| {
-                    if !is_current_generation(generation) {
-                        return;
-                    }
-
-                    if let Err(e) = call_with_context_and_args(
-                        guard,
-                        &mut ctx,
-                        cloned_func,
-                        &mut [doc_id.into_steelval().unwrap()],
-                    ) {
-                        present_error_inside_engine_context(&mut ctx, guard, e);
-                    }
-                });
-            };
+            construct_callback(generation, cloned_func, [doc_id.into_steelval().unwrap()]);
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
@@ -3430,31 +3453,8 @@ fn register_document_opened(
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
         let cloned_func = rooted.value().clone();
         let doc_id = event.doc;
-
         let callback =
-            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
-                let mut compositor_context = compositor::Context {
-                    editor,
-                    jobs,
-                    scroll: None,
-                };
-                let mut ctx = with_context_guard(&mut compositor_context);
-
-                enter_engine(|guard| {
-                    if !is_current_generation(generation) {
-                        return;
-                    }
-
-                    if let Err(e) = call_with_context_and_args(
-                        guard,
-                        &mut ctx,
-                        cloned_func,
-                        &mut [doc_id.into_steelval().unwrap()],
-                    ) {
-                        present_error_inside_engine_context(&mut ctx, guard, e);
-                    }
-                });
-            };
+            construct_callback(generation, cloned_func, [doc_id.into_steelval().unwrap()]);
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
@@ -3472,31 +3472,8 @@ fn register_selection_did_change(
     register_hook!(move |event: &mut SelectionDidChange<'_>| {
         let cloned_func = rooted.value().clone();
         let view_id = event.view;
-
         let callback =
-            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
-                let mut compositor_context = compositor::Context {
-                    editor,
-                    jobs,
-                    scroll: None,
-                };
-                let mut ctx = with_context_guard(&mut compositor_context);
-
-                enter_engine(|guard| {
-                    if !is_current_generation(generation) {
-                        return;
-                    }
-
-                    if let Err(e) = call_with_context_and_args(
-                        guard,
-                        &mut ctx,
-                        cloned_func,
-                        &mut [view_id.into_steelval().unwrap()],
-                    ) {
-                        present_error_inside_engine_context(&mut ctx, guard, e);
-                    }
-                });
-            };
+            construct_callback(generation, cloned_func, [view_id.into_steelval().unwrap()]);
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
@@ -3514,31 +3491,8 @@ fn register_document_focus_lost(
     register_hook!(move |event: &mut DocumentFocusLost<'_>| {
         let cloned_func = rooted.value().clone();
         let doc_id = event.doc;
-
         let callback =
-            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
-                let mut compositor_context = compositor::Context {
-                    editor,
-                    jobs,
-                    scroll: None,
-                };
-                let mut ctx = with_context_guard(&mut compositor_context);
-
-                enter_engine(|guard| {
-                    if !is_current_generation(generation) {
-                        return;
-                    }
-
-                    if let Err(e) = call_with_context_and_args(
-                        guard,
-                        &mut ctx,
-                        cloned_func,
-                        &mut [doc_id.into_steelval().unwrap()],
-                    ) {
-                        present_error_inside_engine_context(&mut ctx, guard, e);
-                    }
-                });
-            };
+            construct_callback(generation, cloned_func, [doc_id.into_steelval().unwrap()]);
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
@@ -3548,21 +3502,12 @@ fn register_document_focus_lost(
 
 fn register_post_command(generation: usize, rooted: RootedSteelVal) -> steel::UnRecoverableResult {
     register_hook!(move |event: &mut PostCommand<'_, '_>| {
-        if let Err(e) = enter_engine(|guard| {
-            if !is_current_generation(generation) {
-                return Ok(SteelVal::Void);
-            }
-
-            call_with_context_and_args(
-                guard,
-                event.cx,
-                rooted.value().clone(),
-                &mut [event.command.name().into_steelval().unwrap()],
-            )
-        }) {
-            event.cx.editor.set_error(e.to_string());
-        }
-
+        generation_call_with_args(
+            generation,
+            event.cx,
+            rooted.value().clone(),
+            &mut [event.command.name().into_steelval().unwrap()],
+        );
         Ok(())
     });
     Ok(SteelVal::Void).into()
@@ -3573,20 +3518,12 @@ fn register_post_insert_char(
     rooted: RootedSteelVal,
 ) -> steel::UnRecoverableResult {
     register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
-        if let Err(e) = enter_engine(|guard| {
-            if !is_current_generation(generation) {
-                return Ok(SteelVal::Void);
-            }
-
-            call_with_context_and_args(
-                guard,
-                event.cx,
-                rooted.value().clone(),
-                &mut [event.c.into()],
-            )
-        }) {
-            event.cx.editor.set_error(e.to_string());
-        }
+        generation_call_with_args(
+            generation,
+            event.cx,
+            rooted.value().clone(),
+            &mut [event.c.into()],
+        );
 
         Ok(())
     });
@@ -3599,25 +3536,17 @@ fn register_on_mode_switch(
     rooted: RootedSteelVal,
 ) -> steel::UnRecoverableResult {
     register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
-        if let Err(e) = enter_engine(|guard| {
-            if !is_current_generation(generation) {
-                return Ok(SteelVal::Void);
-            }
+        let minimized_event = OnModeSwitchEvent {
+            old_mode: event.old_mode,
+            new_mode: event.new_mode,
+        };
 
-            let minimized_event = OnModeSwitchEvent {
-                old_mode: event.old_mode,
-                new_mode: event.new_mode,
-            };
-
-            call_with_context_and_args(
-                guard,
-                event.cx,
-                rooted.value().clone(),
-                &mut [minimized_event.into_steelval().unwrap()],
-            )
-        }) {
-            event.cx.editor.set_error(e.to_string());
-        }
+        generation_call_with_args(
+            generation,
+            event.cx,
+            rooted.value().clone(),
+            &mut [minimized_event.into_steelval().unwrap()],
+        );
 
         Ok(())
     });
@@ -3744,479 +3673,57 @@ fn load_rope_api(engine: &mut Engine, generate_sources: bool) {
 
 fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/misc");
-
-    let mut builtin_misc_module = if generate_sources {
-        "(require-builtin helix/core/misc as helix.)".to_string()
-    } else {
-        "".to_string()
-    };
-
-    let mut template_function_arity_0 = |name: &str, doc: &str| {
-        if generate_sources {
-            let doc = format_docstring(doc);
-            builtin_misc_module.push_str(&format!(
-                r#"
-(provide {})
-;;@doc
-{}
-(define ({})
-    (helix.{} *helix.cx*))
-"#,
-                name, doc, name, name
-            ));
-        }
-    };
-
-    // Arity 0
-    module.register_fn("hx.cx->pos", cx_pos_within_text);
-    module.register_fn("cursor-position", cx_pos_within_text);
-    module.register_fn("mode-switch-old", OnModeSwitchEvent::get_old_mode);
-    module.register_fn("mode-switch-new", OnModeSwitchEvent::get_new_mode);
-
-    template_function_arity_0("hx.cx->pos", "DEPRECATED: Please use `cursor-position`");
-    template_function_arity_0(
-        "cursor-position",
-        "Returns the cursor position within the current buffer as an integer",
-    );
-
-    module.register_fn("get-active-lsp-clients", get_active_lsp_clients);
-    template_function_arity_0(
-        "get-active-lsp-clients",
-        "Get all language servers, that are attached to the current buffer",
-    );
-
-    let mut template_function_no_context = |name: &str, doc: &str| {
-        if generate_sources {
-            let docstring = format_docstring(doc);
-
-            builtin_misc_module.push_str(&format!(
-                r#"
-(provide {})
-;;@doc
-{}
-(define {} helix.{})                
-            "#,
-                name, docstring, name, name
-            ))
-        }
-    };
-
-    template_function_no_context(
-        "mode-switch-old",
-        "Return the old mode from the event payload",
-    );
-    template_function_no_context(
-        "mode-switch-new",
-        "Return the new mode from the event payload",
-    );
-
-    module.register_fn("lsp-client-initialized?", is_lsp_client_initialized);
-    template_function_no_context(
-        "lsp-client-initialized?",
-        "Return if the lsp client is initialized",
-    );
-    module.register_fn("lsp-client-name", lsp_client_name);
-    template_function_no_context("lsp-client-name", "Get the name of the lsp client");
-    module.register_fn("lsp-client-offset-encoding", lsp_client_offset_encoding);
-    template_function_no_context(
-        "lsp-client-offset-encoding",
-        "Get the offset encoding of the lsp client",
-    );
-
-    let mut template_function_arity_1 = |name: &str, doc: &str| {
-        let doc = format_docstring(doc);
-        if generate_sources {
-            builtin_misc_module.push_str(&format!(
-                r#"
-(provide {})
-;;@doc
-{}
-(define ({} arg)
-    (helix.{} *helix.cx* arg))
-"#,
-                name, doc, name, name
-            ));
-        }
-    };
-
-    macro_rules! register_1 {
-        ($name:expr, $func:expr, $doc:expr) => {{
-            module.register_fn($name, $func);
-            template_function_arity_1($name, $doc);
-        }};
-    }
-
-    // TODO: Get rid of the `hx.` prefix
-    register_1!(
-        "hx.custom-insert-newline",
-        custom_insert_newline,
-        "DEPRECATED: Please use `insert-newline-hook`"
-    );
-    register_1!(
-        "insert-newline-hook",
-        custom_insert_newline,
-        r#"Inserts a new line with the provided indentation.
-
-```scheme
-(insert-newline-hook indent-string)
-```
-
-indent-string : string?
-
-"#
-    );
-    register_1!(
-        "push-component!",
-        push_component,
-        r#"
-Push a component on to the top of the stack.
-
-```scheme
-(push-component! component)
-```
-
-component : WrappedDynComponent?
-        "#
-    );
-
-    // Arity 1
-    register_1!(
-        "pop-last-component!",
-        pop_last_component_by_name,
-        "DEPRECATED: Please use `pop-last-component-by-name!`"
-    );
-    register_1!(
-        "pop-last-component-by-name!",
-        pop_last_component_by_name,
-        r#"Pops the last component off of the stack by name. In other words,
-it removes the component matching this name from the stack.
-
-```scheme
-(pop-last-component-by-name! name)
-```
-
-name : string?
-        "#
-    );
-
-    register_1!(
-        "on-key-callback",
-        enqueue_on_next_key,
-        r#"
-Enqueue a function to be run on the next keypress. The function must accept
-a key event as an argument. This currently will only will work if the command is
-called via a keybinding.
-        "#
-    );
-
-    register_1!(
-        "trigger-on-key-callback",
-        trigger_callback,
-        r#"
-Trigger an on key callback if it exists with the specified key event.
-        "#
-    );
-
-    register_1!(
-        "enqueue-thread-local-callback",
-        enqueue_command,
-        r#"
-Enqueue a function to be run following this context of execution. This could
-be useful for yielding back to the editor in the event you want updates to happen
-before your function is run.
-
-```scheme
-(enqueue-thread-local-callback callback)
-```
-
-callback : (-> any?)
-    Function with no arguments.
-
-# Examples
-
-```scheme
-(enqueue-thread-local-callback (lambda () (theme "focus_nova")))
-```
-        "#
-    );
-
-    register_1!(
-        "set-status!",
-        set_status,
-        "Sets the content of the status line, with the info severity"
-    );
-
-    register_1!(
-        "set-warning!",
-        set_warning,
-        "Sets the content of the status line, with the warning severity"
-    );
-
-    register_1!(
-        "set-error!",
-        set_error,
-        "Sets the content of the status line, with the error severity"
-    );
-
-    module.register_fn("send-lsp-command", send_arbitrary_lsp_command);
-    module.register_fn("send-lsp-notification", send_arbitrary_lsp_notification);
-    if generate_sources {
-        builtin_misc_module.push_str(
-            r#"
-    (provide send-lsp-command)
-    ;;@doc
-    ;; Send an lsp command. The `lsp-name` must correspond to an active lsp.
-    ;; The method name corresponds to the method name that you'd expect to see
-    ;; with the lsp, and the params can be passed as a hash table. The callback
-    ;; provided will be called with whatever result is returned from the LSP,
-    ;; deserialized from json to a steel value.
-    ;; 
-    ;; # Example
-    ;; ```scheme
-    ;; (define (view-crate-graph)
-    ;;   (send-lsp-command "rust-analyzer"
-    ;;                     "rust-analyzer/viewCrateGraph"
-    ;;                     (hash "full" #f)
-    ;;                     ;; Callback to run with the result
-    ;;                     (lambda (result) (displayln result))))
-    ;; ```
-    (define (send-lsp-command lsp-name method-name params callback)
-        (helix.send-lsp-command *helix.cx* lsp-name method-name params callback))
-            "#,
-        );
-    }
-
-    if generate_sources {
-        builtin_misc_module.push_str(
-            r#"
-    (provide send-lsp-notification)
-    ;;@doc
-    ;; Send an LSP notification. The `lsp-name` must correspond to an active LSP.
-    ;; The method name corresponds to the method name that you'd expect to see
-    ;; with the LSP, and the params can be passed as a hash table. Unlike
-    ;; `send-lsp-command`, this does not expect a response and is used for
-    ;; fire-and-forget notifications.
-    ;; 
-    ;; # Example
-    ;; ```scheme
-    ;; (send-lsp-notification "copilot"
-    ;;                        "textDocument/didShowCompletion"
-    ;;                        (hash "item"
-    ;;                              (hash "insertText" "a helpful suggestion"
-    ;;                                    "range" (hash "start" (hash "line" 1 "character" 0)
-    ;;                                                  "end" (hash "line" 1 "character" 2)))))
-    ;; ```
-    (define (send-lsp-notification lsp-name method-name params)
-        (helix.send-lsp-notification *helix.cx* lsp-name method-name params))
-            "#,
-        );
-    }
-
-    module.register_fn("lsp-reply-ok", lsp_reply_ok);
-    if generate_sources {
-        builtin_misc_module.push_str(
-            r#"
-    (provide lsp-reply-ok)
-    ;;@doc
-    ;; Send a successful reply to an LSP request with the given result.
-    ;;
-    ;; ```scheme
-    ;; (lsp-reply-ok lsp-name request-id result)
-    ;; ```
-    ;; 
-    ;; * lsp-name : string? - Name of the language server
-    ;; * request-id : string? - ID of the request to respond to  
-    ;; * result : any? - The result value to send back
-    ;;
-    ;; # Examples
-    ;; ```scheme
-    ;; ;; Reply to a request with id "123" from rust-analyzer
-    ;; (lsp-reply-ok "rust-analyzer" "123" (hash "result" "value"))
-    ;; ```
-    (define (lsp-reply-ok lsp-name request-id result)
-        (helix.lsp-reply-ok *helix.cx* lsp-name request-id result))    
-            "#,
-        );
-    }
-
-    macro_rules! register_2_no_context {
-        ($name:expr, $func:expr, $doc:expr) => {{
-            module.register_fn($name, $func);
-            if generate_sources {
-                let doc = format_docstring($doc);
-                builtin_misc_module.push_str(&format!(
-                    r#"
-(provide {})
-;;@doc
-{}
-(define ({} arg1 arg2)
-    (helix.{} arg1 arg2))
-"#,
-                    $name, doc, $name, $name
-                ));
-            }
-        }};
-    }
-
-    register_2_no_context!(
-        "acquire-context-lock",
-        acquire_context_lock,
-        r#"
-Schedule a function to run on the main thread. This is a fairly low level function, and odds are
-you'll want to use some abstractions on top of this.
-
-The provided function will get enqueued to run on the main thread, and during the duration of the functions
-execution, the provided mutex will be locked.
-
-```scheme
-(acquire-context-lock callback-fn mutex)
-```
-
-callback-fn : (-> void?)
-    Function with no arguments
-
-mutex : mutex?
-"#
-    );
-
-    let mut template_function_arity_2 = |name: &str, doc: &str| {
-        if generate_sources {
-            let doc = format_docstring(doc);
-            builtin_misc_module.push_str(&format!(
-                r#"
-(provide {})
-;;@doc
-{}
-(define ({} arg1 arg2)
-    (helix.{} *helix.cx* arg1 arg2))
-"#,
-                name, doc, name, name
-            ));
-        }
-    };
-
-    macro_rules! register_2 {
-        ($name:expr, $func:expr, $doc:expr) => {{
-            module.register_fn($name, $func);
-            template_function_arity_2($name, $doc);
-        }};
-    }
-
-    // Arity 2
-    register_2!(
-        "enqueue-thread-local-callback-with-delay",
-        enqueue_command_with_delay,
-        r#"
-Enqueue a function to be run following this context of execution, after a delay. This could
-be useful for yielding back to the editor in the event you want updates to happen
-before your function is run.
-
-```scheme
-(enqueue-thread-local-callback-with-delay delay callback)
-```
-
-delay : int?
-    Time to delay the callback by in milliseconds
-
-callback : (-> any?)
-    Function with no arguments.
-
-# Examples
-
-```scheme
-(enqueue-thread-local-callback-with-delay 1000 (lambda () (theme "focus_nova"))) ;; Run after 1 second
-``
-        "#
-    );
-
-    register_2!(
-        "helix-await-callback",
-        await_value,
-        "DEPRECATED: Please use `await-callback`"
-    );
-
-    // Arity 2
-    register_2!(
-        "await-callback",
-        await_value,
-        r#"
-Await the given value, and call the callback function on once the future is completed.
-
-```scheme
-(await-callback future callback)
-```
-
-* future : future?
-* callback (-> any?)
-    Function with no arguments"#
-    );
-
-    register_2!(
-        "add-inlay-hint",
-        add_inlay_hint,
-        r#"
-Warning: this is experimental
-
-Adds an inlay hint at the given character index. Returns the (first-line, last-line) list
-associated with this snapshot of the inlay hints. Use this pair of line numbers to invalidate
-the inlay hints.
-
-```scheme
-(add-inlay-hint char-index completion) -> (list int? int?)
-```
-
-char-index : int?
-completion : string?
-
-"#
-    );
-    register_2!(
-        "remove-inlay-hint",
-        remove_inlay_hint,
-        r#"
-Warning: this is experimental and should not be used.
-This will most likely be removed soon.
-
-Removes an inlay hint at the given character index. Note - to remove
-properly, the completion must match what was already there.
-
-```scheme
-(remove-inlay-hint char-index completion)
-```
-
-char-index : int?
-completion : string?
-
-"#
-    );
-
-    register_2!(
-        "remove-inlay-hint-by-id",
-        remove_inlay_hint_by_id,
-        r#"
-Warning: this is experimental
-
-Removes an inlay hint by the id that was associated with the added inlay hints.
-
-```scheme
-(remove-inlay-hint first-line last-line)
-```
-
-first-line : int?
-last-line : int?
-
-"#
-    );
+    let builtin_misc_module = include_str!("misc.scm").to_string();
+
+    module
+        .register_fn_with_ctx(CTX, "hx.cx->pos", cx_pos_within_text)
+        .register_fn_with_ctx(CTX, "cursor-position", cx_pos_within_text)
+        .register_fn("mode-switch-old", OnModeSwitchEvent::get_old_mode)
+        .register_fn("mode-switch-new", OnModeSwitchEvent::get_new_mode)
+        .register_fn_with_ctx(CTX, "get-active-lsp-clients", get_active_lsp_clients)
+        .register_fn("lsp-client-initialized?", is_lsp_client_initialized)
+        .register_fn("lsp-client-name", lsp_client_name)
+        .register_fn("lsp-client-offset-encoding", lsp_client_offset_encoding)
+        .register_fn_with_ctx(CTX, "hx.custom-insert-newline", custom_insert_newline)
+        .register_fn_with_ctx(CTX, "insert-newline-hook", custom_insert_newline)
+        .register_fn_with_ctx(CTX, "push-component!", push_component)
+        .register_fn_with_ctx(CTX, "pop-last-component!", pop_last_component_by_name)
+        .register_fn_with_ctx(
+            CTX,
+            "pop-last-component-by-name!",
+            pop_last_component_by_name,
+        )
+        .register_fn_with_ctx(CTX, "on-key-callback", enqueue_on_next_key)
+        .register_fn_with_ctx(CTX, "trigger-on-key-callback", trigger_callback)
+        .register_fn_with_ctx(CTX, "enqueue-thread-local-callback", enqueue_command)
+        .register_fn_with_ctx(CTX, "set-status!", set_status)
+        .register_fn_with_ctx(CTX, "set-warning!", set_warning)
+        .register_fn_with_ctx(CTX, "set-error!", set_error)
+        .register_fn_with_ctx(CTX, "send-lsp-command", send_arbitrary_lsp_command)
+        .register_fn_with_ctx(
+            CTX,
+            "send-lsp-notification",
+            send_arbitrary_lsp_notification,
+        )
+        .register_fn_with_ctx(CTX, "lsp-reply-ok", lsp_reply_ok)
+        .register_fn("acquire-context-lock", acquire_context_lock)
+        .register_fn_with_ctx(
+            CTX,
+            "enqueue-thread-local-callback-with-delay",
+            enqueue_command_with_delay,
+        )
+        .register_fn_with_ctx(CTX, "helix-await-callback", await_value)
+        .register_fn_with_ctx(CTX, "await-callback", await_value)
+        .register_fn_with_ctx(CTX, "add-inlay-hint", add_inlay_hint)
+        .register_fn_with_ctx(CTX, "remove-inlay-hint", remove_inlay_hint)
+        .register_fn_with_ctx(CTX, "remove-inlay-hint-by-id", remove_inlay_hint_by_id);
 
     if generate_sources {
         generate_module("misc.scm", &builtin_misc_module);
+        configure_lsp_builtins("misc", &module);
     }
 
     engine.register_steel_module("helix/misc.scm".to_string(), builtin_misc_module);
-
-    if generate_sources {
-        configure_lsp_builtins("misc", &module);
-    }
 
     engine.register_module(module);
 }
@@ -4272,7 +3779,6 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     load_configuration_api(engine, generate_sources);
     load_typed_commands(engine, generate_sources);
     load_static_commands(engine, generate_sources);
-    // Note: This is going to be completely revamped soon.
     load_keymap_api(engine, generate_sources);
     load_rope_api(engine, generate_sources);
     load_misc_api(engine, generate_sources);
@@ -4314,14 +3820,13 @@ fn acquire_context_lock(
     let callback = move |editor: &mut Editor,
                          _compositor: &mut Compositor,
                          jobs: &mut job::Jobs| {
-        let mut ctx = Context {
-            register: None,
-            count: None,
+        let mut compositor_context = compositor::Context {
             editor,
-            callback: Vec::new(),
-            on_next_key_callback: None,
             jobs,
+            scroll: None,
         };
+
+        let mut ctx = with_context_guard(&mut compositor_context);
 
         let cloned_func = rooted.value();
         let cloned_place = rooted_place.as_ref().map(|x| x.value());
@@ -4332,7 +3837,7 @@ fn acquire_context_lock(
                 // Block until the other thread is finished in its critical
                 // section...
                 .consume(move |engine, args| {
-                    let context = args[0].clone();
+                    let context = args.into_iter().next().unwrap();
                     engine.update_value(CTX, context);
 
                     let mut lock = None;
@@ -4373,8 +3878,6 @@ fn acquire_context_lock(
                 present_error_inside_engine_context(&mut ctx, guard, e);
             }
         });
-
-        patch_callbacks(&mut ctx);
     };
     job::dispatch_blocking_jobs(callback);
 
