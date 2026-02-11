@@ -9,8 +9,8 @@ use helix_core::{
     syntax::{
         self,
         config::{
-            default_timeout, AutoPairConfig, LanguageConfiguration, LanguageServerConfiguration,
-            SoftWrap,
+            default_timeout, AutoPairConfig, GlobSet, LanguageConfiguration,
+            LanguageServerConfiguration, SoftWrap,
         },
     },
     text_annotations::InlineAnnotation,
@@ -2230,7 +2230,7 @@ impl HelixConfiguration {
             existing_config.shebangs = new_config.shebangs;
         }
 
-        if !new_config.roots.is_empty() {
+        if !new_config.roots.inner.is_empty() {
             existing_config.roots = new_config.roots;
         }
 
@@ -2377,7 +2377,10 @@ impl HelixConfiguration {
                         let glob = globset::Glob::new(&pattern)?;
                         builder.add(glob);
                     }
-                    config.required_root_patterns = Some(builder.build()?);
+                    config.required_root_patterns = Some(GlobSet {
+                        inner: builder.build()?,
+                        patterns: Vec::new(),
+                    });
                 }
             }
         } else {
@@ -2422,7 +2425,10 @@ impl HelixConfiguration {
                         let glob = globset::Glob::new(&pattern)?;
                         builder.add(glob);
                     }
-                    config.required_root_patterns = Some(builder.build()?);
+                    config.required_root_patterns = Some(GlobSet {
+                        inner: builder.build()?,
+                        patterns: Vec::new(),
+                    });
                 }
             }
 

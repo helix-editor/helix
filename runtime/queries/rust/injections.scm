@@ -108,6 +108,23 @@
   )
   (#set! injection.language "sql"))
 
+; Highlight SQL in `sqlx::query*` and `sqlx::raw_sql` functions
+(call_expression
+  function: (scoped_identifier
+    path: (identifier) @_sqlx
+    (#eq? @_sqlx "sqlx")
+    name: (identifier) @_query_function)
+  (#match? @_query_function "^query.*|raw_sql$")
+  arguments: (arguments
+    .
+    [
+      (string_literal
+        (string_content) @injection.content)
+      (raw_string_literal
+        (string_content) @injection.content)
+    ])
+  (#set! injection.language "sql"))
+
 ; Special language `tree-sitter-rust-format-args` for Rust macros,
 ; which use `format_args!` under the hood and therefore have
 ; the `format_args!` syntax.
@@ -168,3 +185,33 @@
   (#set! injection.language "rust-format-args-macro")
   (#set! injection.include-children)
 )
+
+; for some queries (e.g. when you have generic table names) you need to wrap it in `AssertSqlSafe`
+; after `format!` so it can overwrite `format!` formatting correctly.
+(call_expression
+  function: [
+    (scoped_identifier
+      path: (identifier) @_sqlx
+      (#eq? @_sqlx "sqlx")
+      name: (identifier) @_AssertSqlSafe)
+    (identifier) @_AssertSqlSafe
+  ]
+  (#eq? @_AssertSqlSafe "AssertSqlSafe")
+  arguments: (arguments
+    [
+      (string_literal
+        (string_content) @injection.content)
+      (raw_string_literal
+        (string_content) @injection.content)
+      (macro_invocation
+        macro: (identifier) @_format
+        (#eq? @_format "format")
+        (token_tree
+          [
+            (string_literal
+              (string_content) @injection.content)
+            (raw_string_literal
+              (string_content) @injection.content)
+          ]))
+    ])
+  (#set! injection.language "sql"))

@@ -1,3 +1,5 @@
+# Author: Ricardo Fernández Serrata <rudxain@gmail.com>
+
 error = "err"
 warning = "warn"
 hint = "diag"
@@ -13,15 +15,15 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 "ui.text" = "default"
 "ui.text.focus" = { bg = "sel" }
 # secondary
-"ui.cursor" = { fg = "#111111", bg = "#cccccc" }
+"ui.cursor" = { fg = "#111", bg = "#ccc" }
 # it only uses 1 cell, and it must be skimmable,
 # so force max contrast
-"ui.cursor.primary" = { fg = "#000000", bg = "#ffffff" }
-"ui.cursor.match" = { bg = "#333333" }
+"ui.cursor.primary" = { fg = "#000", bg = "#fff" }
+"ui.cursor.match" = { bg = "#333" }
 "ui.debug" = "default"
 # it feels questionable, but it's more consistent and clean than `reversed`;
 # some web-browsers do the same
-"ui.selection" = { fg = "#222222", bg = "#aaaaaa" }
+"ui.selection" = { fg = "#222", bg = "#aaa" }
 "ui.cursorline" = { bg = "sel_weak" }
 "ui.cursorcolumn" = { bg = "sel_weak" }
 "ui.virtual" = "ghost"
@@ -32,7 +34,7 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 # should be skimmable,
 # so override FG & BG to guarantee contrast
 # while also signaling that they are special text
-"ui.virtual.jump-label" = { fg = "#ffffff", bg = "sym" }
+"ui.virtual.jump-label" = { fg = "#fff", bg = "sym" }
 "ui.statusline" = { fg = "default", bg = "bg_ui" }
 "ui.bufferline" = { fg = "default", bg = "bg_ui" }
 "ui.bufferline.active" = { bg = "sel", modifiers = ["bold"] }
@@ -40,7 +42,7 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 "ui.highlight" = { bg = "sel" }
 "ui.menu" = { fg = "code", bg = "bg_ui" }
 "ui.menu.selected" = { bg = "sel" }
-"ui.popup" = { fg = "#ffffff", bg = "#333333" }
+"ui.popup" = { fg = "#fff", bg = "#333" }
 "ui.picker.header" = { modifiers = ["bold", "underlined"] }
 
 
@@ -86,25 +88,25 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 "diff.delta.conflict" = "err" # ❌
 
 [palette]
-bg = "#000000"
-bg_ui = "#111111"
-default = "#cccccc"
-default_weak = "#999999"
-ghost = "#666666"
-code = "#99cc99"
-code_unsafe = "#ffcc77"
-red = "#bb3333"
-green = "#33aa33"
-yellow = "#aaaa33"
-sel = "#333333"
+bg = "#000"
+bg_ui = "#111"
+default = "#ccc"
+default_weak = "#999"
+ghost = "#666"
+code = "#9c9"
+code_unsafe = "#fc7"
+red = "#b33"
+green = "#3a3"
+yellow = "#aa3"
+sel = "#333"
 sel_weak = "#171717"
 # I call this "eye-piercing red" because
 # it's designed to be jarring like a laser
-err = "#ff2200"
-warn = "#eedd33"
-diag = "#0077ff"
-literal = "#00dd77"
-literal_unsafe = "#ff7700"
-sym = "#11aaff"
+err = "#f20"
+warn = "#ed3"
+diag = "#07f"
+literal = "#0d7"
+literal_unsafe = "#f70"
+sym = "#1af"
 # inspired by ⭐ Gleam's "faf pink"
-doc = "#cc77cc"
+doc = "#c7c"
