@@ -597,11 +597,7 @@ pub fn format_docstring(doc: &str) -> String {
 fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/static");
 
-    let mut builtin_static_command_module = if generate_sources {
-        "(require-builtin helix/core/static as helix.static.)".to_string()
-    } else {
-        "".to_string()
-    };
+    let mut builtin_static_command_module = include_str!("static.scm").to_string();
 
     for command in TYPABLE_COMMAND_LIST {
         let func = |cx: &mut Context| {
@@ -614,33 +610,18 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
             (command.fun)(&mut cx, Args::default(), PromptEvent::Validate)
         };
 
-        module.register_fn(command.name, func);
+        module.register_fn_with_ctx(CTX, command.name, func);
     }
 
     // Register everything in the static command list as well
-    // These just accept the context, no arguments
+    // These just accept the context, no arguments. This is templated
+    // because we want to be able to pick up any new commands that
+    // are added to the built in static command list without needing
+    // to update the docs in two places.
     for command in MappableCommand::STATIC_COMMAND_LIST {
         if let MappableCommand::Static { name, fun, doc } = command {
             module.register_fn_with_ctx(CTX, name, fun);
 
-            if generate_sources {
-                let docstring = format_docstring(doc);
-
-                builtin_static_command_module.push_str(&format!(
-                    r#"
-(provide {})
-;;@doc
-{}
-(define {} helix.static.{})
-"#,
-                    name, docstring, name, name
-                ));
-            }
-        }
-    }
-
-    let mut template_function = |name: &str, doc: &str| {
-        if generate_sources {
             let docstring = format_docstring(doc);
 
             builtin_static_command_module.push_str(&format!(
@@ -653,202 +634,58 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
                 name, docstring, name, name
             ));
         }
-    };
-
-    macro_rules! function {
-        ($name:expr, $function:expr, $doc:expr) => {{
-            module.register_fn_with_ctx(CTX, $name, $function);
-            template_function($name, $doc);
-        }};
     }
 
-    // Adhoc static commands that probably needs evaluating
-    // Arity 1
-    function!(
-        "insert_char",
-        insert_char,
-        "Insert a given character at the cursor cursor position"
-    );
-    function!(
-        "insert_string",
-        insert_string,
-        "Insert a given string at the current cursor position"
-    );
+    module
+        .register_fn_with_ctx(CTX, "insert_char", insert_char)
+        .register_fn_with_ctx(CTX, "insert_string", insert_string)
+        .register_fn_with_ctx(CTX, "set-current-selection-object!", set_selection)
+        .register_fn_with_ctx(CTX, "push-range-to-selection!", push_range_to_selection)
+        .register_fn_with_ctx(
+            CTX,
+            "set-current-selection-primary-index!",
+            set_selection_primary_index,
+        )
+        .register_fn_with_ctx(
+            CTX,
+            "remove-current-selection-range!",
+            remove_selection_range,
+        )
+        .register_fn_with_ctx(CTX, "regex-selection", regex_selection)
+        .register_fn_with_ctx(CTX, "replace-selection-with", replace_selection)
+        .register_fn_with_ctx(
+            CTX,
+            "enqueue-expression-in-engine",
+            run_expression_in_engine,
+        )
+        .register_fn_with_ctx(CTX, "get-current-line-character", current_line_character)
+        .register_fn_with_ctx(CTX, "cx->current-file", current_path)
+        .register_fn_with_ctx(CTX, "current_selection", current_selection)
+        .register_fn_with_ctx(CTX, "current-selection->string", get_selection)
+        .register_fn_with_ctx(CTX, "load-buffer!", load_buffer)
+        .register_fn_with_ctx(CTX, "current-highlighted-text!", get_highlighted_text)
+        .register_fn_with_ctx(CTX, "get-current-line-number", current_line_number)
+        .register_fn_with_ctx(CTX, "get-current-column-number", current_column_number)
+        .register_fn_with_ctx(CTX, "current-selection-object", current_selection)
+        .register_fn_with_ctx(CTX, "get-helix-cwd", get_helix_cwd)
+        .register_fn_with_ctx(CTX, "move-window-far-left", move_window_to_the_left)
+        .register_fn_with_ctx(CTX, "move-window-far-right", move_window_to_the_right);
 
-    function!(
-        "set-current-selection-object!",
-        set_selection,
-        "Update the selection object to the current selection within the editor"
-    );
-    function!(
-        "push-range-to-selection!",
-        push_range_to_selection,
-        "Push a new range to a selection. The new selection will be the primary one"
-    );
-    function!(
-        "set-current-selection-primary-index!",
-        set_selection_primary_index,
-        "Set the primary index of the current selection"
-    );
-    function!(
-        "remove-current-selection-range!",
-        remove_selection_range,
-        "Remove a range from the current selection"
-    );
-
-    function!(
-        "regex-selection",
-        regex_selection,
-        "Run the given regex within the existing buffer"
-    );
-
-    function!(
-        "replace-selection-with",
-        replace_selection,
-        "Replace the existing selection with the given string"
-    );
-
-    function!(
-        "enqueue-expression-in-engine",
-        run_expression_in_engine,
-        "Enqueue an expression to run at the top level context, 
-        after the existing function context has exited."
-    );
-
-    function!(
-        "get-current-line-character",
-        current_line_character,
-        "Returns the current column number with the given position encoding"
-    );
-
-    function!(
-        "cx->current-file",
-        current_path,
-        "Get the currently focused file path"
-    );
-
-    function!(
-        "current_selection",
-        get_selection,
-        "Returns the current selection as a string"
-    );
-    function!(
-        "current-selection->string",
-        get_selection,
-        "Returns the current selection as a string"
-    );
-    function!("load-buffer!", load_buffer, "Evaluates the current buffer");
-    function!(
-        "current-highlighted-text!",
-        get_highlighted_text,
-        "Returns the currently highlighted text as a string"
-    );
-    function!(
-        "get-current-line-number",
-        current_line_number,
-        "Returns the current line number"
-    );
-    function!(
-        "get-current-column-number",
-        current_column_number,
-        "Returns the visual current column number of unicode graphemes"
-    );
-    function!(
-        "current-selection-object",
-        current_selection,
-        "Returns the current selection object"
-    );
-    function!(
-        "get-helix-cwd",
-        get_helix_cwd,
-        "Returns the current working directly that helix is using"
-    );
-    function!(
-        "move-window-far-left",
-        move_window_to_the_left,
-        "Moves the current window to the far left"
-    );
-    function!(
-        "move-window-far-right",
-        move_window_to_the_right,
-        "Moves the current window to the far right"
-    );
-
-    macro_rules! no_context {
-        ($name:expr, $function:expr, $doc:expr) => {{
-            module.register_fn($name, $function);
-            template_function($name, $doc);
-        }};
-    }
-
-    no_context!(
-        "selection->primary-index",
-        |sel: Selection| sel.primary_index(),
-        "Returns index of the primary selection"
-    );
-    no_context!(
-        "selection->primary-range",
-        |sel: Selection| sel.primary(),
-        "Returns the range for primary selection"
-    );
-    no_context!(
-        "selection->ranges",
-        |sel: Selection| sel.ranges().to_vec(),
-        "Returns all ranges of the selection"
-    );
-    no_context!(
-        "range-anchor",
-        |range: Range| range.anchor,
-        "Get the anchor of the range: the side that doesn't move when extending."
-    );
-    no_context!(
-        "range->from",
-        |range: Range| range.from(),
-        "Get the start of the range"
-    );
-    no_context!(
-        "range-head",
-        |range: Range| range.head,
-        "Get the head of the range, moved when extending."
-    );
-    no_context!(
-        "range->to",
-        |range: Range| range.to(),
-        "Get the end of the range"
-    );
-    no_context!(
-        "range->span",
-        |range: Range| (range.from(), range.to()),
-        "Get the span of the range (from, to)"
-    );
-
-    no_context!(
-        "range",
-        Range::new,
-        r#"Construct a new range object
-
-```scheme
-(range anchor head) -> Range?
-```
-        "#
-    );
-    no_context!(
-        "range->selection",
-        |range: Range| Selection::from(range),
-        "Convert a range into a selection"
-    );
-
-    module.register_fn("get-helix-scm-path", get_helix_scm_path);
-    module.register_fn("get-init-scm-path", get_init_scm_path);
-
-    template_function(
-        "get-helix-scm-path",
-        "Returns the path to the helix.scm file as a string",
-    );
-    template_function(
-        "get-init-scm-path",
-        "Returns the path to the init.scm file as a string",
-    );
+    module
+        .register_fn("selection->primary-index", |sel: Selection| {
+            sel.primary_index()
+        })
+        .register_fn("selection->primary-range", |sel: Selection| sel.primary())
+        .register_fn("selection->ranges", |sel: Selection| sel.ranges().to_vec())
+        .register_fn("range-anchor", |range: Range| range.anchor)
+        .register_fn("range->from", |range: Range| range.from())
+        .register_fn("range-head", |range: Range| range.head)
+        .register_fn("range->to", |range: Range| range.to())
+        .register_fn("range->span", |range: Range| (range.from(), range.to()))
+        .register_fn("range", Range::new)
+        .register_fn("range->selection", |range: Range| Selection::from(range))
+        .register_fn("get-helix-scm-path", get_helix_scm_path)
+        .register_fn("get-init-scm-path", get_init_scm_path);
 
     if generate_sources {
         generate_module("static.scm", &builtin_static_command_module);
@@ -899,11 +736,7 @@ fn goto_column_impl(cx: &mut Context, char_index: usize, extend: bool) {
 fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/typable".to_string());
 
-    let mut builtin_typable_command_module = if generate_sources {
-        "(require-builtin helix/core/typable as helix.)".to_string()
-    } else {
-        "".to_string()
-    };
+    let mut builtin_typable_command_module = include_str!("commands.scm").to_string();
 
     // Register everything in the typable command list. Now these are all available
     for command in TYPABLE_COMMAND_LIST {
@@ -928,11 +761,8 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 
         module.register_fn_with_ctx(CTX, command.name, func);
 
-        if generate_sources {
-            // Create an ephemeral builtin module to reference until I figure out how
-            // to wrap the functions with a reference to the engine context better.
-            builtin_typable_command_module.push_str(&format!(
-                r#"
+        builtin_typable_command_module.push_str(&format!(
+            r#"
 (provide {})
 
 ;;@doc
@@ -940,38 +770,16 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
 (define ({} . args)
     (helix.{} args))
 "#,
-                command.name,
-                format_docstring(command.doc),
-                command.name,
-                command.name
-            ));
-        }
+            command.name,
+            format_docstring(command.doc),
+            command.name,
+            command.name
+        ));
     }
 
-    module.register_fn_with_ctx(CTX, "goto-column", goto_column_impl);
-    module.register_fn_with_ctx(CTX, "goto-line", goto_line_impl);
-
-    builtin_typable_command_module.push_str(
-        r#"
-(provide goto-column)
-
-;;@doc
-;; Move the cursor to the given character index within the same line
-(define (goto-column col [extend #false])
-    (helix.goto-column col extend))
-"#,
-    );
-
-    builtin_typable_command_module.push_str(
-        r#"
-(provide goto-line)
-
-;;@doc
-;; Move the cursor to the given line
-(define (goto-line line [extend #false])
-    (helix.goto-line line extend))
-"#,
-    );
+    module
+        .register_fn_with_ctx(CTX, "goto-column", goto_column_impl)
+        .register_fn_with_ctx(CTX, "goto-line", goto_line_impl);
 
     if generate_sources {
         generate_module("commands.scm", &builtin_typable_command_module);
@@ -3772,7 +3580,6 @@ pub fn steel_lsp_home_dir() -> PathBuf {
     home_directory
 }
 
-// Embed them in the binary... first
 pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     load_editor_api(engine, generate_sources);
     load_theme_api(engine, generate_sources);
@@ -3790,7 +3597,6 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     load_high_level_keymap_api(engine, generate_sources);
     load_ext_api(engine, generate_sources);
 
-    // TODO: Remove this once all of the globals have been moved into their own modules
     if generate_sources {
         configure_lsp_globals();
 
