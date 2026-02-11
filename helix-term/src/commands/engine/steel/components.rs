@@ -658,9 +658,6 @@ fn buffer_set_string(
 
 /// A dynamic component, used for rendering
 pub struct SteelDynamicComponent {
-    // TODO: currently the component id requires using a &'static str,
-    // however in a world with dynamic components that might not be
-    // the case anymore
     name: String,
     // This _should_ be a struct, but in theory can be whatever you want. It will be the first argument
     // passed to the functions in the remainder of the struct.
@@ -696,8 +693,6 @@ impl SteelDynamicComponent {
             roots.push(value.clone().as_rooted());
         }
 
-        // Keep root tokens around? Otherwise we're not going to be
-        // able to reach these values from the runtime.
         Self {
             name,
             state,
@@ -720,7 +715,6 @@ impl SteelDynamicComponent {
     ) -> WrappedDynComponent {
         let s = Self::new(name, state, render, h);
 
-        // TODO: Add guards here for the
         WrappedDynComponent {
             inner: Some(Box::new(s)),
         }
@@ -764,8 +758,8 @@ impl Component for SteelDynamicComponent {
 
         let mut ctx = with_context_guard(ctx);
 
-        // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
-        // attempting to render
+        // Pass the `state` object through - this can be used for storing the state of whatever
+        // plugin thing we're attempting to render
         let thunk = |engine: &mut Engine, f| {
             engine.call_function_with_args_from_mut_slice(
                 self.render.clone(),
@@ -801,9 +795,6 @@ impl Component for SteelDynamicComponent {
         });
     }
 
-    // TODO: Pass in event as well? Need to have immutable reference type
-    // Otherwise, we're gonna be in a bad spot. For now - just clone the object and pass it through.
-    // Clong is _not_ ideal, but it might be all we can do for now.
     fn handle_event(
         &mut self,
         event: &Event,
