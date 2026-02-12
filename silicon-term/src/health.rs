@@ -1,4 +1,4 @@
-use crate::config::{Config, ConfigLoadError};
+use crate::config::Config;
 use silicon_core::config::{default_lang_config, user_lang_config};
 use silicon_loader::grammar::load_runtime_file;
 use std::{
@@ -116,11 +116,9 @@ pub fn clipboard() -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let config = match Config::load_default() {
-        Ok(config) => config,
-        Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
-            Config::default()
-        }
+    let config = match silicon_lua::load_config_default() {
+        Ok(lua_config) => Config::from_lua(lua_config),
+        Err(silicon_lua::LuaConfigError::NotFound) => Config::default(),
         Err(err) => {
             writeln!(stdout, "{}", "Configuration file malformed".red())?;
             writeln!(stdout, "{}", err)?;

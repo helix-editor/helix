@@ -56,6 +56,14 @@ impl Display for ConfigLoadError {
 }
 
 impl Config {
+    pub fn from_lua(lua_config: silicon_lua::LuaConfig) -> Self {
+        Config {
+            theme: Some(theme::Config::constant("onedark")),
+            keys: keymap::default(),
+            editor: lua_config.editor,
+        }
+    }
+
     pub fn load(
         global: Result<String, ConfigLoadError>,
         local: Result<String, ConfigLoadError>,

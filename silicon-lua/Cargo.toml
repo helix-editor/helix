@@ -1,0 +1,20 @@
+[package]
+name = "silicon-lua"
+description = "Lua configuration engine for Silicon editor"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+mlua.workspace = true
+silicon-core = { path = "../silicon-core" }
+silicon-view = { path = "../silicon-view" }
+silicon-loader = { path = "../silicon-loader" }
+toml.workspace = true
+log = "~0.4"
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

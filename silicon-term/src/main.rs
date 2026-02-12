@@ -1,8 +1,8 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use silicon_loader::VERSION_AND_GIT_HASH;
 use silicon_term::application::Application;
 use silicon_term::args::Args;
-use silicon_term::config::{Config, ConfigLoadError};
+use silicon_term::config::Config;
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
@@ -128,17 +128,18 @@ FLAGS:
         silicon_stdx::env::set_current_working_dir(path)?;
     }
 
-    let config = match Config::load_default() {
-        Ok(config) => config,
-        Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
+    let config = match silicon_lua::load_config_default() {
+        Ok(lua_config) => Config::from_lua(lua_config),
+        Err(silicon_lua::LuaConfigError::NotFound) => Config::default(),
+        Err(silicon_lua::LuaConfigError::TomlDetected(_)) => {
+            log::warn!("TOML config detected. Lua config expected. Run :migrate-config");
             Config::default()
         }
-        Err(ConfigLoadError::Error(err)) => return Err(Error::new(err)),
-        Err(ConfigLoadError::BadConfig(err)) => {
-            eprintln!("Bad config: {}", err);
+        Err(e) => {
+            eprintln!("Config error: {e}");
             eprintln!("Press <ENTER> to continue with default config");
             use std::io::Read;
-            let _ = std::io::stdin().read(&mut []);
+            let _ = std::io::stdin().read(&mut [0u8]);
             Config::default()
         }
     };

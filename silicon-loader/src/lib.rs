@@ -153,7 +153,7 @@ pub fn log_file() -> PathBuf {
 }
 
 pub fn workspace_config_file() -> PathBuf {
-    find_workspace().0.join(".silicon").join("config.toml")
+    find_workspace().0.join(".silicon").join("init.lua")
 }
 
 pub fn lang_config_file() -> PathBuf {
@@ -275,7 +275,7 @@ pub fn find_workspace_in(dir: impl AsRef<Path>) -> (PathBuf, bool) {
 }
 
 fn default_config_file() -> PathBuf {
-    config_dir().join("config.toml")
+    config_dir().join("init.lua")
 }
 
 fn ensure_parent_dir(path: &Path) {

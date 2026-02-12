@@ -449,8 +449,11 @@ impl Application {
 
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
-            let default_config = Config::load_default()
-                .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
+            let default_config = match silicon_lua::load_config_default() {
+                Ok(lua_config) => Config::from_lua(lua_config),
+                Err(silicon_lua::LuaConfigError::NotFound) => Config::default(),
+                Err(e) => return Err(anyhow::anyhow!("Failed to load config: {}", e)),
+            };
 
             // Update the syntax language loader before setting the theme. Setting the theme will
             // call `Loader::set_scopes` which must be done before the documents are re-parsed for

@@ -5,6 +5,7 @@ members = [
   "silicon-view",
   "silicon-term",
   "silicon-terminal",
+  "silicon-lua",
   "silicon-tui",
   "silicon-lsp-types",
   "silicon-lsp",
@@ -57,6 +58,7 @@ termina = "0.1"
 sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
+mlua = { version = "0.11", features = ["lua54", "vendored", "send", "error-send", "macros"] }
 
 [workspace.package]
 version = "25.7.1"
