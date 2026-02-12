@@ -121,6 +121,84 @@ impl<'a> Block<'a> {
         }
         inner
     }
+
+    #[cfg(feature = "steel")]
+    pub fn render_with_bounds(self, area: Rect, buf: &mut Buffer) {
+        if area.area() == 0 {
+            return;
+        }
+        buf.set_style(area, self.style);
+        let symbols = BorderType::line_symbols(self.border_type);
+
+        // Sides
+        if self.borders.intersects(Borders::LEFT) {
+            for y in area.top()..area.bottom() {
+                if let Some(cell) = buf.get_mut(area.left(), y) {
+                    cell.set_symbol(symbols.vertical)
+                        .set_style(self.border_style);
+                }
+            }
+        }
+        if self.borders.intersects(Borders::TOP) {
+            for x in area.left()..area.right() {
+                if let Some(cell) = buf.get_mut(x, area.top()) {
+                    cell.set_symbol(symbols.horizontal)
+                        .set_style(self.border_style);
+                }
+            }
+        }
+        if self.borders.intersects(Borders::RIGHT) {
+            let x = area.right() - 1;
+            for y in area.top()..area.bottom() {
+                if let Some(cell) = buf.get_mut(x, y) {
+                    cell.set_symbol(symbols.vertical)
+                        .set_style(self.border_style);
+                }
+            }
+        }
+        if self.borders.intersects(Borders::BOTTOM) {
+            let y = area.bottom() - 1;
+            for x in area.left()..area.right() {
+                if let Some(cell) = buf.get_mut(x, y) {
+                    cell.set_symbol(symbols.horizontal)
+                        .set_style(self.border_style);
+                }
+            }
+        }
+
+        // Corners
+        if self.borders.contains(Borders::RIGHT | Borders::BOTTOM) {
+            if let Some(cell) = buf.get_mut(area.right() - 1, area.bottom() - 1) {
+                cell.set_symbol(symbols.bottom_right)
+                    .set_style(self.border_style);
+            }
+        }
+        if self.borders.contains(Borders::RIGHT | Borders::TOP) {
+            if let Some(cell) = buf.get_mut(area.right() - 1, area.top()) {
+                cell.set_symbol(symbols.top_right)
+                    .set_style(self.border_style);
+            }
+        }
+        if self.borders.contains(Borders::LEFT | Borders::BOTTOM) {
+            if let Some(cell) = buf.get_mut(area.left(), area.bottom() - 1) {
+                cell.set_symbol(symbols.bottom_left)
+                    .set_style(self.border_style);
+            }
+        }
+        if self.borders.contains(Borders::LEFT | Borders::TOP) {
+            if let Some(cell) = buf.get_mut(area.left(), area.top()) {
+                cell.set_symbol(symbols.top_left)
+                    .set_style(self.border_style);
+            }
+        }
+
+        if let Some(title) = self.title {
+            let lx = u16::from(self.borders.intersects(Borders::LEFT));
+            let rx = u16::from(self.borders.intersects(Borders::RIGHT));
+            let width = area.width.saturating_sub(lx).saturating_sub(rx);
+            buf.set_spans(area.left() + lx, area.top(), &title, width);
+        }
+    }
 }
 
 impl Widget for Block<'_> {

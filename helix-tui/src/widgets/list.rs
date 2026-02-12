@@ -1,26 +1,17 @@
 use crate::{
     buffer::Buffer,
-    layout::{Corner, Rect},
-    style::Style,
+    layout::Corner,
     text::Text,
-    widgets::{Block, StatefulWidget, Widget},
+    widgets::{Block, Widget},
 };
-use std::iter::{self, Iterator};
-use unicode_width::UnicodeWidthStr;
+use helix_core::unicode::width::UnicodeWidthStr;
+use helix_view::graphics::{Rect, Style};
+use std::iter::Iterator;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct ListState {
     offset: usize,
     selected: Option<usize>,
-}
-
-impl Default for ListState {
-    fn default() -> ListState {
-        ListState {
-            offset: 0,
-            selected: None,
-        }
-    }
 }
 
 impl ListState {
@@ -131,10 +122,8 @@ impl<'a> List<'a> {
     }
 }
 
-impl<'a> StatefulWidget for List<'a> {
-    type State = ListState;
-
-    fn render(mut self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+impl List<'_> {
+    fn render_list(mut self, area: Rect, buf: &mut Buffer, state: &mut ListState) {
         buf.set_style(area, self.style);
         let list_area = match self.block.take() {
             Some(b) => {
@@ -185,9 +174,7 @@ impl<'a> StatefulWidget for List<'a> {
         state.offset = start;
 
         let highlight_symbol = self.highlight_symbol.unwrap_or("");
-        let blank_symbol = iter::repeat(" ")
-            .take(highlight_symbol.width())
-            .collect::<String>();
+        let blank_symbol = " ".repeat(highlight_symbol.width());
 
         let mut current_height = 0;
         let has_selection = state.selected.is_some();
@@ -241,9 +228,9 @@ impl<'a> StatefulWidget for List<'a> {
     }
 }
 
-impl<'a> Widget for List<'a> {
+impl Widget for List<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut state = ListState::default();
-        StatefulWidget::render(self, area, buf, &mut state);
+        Self::render_list(self, area, buf, &mut state);
     }
 }
