@@ -1214,7 +1214,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "#%raw-cursor-shape",
             HelixConfiguration::cursor_shape,
         )
-        .register_fn_with_ctx("true-color", HelixConfiguration::true_color)
+        .register_fn_with_ctx(CONFIG, "true-color", HelixConfiguration::true_color)
         .register_fn_with_ctx(
             CONFIG,
             "insert-final-newline",
