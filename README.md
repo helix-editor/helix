@@ -3,7 +3,7 @@
   <h1 style="display: inline; vertical-align: middle;">Silicon</h1>
 </div>
 
-> My personal fork of [helix-editor/helix](https://github.com/helix-editor/helix)
+> Improved fork of [helix-editor/helix](https://github.com/helix-editor/helix)
 
 ![Screenshot](./screenshot.png)
 
