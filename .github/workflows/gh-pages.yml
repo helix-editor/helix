@@ -7,6 +7,10 @@ on:
     tags:
       - '*'
 
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
