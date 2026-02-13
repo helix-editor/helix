@@ -11,7 +11,7 @@ use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
 use helix_stdx::path::home_dir;
-use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
+use helix_view::document::{DEFAULT_LANGUAGE_NAME, read_to_string};
 use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
@@ -183,12 +183,9 @@ fn buffer_close_by_ids_impl(
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
-        .filter_map(|&doc_id| {
-            if let Err(CloseError::BufferModified(name)) = cx.editor.close_document(doc_id, force) {
-                Some((doc_id, name))
-            } else {
-                None
-            }
+        .filter_map(|&doc_id| match cx.editor.close_document(doc_id, force) {
+            Err(CloseError::BufferModified(name)) => Some((doc_id, name)),
+            _ => None,
         })
         .unzip();
 
@@ -2150,14 +2147,14 @@ fn toggle_option(
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
     *value = match value {
-        Value::Bool(ref value) => {
+        &mut Value::Bool(ref value) => {
             ensure!(
                 args.len() == 1,
                 "Bad arguments. For boolean configurations use: `:toggle {key}`"
             );
             Value::Bool(!value)
         }
-        Value::String(ref value) => {
+        &mut Value::String(ref value) => {
             ensure!(
                 args.len() == 2,
                 "Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`",

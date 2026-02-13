@@ -1,14 +1,14 @@
 use crate::editor::{Action, Breakpoint};
-use crate::{align_view, Align, Editor};
+use crate::{Align, Editor, align_view};
 use dap::requests::DisconnectArguments;
 use dap::requests::ThreadsArguments;
 use helix_core::Selection;
 use helix_dap::{
-    self as dap, registry::DebugAdapterId, Client, ConnectionType, Payload, Request, ThreadId,
+    self as dap, Client, ConnectionType, Payload, Request, ThreadId, registry::DebugAdapterId,
 };
 use helix_lsp::block_on;
 use log::{error, warn};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::fmt::Write;
 use std::path::PathBuf;
 
@@ -132,7 +132,7 @@ pub fn breakpoints_changed(
                 // TODO: handle breakpoint.message
                 // TODO: verify source matches
                 breakpoint.line = dap_breakpoint.line.unwrap_or(0).saturating_sub(1); // convert to 0-indexing
-                                                                                      // TODO: no unwrap
+                // TODO: no unwrap
                 breakpoint.column = dap_breakpoint.column;
                 // TODO: verify end_linef/col instruction reference, offset
             }
@@ -149,7 +149,7 @@ impl Editor {
         id: DebugAdapterId,
         payload: helix_dap::Payload,
     ) -> bool {
-        use helix_dap::{events, Event};
+        use helix_dap::{Event, events};
 
         match payload {
             Payload::Event(event) => {

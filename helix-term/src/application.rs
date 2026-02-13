@@ -1,20 +1,19 @@
-use arc_swap::{access::Map, ArcSwap};
+use arc_swap::{ArcSwap, access::Map};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
+use helix_core::{Range, Selection, diagnostic::Severity, pos_at_coords, syntax};
 use helix_lsp::{
+    LanguageServerId, LspProgressMap,
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
-    LanguageServerId, LspProgressMap,
 };
 use helix_stdx::path::get_relative_path;
 use helix_view::{
-    align_view,
+    Align, Editor, align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
     theme,
     tree::Layout,
-    Align, Editor,
 };
 use serde_json::json;
 use tui::backend::Backend;
@@ -31,7 +30,7 @@ use crate::{
 
 use log::{debug, error, info, warn};
 use std::{
-    io::{stdin, IsTerminal},
+    io::{IsTerminal, stdin},
     path::Path,
     sync::Arc,
 };
@@ -814,7 +813,10 @@ impl Application {
                         };
                         let language_server = language_server!();
                         if !language_server.is_initialized() {
-                            log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
+                            log::error!(
+                                "Discarding publishDiagnostic notification sent by an uninitialized server: {}",
+                                language_server.name()
+                            );
                             return;
                         }
                         let provider = helix_core::diagnostic::DiagnosticProvider::Lsp {
@@ -1048,7 +1050,9 @@ impl Application {
                                             match serde_json::from_value(options) {
                                                 Ok(ops) => ops,
                                                 Err(err) => {
-                                                    log::warn!("Failed to deserialize DidChangeWatchedFilesRegistrationOptions: {err}");
+                                                    log::warn!(
+                                                        "Failed to deserialize DidChangeWatchedFilesRegistrationOptions: {err}"
+                                                    );
                                                     continue;
                                                 }
                                             };
@@ -1066,7 +1070,9 @@ impl Application {
                                         // case but that rejects the registration promise in the server which causes an
                                         // exit. So we work around this by ignoring the request and sending back an OK
                                         // response.
-                                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
+                                        log::warn!(
+                                            "Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server"
+                                        );
                                     }
                                 }
                             }
@@ -1084,7 +1090,10 @@ impl Application {
                                         .unregister(server_id, unreg.id);
                                 }
                                 _ => {
-                                    log::warn!("Received unregistration request for unsupported method: {}", unreg.method);
+                                    log::warn!(
+                                        "Received unregistration request for unsupported method: {}",
+                                        unreg.method
+                                    );
                                 }
                             }
                         }
@@ -1251,8 +1260,10 @@ impl Application {
     }
 
     #[cfg(all(not(feature = "integration"), not(windows)))]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
-        use termina::{escape::csi, Terminal as _};
+    pub fn event_stream(
+        &self,
+    ) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin + use<> {
+        use termina::{Terminal as _, escape::csi};
         let reader = self.terminal.backend().terminal().event_reader();
         termina::EventStream::new(reader, |event| {
             // Accept either non-escape sequences or theme mode updates.
@@ -1265,12 +1276,16 @@ impl Application {
     }
 
     #[cfg(all(not(feature = "integration"), windows))]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+    pub fn event_stream(
+        &self,
+    ) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin + use<> {
         crossterm::event::EventStream::new()
     }
 
     #[cfg(feature = "integration")]
-    pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
+    pub fn event_stream(
+        &self,
+    ) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin + use<> {
         use std::{
             pin::Pin,
             task::{Context, Poll},

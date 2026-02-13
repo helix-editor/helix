@@ -1,7 +1,7 @@
 use std::ops::DerefMut;
 
-use nucleo::pattern::{Atom, AtomKind, CaseMatching, Normalization};
 use nucleo::Config;
+use nucleo::pattern::{Atom, AtomKind, CaseMatching, Normalization};
 use parking_lot::Mutex;
 
 pub struct LazyMutex<T> {

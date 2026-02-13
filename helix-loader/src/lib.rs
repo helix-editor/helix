@@ -3,7 +3,7 @@ pub mod grammar;
 
 use helix_stdx::{env::current_working_dir, path};
 
-use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
+use etcetera::base_strategy::{BaseStrategy, choose_base_strategy};
 use std::path::{Path, PathBuf};
 
 pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
@@ -93,11 +93,7 @@ pub fn runtime_dirs() -> &'static [PathBuf] {
 fn find_runtime_file(rel_path: &Path) -> Option<PathBuf> {
     RUNTIME_DIRS.iter().find_map(|rt_dir| {
         let path = rt_dir.join(rel_path);
-        if path.exists() {
-            Some(path)
-        } else {
-            None
-        }
+        if path.exists() { Some(path) } else { None }
     })
 }
 
