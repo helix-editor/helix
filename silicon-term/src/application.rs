@@ -458,7 +458,9 @@ impl Application {
             // Update the syntax language loader before setting the theme. Setting the theme will
             // call `Loader::set_scopes` which must be done before the documents are re-parsed for
             // the sake of locals highlighting.
-            let lang_loader = silicon_core::config::user_lang_loader()?;
+            let lang_loader = silicon_core::config::user_lang_loader_with_overrides(
+                default_config.language_config.clone(),
+            )?;
             self.editor.syn_loader.store(Arc::new(lang_loader));
             Self::load_configured_theme(
                 &mut self.editor,

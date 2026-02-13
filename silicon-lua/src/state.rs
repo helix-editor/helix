@@ -42,11 +42,14 @@ pub fn create_lua_state() -> Result<Lua, LuaConfigError> {
         crate::theme::register_theme_api(&lua, &theme)?;
         si.set("theme", theme)?;
 
-        // si.language() and si.language_server() — stubs (Phase 5).
-        let stub_language = lua.create_function(|_, _args: mlua::MultiValue| Ok(()))?;
-        let stub_language_server = lua.create_function(|_, _args: mlua::MultiValue| Ok(()))?;
-        si.set("language", stub_language)?;
-        si.set("language_server", stub_language_server)?;
+        // si.language() and si.language_server() — language config builders.
+        crate::languages::register_language_api(&lua)?;
+        let language_fn =
+            lua.create_function(crate::languages::language_builder)?;
+        let language_server_fn =
+            lua.create_function(crate::languages::language_server_builder)?;
+        si.set("language", language_fn)?;
+        si.set("language_server", language_server_fn)?;
 
         // Runtime constants.
         si.set("platform", std::env::consts::OS)?;

@@ -18,6 +18,8 @@ pub struct Config {
     pub editor: silicon_view::editor::Config,
     /// Pre-parsed TOML data for a custom Lua-defined theme (`si.theme.define()`).
     pub custom_theme_data: Option<toml::Value>,
+    /// Language config from Lua, to be merged with built-in `languages.toml`.
+    pub language_config: Option<toml::Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -35,6 +37,7 @@ impl Default for Config {
             keys: keymap::default(),
             editor: silicon_view::editor::Config::default(),
             custom_theme_data: None,
+            language_config: None,
         }
     }
 }
@@ -144,6 +147,7 @@ impl Config {
             keys,
             editor: lua_config.editor,
             custom_theme_data,
+            language_config: lua_config.language_config,
         }
     }
 
@@ -180,6 +184,7 @@ impl Config {
                     keys,
                     editor,
                     custom_theme_data: None,
+                    language_config: None,
                 }
             }
             // if any configs are invalid return that first
@@ -200,6 +205,7 @@ impl Config {
                         |val| val.try_into().map_err(ConfigLoadError::BadConfig),
                     )?,
                     custom_theme_data: None,
+                    language_config: None,
                 }
             }
 

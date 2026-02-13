@@ -144,7 +144,10 @@ FLAGS:
         }
     };
 
-    let lang_loader = silicon_core::config::user_lang_loader().unwrap_or_else(|err| {
+    let lang_loader = silicon_core::config::user_lang_loader_with_overrides(
+        config.language_config.clone(),
+    )
+    .unwrap_or_else(|err| {
         eprintln!("{}", err);
         eprintln!("Press <ENTER> to continue with default language config");
         use std::io::Read;

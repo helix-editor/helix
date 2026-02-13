@@ -1,6 +1,7 @@
 pub mod config;
 pub mod error;
 pub mod keymap;
+pub mod languages;
 pub mod state;
 pub mod theme;
 pub mod types;
@@ -21,6 +22,8 @@ pub struct LuaConfig {
     pub explicit_editor_fields: HashSet<String>,
     pub keys: HashMap<Mode, KeyBinding>,
     pub theme: Option<ThemeConfig>,
+    /// Language config as `toml::Value` for merging with built-in `languages.toml`.
+    pub language_config: Option<toml::Value>,
 }
 
 impl LuaConfig {
@@ -40,6 +43,15 @@ impl LuaConfig {
         if other.theme.is_some() {
             self.theme = other.theme;
         }
+        // Merge language configs: workspace merges on top of global.
+        match (self.language_config.take(), other.language_config) {
+            (Some(base), Some(over)) => {
+                self.language_config =
+                    Some(silicon_loader::merge_toml_values(base, over, 3));
+            }
+            (None, some @ Some(_)) => self.language_config = some,
+            (some, None) => self.language_config = some,
+        }
     }
 }
 
@@ -56,11 +68,13 @@ pub fn load_config_from_str(source: &str) -> Result<LuaConfig, LuaConfigError> {
     let result = config::extract_editor_config(&lua)?;
     let keys = keymap::extract_keybindings(&lua)?;
     let theme = theme::extract_theme_config(&lua)?;
+    let language_config = languages::extract_language_config(&lua)?;
     Ok(LuaConfig {
         editor: result.config,
         explicit_editor_fields: result.explicit_fields,
         keys,
         theme,
+        language_config,
     })
 }
 
@@ -111,11 +125,13 @@ pub fn load_config_default() -> Result<LuaConfig, LuaConfigError> {
     let result = config::extract_editor_config(&lua)?;
     let keys = keymap::extract_keybindings(&lua)?;
     let theme = theme::extract_theme_config(&lua)?;
+    let language_config = languages::extract_language_config(&lua)?;
     Ok(LuaConfig {
         editor: result.config,
         explicit_editor_fields: result.explicit_fields,
         keys,
         theme,
+        language_config,
     })
 }
 
@@ -651,8 +667,8 @@ mod tests {
             si.theme.set("onedark")
             si.theme.adaptive({ light = "onelight", dark = "onedark" })
             si.theme.define("mytheme", {})
-            si.language({})
-            si.language_server({})
+            si.language("rust", { language_servers = { "rust-analyzer" } })
+            si.language_server("rust-analyzer", { command = "rust-analyzer" })
         "#;
         let config = load_config_from_str(source).unwrap();
         let defaults = EditorConfig::default();
@@ -661,5 +677,159 @@ mod tests {
         assert!(config.keys.contains_key(&silicon_view::document::Mode::Normal));
         // Last theme call was define(), so theme should be Custom.
         assert!(matches!(config.theme, Some(ThemeConfig::Custom { .. })));
+        // Language config should be populated.
+        assert!(config.language_config.is_some());
+    }
+
+    // --- Language config tests ---
+
+    #[test]
+    fn language_override() {
+        let config = load_config_from_str(
+            r#"
+            si.language("python", {
+                language_servers = { "pyright" },
+                auto_format = true,
+            })
+            "#,
+        )
+        .unwrap();
+        let lang_config = config.language_config.unwrap();
+        let languages = lang_config.get("language").unwrap().as_array().unwrap();
+        assert_eq!(languages.len(), 1);
+        let python = &languages[0];
+        assert_eq!(python.get("name").unwrap().as_str().unwrap(), "python");
+        // snake_case → kebab-case conversion
+        let servers = python
+            .get("language-servers")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        assert_eq!(servers[0].as_str().unwrap(), "pyright");
+        assert!(python.get("auto-format").unwrap().as_bool().unwrap());
+    }
+
+    #[test]
+    fn language_server_definition() {
+        let config = load_config_from_str(
+            r#"
+            si.language_server("rust-analyzer", {
+                command = "rust-analyzer",
+                args = {},
+            })
+            "#,
+        )
+        .unwrap();
+        let lang_config = config.language_config.unwrap();
+        let servers = lang_config
+            .get("language-server")
+            .unwrap()
+            .as_table()
+            .unwrap();
+        assert!(servers.contains_key("rust-analyzer"));
+        let ra = servers.get("rust-analyzer").unwrap();
+        assert_eq!(ra.get("command").unwrap().as_str().unwrap(), "rust-analyzer");
+    }
+
+    #[test]
+    fn language_server_config_preserves_camel_case() {
+        let config = load_config_from_str(
+            r#"
+            si.language_server("rust-analyzer", {
+                command = "rust-analyzer",
+                config = {
+                    checkOnSave = { command = "clippy" },
+                    cargo = { allFeatures = true },
+                },
+            })
+            "#,
+        )
+        .unwrap();
+        let lang_config = config.language_config.unwrap();
+        let ra = lang_config
+            .get("language-server")
+            .unwrap()
+            .get("rust-analyzer")
+            .unwrap();
+        let lsp_config = ra.get("config").unwrap();
+        // camelCase keys inside config should NOT be converted to kebab-case.
+        assert!(lsp_config.get("checkOnSave").is_some());
+        assert!(lsp_config.get("cargo").is_some());
+        assert_eq!(
+            lsp_config
+                .get("checkOnSave")
+                .unwrap()
+                .get("command")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            "clippy"
+        );
+    }
+
+    #[test]
+    fn no_languages_returns_none() {
+        let config = load_config_from_str("-- no languages").unwrap();
+        assert!(config.language_config.is_none());
+    }
+
+    #[test]
+    fn snake_to_kebab_in_language_config() {
+        let config = load_config_from_str(
+            r##"
+            si.language("mylang", {
+                file_types = { "ml" },
+                comment_token = "#",
+                language_servers = { "mylang-lsp" },
+                auto_format = true,
+                indent = { tab_width = 2, unit = "  " },
+            })
+            "##,
+        )
+        .unwrap();
+        let lang_config = config.language_config.unwrap();
+        let lang = &lang_config.get("language").unwrap().as_array().unwrap()[0];
+        // All snake_case keys should be converted to kebab-case.
+        assert!(lang.get("file-types").is_some());
+        assert!(lang.get("comment-token").is_some());
+        assert!(lang.get("language-servers").is_some());
+        assert!(lang.get("auto-format").is_some());
+        // Nested indent table should also have kebab-case keys.
+        let indent = lang.get("indent").unwrap();
+        assert!(indent.get("tab-width").is_some());
+    }
+
+    #[test]
+    fn multiple_languages_and_servers() {
+        let config = load_config_from_str(
+            r#"
+            si.language("rust", {
+                language_servers = { "rust-analyzer" },
+            })
+            si.language("python", {
+                language_servers = { "pyright" },
+                auto_format = true,
+            })
+            si.language_server("rust-analyzer", {
+                command = "rust-analyzer",
+            })
+            si.language_server("pyright", {
+                command = "pyright-langserver",
+                args = { "--stdio" },
+            })
+            "#,
+        )
+        .unwrap();
+        let lang_config = config.language_config.unwrap();
+        let languages = lang_config.get("language").unwrap().as_array().unwrap();
+        assert_eq!(languages.len(), 2);
+        let servers = lang_config
+            .get("language-server")
+            .unwrap()
+            .as_table()
+            .unwrap();
+        assert_eq!(servers.len(), 2);
+        assert!(servers.contains_key("rust-analyzer"));
+        assert!(servers.contains_key("pyright"));
     }
 }

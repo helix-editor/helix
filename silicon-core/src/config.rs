@@ -43,8 +43,21 @@ pub fn user_lang_config() -> Result<Configuration, toml::de::Error> {
 
 /// Language configuration loader based on user configured languages.toml.
 pub fn user_lang_loader() -> Result<Loader, LanguageLoaderError> {
-    let config_val =
+    user_lang_loader_with_overrides(None)
+}
+
+/// Language configuration loader that merges user `languages.toml` with
+/// optional Lua-provided language overrides.
+pub fn user_lang_loader_with_overrides(
+    lua_overrides: Option<toml::Value>,
+) -> Result<Loader, LanguageLoaderError> {
+    let mut config_val =
         silicon_loader::config::user_lang_config().map_err(LanguageLoaderError::DeserializeError)?;
+
+    if let Some(overrides) = lua_overrides {
+        config_val = silicon_loader::merge_toml_values(config_val, overrides, 3);
+    }
+
     let config = config_val.clone().try_into().map_err(|e| {
         if let Some(languages) = config_val.get("language").and_then(|v| v.as_array()) {
             for lang in languages.iter() {
