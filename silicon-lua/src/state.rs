@@ -32,12 +32,9 @@ pub fn create_lua_state() -> Result<Lua, LuaConfigError> {
         let config = lua.create_table()?;
         si.set("config", config)?;
 
-        // si.keymap — stub table with set() and set_many() (Phase 3).
+        // si.keymap — set() and set_many() for keybinding configuration.
         let keymap = lua.create_table()?;
-        let stub_set = lua.create_function(|_, _args: mlua::MultiValue| Ok(()))?;
-        let stub_set_many = lua.create_function(|_, _args: mlua::MultiValue| Ok(()))?;
-        keymap.set("set", stub_set)?;
-        keymap.set("set_many", stub_set_many)?;
+        crate::keymap::register_keymap_api(&lua, &keymap)?;
         si.set("keymap", keymap)?;
 
         // si.theme — stub table with set(), adaptive(), define() (Phase 4).

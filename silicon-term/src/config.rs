@@ -1,7 +1,9 @@
+use crate::commands::MappableCommand;
 use crate::keymap;
-use crate::keymap::{merge_keys, KeyTrie};
+use crate::keymap::{merge_keys, KeyTrie, KeyTrieNode};
 use silicon_loader::merge_toml_values;
-use silicon_view::{document::Mode, theme};
+use silicon_lua::KeyBinding;
+use silicon_view::{document::Mode, input::KeyEvent, theme};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -55,11 +57,66 @@ impl Display for ConfigLoadError {
     }
 }
 
+/// Convert a `KeyBinding` intermediate representation to a `KeyTrie`.
+fn convert_keybinding(binding: KeyBinding) -> Result<KeyTrie, String> {
+    match binding {
+        KeyBinding::Command(name) => name
+            .parse::<MappableCommand>()
+            .map(KeyTrie::MappableCommand)
+            .map_err(|e| e.to_string()),
+        KeyBinding::Sequence(names) => {
+            let cmds: Result<Vec<MappableCommand>, _> = names
+                .iter()
+                .map(|n| n.parse::<MappableCommand>())
+                .collect();
+            cmds.map(KeyTrie::Sequence).map_err(|e| e.to_string())
+        }
+        KeyBinding::Node {
+            label,
+            is_sticky,
+            map,
+            order,
+        } => {
+            let mut converted_map: HashMap<KeyEvent, KeyTrie> = HashMap::new();
+            let mut converted_order: Vec<KeyEvent> = Vec::new();
+            for key_event in &order {
+                if let Some(child) = map.get(key_event) {
+                    match convert_keybinding(child.clone()) {
+                        Ok(trie) => {
+                            converted_map.insert(*key_event, trie);
+                            converted_order.push(*key_event);
+                        }
+                        Err(e) => {
+                            log::warn!("skipping keybinding for {}: {}", key_event, e);
+                        }
+                    }
+                }
+            }
+            let mut node = KeyTrieNode::new(&label, converted_map, converted_order);
+            node.is_sticky = is_sticky;
+            Ok(KeyTrie::Node(node))
+        }
+    }
+}
+
 impl Config {
     pub fn from_lua(lua_config: silicon_lua::LuaConfig) -> Self {
+        let mut keys = keymap::default();
+        if !lua_config.keys.is_empty() {
+            let mut user_keys = HashMap::new();
+            for (mode, binding) in lua_config.keys {
+                match convert_keybinding(binding) {
+                    Ok(keytrie) => {
+                        user_keys.insert(mode, keytrie);
+                    }
+                    Err(e) => log::warn!("invalid keybinding for {:?}: {}", mode, e),
+                }
+            }
+            merge_keys(&mut keys, user_keys);
+        }
         Config {
             theme: Some(theme::Config::constant("onedark")),
-            keys: keymap::default(),
+            keys,
             editor: lua_config.editor,
         }
     }

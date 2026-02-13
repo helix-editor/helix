@@ -1,19 +1,23 @@
 pub mod config;
 pub mod error;
+pub mod keymap;
 pub mod state;
 pub mod types;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 pub use config::{apply_editor_field, LuaEditorConfig};
 pub use error::LuaConfigError;
+pub use keymap::KeyBinding;
+use silicon_view::document::Mode;
 
 /// Configuration extracted from Lua init files.
 #[derive(Debug)]
 pub struct LuaConfig {
     pub editor: silicon_view::editor::Config,
     pub explicit_editor_fields: HashSet<String>,
+    pub keys: HashMap<Mode, KeyBinding>,
 }
 
 impl LuaConfig {
@@ -25,6 +29,10 @@ impl LuaConfig {
         }
         self.explicit_editor_fields
             .extend(other.explicit_editor_fields);
+        // Merge keybindings: other's modes override/extend self's.
+        for (mode, binding) in other.keys {
+            self.keys.insert(mode, binding);
+        }
     }
 }
 
@@ -39,9 +47,11 @@ pub fn load_config_from_str(source: &str) -> Result<LuaConfig, LuaConfigError> {
     let lua = state::create_lua_state()?;
     lua.load(source).exec()?;
     let result = config::extract_editor_config(&lua)?;
+    let keys = keymap::extract_keybindings(&lua)?;
     Ok(LuaConfig {
         editor: result.config,
         explicit_editor_fields: result.explicit_fields,
+        keys,
     })
 }
 
@@ -90,9 +100,11 @@ pub fn load_config_default() -> Result<LuaConfig, LuaConfigError> {
     }
 
     let result = config::extract_editor_config(&lua)?;
+    let keys = keymap::extract_keybindings(&lua)?;
     Ok(LuaConfig {
         editor: result.config,
         explicit_editor_fields: result.explicit_fields,
+        keys,
     })
 }
 
@@ -623,8 +635,8 @@ mod tests {
     #[test]
     fn stub_apis_dont_crash() {
         let source = r#"
-            si.keymap.set("normal", "gf", "goto_file")
-            si.keymap.set_many({})
+            si.keymap.set("normal", "g", "goto_file")
+            si.keymap.set_many("normal", { k = "move_line_up" })
             si.theme.set("onedark")
             si.theme.adaptive("onedark", "onelight")
             si.theme.define("mytheme", {})
@@ -634,5 +646,7 @@ mod tests {
         let config = load_config_from_str(source).unwrap();
         let defaults = EditorConfig::default();
         assert_eq!(config.editor.scrolloff, defaults.scrolloff);
+        // Keybindings should be populated.
+        assert!(config.keys.contains_key(&silicon_view::document::Mode::Normal));
     }
 }
