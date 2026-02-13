@@ -725,6 +725,12 @@ impl CursorShapeConfig {
     pub fn from_mode(&self, mode: Mode) -> CursorKind {
         self.get(mode as usize).copied().unwrap_or_default()
     }
+
+    /// Construct from individual mode cursor kinds.
+    /// Array order: [Normal=0, Select=1, Insert=2]
+    pub fn from_modes(normal: CursorKind, select: CursorKind, insert: CursorKind) -> Self {
+        Self([normal, select, insert])
+    }
 }
 
 impl<'de> Deserialize<'de> for CursorShapeConfig {
