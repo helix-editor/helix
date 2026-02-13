@@ -52,9 +52,15 @@ pub struct RenderBuffer<'a> {
 
 pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface) {
     let base_style = if context.focused {
-        context.editor.theme.get("ui.statusline")
+        context
+            .editor
+            .theme
+            .get(context.editor.theme_context(), "ui.statusline")
     } else {
-        context.editor.theme.get("ui.statusline.inactive")
+        context
+            .editor
+            .theme
+            .get(context.editor.theme_context(), "ui.statusline.inactive")
     };
 
     surface.set_style(viewport.with_height(1), base_style);
@@ -178,12 +184,11 @@ where
         // If not focused, explicitly leave an empty space instead of returning None.
         " ".repeat(mode_str.width() + 2)
     };
-    let style = if visible && config.color_modes {
-        match context.editor.mode() {
-            Mode::Insert => context.editor.theme.get("ui.statusline.insert"),
-            Mode::Select => context.editor.theme.get("ui.statusline.select"),
-            Mode::Normal => context.editor.theme.get("ui.statusline.normal"),
-        }
+    let style = if visible {
+        context
+            .editor
+            .theme
+            .get(context.editor.theme_context(), "ui.statusline")
     } else {
         Style::default()
     };
@@ -234,24 +239,54 @@ where
     for sev in &context.editor.config().statusline.diagnostics {
         match sev {
             Severity::Hint if hints > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("hint")));
+                write(
+                    context,
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "hint"),
+                    ),
+                );
                 write(context, format!(" {} ", hints).into());
             }
             Severity::Info if info > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("info")));
+                write(
+                    context,
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "info"),
+                    ),
+                );
                 write(context, format!(" {} ", info).into());
             }
             Severity::Warning if warnings > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("warning")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "warning"),
+                    ),
                 );
                 write(context, format!(" {} ", warnings).into());
             }
             Severity::Error if errors > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("error")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "error"),
+                    ),
                 );
                 write(context, format!(" {} ", errors).into());
             }
@@ -301,24 +336,54 @@ where
     for sev in sevs_to_show {
         match sev {
             Severity::Hint if hints > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("hint")));
+                write(
+                    context,
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "hint"),
+                    ),
+                );
                 write(context, format!(" {} ", hints).into());
             }
             Severity::Info if info > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("info")));
+                write(
+                    context,
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "info"),
+                    ),
+                );
                 write(context, format!(" {} ", info).into());
             }
             Severity::Warning if warnings > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("warning")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "warning"),
+                    ),
                 );
                 write(context, format!(" {} ", warnings).into());
             }
             Severity::Error if errors > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("error")),
+                    Span::styled(
+                        "●",
+                        context
+                            .editor
+                            .theme
+                            .get(context.editor.theme_context(), "error"),
+                    ),
                 );
                 write(context, format!(" {} ", errors).into());
             }
@@ -520,7 +585,10 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let sep = &context.editor.config().statusline.separator;
-    let style = context.editor.theme.get("ui.statusline.separator");
+    let style = context
+        .editor
+        .theme
+        .get(context.editor.theme_context(), "ui.statusline.separator");
 
     write(context, Span::styled(sep.to_string(), style));
 }

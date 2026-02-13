@@ -2480,9 +2480,18 @@ fn global_search(cx: &mut Context) {
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
         file_picker_config: config.file_picker.clone(),
-        directory_style: cx.editor.theme.get("ui.text.directory"),
-        number_style: cx.editor.theme.get("constant.numeric.integer"),
-        colon_style: cx.editor.theme.get("punctuation"),
+        directory_style: cx
+            .editor
+            .theme
+            .get(cx.editor.theme_context(), "ui.text.directory"),
+        number_style: cx
+            .editor
+            .theme
+            .get(cx.editor.theme_context(), "constant.numeric.integer"),
+        colon_style: cx
+            .editor
+            .theme
+            .get(cx.editor.theme_context(), "punctuation"),
     };
 
     let columns = [
@@ -3346,11 +3355,17 @@ fn changed_file_picker(cx: &mut Context) {
         return;
     }
 
-    let added = cx.editor.theme.get("diff.plus");
-    let modified = cx.editor.theme.get("diff.delta");
-    let conflict = cx.editor.theme.get("diff.delta.conflict");
-    let deleted = cx.editor.theme.get("diff.minus");
-    let renamed = cx.editor.theme.get("diff.delta.moved");
+    let added = cx.editor.theme.get(cx.editor.theme_context(), "diff.plus");
+    let modified = cx.editor.theme.get(cx.editor.theme_context(), "diff.delta");
+    let conflict = cx
+        .editor
+        .theme
+        .get(cx.editor.theme_context(), "diff.delta.conflict");
+    let deleted = cx.editor.theme.get(cx.editor.theme_context(), "diff.minus");
+    let renamed = cx
+        .editor
+        .theme
+        .get(cx.editor.theme_context(), "diff.delta.moved");
 
     let columns = [
         PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
