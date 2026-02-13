@@ -37,6 +37,7 @@ The scripts handle everything: prerequisites, removing old installations, clonin
 Silicon is configured with Lua. Create `~/.config/silicon/init.lua`:
 
 ```lua
+-- example config
 si.theme.set("catppuccin_mocha")
 
 si.config.scrolloff = 8
