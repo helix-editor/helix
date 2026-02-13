@@ -131,9 +131,46 @@ FLAGS:
     let config = match silicon_lua::load_config_default() {
         Ok(lua_config) => Config::from_lua(lua_config),
         Err(silicon_lua::LuaConfigError::NotFound) => Config::default(),
-        Err(silicon_lua::LuaConfigError::TomlDetected(_)) => {
-            log::warn!("TOML config detected. Lua config expected. Run :migrate-config");
-            Config::default()
+        Err(silicon_lua::LuaConfigError::TomlDetected(toml_path)) => {
+            eprintln!("\nTOML config detected at: {}", toml_path.display());
+            eprintln!("Silicon now uses Lua configuration (init.lua).\n");
+            eprintln!("  [C] Convert config.toml to init.lua automatically");
+            eprintln!("  [E] Exit\n");
+            eprint!("Choice: ");
+            {
+                use std::io::Write;
+                let _ = std::io::stderr().flush();
+            }
+
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).ok();
+
+            match input.trim().to_lowercase().as_str() {
+                "c" | "convert" => {
+                    let config_dir = silicon_loader::config_dir();
+                    match silicon_lua::migration::run_migration(&config_dir) {
+                        Ok(path) => {
+                            eprintln!("\nConfig converted to: {}", path.display());
+                            eprintln!("Originals backed up as *.toml.bak\n");
+                            match silicon_lua::load_config_default() {
+                                Ok(lua_config) => Config::from_lua(lua_config),
+                                Err(e) => {
+                                    eprintln!("Error loading converted config: {e}");
+                                    Config::default()
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Migration failed: {e}");
+                            eprintln!("Starting with default config.");
+                            Config::default()
+                        }
+                    }
+                }
+                _ => {
+                    std::process::exit(0);
+                }
+            }
         }
         Err(e) => {
             eprintln!("Config error: {e}");

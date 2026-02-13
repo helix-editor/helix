@@ -2,6 +2,7 @@ pub mod config;
 pub mod error;
 pub mod keymap;
 pub mod languages;
+pub mod migration;
 pub mod state;
 pub mod theme;
 pub mod types;
