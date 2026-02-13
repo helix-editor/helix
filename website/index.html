@@ -3,55 +3,325 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Silicon</title>
+  <title>Silicon — Terminal Editor</title>
+  <meta name="description" content="The fastest, most polished terminal-based editor. ever.">
+  <meta property="og:title" content="Silicon">
+  <meta property="og:description" content="The fastest, most polished terminal-based editor. ever.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>Si</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
-      min-height: 100vh;
+    :root {
+      --bg: #08090d;
+      --surface: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.06);
+      --border-hover: rgba(255, 255, 255, 0.12);
+      --text: #f0f6fc;
+      --text-muted: #7d8590;
+      --accent: #55c5e4;
+      --purple: #706bc8;
+      --cyan: #55c5e4;
+    }
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── Noise texture overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      mix-blend-mode: overlay;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* ── Page layout ── */
+    .page {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-    }
-    .hero {
-      text-align: center;
-      max-width: 600px;
+      height: 100vh;
+      height: 100dvh;
       padding: 2rem;
+      position: relative;
+      overflow: hidden;
     }
+
+    /* ── Ambient glow ── */
+    .page::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 800px;
+      height: 600px;
+      background: radial-gradient(
+        ellipse at center,
+        rgba(112, 107, 200, 0.1) 0%,
+        rgba(85, 197, 228, 0.04) 35%,
+        transparent 65%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Content ── */
+    .content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* ── Title ── */
     h1 {
-      font-size: 4rem;
+      font-size: clamp(3.5rem, 10vw, 5.5rem);
       font-weight: 700;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.04em;
+      line-height: 1;
       margin-bottom: 1rem;
+      background: linear-gradient(
+        180deg,
+        #ffffff 30%,
+        rgba(255, 255, 255, 0.5) 100%
+      );
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-    p {
-      font-size: 1.25rem;
-      color: #8b949e;
-      margin-bottom: 2.5rem;
+
+    /* ── Tagline ── */
+    .tagline {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-muted);
       line-height: 1.6;
+      margin-bottom: 2.5rem;
+      font-weight: 400;
+      max-width: 480px;
     }
-    .btn {
-      display: inline-block;
-      padding: 0.75rem 2rem;
-      font-size: 1rem;
-      font-weight: 600;
-      color: #0d1117;
-      background: #e6edf3;
-      border-radius: 8px;
+
+    .tagline em {
+      font-style: normal;
+      color: var(--accent);
+    }
+
+    /* ── Install block ── */
+    .install-block {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem 0.65rem 1.1rem;
+      margin-bottom: 2rem;
+      max-width: 100%;
+      transition: border-color 0.15s ease;
+    }
+
+    .install-block:hover {
+      border-color: var(--border-hover);
+    }
+
+    .install-block code {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+      font-size: clamp(0.65rem, 1.4vw, 0.82rem);
+      color: var(--text-muted);
+      white-space: nowrap;
+      user-select: all;
+      line-height: 1.5;
+    }
+
+    .install-block .dollar {
+      color: var(--accent);
+      margin-right: 0.5em;
+      user-select: none;
+    }
+
+    /* ── Copy button ── */
+    .copy-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      margin-left: 0.75rem;
+      flex-shrink: 0;
+      border-radius: 6px;
+      transition: color 0.15s ease, background 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .copy-btn:hover {
+      color: var(--accent);
+      background: rgba(85, 197, 228, 0.08);
+    }
+
+    .copy-btn .icon {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+    }
+
+    .copy-btn .icon-copy  { transform: scale(1); opacity: 1; }
+    .copy-btn .icon-check { transform: scale(0); opacity: 0; color: #3fb950; }
+    .copy-btn.copied .icon-copy  { transform: scale(0); opacity: 0; }
+    .copy-btn.copied .icon-check { transform: scale(1); opacity: 1; }
+
+    /* ── Links ── */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-muted);
       text-decoration: none;
-      transition: background 0.2s;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      transition: color 0.15s ease, border-color 0.15s ease;
     }
-    .btn:hover { background: #c9d1d9; }
+
+    .links a:hover {
+      color: var(--text);
+      border-color: var(--border-hover);
+    }
+
+    .links a svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ── Staggered entrance ── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .content h1             { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+    .content .tagline       { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both; }
+    .content .install-block { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both; }
+    .content .links         { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0s !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      .page { padding: 1.5rem; }
+      .tagline { font-size: 0.95rem; margin-bottom: 2rem; }
+      .install-block {
+        padding: 0.55rem 0.65rem 0.55rem 0.85rem;
+        overflow-x: auto;
+        max-width: calc(100vw - 3rem);
+      }
+      .install-block code { font-size: 0.6rem; }
+      .links { flex-direction: column; gap: 0.5rem; width: 100%; }
+      .links a { width: 100%; justify-content: center; }
+    }
   </style>
 </head>
 <body>
-  <div class="hero">
-    <h1>Silicon</h1>
-    <p>A terminal-based code editor built for speed.</p>
-    <a href="./docs/" class="btn">Documentation</a>
+  <div class="page">
+    <div class="content">
+      <h1>Silicon</h1>
+      <p class="tagline">The fastest, most polished terminal-based editor. <em>ever.</em></p>
+
+      <div class="install-block">
+        <code><span class="dollar">$</span>curl -sSf https://raw.githubusercontent.com/Rani367/Silicon/master/install.sh | sh</code>
+        <button class="copy-btn" aria-label="Copy install command">
+          <svg class="icon icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <svg class="icon icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 12 10 18 20 6"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="links">
+        <a href="https://github.com/Rani367/Silicon">
+          <svg viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          GitHub
+        </a>
+        <a href="https://github.com/Rani367/Silicon/blob/master/docs/lua/README.md">
+          Docs
+        </a>
+      </div>
+    </div>
   </div>
+
+  <script>
+    const copyBtn = document.querySelector('.copy-btn');
+    const installCmd = 'curl -sSf https://raw.githubusercontent.com/Rani367/Silicon/master/install.sh | sh';
+    let copyTimer = null;
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(installCmd);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = installCmd;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      copyBtn.classList.add('copied');
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => copyBtn.classList.remove('copied'), 3000);
+    });
+  </script>
 </body>
 </html>
