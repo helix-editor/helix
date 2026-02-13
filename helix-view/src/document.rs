@@ -149,7 +149,10 @@ pub struct Document {
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    /// Jump label overlays for each view.
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
+    /// LSP document highlights for each view, stored as char ranges.
+    pub(crate) document_highlights: HashMap<ViewId, DocumentHighlights>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
@@ -211,6 +214,8 @@ pub struct Document {
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
+    /// Per-view task controllers for canceling in-flight document highlight requests.
+    pub document_highlight_controllers: HashMap<ViewId, TaskController>,
     pub pull_diagnostic_controller: TaskController,
 
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
@@ -224,6 +229,12 @@ pub struct DocumentColorSwatches {
     pub color_swatches: Vec<InlineAnnotation>,
     pub colors: Vec<syntax::Highlight>,
     pub color_swatches_padding: Vec<InlineAnnotation>,
+}
+
+/// Highlight ranges returned by LSP `textDocument/documentHighlight` for a view.
+#[derive(Debug, Clone, Default)]
+pub struct DocumentHighlights {
+    pub ranges: Vec<std::ops::Range<usize>>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -728,8 +739,10 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            document_highlights: HashMap::new(),
             color_swatches: None,
             color_swatch_controller: TaskController::new(),
+            document_highlight_controllers: HashMap::new(),
             syn_loader,
             previous_diagnostic_id: None,
             pull_diagnostic_controller: TaskController::new(),
@@ -1380,6 +1393,8 @@ impl Document {
         self.selections.remove(&view_id);
         self.inlay_hints.remove(&view_id);
         self.jump_labels.remove(&view_id);
+        self.document_highlights.remove(&view_id);
+        self.document_highlight_controllers.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -1529,6 +1544,28 @@ impl Document {
             apply_inlay_hint_changes(parameter_inlay_hints);
             apply_inlay_hint_changes(other_inlay_hints);
             apply_inlay_hint_changes(padding_after_inlay_hints);
+        }
+
+        for highlights in self.document_highlights.values_mut() {
+            let text_len = self.text.len_chars();
+            let mut updated = Vec::with_capacity(highlights.ranges.len());
+            for mut range in highlights.ranges.drain(..) {
+                changes.update_positions(
+                    [
+                        (&mut range.start, Assoc::After),
+                        (&mut range.end, Assoc::After),
+                    ]
+                    .into_iter(),
+                );
+                if range.start >= text_len {
+                    continue;
+                }
+                let end = range.end.min(text_len);
+                if range.start < end {
+                    updated.push(range.start..end);
+                }
+            }
+            highlights.ranges = updated;
         }
 
         helix_event::dispatch(DocumentDidChange {
@@ -2295,6 +2332,40 @@ impl Document {
 
     pub fn remove_jump_labels(&mut self, view_id: ViewId) {
         self.jump_labels.remove(&view_id);
+    }
+
+    pub fn set_document_highlights(
+        &mut self,
+        view_id: ViewId,
+        ranges: Vec<std::ops::Range<usize>>,
+    ) {
+        if ranges.is_empty() {
+            self.document_highlights.remove(&view_id);
+        } else {
+            self.document_highlights
+                .insert(view_id, DocumentHighlights { ranges });
+        }
+    }
+
+    pub fn clear_document_highlights(&mut self, view_id: ViewId) {
+        self.document_highlights.remove(&view_id);
+    }
+
+    pub fn clear_all_document_highlights(&mut self) {
+        self.document_highlights.clear();
+        self.document_highlight_controllers.clear();
+    }
+
+    pub fn document_highlights(&self, view_id: ViewId) -> Option<&[std::ops::Range<usize>]> {
+        self.document_highlights
+            .get(&view_id)
+            .map(|highlights| highlights.ranges.as_slice())
+    }
+
+    pub fn document_highlight_controller(&mut self, view_id: ViewId) -> &mut TaskController {
+        self.document_highlight_controllers
+            .entry(view_id)
+            .or_default()
     }
 
     /// Get the inlay hints for this document and `view_id`.
