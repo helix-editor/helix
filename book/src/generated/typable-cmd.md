@@ -93,3 +93,4 @@
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |
+| `:buffer-nth`, `:bi` | Switch to the nth buffer, out of those you have open. |
