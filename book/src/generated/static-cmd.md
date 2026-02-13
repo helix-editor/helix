@@ -313,3 +313,5 @@
 | `goto_prev_tabstop` | Goto next snippet placeholder |  |
 | `rotate_selections_first` | Make the first selection your primary one |  |
 | `rotate_selections_last` | Make the last selection your primary one |  |
+| `toggle_terminal_panel` | Toggle terminal panel | normal: `` <space>t ``, select: `` <space>t `` |
+| `new_terminal_tab` | Open new terminal tab | normal: `` <space>T ``, select: `` <space>T `` |

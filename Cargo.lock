@@ -2691,7 +2691,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-core"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2729,7 +2729,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-dap"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "anyhow",
  "fern",
@@ -2750,7 +2750,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-dap-types"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2758,7 +2758,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-event"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "anyhow",
  "foldhash 0.2.0",
@@ -2772,7 +2772,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-loader"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "anyhow",
  "cc",
@@ -2789,7 +2789,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-lsp"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2823,7 +2823,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-lua"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "log",
  "mlua",
@@ -2837,11 +2837,11 @@ dependencies = [
 
 [[package]]
 name = "silicon-parsec"
-version = "25.7.1"
+version = "26.2.0"
 
 [[package]]
 name = "silicon-stdx"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "bitflags 2.10.0",
  "dunce",
@@ -2859,7 +2859,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-term"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2913,7 +2913,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-terminal"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "alacritty_terminal",
  "log",
@@ -2926,7 +2926,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-tui"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "bitflags 2.10.0",
  "cassowary",
@@ -2942,7 +2942,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-vcs"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2958,7 +2958,7 @@ dependencies = [
 
 [[package]]
 name = "silicon-view"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -3952,7 +3952,7 @@ checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
 
 [[package]]
 name = "xtask"
-version = "25.7.1"
+version = "26.2.0"
 dependencies = [
  "silicon-core",
  "silicon-loader",

@@ -20,6 +20,40 @@ Updated languages and queries:
 Packaging:
 -->
 
+# 26.02 (2026-02-14)
+
+Breaking changes:
+
+* TOML configuration has been removed. Lua is now the only configuration path. An automatic TOML-to-Lua migration tool is provided — on first launch, your `config.toml` and `languages.toml` will be converted to `init.lua` with a backup saved alongside.
+
+Features:
+
+* Add built-in terminal panel powered by `alacritty_terminal` ([8f7af0f](https://github.com/helix-editor/silicon/commit/8f7af0f))
+    * Toggle with `Space+t`, open new tab with `Space+T`
+    * Ex commands: `:terminal`, `:terminal-new`, `:terminal-close`, `:terminal-next`, `:terminal-prev`
+* Add Lua configuration system replacing TOML ([a0bc41b](https://github.com/helix-editor/silicon/commit/a0bc41b))
+    * `si.config.*` — bridge all editor config fields ([6729045](https://github.com/helix-editor/silicon/commit/6729045))
+    * `si.keymap.set()` — set keybindings from Lua ([3dac903](https://github.com/helix-editor/silicon/commit/3dac903))
+    * `si.theme.set()`, `si.theme.adaptive()`, `si.theme.define()` — theme API ([e5f7ec4](https://github.com/helix-editor/silicon/commit/e5f7ec4))
+    * `si.language()` and `si.language_server()` — language and LSP configuration ([ed17244](https://github.com/helix-editor/silicon/commit/ed17244))
+* Add TOML-to-Lua config auto-migration with backup ([8e57583](https://github.com/helix-editor/silicon/commit/8e57583))
+* Add config hot-reload with `notify` file watcher ([2443f8a](https://github.com/helix-editor/silicon/commit/2443f8a))
+
+Packaging:
+
+* Rename contrib files from helix to silicon ([0b612ac](https://github.com/helix-editor/silicon/commit/0b612ac))
+* Rename shell completion files from hx to si ([60f6340](https://github.com/helix-editor/silicon/commit/60f6340))
+* Switch install scripts to download pre-built binaries from GitHub Releases ([9c67a98](https://github.com/helix-editor/silicon/commit/9c67a98))
+* Fix release CI: test assertion and Windows icon path ([be8e312](https://github.com/helix-editor/silicon/commit/be8e312))
+* Add missing `[profile.opt]` for release CI builds ([07b7f5c](https://github.com/helix-editor/silicon/commit/07b7f5c))
+* Update README with Lua config and docs links ([36f78a2](https://github.com/helix-editor/silicon/commit/36f78a2))
+* Replace Lua implementation plans with user-facing config docs ([72a811d](https://github.com/helix-editor/silicon/commit/72a811d))
+* Website landing page redesign ([0187d11](https://github.com/helix-editor/silicon/commit/0187d11))
+
+Dependencies:
+
+* Bump `tempfile`, `libc`, `gix` from upstream merge ([f90c2d3](https://github.com/helix-editor/silicon/commit/f90c2d3))
+
 # 25.07.1 (2025-07-18)
 
 This is a patch release which lowers the GLIBC requirements of the release artifacts published to GitHub ([#13983](https://github.com/helix-editor/silicon/pull/13983))

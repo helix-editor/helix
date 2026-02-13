@@ -76,8 +76,8 @@
 | `:reflow` | Hard-wrap the current selection of lines to a given width. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
-| `:config-open` | Open the user config.toml file. |
-| `:config-open-workspace` | Open the workspace config.toml file. |
+| `:config-open` | Open the user init.lua config file. |
+| `:config-open-workspace` | Open the workspace init.lua config file. |
 | `:log-open` | Open the silicon log file. |
 | `:insert-output` | Run shell command, inserting output before each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
@@ -93,4 +93,9 @@
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
+| `:terminal`, `:term` | Open the terminal panel. |
+| `:terminal-new`, `:tnew` | Open a new terminal tab. |
+| `:terminal-close`, `:tclose` | Close the active terminal tab. |
+| `:terminal-next`, `:tnext-tab` | Switch to the next terminal tab. |
+| `:terminal-prev`, `:tprev-tab` | Switch to the previous terminal tab. |
 | `:noop` | Does nothing. |

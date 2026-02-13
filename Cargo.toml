@@ -63,7 +63,7 @@ notify = { version = "8.2", default-features = false, features = ["macos_fsevent
 notify-debouncer-mini = "0.7"
 
 [workspace.package]
-version = "25.7.1"
+version = "26.2.0"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]
