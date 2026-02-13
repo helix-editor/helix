@@ -1,8 +1,9 @@
 
-| Crate           | Description                                                      |
-| -----------     | -----------                                                      |
+| Crate             | Description                                                      |
+| -----------       | -----------                                                      |
 | silicon-stdx      | Extensions to the standard library (similar to [`rust-analyzer`'s](https://github.com/rust-lang/rust-analyzer/blob/ea413f67a8f730b4211c09e103f8207c62e7dbc3/crates/stdx/Cargo.toml#L5)) |
 | silicon-core      | Core editing primitives, functional.                             |
+| silicon-lua       | Lua 5.4 configuration system (`si.config.*`, keybindings, themes, languages) |
 | silicon-lsp       | Language server client                                           |
 | silicon-lsp-types | Language Server Protocol type definitions                        |
 | silicon-dap       | Debug Adapter Protocol (DAP) client                              |
@@ -10,6 +11,7 @@
 | silicon-loader    | Functions for building, fetching, and loading external resources |
 | silicon-view      | UI abstractions for use in backends, imperative shell.           |
 | silicon-term      | Terminal UI                                                      |
+| silicon-terminal  | Built-in terminal emulation (powered by alacritty_terminal)      |
 | silicon-tui       | TUI primitives, forked from tui-rs, inspired by Cursive          |
 
 
