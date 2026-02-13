@@ -69,6 +69,14 @@ impl Config {
         }
     }
 
+    pub fn adaptive(light: &str, dark: &str, fallback: Option<&str>) -> Self {
+        Self {
+            light: light.to_owned(),
+            dark: dark.to_owned(),
+            fallback: fallback.map(|s| s.to_owned()),
+        }
+    }
+
     pub fn choose(&self, preference: Option<Mode>) -> &str {
         match preference {
             Some(Mode::Light) => &self.light,
@@ -194,6 +202,36 @@ impl Loader {
         };
 
         Ok(theme_toml)
+    }
+
+    /// Load a theme from pre-parsed TOML data (used for Lua-defined custom themes).
+    ///
+    /// Handles `inherits` by resolving parent themes through the normal loader pipeline.
+    pub fn load_from_data(&self, name: &str, data: Value) -> Result<Theme> {
+        let inherits = data.get("inherits").cloned();
+        let data = if let Some(parent_name) = inherits {
+            let parent_name = parent_name.as_str().ok_or_else(|| {
+                anyhow!("Expected 'inherits' to be a string: {}", parent_name)
+            })?;
+            let mut visited = HashSet::new();
+            let parent = match parent_name {
+                "default" => DEFAULT_THEME_DATA.clone(),
+                "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
+                _ => self.load_theme(parent_name, &mut visited)?,
+            };
+            self.merge_themes(parent, data)
+        } else {
+            data
+        };
+
+        let (theme, warnings) = Theme::from_toml(data);
+        for warning in warnings {
+            warn!("Theme '{}': {}", name, warning);
+        }
+        Ok(Theme {
+            name: name.into(),
+            ..theme
+        })
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {

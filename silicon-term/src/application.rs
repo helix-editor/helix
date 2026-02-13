@@ -509,12 +509,20 @@ impl Application {
             .theme
             .as_ref()
             .and_then(|theme_config| {
-                let theme = theme_config.choose(mode);
-                editor
-                    .theme_loader
-                    .load(theme)
+                let theme_name = theme_config.choose(mode);
+
+                // If there's custom theme data from si.theme.define(), load it directly.
+                let loaded = if let Some(data) = &config.custom_theme_data {
+                    editor
+                        .theme_loader
+                        .load_from_data(theme_name, data.clone())
+                } else {
+                    editor.theme_loader.load(theme_name)
+                };
+
+                loaded
                     .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        log::warn!("failed to load theme `{}` - {}", theme_name, e);
                         e
                     })
                     .ok()

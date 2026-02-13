@@ -2,6 +2,7 @@ pub mod config;
 pub mod error;
 pub mod keymap;
 pub mod state;
+pub mod theme;
 pub mod types;
 
 use std::collections::{HashMap, HashSet};
@@ -10,6 +11,7 @@ use std::path::Path;
 pub use config::{apply_editor_field, LuaEditorConfig};
 pub use error::LuaConfigError;
 pub use keymap::KeyBinding;
+pub use theme::ThemeConfig;
 use silicon_view::document::Mode;
 
 /// Configuration extracted from Lua init files.
@@ -18,6 +20,7 @@ pub struct LuaConfig {
     pub editor: silicon_view::editor::Config,
     pub explicit_editor_fields: HashSet<String>,
     pub keys: HashMap<Mode, KeyBinding>,
+    pub theme: Option<ThemeConfig>,
 }
 
 impl LuaConfig {
@@ -32,6 +35,10 @@ impl LuaConfig {
         // Merge keybindings: other's modes override/extend self's.
         for (mode, binding) in other.keys {
             self.keys.insert(mode, binding);
+        }
+        // Workspace theme overrides global theme.
+        if other.theme.is_some() {
+            self.theme = other.theme;
         }
     }
 }
@@ -48,10 +55,12 @@ pub fn load_config_from_str(source: &str) -> Result<LuaConfig, LuaConfigError> {
     lua.load(source).exec()?;
     let result = config::extract_editor_config(&lua)?;
     let keys = keymap::extract_keybindings(&lua)?;
+    let theme = theme::extract_theme_config(&lua)?;
     Ok(LuaConfig {
         editor: result.config,
         explicit_editor_fields: result.explicit_fields,
         keys,
+        theme,
     })
 }
 
@@ -101,10 +110,12 @@ pub fn load_config_default() -> Result<LuaConfig, LuaConfigError> {
 
     let result = config::extract_editor_config(&lua)?;
     let keys = keymap::extract_keybindings(&lua)?;
+    let theme = theme::extract_theme_config(&lua)?;
     Ok(LuaConfig {
         editor: result.config,
         explicit_editor_fields: result.explicit_fields,
         keys,
+        theme,
     })
 }
 
@@ -638,7 +649,7 @@ mod tests {
             si.keymap.set("normal", "g", "goto_file")
             si.keymap.set_many("normal", { k = "move_line_up" })
             si.theme.set("onedark")
-            si.theme.adaptive("onedark", "onelight")
+            si.theme.adaptive({ light = "onelight", dark = "onedark" })
             si.theme.define("mytheme", {})
             si.language({})
             si.language_server({})
@@ -648,5 +659,7 @@ mod tests {
         assert_eq!(config.editor.scrolloff, defaults.scrolloff);
         // Keybindings should be populated.
         assert!(config.keys.contains_key(&silicon_view::document::Mode::Normal));
+        // Last theme call was define(), so theme should be Custom.
+        assert!(matches!(config.theme, Some(ThemeConfig::Custom { .. })));
     }
 }

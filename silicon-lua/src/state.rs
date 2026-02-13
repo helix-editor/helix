@@ -37,14 +37,9 @@ pub fn create_lua_state() -> Result<Lua, LuaConfigError> {
         crate::keymap::register_keymap_api(&lua, &keymap)?;
         si.set("keymap", keymap)?;
 
-        // si.theme — stub table with set(), adaptive(), define() (Phase 4).
+        // si.theme — set(), adaptive(), define() for theme configuration.
         let theme = lua.create_table()?;
-        let stub_theme_set = lua.create_function(|_, _args: mlua::MultiValue| Ok(()))?;
-        let stub_theme_adaptive = lua.create_function(|_, _args: mlua::MultiValue| Ok(()))?;
-        let stub_theme_define = lua.create_function(|_, _args: mlua::MultiValue| Ok(()))?;
-        theme.set("set", stub_theme_set)?;
-        theme.set("adaptive", stub_theme_adaptive)?;
-        theme.set("define", stub_theme_define)?;
+        crate::theme::register_theme_api(&lua, &theme)?;
         si.set("theme", theme)?;
 
         // si.language() and si.language_server() — stubs (Phase 5).

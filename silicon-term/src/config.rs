@@ -2,7 +2,7 @@ use crate::commands::MappableCommand;
 use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie, KeyTrieNode};
 use silicon_loader::merge_toml_values;
-use silicon_lua::KeyBinding;
+use silicon_lua::{KeyBinding, ThemeConfig};
 use silicon_view::{document::Mode, input::KeyEvent, theme};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -16,6 +16,8 @@ pub struct Config {
     pub theme: Option<theme::Config>,
     pub keys: HashMap<Mode, KeyTrie>,
     pub editor: silicon_view::editor::Config,
+    /// Pre-parsed TOML data for a custom Lua-defined theme (`si.theme.define()`).
+    pub custom_theme_data: Option<toml::Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -32,6 +34,7 @@ impl Default for Config {
             theme: Some(theme::Config::constant("onedark")),
             keys: keymap::default(),
             editor: silicon_view::editor::Config::default(),
+            custom_theme_data: None,
         }
     }
 }
@@ -114,10 +117,33 @@ impl Config {
             }
             merge_keys(&mut keys, user_keys);
         }
+
+        let (theme, custom_theme_data) = match lua_config.theme {
+            Some(ThemeConfig::Named(name)) => (Some(theme::Config::constant(&name)), None),
+            Some(ThemeConfig::Adaptive {
+                light,
+                dark,
+                fallback,
+            }) => (
+                Some(theme::Config::adaptive(
+                    &light,
+                    &dark,
+                    fallback.as_deref(),
+                )),
+                None,
+            ),
+            Some(ThemeConfig::Custom { name, spec }) => {
+                let toml_data = silicon_lua::theme::theme_spec_to_toml(&spec);
+                (Some(theme::Config::constant(&name)), Some(toml_data))
+            }
+            None => (None, None),
+        };
+
         Config {
-            theme: Some(theme::Config::constant("onedark")),
+            theme,
             keys,
             editor: lua_config.editor,
+            custom_theme_data,
         }
     }
 
@@ -153,6 +179,7 @@ impl Config {
                     theme: local.theme.or(global.theme),
                     keys,
                     editor,
+                    custom_theme_data: None,
                 }
             }
             // if any configs are invalid return that first
@@ -172,6 +199,7 @@ impl Config {
                         || Ok(silicon_view::editor::Config::default()),
                         |val| val.try_into().map_err(ConfigLoadError::BadConfig),
                     )?,
+                    custom_theme_data: None,
                 }
             }
 
