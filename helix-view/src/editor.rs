@@ -2454,12 +2454,10 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
     let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
 
     if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
-        // Removes tailing whitespaces.
+        // Removes tailing whitespaces for the primary selection only, preserving existing behavior
+        let line_start_pos = text.line_to_char(range.cursor_line(text));
         let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let line_start_pos = text.line_to_char(range.cursor_line(text));
-                (line_start_pos, pos, None)
-            });
+            Transaction::change(doc.text(), [(line_start_pos, pos, None)].into_iter());
         doc.apply(&transaction, view.id);
     }
 }
