@@ -6,6 +6,7 @@ pub mod args;
 pub mod commands;
 pub mod compositor;
 pub mod config;
+pub mod config_watcher;
 pub mod events;
 pub mod health;
 pub mod job;

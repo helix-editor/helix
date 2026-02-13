@@ -23,6 +23,7 @@ use crate::{
     args::Args,
     compositor::{Compositor, Event},
     config::Config,
+    config_watcher::ConfigWatcher,
     handlers,
     job::{Callback, Jobs},
     keymap::Keymaps,
@@ -81,6 +82,7 @@ pub struct Application {
     theme_mode: Option<theme::Mode>,
 
     terminal_panel: silicon_terminal::TerminalPanel,
+    config_watcher: Option<ConfigWatcher>,
 }
 
 #[cfg(feature = "integration")]
@@ -259,6 +261,7 @@ impl Application {
         .context("build signal handler")?;
 
         let terminal_panel = silicon_terminal::TerminalPanel::new();
+        let config_watcher = ConfigWatcher::new();
 
         let app = Self {
             compositor,
@@ -270,6 +273,7 @@ impl Application {
             lsp_progress: LspProgressMap::new(),
             theme_mode,
             terminal_panel,
+            config_watcher,
         };
 
         Ok(app)
@@ -619,6 +623,15 @@ impl Application {
     }
 
     pub async fn handle_idle_timeout(&mut self) {
+        // Check for config file changes
+        if let Some(ref watcher) = self.config_watcher {
+            if watcher.poll() {
+                log::info!("Config file changed, reloading...");
+                self.refresh_config();
+                self.render().await;
+            }
+        }
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,

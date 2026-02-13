@@ -59,6 +59,8 @@ sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
 mlua = { version = "0.11", features = ["lua54", "vendored", "send", "error-send", "macros"] }
+notify = { version = "8.2", default-features = false, features = ["macos_fsevent"] }
+notify-debouncer-mini = "0.7"
 
 [workspace.package]
 version = "25.7.1"

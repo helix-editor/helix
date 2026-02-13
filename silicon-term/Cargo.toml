@@ -51,6 +51,8 @@ silicon-vcs = { path = "../silicon-vcs" }
 silicon-loader = { path = "../silicon-loader" }
 silicon-terminal = { path = "../silicon-terminal" }
 silicon-lua = { path = "../silicon-lua" }
+notify = { workspace = true }
+notify-debouncer-mini = { workspace = true }
 
 anyhow = "1"
 once_cell = "1.21"
