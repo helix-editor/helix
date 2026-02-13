@@ -2312,7 +2312,7 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     // Find the text_width by checking the following sources in order:
     //   - The passed argument in `args`
     //   - The configured text-width for this language in languages.toml
-    //   - The configured text-width in the config.toml
+    //   - The configured text-width in init.lua
     let text_width: usize = args
         .first()
         .map(|num| num.parse::<usize>())
@@ -3734,7 +3734,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "config-open",
         aliases: &[],
-        doc: "Open the user config.toml file.",
+        doc: "Open the user init.lua config file.",
         fun: open_config,
         completer: CommandCompleter::none(),
         signature: Signature {
@@ -3745,7 +3745,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "config-open-workspace",
         aliases: &[],
-        doc: "Open the workspace config.toml file.",
+        doc: "Open the workspace init.lua config file.",
         fun: open_workspace_config,
         completer: CommandCompleter::none(),
         signature: Signature {
