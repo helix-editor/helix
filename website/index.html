@@ -68,23 +68,68 @@
       overflow: hidden;
     }
 
-    /* ── Ambient glow ── */
-    .page::before {
-      content: '';
+    /* ── Aurora glow background ── */
+    .aurora {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 800px;
-      height: 600px;
-      background: radial-gradient(
-        ellipse at center,
-        rgba(112, 107, 200, 0.1) 0%,
-        rgba(85, 197, 228, 0.04) 35%,
-        transparent 65%
-      );
+      inset: 0;
+      overflow: hidden;
       pointer-events: none;
       z-index: 0;
+    }
+
+    .aurora-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      will-change: transform, opacity;
+    }
+
+    .aurora-blob-1 {
+      width: 600px;
+      height: 600px;
+      background: var(--purple);
+      top: 25%;
+      left: 35%;
+      opacity: 0.13;
+      animation: auroraDrift1 16s ease-in-out infinite alternate;
+    }
+
+    .aurora-blob-2 {
+      width: 500px;
+      height: 500px;
+      background: var(--cyan);
+      top: 45%;
+      left: 55%;
+      opacity: 0.10;
+      animation: auroraDrift2 20s ease-in-out infinite alternate;
+    }
+
+    .aurora-blob-3 {
+      width: 450px;
+      height: 450px;
+      background: linear-gradient(135deg, var(--purple), var(--cyan));
+      top: 30%;
+      left: 45%;
+      opacity: 0.07;
+      animation: auroraDrift3 14s ease-in-out infinite alternate;
+    }
+
+    @keyframes auroraDrift1 {
+      0%   { transform: translate(0, 0) scale(1); opacity: 0.13; }
+      50%  { transform: translate(-80px, 40px) scale(1.15); opacity: 0.17; }
+      100% { transform: translate(60px, -30px) scale(0.9); opacity: 0.10; }
+    }
+
+    @keyframes auroraDrift2 {
+      0%   { transform: translate(0, 0) scale(1); opacity: 0.10; }
+      50%  { transform: translate(70px, -50px) scale(1.1); opacity: 0.14; }
+      100% { transform: translate(-50px, 30px) scale(0.95); opacity: 0.07; }
+    }
+
+    @keyframes auroraDrift3 {
+      0%   { transform: translate(0, 0) scale(1); opacity: 0.07; }
+      50%  { transform: translate(-40px, -60px) scale(1.2); opacity: 0.11; }
+      100% { transform: translate(50px, 40px) scale(0.85); opacity: 0.05; }
     }
 
     /* ── Content ── */
@@ -98,21 +143,36 @@
       gap: 0;
     }
 
-    /* ── Title ── */
-    h1 {
+    /* ── Title (letter-by-letter) ── */
+    .title {
       font-size: clamp(3.5rem, 10vw, 5.5rem);
       font-weight: 700;
       letter-spacing: -0.04em;
       line-height: 1;
       margin-bottom: 1rem;
-      background: linear-gradient(
-        180deg,
-        #ffffff 30%,
-        rgba(255, 255, 255, 0.5) 100%
-      );
+      display: inline-flex;
+    }
+
+    .title-letter {
+      display: inline-block;
+      background: linear-gradient(180deg, #ffffff 30%, rgba(255, 255, 255, 0.5) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      animation: letterIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes letterIn {
+      from {
+        opacity: 0;
+        filter: blur(12px);
+        transform: translateY(30px) scale(0.85);
+      }
+      to {
+        opacity: 1;
+        filter: blur(0px);
+        transform: translateY(0) scale(1);
+      }
     }
 
     /* ── Tagline ── */
@@ -127,7 +187,34 @@
 
     .tagline em {
       font-style: normal;
-      color: var(--accent);
+      background: linear-gradient(
+        90deg,
+        var(--accent) 0%,
+        var(--accent) 30%,
+        #a8e6ff 50%,
+        var(--accent) 70%,
+        var(--accent) 100%
+      );
+      background-size: 250% 100%;
+      background-position: 100% 0;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 4s ease-in-out 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { background-position: 100% 0; }
+      50%      { background-position: 0% 0; }
+    }
+
+    /* ── Install wrapper ── */
+    .install-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 2rem;
     }
 
     /* ── Install block ── */
@@ -141,7 +228,6 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 0.65rem 0.75rem 0.65rem 1.1rem;
-      margin-bottom: 2rem;
       max-width: 100%;
       transition: border-color 0.15s ease;
     }
@@ -159,10 +245,47 @@
       line-height: 1.5;
     }
 
-    .install-block .dollar {
+    .install-block .prompt {
       color: var(--accent);
       margin-right: 0.5em;
       user-select: none;
+    }
+
+    .install-cmd {
+      transition: opacity 0.2s ease;
+    }
+
+    .install-cmd.switching {
+      opacity: 0;
+    }
+
+    /* ── Platform toggle ── */
+    .platform-toggle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .platform-switch {
+      color: var(--text-muted);
+      text-decoration: none;
+      cursor: pointer;
+      border-bottom: 1px dotted rgba(125, 133, 144, 0.4);
+      transition: color 0.15s ease, border-color 0.15s ease;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: inherit;
+      font-size: inherit;
+      padding: 0;
+    }
+
+    .platform-switch:hover {
+      color: var(--accent);
+      border-bottom-color: rgba(85, 197, 228, 0.5);
     }
 
     /* ── Copy button ── */
@@ -233,16 +356,23 @@
       height: 16px;
     }
 
-    /* ── Staggered entrance ── */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
+    /* ── Cinematic staggered entrance ── */
+    @keyframes heroFadeIn {
+      from {
+        opacity: 0;
+        filter: blur(8px);
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        filter: blur(0px);
+        transform: translateY(0);
+      }
     }
 
-    .content h1             { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
-    .content .tagline       { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both; }
-    .content .install-block { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both; }
-    .content .links         { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both; }
+    .content .tagline      { animation: heroFadeIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.9s both; }
+    .content .install-wrap  { animation: heroFadeIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.1s both; }
+    .content .links         { animation: heroFadeIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.3s both; }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -260,30 +390,47 @@
         padding: 0.55rem 0.65rem 0.55rem 0.85rem;
         overflow-x: auto;
         max-width: calc(100vw - 3rem);
+        scrollbar-width: none;
+        -ms-overflow-style: none;
       }
+      .install-block::-webkit-scrollbar { display: none; }
       .install-block code { font-size: 0.6rem; }
       .links { flex-direction: column; gap: 0.5rem; width: 100%; }
       .links a { width: 100%; justify-content: center; }
+      .aurora-blob-1 { width: 350px; height: 350px; }
+      .aurora-blob-2 { width: 300px; height: 300px; }
+      .aurora-blob-3 { width: 250px; height: 250px; }
     }
   </style>
 </head>
 <body>
   <div class="page">
+    <div class="aurora">
+      <div class="aurora-blob aurora-blob-1"></div>
+      <div class="aurora-blob aurora-blob-2"></div>
+      <div class="aurora-blob aurora-blob-3"></div>
+    </div>
+
     <div class="content">
-      <h1>Silicon</h1>
+      <h1 class="title" aria-label="Silicon"></h1>
       <p class="tagline">The fastest, most polished terminal-based editor. <em>ever.</em></p>
 
-      <div class="install-block">
-        <code><span class="dollar">$</span>curl -fL rani367.github.io/Silicon/install.sh | sh</code>
-        <button class="copy-btn" aria-label="Copy install command">
-          <svg class="icon icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-          <svg class="icon icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="4 12 10 18 20 6"/>
-          </svg>
-        </button>
+      <div class="install-wrap">
+        <div class="install-block">
+          <code><span class="prompt">$</span><span class="install-cmd"></span></code>
+          <button class="copy-btn" aria-label="Copy install command">
+            <svg class="icon icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <svg class="icon icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 12 10 18 20 6"/>
+            </svg>
+          </button>
+        </div>
+        <div class="platform-toggle">
+          <button class="platform-switch" role="button"></button>
+        </div>
       </div>
 
       <div class="links">
@@ -301,16 +448,89 @@
   </div>
 
   <script>
+    // ── Letter-by-letter title animation ──
+    (function() {
+      const title = document.querySelector('.title');
+      const text = 'Silicon';
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      text.split('').forEach((char, i) => {
+        const span = document.createElement('span');
+        span.className = 'title-letter';
+        span.textContent = char;
+        if (!prefersReduced) {
+          span.style.animationDelay = (0.08 + i * 0.07) + 's';
+        }
+        title.appendChild(span);
+      });
+    })();
+
+    // ── Platform detection & install command ──
+    const platforms = {
+      unix: {
+        cmd: 'curl -fL rani367.github.io/Silicon/install.sh | sh',
+        prompt: '$',
+        switchText: 'Using Windows?',
+        switchTarget: 'windows'
+      },
+      windows: {
+        cmd: 'irm rani367.github.io/Silicon/install.ps1 | iex',
+        prompt: '>',
+        switchText: 'Using macOS or Linux?',
+        switchTarget: 'unix'
+      }
+    };
+
+    function detectPlatform() {
+      const ua = navigator.userAgent || '';
+      const platform = navigator.platform || '';
+      if (/Win/i.test(platform) || /Windows/i.test(ua)) return 'windows';
+      return 'unix';
+    }
+
+    let currentPlatform = detectPlatform();
+
+    const cmdEl = document.querySelector('.install-cmd');
+    const promptEl = document.querySelector('.prompt');
+    const switchEl = document.querySelector('.platform-switch');
+
+    function renderPlatform(key, animate) {
+      const p = platforms[key];
+      currentPlatform = key;
+
+      if (animate) {
+        cmdEl.classList.add('switching');
+        setTimeout(() => {
+          promptEl.textContent = p.prompt;
+          cmdEl.textContent = p.cmd;
+          switchEl.textContent = p.switchText;
+          cmdEl.classList.remove('switching');
+        }, 200);
+      } else {
+        promptEl.textContent = p.prompt;
+        cmdEl.textContent = p.cmd;
+        switchEl.textContent = p.switchText;
+      }
+    }
+
+    switchEl.addEventListener('click', (e) => {
+      e.preventDefault();
+      renderPlatform(platforms[currentPlatform].switchTarget, true);
+    });
+
+    renderPlatform(currentPlatform, false);
+
+    // ── Copy button ──
     const copyBtn = document.querySelector('.copy-btn');
-    const installCmd = 'curl -fL rani367.github.io/Silicon/install.sh | sh';
     let copyTimer = null;
 
     copyBtn.addEventListener('click', async () => {
+      const cmd = platforms[currentPlatform].cmd;
       try {
-        await navigator.clipboard.writeText(installCmd);
+        await navigator.clipboard.writeText(cmd);
       } catch {
         const ta = document.createElement('textarea');
-        ta.value = installCmd;
+        ta.value = cmd;
         ta.style.position = 'fixed';
         ta.style.opacity = '0';
         document.body.appendChild(ta);
