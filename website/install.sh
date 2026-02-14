@@ -177,7 +177,11 @@ fi
 
 # ── Fetch latest release ────────────────────────────────────────────────────
 info "Fetching latest release..."
-RELEASE_JSON="$(curl -sSf "https://api.github.com/repos/$GITHUB_REPO/releases/latest")" || {
+CURL_AUTH=""
+if [ -n "$GITHUB_TOKEN" ]; then
+    CURL_AUTH="-H Authorization: token $GITHUB_TOKEN"
+fi
+RELEASE_JSON="$(curl -sSf $CURL_AUTH "https://api.github.com/repos/$GITHUB_REPO/releases/latest")" || {
     err "Failed to fetch release info from GitHub."
     err "Check your internet connection or visit https://github.com/$GITHUB_REPO/releases"
     exit 1
