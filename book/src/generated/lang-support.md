@@ -99,6 +99,7 @@
 | glimmer | ✓ |  |  |  |  | `ember-language-server` |
 | glsl | ✓ | ✓ | ✓ |  |  | `glsl_analyzer`, `glsld` |
 | gn | ✓ |  |  |  |  |  |
+| gnuplot | ✓ |  |  |  |  |  |
 | go | ✓ | ✓ | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | go-format-string | ✓ |  |  |  | ✓ |  |
 | godot-resource | ✓ | ✓ |  |  |  |  |
@@ -143,9 +144,9 @@
 | jq | ✓ | ✓ |  |  |  | `jq-lsp` |
 | jsdoc | ✓ |  |  |  |  |  |
 | json | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
-| json-ld | ✓ | ✓ | ✓ |  |  | `vscode-json-language-server` |
-| json5 | ✓ |  |  |  |  |  |
-| jsonc | ✓ |  | ✓ |  | ✓ | `vscode-json-language-server` |
+| json-ld | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
+| json5 | ✓ | ✓ | ✓ |  | ✓ |  |
+| jsonc | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ |  |  | `julia` |
@@ -286,9 +287,10 @@
 | textproto | ✓ | ✓ | ✓ |  |  |  |
 | tfvars | ✓ |  | ✓ |  |  | `terraform-ls` |
 | thrift | ✓ |  |  |  |  |  |
+| tilt | ✓ | ✓ | ✓ |  | ✓ | `tilt` |
 | tlaplus | ✓ |  |  |  |  |  |
 | todotxt | ✓ |  |  |  |  |  |
-| toml | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
+| toml | ✓ | ✓ |  | ✓ | ✓ | `taplo`, `tombi` |
 | tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |  |  |

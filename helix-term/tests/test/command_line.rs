@@ -17,6 +17,21 @@ async fn history_completion() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn prompt_reset_anchor() -> anyhow::Result<()> {
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(":string wider than the terminal window causing the anchor location to be non zero which would panic when the line is deleted<C-u>"),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
 async fn test_statusline(
     line: &str,
     expected_status: &str,

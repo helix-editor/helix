@@ -18,17 +18,17 @@
 "comment" = "fg-dim"
 
 "variable.parameter" = "cyan"
-"variable.builtin" = "magenta-cooler"
+"variable.builtin" = "magenta-warmer"
 "label" = "fg-dim" # used for language in markdown code blocks
 "keyword" = "magenta-cooler"
 "keyword.directive" = "red-cooler"
 "function" = "magenta"
-"function.macro" = "magenta-warmer"
+"function.macro" = "red-cooler"
 
 punctuation = "fg-dim"
-"tag" = "magenta"
-"attribute" = "cyan-cooler"
-"namespace" = "blue-cooler"
+"tag" = "magenta-cooler"
+"attribute" = "cyan"
+"namespace" = "cyan"
 "special" = "red-cooler"
 
 "markup.heading.marker" = "fg-dim"
@@ -60,6 +60,7 @@ punctuation = "fg-dim"
 # --------------
 
 "ui.background" = { bg = "bg-main" }
+"ui.background.separator" = { fg = "fg-dim" }
 
 "ui.linenr" = { fg = "fg-dim", bg = "bg-dim" }
 "ui.linenr.selected" = { fg = "fg-main", bg = "bg-active" }
@@ -69,29 +70,55 @@ punctuation = "fg-dim"
 "ui.statusline.normal" = { fg = "blue-warmer" }
 "ui.statusline.insert" = { fg = "green-warmer" }
 "ui.statusline.select" = { fg = "magenta-warmer" }
+"ui.statusline.separator" = { fg = "border-mode-line-active" }
+
+"ui.bufferline" = { bg = "bg-tab-bar" }
+"ui.bufferline.active" = { bg = "bg-tab-current", fg = "fg-mode-line-active" }
+"ui.bufferline.background" = { bg = "bg-tab-bar" }
 
 "ui.popup" = { fg = "fg-main", bg = "bg-dim" }
+"ui.popup.info" = { fg = "fg-main", bg = "bg-active" }
+"ui.picker.header" = { fg = "fg-main", bg = "bg-active", modifiers = ["bold"] }
+"ui.picker.header.column" = { fg = "fg-dim", bg = "bg-active" }
+"ui.picker.header.column.active" = { fg = "fg-main", bg = "bg-active", modifiers = ["bold"] }
 "ui.window" = { fg = "fg-dim" }
 "ui.help" = { fg = "fg-main", bg = "bg-active" }
 "ui.gutter" = { bg = "bg-dim" }
+"ui.debug.breakpoint" = { fg = "red-intense" }
+"ui.debug.active" = { fg = "yellow-intense" }
+"ui.debug" = { fg = "yellow-intense" }
+"ui.gutter.selected" = { bg = "bg-active" }
 "ui.text" = "fg-main"
 "ui.text.directory" = "blue"
 "ui.text.focus" = { fg = "fg-main", bg = "bg-completion", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "fg-dim" }
+"ui.text.info" = { fg = "blue-warmer" }
 "ui.virtual" = "bg-active"
 "ui.virtual.ruler" = { bg = "bg-dim" }
 "ui.virtual.inlay-hint" = { fg = "fg-dim", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.parameter" = { fg = "fg-dim", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "fg-dim", modifiers = ["italic"] }
+"ui.virtual.indent-guide" = { fg = "fg-dim" }
+"ui.virtual.whitespace" = { fg = "fg-dim" }
+"ui.virtual.wrap" = { fg = "fg-dim" }
 "ui.virtual.jump-label" = { fg = "yellow-cooler", modifiers = ["bold"] }
 
 "ui.selection" = { bg = "bg-inactive" }
 "ui.selection.primary" = { bg = "bg-active" }
 
 "ui.cursor" = { fg = "bg-main", bg = "fg-main" }
+"ui.cursor.normal" = { fg = "bg-main", bg = "fg-main" }
+"ui.cursor.insert" = { fg = "bg-main", bg = "fg-main" }
+"ui.cursor.select" = { fg = "bg-main", bg = "fg-main" }
 "ui.cursor.primary" = { fg = "bg-main", bg = "fg-dim" }
+"ui.cursor.primary.normal" = { fg = "bg-main", bg = "fg-dim" }
+"ui.cursor.primary.insert" = { fg = "bg-main", bg = "fg-dim" }
+"ui.cursor.primary.select" = { fg = "bg-main", bg = "fg-dim" }
 "ui.cursor.match" = { fg = "fg-main", bg = "bg-paren-match" }
 "ui.cursorline.primary" = { bg = "bg-hl-line" }
 
 "ui.highlight" = { bg = "bg-hl-line" }
+"ui.highlight.frameline" = { bg = "bg-paren-match" }
 
 "ui.menu" = { fg = "fg-main", bg = "bg-dim" }
 "ui.menu.selected" = { fg = "fg-main", bg = "bg-completion", modifiers = ["bold"] }
@@ -136,7 +163,7 @@ yellow-cooler = "#7a4f2f"
 yellow-faint = "#624416"
 yellow-intense = "#808000"
 blue = "#0031a9"
-blue-warmer = "#354fcf"
+blue-warmer = "#3548cf"
 blue-cooler = "#0000b0"
 blue-faint = "#003497"
 blue-intense = "#0000ff"
@@ -179,12 +206,17 @@ bg-hl-line = "#dae5ec"
 
 bg-mode-line-active = "#c8c8c8"
 fg-mode-line-active = "#000000"
+border-mode-line-active = "#5a5a5a"
 bg-mode-line-inactive = "#e6e6e6"
 fg-mode-line-inactive = "#585858"
 
 modeline-err = "#7f0000"
 modeline-warning = "#5f0070"
 modeline-info = "#002580"
+
+bg-tab-bar = "#dfdfdf"
+bg-tab-current = "#ffffff"
+bg-tab-other = "#c2c2c2"
 
 # Diffs
 bg-added = "#c1f2d1"
