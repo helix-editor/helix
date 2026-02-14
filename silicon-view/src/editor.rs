@@ -1255,6 +1255,8 @@ pub struct Editor {
     pub cursor_cache: CursorCache,
     /// Whether the command line row is currently visible (used when `commandline = false`).
     pub commandline_visible: bool,
+    /// User-defined file runners: extension → command template.
+    pub runners: HashMap<String, String>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1379,6 +1381,7 @@ impl Editor {
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
             commandline_visible: conf.commandline,
+            runners: HashMap::new(),
         }
     }
 

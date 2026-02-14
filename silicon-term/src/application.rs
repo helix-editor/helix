@@ -151,6 +151,7 @@ impl Application {
         if let Some(warning) = theme_warning {
             editor.set_error(warning);
         }
+        editor.runners = config.load().runners.clone();
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -493,6 +494,8 @@ impl Application {
             }
 
             self.terminal.reconfigure((&default_config.editor).into())?;
+            // Update runners on the editor.
+            self.editor.runners = default_config.runners.clone();
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())

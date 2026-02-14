@@ -32,6 +32,10 @@ pub fn create_lua_state() -> Result<Lua, LuaConfigError> {
         let config = lua.create_table()?;
         si.set("config", config)?;
 
+        // si.runners — empty table; user sets extension → command template pairs.
+        let runners = lua.create_table()?;
+        si.set("runners", runners)?;
+
         // si.keymap — set() and set_many() for keybinding configuration.
         let keymap = lua.create_table()?;
         crate::keymap::register_keymap_api(&lua, &keymap)?;

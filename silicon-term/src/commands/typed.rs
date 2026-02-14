@@ -2636,6 +2636,59 @@ fn prev_terminal_tab(
     Ok(())
 }
 
+fn run_file(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc!(cx.editor);
+    let path = doc
+        .path()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("Buffer has no file path"))?;
+
+    // Save the file before running.
+    let doc_id = doc!(cx.editor).id();
+    if cx.editor.documents[&doc_id].is_modified() {
+        cx.editor.save::<std::path::PathBuf>(doc_id, None, false)?;
+    }
+
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .ok_or_else(|| anyhow::anyhow!("File has no extension"))?
+        .to_string();
+
+    let template = if let Some(user_cmd) = cx.editor.runners.get(&ext) {
+        user_cmd.clone()
+    } else if let Some(builtin) = super::builtin_runner(&ext) {
+        builtin.to_string()
+    } else {
+        anyhow::bail!("No runner for .{ext}");
+    };
+
+    let expanded = super::expand_runner_template(&template, &path);
+    let cmd = format!("clear && {expanded}");
+    let shell_program = cx
+        .editor
+        .config()
+        .shell
+        .first()
+        .cloned()
+        .unwrap_or_else(|| "sh".to_string());
+    let shell = vec![shell_program];
+
+    let callback = async move {
+        Ok(Callback::RunInTerminal { shell, cmd })
+    };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
 fn reset_diff_change(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3992,6 +4045,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["tprev-tab"],
         doc: "Switch to the previous terminal tab.",
         fun: prev_terminal_tab,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "run-file",
+        aliases: &["run"],
+        doc: "Run the current file using a configured or built-in runner.",
+        fun: run_file,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),

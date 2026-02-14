@@ -618,6 +618,7 @@ impl MappableCommand {
         rotate_selections_last, "Make the last selection your primary one",
         toggle_terminal_panel, "Toggle terminal panel",
         new_terminal_tab, "Open new terminal tab",
+        run_file, "Run current file",
     );
 }
 
@@ -6976,5 +6977,107 @@ fn toggle_terminal_panel(cx: &mut Context) {
 
 fn new_terminal_tab(cx: &mut Context) {
     let callback = async move { Ok(crate::job::Callback::NewTerminalTab) };
+    cx.jobs.callback(callback);
+}
+
+/// Built-in default runners for common file extensions.
+///
+/// For C files, uses multi-file detection matching the Zed run.sh behavior:
+/// if only one file in the directory has `main()`, compile all `.c` files together;
+/// otherwise compile just the current file.
+fn builtin_runner(ext: &str) -> Option<&'static str> {
+    match ext {
+        "c" => Some(concat!(
+            "DIR=\"$(dirname \"{file}\")\" && ",
+            "MAIN_COUNT=$(grep -rl '\\bmain\\s*(' \"$DIR\"/*.c 2>/dev/null | wc -l | tr -d ' ') && ",
+            "if [ \"$MAIN_COUNT\" -gt 1 ]; then ",
+            "clang -std=c11 -Wall -Wextra -o /tmp/{name} \"{file}\" && /tmp/{name}; ",
+            "else ",
+            "clang -std=c11 -Wall -Wextra -o /tmp/{name} \"$DIR\"/*.c && /tmp/{name}; ",
+            "fi",
+        )),
+        "py" => Some("python3 \"{file}\""),
+        "rs" => Some("cargo run"),
+        "js" => Some("node \"{file}\""),
+        "ts" => Some("npx tsx \"{file}\""),
+        "go" => Some("go run \"{file}\""),
+        "cs" => Some("cd \"{dir}\" && dotnet run"),
+        "sh" => Some("bash \"{file}\""),
+        _ => None,
+    }
+}
+
+/// Expand `{file}`, `{name}`, `{dir}` placeholders in a runner command template.
+fn expand_runner_template(template: &str, path: &std::path::Path) -> String {
+    let file = path.to_string_lossy();
+    let name = path
+        .file_stem()
+        .map(|s| s.to_string_lossy())
+        .unwrap_or_default();
+    let dir = path
+        .parent()
+        .map(|p| p.to_string_lossy())
+        .unwrap_or_default();
+    template
+        .replace("{file}", &file)
+        .replace("{name}", &name)
+        .replace("{dir}", &dir)
+}
+
+fn run_file(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let path = match doc.path() {
+        Some(p) => p.clone(),
+        None => {
+            cx.editor.set_error("Buffer has no file path");
+            return;
+        }
+    };
+
+    // Save the file before running (matches Zed cmd-r → save then run).
+    let doc_id = doc!(cx.editor).id();
+    if cx.editor.documents[&doc_id].is_modified() {
+        if let Err(err) = cx.editor.save::<std::path::PathBuf>(doc_id, None, false) {
+            cx.editor.set_error(format!("Save failed: {err}"));
+            return;
+        }
+    }
+
+    let ext = match path.extension().and_then(|e| e.to_str()) {
+        Some(e) => e.to_string(),
+        None => {
+            cx.editor.set_error("File has no extension");
+            return;
+        }
+    };
+
+    // Resolve runner: user-defined first, then built-in defaults.
+    let template = if let Some(user_cmd) = cx.editor.runners.get(&ext) {
+        user_cmd.clone()
+    } else if let Some(builtin) = builtin_runner(&ext) {
+        builtin.to_string()
+    } else {
+        cx.editor
+            .set_error(format!("No runner for .{ext}"));
+        return;
+    };
+
+    let expanded = expand_runner_template(&template, &path);
+    // Clear terminal before running, matching Zed behavior.
+    let cmd = format!("clear && {expanded}");
+    // Only pass the shell program (e.g. "/bin/sh"), not "-c" — the terminal
+    // spawns an interactive shell and types the command into it.
+    let shell_program = cx
+        .editor
+        .config()
+        .shell
+        .first()
+        .cloned()
+        .unwrap_or_else(|| "sh".to_string());
+    let shell = vec![shell_program];
+
+    let callback = async move {
+        Ok(crate::job::Callback::RunInTerminal { shell, cmd })
+    };
     cx.jobs.callback(callback);
 }

@@ -3,6 +3,7 @@ pub mod error;
 pub mod keymap;
 pub mod languages;
 pub mod migration;
+pub mod runners;
 pub mod state;
 pub mod theme;
 pub mod types;
@@ -25,6 +26,8 @@ pub struct LuaConfig {
     pub theme: Option<ThemeConfig>,
     /// Language config as `toml::Value` for merging with built-in `languages.toml`.
     pub language_config: Option<toml::Value>,
+    /// User-defined file runners: extension → command template.
+    pub runners: HashMap<String, String>,
 }
 
 impl LuaConfig {
@@ -53,6 +56,8 @@ impl LuaConfig {
             (None, some @ Some(_)) => self.language_config = some,
             (some, None) => self.language_config = some,
         }
+        // Merge runners: workspace overrides global per-extension.
+        self.runners.extend(other.runners);
     }
 }
 
@@ -70,12 +75,14 @@ pub fn load_config_from_str(source: &str) -> Result<LuaConfig, LuaConfigError> {
     let keys = keymap::extract_keybindings(&lua)?;
     let theme = theme::extract_theme_config(&lua)?;
     let language_config = languages::extract_language_config(&lua)?;
+    let runners = runners::extract_runners(&lua)?;
     Ok(LuaConfig {
         editor: result.config,
         explicit_editor_fields: result.explicit_fields,
         keys,
         theme,
         language_config,
+        runners,
     })
 }
 
@@ -127,12 +134,14 @@ pub fn load_config_default() -> Result<LuaConfig, LuaConfigError> {
     let keys = keymap::extract_keybindings(&lua)?;
     let theme = theme::extract_theme_config(&lua)?;
     let language_config = languages::extract_language_config(&lua)?;
+    let runners = runners::extract_runners(&lua)?;
     Ok(LuaConfig {
         editor: result.config,
         explicit_editor_fields: result.explicit_fields,
         keys,
         theme,
         language_config,
+        runners,
     })
 }
 
@@ -772,6 +781,45 @@ mod tests {
     fn no_languages_returns_none() {
         let config = load_config_from_str("-- no languages").unwrap();
         assert!(config.language_config.is_none());
+    }
+
+    // --- Runners ---
+
+    #[test]
+    fn empty_runners() {
+        let config = load_config_from_str("-- nothing").unwrap();
+        assert!(config.runners.is_empty());
+    }
+
+    #[test]
+    fn runners_extraction() {
+        let config = load_config_from_str(
+            r##"
+            si.runners.py = "python3 {file}"
+            si.runners.rs = "cargo run"
+            si.runners.c = "clang -o /tmp/{name} {file} && /tmp/{name}"
+            "##,
+        )
+        .unwrap();
+        assert_eq!(config.runners.len(), 3);
+        assert_eq!(config.runners["py"], "python3 {file}");
+        assert_eq!(config.runners["rs"], "cargo run");
+        assert!(config.runners["c"].contains("{name}"));
+    }
+
+    #[test]
+    fn runners_table_syntax() {
+        let config = load_config_from_str(
+            r##"
+            si.runners = {
+                py = "python3 {file}",
+                sh = "bash {file}",
+            }
+            "##,
+        )
+        .unwrap();
+        assert_eq!(config.runners.len(), 2);
+        assert_eq!(config.runners["sh"], "bash {file}");
     }
 
     #[test]

@@ -14,6 +14,8 @@ pub struct Config {
     pub custom_theme_data: Option<toml::Value>,
     /// Language config from Lua, to be merged with built-in `languages.toml`.
     pub language_config: Option<toml::Value>,
+    /// User-defined file runners: extension → command template.
+    pub runners: HashMap<String, String>,
 }
 
 impl Default for Config {
@@ -24,6 +26,7 @@ impl Default for Config {
             editor: silicon_view::editor::Config::default(),
             custom_theme_data: None,
             language_config: None,
+            runners: HashMap::new(),
         }
     }
 }
@@ -113,6 +116,7 @@ impl Config {
             editor: lua_config.editor,
             custom_theme_data,
             language_config: lua_config.language_config,
+            runners: lua_config.runners,
         }
     }
 }
