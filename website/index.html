@@ -274,7 +274,7 @@
       <p class="tagline">The fastest, most polished terminal-based editor. <em>ever.</em></p>
 
       <div class="install-block">
-        <code><span class="dollar">$</span>curl -sSf https://raw.githubusercontent.com/Rani367/Silicon/master/install.sh | sh</code>
+        <code><span class="dollar">$</span>curl -fL rani367.github.io/Silicon/install.sh | sh</code>
         <button class="copy-btn" aria-label="Copy install command">
           <svg class="icon icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2"/>
@@ -302,7 +302,7 @@
 
   <script>
     const copyBtn = document.querySelector('.copy-btn');
-    const installCmd = 'curl -sSf https://raw.githubusercontent.com/Rani367/Silicon/master/install.sh | sh';
+    const installCmd = 'curl -fL rani367.github.io/Silicon/install.sh | sh';
     let copyTimer = null;
 
     copyBtn.addEventListener('click', async () => {
