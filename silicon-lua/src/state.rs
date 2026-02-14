@@ -77,7 +77,7 @@ pub fn create_lua_state() -> Result<Lua, LuaConfigError> {
 
     // Add ~/.config/silicon/lua/ to package.path so users can `require("mymodule")`.
     let lua_dir = silicon_loader::config_dir().join("lua");
-    let lua_dir_str = lua_dir.to_string_lossy();
+    let lua_dir_str = lua_dir.to_string_lossy().replace('\\', "\\\\");
     lua.load(format!(
         r#"package.path = package.path .. ";{0}/?.lua;{0}/?/init.lua""#,
         lua_dir_str
