@@ -1,5 +1,5 @@
 <div align="center">
-  <img alt="Silicon" src="logo.png" width="256">
+  <img alt="Silicon" src="logo_anim.apng" width="256">
   <h1 style="display: inline; vertical-align: middle;">Silicon</h1>
 </div>
 
