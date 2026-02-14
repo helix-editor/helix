@@ -40,6 +40,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
+          keep_files: true
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
@@ -47,3 +48,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
           destination_dir: ./${{ env.OUTDIR }}
+          keep_files: true
