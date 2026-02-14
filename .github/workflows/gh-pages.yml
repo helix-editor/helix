@@ -37,15 +37,14 @@ jobs:
           OUTDIR=$(basename ${{ github.ref }})
           echo "OUTDIR=$OUTDIR" >> $GITHUB_ENV
 
-      - name: Deploy stable
+      - name: Deploy to root
         uses: peaceiris/actions-gh-pages@v4
-        if: startswith(github.ref, 'refs/tags/')
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
           keep_files: true
 
-      - name: Deploy
+      - name: Deploy to version directory
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
