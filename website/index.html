@@ -471,13 +471,13 @@
     // ── Platform detection & install command ──
     const platforms = {
       unix: {
-        cmd: 'curl -fL silicon-editor.github.io/install.sh | sh',
+        cmd: 'curl -fL silicon-editor.pages.dev/install.sh | sh',
         prompt: '$',
         switchText: 'Using Windows?',
         switchTarget: 'windows'
       },
       windows: {
-        cmd: 'irm silicon-editor.github.io/install.ps1 | iex',
+        cmd: 'irm silicon-editor.pages.dev/install.ps1 | iex',
         prompt: '>',
         switchText: 'Using macOS or Linux?',
         switchTarget: 'unix'
