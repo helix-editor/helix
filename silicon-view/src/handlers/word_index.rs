@@ -95,7 +95,7 @@ impl AsyncHook for Hook {
                     Some(Instant::now() + DEBOUNCE)
                 } else {
                     // Otherwise if the change is small, queue the update to the index immediately.
-                    self.coordinator.send(Event::Update(doc, change)).unwrap();
+                    let _ = self.coordinator.send(Event::Update(doc, change));
                     timeout
                 }
             }
@@ -103,11 +103,9 @@ impl AsyncHook for Hook {
                 // If there are pending changes that haven't been indexed since the last debounce,
                 // forget them and delete the old text.
                 if let Some(change) = self.changes.remove(&doc) {
-                    self.coordinator
-                        .send(Event::Delete(doc, change.old_text))
-                        .unwrap();
+                    let _ = self.coordinator.send(Event::Delete(doc, change.old_text));
                 } else {
-                    self.coordinator.send(Event::Delete(doc, text)).unwrap();
+                    let _ = self.coordinator.send(Event::Delete(doc, text));
                 }
                 timeout
             }
@@ -117,7 +115,7 @@ impl AsyncHook for Hook {
 
     fn finish_debounce(&mut self) {
         for (doc, change) in self.changes.drain() {
-            self.coordinator.send(Event::Update(doc, change)).unwrap();
+            let _ = self.coordinator.send(Event::Update(doc, change));
         }
     }
 }

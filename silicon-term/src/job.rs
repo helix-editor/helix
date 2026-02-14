@@ -37,6 +37,7 @@ pub enum Callback {
     Editor(EditorCallback),
     RunInTerminal { shell: Vec<String>, cmd: String },
     OpenTerminalPanel,
+    ShowTerminalPanel,
     NewTerminalTab,
     CloseTerminalTab,
     NextTerminalTab,
@@ -118,6 +119,7 @@ impl Jobs {
                 Callback::Editor(call) => call(editor),
                 Callback::RunInTerminal { .. }
                 | Callback::OpenTerminalPanel
+                | Callback::ShowTerminalPanel
                 | Callback::NewTerminalTab
                 | Callback::CloseTerminalTab
                 | Callback::NextTerminalTab

@@ -142,12 +142,15 @@ impl Application {
             })),
             handlers,
         );
-        Self::load_configured_theme(
+        let theme_warning = Self::load_configured_theme(
             &mut editor,
             &config.load(),
             terminal.backend().supports_true_color(),
             theme_mode,
         );
+        if let Some(warning) = theme_warning {
+            editor.set_error(warning);
+        }
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -466,12 +469,14 @@ impl Application {
                 default_config.language_config.clone(),
             )?;
             self.editor.syn_loader.store(Arc::new(lang_loader));
-            Self::load_configured_theme(
+            if let Some(warning) = Self::load_configured_theme(
                 &mut self.editor,
                 &default_config,
                 self.terminal.backend().supports_true_color(),
                 self.theme_mode,
-            );
+            ) {
+                self.editor.set_error(warning);
+            }
 
             // Re-parse any open documents with the new language config.
             let lang_loader = self.editor.syn_loader.load();
@@ -503,14 +508,16 @@ impl Application {
         }
     }
 
-    /// Load the theme set in configuration
+    /// Load the theme set in configuration. Returns a warning message if the
+    /// theme could not be loaded and the default was used instead.
     fn load_configured_theme(
         editor: &mut Editor,
         config: &Config,
         terminal_true_color: bool,
         mode: Option<theme::Mode>,
-    ) {
+    ) -> Option<String> {
         let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
+        let mut warning = None;
         let theme = config
             .theme
             .as_ref()
@@ -523,29 +530,49 @@ impl Application {
                         .theme_loader
                         .load_from_data(theme_name, data.clone())
                 } else {
-                    editor.theme_loader.load(theme_name)
+                    let result = editor.theme_loader.load_with_warnings(theme_name);
+                    match result {
+                        Ok((theme, warnings)) => {
+                            if !warnings.is_empty() {
+                                let msg = format!(
+                                    "Theme '{}': {}",
+                                    theme_name,
+                                    warnings.join("; ")
+                                );
+                                log::warn!("{}", msg);
+                                warning = Some(msg);
+                            }
+                            Ok(theme)
+                        }
+                        Err(e) => Err(e),
+                    }
                 };
 
                 loaded
                     .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme_name, e);
+                        let msg = format!("Failed to load theme `{}` - {}", theme_name, e);
+                        log::warn!("{}", msg);
+                        warning = Some(msg);
                         e
                     })
                     .ok()
                     .filter(|theme| {
                         let colors_ok = true_color || theme.is_16_color();
                         if !colors_ok {
-                            log::warn!(
-                                "loaded theme `{}` but cannot use it because true color \
-                                support is not enabled",
+                            let msg = format!(
+                                "Theme `{}` requires true color support, \
+                                falling back to default",
                                 theme.name()
                             );
+                            log::warn!("{}", msg);
+                            warning = Some(msg);
                         }
                         colors_ok
                     })
             })
             .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
         editor.set_theme(theme);
+        warning
     }
 
     #[cfg(windows)]
@@ -765,7 +792,15 @@ impl Application {
         };
 
         // Handle key events
-        let should_redraw = match event.unwrap() {
+        let event = match event {
+            Ok(ev) => ev,
+            Err(err) => {
+                log::error!("Terminal event error: {err}");
+                return;
+            }
+        };
+
+        let should_redraw = match event {
             #[cfg(not(windows))]
             termina::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
                 self.terminal
@@ -792,12 +827,14 @@ impl Application {
             }) => false,
             #[cfg(not(windows))]
             termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
-                Self::load_configured_theme(
+                if let Some(warning) = Self::load_configured_theme(
                     &mut self.editor,
                     &self.config.load(),
                     self.terminal.backend().supports_true_color(),
                     Some(mode.into()),
-                );
+                ) {
+                    self.editor.set_error(warning);
+                }
                 true
             }
             #[cfg(windows)]
@@ -1406,6 +1443,10 @@ impl Application {
             }
             Callback::OpenTerminalPanel => {
                 self.terminal_panel.toggle(area);
+                self.render().await;
+            }
+            Callback::ShowTerminalPanel => {
+                self.terminal_panel.show(area);
                 self.render().await;
             }
             Callback::NewTerminalTab => {

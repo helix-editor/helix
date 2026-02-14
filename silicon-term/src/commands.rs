@@ -1337,7 +1337,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let primary = selections.primary();
     let rel_path = doc
         .relative_path()
-        .map(|path| path.parent().unwrap().to_path_buf())
+        .and_then(|path| path.parent().map(|p| p.to_path_buf()))
         .unwrap_or_default();
 
     let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
@@ -1393,7 +1393,7 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
     let doc = doc!(cx.editor);
     let rel_path = doc
         .relative_path()
-        .map(|path| path.parent().unwrap().to_path_buf())
+        .and_then(|path| path.parent().map(|p| p.to_path_buf()))
         .unwrap_or_default();
 
     if url.scheme() != "file" {
@@ -3431,7 +3431,7 @@ pub fn command_palette(cx: &mut Context) {
 
     cx.callback.push(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            let keymap = compositor.find::<ui::EditorView>().unwrap().keymaps.map()
+            let keymap = compositor.find::<ui::EditorView>().expect("EditorView must exist in compositor").keymaps.map()
                 [&cx.editor.mode]
                 .reverse_map();
 
@@ -6027,7 +6027,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 }
 
                 let textobject_change = |range: Range| -> Range {
-                    let diff_handle = doc.diff_handle().unwrap();
+                    let Some(diff_handle) = doc.diff_handle() else { return range; };
                     let diff = diff_handle.load();
                     let line = range.cursor_line(text);
                     let hunk_idx = if let Some(hunk_idx) = diff.hunk_at(line as u32, false) {
@@ -6516,7 +6516,9 @@ fn suspend(_cx: &mut Context) {
             return;
         }
         _cx.block_try_flush_writes().ok();
-        signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+        if let Err(e) = signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP) {
+            log::error!("Failed to suspend: {e}");
+        }
     }
 }
 

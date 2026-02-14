@@ -994,7 +994,6 @@ impl Document {
         let future = async move {
             use tokio::fs;
             if let Some(parent) = path.parent() {
-                // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
                     if force {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;

@@ -64,6 +64,16 @@ impl TerminalPanel {
         }
     }
 
+    /// Show the terminal panel and focus it. Unlike `toggle()`, this never hides
+    /// the panel — it always ensures it is visible and focused.
+    pub fn show(&mut self, area: Rect) {
+        self.visible = true;
+        self.focused = true;
+        if self.instances.is_empty() {
+            self.spawn_terminal(area);
+        }
+    }
+
     /// Unfocus the terminal panel (keep it visible).
     pub fn unfocus(&mut self) {
         self.focused = false;

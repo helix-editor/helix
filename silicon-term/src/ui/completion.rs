@@ -119,8 +119,6 @@ impl menu::Item for CompletionItem {
 /// Wraps a Menu.
 pub struct Completion {
     popup: Popup<Menu<CompletionItem>>,
-    #[allow(dead_code)]
-    trigger_offset: usize,
     filter: String,
     // TODO: move to silicon-view/central handler struct in the future
     resolve_handler: ResolveHandler,
@@ -307,7 +305,6 @@ impl Completion {
         let fragment = doc.text().slice(start_offset..cursor);
         let mut completion = Self {
             popup,
-            trigger_offset,
             // TODO: expand nucleo api to allow moving straight to a Utf32String here
             // and avoid allocation during matching
             filter: String::from(fragment),

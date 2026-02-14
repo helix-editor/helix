@@ -386,7 +386,6 @@ fn build_theme_values(
 
     let mut warnings = Vec::new();
 
-    // TODO: alert user of parsing failures in editor
     let palette = values
         .remove("palette")
         .map(|value| {

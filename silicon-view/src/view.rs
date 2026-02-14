@@ -175,7 +175,7 @@ impl View {
             id: ViewId::default(),
             doc,
             area: Rect::default(), // will get calculated upon inserting into tree
-            jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
+            jumps: JumpList::new((doc, Selection::point(0))), // view_id not assigned yet, point(0) is correct
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),

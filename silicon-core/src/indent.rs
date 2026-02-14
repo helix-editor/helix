@@ -169,7 +169,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
         .iter()
         .enumerate()
         .max_by_key(|kv| kv.1)
-        .unwrap()
+        .unwrap_or((0, &0))
         .0;
     let indent_freq = histogram[indent];
     let indent_freq_2 = *histogram
@@ -178,7 +178,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
         .filter(|kv| kv.0 != indent)
         .map(|kv| kv.1)
         .max()
-        .unwrap();
+        .unwrap_or(&0);
 
     // Return the the auto-detected result if we're confident enough in its
     // accuracy, based on some heuristics.

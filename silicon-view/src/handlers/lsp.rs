@@ -400,7 +400,9 @@ impl Editor {
 
 pub fn register_hooks(_handlers: &Handlers) {
     register_hook!(move |event: &mut LanguageServerInitialized<'_>| {
-        let language_server = event.editor.language_server_by_id(event.server_id).unwrap();
+        let Some(language_server) = event.editor.language_server_by_id(event.server_id) else {
+            return Ok(());
+        };
 
         for doc in event
             .editor

@@ -398,6 +398,48 @@ fn write_impl(
     doc.append_changes_to_history(view);
 
     let (view, doc) = current_ref!(cx.editor);
+
+    // Check if parent directory exists; prompt user to create directories.
+    if !options.force {
+        let save_path = path
+            .map(|p| silicon_stdx::path::canonicalize(std::path::PathBuf::from(p)))
+            .or_else(|| doc.path().cloned());
+
+        if let Some(ref save_path) = save_path {
+            if let Some(parent) = save_path.parent() {
+                if !parent.exists() {
+                    let id = doc.id();
+                    let path_for_save: std::path::PathBuf = path
+                        .map(|p| p.into())
+                        .unwrap_or_else(|| save_path.clone());
+                    crate::job::dispatch_blocking(move |_editor, compositor| {
+                        let prompt = ui::Prompt::new(
+                            "Create parent directories? (y/n): ".into(),
+                            None,
+                            ui::completers::none,
+                            move |cx, input, event| {
+                                if event != PromptEvent::Validate {
+                                    return;
+                                }
+                                if input.trim().starts_with('y') {
+                                    if let Err(err) = cx.editor.save(
+                                        id,
+                                        Some(path_for_save.clone()),
+                                        true,
+                                    ) {
+                                        cx.editor.set_error(err.to_string());
+                                    }
+                                }
+                            },
+                        );
+                        compositor.push(Box::new(prompt));
+                    });
+                    return Ok(());
+                }
+            }
+        }
+    }
+
     let fmt = if config.auto_format && options.auto_format {
         doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
@@ -2537,7 +2579,7 @@ fn open_terminal(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    let callback = async move { Ok(Callback::OpenTerminalPanel) };
+    let callback = async move { Ok(Callback::ShowTerminalPanel) };
     cx.jobs.callback(callback);
     Ok(())
 }
