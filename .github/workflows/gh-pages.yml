@@ -11,6 +11,9 @@ concurrency:
   group: gh-pages
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
