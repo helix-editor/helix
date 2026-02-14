@@ -1,7 +1,7 @@
 # Silicon
 
 Docs for bleeding edge master can be found at
-[https://silicon-editor.github.io/Silicon/master](https://silicon-editor.github.io/Silicon/master).
+[https://silicon-editor.pages.dev/master](https://silicon-editor.pages.dev/master).
 
 See the [usage] section for a quick overview of the editor, [keymap]
 section for all available keybindings and the [configuration] section
