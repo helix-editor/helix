@@ -121,12 +121,17 @@ impl TerminalInstance {
             }
         };
 
-        let pty_config = tty::Options {
+        #[allow(unused_mut)]
+        let mut pty_config = tty::Options {
             shell: Some(tty::Shell::new(program, args)),
             working_directory: std::env::current_dir().ok(),
             drain_on_exit: true,
             env: HashMap::new(),
         };
+        #[cfg(target_os = "windows")]
+        {
+            pty_config.escape_args = false;
+        }
 
         let window_size = WindowSize {
             num_lines: rows,
