@@ -1,6 +1,8 @@
 use super::*;
 
 use helix_core::diagnostic::Severity;
+use helix_stdx::path;
+use std::path::PathBuf;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn history_completion() -> anyhow::Result<()> {
@@ -114,5 +116,37 @@ async fn percent_escaping() -> anyhow::Result<()> {
         Severity::Error,
     )
     .await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn file_picker_preselect_current_file() -> anyhow::Result<()> {
+    let file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../book/src/install.md");
+
+    let mut config = test_config();
+    config.editor.file_picker.preselect_current_file = true;
+
+    let mut app = AppBuilder::new()
+        .with_config(config)
+        .with_file(&file_path, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("<space>f<ret>"),
+        Some(&|app| {
+            let view = app.editor.tree.get(app.editor.tree.focus);
+            let selected_path = app
+                .editor
+                .document(view.doc)
+                .and_then(|doc| doc.path())
+                .expect("current document should have a path");
+
+            assert_eq!(selected_path, &path::normalize(&file_path));
+        }),
+        false,
+    )
+    .await?;
+
     Ok(())
 }
