@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Silicon — Terminal Editor</title>
   <meta name="description" content="The fastest, most polished terminal-based editor. ever.">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta property="og:title" content="Silicon">
   <meta property="og:description" content="The fastest, most polished terminal-based editor. ever.">
   <meta property="og:type" content="website">
@@ -542,6 +545,23 @@
       clearTimeout(copyTimer);
       copyTimer = setTimeout(() => copyBtn.classList.remove('copied'), 3000);
     });
+  </script>
+
+  <!-- Cache-busting: detect stale page and reload fresh version -->
+  <script>
+    (function() {
+      if (sessionStorage.getItem('_freshened')) return;
+      var current = document.documentElement.outerHTML.length;
+      fetch(location.href, { cache: 'no-store' })
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+          if (html.length !== current) {
+            sessionStorage.setItem('_freshened', '1');
+            location.reload();
+          }
+        })
+        .catch(function() {});
+    })();
   </script>
 </body>
 </html>
