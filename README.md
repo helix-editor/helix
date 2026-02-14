@@ -34,7 +34,7 @@ The scripts handle everything: prerequisites, removing old installations, clonin
 
 # Configuration
 
-Silicon is configured with Lua. Create `~/.config/silicon/init.lua`:
+Silicon is configured with Lua. Example `~/.config/silicon/init.lua`:
 
 ```lua
 -- example config
