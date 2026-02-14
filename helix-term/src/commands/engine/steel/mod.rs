@@ -1669,6 +1669,9 @@ impl super::PluginSystem for SteelScriptingEngine {
 
         // Generate sources directly with a fresh engine
         let mut engine = Engine::new();
+        engine.register_value(CTX, SteelVal::Void);
+        engine.register_value(CONFIG, SteelVal::Void);
+
         configure_builtin_sources(&mut engine, true);
         // Generate documentation as well
         if let Some(target) = alternative_runtime_search_path() {
