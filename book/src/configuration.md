@@ -23,6 +23,7 @@ select = "underline"
 
 [editor.file-picker]
 hidden = false
+preselect-current-file = true
 ```
 
 You can use a custom configuration file by specifying it with the `-c` or
