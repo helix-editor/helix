@@ -79,7 +79,7 @@ in
       installShellCompletion ${./contrib/completion}/si.{bash,fish,zsh}
       mkdir -p $out/share/{applications,icons/hicolor/{256x256,scalable}/apps}
       cp ${./contrib/Silicon.desktop} $out/share/applications/Silicon.desktop
-      cp ${./logo.svg} $out/share/icons/hicolor/scalable/apps/silicon.svg
+      cp ${./logo.png} $out/share/icons/hicolor/scalable/apps/silicon.png
       cp ${./contrib/silicon.png} $out/share/icons/hicolor/256x256/apps/silicon.png
     '';
 
