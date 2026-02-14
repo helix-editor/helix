@@ -71,68 +71,13 @@
       overflow: hidden;
     }
 
-    /* ── Aurora glow background ── */
-    .aurora {
+    /* ── WebGL background canvas ── */
+    #bg {
       position: absolute;
       inset: 0;
-      overflow: hidden;
-      pointer-events: none;
+      width: 100%;
+      height: 100%;
       z-index: 0;
-    }
-
-    .aurora-blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(100px);
-      will-change: transform, opacity;
-    }
-
-    .aurora-blob-1 {
-      width: 600px;
-      height: 600px;
-      background: var(--purple);
-      top: 25%;
-      left: 35%;
-      opacity: 0.13;
-      animation: auroraDrift1 16s ease-in-out infinite alternate;
-    }
-
-    .aurora-blob-2 {
-      width: 500px;
-      height: 500px;
-      background: var(--cyan);
-      top: 45%;
-      left: 55%;
-      opacity: 0.10;
-      animation: auroraDrift2 20s ease-in-out infinite alternate;
-    }
-
-    .aurora-blob-3 {
-      width: 450px;
-      height: 450px;
-      background: linear-gradient(135deg, var(--purple), var(--cyan));
-      top: 30%;
-      left: 45%;
-      opacity: 0.07;
-      animation: auroraDrift3 14s ease-in-out infinite alternate;
-    }
-
-    @keyframes auroraDrift1 {
-      0%   { transform: translate(0, 0) scale(1); opacity: 0.13; }
-      50%  { transform: translate(-80px, 40px) scale(1.15); opacity: 0.17; }
-      100% { transform: translate(60px, -30px) scale(0.9); opacity: 0.10; }
-    }
-
-    @keyframes auroraDrift2 {
-      0%   { transform: translate(0, 0) scale(1); opacity: 0.10; }
-      50%  { transform: translate(70px, -50px) scale(1.1); opacity: 0.14; }
-      100% { transform: translate(-50px, 30px) scale(0.95); opacity: 0.07; }
-    }
-
-    @keyframes auroraDrift3 {
-      0%   { transform: translate(0, 0) scale(1); opacity: 0.07; }
-      50%  { transform: translate(-40px, -60px) scale(1.2); opacity: 0.11; }
-      100% { transform: translate(50px, 40px) scale(0.85); opacity: 0.05; }
     }
 
     /* ── Content ── */
@@ -400,19 +345,12 @@
       .install-block code { font-size: 0.6rem; }
       .links { flex-direction: column; gap: 0.5rem; width: 100%; }
       .links a { width: 100%; justify-content: center; }
-      .aurora-blob-1 { width: 350px; height: 350px; }
-      .aurora-blob-2 { width: 300px; height: 300px; }
-      .aurora-blob-3 { width: 250px; height: 250px; }
     }
   </style>
 </head>
 <body>
   <div class="page">
-    <div class="aurora">
-      <div class="aurora-blob aurora-blob-1"></div>
-      <div class="aurora-blob aurora-blob-2"></div>
-      <div class="aurora-blob aurora-blob-3"></div>
-    </div>
+    <canvas id="bg"></canvas>
 
     <div class="content">
       <h1 class="title" aria-label="Silicon"></h1>
@@ -545,6 +483,171 @@
       clearTimeout(copyTimer);
       copyTimer = setTimeout(() => copyBtn.classList.remove('copied'), 3000);
     });
+  </script>
+
+  <!-- Cursor-reactive WebGL background -->
+  <script>
+    (function() {
+      var canvas = document.getElementById('bg');
+      var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) return;
+
+      var isTouch = matchMedia('(hover: none)').matches;
+      var reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var mouse = { x: 0.5, y: 0.5 };
+      var target = { x: 0.5, y: 0.5 };
+
+      if (!isTouch) {
+        document.addEventListener('mousemove', function(e) {
+          target.x = e.clientX / window.innerWidth;
+          target.y = 1.0 - e.clientY / window.innerHeight;
+        });
+      }
+
+      var VS = 'attribute vec2 a_pos;void main(){gl_Position=vec4(a_pos,0.,1.);}';
+
+      var FS = [
+        'precision highp float;',
+        'uniform vec2 u_res;',
+        'uniform vec2 u_mouse;',
+        'uniform float u_time;',
+
+        // Simplex 2D noise (Ashima Arts)
+        'vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}',
+        'vec2 mod289(vec2 x){return x-floor(x*(1./289.))*289.;}',
+        'vec3 permute(vec3 x){return mod289(((x*34.)+1.)*x);}',
+        'float snoise(vec2 v){',
+        '  const vec4 C=vec4(.211324865405187,.366025403784439,-.577350269189626,.024390243902439);',
+        '  vec2 i=floor(v+dot(v,C.yy));',
+        '  vec2 x0=v-i+dot(i,C.xx);',
+        '  vec2 i1=(x0.x>x0.y)?vec2(1.,0.):vec2(0.,1.);',
+        '  vec4 x12=x0.xyxy+C.xxzz;',
+        '  x12.xy-=i1;',
+        '  i=mod289(i);',
+        '  vec3 p=permute(permute(i.y+vec3(0.,i1.y,1.))+i.x+vec3(0.,i1.x,1.));',
+        '  vec3 m=max(.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.);',
+        '  m=m*m;m=m*m;',
+        '  vec3 x=2.*fract(p*C.www)-1.;',
+        '  vec3 h=abs(x)-.5;',
+        '  vec3 ox=floor(x+.5);',
+        '  vec3 a0=x-ox;',
+        '  m*=1.79284291400159-.85373472095314*(a0*a0+h*h);',
+        '  vec3 g;',
+        '  g.x=a0.x*x0.x+h.x*x0.y;',
+        '  g.yz=a0.yz*x12.xz+h.yz*x12.yw;',
+        '  return 130.*dot(m,g);',
+        '}',
+
+        // Fractional Brownian Motion
+        'float fbm(vec2 p){',
+        '  float f=0.,a=.5;',
+        '  for(int i=0;i<4;i++){f+=a*snoise(p);p*=2.1;a*=.48;}',
+        '  return f;',
+        '}',
+
+        'void main(){',
+        '  vec2 uv=gl_FragCoord.xy/u_res;',
+        '  float asp=u_res.x/u_res.y;',
+        '  vec2 p=vec2(uv.x*asp,uv.y);',
+        '  float t=u_time*.1;',
+
+        // Domain-warped noise for organic flow
+        '  vec2 q=vec2(fbm(p+vec2(t*.7,t*.3)),fbm(p+vec2(t*.2,-t*.5)));',
+        '  float n=fbm(p+q*1.8+vec2(t*.15));',
+
+        // Mouse interaction — glow + ripple distortion
+        '  vec2 mp=vec2(u_mouse.x*asp,u_mouse.y);',
+        '  float d=length(p-mp);',
+        '  float ripple=sin(d*18.-u_time*2.5)*.5+.5;',
+        '  float mfield=smoothstep(.5,0.,d);',
+        '  n+=mfield*ripple*.12;',
+        '  float glow=smoothstep(.55,0.,d)*.3;',
+
+        // Color blend
+        '  vec3 purple=vec3(.439,.420,.784);',
+        '  vec3 cyan=vec3(.333,.773,.894);',
+        '  vec3 bg=vec3(.031,.035,.051);',
+        '  vec3 accent=mix(purple,cyan,n*.5+.5);',
+
+        // Combine — low base intensity + mouse glow
+        '  float intensity=max(.055+n*.035+glow,0.);',
+        '  vec3 col=mix(bg,accent,intensity);',
+
+        // Vignette
+        '  col*=1.-dot((uv-.5)*1.3,(uv-.5)*1.3);',
+        '  gl_FragColor=vec4(col,1.);',
+        '}'
+      ].join('\n');
+
+      function makeShader(type, src) {
+        var s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+          console.error(gl.getShaderInfoLog(s));
+          gl.deleteShader(s);
+          return null;
+        }
+        return s;
+      }
+
+      var vs = makeShader(gl.VERTEX_SHADER, VS);
+      var fs = makeShader(gl.FRAGMENT_SHADER, FS);
+      if (!vs || !fs) return;
+
+      var prog = gl.createProgram();
+      gl.attachShader(prog, vs);
+      gl.attachShader(prog, fs);
+      gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+      gl.useProgram(prog);
+
+      // Fullscreen quad
+      var buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+      var aPos = gl.getAttribLocation(prog, 'a_pos');
+      gl.enableVertexAttribArray(aPos);
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+      var uRes   = gl.getUniformLocation(prog, 'u_res');
+      var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+      var uTime  = gl.getUniformLocation(prog, 'u_time');
+
+      function resize() {
+        var dpr = Math.min(devicePixelRatio, 2);
+        canvas.width  = canvas.clientWidth  * dpr;
+        canvas.height = canvas.clientHeight * dpr;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+
+      new ResizeObserver(resize).observe(canvas);
+      resize();
+
+      var t0 = performance.now();
+
+      function frame() {
+        var t = (performance.now() - t0) / 1000;
+
+        if (isTouch) {
+          mouse.x = 0.5 + Math.sin(t * 0.08) * 0.2;
+          mouse.y = 0.5 + Math.cos(t * 0.11) * 0.15;
+        } else {
+          mouse.x += (target.x - mouse.x) * 0.04;
+          mouse.y += (target.y - mouse.y) * 0.04;
+        }
+
+        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform2f(uMouse, mouse.x, mouse.y);
+        gl.uniform1f(uTime, t);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        if (!reducedMotion) requestAnimationFrame(frame);
+      }
+
+      frame();
+      // If reduced motion, render one static frame (already called above)
+    })();
   </script>
 
   <!-- Cache-busting: detect stale page and reload fresh version -->
