@@ -653,15 +653,14 @@
   <!-- Cache-busting: detect stale page and reload fresh version -->
   <script>
     (function() {
-      if (sessionStorage.getItem('_freshened')) return;
-      var current = document.documentElement.outerHTML.length;
       fetch(location.href, { cache: 'no-store' })
         .then(function(r) { return r.text(); })
         .then(function(html) {
-          if (html.length !== current) {
-            sessionStorage.setItem('_freshened', '1');
-            location.reload();
-          }
+          var key = '_pageLen';
+          var fresh = String(html.length);
+          var cached = sessionStorage.getItem(key);
+          sessionStorage.setItem(key, fresh);
+          if (cached && cached !== fresh) location.reload();
         })
         .catch(function() {});
     })();
