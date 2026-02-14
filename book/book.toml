@@ -6,8 +6,8 @@ src = "src"
 [output.html]
 default-theme = "coal"
 preferred-dark-theme = "coal"
-git-repository-url = "https://github.com/Rani367/Silicon"
-edit-url-template = "https://github.com/Rani367/Silicon/edit/master/book/{path}"
+git-repository-url = "https://github.com/silicon-editor/Silicon"
+edit-url-template = "https://github.com/silicon-editor/Silicon/edit/master/book/{path}"
 additional-css = ["custom.css"]
 
 [output.html.search]

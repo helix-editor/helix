@@ -36,7 +36,7 @@ If you are running a system older than Debian 13, follow the steps for
 
 ### Ubuntu/Mint
 
-Install the Debian package [from the release page](https://github.com/Rani367/Silicon/releases/latest).
+Install the Debian package [from the release page](https://github.com/silicon-editor/Silicon/releases/latest).
 
 If you are running a system older than Ubuntu 22.04, Mint 21, or Debian 12, you can build the `.deb` file locally
 [from source](./building-from-source.md#building-the-debian-package).
@@ -103,7 +103,7 @@ This will install Silicon as both `/snap/bin/silicon` and `/snap/bin/si`, so mak
 ### AppImage
 
 Install Silicon using the Linux [AppImage](https://appimage.org/) format.
-Download the official Silicon AppImage from the [latest releases](https://github.com/Rani367/Silicon/releases/latest) page.
+Download the official Silicon AppImage from the [latest releases](https://github.com/silicon-editor/Silicon/releases/latest) page.
 
 ```sh
 chmod +x silicon-*.AppImage # change permission for executable mode

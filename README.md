@@ -12,13 +12,13 @@
 **macOS / Linux:**
 
 ```sh
-curl -fL rani367.github.io/Silicon/install.sh | sh
+curl -fL silicon-editor.github.io/Silicon/install.sh | sh
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm rani367.github.io/Silicon/install.ps1 | iex
+irm silicon-editor.github.io/Silicon/install.ps1 | iex
 ```
 
 The scripts handle everything: prerequisites, removing old installations, cloning, building, and runtime setup. Re-run to update.

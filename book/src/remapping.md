@@ -9,12 +9,12 @@ There are three kinds of commands that can be used in keymaps:
 * Static commands: commands like `move_char_right` which are usually bound to
   keys and used for movement and editing. A list of static commands is
   available in the [Keymap](./keymap.html) documentation and in the source code
-  in [`silicon-term/src/commands.rs`](https://github.com/Rani367/Silicon/blob/master/silicon-term/src/commands.rs)
+  in [`silicon-term/src/commands.rs`](https://github.com/silicon-editor/Silicon/blob/master/silicon-term/src/commands.rs)
   at the invocation of `static_commands!` macro.
 * Typable commands: commands that can be executed from command mode (`:`), for
   example `:write!`. See the [Commands](./commands.md) documentation for a
   list of available typeable commands or the `TypableCommandList` declaration in
-  the source code at [`silicon-term/src/commands/typed.rs`](https://github.com/Rani367/Silicon/blob/master/silicon-term/src/commands/typed.rs).
+  the source code at [`silicon-term/src/commands/typed.rs`](https://github.com/silicon-editor/Silicon/blob/master/silicon-term/src/commands/typed.rs).
 * Macros: sequences of keys that are executed in order. These keybindings
   start with `@` and then list any number of keys to be executed. For example
   `@miw` can be used to select the surrounding word. For now, macro keybindings
@@ -76,7 +76,7 @@ Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes `C-`, `
 
 The [Super key](https://en.wikipedia.org/wiki/Super_key_(keyboard_button)) - the Windows/Linux
 key or the Command key on Mac keyboards - is also supported when using a terminal emulator that
-supports the [enhanced keyboard protocol](https://github.com/Rani367/Silicon/wiki/Terminal-Support#enhanced-keyboard-protocol).
+supports the [enhanced keyboard protocol](https://github.com/silicon-editor/Silicon/wiki/Terminal-Support#enhanced-keyboard-protocol).
 The super key is encoded with prefixes `Meta-`, `Cmd-` or `Win-`. These are all synonyms for the
 super modifier - binding a key with a `Win-` modifier will mean it can be used with the
 Windows/Linux key or the Command key.

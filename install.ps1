@@ -1,5 +1,5 @@
 # install.ps1 — one-liner installer for Silicon (downloads pre-built binary)
-# Usage: irm https://raw.githubusercontent.com/Rani367/Silicon/master/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/silicon-editor/Silicon/master/install.ps1 | iex
 #Requires -Version 5.1
 $ErrorActionPreference = 'Stop'
 
@@ -10,7 +10,7 @@ function Write-Warn  { param([string]$Msg) Write-Host "[warn]  $Msg" -Foreground
 function Write-Err   { param([string]$Msg) Write-Host "[error] $Msg" -ForegroundColor Red }
 
 # ── Constants ────────────────────────────────────────────────────────────────
-$GitHubRepo = 'Rani367/Silicon'
+$GitHubRepo = 'silicon-editor/Silicon'
 $Platform   = 'x86_64-windows'
 $BinDir     = Join-Path $env:LOCALAPPDATA 'Programs\silicon'
 $DataDir    = Join-Path $env:APPDATA 'silicon'

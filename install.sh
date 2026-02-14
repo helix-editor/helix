@@ -1,6 +1,6 @@
 #!/bin/sh
 # install.sh — one-liner installer for Silicon (downloads pre-built binary)
-# Usage: curl -sSf https://raw.githubusercontent.com/Rani367/Silicon/master/install.sh | sh
+# Usage: curl -sSf https://raw.githubusercontent.com/silicon-editor/Silicon/master/install.sh | sh
 set -e
 
 # ── Color helpers (disabled when piped) ──────────────────────────────────────
@@ -17,7 +17,7 @@ warn()  { printf "${YELLOW}[warn]${RESET}  %s\n" "$*"; }
 err()   { printf "${RED}[error]${RESET} %s\n" "$*" >&2; }
 
 # ── Constants ────────────────────────────────────────────────────────────────
-GITHUB_REPO="Rani367/Silicon"
+GITHUB_REPO="silicon-editor/Silicon"
 BIN_DIR="$HOME/.local/bin"
 
 # ── Platform detection ───────────────────────────────────────────────────────

@@ -43,9 +43,9 @@ If the key contains a dot `'.'`, it must be quoted to prevent it being parsed as
 ```
 
 For inspiration, you can find the default `theme.toml`
-[here](https://github.com/Rani367/Silicon/blob/master/theme.toml) and
+[here](https://github.com/silicon-editor/Silicon/blob/master/theme.toml) and
 user-submitted themes
-[here](https://github.com/Rani367/Silicon/blob/master/runtime/themes).
+[here](https://github.com/silicon-editor/Silicon/blob/master/runtime/themes).
 
 
 ## The details of theme creation
