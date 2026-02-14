@@ -1,5 +1,9 @@
 <div align="center">
-  <img alt="Silicon" src="logo.png" width="256" align="middle" style="vertical-align: middle; margin-right: 16px;">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="logo.png">
+    <source media="(prefers-color-scheme: light)" srcset="logo.png">
+    <img alt="Silicon" src="logo.png" width="256" style="background: transparent;">
+  </picture>
   <h1 style="display: inline; vertical-align: middle;">Silicon</h1>
 </div>
 
