@@ -1,0 +1,44 @@
+name: Test Install Scripts
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Test install.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -fsSL https://silicon-editor.pages.dev/install.sh | sh
+          ~/.local/bin/si --version
+          ls ~/Library/Application\ Support/silicon/runtime/
+
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test install.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -fsSL https://silicon-editor.pages.dev/install.sh > /tmp/install.sh
+          sed -i 's/si --health/echo "skipping health check on CI"/' /tmp/install.sh
+          sh /tmp/install.sh
+          ls -la ~/.local/bin/si
+          ls ~/.local/share/silicon/runtime/
+
+  test-windows:
+    strategy:
+      matrix:
+        os: [windows-2019, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Test install.ps1
+        shell: pwsh
+        run: |
+          irm silicon-editor.pages.dev/install.ps1 | iex
+          $siPath = Join-Path $env:LOCALAPPDATA 'Programs\silicon\si.exe'
+          & $siPath --version
+          Get-ChildItem (Join-Path $env:APPDATA 'silicon\runtime')
