@@ -1203,6 +1203,7 @@ file-types = [
   { glob = "Podfile" },
   { glob = "Vagrantfile" },
   { glob = "Brewfile" },
+  { glob = "*.Brewfile" },
   { glob = "Guardfile" },
   { glob = "Capfile" },
   { glob = "Cheffile" },
