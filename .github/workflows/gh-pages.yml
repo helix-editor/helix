@@ -25,11 +25,10 @@ jobs:
         with:
           mdbook-version: '0.4.43'
 
-      - name: Build site
+      - name: Build docs
         run: |
           mdbook build book
           mkdir -p _site/docs
-          cp -r website/* _site/
           cp -r book/book/* _site/docs/
 
       - name: Set output directory
