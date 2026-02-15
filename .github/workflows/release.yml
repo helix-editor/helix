@@ -232,6 +232,8 @@ jobs:
   publish:
     name: Publish
     needs: [dist]
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
