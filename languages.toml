@@ -704,6 +704,8 @@ comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "clangd" ]
 indent = { tab-width = 2, unit = "  " }
+auto-format = true
+formatter = { command = "clang-format" }
 
 [language.debugger]
 name = "lldb-dap"
