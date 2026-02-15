@@ -8,7 +8,7 @@
 # to set those most of the time. If downstream does overwrite this its not a huge
 # deal since it will only break tests anyway
 [target."cfg(all())"]
-rustflags = ["--cfg", "tokio_unstable", "-C", "target-feature=-crt-static", "-C", "target-cpu=native"]
+rustflags = ["--cfg", "tokio_unstable", "-C", "target-feature=-crt-static"]
 
 
 [alias]
