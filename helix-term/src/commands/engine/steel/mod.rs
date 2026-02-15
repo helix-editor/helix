@@ -4,7 +4,10 @@ use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::{
     command_line::Args,
     diagnostic::Severity,
-    extensions::steel_implementations::{rope_module, SteelRopeSlice},
+    extensions::steel_implementations::{
+        rope_module, treesitter_module, SteelRopeSlice, TreeSitterMatch, TreeSitterQuery,
+        TreeSitterQueryLoader, TreeSitterSyntax, TreeSitterTree,
+    },
     find_workspace, graphemes,
     syntax::{
         self,
@@ -12,6 +15,7 @@ use helix_core::{
             default_timeout, AutoPairConfig, GlobSet, LanguageConfiguration,
             LanguageServerConfiguration, SoftWrap,
         },
+        LanguageLoader,
     },
     text_annotations::InlineAnnotation,
     Range, Selection, Tendril, Transaction,
@@ -3480,6 +3484,220 @@ fn load_rope_api(engine: &mut Engine, generate_sources: bool) {
     engine.register_module(rope_slice_module);
 }
 
+fn load_treesitter_api(engine: &mut Engine, generate_sources: bool) {
+    let mut module = treesitter_module();
+    let builtin_treesitter_module = include_str!("treesitter.scm");
+
+    // Register the ctx functions
+    module
+        .register_fn_with_ctx(
+            CTX,
+            "document->tree",
+            |cx: &mut Context, doc_id: DocumentId| -> Option<TreeSitterTree> {
+                cx.editor
+                    .documents
+                    .get(&doc_id)
+                    .and_then(|d| d.syntax.as_ref())
+                    .map(|syn| TreeSitterTree::new(syn.tree(), syn.root_language()))
+            },
+        )
+        .register_fn_with_ctx(
+            CTX,
+            "document->tree-byte-range",
+            |cx: &mut Context,
+             doc_id: DocumentId,
+             lower: u32,
+             upper: u32|
+             -> Option<TreeSitterTree> {
+                let doc = cx.editor.documents.get(&doc_id)?;
+                let syn = doc.syntax()?;
+                let layer = syn.layer_for_byte_range(lower, upper);
+                let lang = syn.layer(layer).language;
+                syn.layer(layer)
+                    .tree()
+                    .map(|l| TreeSitterTree::new(l, lang))
+            },
+        )
+        .register_fn_with_ctx(
+            CTX,
+            "query-document",
+            |cx: &mut Context,
+             query_loader: TreeSitterQueryLoader,
+             doc_id: DocumentId|
+             -> Option<Result<TreeSitterMatch, SteelErr>> {
+                let (text, syn) = {
+                    let Some(doc) = cx.editor.documents.get(&doc_id) else {
+                        return Some(Err(SteelErr::new(
+                            ErrorKind::Generic,
+                            format!("unable to find doc, id: {}", doc_id),
+                        )));
+                    };
+                    let text = doc.text().slice(..);
+                    let Some(syn) = doc.syntax() else {
+                        // we don't return error here because it's valid to not have a syntax tree.
+                        return None;
+                    };
+
+                    (text, syn)
+                };
+                let text_len = text.len_bytes();
+
+                Some(TreeSitterSyntax::run_query(
+                    syn,
+                    cx.editor.syn_loader.load().as_ref(),
+                    query_loader,
+                    text,
+                    0,
+                    text_len as u32,
+                ))
+            },
+        )
+        .register_fn_with_ctx(
+            CTX,
+            "query-document-byte-range",
+            |cx: &mut Context,
+             query_loader: TreeSitterQueryLoader,
+             doc_id: DocumentId,
+             lower: u32,
+             upper: u32|
+             -> Option<Result<TreeSitterMatch, SteelErr>> {
+                let (text, syn) = {
+                    let Some(doc) = cx.editor.documents.get(&doc_id) else {
+                        return Some(Err(SteelErr::new(
+                            ErrorKind::Generic,
+                            format!("unable to find doc, id: {}", doc_id),
+                        )));
+                    };
+                    let text = doc.text().slice(..);
+                    let Some(syn) = doc.syntax() else {
+                        // we don't return error here because it's valid to not have a syntax tree.
+                        return None;
+                    };
+
+                    (text, syn)
+                };
+
+                Some(TreeSitterSyntax::run_query(
+                    syn,
+                    cx.editor.syn_loader.load().as_ref(),
+                    query_loader,
+                    text,
+                    lower,
+                    upper,
+                ))
+            },
+        );
+
+    module.register_fn_with_ctx(
+        CONFIG,
+        "tstree->language",
+        |config: &mut HelixConfiguration, tree: TreeSitterTree| -> String {
+            config
+                .language_configuration
+                .load()
+                .language(tree.get_language())
+                .config()
+                .language_id
+                .clone()
+        },
+    );
+    module.register_fn_with_ctx(
+        CONFIG,
+        "string->tsquery",
+        |config: &mut HelixConfiguration,
+         language: SteelString,
+         source: SteelString|
+         -> Result<TreeSitterQuery, SteelErr> {
+            let loader = config.language_configuration.load();
+            let Some(lang) = loader.language_for_name(language.to_string()) else {
+                return Err(SteelErr::new(
+                    ErrorKind::Generic,
+                    format!("unable to find language: {}", language),
+                ));
+            };
+            let Some(config) = loader.get_config(lang) else {
+                return Err(SteelErr::new(
+                    ErrorKind::Generic,
+                    format!("unable to find language: {}", language),
+                ));
+            };
+            TreeSitterQuery::new(config.grammar, source.as_str())
+        },
+    );
+
+    module
+        .register_fn_with_ctx(
+            CONFIG,
+            "query-tssyntax",
+            |config: &mut HelixConfiguration,
+             query_loader: TreeSitterQueryLoader,
+             syntax: TreeSitterSyntax,
+             text: SteelRopeSlice|
+             -> Result<TreeSitterMatch, SteelErr> {
+                let syn = syntax.get_inner().as_ref();
+                let loader = config.language_configuration.load();
+                TreeSitterSyntax::run_query(
+                    syn,
+                    &loader,
+                    query_loader,
+                    text.to_slice(),
+                    0,
+                    text.len_bytes().try_into().unwrap(),
+                )
+            },
+        )
+        .register_fn_with_ctx(
+            CONFIG,
+            "query-tssyntax-byte-range",
+            |config: &mut HelixConfiguration,
+             query_loader: TreeSitterQueryLoader,
+             syntax: TreeSitterSyntax,
+             text: SteelRopeSlice,
+             lower: u32,
+             upper: u32|
+             -> Result<TreeSitterMatch, SteelErr> {
+                let loader = config.language_configuration.load();
+                let syn = syntax.get_inner().as_ref();
+                TreeSitterSyntax::run_query(
+                    syn,
+                    &loader,
+                    query_loader,
+                    text.to_slice(),
+                    lower,
+                    upper,
+                )
+            },
+        )
+        .register_fn_with_ctx(
+            CONFIG,
+            "rope->tssyntax",
+            |config: &mut HelixConfiguration,
+             source: SteelRopeSlice,
+             language: SteelString|
+             -> Result<TreeSitterSyntax, SteelErr> {
+                let loader = config.language_configuration.load();
+                let Some(lang) = loader.language_for_name(language.as_str()) else {
+                    return Err(SteelErr::new(
+                        ErrorKind::Generic,
+                        format!("unable to find language: {}", language),
+                    ));
+                };
+                TreeSitterSyntax::new(source, lang, loader.as_ref())
+            },
+        );
+
+    if generate_sources {
+        generate_module("treesitter.scm", &builtin_treesitter_module);
+        configure_lsp_builtins("treesitter", &module);
+    }
+    engine.register_steel_module(
+        "helix/treesitter.scm".to_string(),
+        builtin_treesitter_module.to_string(),
+    );
+
+    engine.register_module(module);
+}
+
 fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/misc");
     let builtin_misc_module = include_str!("misc.scm").to_string();
@@ -3589,6 +3807,7 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     load_static_commands(engine, generate_sources);
     load_keymap_api(engine, generate_sources);
     load_rope_api(engine, generate_sources);
+    load_treesitter_api(engine, generate_sources);
     load_misc_api(engine, generate_sources);
     load_component_api(engine, generate_sources);
 
