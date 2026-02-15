@@ -21,5 +21,6 @@ mod test {
     mod commands;
     mod languages;
     mod movement;
+    mod session;
     mod splits;
 }
