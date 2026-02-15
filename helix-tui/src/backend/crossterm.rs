@@ -309,7 +309,7 @@ where
     }
 
     fn set_title(&mut self, title: &str) -> io::Result<()> {
-        todo!()
+        execute!(self.buffer, terminal::SetTitle(title))
     }
 
     fn clear(&mut self) -> io::Result<()> {
