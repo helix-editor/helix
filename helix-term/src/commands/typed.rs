@@ -164,11 +164,12 @@ fn open_impl(cx: &mut compositor::Context, args: Args, action: Action) -> anyhow
         } else {
             // Otherwise, just open the file
             let _ = cx.editor.open(&path, action)?;
-            let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-            doc.set_selection(view.id, pos);
-            // does not affect opening a buffer without pos
-            align_view(doc, view, Align::Center);
+            if !pos.is_zero() {
+                let (view, doc) = current!(cx.editor);
+                let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                doc.set_selection(view.id, pos);
+                align_view(doc, view, Align::Center);
+            }
         }
     }
     Ok(())

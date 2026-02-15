@@ -30,6 +30,7 @@ pub mod syntax;
 pub mod test;
 pub mod text_annotations;
 pub mod textobject;
+pub mod time;
 mod transaction;
 pub mod uri;
 pub mod wrap;
