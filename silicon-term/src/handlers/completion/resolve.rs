@@ -124,7 +124,7 @@ impl AsyncHook for ResolveTimeout {
             None
         } else {
             self.next_request = Some(request);
-            Some(Instant::now() + Duration::from_millis(150))
+            Some(Instant::now() + Duration::from_millis(50))
         }
     }
 

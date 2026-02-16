@@ -14,7 +14,7 @@ use tokio::task::JoinSet;
 use crate::commands;
 use crate::compositor::Compositor;
 use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
-use crate::handlers::completion::request::{request_incomplete_completion_list, Trigger};
+use crate::handlers::completion::request::Trigger;
 use crate::job::dispatch;
 use crate::keymap::MappableCommand;
 use crate::ui::lsp::signature_help::SignatureHelp;
@@ -183,8 +183,11 @@ fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
                     trigger_auto_completion(cx.editor, false);
                 }
             } else {
-                let handle = cx.editor.handlers.completions.request_controller.restart();
-                request_incomplete_completion_list(cx.editor, handle)
+                // Debounce incomplete list re-requests to avoid LSP spam during fast typing.
+                cx.editor
+                    .handlers
+                    .completions
+                    .event(CompletionEvent::IncompleteRefresh);
             }
         }
     }))

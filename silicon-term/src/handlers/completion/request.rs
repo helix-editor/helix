@@ -50,6 +50,8 @@ pub struct CompletionHandler {
     /// The currently active trigger which will cause a completion request after the timeout.
     trigger: Option<Trigger>,
     in_flight: Option<Trigger>,
+    /// Whether an incomplete list re-request is pending (debounced).
+    pending_incomplete_refresh: bool,
     task_controller: TaskController,
     config: Arc<ArcSwap<Config>>,
 }
@@ -61,6 +63,7 @@ impl CompletionHandler {
             task_controller: TaskController::new(),
             trigger: None,
             in_flight: None,
+            pending_incomplete_refresh: false,
         }
     }
 }
@@ -82,6 +85,7 @@ impl silicon_event::AsyncHook for CompletionHandler {
                 doc,
                 view,
             } => {
+                self.pending_incomplete_refresh = false;
                 // Technically it shouldn't be possible to switch views/documents in insert mode
                 // but people may create weird keymaps/use the mouse so let's be extra careful.
                 if self
@@ -98,6 +102,7 @@ impl silicon_event::AsyncHook for CompletionHandler {
                 }
             }
             CompletionEvent::TriggerChar { cursor, doc, view } => {
+                self.pending_incomplete_refresh = false;
                 // immediately request completions and drop all auto completion requests
                 self.task_controller.cancel();
                 self.trigger = Some(Trigger {
@@ -108,6 +113,7 @@ impl silicon_event::AsyncHook for CompletionHandler {
                 });
             }
             CompletionEvent::ManualTrigger { cursor, doc, view } => {
+                self.pending_incomplete_refresh = false;
                 // immediately request completions and drop all auto completion requests
                 self.trigger = Some(Trigger {
                     pos: cursor,
@@ -120,16 +126,22 @@ impl silicon_event::AsyncHook for CompletionHandler {
                 return None;
             }
             CompletionEvent::Cancel => {
+                self.pending_incomplete_refresh = false;
                 self.trigger = None;
                 self.task_controller.cancel();
             }
             CompletionEvent::DeleteText { cursor } => {
+                self.pending_incomplete_refresh = false;
                 // if we deleted the original trigger, abort the completion
                 if matches!(self.trigger.or(self.in_flight), Some(Trigger{ pos, .. }) if cursor < pos)
                 {
                     self.trigger = None;
                     self.task_controller.cancel();
                 }
+            }
+            CompletionEvent::IncompleteRefresh => {
+                self.pending_incomplete_refresh = true;
+                return Some(Instant::now() + Duration::from_millis(30));
             }
         }
         self.trigger.map(|trigger| {
@@ -142,19 +154,27 @@ impl silicon_event::AsyncHook for CompletionHandler {
                 // and restarting completion requests. The small timeout here mainly
                 // serves to better handle cases where the completion handler
                 // may fall behind (so multiple events in the channel) and macros
-                Duration::from_millis(5)
+                Duration::from_millis(2)
             };
             Instant::now() + timeout
         })
     }
 
     fn finish_debounce(&mut self) {
-        let trigger = self.trigger.take().expect("debounce always has a trigger");
-        self.in_flight = Some(trigger);
-        let handle = self.task_controller.restart();
-        dispatch_blocking(move |editor, compositor| {
-            request_completions(trigger, handle, editor, compositor)
-        });
+        if let Some(trigger) = self.trigger.take() {
+            self.pending_incomplete_refresh = false;
+            self.in_flight = Some(trigger);
+            let handle = self.task_controller.restart();
+            dispatch_blocking(move |editor, compositor| {
+                request_completions(trigger, handle, editor, compositor)
+            });
+        } else if self.pending_incomplete_refresh {
+            self.pending_incomplete_refresh = false;
+            dispatch_blocking(move |editor, _compositor| {
+                let handle = editor.handlers.completions.request_controller.restart();
+                request_incomplete_completion_list(editor, handle);
+            });
+        }
     }
 }
 
@@ -266,7 +286,7 @@ fn request_completions(
         let mut items: Vec<_> = Vec::new();
         response.take_items(&mut items);
         context.insert(response.provider, response.context);
-        let deadline = Instant::now() + Duration::from_millis(100);
+        let deadline = Instant::now() + Duration::from_millis(30);
         loop {
             let Some(mut response) = timeout_at(deadline, handle_response(&mut requests, false))
                 .await

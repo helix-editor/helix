@@ -61,4 +61,6 @@ pub enum CompletionEvent {
     DeleteText { cursor: usize },
     /// Invalidate the current auto completion trigger
     Cancel,
+    /// Re-request incomplete completion lists with debouncing
+    IncompleteRefresh,
 }
