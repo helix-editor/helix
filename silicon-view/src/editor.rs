@@ -1257,6 +1257,8 @@ pub struct Editor {
     pub commandline_visible: bool,
     /// Whether the terminal panel currently has focus (synced by Application).
     pub terminal_panel_focused: bool,
+    /// When true, focus returns to the terminal panel after the next command prompt completes.
+    pub return_to_terminal_after_command: bool,
     /// User-defined file runners: extension → command template.
     pub runners: HashMap<String, String>,
 }
@@ -1384,6 +1386,7 @@ impl Editor {
             cursor_cache: CursorCache::default(),
             commandline_visible: conf.commandline,
             terminal_panel_focused: false,
+            return_to_terminal_after_command: false,
             runners: HashMap::new(),
         }
     }

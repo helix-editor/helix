@@ -4183,7 +4183,38 @@ pub(super) fn command_mode(cx: &mut Context) {
         Some(':'),
         complete_command_line,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            if let Err(err) = execute_command_line(cx, input, event) {
+            let should_return = cx.editor.return_to_terminal_after_command;
+
+            if should_return {
+                // Capture view/doc state before execution.
+                let view_id_before = cx.editor.tree.focus;
+                let doc_id_before = cx.editor.tree.get(view_id_before).doc;
+
+                if let Err(err) = execute_command_line(cx, input, event) {
+                    cx.editor.set_error(err.to_string());
+                }
+
+                match event {
+                    PromptEvent::Validate => {
+                        let view_id_after = cx.editor.tree.focus;
+                        let doc_id_after = cx.editor.tree.get(view_id_after).doc;
+                        // Return to terminal if view & doc didn't change.
+                        if view_id_before == view_id_after && doc_id_before == doc_id_after {
+                            cx.jobs.callback(async {
+                                Ok(crate::job::Callback::RefocusTerminalPanel)
+                            });
+                        }
+                        cx.editor.return_to_terminal_after_command = false;
+                    }
+                    PromptEvent::Abort => {
+                        cx.jobs.callback(async {
+                            Ok(crate::job::Callback::RefocusTerminalPanel)
+                        });
+                        cx.editor.return_to_terminal_after_command = false;
+                    }
+                    PromptEvent::Update => {} // Still typing, don't act yet.
+                }
+            } else if let Err(err) = execute_command_line(cx, input, event) {
                 cx.editor.set_error(err.to_string());
             }
         },

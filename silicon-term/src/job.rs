@@ -44,6 +44,7 @@ pub enum Callback {
     PrevTerminalTab,
     GrowTerminalPanel,
     ShrinkTerminalPanel,
+    RefocusTerminalPanel,
 }
 
 pub type JobFuture = BoxFuture<'static, anyhow::Result<Option<Callback>>>;
@@ -127,7 +128,8 @@ impl Jobs {
                 | Callback::NextTerminalTab
                 | Callback::PrevTerminalTab
                 | Callback::GrowTerminalPanel
-                | Callback::ShrinkTerminalPanel => {
+                | Callback::ShrinkTerminalPanel
+                | Callback::RefocusTerminalPanel => {
                     log::error!("Terminal callback reached handle_callback unexpectedly");
                 }
             },

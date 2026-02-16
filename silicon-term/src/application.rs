@@ -954,6 +954,38 @@ impl Application {
                 // then forward all other keys to the PTY.
                 if self.terminal_panel.focused {
                     if let Event::Key(key) = &silicon_event {
+                        // Ctrl+: (Ctrl+Shift+;) → send literal ':' to PTY (escape mechanism).
+                        if key.code == KeyCode::Char(':')
+                            && key.modifiers.contains(KeyModifiers::CONTROL)
+                        {
+                            use silicon_view::input::KeyEvent as SiKeyEvent;
+                            let colon_key = SiKeyEvent {
+                                code: KeyCode::Char(':'),
+                                modifiers: key.modifiers & !KeyModifiers::CONTROL,
+                            };
+                            self.terminal_panel.handle_key_event(&colon_key);
+                            return self.render().await;
+                        }
+
+                        // Bare ':' → open editor command mode from terminal.
+                        if key.code == KeyCode::Char(':')
+                            && !key.modifiers.contains(KeyModifiers::CONTROL)
+                        {
+                            use silicon_view::document::Mode;
+                            // Unfocus terminal, ensure editor is in Normal mode for keymap dispatch.
+                            self.terminal_panel.unfocus();
+                            self.editor.terminal_panel_focused = false;
+                            self.editor.return_to_terminal_after_command = true;
+                            self.editor.mode = Mode::Normal;
+                            let mut cx = crate::compositor::Context {
+                                editor: &mut self.editor,
+                                jobs: &mut self.jobs,
+                                scroll: None,
+                            };
+                            self.compositor.handle_event(&silicon_event, &mut cx);
+                            return self.render().await;
+                        }
+
                         // Ctrl+Shift+] → next terminal tab
                         if key.code == KeyCode::Char(']')
                             && key.modifiers.contains(KeyModifiers::CONTROL)
@@ -1550,6 +1582,13 @@ impl Application {
             }
             Callback::ShrinkTerminalPanel => {
                 self.terminal_panel.shrink(area);
+                self.render().await;
+            }
+            Callback::RefocusTerminalPanel => {
+                if self.terminal_panel.visible && self.terminal_panel.tab_count() > 0 {
+                    self.terminal_panel.focused = true;
+                    self.editor.terminal_panel_focused = true;
+                }
                 self.render().await;
             }
             callback => {
