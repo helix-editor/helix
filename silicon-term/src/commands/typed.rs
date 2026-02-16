@@ -1802,7 +1802,7 @@ fn tree_sitter_scopes(
     let text = doc.text().slice(..);
 
     let pos = doc.selection(view.id).primary().cursor(text);
-    let scopes = indent::get_scopes(doc.syntax(), text, pos);
+    let scopes = core_indent::get_scopes(doc.syntax(), text, pos);
 
     let contents = format!("```json\n{:?}\n````", scopes);
 
