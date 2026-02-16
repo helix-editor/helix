@@ -26,6 +26,7 @@ pub use item::{CompletionItem, CompletionItems, CompletionResponse, LspCompletio
 pub use request::CompletionHandler;
 pub use resolve::ResolveHandler;
 
+pub mod frecency;
 mod item;
 mod path;
 mod request;

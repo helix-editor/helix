@@ -124,4 +124,90 @@ impl CompletionItem {
             CompletionItem::Other(_) => false,
         }
     }
+
+    /// Normalized kind string for frecency keys.
+    pub fn kind_str(&self) -> &str {
+        match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
+                Some(lsp::CompletionItemKind::METHOD) => "method",
+                Some(lsp::CompletionItemKind::FUNCTION) => "function",
+                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor",
+                Some(lsp::CompletionItemKind::FIELD) => "field",
+                Some(lsp::CompletionItemKind::VARIABLE) => "variable",
+                Some(lsp::CompletionItemKind::CLASS) => "class",
+                Some(lsp::CompletionItemKind::INTERFACE) => "interface",
+                Some(lsp::CompletionItemKind::MODULE) => "module",
+                Some(lsp::CompletionItemKind::PROPERTY) => "property",
+                Some(lsp::CompletionItemKind::UNIT) => "unit",
+                Some(lsp::CompletionItemKind::VALUE) => "value",
+                Some(lsp::CompletionItemKind::ENUM) => "enum",
+                Some(lsp::CompletionItemKind::KEYWORD) => "keyword",
+                Some(lsp::CompletionItemKind::SNIPPET) => "snippet",
+                Some(lsp::CompletionItemKind::TEXT) => "text",
+                Some(lsp::CompletionItemKind::COLOR) => "color",
+                Some(lsp::CompletionItemKind::FILE) => "file",
+                Some(lsp::CompletionItemKind::REFERENCE) => "reference",
+                Some(lsp::CompletionItemKind::FOLDER) => "folder",
+                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member",
+                Some(lsp::CompletionItemKind::CONSTANT) => "constant",
+                Some(lsp::CompletionItemKind::STRUCT) => "struct",
+                Some(lsp::CompletionItemKind::EVENT) => "event",
+                Some(lsp::CompletionItemKind::OPERATOR) => "operator",
+                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
+                _ => "",
+            },
+            CompletionItem::Other(item) => &item.kind,
+        }
+    }
+
+    /// Raw LSP completion item kind, if available.
+    pub fn lsp_kind(&self) -> Option<lsp::CompletionItemKind> {
+        match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => item.kind,
+            CompletionItem::Other(_) => None,
+        }
+    }
+
+    /// Parse leading digits from LSP `sort_text` to get a priority value.
+    /// Lower values = higher priority. Returns 128 for items without sort_text
+    /// or without leading digits.
+    pub fn sort_text_priority(&self) -> u8 {
+        match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
+                let Some(sort_text) = &item.sort_text else {
+                    return 128;
+                };
+                let digits: String = sort_text.chars().take_while(|c| c.is_ascii_digit()).collect();
+                if digits.is_empty() {
+                    return 128;
+                }
+                digits.parse::<u8>().unwrap_or(128)
+            }
+            CompletionItem::Other(_) => 128,
+        }
+    }
+
+    /// Whether this completion item is marked as deprecated.
+    pub fn is_deprecated(&self) -> bool {
+        match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
+                item.deprecated.unwrap_or(false)
+                    || item
+                        .tags
+                        .as_ref()
+                        .is_some_and(|tags| tags.contains(&lsp::CompletionItemTag::DEPRECATED))
+            }
+            CompletionItem::Other(_) => false,
+        }
+    }
+
+    /// Label length for tiebreaking (shorter = better).
+    pub fn label_len(&self) -> u16 {
+        match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
+                item.label.len().min(u16::MAX as usize) as u16
+            }
+            CompletionItem::Other(item) => item.label.len().min(u16::MAX as usize) as u16,
+        }
+    }
 }

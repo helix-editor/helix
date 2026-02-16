@@ -1,3 +1,4 @@
+use crate::handlers::completion::frecency::{FrecencyKey, FRECENCY};
 use crate::handlers::completion::LspCompletionItem;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 use crate::{
@@ -6,6 +7,7 @@ use crate::{
         trigger_auto_completion, CompletionItem, CompletionResponse, ResolveHandler,
     },
 };
+use silicon_core::completion::CompletionProvider;
 use silicon_core::snippets::{ActiveSnippet, RenderedSnippet, Snippet};
 use silicon_core::{self as core, chars, fuzzy::MATCHER, Change, Transaction};
 use silicon_lsp::{lsp, util, OffsetEncoding};
@@ -24,6 +26,85 @@ use tui::text::Spans;
 use tui::{buffer::Buffer as Surface, text::Span};
 
 use std::cmp::Reverse;
+use std::collections::HashSet;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TriggerContext {
+    MemberAccess,
+    Expression,
+}
+
+fn kind_boost(kind: Option<lsp::CompletionItemKind>, ctx: TriggerContext) -> f32 {
+    let Some(kind) = kind else { return 1.0 };
+    match ctx {
+        TriggerContext::MemberAccess => match kind {
+            lsp::CompletionItemKind::METHOD
+            | lsp::CompletionItemKind::FIELD
+            | lsp::CompletionItemKind::PROPERTY => 1.3,
+            lsp::CompletionItemKind::FUNCTION => 1.1,
+            lsp::CompletionItemKind::KEYWORD | lsp::CompletionItemKind::SNIPPET => 0.7,
+            _ => 1.0,
+        },
+        TriggerContext::Expression => match kind {
+            lsp::CompletionItemKind::VARIABLE
+            | lsp::CompletionItemKind::FUNCTION
+            | lsp::CompletionItemKind::CONSTANT => 1.2,
+            lsp::CompletionItemKind::KEYWORD | lsp::CompletionItemKind::SNIPPET => 0.8,
+            _ => 1.0,
+        },
+    }
+}
+
+fn compute_composite_score(
+    base_score: u32,
+    item: &CompletionItem,
+    pattern: &str,
+    trigger_context: TriggerContext,
+    language: &str,
+    nearby_words: &HashSet<String>,
+) -> u32 {
+    let mut score = base_score as f32;
+
+    // 1. Frecency (1.0x to 3.0x)
+    score *= FRECENCY.score(item.filter_text(), item.kind_str(), language);
+
+    // 2. Kind context boost (0.7x to 1.3x)
+    score *= kind_boost(item.lsp_kind(), trigger_context);
+
+    // 3. sortText priority (additive, up to +64)
+    let sort_priority = item.sort_text_priority();
+    if sort_priority < 128 {
+        score += (128 - sort_priority) as f32 * 0.5;
+    }
+
+    // 4. Exact match (+200) / prefix match (+100)
+    if !pattern.is_empty() {
+        let filter = item.filter_text();
+        if filter.eq_ignore_ascii_case(pattern) {
+            score += 200.0;
+        } else if filter.len() >= pattern.len()
+            && filter[..pattern.len()].eq_ignore_ascii_case(pattern)
+        {
+            score += 100.0;
+        }
+    }
+
+    // 5. Deprecated penalty (0.5x)
+    if item.is_deprecated() {
+        score *= 0.5;
+    }
+
+    // 6. Word proximity (3.0x nearby, 1.5x same-file-far)
+    if matches!(item.provider(), CompletionProvider::Word) {
+        if nearby_words.contains(item.filter_text()) {
+            score *= 3.0;
+        } else {
+            score *= 1.5;
+        }
+    }
+
+    score.max(0.0) as u32
+}
 
 impl menu::Item for CompletionItem {
     type Data = Style;
@@ -122,6 +203,9 @@ pub struct Completion {
     filter: String,
     // TODO: move to silicon-view/central handler struct in the future
     resolve_handler: ResolveHandler,
+    trigger_context: TriggerContext,
+    nearby_words: HashSet<String>,
+    language: String,
 }
 
 impl Completion {
@@ -249,6 +333,15 @@ impl Completion {
                     };
 
                     doc.apply(&transaction, view.id);
+
+                    // Record frecency for the accepted completion
+                    let language = doc.language_name().unwrap_or("").to_string();
+                    FRECENCY.record(FrecencyKey {
+                        label: item.filter_text().to_string(),
+                        kind: item.kind_str().to_string(),
+                        language,
+                    });
+
                     let placeholder = snippet.is_some();
                     if let Some(snippet) = snippet {
                         doc.active_snippet = match doc.active_snippet.take() {
@@ -302,6 +395,63 @@ impl Completion {
             .count();
         let start_offset = cursor.saturating_sub(offset);
 
+        // Detect trigger context: look at chars before the word being completed
+        let trigger_context = {
+            let before_word = text.slice(..start_offset);
+            let mut chars_before = before_word.chars_at(before_word.len_chars()).reversed();
+            // Skip whitespace
+            let last_non_ws = chars_before.by_ref().find(|c| !c.is_whitespace());
+            match last_non_ws {
+                Some('.') => TriggerContext::MemberAccess,
+                Some(':') => {
+                    // Check for `::`
+                    if chars_before.next() == Some(':') {
+                        TriggerContext::MemberAccess
+                    } else {
+                        TriggerContext::Expression
+                    }
+                }
+                Some('>') => {
+                    // Check for `->`
+                    if chars_before.next() == Some('-') {
+                        TriggerContext::MemberAccess
+                    } else {
+                        TriggerContext::Expression
+                    }
+                }
+                _ => TriggerContext::Expression,
+            }
+        };
+
+        // Build nearby words: extract words within ±50 lines of cursor
+        let nearby_words = {
+            let rope = doc.text();
+            let cursor_line = rope.char_to_line(cursor);
+            let start_line = cursor_line.saturating_sub(50);
+            let end_line = (cursor_line + 51).min(rope.len_lines());
+            let start_char = rope.line_to_char(start_line);
+            let end_char = rope.line_to_char(end_line);
+            let slice = rope.slice(start_char..end_char);
+
+            let mut words = HashSet::new();
+            let mut word = String::new();
+            for ch in slice.chars() {
+                if chars::char_is_word(ch) {
+                    word.push(ch);
+                } else if word.len() >= 2 {
+                    words.insert(std::mem::take(&mut word));
+                } else {
+                    word.clear();
+                }
+            }
+            if word.len() >= 2 {
+                words.insert(word);
+            }
+            words
+        };
+
+        let language = doc.language_name().unwrap_or("").to_string();
+
         let fragment = doc.text().slice(start_offset..cursor);
         let mut completion = Self {
             popup,
@@ -309,6 +459,9 @@ impl Completion {
             // and avoid allocation during matching
             filter: String::from(fragment),
             resolve_handler: ResolveHandler::new(),
+            trigger_context,
+            nearby_words,
+            language,
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
@@ -330,7 +483,14 @@ impl Completion {
             AtomKind::Fuzzy,
             false,
         );
+        let pattern_text = pattern.needle_text().to_string();
         let mut buf = Vec::new();
+
+        // Extract fields needed for composite scoring to avoid borrow conflicts
+        let trigger_context = self.trigger_context;
+        let language = &self.language;
+        let nearby_words = &self.nearby_words;
+
         let (matches, options) = self.popup.contents_mut().update_options();
         if incremental {
             matches.retain_mut(|(index, score)| {
@@ -354,6 +514,20 @@ impl Completion {
                     .map(|score| (i as u32, score as u32 / 3))
             }));
         }
+
+        // Apply composite scoring
+        for (index, score) in matches.iter_mut() {
+            let item = &options[*index as usize];
+            *score = compute_composite_score(
+                *score,
+                item,
+                &pattern_text,
+                trigger_context,
+                language,
+                nearby_words,
+            );
+        }
+
         // Nucleo is meant as an FZF-like fuzzy matcher and only hides matches that are truly
         // impossible - as in the sequence of characters just doesn't appear. That doesn't work
         // well for completions with multiple language servers where all completions of the next
@@ -371,6 +545,7 @@ impl Completion {
                 Reverse(option.preselect()),
                 option.provider_priority(),
                 Reverse(score),
+                option.label_len(),
                 i,
             )
         });
@@ -465,6 +640,14 @@ impl Component for Completion {
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         self.popup.render(area, surface, cx);
+
+        // Pre-resolve top 5 visible items for instant docs
+        let indices: Vec<usize> = self.popup.contents().top_match_indices(5).collect();
+        for idx in indices {
+            if let CompletionItem::Lsp(item) = self.popup.contents_mut().option_mut(idx) {
+                self.resolve_handler.ensure_item_resolved(cx.editor, item);
+            }
+        }
 
         // if we have a selection, render a markdown popup on top/below with info
         let option = match self.popup.contents_mut().selection_mut() {

@@ -216,6 +216,19 @@ impl<T: Item> Menu<T> {
     pub fn len(&self) -> usize {
         self.matches.len()
     }
+
+    /// Returns option indices for the top N matched items (by current sort order).
+    pub fn top_match_indices(&self, n: usize) -> impl Iterator<Item = usize> + '_ {
+        self.matches
+            .iter()
+            .take(n)
+            .map(|(index, _score)| *index as usize)
+    }
+
+    /// Mutable access to an option by its raw index in the options vec.
+    pub fn option_mut(&mut self, index: usize) -> &mut T {
+        &mut self.options[index]
+    }
 }
 
 impl<T: Item + PartialEq> Menu<T> {

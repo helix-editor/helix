@@ -1689,6 +1689,9 @@ impl Application {
             ));
         }
 
+        // Flush completion frecency data to disk
+        crate::handlers::completion::frecency::FRECENCY.flush(&silicon_loader::data_dir());
+
         errs
     }
 }
