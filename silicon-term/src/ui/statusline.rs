@@ -205,6 +205,24 @@ where
 {
     let visible = context.focused;
     let config = context.editor.config();
+
+    // When terminal panel is focused, show TERMINAL mode instead of editor mode.
+    if context.editor.terminal_panel_focused {
+        let mode_str = "-- TERMINAL --";
+        let content = if visible {
+            format!(" {mode_str} ")
+        } else {
+            " ".repeat(mode_str.width() + 2)
+        };
+        let style = if visible && config.color_modes {
+            context.editor.theme.get("ui.statusline.normal")
+        } else {
+            Style::default()
+        };
+        write(context, Span::styled(content, style));
+        return;
+    }
+
     let modenames = &config.statusline.mode;
     let mode_str = match context.editor.mode() {
         Mode::Insert => &modenames.insert,

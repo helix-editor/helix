@@ -2636,6 +2636,32 @@ fn prev_terminal_tab(
     Ok(())
 }
 
+fn grow_terminal_panel(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let callback = async move { Ok(Callback::GrowTerminalPanel) };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
+fn shrink_terminal_panel(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let callback = async move { Ok(Callback::ShrinkTerminalPanel) };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
 fn run_file(
     cx: &mut compositor::Context,
     _args: Args,
@@ -4045,6 +4071,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["tprev-tab"],
         doc: "Switch to the previous terminal tab.",
         fun: prev_terminal_tab,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-grow",
+        aliases: &["tgrow"],
+        doc: "Grow the terminal panel by 5%.",
+        fun: grow_terminal_panel,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "terminal-shrink",
+        aliases: &["tshrink"],
+        doc: "Shrink the terminal panel by 5%.",
+        fun: shrink_terminal_panel,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),

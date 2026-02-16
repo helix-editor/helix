@@ -1255,6 +1255,8 @@ pub struct Editor {
     pub cursor_cache: CursorCache,
     /// Whether the command line row is currently visible (used when `commandline = false`).
     pub commandline_visible: bool,
+    /// Whether the terminal panel currently has focus (synced by Application).
+    pub terminal_panel_focused: bool,
     /// User-defined file runners: extension → command template.
     pub runners: HashMap<String, String>,
 }
@@ -1381,6 +1383,7 @@ impl Editor {
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
             commandline_visible: conf.commandline,
+            terminal_panel_focused: false,
             runners: HashMap::new(),
         }
     }

@@ -82,6 +82,8 @@ pub struct Application {
     theme_mode: Option<theme::Mode>,
 
     terminal_panel: silicon_terminal::TerminalPanel,
+    /// Whether the user is currently dragging the terminal panel separator.
+    dragging_terminal_separator: bool,
     config_watcher: Option<ConfigWatcher>,
 }
 
@@ -277,6 +279,7 @@ impl Application {
             lsp_progress: LspProgressMap::new(),
             theme_mode,
             terminal_panel,
+            dragging_terminal_separator: false,
             config_watcher,
         };
 
@@ -788,12 +791,6 @@ impl Application {
 
         use silicon_view::keyboard::{KeyCode, KeyModifiers};
 
-        let mut cx = crate::compositor::Context {
-            editor: &mut self.editor,
-            jobs: &mut self.jobs,
-            scroll: None,
-        };
-
         // Handle key events
         let event = match event {
             Ok(ev) => ev,
@@ -819,6 +816,11 @@ impl Application {
                     self.terminal_panel.resize(area);
                 }
 
+                let mut cx = crate::compositor::Context {
+                    editor: &mut self.editor,
+                    jobs: &mut self.jobs,
+                    scroll: None,
+                };
                 self.compositor
                     .handle_event(&Event::Resize(cols, rows), &mut cx)
             }
@@ -854,6 +856,11 @@ impl Application {
                     self.terminal_panel.resize(area);
                 }
 
+                let mut cx = crate::compositor::Context {
+                    editor: &mut self.editor,
+                    jobs: &mut self.jobs,
+                    scroll: None,
+                };
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
@@ -867,7 +874,7 @@ impl Application {
                 // Convert to our Event type for key checking.
                 let silicon_event: Event = event.clone().into();
 
-                // Handle mouse events for terminal panel focus and scroll.
+                // Handle mouse events for terminal panel focus, scroll, and resize.
                 if self.terminal_panel.visible {
                     if let Event::Mouse(mouse) = &silicon_event {
                         use silicon_view::input::MouseEventKind;
@@ -876,20 +883,58 @@ impl Application {
                         let panel_height = self.terminal_panel.panel_height(area);
                         let terminal_top = area.height.saturating_sub(panel_height);
 
-                        if mouse.row >= terminal_top {
+                        // Handle drag-in-progress: resize the panel.
+                        if self.dragging_terminal_separator {
+                            match mouse.kind {
+                                MouseEventKind::Drag(_) | MouseEventKind::Moved => {
+                                    let new_height = area.height.saturating_sub(mouse.row);
+                                    let new_percent = ((new_height as u32) * 100 / area.height as u32) as u16;
+                                    self.terminal_panel.height_percent = new_percent.clamp(10, 80);
+                                    self.terminal_panel.resize(area);
+                                    return self.render().await;
+                                }
+                                MouseEventKind::Up(_) => {
+                                    self.dragging_terminal_separator = false;
+                                    self.terminal_panel.separator_highlighted = false;
+                                    return self.render().await;
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        // Separator hover highlight.
+                        if matches!(mouse.kind, MouseEventKind::Moved) {
+                            let on_separator = mouse.row == terminal_top;
+                            if on_separator != self.terminal_panel.separator_highlighted {
+                                self.terminal_panel.separator_highlighted = on_separator;
+                            }
+                            return self.render().await;
+                        }
+
+                        // Click on the separator row starts a drag.
+                        if mouse.row == terminal_top {
+                            if let MouseEventKind::Down(_) = mouse.kind {
+                                self.dragging_terminal_separator = true;
+                                self.terminal_panel.separator_highlighted = true;
+                                return self.render().await;
+                            }
+                        } else if mouse.row > terminal_top {
                             // Click/scroll is in the terminal panel area.
                             match mouse.kind {
                                 MouseEventKind::Down(_) => {
                                     self.terminal_panel.focused = true;
+                                    self.editor.terminal_panel_focused = true;
                                     return self.render().await;
                                 }
                                 MouseEventKind::ScrollUp => {
                                     self.terminal_panel.focused = true;
+                                    self.editor.terminal_panel_focused = true;
                                     self.terminal_panel.handle_scroll(1);
                                     return self.render().await;
                                 }
                                 MouseEventKind::ScrollDown => {
                                     self.terminal_panel.focused = true;
+                                    self.editor.terminal_panel_focused = true;
                                     self.terminal_panel.handle_scroll(-1);
                                     return self.render().await;
                                 }
@@ -899,12 +944,13 @@ impl Application {
                             // Click is in the editor area — unfocus terminal.
                             if matches!(mouse.kind, MouseEventKind::Down(_)) && self.terminal_panel.focused {
                                 self.terminal_panel.unfocus();
+                                self.editor.terminal_panel_focused = false;
                             }
                         }
                     }
                 }
 
-                // When terminal panel is focused, intercept tab-switching keys,
+                // When terminal panel is focused, intercept tab-switching and resize keys,
                 // then forward all other keys to the PTY.
                 if self.terminal_panel.focused {
                     if let Event::Key(key) = &silicon_event {
@@ -924,6 +970,24 @@ impl Application {
                             self.terminal_panel.prev_tab();
                             return self.render().await;
                         }
+                        // Ctrl+Shift+Up → shrink terminal panel (grow editor)
+                        if key.code == KeyCode::Up
+                            && key.modifiers.contains(KeyModifiers::CONTROL)
+                            && key.modifiers.contains(KeyModifiers::SHIFT)
+                        {
+                            let area = self.terminal.size();
+                            self.terminal_panel.shrink(area);
+                            return self.render().await;
+                        }
+                        // Ctrl+Shift+Down → grow terminal panel (shrink editor)
+                        if key.code == KeyCode::Down
+                            && key.modifiers.contains(KeyModifiers::CONTROL)
+                            && key.modifiers.contains(KeyModifiers::SHIFT)
+                        {
+                            let area = self.terminal.size();
+                            self.terminal_panel.grow(area);
+                            return self.render().await;
+                        }
 
                         self.terminal_panel.handle_key_event(key);
                         return self.render().await;
@@ -931,6 +995,11 @@ impl Application {
                 }
 
                 // Otherwise, dispatch to compositor (editor gets the event).
+                let mut cx = crate::compositor::Context {
+                    editor: &mut self.editor,
+                    jobs: &mut self.jobs,
+                    scroll: None,
+                };
                 self.compositor.handle_event(&silicon_event, &mut cx)
             }
         };
@@ -1442,24 +1511,29 @@ impl Application {
         match callback {
             Callback::RunInTerminal { shell, cmd } => {
                 self.terminal_panel.run_command(&cmd, &shell, area);
+                self.editor.terminal_panel_focused = self.terminal_panel.focused;
                 self.render().await;
             }
             Callback::OpenTerminalPanel => {
                 self.terminal_panel.toggle(area);
+                self.editor.terminal_panel_focused = self.terminal_panel.focused;
                 self.render().await;
             }
             Callback::ShowTerminalPanel => {
                 self.terminal_panel.show(area);
+                self.editor.terminal_panel_focused = true;
                 self.render().await;
             }
             Callback::NewTerminalTab => {
                 self.terminal_panel.visible = true;
                 self.terminal_panel.focused = true;
+                self.editor.terminal_panel_focused = true;
                 self.terminal_panel.spawn_terminal(area);
                 self.render().await;
             }
             Callback::CloseTerminalTab => {
                 self.terminal_panel.close_active();
+                self.editor.terminal_panel_focused = self.terminal_panel.focused;
                 self.render().await;
             }
             Callback::NextTerminalTab => {
@@ -1468,6 +1542,14 @@ impl Application {
             }
             Callback::PrevTerminalTab => {
                 self.terminal_panel.prev_tab();
+                self.render().await;
+            }
+            Callback::GrowTerminalPanel => {
+                self.terminal_panel.grow(area);
+                self.render().await;
+            }
+            Callback::ShrinkTerminalPanel => {
+                self.terminal_panel.shrink(area);
                 self.render().await;
             }
             callback => {

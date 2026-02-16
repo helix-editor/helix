@@ -15,6 +15,8 @@ pub struct TerminalPanel {
     pub visible: bool,
     pub height_percent: u16,
     pub focused: bool,
+    /// Whether the separator line is highlighted (mouse hover).
+    pub separator_highlighted: bool,
     shell: Option<Vec<String>>,
     wakeup_tx: tokio::sync::mpsc::UnboundedSender<()>,
     pub wakeup_rx: tokio::sync::mpsc::UnboundedReceiver<()>,
@@ -36,6 +38,7 @@ impl TerminalPanel {
             visible: false,
             height_percent: DEFAULT_HEIGHT_PERCENT,
             focused: false,
+            separator_highlighted: false,
             shell: None,
             wakeup_tx,
             wakeup_rx,
@@ -189,6 +192,18 @@ impl TerminalPanel {
         }
     }
 
+    /// Grow the terminal panel by 5%, clamped to 80%.
+    pub fn grow(&mut self, area: Rect) {
+        self.height_percent = (self.height_percent + 5).min(80);
+        self.resize(area);
+    }
+
+    /// Shrink the terminal panel by 5%, clamped to 10%.
+    pub fn shrink(&mut self, area: Rect) {
+        self.height_percent = self.height_percent.saturating_sub(5).max(10);
+        self.resize(area);
+    }
+
     /// Calculate the panel height in rows for a given total area.
     pub fn panel_height(&self, area: Rect) -> u16 {
         let h = (area.height as u32 * self.height_percent as u32 / 100) as u16;
@@ -231,10 +246,16 @@ impl TerminalPanel {
             return;
         }
 
-        // Draw separator line at top.
-        let separator_style = Style::default()
-            .fg(Color::Gray)
-            .bg(Color::Reset);
+        // Draw separator line at top (highlighted when mouse hovers for resize).
+        let separator_style = if self.separator_highlighted {
+            Style::default()
+                .fg(Color::White)
+                .bg(Color::Indexed(8)) // ANSI dark gray
+        } else {
+            Style::default()
+                .fg(Color::Gray)
+                .bg(Color::Reset)
+        };
         for x in area.x..area.right() {
             let cell = &mut surface[(x, area.y)];
             cell.set_char('─');
