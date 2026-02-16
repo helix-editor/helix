@@ -9,10 +9,10 @@ Tracked improvements and features, roughly ordered by implementation difficulty.
 3. [x] Theme loading errors surfaced as editor notifications instead of silent fallback
 4. [x] Removed dead `trigger_offset` field from Completion, clarified stale TODOs
 5. [x] Hardened 8 high-risk unwraps across commands, application, indent, LSP, word index
+6. [x] Split `commands.rs` into submodules — extracted movement, selection, editing, and insert into separate files alongside typed/lsp/dap/syntax
 
 ## Medium
 
-6. [ ] **Split `commands.rs` into submodules** — 7K lines is too large. Extract movement, selection, and editing commands into separate submodules alongside the existing `typed.rs`, `lsp.rs`, `dap.rs`, `syntax.rs`.
 7. [ ] **Add tests for `silicon-lua`** — The Lua config system has no dedicated test suite. Write tests covering config parsing, keybinding extraction, theme definition, and error cases.
 8. [ ] **Add tests for `silicon-terminal`** — Terminal emulation is stateful and async. Add integration tests for spawn, input/output, tab management, and resize.
 9. [ ] **`:checkhealth` command** — Verify LSP binaries exist, grammars are built, config parses cleanly, runtime directory is present. Render results in a scratch buffer.
