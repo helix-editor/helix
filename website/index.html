@@ -560,8 +560,8 @@
         '  float d=length(p-mp);',
         '  float ripple=sin(d*18.-u_time*2.5)*.5+.5;',
         '  float mfield=smoothstep(.5,0.,d);',
-        '  n+=mfield*ripple*.12;',
-        '  float glow=smoothstep(.55,0.,d)*.3;',
+        '  n+=mfield*ripple*.05;',
+        '  float glow=smoothstep(.45,0.,d)*.12;',
 
         // Color blend
         '  vec3 purple=vec3(.439,.420,.784);',
