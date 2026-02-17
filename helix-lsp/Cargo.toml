@@ -13,19 +13,18 @@ homepage.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-helix-stdx = { path = "../helix-stdx" }
-helix-core = { path = "../helix-core" }
-helix-loader = { path = "../helix-loader" }
-helix-lsp-types = { path = "../helix-lsp-types" }
-
-anyhow = "1.0"
+helix-stdx = { workspace = true } #unified
+helix-core = { workspace = true } #unified
+helix-loader = { workspace = true } #unified
+helix-lsp-types = { workspace = true } #unified
+anyhow = { workspace = true } #unified
 futures-executor.workspace = true
 futures-util.workspace = true
 globset.workspace = true
-log = "0.4"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tokio = { version = "1.49", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
+log = { workspace = true } #unified
+serde = { workspace = true } #unified
+serde_json = { workspace = true } #unified
+tokio = { workspace = true, features = ["fs", "io-std", "io-util", "net", "process", "sync"] } #unified
 tokio-stream.workspace = true
 parking_lot.workspace = true
 arc-swap = "1"

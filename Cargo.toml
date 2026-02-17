@@ -56,6 +56,34 @@ termina = "0.1"
 sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
+indoc = "^2.0.7" #unified
+smallvec = "^1.15.1" #unified
+serde_json = "^1.0.149" #unified
+url = { version = "^2.5.4", features = ["serde"] } #unified
+helix-vcs = { path = "helix-vcs", version = "^25.7.1" } #unified
+serde = { version = "^1.0.228", features = ["derive"] } #unified
+helix-tui = { path = "helix-tui", version = "^25.7.1" } #unified
+helix-event = { path = "helix-event", version = "^25.7.1" } #unified
+rustix = "^1.1.3" #unified
+termini = "^1.0.0" #unified
+tokio = { version = "^1.49.0", features = ["macros", "parking_lot", "rt", "rt-multi-thread", "time"] } #unified
+helix-stdx = { path = "helix-stdx", version = "^25.7.1" } #unified
+helix-view = { path = "helix-view", version = "^25.7.1" } #unified
+helix-dap-types = { path = "helix-dap-types", version = "^25.7.1" } #unified
+chrono = { version = "^0.4.43", features = ["alloc", "clock", "std"] } #unified
+helix-lsp = { path = "helix-lsp", version = "^25.7.1" } #unified
+helix-term = { path = "helix-term", version = "^25.7.1" } #unified
+fern = "^0.7.1" #unified
+helix-parsec = { path = "helix-parsec", version = "^25.7.1" } #unified
+helix-lsp-types = { path = "helix-lsp-types", version = "^0.95.1" } #unified
+helix-dap = { path = "helix-dap", version = "^25.7.1" } #unified
+once_cell = "^1.21.3" #unified
+libc = "^0.2.182" #unified
+helix-loader = { path = "helix-loader", version = "^25.7.1" } #unified
+helix-core = { path = "helix-core", version = "^25.7.1" } #unified
+anyhow = "^1.0.101" #unified
+log = "^0.4.29" #unified
+crossterm = "^0.28.1" #unified
 
 [workspace.package]
 version = "25.7.1"
@@ -65,4 +93,4 @@ categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
-rust-version = "1.87"
+rust-version = "1.87.0"

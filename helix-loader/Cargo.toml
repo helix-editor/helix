@@ -15,14 +15,13 @@ name = "hx-loader"
 path = "src/main.rs"
 
 [dependencies]
-helix-stdx = { path = "../helix-stdx" }
-
-anyhow = "1"
-serde = { version = "1.0", features = ["derive"] }
+helix-stdx = { workspace = true } #unified
+anyhow = { workspace = true } #unified
+serde = { workspace = true } #unified
 toml.workspace = true
 etcetera.workspace = true
-once_cell = "1.21"
-log = "0.4"
+once_cell = { workspace = true } #unified
+log = { workspace = true } #unified
 
 # TODO: these two should be on !wasm32 only
 

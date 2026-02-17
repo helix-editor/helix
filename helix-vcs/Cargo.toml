@@ -10,18 +10,16 @@ repository.workspace = true
 homepage.workspace = true
 
 [dependencies]
-helix-core = { path = "../helix-core" }
-helix-event = { path = "../helix-event" }
-
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
+helix-core = { workspace = true } #unified
+helix-event = { workspace = true } #unified
+tokio = { workspace = true, features = ["fs", "io-std", "io-util", "net", "process", "sync"] } #unified
 parking_lot.workspace = true
 arc-swap = { version = "1.8.1" }
 
 gix = { version = "0.79.0", features = ["attributes", "status", "max-performance"], default-features = false, optional = true }
 imara-diff =  "0.2.0"
-anyhow = "1"
-
-log = "0.4"
+anyhow = { workspace = true } #unified
+log = { workspace = true } #unified
 
 [features]
 git = ["gix"]

@@ -16,38 +16,34 @@ term = ["termina", "crossterm"]
 unicode-lines = []
 
 [dependencies]
-helix-stdx = { path = "../helix-stdx" }
-helix-core = { path = "../helix-core" }
-helix-event = { path = "../helix-event" }
-helix-loader = { path = "../helix-loader" }
-helix-lsp = { path = "../helix-lsp" }
-helix-dap = { path = "../helix-dap" }
-helix-vcs = { path = "../helix-vcs" }
+helix-stdx = { workspace = true } #unified
+helix-core = { workspace = true } #unified
+helix-event = { workspace = true } #unified
+helix-loader = { workspace = true } #unified
+helix-lsp = { workspace = true } #unified
+helix-dap = { workspace = true } #unified
+helix-vcs = { workspace = true } #unified
 
 bitflags.workspace = true
-anyhow = "1"
+anyhow = { workspace = true } #unified
 termina = { workspace = true, optional = true }
 
 tempfile.workspace = true
-
-# Conversion traits
-once_cell = "1.21"
-url = "2.5.4"
+once_cell = { workspace = true } #unified
+url = { workspace = true, features = ["serde"] } #unified
 
 arc-swap = { version = "1.8.1" }
-
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
+tokio = { workspace = true, features = ["fs", "io-std", "io-util", "net", "process", "sync"] } #unified
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 
 slotmap.workspace = true
 
 chardetng = "0.1"
-
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true } #unified
+serde_json = { workspace = true } #unified
 toml.workspace = true
-log = "~0.4"
+log = { workspace = true } #unified
 
 parking_lot.workspace = true
 thiserror.workspace = true
@@ -56,11 +52,11 @@ kstring = "2.0"
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
-crossterm = { version = "0.28", optional = true }
+crossterm = { workspace = true, optional = true } #unified
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2"
-rustix = { version = "1.1", features = ["fs"] }
+libc = { workspace = true } #unified
+rustix = { workspace = true, features = ["fs"] } #unified
 
 [dev-dependencies]
-helix-tui = { path = "../helix-tui" }
+helix-tui = { workspace = true } #unified
