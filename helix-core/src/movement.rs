@@ -10,7 +10,7 @@ use crate::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
         prev_grapheme_boundary,
     },
-    line_ending::rope_is_line_ending,
+    line_ending::{line_end_char_index, rope_is_line_ending},
     position::char_idx_at_visual_block_offset,
     syntax,
     text_annotations::TextAnnotations,
@@ -50,6 +50,40 @@ pub fn move_horizontally(
 
     // Compute the final new range.
     range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
+}
+
+pub fn move_horizontally_same_line(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    text_fmt: &TextFormat,
+    annotations: &mut TextAnnotations,
+) -> Range {
+    let pos = range.cursor(slice);
+    let line = slice.char_to_line(pos);
+
+    let new_range = move_horizontally(slice, range, dir, count, behaviour, text_fmt, annotations);
+    let new_pos = new_range.cursor(slice);
+    let new_line = slice.char_to_line(new_pos);
+
+    match new_line.cmp(&line) {
+        std::cmp::Ordering::Equal => {
+            // we'll end up in same line - move there
+            new_range
+        }
+        std::cmp::Ordering::Less => {
+            // we'll end up in a line before - move to the beginning of the line
+            let line_beginning = slice.line_to_char(line);
+            range.put_cursor(slice, line_beginning, behaviour == Movement::Extend)
+        }
+        std::cmp::Ordering::Greater => {
+            // we'll end up in a line after - move to the end of the line
+            let line_end = line_end_char_index(&slice, line);
+            range.put_cursor(slice, line_end, behaviour == Movement::Extend)
+        }
+    }
 }
 
 pub fn move_vertically_visual(
@@ -163,6 +197,190 @@ pub fn move_vertically(
     let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
     new_range.old_visual_position = Some((new_row, new_col));
     new_range
+}
+
+type MoveFn =
+    fn(RopeSlice, Range, Direction, usize, Movement, &TextFormat, &mut TextAnnotations) -> Range;
+
+#[allow(clippy::too_many_arguments)] // just an internal helper function
+fn move_anchored(
+    move_fn: MoveFn,
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    text_fmt: &TextFormat,
+    annotations: &mut TextAnnotations,
+) -> Range {
+    /// Store an indicator in a given [`Range`] to be able to remember the previous strategy
+    /// (stay on newlines or avoid them) after encountering a newline.
+    fn set_indicator_to_stay_on_newline(range: &mut Range) {
+        let softwrapped_lines: u32 = range.old_visual_position.unzip().0.unwrap_or(0);
+        range.old_visual_position = Some((softwrapped_lines, u32::MAX));
+    }
+
+    /// Retrieve the indicator that might previously have been set with
+    /// [`set_indicator_to_stay_on_newline()`].
+    fn get_indicator_to_stay_on_newline(range: &Range) -> bool {
+        match range.old_visual_position {
+            None => false,
+            Some((_, u32::MAX)) => true,
+            Some((_, _)) => false,
+        }
+    }
+
+    /// Figure out if a certain position/index is in a visual empty line.
+    ///
+    /// If the given `pos` is a newline character and it is alone in its line or visual line,
+    /// this function will return `true`, otherwise `false.
+    fn is_in_visual_empty_line(
+        slice: RopeSlice,
+        text_fmt: &TextFormat,
+        annotations: &TextAnnotations,
+        pos: usize,
+    ) -> bool {
+        let line = slice.char_to_line(pos);
+
+        // if this line only contains a newline char, it is empty
+        if rope_is_line_ending(slice.line(line)) {
+            return true;
+        }
+
+        // if we got here without soft wrap, this line is not empty
+        if !text_fmt.soft_wrap {
+            return false;
+        }
+
+        // if pos is not the last character, there have to be other chars in the same visual line
+        if pos != line_end_char_index(&slice, line) {
+            return false;
+        }
+
+        // if the previous char (has to exist) is not in the same row, this is an empty visual line
+        let prev = prev_grapheme_boundary(slice, pos);
+        let pos_visual_row = visual_offset_from_block(slice, pos, pos, text_fmt, annotations)
+            .0
+            .row;
+        let prev_visual_row = visual_offset_from_block(slice, prev, prev, text_fmt, annotations)
+            .0
+            .row;
+        pos_visual_row != prev_visual_row
+    }
+
+    /// Move to the next newline character, in direction of movement.
+    fn move_to_next_newline(
+        slice: RopeSlice,
+        range: Range,
+        dir: Direction,
+        count: usize,
+        behaviour: Movement,
+        text_fmt: &TextFormat,
+        annotations: &mut TextAnnotations,
+    ) -> Range {
+        // Move to new position.
+        // Note: We can't use the given `move_fn` here. If we move visually backwards and soft-wrap
+        // is enabled, we would end up in the same line, and get the same newline character that we
+        // are actually coming from.
+        let new_range = move_vertically(slice, range, dir, count, behaviour, text_fmt, annotations);
+        let new_pos = new_range.cursor(slice);
+        let new_line = slice.char_to_line(new_pos);
+
+        // move to newline char in this line
+        let newline_pos = line_end_char_index(&slice, new_line);
+        new_range.put_cursor(slice, newline_pos, behaviour == Movement::Extend)
+    }
+
+    /// Move a range's cursor to the previous grapheme in the same line, if the cursor is on a
+    /// newline character in a non-empty (visual or non-visual) line.
+    fn try_to_avoid_newline(
+        slice: RopeSlice,
+        range: Range,
+        behaviour: Movement,
+        text_fmt: &TextFormat,
+        annotations: &mut TextAnnotations,
+    ) -> Range {
+        let pos = range.cursor(slice);
+        let line = slice.char_to_line(pos);
+        let end_char_index = line_end_char_index(&slice, line);
+        let pos_is_in_empty_line = is_in_visual_empty_line(slice, text_fmt, annotations, pos);
+        let pos_is_at_end_of_line = pos == end_char_index;
+
+        if !pos_is_at_end_of_line || pos_is_in_empty_line {
+            return range;
+        }
+
+        // move away from newline character
+        let new_pos = prev_grapheme_boundary(slice, end_char_index);
+        let old_visual_position = range.old_visual_position;
+        let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
+        new_range.old_visual_position = old_visual_position;
+        new_range
+    }
+
+    let pos = range.cursor(slice);
+    let line = slice.char_to_line(pos);
+    let pos_is_at_end_of_line = pos == line_end_char_index(&slice, line);
+    let pos_is_in_empty_line = is_in_visual_empty_line(slice, text_fmt, annotations, pos);
+
+    let new_range = move_fn(slice, range, dir, count, behaviour, text_fmt, annotations);
+
+    // Stay on newline characters if the cursor currently is on one. If the current line is empty
+    // (i.e. it only contains a newline character), only stay on newlines if also done so before.
+    let stayed_on_newline_before = get_indicator_to_stay_on_newline(&range);
+    let stay_on_newline =
+        pos_is_at_end_of_line && (stayed_on_newline_before || !pos_is_in_empty_line);
+
+    if stay_on_newline {
+        let mut updated_range =
+            move_to_next_newline(slice, range, dir, count, behaviour, text_fmt, annotations);
+        set_indicator_to_stay_on_newline(&mut updated_range);
+        updated_range
+    } else {
+        try_to_avoid_newline(slice, new_range, behaviour, text_fmt, annotations)
+    }
+}
+
+pub fn move_vertically_anchored(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    text_fmt: &TextFormat,
+    annotations: &mut TextAnnotations,
+) -> Range {
+    move_anchored(
+        move_vertically,
+        slice,
+        range,
+        dir,
+        count,
+        behaviour,
+        text_fmt,
+        annotations,
+    )
+}
+
+pub fn move_vertically_anchored_visual(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    text_fmt: &TextFormat,
+    annotations: &mut TextAnnotations,
+) -> Range {
+    move_anchored(
+        move_vertically_visual,
+        slice,
+        range,
+        dir,
+        count,
+        behaviour,
+        text_fmt,
+        annotations,
+    )
 }
 
 pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
@@ -738,6 +956,260 @@ mod test {
             ),
             (1, 3).into()
         );
+    }
+
+    #[test]
+    fn vertical_anchored_move_from_newline_stays_on_newline() {
+        let text = Rope::from("aaa\na\n\naaaa\n");
+        let slice = text.slice(..);
+        let pos = pos_at_coords(slice, (0, 3).into(), true);
+        let mut range = Range::new(pos, pos);
+
+        let vmove = |range, direction, count| {
+            move_vertically_anchored(
+                slice,
+                range,
+                direction,
+                count,
+                Movement::Move,
+                &TextFormat::default(),
+                &mut TextAnnotations::default(),
+            )
+        };
+
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 1).into());
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (2, 0).into());
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 4).into());
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 0).into());
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 0).into());
+
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 4).into());
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (2, 0).into());
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 1).into());
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 3).into());
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 3).into());
+
+        range = vmove(range, Direction::Forward, 3);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 4).into());
+        range = vmove(range, Direction::Backward, 3);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 3).into());
+    }
+
+    #[test]
+    fn vertical_anchored_move_from_non_newline_avoids_newline() {
+        let text = Rope::from("aaa\na\n\naaaa\n");
+        let slice = text.slice(..);
+        let pos = pos_at_coords(slice, (0, 2).into(), true);
+        let mut range = Range::new(pos, pos);
+
+        let vmove = |range, direction, count| {
+            move_vertically_anchored(
+                slice,
+                range,
+                direction,
+                count,
+                Movement::Move,
+                &TextFormat::default(),
+                &mut TextAnnotations::default(),
+            )
+        };
+
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 0).into());
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (2, 0).into());
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 2).into());
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 0).into());
+        range = vmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 0).into());
+
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 2).into());
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (2, 0).into());
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 0).into());
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 2).into());
+        range = vmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 2).into());
+
+        range = vmove(range, Direction::Forward, 3);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 2).into());
+        range = vmove(range, Direction::Backward, 3);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 2).into());
+    }
+
+    #[test]
+    fn vertical_visual_anchored_move_from_newline_stays_on_newline() {
+        let text_fmt = TextFormat {
+            soft_wrap: true,
+            viewport_width: 6,
+            ..Default::default()
+        };
+
+        let text = Rope::from("a\naaaaaabb\naaaaaab\n\naa\n");
+        let slice = text.slice(..);
+        let pos = pos_at_coords(slice, (0, 1).into(), true);
+        let mut range = Range::new(pos, pos);
+
+        let vvmove = |range, direction, count| -> Range {
+            move_vertically_anchored_visual(
+                slice,
+                range,
+                direction,
+                count,
+                Movement::Move,
+                &text_fmt,
+                &mut TextAnnotations::default(),
+            )
+        };
+
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 8).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (2, 7).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 0).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 2).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (5, 0).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (5, 0).into());
+
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 2).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 0).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (2, 7).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 8).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 1).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 1).into());
+
+        range = vvmove(range, Direction::Forward, 4);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 2).into());
+        range = vvmove(range, Direction::Backward, 3);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 8).into());
+    }
+
+    #[test]
+    fn vertical_visual_anchored_move_from_non_newline_avoids_newline() {
+        let text_fmt = TextFormat {
+            soft_wrap: true,
+            viewport_width: 6,
+            ..Default::default()
+        };
+
+        let text = Rope::from("aaaaaabb\naaa\n\naaaaaa\n  aaaabb\na");
+        let slice = text.slice(..);
+        let pos = pos_at_coords(slice, (0, 3).into(), true);
+        let mut range = Range::new(pos, pos);
+
+        let vvmove = |range, direction, count| -> Range {
+            move_vertically_anchored_visual(
+                slice,
+                range,
+                direction,
+                count,
+                Movement::Move,
+                &text_fmt,
+                &mut TextAnnotations::default(),
+            )
+        };
+
+        range = vvmove(range, Direction::Forward, 1);
+        // wrapped word, stay in same line
+        assert_eq!(coords_at_pos(slice, range.head), (0, 7).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 2).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (2, 0).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 3).into());
+        range = vvmove(range, Direction::Forward, 1);
+        // wrapped newline, stay in same line
+        assert_eq!(coords_at_pos(slice, range.head), (3, 6).into());
+        range = vvmove(range, Direction::Forward, 1);
+        // line was visually empty, continue avoiding newlines
+        assert_eq!(coords_at_pos(slice, range.head), (4, 3).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 6).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (5, 0).into());
+        range = vvmove(range, Direction::Forward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (5, 0).into());
+
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 6).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (4, 3).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 6).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 3).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (2, 0).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 2).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 7).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 3).into());
+        range = vvmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 3).into());
+
+        range = vvmove(range, Direction::Forward, 4);
+        assert_eq!(coords_at_pos(slice, range.head), (3, 3).into());
+        range = vvmove(range, Direction::Backward, 3);
+        assert_eq!(coords_at_pos(slice, range.head), (0, 7).into());
+    }
+
+    #[test]
+    fn horizontal_movement_in_same_line() {
+        let text = Rope::from("a\na\naaaa");
+        let slice = text.slice(..);
+        let pos = pos_at_coords(slice, (1, 0).into(), true);
+        let mut range = Range::new(pos, pos);
+
+        let hmove = |range, direction, count| -> Range {
+            move_horizontally_same_line(
+                slice,
+                range,
+                direction,
+                count,
+                Movement::Move,
+                &TextFormat::default(),
+                &mut TextAnnotations::default(),
+            )
+        };
+
+        range = hmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 0).into());
+        range = hmove(range, Direction::Forward, 2);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 1).into());
+        range = hmove(range, Direction::Forward, 2);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 1).into());
+        range = hmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 0).into());
+        range = hmove(range, Direction::Backward, 2);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 0).into());
     }
 
     #[test]
