@@ -220,6 +220,29 @@ impl TerminalPanel {
         self.active_tab
     }
 
+    /// Return the tab index at the given x-coordinate on the tab bar, if any.
+    /// `area_x` is the left edge of the panel area.
+    pub fn tab_at_x(&self, click_x: u16, area_x: u16) -> Option<usize> {
+        let mut x = area_x;
+        for (i, instance) in self.instances.iter().enumerate() {
+            let title = instance.title();
+            let label = format!(" {} ", if title.is_empty() { "terminal" } else { title });
+            let tab_end = x + label.len() as u16;
+            if click_x >= x && click_x < tab_end {
+                return Some(i);
+            }
+            x = tab_end + 1; // +1 for the '│' separator
+        }
+        None
+    }
+
+    /// Set the active tab by index.
+    pub fn set_active_tab(&mut self, idx: usize) {
+        if idx < self.instances.len() {
+            self.active_tab = idx;
+        }
+    }
+
     /// Cycle to next tab.
     pub fn next_tab(&mut self) {
         if !self.instances.is_empty() {

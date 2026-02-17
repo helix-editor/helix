@@ -918,8 +918,18 @@ impl Application {
                                 self.terminal_panel.separator_highlighted = true;
                                 return self.render().await;
                             }
-                        } else if mouse.row > terminal_top {
-                            // Click/scroll is in the terminal panel area.
+                        } else if mouse.row == terminal_top + 1 {
+                            // Click on the tab bar row — switch tabs.
+                            if let MouseEventKind::Down(_) = mouse.kind {
+                                if let Some(idx) = self.terminal_panel.tab_at_x(mouse.column, area.x) {
+                                    self.terminal_panel.set_active_tab(idx);
+                                }
+                                self.terminal_panel.focused = true;
+                                self.editor.terminal_panel_focused = true;
+                                return self.render().await;
+                            }
+                        } else if mouse.row > terminal_top + 1 {
+                            // Click/scroll is in the terminal content area.
                             match mouse.kind {
                                 MouseEventKind::Down(_) => {
                                     self.terminal_panel.focused = true;
