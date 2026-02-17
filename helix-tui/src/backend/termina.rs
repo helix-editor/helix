@@ -214,8 +214,7 @@ impl TerminaBackend {
 
         capabilities.extended_underlines |= config.force_enable_extended_underlines;
 
-        let mut reset_cursor_command =
-            Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string();
+        let mut reset_cursor_command = String::new();
         if let Ok(t) = termini::TermInfo::from_env() {
             capabilities.extended_underlines |= t.extended_cap("Smulx").is_some()
                 || t.extended_cap("Su").is_some()
@@ -237,6 +236,8 @@ impl TerminaBackend {
         } else {
             log::debug!("terminfo could not be read, using default cursor reset escape sequence: {reset_cursor_command:?}");
         }
+        reset_cursor_command
+            .push_str(&Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string());
 
         terminal.enter_cooked_mode()?;
 
