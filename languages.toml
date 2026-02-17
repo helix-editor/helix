@@ -5328,3 +5328,17 @@ comment-token = "#"
 [[grammar]]
 name = "gnuplot"
 source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
+
+[[grammar]]
+name = "drools"
+# TODO this must change to git revision once tree-sitter grammar gets merged
+source = { path = "/home/pauls/Projects/tree-sitter-drools" }
+
+[[language]]
+name = "drools"
+scope = "source.drools"
+file-types = ["drl"]
+roots = ["pom.xml", ".git"]
+grammar = "drools"
+comment-tokens = "//"
+
