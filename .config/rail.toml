@@ -43,7 +43,7 @@ skip_undeclared_patterns = [
   "*_impl",
 ]
 
-exclude = []  # excluding one workspace member excludes its whole member cohort
+exclude = ["dirs"]  # excluding one workspace member excludes its whole member cohort
 include = []  # workspace-member cohorts are auto-included
 max_backups = 3
 sort_dependencies = false  # false to preserve existing order
