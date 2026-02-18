@@ -172,6 +172,7 @@
 <li><a href="#flatpak">Flatpak</a></li>
 <li><a href="#snap">Snap</a></li>
 <li><a href="#appimage">AppImage</a></li>
+<li><a href="#linux-homebrew-core">Linux Homebrew Core</a></li>
 </ul>
 </li>
 <li><a href="#macos">macOS</a>
@@ -249,9 +250,15 @@ Download the official Helix AppImage from the <a href="https://github.com/helix-
 mv helix-*.AppImage "$HOME/.local/bin/hx"
 </code></pre>
 <p>and make sure <code>~/.local/bin</code> is in your <code>PATH</code>.</p>
+<h3 id="linux-homebrew-core"><a class="header" href="#linux-homebrew-core">Linux Homebrew Core</a></h3>
+<p>Checkout the <a href="#homebrew-core">macOS</a> instructions below.</p>
 <h2 id="macos"><a class="header" href="#macos">macOS</a></h2>
 <h3 id="homebrew-core"><a class="header" href="#homebrew-core">Homebrew Core</a></h3>
+<p>Install the latest release:</p>
 <pre><code class="language-sh">brew install helix
+</code></pre>
+<p>Or, install the latest nightly version:</p>
+<pre><code class="language-sh">brew install --HEAD helix
 </code></pre>
 <h3 id="macports"><a class="header" href="#macports">MacPorts</a></h3>
 <pre><code class="language-sh">sudo port install helix
