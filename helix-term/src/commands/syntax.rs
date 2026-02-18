@@ -1,6 +1,5 @@
 use std::{
     collections::HashSet,
-    iter,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -10,7 +9,7 @@ use futures_util::FutureExt;
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use helix_core::{
-    syntax::{Loader, QueryIterEvent},
+    syntax::{Loader, TagCategory},
     Rope, RopeSlice, Selection, Syntax, Uri,
 };
 use helix_stdx::{
@@ -113,41 +112,37 @@ fn tags_iter<'a>(
     doc: UriOrDocumentId,
     pattern: Option<&'a rope::Regex>,
 ) -> impl Iterator<Item = Tag> + 'a {
-    let mut tags_iter = syntax.tags(text, loader, ..);
+    let Some(tag_query) = loader.tag_query(syntax.root_language()) else {
+        return None.into_iter().flatten();
+    };
 
-    iter::from_fn(move || loop {
-        let QueryIterEvent::Match(mat) = tags_iter.next()? else {
-            continue;
+    let root = syntax.tree().root_node();
+    let iter = tag_query.tags(root, text).filter_map(move |tag| {
+        let kind = match tag.category {
+            TagCategory::Definition(definition) => TagKind::from_name(definition)?,
         };
-        let query = &loader
-            .tag_query(tags_iter.current_language())
-            .expect("must have a tags query to emit matches")
-            .query;
-        let Some(kind) = query
-            .capture_name(mat.capture)
-            .strip_prefix("definition.")
-            .and_then(TagKind::from_name)
-        else {
-            continue;
-        };
-        let range = mat.node.byte_range();
-        if pattern.is_some_and(|pattern| {
-            !pattern.is_match(text.regex_input_at_bytes(range.start as usize..range.end as usize))
-        }) {
-            continue;
+
+        let start = text.byte_to_char(tag.range.start as usize);
+        let end = text.byte_to_char(tag.range.end as usize);
+
+        let name = tag.name.unwrap_or_else(|| text.slice(start..end));
+
+        if pattern.is_some_and(|pattern| !pattern.is_match(name.regex_input())) {
+            return None;
         }
-        let start = text.byte_to_char(range.start as usize);
-        let end = text.byte_to_char(range.end as usize);
-        return Some(Tag {
+
+        Some(Tag {
             kind,
-            name: text.slice(start..end).to_string(),
+            name: name.to_string(),
             start,
             end,
             start_line: text.char_to_line(start),
             end_line: text.char_to_line(end),
             doc: doc.clone(),
-        });
-    })
+        })
+    });
+
+    Some(iter).into_iter().flatten()
 }
 
 pub fn syntax_symbol_picker(cx: &mut Context) {
