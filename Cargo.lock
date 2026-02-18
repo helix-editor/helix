@@ -2979,9 +2979,9 @@ dependencies = [
 
 [[package]]
 name = "tree-house-bindings"
-version = "0.2.1"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f1646788fe0afdbf8e191b5d0f558df7333d8857665a67053c532ec811e6086"
+checksum = "cbbcbb59cca301d903c11b48b722b7c85f0e0001be2f65655cd417d98c6f3121"
 dependencies = [
  "cc",
  "libloading",
