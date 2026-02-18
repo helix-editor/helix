@@ -1,5 +1,7 @@
 | Name | Description |
 | --- | --- |
+| `:exit`, `:x`, `:xit` | Write changes to disk if the buffer is modified and then quit. Accepts an optional path (:exit some/path.txt). |
+| `:exit!`, `:x!`, `:xit!` | Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit. Accepts an optional path (:exit! some/path.txt). |
 | `:quit`, `:q` | Close the current view. |
 | `:quit!`, `:q!` | Force close the current view, ignoring unsaved changes. |
 | `:open`, `:o`, `:edit`, `:e` | Open a file from disk into the current view. |
@@ -21,12 +23,12 @@
 | `:line-ending` | Set the document's default line ending. Options: crlf, lf. |
 | `:earlier`, `:ear` | Jump back to an earlier point in edit history. Accepts a number of steps or a time span. |
 | `:later`, `:lat` | Jump to a later point in edit history. Accepts a number of steps or a time span. |
-| `:write-quit`, `:wq`, `:x` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
-| `:write-quit!`, `:wq!`, `:x!` | Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt) |
+| `:write-quit`, `:wq` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
+| `:write-quit!`, `:wq!` | Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt) |
 | `:write-all`, `:wa` | Write changes from all buffers to disk. |
 | `:write-all!`, `:wa!` | Forcefully write changes from all buffers to disk creating necessary subdirectories. |
 | `:write-quit-all`, `:wqa`, `:xa` | Write changes from all buffers to disk and close all views. |
-| `:write-quit-all!`, `:wqa!`, `:xa!` | Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes). |
+| `:write-quit-all!`, `:wqa!`, `:xa!` | Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes). |
 | `:quit-all`, `:qa` | Close all views. |
 | `:quit-all!`, `:qa!` | Force close all views ignoring unsaved changes. |
 | `:cquit`, `:cq` | Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2). |
@@ -52,10 +54,11 @@
 | `:reload-all`, `:rla` | Discard changes and reload all documents from the source files. |
 | `:update`, `:u` | Write changes only if the file has been modified. |
 | `:lsp-workspace-command` | Open workspace command picker |
-| `:lsp-restart` | Restarts the language servers used by the current doc |
-| `:lsp-stop` | Stops the language servers that are used by the current doc |
+| `:lsp-restart` | Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied |
+| `:lsp-stop` | Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
 | `:tree-sitter-highlight-name` | Display name of tree-sitter highlight scope under the cursor. |
+| `:tree-sitter-layers` | Display language names of tree-sitter injection layers under the cursor. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
 | `:debug-eval` | Evaluate expression in current debug context. |
@@ -67,10 +70,9 @@
 | `:goto`, `:g` | Goto line number. |
 | `:set-language`, `:lang` | Set the language of current buffer (show current language if no value specified). |
 | `:set-option`, `:set` | Set a config option at runtime.<br>For example to disable smart case search, use `:set search.smart-case false`. |
-| `:toggle-option`, `:toggle` | Toggle a boolean config option at runtime.<br>For example to toggle smart case search, use `:toggle search.smart-case`. |
+| `:toggle-option`, `:toggle` | Toggle a config option at runtime.<br>For example to toggle smart case search, use `:toggle search.smart-case`. |
 | `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
-| `:rsort` | Sort ranges in selection in reverse order. |
 | `:reflow` | Hard-wrap the current selection of lines to a given width. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
@@ -79,12 +81,15 @@
 | `:log-open` | Open the helix log file. |
 | `:insert-output` | Run shell command, inserting output before each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
-| `:pipe` | Pipe each selection to the shell command. |
+| `:pipe`, `:\|` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
-| `:run-shell-command`, `:sh` | Run a shell command |
+| `:run-shell-command`, `:sh`, `:!` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
+| `:set-register` | Set contents of the given register. |
 | `:redraw` | Clear and re-render the whole UI |
 | `:move`, `:mv` | Move the current buffer and its corresponding file to a different path |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |
+| `:echo` | Prints the given arguments to the statusline. |
+| `:noop` | Does nothing. |

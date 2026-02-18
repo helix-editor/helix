@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
@@ -33,8 +33,13 @@ pub struct DiagnosticClientCapabilities {
 pub struct DiagnosticOptions {
     /// An optional identifier under which the diagnostics are
     /// managed by the client.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub identifier: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_option_arc_str",
+        deserialize_with = "deserialize_option_arc_str"
+    )]
+    pub identifier: Option<Arc<str>>,
 
     /// Whether the language has inter file dependencies, meaning that editing code in one file can
     /// result in a different diagnostic set in another file. Inter file dependencies are common
@@ -46,6 +51,19 @@ pub struct DiagnosticOptions {
 
     #[serde(flatten)]
     pub work_done_progress_options: WorkDoneProgressOptions,
+}
+
+fn serialize_option_arc_str<S: serde::Serializer>(
+    val: &Option<Arc<str>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(val.as_ref().unwrap())
+}
+
+fn deserialize_option_arc_str<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Arc<str>>, D::Error> {
+    Option::<String>::deserialize(deserializer).map(|opt| opt.map(|s| s.into()))
 }
 
 /// Diagnostic registration options.
@@ -81,7 +99,13 @@ pub struct DocumentDiagnosticParams {
     pub text_document: TextDocumentIdentifier,
 
     /// The additional identifier provided during registration.
-    pub identifier: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_option_arc_str",
+        deserialize_with = "deserialize_option_arc_str"
+    )]
+    pub identifier: Option<Arc<str>>,
 
     /// The result ID of a previous response if provided.
     pub previous_result_id: Option<String>,

@@ -30,7 +30,7 @@
   (identifier) @variable)
 
 (alias
-  name: (identifier) @variable)
+  alias_name: (identifier) @variable)
 
 (assignment
   name: (identifier) @variable)
@@ -59,6 +59,9 @@
 ; Namespaces
 
 (mod
+  name: (identifier) @namespace)
+
+(module_path
   name: (identifier) @namespace)
 
 ; Paths
@@ -92,6 +95,7 @@
   "=="
   "!="
   "=~"
+  "!~"
   "@"
   "="
   "$"

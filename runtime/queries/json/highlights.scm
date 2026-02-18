@@ -5,14 +5,15 @@
 (null) @constant.builtin
 (number) @constant.numeric
 
+(string) @string
+(escape_sequence) @constant.character.escape
+
 (pair
   key: (_) @variable.other.member)
 
-(string) @string
-(escape_sequence) @constant.character.escape
-(ERROR) @error
+(comment) @comment
 
-"," @punctuation.delimiter
+["," ":"] @punctuation.delimiter
 [
   "["
   "]"

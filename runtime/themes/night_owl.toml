@@ -51,6 +51,7 @@
 'string.special.url' = { fg = 'gold', modifiers = ['underlined'] }
 'comment' = { fg = 'slate', modifiers = ['italic'] }
 'comment.block.documentation' = { fg = 'slate' }
+'comment.line.documentation' = { fg = 'slate' }
 'variable' = { fg = 'green' }
 'variable.builtin' = { fg = 'green', modifiers = ['italic'] }
 'label' = { fg = 'foreground' }

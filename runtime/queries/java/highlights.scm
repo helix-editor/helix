@@ -1,3 +1,5 @@
+(identifier) @variable
+
 ; Methods
 
 (method_declaration
@@ -53,8 +55,6 @@
 
 ((identifier) @constant
  (#match? @constant "^_*[A-Z][A-Z\\d_]+$"))
-
-(identifier) @variable
 
 (this) @variable.builtin
 
@@ -184,7 +184,6 @@
   "extends"
   "final"
   "finally"
-  "for"
   "if"
   "implements"
   "import"
@@ -218,7 +217,11 @@
   "try"
   "uses"
   "volatile"
-  "while"
   "with"
   "yield"
 ] @keyword
+
+[
+  "while"
+  "for"
+] @keyword.control.repeat

@@ -13,7 +13,7 @@
 use std::mem::transmute;
 
 use helix_core::{Rope, RopeSlice};
-use imara_diff::intern::{InternedInput, Interner};
+use imara_diff::{InternedInput, Interner};
 
 use super::{MAX_DIFF_BYTES, MAX_DIFF_LINES};
 
@@ -54,9 +54,9 @@ impl InternedRopeLines {
     /// Updates the `diff_base` and optionally the document if `doc` is not None
     pub fn update_diff_base(&mut self, diff_base: Rope, doc: Option<Rope>) {
         self.interned.clear();
-        self.diff_base = Box::new(diff_base);
+        *self.diff_base = diff_base;
         if let Some(doc) = doc {
-            self.doc = Box::new(doc)
+            *self.doc = doc
         }
         if !self.is_too_large() {
             self.update_diff_base_impl();
@@ -74,7 +74,7 @@ impl InternedRopeLines {
             .interner
             .erase_tokens_after(self.num_tokens_diff_base.into());
 
-        self.doc = Box::new(doc);
+        *self.doc = doc;
         if self.is_too_large() {
             self.interned.after.clear();
         } else {
@@ -128,7 +128,7 @@ impl InternedRopeLines {
     /// Returns the `InternedInput` for performing the diff.
     /// If `diff_base` or `doc` is so large that performing a diff could slow the editor
     /// this function returns `None`.
-    pub fn interned_lines(&self) -> Option<&InternedInput<RopeSlice>> {
+    pub fn interned_lines(&self) -> Option<&InternedInput<RopeSlice<'_>>> {
         if self.is_too_large() {
             None
         } else {

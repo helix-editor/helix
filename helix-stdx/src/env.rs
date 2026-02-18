@@ -1,3 +1,4 @@
+//! Functions for working with the host environment.
 use std::{
     borrow::Cow,
     ffi::{OsStr, OsString},
@@ -10,9 +11,9 @@ use once_cell::sync::Lazy;
 // We keep the CWD as a static so that we can access it in places where we don't have access to the Editor
 static CWD: RwLock<Option<PathBuf>> = RwLock::new(None);
 
-// Get the current working directory.
-// This information is managed internally as the call to std::env::current_dir
-// might fail if the cwd has been deleted.
+/// Get the current working directory.
+/// This information is managed internally as the call to std::env::current_dir
+/// might fail if the cwd has been deleted.
 pub fn current_working_dir() -> PathBuf {
     if let Some(path) = &*CWD.read().unwrap() {
         return path.clone();
@@ -37,6 +38,7 @@ pub fn current_working_dir() -> PathBuf {
     cwd
 }
 
+/// Update the current working directory.
 pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<Option<PathBuf>> {
     let path = crate::path::canonicalize(path);
     std::env::set_current_dir(&path)?;
@@ -45,14 +47,17 @@ pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<Option
     Ok(cwd.replace(path))
 }
 
+/// Checks if the given environment variable is set.
 pub fn env_var_is_set(env_var_name: &str) -> bool {
     std::env::var_os(env_var_name).is_some()
 }
 
+/// Checks if a binary with the given name exists.
 pub fn binary_exists<T: AsRef<OsStr>>(binary_name: T) -> bool {
     which::which(binary_name).is_ok()
 }
 
+/// Attempts to find a binary of the given name. See [which](https://linux.die.net/man/1/which).
 pub fn which<T: AsRef<OsStr>>(
     binary_name: T,
 ) -> Result<std::path::PathBuf, ExecutableNotFoundError> {
@@ -80,7 +85,7 @@ fn find_brace_end(src: &[u8]) -> Option<usize> {
     None
 }
 
-fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>) -> Cow<OsStr> {
+fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>) -> Cow<'_, OsStr> {
     use regex_automata::meta::Regex;
 
     static REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -103,6 +108,12 @@ fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>)
         let mat = captures.get_match().unwrap();
         let pattern_id = mat.pattern().as_usize();
         let mut range = mat.range();
+        // A pattern may match multiple times on a single variable, for example `${HOME:-$HOME}`:
+        // `${HOME:-` matches and also the default value (`$HOME`). Skip past any variables which
+        // have already been expanded.
+        if range.start < pos {
+            continue;
+        }
         let var = &bytes[captures.get_group(1).unwrap().range()];
         let default = if pattern_id != 5 {
             let Some(bracket_pos) = find_brace_end(&bytes[range.end..]) else {
@@ -146,7 +157,7 @@ fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>)
 /// * `${<var>:-<default>}`, `${<var>-<default>}`
 /// * `${<var>:=<default>}`, `${<var>=default}`
 ///
-pub fn expand<S: AsRef<OsStr> + ?Sized>(src: &S) -> Cow<OsStr> {
+pub fn expand<S: AsRef<OsStr> + ?Sized>(src: &S) -> Cow<'_, OsStr> {
     expand_impl(src.as_ref(), |var| std::env::var_os(var))
 }
 
@@ -203,6 +214,7 @@ mod tests {
         assert_env_expand!(env, "bar/$FOO/baz", "bar/foo/baz");
         assert_env_expand!(env, "bar/${FOO}/baz", "bar/foo/baz");
         assert_env_expand!(env, "baz/${BAR:-bar}/foo", "baz/bar/foo");
+        assert_env_expand!(env, "baz/${FOO:-$FOO}/foo", "baz/foo/foo");
         assert_env_expand!(env, "baz/${BAR:=bar}/foo", "baz/bar/foo");
         assert_env_expand!(env, "baz/${BAR-bar}/foo", "baz/bar/foo");
         assert_env_expand!(env, "baz/${BAR=bar}/foo", "baz/bar/foo");

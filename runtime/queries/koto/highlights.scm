@@ -5,11 +5,13 @@
   "*"
   "/"
   "%"
+  "^"
   "+="
   "-="
   "*="
   "/="
   "%="
+  "^="
   "=="
   "!="
   "<"
@@ -70,9 +72,6 @@
   "as"
 ] @keyword.control.import
 
-(string (interpolation ("{") @punctuation.special))
-(string (interpolation ("}") @punctuation.special))
-
 [
   "("
   ")"
@@ -83,26 +82,36 @@
   "|"
 ] @punctuation.bracket
 
+(string (interpolation ["{" "}"] @punctuation.special))
+
 [
   ";"
   ":"
   ","
 ] @punctuation.delimiter
 
+(identifier) @variable
+
 (import_module
-  (identifier) @module)
+  (identifier) @namespace)
 
 (import_item
-  (identifier) @module)
+  (identifier) @namespace)
 
 (export
-  (identifier) @module)
-
-(call
-  function: (identifier) @function.method)
+  (identifier) @namespace)
 
 (chain
-  lookup: (identifier) @variable.other.member)
+  start: (identifier) @function)
+
+(chain
+  (lookup (identifier)) @variable.other.member)
+
+(call
+  function: (identifier)) @function
+
+(call_arg
+  (identifier) @variable.other.member)
 
 [
   (true)
@@ -138,15 +147,10 @@
 
 (self) @variable.builtin
 
-(variable
-  type: (identifier) @type)
+(type
+  _ @type)
 
 (arg
   (_ (identifier) @variable.parameter))
 
 (ellipsis) @variable.parameter
-
-(function
-  output_type: (identifier) @type)
-
-(identifier) @variable

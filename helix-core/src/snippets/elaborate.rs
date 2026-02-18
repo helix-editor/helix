@@ -178,9 +178,16 @@ impl Snippet {
         &mut self,
         idx: usize,
         parent: Option<TabstopIdx>,
-        default: Vec<parser::SnippetElement>,
+        mut default: Vec<parser::SnippetElement>,
     ) -> TabstopIdx {
         let idx = TabstopIdx::elaborate(idx);
+        if idx == LAST_TABSTOP_IDX && !default.is_empty() {
+            // Older versions of clangd for example may send a snippet like `${0:placeholder}`
+            // which is considered by VSCode to be a misuse of the `$0` tabstop.
+            log::warn!("Discarding placeholder text for the `$0` tabstop ({default:?}). \
+                The `$0` tabstop signifies the final cursor position and should not include placeholder text.");
+            default.clear();
+        }
         let default = self.elaborate(default, Some(idx));
         self.tabstops.push(Tabstop {
             idx,
@@ -316,13 +323,10 @@ impl Transform {
 
     pub fn apply(&self, mut doc: RopeSlice<'_>, range: Range) -> Tendril {
         let mut buf = Tendril::new();
-        let it = self
-            .regex
-            .captures_iter(doc.regex_input_at(range))
-            .enumerate();
+        let it = self.regex.captures_iter(doc.regex_input_at(range));
         doc = doc.slice(range);
         let mut last_match = 0;
-        for (_, cap) in it {
+        for cap in it {
             // unwrap on 0 is OK because captures only reports matches
             let m = cap.get_group(0).unwrap();
             buf.extend(doc.byte_slice(last_match..m.start).chunks());
@@ -354,7 +358,7 @@ impl Transform {
                         }
                     }
                     FormatItem::Conditional(i, ref if_, ref else_) => {
-                        if cap.get_group(i).map_or(true, |mat| mat.is_empty()) {
+                        if cap.get_group(i).is_none_or(|mat| mat.is_empty()) {
                             buf.push_str(else_)
                         } else {
                             buf.push_str(if_)

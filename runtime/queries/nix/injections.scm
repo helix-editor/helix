@@ -1,7 +1,7 @@
 ((comment) @injection.content
  (#set! injection.language "comment"))
 
-; mark arbitary languages with a comment
+; mark arbitrary languages with a comment
 ((((comment) @injection.language) .
   (indented_string_expression (string_fragment) @injection.content))
   (#set! injection.combined))
@@ -48,6 +48,15 @@
    argument: (indented_string_expression (string_fragment) @injection.content))
  (#match? @_func "(^|\\.)fromJSON$")
  (#set! injection.language "json")
+ (#set! injection.combined))
+
+; builtins.fromTOML toml
+; Example: https://github.com/NixOS/nix/blob/3e8cd2ffe6c2c6ed8aae7853ddcfcc6d2a49b0ce/tests/functional/lang/eval-okay-fromTOML.nix
+((apply_expression
+   function: (_) @_func
+   argument: (indented_string_expression (string_fragment) @injection.content))
+ (#match? @_func "(^|\\.)fromTOML$")
+ (#set! injection.language "toml")
  (#set! injection.combined))
 
 ; trivial-builders.nix pkgs.writeShellScript[Bin] name content
@@ -167,6 +176,67 @@
   (#set! injection.language "python")
   (#set! injection.combined))
 
+; pkgs.writers.writeNu[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeNu(Bin)?$")
+  (#set! injection.language "nu")
+  (#set! injection.combined))
+
+; pkgs.writers.writeRuby[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeRuby(Bin)?$")
+  (#set! injection.language "ruby")
+  (#set! injection.combined))
+
+; pkgs.writers.writeLua[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeLua(Bin)?$")
+  (#set! injection.language "lua")
+  (#set! injection.combined))
+
+; pkgs.writers.writeNginxConfig name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeNginxConfig$")
+  (#set! injection.language "nginx")
+  (#set! injection.combined))
+
+; pkgs.writers.writeGuile[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeGuile(Bin)?$")
+  (#set! injection.language "scheme") ; Guile is a GNU specific implementation of scheme
+  (#set! injection.combined))
+
+
+; pkgs.writers.writeBabashka[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeBabashka(Bin)?$")
+  (#set! injection.language "clojure")
+  (#set! injection.combined))
+
 ; pkgs.writers.writeFSharp[Bin] name content
 ; No query available for f-sharp as of the time of writing
 ; See: https://github.com/helix-editor/helix/issues/4943
@@ -185,4 +255,18 @@
  (#set! injection.combined))
 
 ((indented_string_expression (string_fragment) @injection.shebang @injection.content)
+  (#set! injection.combined))
+
+; string contents of lib.literalExpression is nix code
+((apply_expression
+    function: [
+      (select_expression) ; `lib.literalExpression`
+      (variable_expression) ; `literalExpression` this is the case when the symbol is brougth into scope e.g. `let inherit (lib) literalExpression; in`
+    ] @_func
+    argument: [
+      (indented_string_expression (string_fragment) @injection.content)  ; lib.literalExpression ''...''
+      (string_expression (string_fragment) @injection.content) ; lib.literalExpression "..."
+    ])
+  (#any-of? @_func "lib.literalExpression" "literalExpression")
+  (#set! injection.language "nix")
   (#set! injection.combined))

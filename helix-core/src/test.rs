@@ -65,7 +65,7 @@ pub fn print(s: &str) -> (String, Selection) {
         let head_at_beg = iter.next_if_eq(&"|").is_some();
         let last_grapheme = |s: &str| {
             UnicodeSegmentation::graphemes(s, true)
-                .last()
+                .next_back()
                 .map(String::from)
         };
 
@@ -286,10 +286,7 @@ mod test {
     #[test]
     fn print_multi_code_point_grapheme() {
         assert_eq!(
-            (
-                String::from("hello 👨‍👩‍👧‍👦 goodbye"),
-                Selection::single(13, 6)
-            ),
+            (String::from("hello 👨‍👩‍👧‍👦 goodbye"), Selection::single(13, 6)),
             print("hello #[|👨‍👩‍👧‍👦]# goodbye")
         );
     }

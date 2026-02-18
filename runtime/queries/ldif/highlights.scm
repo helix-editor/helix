@@ -1,5 +1,7 @@
 (comment) @comment
 
+(attributeType) @type.parameter
+
 ((distinguishedName
   (name
     (name_componet
@@ -13,7 +15,6 @@
 (changerecord) @constant
 (mod_spec) @constant
 
-(attributeType) @type.parameter
 (change_modify) @string
 
 (value_spec) @keyword

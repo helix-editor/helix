@@ -1,12 +1,7 @@
-use std::{borrow::Cow, cmp::Reverse};
-
 use crate::{
     compositor::{Callback, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
-use helix_core::fuzzy::MATCHER;
-use nucleo::pattern::{Atom, AtomKind, CaseMatching, Normalization};
-use nucleo::{Config, Utf32Str};
 use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
@@ -18,17 +13,7 @@ pub trait Item: Sync + Send + 'static {
     /// Additional editor state that is used for label calculation.
     type Data: Sync + Send + 'static;
 
-    fn format(&self, data: &Self::Data) -> Row;
-
-    fn sort_text(&self, data: &Self::Data) -> Cow<str> {
-        let label: String = self.format(data).cell_text().collect();
-        label.into()
-    }
-
-    fn filter_text(&self, data: &Self::Data) -> Cow<str> {
-        let label: String = self.format(data).cell_text().collect();
-        label.into()
-    }
+    fn format(&self, data: &Self::Data) -> Row<'_>;
 }
 
 pub type MenuCallback<T> = Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>;
@@ -50,6 +35,7 @@ pub struct Menu<T: Item> {
     size: (u16, u16),
     viewport: (u16, u16),
     recalculate: bool,
+    auto_close: bool,
 }
 
 impl<T: Item> Menu<T> {
@@ -74,50 +60,32 @@ impl<T: Item> Menu<T> {
             size: (0, 0),
             viewport: (0, 0),
             recalculate: true,
+            auto_close: false,
         }
     }
 
-    pub fn score(&mut self, pattern: &str, incremental: bool) {
-        let mut matcher = MATCHER.lock();
-        matcher.config = Config::DEFAULT;
-        let pattern = Atom::new(
-            pattern,
-            CaseMatching::Ignore,
-            Normalization::Smart,
-            AtomKind::Fuzzy,
-            false,
-        );
-        let mut buf = Vec::new();
-        if incremental {
-            self.matches.retain_mut(|(index, score)| {
-                let option = &self.options[*index as usize];
-                let text = option.filter_text(&self.editor_data);
-                let new_score = pattern.score(Utf32Str::new(&text, &mut buf), &mut matcher);
-                match new_score {
-                    Some(new_score) => {
-                        *score = new_score as u32;
-                        true
-                    }
-                    None => false,
-                }
-            })
-        } else {
-            self.matches.clear();
-            let matches = self.options.iter().enumerate().filter_map(|(i, option)| {
-                let text = option.filter_text(&self.editor_data);
-                pattern
-                    .score(Utf32Str::new(&text, &mut buf), &mut matcher)
-                    .map(|score| (i as u32, score as u32))
-            });
-            self.matches.extend(matches);
-        }
-        self.matches
-            .sort_unstable_by_key(|&(i, score)| (Reverse(score), i));
-
-        // reset cursor position
+    pub fn reset_cursor(&mut self) {
         self.cursor = None;
         self.scroll = 0;
         self.recalculate = true;
+    }
+
+    pub fn update_options(&mut self) -> (&mut Vec<(u32, u32)>, &mut Vec<T>) {
+        self.recalculate = true;
+        (&mut self.matches, &mut self.options)
+    }
+
+    pub fn ensure_cursor_in_bounds(&mut self) {
+        if self.matches.is_empty() {
+            self.cursor = None;
+            self.scroll = 0;
+        } else {
+            self.scroll = 0;
+            self.recalculate = true;
+            if let Some(cursor) = &mut self.cursor {
+                *cursor = (*cursor).min(self.matches.len() - 1)
+            }
+        }
     }
 
     pub fn clear(&mut self) {
@@ -136,11 +104,34 @@ impl<T: Item> Menu<T> {
         self.adjust_scroll();
     }
 
+    pub fn move_half_page_up(&mut self) {
+        let len = self.matches.len();
+        let max_index = len.saturating_sub((self.size.1 as usize / 2).max(1));
+        let pos = self.cursor.map_or(max_index, |i| (i + max_index) % len) % len;
+        self.cursor = Some(pos);
+        self.adjust_scroll();
+    }
+
     pub fn move_down(&mut self) {
         let len = self.matches.len();
         let pos = self.cursor.map_or(0, |i| i + 1) % len;
         self.cursor = Some(pos);
         self.adjust_scroll();
+    }
+
+    pub fn move_half_page_down(&mut self) {
+        let len = self.matches.len();
+        let pos = self
+            .cursor
+            .map_or(0, |i| i + (self.size.1 as usize / 2).max(1))
+            % len;
+        self.cursor = Some(pos);
+        self.adjust_scroll();
+    }
+
+    pub fn auto_close(mut self, auto_close: bool) -> Self {
+        self.auto_close = auto_close;
+        self
     }
 
     fn recalculate_size(&mut self, viewport: (u16, u16)) {
@@ -285,6 +276,18 @@ impl<T: Item + 'static> Component for Menu<T> {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
+            key!(PageUp) | ctrl!('u') => {
+                // page up moves back in the completion choice (including updating the doc)
+                self.move_half_page_up();
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                return EventResult::Consumed(None);
+            }
+            key!(PageDown) | ctrl!('d') => {
+                // page down advances completion choice (including updating the doc)
+                self.move_half_page_down();
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                return EventResult::Consumed(None);
+            }
             key!(Enter) => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
@@ -306,6 +309,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             // enter confirms the match and closes the menu
             // typing filters the menu
             // if we run out of options the menu closes itself
+            _ if self.auto_close => {
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
+                return EventResult::Consumed(close_fn);
+            }
             _ => (),
         }
         // for some events, we want to process them but send ignore, specifically all input except

@@ -106,7 +106,7 @@ impl KeyTrieNode {
                 (events.join(", "), desc)
             })
             .collect();
-        Info::new(&self.name, &body)
+        Info::new(self.name.clone(), &body)
     }
 }
 
@@ -483,14 +483,11 @@ mod tests {
                 .len()
                 > 1
         );
-        assert!(
-            merged_keyamp
-                .get(&Mode::Insert)
-                .and_then(|key_trie| key_trie.node())
-                .unwrap()
-                .len()
-                > 0
-        );
+        assert!(!merged_keyamp
+            .get(&Mode::Insert)
+            .and_then(|key_trie| key_trie.node())
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
@@ -597,14 +594,14 @@ mod tests {
         let expectation = KeyTrie::Node(KeyTrieNode::new(
             "",
             hashmap! {
-                key => KeyTrie::Sequence(vec![
+                key => KeyTrie::Sequence(vec!{
                     MappableCommand::select_all,
                     MappableCommand::Typable {
                         name: "pipe".to_string(),
-                        args: String::from("sed -E 's/\\s+$//g'"),
-                        doc: String::new(),
+                        args: "sed -E 's/\\s+$//g'".to_string(),
+                        doc: "".to_string(),
                     },
-                ])
+                })
             },
             vec![key],
         ));
