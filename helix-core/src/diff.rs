@@ -168,6 +168,21 @@ pub fn compare_ropes(before: &Rope, after: &Rope) -> Transaction {
     res
 }
 
+/// Compares `old` and `new` to generate a text diff
+pub fn diff_ropes(before: RopeSlice, after: RopeSlice) -> String {
+    let before = before.to_string();
+    let after = after.to_string();
+    let input = InternedInput::new(before.as_str(), after.as_str());
+    let mut diff = Diff::compute(Algorithm::Histogram, &input);
+    diff.postprocess_lines(&input);
+    diff.unified_diff(
+        &imara_diff::BasicLineDiffPrinter(&input.interner),
+        imara_diff::UnifiedDiffConfig::default(),
+        &input,
+    )
+    .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
