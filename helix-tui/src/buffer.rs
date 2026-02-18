@@ -28,6 +28,12 @@ impl Cell {
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
         self.symbol.clear();
         if self.symbol.try_push_str(symbol).is_err() {
+            debug_assert!(
+                symbol.len() > 28,
+                "Symbols can't exceed 28 bytes.\nTried to push {} (size in bytes: {})",
+                symbol,
+                symbol.len()
+            );
             SIZE_EXCEEDED_LOG.call_once(|| {
                 log::error!(
                     "Grapheme exceeded Symbol capacity ({} bytes, max 28): {:?}",
