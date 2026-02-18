@@ -4,8 +4,8 @@ The typical way to install Helix is via [your operating system's package manager
 
 Note that:
 
-- To get the latest nightly version of Helix, you either need to
-  [build from source](./building-from-source.md), or install via [homebrew](./package-managers.md#linux-homebrew-core) using the `--HEAD` flag.
+- To get the latest nightly version of Helix, you need to
+  [build from source](./building-from-source.md).
 
 - To take full advantage of Helix, install the language servers for your
   preferred programming languages. See the
