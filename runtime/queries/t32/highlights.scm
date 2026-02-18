@@ -143,13 +143,13 @@
 ; Returns
 (
   (command_expression
-    command: (identifier) @keyword.return)
-  (#match? @keyword.return "^[eE][nN][dD]([dD][oO])?$")
+    command: (identifier) @keyword.control.return)
+  (#match? @keyword.control.return "^[eE][nN][dD]([dD][oO])?$")
 )
 (
   (command_expression
-    command: (identifier) @keyword.return)
-  (#match? @keyword.return "^[rR][eE][tT][uU][rR][nN]$")
+    command: (identifier) @keyword.control.return)
+  (#match? @keyword.control.return "^[rR][eE][tT][uU][rR][nN]$")
 )
 
 
@@ -213,14 +213,14 @@
 
 ; Control flow
 (if_block
-  command: (identifier) @keyword.control.conditional.if)
+  command: (identifier) @keyword.control.conditional)
 (else_block
-  command: (identifier) @keyword.control.control.else)
+  command: (identifier) @keyword.control.conditional)
 
 (while_block
-  command: (identifier) @keyword.control.repeat.while)
+  command: (identifier) @keyword.control.repeat)
 (repeat_block
-  command: (identifier) @keyword.control.loop)
+  command: (identifier) @keyword.control.repeat)
 
 
 
