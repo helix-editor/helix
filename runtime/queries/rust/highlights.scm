@@ -219,7 +219,7 @@
 
 (parameter
   (mutable_specifier)
-  pattern: (identifier) @variable.mutable)
+  pattern: (identifier) @variable.parameter.mutable)
 
 ; -------
 ; Keywords

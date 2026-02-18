@@ -32,7 +32,7 @@
 
 (parameter
   (mutable_specifier)
-  pattern: (identifier) @local.definition.variable.mutable)
+  pattern: (identifier) @local.definition.variable.parameter.mutable)
 
 ; References
 (identifier) @local.reference
