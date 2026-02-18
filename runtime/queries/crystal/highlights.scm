@@ -145,9 +145,11 @@
 [
   (true)
   (false)
-  (nil)
-  (self)
-] @variable.builtin
+] @constant.builtin.boolean
+
+(nil) @constant.builtin
+
+(self) @variable.builtin
 
 (
   (comment)+ @comment.block.documentation
