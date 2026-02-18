@@ -158,11 +158,11 @@ fn find_nth_closest_pairs_plain(
 /// or opening pair. `n` will skip n - 1 pairs (eg. n=2 will discard (only)
 /// the first pair found and keep looking)
 pub fn find_nth_pairs_pos(
+    syntax: Option<&Syntax>,
     text: RopeSlice,
     ch: char,
     range: Range,
     n: usize,
-    syntax: Option<&Syntax>,
 ) -> Result<(usize, usize)> {
     if text.len_chars() < 2 {
         return Err(Error::PairNotFound);
@@ -314,7 +314,7 @@ pub fn get_surround_pos(
     for &range in selection {
         let (open_pos, close_pos) = {
             let range_raw = match ch {
-                Some(ch) => find_nth_pairs_pos(text, ch, range, skip, syntax)?,
+                Some(ch) => find_nth_pairs_pos(syntax, text, ch, range, skip)?,
                 None => find_nth_closest_pairs_pos(syntax, text, range, skip)?,
             };
             let range = Range::new(range_raw.0, range_raw.1);
@@ -408,7 +408,7 @@ mod test {
 
         assert_eq!(2, expectations.len());
         assert_eq!(
-            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1, None)
+            find_nth_pairs_pos(None, doc.slice(..), '\'', selection.primary(), 1)
                 .expect("find should succeed"),
             (expectations[0], expectations[1])
         )
@@ -425,7 +425,7 @@ mod test {
 
         assert_eq!(2, expectations.len());
         assert_eq!(
-            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 2, None)
+            find_nth_pairs_pos(None, doc.slice(..), '\'', selection.primary(), 2)
                 .expect("find should succeed"),
             (expectations[0], expectations[1])
         )
@@ -441,7 +441,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1, None),
+            find_nth_pairs_pos(None, doc.slice(..), '\'', selection.primary(), 1),
             Err(Error::CursorOnAmbiguousPair)
         )
     }
