@@ -959,10 +959,26 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             }
 
             let loader = cx.editor.syn_loader.load();
+            let config = cx.editor.config();
 
             let syntax_highlighter =
                 EditorView::doc_syntax_highlighter(doc, offset.anchor, area.height, &loader);
             let mut overlay_highlights = Vec::new();
+            if doc
+                .language_config()
+                .and_then(|config| config.rainbow_brackets)
+                .unwrap_or(config.rainbow_brackets)
+            {
+                if let Some(overlay) = EditorView::doc_rainbow_highlights(
+                    doc,
+                    offset.anchor,
+                    area.height,
+                    &cx.editor.theme,
+                    &loader,
+                ) {
+                    overlay_highlights.push(overlay);
+                }
+            }
 
             EditorView::doc_diagnostics_highlights_into(
                 doc,
