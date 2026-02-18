@@ -6,6 +6,7 @@ use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
+use crate::surround::FindType;
 use crate::syntax;
 use crate::Range;
 use crate::{surround, Syntax};
@@ -203,9 +204,16 @@ pub fn textobject_pair_surround(
     range: Range,
     textobject: TextObject,
     ch: char,
+    find_type: FindType,
     count: usize,
 ) -> Range {
-    textobject_pair_surround_impl(syntax, slice, range, textobject, Some(ch), count)
+    textobject_pair_surround_impl(
+        syntax,
+        slice,
+        range,
+        textobject,
+        FindVariant::Char((ch, find_type, count)),
+    )
 }
 
 pub fn textobject_pair_surround_closest(
@@ -215,7 +223,18 @@ pub fn textobject_pair_surround_closest(
     textobject: TextObject,
     count: usize,
 ) -> Range {
-    textobject_pair_surround_impl(syntax, slice, range, textobject, None, count)
+    textobject_pair_surround_impl(
+        syntax,
+        slice,
+        range,
+        textobject,
+        FindVariant::Closest(count),
+    )
+}
+
+enum FindVariant {
+    Char((char, FindType, usize)),
+    Closest(usize),
 }
 
 fn textobject_pair_surround_impl(
@@ -223,12 +242,15 @@ fn textobject_pair_surround_impl(
     slice: RopeSlice,
     range: Range,
     textobject: TextObject,
-    ch: Option<char>,
-    count: usize,
+    find_variant: FindVariant,
 ) -> Range {
-    let pair_pos = match ch {
-        Some(ch) => surround::find_nth_pairs_pos(slice, ch, range, count),
-        None => surround::find_nth_closest_pairs_pos(syntax, slice, range, count),
+    let pair_pos = match find_variant {
+        FindVariant::Char((ch, find_type, count)) => {
+            surround::find_nth_pairs_pos(slice, ch, range, find_type, count)
+        }
+        FindVariant::Closest(count) => {
+            surround::find_nth_closest_pairs_pos(syntax, slice, range, count)
+        }
     };
     pair_pos
         .map(|(anchor, head)| match textobject {
@@ -575,8 +597,15 @@ mod test {
             let slice = doc.slice(..);
             for &case in scenario {
                 let (pos, objtype, expected_range, ch, count) = case;
-                let result =
-                    textobject_pair_surround(None, slice, Range::point(pos), objtype, ch, count);
+                let result = textobject_pair_surround(
+                    None,
+                    slice,
+                    Range::point(pos),
+                    objtype,
+                    ch,
+                    FindType::Surround,
+                    count,
+                );
                 assert_eq!(
                     result,
                     expected_range.into(),
