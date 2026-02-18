@@ -124,6 +124,7 @@ ripple-lsp = { command = "ripple-language-server", args = ["--stdio"] }
 robotcode = { command = "robotcode", args = ["language-server", "--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
 ron-lsp = { command = "ron-lsp" }
+roslyn-language-server = { command = "roslyn-language-server", args = ["--stdio", "--autoLoadProjects"] }
 ruff = { command = "ruff", args = ["server"] }
 ruby-lsp = { command = "ruby-lsp" }
 rshtml-analyzer = { command = "rshtml-analyzer", args = ["--stdio"] }
@@ -755,7 +756,7 @@ roots = ["*.slnx", "*.sln", "*.csproj"]
 comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
-language-servers = [ "omnisharp", "csharp-ls" ]
+language-servers = [ "roslyn-language-server", "omnisharp", "csharp-ls" ]
 
 [language.debugger]
 name = "netcoredbg"
