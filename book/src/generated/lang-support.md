@@ -39,7 +39,7 @@
 | crystal | ✓ | ✓ | ✓ | ✓ |  | `crystalline`, `ameba-ls` |
 | css | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
 | csv | ✓ |  |  |  |  |  |
-| cue | ✓ |  |  |  |  | `cuelsp` |
+| cue | ✓ |  |  |  |  | `cue` |
 | cylc | ✓ | ✓ | ✓ |  |  |  |
 | cython | ✓ |  | ✓ | ✓ |  |  |
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
