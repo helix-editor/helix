@@ -34,7 +34,12 @@
   (mutable_specifier)
   pattern: (identifier) @local.definition.variable.parameter.mutable)
 
+(self_parameter
+  (mutable_specifier)
+  (self) @local.definition.variable.builtin.mutable)
+
 ; References
+(self) @local.reference
 (identifier) @local.reference
 ; lifetimes / labels
 (lifetime (identifier) @label)

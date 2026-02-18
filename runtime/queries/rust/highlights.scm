@@ -221,6 +221,10 @@
   (mutable_specifier)
   pattern: (identifier) @variable.parameter.mutable)
 
+(self_parameter
+  (mutable_specifier)
+  (self) @variable.builtin.mutable)
+
 ; -------
 ; Keywords
 ; -------
