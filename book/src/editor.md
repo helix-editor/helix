@@ -496,7 +496,7 @@ fn main() {
 | `prefix-len` | How many horizontal bars `─` are rendered before the diagnostic text.  | `1` |
 | `max-wrap` | Equivalent of the `editor.soft-wrap.max-wrap` option for diagnostics.  | `20` |
 | `max-diagnostics` | Maximum number of diagnostics to render inline for a given line  | `10` |
-
+| `timeout` | Time in milliseconds after moving the primary cursor before inline diagnostics are shown (if `cursor-line` is not set to `disable`). | `350` |
 The allowed values for `cursor-line` and `other-lines` are: `error`, `warning`, `info`, `hint`.
 
 The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the `end-of-line-diagnostics` config option):
