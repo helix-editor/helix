@@ -28,15 +28,13 @@
 
 (comment) @comment
 
-; Properties
+; Properties (includes both property and link declarations, since link keyword is optional)
 (property) @variable.other.member
-(link) @variable.other.member
-(annotation) @variable.other.member
 
 (string) @string
 (edgeql_fragment) @string
-; Builtins
 
+; Builtins
 (type) @type
 [
   "str"
@@ -72,4 +70,3 @@
   "->"
   ":="
 ] @operator
-
