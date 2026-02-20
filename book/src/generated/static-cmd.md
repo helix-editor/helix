@@ -163,6 +163,7 @@
 | `goto_previous_buffer` | Goto previous buffer | normal: `` gp ``, select: `` gp `` |
 | `goto_line_end_newline` | Goto newline at line end | insert: `` <end> `` |
 | `goto_first_nonwhitespace` | Goto first non-blank in line | normal: `` gs ``, select: `` gs `` |
+| `delete_trailing_whitespace` | Delete trailing whitespace in document |  |
 | `trim_selections` | Trim whitespace from selections | normal: `` _ ``, select: `` _ `` |
 | `extend_to_line_start` | Extend to line start | select: `` <home> `` |
 | `extend_to_first_nonwhitespace` | Extend to first non-blank in line |  |
