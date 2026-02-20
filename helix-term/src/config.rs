@@ -1,9 +1,12 @@
 use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
 use helix_loader::merge_toml_values;
-use helix_view::{document::Mode, theme};
+use helix_view::{
+    document::{ConfigMode, Mode},
+    theme,
+};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 use std::fmt::Display;
 use std::fs;
 use std::io::Error as IOError;
@@ -20,8 +23,35 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
     pub theme: Option<theme::Config>,
-    pub keys: Option<HashMap<Mode, KeyTrie>>,
+    pub keys: Option<HashMap<ConfigMode, KeyTrie>>,
     pub editor: Option<toml::Value>,
+}
+
+fn convert_config_mode(mut conf_m: HashMap<ConfigMode, KeyTrie>) -> HashMap<Mode, KeyTrie> {
+    let mut keys: HashMap<Mode, KeyTrie> = HashMap::new();
+    if conf_m.contains_key(&ConfigMode::All) {
+        let trie = conf_m.remove(&ConfigMode::All).unwrap();
+        keys.insert(Mode::Normal, trie.clone());
+        keys.insert(Mode::Select, trie.clone());
+        keys.insert(Mode::Insert, trie);
+    }
+
+    for (key, trie) in conf_m {
+        if let ConfigMode::Mode(mode) = key {
+            match keys.entry(mode) {
+                Entry::Occupied(entry) => {
+                    let mut node = entry.remove();
+                    node.merge_nodes(trie);
+                    keys.insert(mode, node);
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(trie);
+                }
+            }
+        }
+    }
+
+    keys
 }
 
 impl Default for Config {
@@ -68,10 +98,10 @@ impl Config {
             (Ok(global), Ok(local)) => {
                 let mut keys = keymap::default();
                 if let Some(global_keys) = global.keys {
-                    merge_keys(&mut keys, global_keys)
+                    merge_keys(&mut keys, convert_config_mode(global_keys));
                 }
                 if let Some(local_keys) = local.keys {
-                    merge_keys(&mut keys, local_keys)
+                    merge_keys(&mut keys, convert_config_mode(local_keys));
                 }
 
                 let editor = match (global.editor, local.editor) {
@@ -98,7 +128,7 @@ impl Config {
             (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
                 let mut keys = keymap::default();
                 if let Some(keymap) = config.keys {
-                    merge_keys(&mut keys, keymap);
+                    merge_keys(&mut keys, convert_config_mode(keymap));
                 }
                 Config {
                     theme: config.theme,
@@ -161,6 +191,55 @@ mod tests {
                 }),
                 Mode::Normal => keymap!({ "Normal mode"
                     "A-F12" => move_next_word_end,
+                }),
+            },
+        );
+
+        assert_eq!(
+            Config::load_test(sample_keymaps),
+            Config {
+                keys,
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn parsing_keymaps_all_modes() {
+        use crate::keymap;
+        use helix_core::hashmap;
+        use helix_view::document::Mode;
+
+        let sample_keymaps = r#"
+            [keys.normal]
+            A-F12 = "move_next_word_end"
+
+            [keys.all_modes]
+            y = "move_line_up"
+
+            [keys.select]
+            y = "move_line_down"
+            S-C-a = "delete_selection"
+
+            [keys.insert]
+            C-s = "goto_line_start"
+        "#;
+
+        let mut keys = keymap::default();
+        merge_keys(
+            &mut keys,
+            hashmap! {
+                Mode::Insert => keymap!({ "Insert mode"
+                    "y" => move_line_up,
+                    "C-s" => goto_line_start,
+                }),
+                Mode::Normal => keymap!({ "Normal mode"
+                    "A-F12" => move_next_word_end,
+                    "y" => move_line_up,
+                }),
+                Mode::Select => keymap!({ "Select mode"
+                    "S-C-a" => delete_selection,
+                    "y" => move_line_down,
                 }),
             },
         );
