@@ -369,7 +369,13 @@ impl Completion {
         let min_score = (7 + pattern.needle_text().len() as u32 * 14) / 3;
         matches.sort_unstable_by_key(|&(i, score)| {
             let option = &options[i as usize];
+            let filter_text = option.filter_text();
+            let is_exact_match = Utf32Str::new(filter_text, &mut buf) == pattern.needle_text();
+            let match_length = filter_text.len() as u32;
+
             (
+                !is_exact_match,
+                match_length,
                 score <= min_score,
                 Reverse(option.preselect()),
                 option.provider_priority(),
