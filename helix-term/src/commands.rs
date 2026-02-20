@@ -6,6 +6,7 @@ pub(crate) mod typed;
 pub use dap::*;
 use futures_util::FutureExt;
 use helix_event::status;
+use helix_lsp::lsp::TextDocumentSaveReason;
 use helix_stdx::{
     path::{self, find_paths},
     rope::{self, RopeSliceExt},
@@ -3611,6 +3612,7 @@ async fn make_format_callback(
     view_id: ViewId,
     format: impl Future<Output = Result<Transaction, FormatterError>> + Send + 'static,
     write: Option<(Option<PathBuf>, bool)>,
+    reason: TextDocumentSaveReason,
 ) -> anyhow::Result<job::Callback> {
     let format = format.await;
 
@@ -3645,7 +3647,7 @@ async fn make_format_callback(
 
         if let Some((path, force)) = write {
             let id = doc.id();
-            if let Err(err) = editor.save(id, path, force) {
+            if let Err(err) = editor.save(id, path, force, reason) {
                 editor.set_error(format!("Error saving: {}", err));
             }
         }

@@ -19,7 +19,7 @@ use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
-use helix_lsp::{Call, LanguageServerId};
+use helix_lsp::{lsp::TextDocumentSaveReason, Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -2033,12 +2033,54 @@ impl Editor {
         doc_id: DocumentId,
         path: Option<P>,
         force: bool,
+        reason: TextDocumentSaveReason,
     ) -> anyhow::Result<()> {
         // convert a channel of futures to pipe into main queue one by one
         // via stream.then() ? then push into main future
 
         let path = path.map(|path| path.into());
+        let view_id = self.get_synced_view_id(doc_id);
         let doc = doc_mut!(self, &doc_id);
+        let view = view_mut!(self, view_id);
+        let url = match &path {
+            Some(path) => url::Url::from_file_path(path).ok(),
+            None => doc.url(),
+        };
+        if let Some(url) = url {
+            let identifier = lsp::TextDocumentIdentifier::new(url.clone());
+            let language_servers: Vec<_> = doc
+                .language_servers
+                .values()
+                .filter(|client| client.is_initialized())
+                .cloned()
+                .collect();
+            for language_server in language_servers {
+                language_server.text_document_will_save(identifier.clone(), reason);
+
+                let Some(request) =
+                    language_server.text_document_will_save_wait_until(identifier.clone(), reason)
+                else {
+                    continue;
+                };
+                let edits = match helix_lsp::block_on(request) {
+                    Ok(Some(edits)) => edits,
+                    Ok(None) => continue,
+                    Err(err) => {
+                        log::error!("invalid willSaveWaitUntil response: {err:?}");
+                        continue;
+                    }
+                };
+                let transaction = helix_lsp::util::generate_transaction_from_edits(
+                    doc.text(),
+                    edits,
+                    language_server.offset_encoding(),
+                );
+
+                doc.apply(&transaction, view.id);
+                doc.append_changes_to_history(view);
+            }
+        }
+
         let doc_save_future = doc.save(path, force)?;
 
         // When a file is written to, notify the file event handler.
