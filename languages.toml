@@ -1379,6 +1379,8 @@ file-types = ["tex", "sty", "cls", "Rd", "bbx", "cbx"]
 comment-token = "%"
 language-servers = [ "texlab" ]
 indent = { tab-width = 4, unit = "\t" }
+auto-format = true
+formatter = { command = "tex-fmt", args = ["--stdin"] }
 
 [[grammar]]
 name = "latex"
