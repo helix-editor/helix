@@ -123,7 +123,7 @@ pub fn raw_regex_prompt(
                     let case_insensitive = if config.search.smart_case {
                         !input.chars().any(char::is_uppercase)
                     } else {
-                        false
+                        config.search.ignore_case_unless_smart
                     };
 
                     match rope::RegexBuilder::new()
