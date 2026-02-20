@@ -973,7 +973,7 @@ impl Document {
             Some(path) => helix_stdx::path::canonicalize(path),
             None => {
                 if self.path.is_none() {
-                    bail!("Can't save with no path set!");
+                    bail!("Document has no path; please append a name or path to the save command.");
                 }
                 self.path.as_ref().unwrap().clone()
             }
