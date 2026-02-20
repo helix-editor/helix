@@ -1,7 +1,7 @@
 pub mod config;
 pub mod grammar;
 
-use helix_stdx::{env::current_working_dir, path};
+use helix_stdx::{env::current_working_dir, path, env::expand};
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::{Path, PathBuf};
@@ -274,6 +274,16 @@ fn ensure_parent_dir(path: &Path) {
     }
 }
 
+pub fn get_env_expanded_toml<T>(toml_str: &str) -> Result<T, toml::de::Error>
+where
+    T: serde::de::DeserializeOwned
+{
+    let expanded = expand(toml_str);
+    let expanded_str = expanded.to_string_lossy();
+    toml::from_str(&expanded_str)
+
+}
+
 #[cfg(test)]
 mod merge_toml_tests {
     use std::str;
@@ -344,5 +354,45 @@ mod merge_toml_tests {
                 .unwrap(),
             &vec![Value::String("lsp".into())]
         )
+    }
+}
+
+#[cfg(test)]
+mod env_expander_tests {
+    use toml::Value;
+    use std::env;
+    use super::get_env_expanded_toml;
+
+    #[test]
+    fn expand_envs_and_parse_toml() {
+        let toml_text = r#"
+            title = "My App"
+            dir = "${HOME}/project/source"
+            user = "${USER}"
+            config = "${CONFIG_DIR}"
+            undefined = "${UNDEFINED}"
+        "#;
+
+        env::set_var("HOME", "/home/example");
+        env::set_var("USER", "example_user");
+        env::set_var("CONFIG_DIR", "/etc/myapp");
+
+        let parsed: Value = get_env_expanded_toml(toml_text).unwrap();
+        assert_eq!(
+            parsed["dir"],
+            "/home/example/project/source".into()
+        );
+        assert_eq!(
+            parsed["user"],
+            "example_user".into()
+        );
+        assert_eq!(
+            parsed["config"],
+            "/etc/myapp".into()
+        );
+        assert_eq!(
+            parsed["undefined"],
+            "".into()
+        );
     }
 }
