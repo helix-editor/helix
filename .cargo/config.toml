@@ -15,3 +15,7 @@ rustflags = ["--cfg", "tokio_unstable", "-C", "target-feature=-crt-static"]
 xtask = "run --package xtask --"
 integration-test = "test --features integration --profile integration --workspace --test integration"
 
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+[target.riscv64gc-unknown-linux-gnu]
+linker = "riscv64-linux-gnu-gcc"
