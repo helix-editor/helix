@@ -103,6 +103,24 @@ fn long_word_softwrap() {
 }
 
 #[test]
+fn softwrap_full_width_punctuation() {
+    assert_eq!(
+        softwrap_text("xxxx1xxxx2xxxx3xx,xx4\n"),
+        "xxxx1xxxx2xxxx3xx\n.,xx4 \n "
+    );
+    assert_eq!(
+        softwrap_text("xxxx1xxxx2xxxx3x，xxx4\n"),
+        "xxxx1xxxx2xxxx3x\n.，xxx4 \n "
+    );
+    assert_eq!(
+        softwrap_text(
+            "  壹二三四五六柒，一二三四五六七八，一二三四五六七八,一二三四五六七八九十。\n"
+        ),
+        "  壹二三四五六柒\n...，一二三四五六\n...七八，一二三四\n...五六七八,一二\n...三四五六七八九\n...十。 \n "
+    );
+}
+
+#[test]
 fn softwrap_multichar_grapheme() {
     assert_eq!(
         softwrap_text("xxxx xxxx xxx a\u{0301}bc\n"),
