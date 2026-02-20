@@ -1978,12 +1978,88 @@ fn page_cursor_half_down(cx: &mut Context) {
     scroll(cx, offset, Direction::Forward, true);
 }
 
-#[allow(deprecated)]
+fn copy_selection_on_visual_line(cx: &mut Context, direction: Direction) {
+
+    let count           = cx.count();
+    let (view, doc)     = current!(cx.editor);
+    let text            = doc.text().slice(..);
+    let selection       = doc.selection(view.id);
+    let text_fmt        = doc.text_format(view.inner_area(doc).width, None);
+    let mut annotations = view.text_annotations(doc, None);
+    annotations.clear_line_annotations();
+
+    let mut primary_idx = selection.primary_index();
+    let mut new_ranges  = SmallVec::with_capacity(selection.len() * (count + 1));
+    new_ranges.extend_from_slice(selection.ranges());
+    //copy the selection to the relative line number
+    let to_relative_line_number = count > 1;
+
+    for range in selection.iter() {
+        let is_primary = *range == selection.primary();
+
+        // The range is always head exclusive
+        let (head, anchor) =
+            if range.anchor < range.head { (range.head - 1, range.anchor                  ) }
+            else                         { (range.head    , range.anchor.saturating_sub(1)) };
+        let min_idx = std::cmp::min(head, anchor);
+
+        let (head_pos  , _) = visual_offset_from_block(
+            text, min_idx, head  , &text_fmt, &annotations);
+        let (anchor_pos, _) = visual_offset_from_block(
+            text, min_idx, anchor, &text_fmt, &annotations);
+
+        let height =
+              std::cmp::max(head_pos.row, anchor_pos.row)
+            - std::cmp::min(head_pos.row, anchor_pos.row)
+            + 1;
+
+        let mut i    = 0;
+        let mut step = 0;
+        while step < count {
+
+            use Direction::*;
+            i += match direction { Forward => 1, Backward => -1, };
+            let offset = i * height as isize;
+
+            let (new_head  , _) = char_idx_at_visual_offset(
+                text, head  , offset, head_pos.col  , &text_fmt, &annotations);
+            let (new_anchor, _) = char_idx_at_visual_offset(
+                text, anchor, offset, anchor_pos.col, &text_fmt, &annotations);
+
+            let (Position { col: new_head_col  , ..}, _) = visual_offset_from_block(
+                text, new_head  , new_head  , &text_fmt, &annotations);
+            let (Position { col: new_anchor_col, ..}, _) = visual_offset_from_block(
+                text, new_anchor, new_anchor, &text_fmt, &annotations);
+
+            // check the bottom doc boundary
+            if new_head   >= text.len_chars()
+            || new_anchor >= text.len_chars() { break }
+
+            // skip lines that are too short
+            if head_pos.col == new_head_col && anchor_pos.col == new_anchor_col {
+                new_ranges.push(
+                    Range::point(new_anchor)
+                        .put_cursor(text, new_head, true) );
+                if is_primary { primary_idx = new_ranges.len() - 1 }
+                if ! to_relative_line_number { step += 1 }
+            }
+            // always increment if `count` > 1
+            if to_relative_line_number { step += 1 }
+
+            // check the top doc boundary
+            if new_head   == 0
+            && new_anchor == 0 { break }
+    } }
+
+    drop(annotations);
+    doc.set_selection(view.id, Selection::new(new_ranges, primary_idx))
+}
+
+#[deprecated = "Doesn't account for softwrap or decorations, use copy_selection_on_visual_line instead"]
+#[allow(dead_code, deprecated)]
 // currently uses the deprecated `visual_coords_at_pos`/`pos_at_visual_coords` functions
 // as this function ignores softwrapping (and virtual text) and instead only cares
 // about "text visual position"
-//
-// TODO: implement a variant of that uses visual lines and respects virtual text
 fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     use helix_core::{pos_at_visual_coords, visual_coords_at_pos};
 
@@ -2066,11 +2142,11 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
 }
 
 fn copy_selection_on_prev_line(cx: &mut Context) {
-    copy_selection_on_line(cx, Direction::Backward)
+    copy_selection_on_visual_line(cx, Direction::Backward)
 }
 
 fn copy_selection_on_next_line(cx: &mut Context) {
-    copy_selection_on_line(cx, Direction::Forward)
+    copy_selection_on_visual_line(cx, Direction::Forward)
 }
 
 fn select_all(cx: &mut Context) {
