@@ -383,6 +383,29 @@ async fn test_open_above_with_multiple_cursors() -> anyhow::Result<()> {
     ))
     .await?;
 
+    // and with mixed indentation with indent-heuristic set to verbatim
+    test((
+        indoc! {"····#[H|]#elix
+            ··>·#(i|)#s
+            >>····#(c|)#ool"}
+        .replace("·", " ")
+        .replace(">", "\t"),
+        ":set indent-heuristic verbatim<ret>O",
+        indoc! {
+            "····#[\n|]#
+            ····Helix
+            ··>·#(\n|)#
+            ··>·is
+            >>····#(\n|)#
+            >>····cool
+            "
+        }
+        .replace("·", " ")
+        .replace(">", "\t"),
+    ))
+    .await?;
+
+
     // the first line is within a comment, the second not.
     // However, if we open above, the first newly added line should start within a comment
     // while the other should be a normal line
@@ -440,6 +463,28 @@ async fn test_open_below_with_multiple_cursors() -> anyhow::Result<()> {
             "
         }
         .replace("·", " "),
+    ))
+    .await?;
+
+    // and with mixed indentation with indent-heuristic set to verbatim
+    test((
+        indoc! {"····#[H|]#elix
+            ··>·#(i|)#s
+            >>····#(c|)#ool"}
+        .replace("·", " ")
+        .replace(">", "\t"),
+        ":set indent-heuristic verbatim<ret>o",
+        indoc! {
+            "····Helix
+            ····#[\n|]#
+            ··>·is
+            ··>·#(\n|)#
+            >>····cool
+            >>····#(\n|)#
+            "
+        }
+        .replace("·", " ")
+        .replace(">", "\t"),
     ))
     .await?;
 
