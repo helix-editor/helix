@@ -2786,6 +2786,27 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+fn run_command(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let command = args.join(" ").parse::<MappableCommand>()?;
+
+    let mut context = Context {
+        register: None,
+        count: None,
+        editor: cx.editor,
+        callback: Vec::new(),
+        on_next_key_callback: None,
+        jobs: cx.jobs,
+    };
+
+    command.execute(&mut context);
+
+    Ok(())
+}
+
 /// This command accepts a single boolean --skip-visible flag and no positionals.
 const BUFFER_CLOSE_OTHERS_SIGNATURE: Signature = Signature {
     positionals: (0, Some(0)),
@@ -3870,6 +3891,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             ..Signature::DEFAULT
         },
     },
+    TypableCommand {
+        name: "run-command",
+        aliases: &[],
+        doc: "Runs a command.",
+        fun: run_command,
+        completer: CommandCompleter::positional(&[completers::command]),
+        signature: Signature {
+            positionals: (1, None),
+            ..Signature::DEFAULT
+        },
+    }
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
