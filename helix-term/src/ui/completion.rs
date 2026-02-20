@@ -292,7 +292,8 @@ impl Completion {
 
         let popup = Popup::new(Self::ID, menu)
             .with_scrollbar(false)
-            .ignore_escape_key(true);
+            .ignore_escape_key(true)
+            .sticky(false);
 
         let (view, doc) = current_ref!(editor);
         let text = doc.text().slice(..);

@@ -39,6 +39,7 @@ pub struct Popup<T: Component> {
     ignore_escape_key: bool,
     id: &'static str,
     has_scrollbar: bool,
+    sticky: bool,
 }
 
 impl<T: Component> Popup<T> {
@@ -53,6 +54,7 @@ impl<T: Component> Popup<T> {
             ignore_escape_key: false,
             id,
             has_scrollbar: true,
+            sticky: true,
         }
     }
 
@@ -111,6 +113,11 @@ impl<T: Component> Popup<T> {
         self
     }
 
+    pub fn sticky(mut self, sticky: bool) -> Self {
+        self.sticky = sticky;
+        self
+    }
+
     pub fn contents(&self) -> &T {
         &self.contents
     }
@@ -125,11 +132,15 @@ impl<T: Component> Popup<T> {
 
     fn render_info(&mut self, viewport: Rect, editor: &Editor) -> RenderInfo {
         let mut position = editor.cursor().0.unwrap_or_default();
-        if let Some(old_position) = self
-            .position
-            .filter(|old_position| old_position.row == position.row)
-        {
-            position = old_position;
+        if self.sticky {
+            if let Some(old_position) = self
+                .position
+                .filter(|old_position| old_position.row == position.row)
+            {
+                position = old_position;
+            } else {
+                self.position = Some(position);
+            }
         } else {
             self.position = Some(position);
         }
