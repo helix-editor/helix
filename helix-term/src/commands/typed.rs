@@ -1708,6 +1708,64 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
     }
 }
 
+fn lsp_start(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc!(cx.editor);
+    let config = doc
+        .language_config()
+        .context("LSP not defined for the current document")?;
+
+    let language_servers: Vec<_> = config
+        .language_servers
+        .iter()
+        .map(|ls| ls.name.as_str())
+        .collect();
+    let language_servers = if args.is_empty() {
+        language_servers
+    } else {
+        let (valid, invalid): (Vec<_>, Vec<_>) = args
+            .iter()
+            .map(|arg| arg.as_ref())
+            .partition(|name| language_servers.contains(name));
+        if !invalid.is_empty() {
+            let s = if invalid.len() == 1 { "" } else { "s" };
+            bail!("Unknown language server{s}: {}", invalid.join(", "));
+        }
+        valid
+    };
+
+    for server in &language_servers {
+        cx.editor.language_servers.start(server);
+    }
+
+    // This collect is needed because refresh_language_servers would need to re-borrow editor.
+    let document_ids_to_refresh: Vec<DocumentId> = cx
+        .editor
+        .documents()
+        .filter_map(|doc| match doc.language_config() {
+            Some(config)
+                if config.language_servers.iter().any(|ls| {
+                    language_servers
+                        .iter()
+                        .any(|started_ls| *started_ls == ls.name)
+                }) =>
+            {
+                Some(doc.id())
+            }
+            _ => None,
+        })
+        .collect();
+
+    for document_id in document_ids_to_refresh {
+        cx.editor.refresh_language_servers(document_id);
+    }
+
+    Ok(())
+}
+
 fn lsp_stop(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -3433,6 +3491,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied",
         fun: lsp_restart,
         completer: CommandCompleter::all(completers::configured_language_servers),
+        signature: Signature {
+            positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "lsp-start",
+        aliases: &[],
+        doc: "Starts the given language servers, or all language servers that are configured for the current file if no arguments are supplied",
+        fun: lsp_start,
+        completer: CommandCompleter::all(completers::stopped_language_servers),
         signature: Signature {
             positionals: (0, None),
             ..Signature::DEFAULT
