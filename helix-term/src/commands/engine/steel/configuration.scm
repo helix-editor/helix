@@ -905,6 +905,21 @@
 ;; Inline diagnostics cursor line
 (define inline-diagnostics-cursor-line-enable helix.inline-diagnostics-cursor-line-enable)
 
+(provide inline-diagnostics-other-lines-disable)
+;;@doc
+;; Disable inline diagnostics for other lines
+(define inline-diagnostics-other-lines-disable helix.inline-diagnostics-other-lines-disable)
+
+(provide inline-diagnostics-cursor-line-disable)
+;;@doc
+;; Disable inline diagnostics for the cursor line
+(define inline-diagnostics-cursor-line-disable helix.inline-diagnostics-cursor-line-disable)
+
+(provide inline-diagnostics-end-of-line-disable)
+;;@doc
+;; Disable inline diagnostics for the end of the line
+(define inline-diagnostics-end-of-line-disable helix.inline-diagnostics-end-of-line-disable)
+
 (provide inline-diagnostics-other-lines-enable)
 ;;@doc
 ;; Inline diagnostics other lines

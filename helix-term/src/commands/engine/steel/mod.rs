@@ -1160,6 +1160,21 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         )
         .register_fn_with_ctx(
             CONFIG,
+            "inline-diagnostics-end-of-line-disable",
+            HelixConfiguration::inline_diagnostics_end_of_line_disable,
+        )
+        .register_fn_with_ctx(
+            CONFIG,
+            "inline-diagnostics-cursor-line-disable",
+            HelixConfiguration::inline_diagnostics_cursor_line_disable,
+        )
+        .register_fn_with_ctx(
+            CONFIG,
+            "inline-diagnostics-other-lines-disable",
+            HelixConfiguration::inline_diagnostics_other_lines_disable,
+        )
+        .register_fn_with_ctx(
+            CONFIG,
             "inline-diagnostics-end-of-line-enable",
             HelixConfiguration::inline_diagnostics_end_of_line_enable,
         )
@@ -2582,6 +2597,12 @@ impl HelixConfiguration {
         self.store_config(app_config);
     }
 
+    fn inline_diagnostics_cursor_line_disable(&self) {
+        let mut app_config = self.load_config();
+        app_config.editor.inline_diagnostics.cursor_line = DiagnosticFilter::Disable;
+        self.store_config(app_config);
+    }
+
     fn inline_diagnostics_cursor_line_enable(&self, severity: String) {
         let mut app_config = self.load_config();
         let severity = match severity.as_str() {
@@ -2629,6 +2650,18 @@ impl HelixConfiguration {
     fn inline_diagnostics_max_diagnostics(&self, max_diagnostics: usize) {
         let mut app_config = self.load_config();
         app_config.editor.inline_diagnostics.max_diagnostics = max_diagnostics;
+        self.store_config(app_config);
+    }
+
+    fn inline_diagnostics_end_of_line_disable(&self) {
+        let mut app_config = self.load_config();
+        app_config.editor.end_of_line_diagnostics = DiagnosticFilter::Disable;
+        self.store_config(app_config);
+    }
+
+    fn inline_diagnostics_other_lines_disable(&self) {
+        let mut app_config = self.load_config();
+        app_config.editor.inline_diagnostics.other_lines = DiagnosticFilter::Disable;
         self.store_config(app_config);
     }
 
