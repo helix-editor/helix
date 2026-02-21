@@ -1,0 +1,116 @@
+# Hazyland theme for Helix editor.
+# Heavily inspired by Neovim's default dark color scheme created by echasnovski: https://github.com/neovim/neovim/pull/26334 and
+# Kim Nørgaard's Neovim dark (accented) theme for Zed: https://github.com/KimNorgaard/zed-neovim-default
+
+attribute = "text"
+keyword = { fg = "text", modifiers = ["bold"] }
+"keyword.directive" = { fg = "text", modifiers = ["bold"] }
+namespace = "text"
+punctuation = "text2"
+"punctuation.delimiter" = "text2"
+operator = "text"
+special = "primary"
+"variable.other.member" = "third"
+variable = "text"
+"variable.parameter" = { fg = "text" }
+"variable.builtin" = "primary"
+type = "text"
+"type.builtin" = "primary"
+constructor = "fourth"
+function = "primary"
+"function.macro" = "text"
+"function.builtin" = "primary"
+tag = "primary"
+comment = "comment"
+constant = "text"
+"constant.builtin" = "text"
+string = "second"
+"constant.numeric" = "text"
+"constant.character.escape" = "primary"
+label = { fg = "text", modifiers = ["bold"] }
+tabstop = { modifiers = ["italic"], bg = "panel"}
+
+"markup.heading" = "text"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "first", modifiers = ["italic"] }
+"markup.link.text" = "first"
+"markup.raw" = "first"
+
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "yellow"
+
+"ui.background" = { bg = "background" }
+"ui.background.separator" = { fg = "panel" }
+"ui.linenr" = { fg = "frame" }
+"ui.linenr.selected" = { fg = "text" }
+
+"ui.statusline" = { fg = "text", bg = "panel" }
+"ui.statusline.inactive" = { fg = "frame", bg = "panel" }
+"ui.statusline.normal" = { bg = "primary", fg = "panel" }
+"ui.statusline.insert" = { bg = "second", fg = "panel" }
+"ui.statusline.select" = { bg = "third", fg = "panel" }
+
+"ui.popup" = { bg = "panel" }
+"ui.window" = { fg = "panel" }
+"ui.help" = { bg = "panel", fg = "text" }
+"ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "text" }
+"ui.text.inactive" = "comment"
+"ui.text.directory" = { fg = "third" }
+"ui.virtual" = { fg = "frame" }
+"ui.virtual.ruler" = { bg = "panel" }
+"ui.virtual.jump-label" = { fg = "yellow", modifiers = ["bold"] }
+
+"ui.virtual.indent-guide" = { fg = "frame" }
+
+"ui.selection" = { bg = "selection" }
+"ui.selection.primary" = { bg = "selection" }
+"ui.cursor.select" = { bg = "primary" }
+"ui.cursor.insert" = { bg = "text" }
+"ui.cursor.primary.select" = { bg = "primary" }
+"ui.cursor.primary.insert" = { bg = "text" }
+"ui.cursor.match" = { fg = "background", bg = "frame" }
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "panel" }
+"ui.highlight" = { bg = "panel" }
+"ui.highlight.frameline" = { bg = "frame" }
+"ui.debug" = { fg = "frame" }
+"ui.debug.breakpoint" = { fg = "yellow" }
+"ui.menu" = { fg = "text", bg = "panel" }
+"ui.menu.selected" = { fg = "background", bg = "text" }
+"ui.menu.scroll" = { fg = "text", bg = "panel" }
+
+"diagnostic.hint" = { underline = { color = "comment", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+warning = "yellow"
+error = "red"
+info = "blue"
+hint = "comment"
+
+[palette]
+background = "#171219"
+primary   = "#ff8fc4"
+second   = "#f9bbff"
+third    = "#b4b7f2"
+fourth = "#96ccff"
+fifth = "#b2ffe3"
+selection = "#0D2847"
+
+text   = "#eee4ff"
+text2 = "#cbbcd3"
+comment = "#5d4869"
+panel = "#26202c"
+frame = "#6a5f78"
+
+green = "#8cfba2"
+yellow    = "#fbe88c"
+red = "#fb9b8c"
+blue = "#8cc9fb"
