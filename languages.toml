@@ -304,6 +304,9 @@ args = ["start", "--stdio"]
 command = "kcl-language-server"
 args = ["server", "--stdio"]
 
+[language-server.drools-lsp]
+command = "drools-lsp"
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -5329,11 +5332,6 @@ comment-token = "#"
 name = "gnuplot"
 source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
 
-[[grammar]]
-name = "drools"
-# TODO this must change to git revision once tree-sitter grammar gets merged
-source = { path = "/home/pauls/Projects/tree-sitter-drools" }
-
 [[language]]
 name = "drools"
 scope = "source.drools"
@@ -5341,4 +5339,9 @@ file-types = ["drl"]
 roots = ["pom.xml", ".git"]
 grammar = "drools"
 comment-tokens = "//"
+language-servers = [ "drools-lsp" ]
+
+[[grammar]]
+name = "drools"
+source = { git = "https://github.com/iByteABit256/tree-sitter-drools", rev = "f1404d2a3974dfcfd4193246e763edeeb4b399c1" }
 
