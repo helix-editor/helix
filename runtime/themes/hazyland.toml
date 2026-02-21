@@ -34,9 +34,9 @@ tabstop = { modifiers = ["italic"], bg = "panel"}
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = { fg = "first", modifiers = ["italic"] }
-"markup.link.text" = "first"
-"markup.raw" = "first"
+"markup.link.url" = { fg = "primary", modifiers = ["italic"] }
+"markup.link.text" = "primary"
+"markup.raw" = "primary"
 
 "diff.plus" = "green"
 "diff.minus" = "red"
