@@ -3490,8 +3490,8 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "steel-core"
-version = "0.8.1"
-source = "git+https://github.com/mattwparas/steel.git#0a1b043b9c3d17c49cb3d47a97867527f4e46450"
+version = "0.8.2"
+source = "git+https://github.com/mattwparas/steel.git#6308a48c8024f1dd118e6b64c6400d725c528554"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -3549,8 +3549,8 @@ dependencies = [
 
 [[package]]
 name = "steel-derive"
-version = "0.8.1"
-source = "git+https://github.com/mattwparas/steel.git#0a1b043b9c3d17c49cb3d47a97867527f4e46450"
+version = "0.8.2"
+source = "git+https://github.com/mattwparas/steel.git#6308a48c8024f1dd118e6b64c6400d725c528554"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3559,16 +3559,16 @@ dependencies = [
 
 [[package]]
 name = "steel-doc"
-version = "0.8.1"
-source = "git+https://github.com/mattwparas/steel.git#0a1b043b9c3d17c49cb3d47a97867527f4e46450"
+version = "0.8.2"
+source = "git+https://github.com/mattwparas/steel.git#6308a48c8024f1dd118e6b64c6400d725c528554"
 dependencies = [
  "steel-core",
 ]
 
 [[package]]
 name = "steel-gen"
-version = "0.8.1"
-source = "git+https://github.com/mattwparas/steel.git#0a1b043b9c3d17c49cb3d47a97867527f4e46450"
+version = "0.8.2"
+source = "git+https://github.com/mattwparas/steel.git#6308a48c8024f1dd118e6b64c6400d725c528554"
 dependencies = [
  "codegen",
  "serde",
@@ -3591,8 +3591,8 @@ dependencies = [
 
 [[package]]
 name = "steel-parser"
-version = "0.8.1"
-source = "git+https://github.com/mattwparas/steel.git#0a1b043b9c3d17c49cb3d47a97867527f4e46450"
+version = "0.8.2"
+source = "git+https://github.com/mattwparas/steel.git#6308a48c8024f1dd118e6b64c6400d725c528554"
 dependencies = [
  "compact_str",
  "dashmap",
@@ -3612,8 +3612,8 @@ dependencies = [
 
 [[package]]
 name = "steel-quickscope"
-version = "0.3.1"
-source = "git+https://github.com/mattwparas/steel.git#0a1b043b9c3d17c49cb3d47a97867527f4e46450"
+version = "0.3.2"
+source = "git+https://github.com/mattwparas/steel.git#6308a48c8024f1dd118e6b64c6400d725c528554"
 dependencies = [
  "indexmap 2.13.0",
  "smallvec",
@@ -3621,8 +3621,8 @@ dependencies = [
 
 [[package]]
 name = "steel-rc"
-version = "0.8.1"
-source = "git+https://github.com/mattwparas/steel.git#0a1b043b9c3d17c49cb3d47a97867527f4e46450"
+version = "0.8.2"
+source = "git+https://github.com/mattwparas/steel.git#6308a48c8024f1dd118e6b64c6400d725c528554"
 dependencies = [
  "dashmap",
  "parking_lot",
