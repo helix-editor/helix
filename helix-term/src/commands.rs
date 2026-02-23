@@ -466,6 +466,10 @@ impl MappableCommand {
         goto_previous_buffer, "Goto previous buffer",
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        goto_indent_start, "Goto start of indent scope",
+        goto_indent_end, "Goto end of indent scope",
+        extend_to_indent_start, "Extend to start of indent scope",
+        extend_to_indent_end, "Extend to end of indent scope",
         trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
@@ -3868,6 +3872,105 @@ fn goto_last_line_impl(cx: &mut Context, movement: Movement) {
         .clone()
         .transform(|range| range.put_cursor(text, pos, movement == Movement::Extend));
 
+    push_jump(view, doc);
+    doc.set_selection(view.id, selection);
+}
+
+fn goto_indent_start(cx: &mut Context) {
+    goto_indent_impl(cx, Movement::Move, Direction::Backward);
+}
+
+fn goto_indent_end(cx: &mut Context) {
+    goto_indent_impl(cx, Movement::Move, Direction::Forward);
+}
+
+fn extend_to_indent_start(cx: &mut Context) {
+    goto_indent_impl(cx, Movement::Extend, Direction::Backward);
+}
+
+fn extend_to_indent_end(cx: &mut Context) {
+    goto_indent_impl(cx, Movement::Extend, Direction::Forward);
+}
+
+fn goto_indent_impl(cx: &mut Context, movement: Movement, direction: Direction) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let count_indent = |ch: char| -> Option<u64> {
+        match ch {
+            ' ' => Some(1),
+            '\t' => Some(4),
+            _ => None,
+        }
+    };
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let mut line_idx = range.cursor_line(text);
+        let mut current_line = text.line(line_idx);
+
+        // If cursor line is empty or contains only whitespace, move to the next line
+        while current_line.len_chars() == 0 || current_line.chars().all(|ch| ch.is_whitespace()) {
+            line_idx = match direction {
+                Direction::Forward => line_idx.saturating_add(1),
+                Direction::Backward => line_idx.saturating_sub(1),
+            };
+
+            current_line = text.line(line_idx);
+        }
+
+        // If the first significant line is zeroth-indent, don't proceed
+        if current_line.chars().map_while(count_indent).sum::<u64>() == 0 {
+            return range;
+        }
+
+        let first_char_pos = current_line.first_non_whitespace_char();
+        let mut target_idx = line_idx;
+        loop {
+            target_idx = match direction {
+                Direction::Forward => target_idx.saturating_add(1),
+                Direction::Backward => target_idx.saturating_sub(1),
+            };
+
+            if target_idx >= text.len_lines() || target_idx == 0 {
+                break;
+            }
+
+            let target_line = text.line(target_idx);
+            let target_first_char_pos = target_line.first_non_whitespace_char();
+
+            // Skip empty lines
+            if target_line.chars().all(|c| c.is_whitespace()) || target_first_char_pos.is_none() {
+                continue;
+            }
+
+            // Stop when scoped up
+            if target_first_char_pos < first_char_pos {
+                break;
+            }
+        }
+
+        // Off by one
+        let target_idx = match direction {
+            Direction::Forward => target_idx.saturating_sub(1),
+            Direction::Backward => target_idx.saturating_add(1),
+        };
+
+        let indents: Vec<u64> = (line_idx.min(target_idx)..=line_idx.max(target_idx))
+            .map(|i| text.line(i))
+            .map(|l| l.chars().map_while(count_indent).sum())
+            .collect();
+
+        // If there are no indents, or all indents are 0, return the original range.
+        if indents.is_empty() || indents.into_iter().all(|n| n == 0) {
+            return range;
+        }
+
+        range.put_cursor(
+            text,
+            text.line_to_char(target_idx),
+            movement == Movement::Extend,
+        )
+    });
     push_jump(view, doc);
     doc.set_selection(view.id, selection);
 }
