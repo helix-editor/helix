@@ -21,8 +21,8 @@ impl GutterType {
         self,
         editor: &'doc Editor,
         doc: &'doc Document,
-        view: &View,
-        theme: &Theme,
+        view: &'doc View,
+        theme: &'doc Theme,
         is_focused: bool,
     ) -> GutterFn<'doc> {
         match self {
@@ -142,8 +142,8 @@ pub fn diff<'doc>(
 pub fn line_numbers<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
-    view: &View,
-    theme: &Theme,
+    view: &'doc View,
+    theme: &'doc Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
     let text = doc.text().slice(..);
@@ -190,13 +190,25 @@ pub fn line_numbers<'doc>(
                     linenr
                 };
 
+                let text_fmt = doc.text_format(view.inner_width(doc), Some(theme));
+
+                // TODO: the output would look weird if wrap indicator on gutter is enabled,
+                // a long wrap indicator is used and there are no lines being wrapped
+                let width = if text_fmt.wrap_indicator_on_gutter {
+                    width.max(text_fmt.wrap_indicator_width.into())
+                } else {
+                    width
+                };
+
                 if first_visual_line {
                     write!(out, "{:>1$}", display_num, width).unwrap();
+                } else if text_fmt.wrap_indicator_on_gutter {
+                    write!(out, "{:>1$}", text_fmt.wrap_indicator, width).unwrap();
                 } else {
                     write!(out, "{:>1$}", " ", width).unwrap();
                 }
 
-                first_visual_line.then_some(style)
+                Some(style)
             }
         },
     )
@@ -205,8 +217,11 @@ pub fn line_numbers<'doc>(
 /// The width of a "line-numbers" gutter
 ///
 /// The width of the gutter depends on the number of lines in the document,
-/// whether there is content on the last line (the `~` line), and the
-/// `editor.gutters.line-numbers.min-width` settings.
+/// whether there is content on the last line (the `~` line), the
+/// `editor.gutters.line-numbers.min-width` settings and the width of
+/// the wrap indicator (if `soft-wrap` is enabled and the indicator is
+/// set to be displayed on the gutter). The wrap indicator isn't taken
+/// into account here, as that would lead to infinite recursion.
 fn line_numbers_width(view: &View, doc: &Document) -> usize {
     let text = doc.text();
     let last_line = text.len_lines().saturating_sub(1);
