@@ -722,7 +722,9 @@
 
 ;;@doc
 ;; Mouse support. Defaults to true.
-(define mouse helix.mouse)
+(define (mouse opt)
+  (helix.mouse opt)
+  (helix.#%update-configuration *helix.config*))
 
 (provide shell)
 

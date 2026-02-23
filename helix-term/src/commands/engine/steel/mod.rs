@@ -997,6 +997,19 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
                 .send(ConfigEvent::Change)
                 .unwrap();
         })
+        .register_fn_with_ctx(
+            CTX,
+            "#%update-configuration",
+            |ctx: &mut Context, config: HelixConfiguration| {
+                ctx.editor
+                    .config_events
+                    .0
+                    .send(ConfigEvent::Update(Box::new(
+                        config.configuration.load().editor.clone(),
+                    )))
+                    .unwrap();
+            },
+        )
         .register_fn_with_ctx(CTX, "get-config-option-value", get_option_value)
         .register_fn_with_ctx(
             CTX,
@@ -2094,6 +2107,7 @@ pub fn steel_init_file() -> PathBuf {
     preferred_config_path("init.scm")
 }
 
+#[derive(Clone)]
 struct HelixConfiguration {
     configuration: Arc<ArcSwapAny<Arc<Config>>>,
     language_configuration: Arc<ArcSwap<helix_core::syntax::Loader>>,
