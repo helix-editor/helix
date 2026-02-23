@@ -2037,6 +2037,22 @@ impl Document {
         )
     }
 
+    pub fn lsp_severity_to_severity(
+        severity: lsp::DiagnosticSeverity,
+    ) -> Option<helix_core::diagnostic::Severity> {
+        use helix_core::diagnostic::Severity::*;
+        match severity {
+            lsp::DiagnosticSeverity::ERROR => Some(Error),
+            lsp::DiagnosticSeverity::WARNING => Some(Warning),
+            lsp::DiagnosticSeverity::INFORMATION => Some(Info),
+            lsp::DiagnosticSeverity::HINT => Some(Hint),
+            severity => {
+                log::error!("unrecognized diagnostic severity: {:?}", severity);
+                None
+            }
+        }
+    }
+
     pub fn lsp_diagnostic_to_diagnostic(
         text: &Rope,
         language_config: Option<&LanguageConfiguration>,
@@ -2044,7 +2060,7 @@ impl Document {
         provider: DiagnosticProvider,
         offset_encoding: helix_lsp::OffsetEncoding,
     ) -> Option<Diagnostic> {
-        use helix_core::diagnostic::{Range, Severity::*};
+        use helix_core::diagnostic::Range;
 
         // TODO: convert inside server
         let start =
@@ -2062,16 +2078,7 @@ impl Document {
             return None;
         };
 
-        let severity = diagnostic.severity.and_then(|severity| match severity {
-            lsp::DiagnosticSeverity::ERROR => Some(Error),
-            lsp::DiagnosticSeverity::WARNING => Some(Warning),
-            lsp::DiagnosticSeverity::INFORMATION => Some(Info),
-            lsp::DiagnosticSeverity::HINT => Some(Hint),
-            severity => {
-                log::error!("unrecognized diagnostic severity: {:?}", severity);
-                None
-            }
-        });
+        let severity = diagnostic.severity.and_then(Self::lsp_severity_to_severity);
 
         if let Some(lang_conf) = language_config {
             if let Some(severity) = severity {

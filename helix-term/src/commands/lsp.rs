@@ -127,7 +127,7 @@ fn jump_to_location(editor: &mut Editor, location: &Location, action: Action) {
     );
 }
 
-fn jump_to_position(
+pub fn jump_to_position(
     editor: &mut Editor,
     path: &Path,
     range: lsp::Range,
@@ -157,6 +157,19 @@ fn jump_to_position(
     if action.align_view(view, doc.id()) {
         align_view(doc, view, Align::Center);
     }
+}
+
+pub fn jump_to_diagnostic(cx: &mut Context, diagnostic: helix_view::WorkspaceDiagnostic<'static>) {
+    let path = diagnostic.path;
+    let range = diagnostic.diagnostic.range;
+    let offset_encoding = diagnostic.offset_encoding;
+
+    let motion = move |editor: &mut Editor| {
+        jump_to_position(editor, &path, range, offset_encoding, Action::Replace);
+        let (view, doc) = current!(editor);
+        helix_view::ensure_selections_forward(view, doc);
+    };
+    cx.editor.apply_motion(motion);
 }
 
 fn display_symbol_kind(kind: lsp::SymbolKind) -> &'static str {
