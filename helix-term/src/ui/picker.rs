@@ -41,8 +41,8 @@ use std::{
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
-    char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
-    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
+    char_idx_at_visual_offset, encoding::UTF_8, fuzzy::MATCHER, movement::Direction,
+    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position, Rope,
 };
 use helix_view::{
     editor::Action,
@@ -81,7 +81,7 @@ impl From<DocumentId> for PathOrId<'_> {
 type FileCallback<T> = Box<dyn for<'a> Fn(&'a Editor, &'a T) -> Option<FileLocation<'a>>>;
 
 /// File path and range of lines (used to align and highlight lines)
-pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
+pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>, Option<String>);
 
 pub enum CachedPreview {
     Document(Box<Document>),
@@ -587,7 +587,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         editor: &'editor Editor,
     ) -> Option<(Preview<'picker, 'editor>, Option<(usize, usize)>)> {
         let current = self.selection()?;
-        let (path_or_id, range) = (self.file_fn.as_ref()?)(editor, current)?;
+        let (path_or_id, range, _) = (self.file_fn.as_ref()?)(editor, current)?;
 
         match path_or_id {
             PathOrId::Path(path) => {
@@ -1104,6 +1104,39 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 self.to_end();
             }
             key!(Esc) | ctrl!('c') => return close_fn(self),
+            ctrl!(Enter) | shift!(Enter) => {
+                if let (Some(option), Some(file_fn)) = (&self.selection(), &self.file_fn) {
+                    if let Some((_, _, Some(notes))) = (file_fn.as_ref())(ctx.editor, option) {
+                        (self.callback_fn)(ctx, option, Action::Replace);
+                        let action = match key_event {
+                            ctrl!(Enter) => Action::Replace,
+                            shift!(Enter) => Action::HorizontalSplit,
+                            _ => unreachable!(),
+                        };
+                        /*let _ = ctx.editor.new_file(action);
+                        let (view, document) = current!(ctx.editor);
+
+                        let transaction = Transaction::insert(
+                            document.text(),
+                            &Selection::point(document.text().len_chars() - 1),
+                            notes.into(),
+                        );
+                        document.apply(&transaction, view.id);
+                        document.readonly = true;
+                        document.reset_modified();*/
+                        let _ = ctx.editor.new_file_from_document(
+                            action,
+                            Document::from(
+                                Rope::from_str(&notes),
+                                Some((UTF_8, false)),
+                                ctx.editor.config.clone(),
+                                ctx.editor.syn_loader.clone(),
+                            ),
+                        );
+                        return close_fn(self);
+                    }
+                }
+            }
             alt!(Enter) => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, self.default_action);
