@@ -244,6 +244,17 @@
 ;; * upper : (and positive? int?)
 (define tssyntax->tree-byte-range helix.ts.tssyntax->tree-byte-range)
 
+(provide tssyntax->layers-byte-range)
+;;@doc
+;; Get the corresponding parse trees/layers that contain the given byte range
+;; ```scheme
+;; (tssyntax->layers-byte-range syntax lower upper) -> (or (listof TSTree?) bool?)
+;; ```
+;; * syntax : TSSyntax?
+;; * lower : (and int? positive?)
+;; * upper : (and int? positive?)
+(define tssyntax->layers-byte-range helix.ts.tssyntax->layers-byte-range)
+
 (provide tssyntax->tree)
 ;;@doc
 ;; Get the root subtree from the given TSSyntax
@@ -271,6 +282,17 @@
 ;; * lower : (and int? positive?)
 ;; * upper : (and int? positive?)
 (define document->tree-byte-range helix.ts.document->tree-byte-range)
+
+(provide document->layers-byte-range)
+;;@doc
+;; Get the corresponding parse trees/layers that contain the given byte range
+;; ```scheme
+;; (document->layers-byte-range doc-id lower upper) -> (listof TSTree?)
+;; ```
+;; * doc-id : DocumentId?
+;; * lower : (and int? positive?)
+;; * upper : (and int? positive?)
+(define document->layers-byte-range helix.ts.document->layers-byte-range)
 
 (provide tstree->language)
 ;;@doc

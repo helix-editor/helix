@@ -172,6 +172,18 @@ pub mod steel_implementations {
             TreeSitterTree::new(self.get_inner().tree(), lang)
         }
 
+        pub fn get_trees_byte_range(syn: &Syntax, lower: u32, upper: u32) -> Vec<TreeSitterTree> {
+            let layers = syn.layers_for_byte_range(lower, upper);
+
+            layers
+                .map(|layer| {
+                    let l = syn.layer(layer);
+                    let tree = l.tree().unwrap();
+                    TreeSitterTree::new(tree, l.language)
+                })
+                .collect()
+        }
+
         pub fn run_query(
             syn: &Syntax,
             loader: &syntax::Loader,
@@ -206,7 +218,6 @@ pub mod steel_implementations {
                     continue;
                 };
                 let layer = syn.layer_for_byte_range(m.node.start_byte(), m.node.end_byte());
-
                 let lang = syn.layer(layer).language;
 
                 let tree = match layers.iter().position(|(l, _)| l == &layer) {
@@ -244,7 +255,15 @@ pub mod steel_implementations {
         inner: Arc<Tree>,
         language: Language,
     }
-    impl Custom for TreeSitterTree {}
+    impl Custom for TreeSitterTree {
+        fn equality_hint(&self, other: &dyn steel::rvals::CustomType) -> bool {
+            if let Some(other) = as_underlying_type::<TreeSitterTree>(other) {
+                self.get_inner().root_node().id() == other.get_inner().root_node().id()
+            } else {
+                false
+            }
+        }
+    }
 
     impl TreeSitterTree {
         pub fn new(inner: &Tree, language: Language) -> Self {
@@ -1093,7 +1112,7 @@ Returns a new rope value.
         module.register_fn("tstree->root", TreeSitterTree::get_root);
 
         module
-            .register_fn("tsnode->tstree", TreeSitterNode::parent)
+            .register_fn("tsnode->tstree", TreeSitterNode::get_tree)
             .register_fn("tsnode-parent", TreeSitterNode::parent)
             .register_fn("tsnode-children", TreeSitterNode::children)
             .register_fn("tsnode-named-children", TreeSitterNode::named_children)
@@ -1113,7 +1132,7 @@ Returns a new rope value.
             .register_fn("tsnode-named?", TreeSitterNode::is_named)
             .register_fn("tsnode-extra?", TreeSitterNode::is_extra)
             .register_fn("tsnode-missing?", TreeSitterNode::is_missing)
-            .register_fn("tsnode-visible?", TreeSitterNode::is_missing)
+            .register_fn("tsnode-visible?", TreeSitterNode::is_visible)
             .register_fn("tsnode-print-tree", TreeSitterNode::print_tree)
             .register_fn("tsnode-end-byte", TreeSitterNode::end_byte)
             .register_fn("tsnode-start-byte", TreeSitterNode::start_byte);
@@ -1126,6 +1145,12 @@ Returns a new rope value.
             .register_fn(
                 "tssyntax->tree-byte-range",
                 TreeSitterSyntax::get_tree_from_range,
+            )
+            .register_fn(
+                "tssyntax->layers-byte-range",
+                |syn: TreeSitterSyntax, lower: u32, upper: u32| -> Vec<TreeSitterTree> {
+                    TreeSitterSyntax::get_trees_byte_range(&syn.get_inner(), lower, upper)
+                },
             )
             .register_fn("tssyntax->tree", TreeSitterSyntax::get_tree);
 

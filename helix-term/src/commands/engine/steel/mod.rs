@@ -31,7 +31,9 @@ use helix_view::{
         SearchConfig, SmartTabConfig, StatusLineElement, TerminalConfig, WhitespaceConfig,
         WhitespaceRender, WhitespaceRenderValue,
     },
-    events::{DocumentDidOpen, DocumentFocusLost, DocumentSaved, SelectionDidChange},
+    events::{
+        DocumentDidChange, DocumentDidOpen, DocumentFocusLost, DocumentSaved, SelectionDidChange,
+    },
     extension::document_id_to_usize,
     graphics::CursorKind,
     input::KeyEvent,
@@ -3256,6 +3258,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
         "selection-did-change" => register_selection_did_change(generation, rooted),
         "document-opened" => register_document_opened(generation, rooted),
         "document-saved" => register_document_saved(generation, rooted),
+        "document-changed" => register_document_changed(generation, rooted),
         _ => steelerr!(Generic => "Unable to register hook: Unknown event type: {}", event_kind)
             .into(),
     }
@@ -3297,6 +3300,32 @@ fn register_document_saved(
         let doc_id = event.doc;
         let callback =
             construct_callback(generation, cloned_func, [doc_id.into_steelval().unwrap()]);
+        job::dispatch_blocking_jobs(callback);
+
+        Ok(())
+    });
+    Ok(SteelVal::Void).into()
+}
+
+fn register_document_changed(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    // TODO: Share this code with the above since most of it is
+    // exactly the same
+    register_hook!(move |event: &mut DocumentDidChange<'_>| {
+        let cloned_func = rooted.value().clone();
+        let doc_id = event.doc.id();
+        let callback = construct_callback(
+            generation,
+            cloned_func,
+            [
+                doc_id.into_steelval().unwrap(),
+                SteelRopeSlice::new(event.old_text.clone())
+                    .into_steelval()
+                    .unwrap(),
+            ],
+        );
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
@@ -3550,6 +3579,26 @@ fn load_treesitter_api(engine: &mut Engine, generate_sources: bool) {
         )
         .register_fn_with_ctx(
             CTX,
+            "document->layers-byte-range",
+            |cx: &mut Context,
+             doc_id: DocumentId,
+             lower: u32,
+             upper: u32|
+             -> Option<Vec<TreeSitterTree>> {
+                let Some(syn) = cx
+                    .editor
+                    .documents
+                    .get(&doc_id)
+                    .and_then(|d| d.syntax.as_ref())
+                else {
+                    return None;
+                };
+
+                Some(TreeSitterSyntax::get_trees_byte_range(syn, lower, upper))
+            },
+        )
+        .register_fn_with_ctx(
+            CTX,
             "document->tree-byte-range",
             |cx: &mut Context,
              doc_id: DocumentId,
@@ -3574,10 +3623,9 @@ fn load_treesitter_api(engine: &mut Engine, generate_sources: bool) {
              -> Option<Result<TreeSitterMatch, SteelErr>> {
                 let (text, syn) = {
                     let Some(doc) = cx.editor.documents.get(&doc_id) else {
-                        return Some(Err(SteelErr::new(
-                            ErrorKind::Generic,
-                            format!("unable to find doc, id: {}", doc_id),
-                        )));
+                        return Some(
+                            steelerr!(Generic => "unable to find doc, id: {}", doc_id).into(),
+                        );
                     };
                     let text = doc.text().slice(..);
                     let Some(syn) = doc.syntax() else {
@@ -3610,10 +3658,9 @@ fn load_treesitter_api(engine: &mut Engine, generate_sources: bool) {
              -> Option<Result<TreeSitterMatch, SteelErr>> {
                 let (text, syn) = {
                     let Some(doc) = cx.editor.documents.get(&doc_id) else {
-                        return Some(Err(SteelErr::new(
-                            ErrorKind::Generic,
-                            format!("unable to find doc, id: {}", doc_id),
-                        )));
+                        return Some(
+                            steelerr!(Generic => "unable to find doc, id: {}", doc_id).into(),
+                        );
                     };
                     let text = doc.text().slice(..);
                     let Some(syn) = doc.syntax() else {
@@ -3657,16 +3704,10 @@ fn load_treesitter_api(engine: &mut Engine, generate_sources: bool) {
          -> Result<TreeSitterQuery, SteelErr> {
             let loader = config.language_configuration.load();
             let Some(lang) = loader.language_for_name(language.to_string()) else {
-                return Err(SteelErr::new(
-                    ErrorKind::Generic,
-                    format!("unable to find language: {}", language),
-                ));
+                return steelerr!(Generic => "unable to find language: {}", language).into();
             };
             let Some(config) = loader.get_config(lang) else {
-                return Err(SteelErr::new(
-                    ErrorKind::Generic,
-                    format!("unable to find language: {}", language),
-                ));
+                return steelerr!(Generic => "unable to find language: {}", language).into();
             };
             TreeSitterQuery::new(config.grammar, source.as_str())
         },
@@ -3724,10 +3765,7 @@ fn load_treesitter_api(engine: &mut Engine, generate_sources: bool) {
              -> Result<TreeSitterSyntax, SteelErr> {
                 let loader = config.language_configuration.load();
                 let Some(lang) = loader.language_for_name(language.as_str()) else {
-                    return Err(SteelErr::new(
-                        ErrorKind::Generic,
-                        format!("unable to find language: {}", language),
-                    ));
+                    return steelerr!(Generic => "unable to find language: {}", language).into();
                 };
                 TreeSitterSyntax::new(source, lang, loader.as_ref())
             },

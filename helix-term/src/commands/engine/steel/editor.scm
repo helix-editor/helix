@@ -22,6 +22,7 @@
 ;; * 'selection-did-change
 ;; * 'document-opened
 ;; * 'document-saved
+;; * 'document-changed
 ;;
 ;; Each of these expects a function with a slightly different signature to accept
 ;; the event payload.
@@ -69,6 +70,9 @@
 ;; ## document-saved
 ;;
 ;; Expects a function with one argument to accept the doc id of the document that was just saved.
+;; ## document-changed
+;;
+;; Expects a function with two arguments to accept the doc id of the docuoment that was just saved and the old text of the document before the change.
 (define (register-hook event-kind callback-fn)
   (helix.register-hook event-kind callback-fn))
 
