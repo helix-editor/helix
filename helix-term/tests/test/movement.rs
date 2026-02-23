@@ -671,6 +671,26 @@ async fn test_surround_delete() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_movement_of_primary_only() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+                #[|]#Test1 Test2 Test3
+                Test1 Test2 Test3
+                Test1 Test2 Test3
+            "},
+        "wlCCt (#wwcTest4<esc>#b;",
+        indoc! {"\
+                Test1 #(T|)#est4 Test3
+                Test1 Test2 #[T|]#est4
+                Test1 #(T|)#est4 Test3
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
     test_with_config(
         AppBuilder::new().with_file("foo.html", None),

@@ -182,6 +182,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-(" => rotate_selection_contents_backward,
         "A-)" => rotate_selection_contents_forward,
 
+        "#" => toggle_move_primary_selection_only,
+
         "A-:" => ensure_selections_forward,
 
         "esc" => normal_mode,
