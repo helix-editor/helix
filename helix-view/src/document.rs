@@ -1076,7 +1076,21 @@ impl Document {
             let write_result: anyhow::Result<_> = async {
                 let mut dst = tokio::fs::File::create(&write_path).await?;
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
-                dst.sync_all().await?;
+                // Ignore ENOTSUP/EOPNOTSUPP (Operation not supported) errors from sync_all()
+                // This is known to occur on SMB filesystems on macOS where fsync is not supported
+                if let Err(e) = dst.sync_all().await {
+                    #[cfg(target_os = "macos")]
+                    {
+                        match e.raw_os_error() {
+                            Some(45) | Some(102) => {} // ENOTSUP or EOPNOTSUPP - ignore
+                            _ => return Err(e.into()),
+                        }
+                    }
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        return Err(e.into());
+                    }
+                }
                 Ok(())
             }
             .await;
