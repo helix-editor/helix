@@ -32,7 +32,7 @@ commit-lsp = { command = "commit-lsp", args = ["run"] }
 crystalline = { command = "crystalline", args = ["--stdio"] }
 cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
 csharp-ls = { command = "csharp-ls" }
-cuelsp = { command = "cuelsp" }
+cuelsp = { command = "cue", args = ["lsp", "serve"] }
 dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
 dhall-lsp-server = { command = "dhall-lsp-server" }
 djlsp = { command = "djlsp" }
@@ -2965,7 +2965,7 @@ roots = ["cue.mod"]
 auto-format = true
 comment-token = "//"
 language-servers = [ "cuelsp" ]
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 3, unit = "\t" }
 formatter = { command = "cue", args = ["fmt", "-"] }
 
 [[grammar]]
