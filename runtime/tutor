@@ -879,7 +879,29 @@ lines.
 
 
 =================================================================
-=                          8.2 MACROS                           =
+=         8.2 PROGRESSIVE INCREMENTING AND DECREMENTING         =
+=================================================================
+
+ The '"#' register can be used to progressively increment or 
+ decrement numbers. Type '"#Ctrl-a' on multiple selections to
+ increment and type '"#Ctrl-x' to decrement.
+ 
+ 1. Move the cursor to the first line marked '-->' below.
+ 2. Move the cursor to the first '0'.
+ 3. Press '4Shift-c' to select all '0's.
+ 4. Press '"#' followed by 'Ctrl-a' to progressively increment the 
+    the person id ('Ctrl-x' to decrement).
+
+ --> Person 1 with id xxxx-xxxx-0
+ --> Person 2 with id xxxx-xxxx-0
+ --> Person 3 with id xxxx-xxxx-0
+ --> Person 4 with id xxxx-xxxx-0
+ --> Person 5 with id xxxx-xxxx-0
+
+
+
+=================================================================
+=                          8.3 MACROS                           =
 =================================================================
 
  Macros are a way to record a set of actions you want to repeat.
