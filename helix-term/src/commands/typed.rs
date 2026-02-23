@@ -349,6 +349,77 @@ fn force_buffer_close_all(
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
+fn buffer_gather_right_impl(editor: &mut Editor) -> Vec<DocumentId> {
+    let current_document = &doc!(editor).id();
+    editor
+        .documents()
+        .map(|doc| doc.id())
+        .skip_while(|doc| doc != current_document)
+        .skip(1)
+        .collect()
+}
+
+fn buffer_close_right(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_right_impl(cx.editor);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn force_buffer_close_right(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_right_impl(cx.editor);
+    buffer_close_by_ids_impl(cx, &document_ids, true)
+}
+
+fn buffer_gather_left_impl(editor: &mut Editor) -> Vec<DocumentId> {
+    let current_document = &doc!(editor).id();
+    editor
+        .documents()
+        .map(|doc| doc.id())
+        .take_while(|doc| doc != current_document)
+        .collect()
+}
+
+fn buffer_close_left(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_left_impl(cx.editor);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn force_buffer_close_left(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_left_impl(cx.editor);
+    buffer_close_by_ids_impl(cx, &document_ids, true)
+}
+
 fn buffer_next(
     cx: &mut compositor::Context,
     _args: Args,
@@ -2933,6 +3004,50 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bca!", "bcloseall!"],
         doc: "Force close all buffers ignoring unsaved changes without quitting.",
         fun: force_buffer_close_all,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-right",
+        aliases: &["bcr", "bcloseright"],
+        doc: "Close all to the right buffers without quitting.",
+        fun: buffer_close_right,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-right!",
+        aliases: &["bcr!", "bcloseright!"],
+        doc: "Force close all buffers to the right ignoring unsaved changes without quitting.",
+        fun: force_buffer_close_right,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-left",
+        aliases: &["bcl", "bcloseleft"],
+        doc: "Close all to the left buffers without quitting.",
+        fun: buffer_close_left,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-left!",
+        aliases: &["bcl!", "bcloseleft!"],
+        doc: "Force close all buffers to the left ignoring unsaved changes without quitting.",
+        fun: force_buffer_close_left,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
