@@ -183,19 +183,24 @@ impl EditorView {
                 primary_cursor,
             });
         }
-        let width = view.inner_width(doc);
         let config = doc.config.load();
-        let enable_cursor_line = view
-            .diagnostics_handler
-            .show_cursorline_diagnostics(doc, view.id);
-        let inline_diagnostic_config = config.inline_diagnostics.prepare(width, enable_cursor_line);
-        decorations.add_decoration(InlineDiagnostics::new(
-            doc,
-            theme,
-            primary_cursor,
-            inline_diagnostic_config,
-            config.end_of_line_diagnostics,
-        ));
+
+        if config.diagnostics.enable {
+            let width = view.inner_width(doc);
+            let enable_cursor_line = view
+                .diagnostics_handler
+                .show_cursorline_diagnostics(doc, view.id);
+            let inline_diagnostic_config =
+                config.diagnostics.inline.prepare(width, enable_cursor_line);
+            decorations.add_decoration(InlineDiagnostics::new(
+                doc,
+                theme,
+                primary_cursor,
+                inline_diagnostic_config,
+                config.diagnostics.end_of_line,
+            ));
+        }
+
         render_document(
             surface,
             inner,
@@ -220,8 +225,9 @@ impl EditorView {
             }
         }
 
-        if config.inline_diagnostics.disabled()
-            && config.end_of_line_diagnostics == DiagnosticFilter::Disable
+        if config.diagnostics.enable
+            && config.diagnostics.inline.disabled()
+            && config.diagnostics.end_of_line == DiagnosticFilter::Disable
         {
             Self::render_diagnostics(doc, view, inner, surface, theme);
         }

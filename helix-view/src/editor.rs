@@ -1,5 +1,5 @@
 use crate::{
-    annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
+    annotations::diagnostics::DiagnosticsConfig,
     clipboard::ClipboardProvider,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
@@ -415,9 +415,7 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
-    /// Display diagnostic below the line they occur.
-    pub inline_diagnostics: InlineDiagnosticsConfig,
-    pub end_of_line_diagnostics: DiagnosticFilter,
+    pub diagnostics: DiagnosticsConfig,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
@@ -1139,8 +1137,7 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
-            inline_diagnostics: InlineDiagnosticsConfig::default(),
-            end_of_line_diagnostics: DiagnosticFilter::Enable(Severity::Hint),
+            diagnostics: DiagnosticsConfig::default(),
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
             rainbow_brackets: false,
