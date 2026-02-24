@@ -1,5 +1,6 @@
 use crate::editor::{Action, Breakpoint};
 use crate::{align_view, Align, Editor};
+use anyhow::bail;
 use dap::requests::DisconnectArguments;
 use dap::requests::ThreadsArguments;
 use helix_core::Selection;
@@ -91,34 +92,33 @@ pub fn breakpoints_changed(
     path: PathBuf,
     breakpoints: &mut [Breakpoint],
 ) -> Result<(), anyhow::Error> {
-    // TODO: handle capabilities correctly again, by filtering breakpoints when emitting
-    // if breakpoint.condition.is_some()
-    //     && !debugger
-    //         .caps
-    //         .as_ref()
-    //         .unwrap()
-    //         .supports_conditional_breakpoints
-    //         .unwrap_or_default()
-    // {
-    //     bail!(
-    //         "Can't edit breakpoint: debugger does not support conditional breakpoints"
-    //     )
-    // }
-    // if breakpoint.log_message.is_some()
-    //     && !debugger
-    //         .caps
-    //         .as_ref()
-    //         .unwrap()
-    //         .supports_log_points
-    //         .unwrap_or_default()
-    // {
-    //     bail!("Can't edit breakpoint: debugger does not support logpoints")
-    // }
+    if let Some(caps) = debugger.caps.as_ref() {
+        if breakpoints.iter().any(|b| b.condition.is_some())
+            && !caps.supports_conditional_breakpoints.unwrap_or_default()
+        {
+            bail!("Can't edit breakpoint: debugger does not support conditional breakpoints")
+        }
+        if breakpoints.iter().any(|b| b.hit_condition.is_some())
+            && !caps
+                .supports_hit_conditional_breakpoints
+                .unwrap_or_default()
+        {
+            bail!("Can't edit breakpoint: debugger does not support hit conditional breakpoints")
+        }
+        if breakpoints.iter().any(|b| b.log_message.is_some())
+            && !caps.supports_log_points.unwrap_or_default()
+        {
+            bail!("Can't edit breakpoint: debugger does not support logpoints")
+        }
+    }
     let source_breakpoints = breakpoints
         .iter()
         .map(|breakpoint| helix_dap::SourceBreakpoint {
             line: breakpoint.line + 1, // convert from 0-indexing to 1-indexing (TODO: could set debugger to 0-indexing on init)
-            ..Default::default()
+            column: breakpoint.column,
+            condition: breakpoint.condition.clone(),
+            hit_condition: breakpoint.hit_condition.clone(),
+            log_message: breakpoint.log_message.clone(),
         })
         .collect::<Vec<_>>();
 
@@ -243,23 +243,43 @@ impl Editor {
                         match &reason[..] {
                             "new" => {
                                 if let Some(source) = breakpoint.source {
-                                    self.breakpoints
-                                        .entry(source.path.unwrap()) // TODO: no unwraps
-                                        .or_default()
-                                        .push(Breakpoint {
-                                            id: breakpoint.id,
-                                            verified: breakpoint.verified,
-                                            message: breakpoint.message,
-                                            line: breakpoint.line.unwrap().saturating_sub(1), // TODO: no unwrap
-                                            column: breakpoint.column,
-                                            ..Default::default()
-                                        });
+                                    let Some(path) = source.path else {
+                                        warn!("DAP breakpoint event missing source path");
+                                        return false;
+                                    };
+                                    let Some(line) = breakpoint.line else {
+                                        warn!("DAP breakpoint event missing line");
+                                        return false;
+                                    };
+                                    self.breakpoints.entry(path).or_default().push(Breakpoint {
+                                        id: breakpoint.id,
+                                        verified: breakpoint.verified,
+                                        message: breakpoint.message.clone(),
+                                        line: line.saturating_sub(1),
+                                        column: breakpoint.column,
+                                        ..Default::default()
+                                    });
+                                    if let Some(message) = &breakpoint.message {
+                                        self.set_status(format!("Breakpoint: {}", message));
+                                    }
                                 }
                             }
                             "changed" => {
+                                let Some(id) = breakpoint.id else {
+                                    warn!("DAP breakpoint event missing id");
+                                    return false;
+                                };
+                                if let Some(source) = &breakpoint.source {
+                                    if source.path.is_none() {
+                                        warn!("DAP breakpoint event missing source path");
+                                    }
+                                }
+                                if breakpoint.line.is_none() {
+                                    warn!("DAP breakpoint event missing line");
+                                }
                                 for breakpoints in self.breakpoints.values_mut() {
                                     if let Some(i) =
-                                        breakpoints.iter().position(|b| b.id == breakpoint.id)
+                                        breakpoints.iter().position(|b| b.id == Some(id))
                                     {
                                         breakpoints[i].verified = breakpoint.verified;
                                         breakpoints[i].message = breakpoint
@@ -274,11 +294,18 @@ impl Editor {
                                             breakpoint.column.or(breakpoints[i].column);
                                     }
                                 }
+                                if let Some(message) = &breakpoint.message {
+                                    self.set_status(format!("Breakpoint: {}", message));
+                                }
                             }
                             "removed" => {
+                                let Some(id) = breakpoint.id else {
+                                    warn!("DAP breakpoint event missing id");
+                                    return false;
+                                };
                                 for breakpoints in self.breakpoints.values_mut() {
                                     if let Some(i) =
-                                        breakpoints.iter().position(|b| b.id == breakpoint.id)
+                                        breakpoints.iter().position(|b| b.id == Some(id))
                                     {
                                         breakpoints.remove(i);
                                     }
@@ -319,9 +346,11 @@ impl Editor {
                         }
                         // TODO: fetch breakpoints (in case we're attaching)
 
-                        if debugger.configuration_done().await.is_ok() {
+                        if let Err(err) = debugger.configuration_done().await {
+                            self.set_error(format!("Debugger configuration failed: {}", err));
+                        } else {
                             self.set_status("Debugged application started");
-                        }; // TODO: do we need to handle error?
+                        }
 
                         self.debug_adapters.set_active_client(id);
                     }
