@@ -113,6 +113,7 @@ pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
 protols = { command = "protols", args = [] }
 basedpyright = { command = "basedpyright-langserver", args = ["--stdio"], config = {} }
 pylyzer = { command = "pylyzer", args = ["--server"] }
+pytest-language-server = { command = "pytest-language-server" }
 qmlls = { command = "qmlls" }
 quint-language-server = { command = "quint-language-server", args = ["--stdio"] }
 r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
@@ -123,6 +124,7 @@ ripple-lsp = { command = "ripple-language-server", args = ["--stdio"] }
 robotcode = { command = "robotcode", args = ["language-server", "--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
 ron-lsp = { command = "ron-lsp" }
+roslyn-language-server = { command = "roslyn-language-server", args = ["--stdio", "--autoLoadProjects"] }
 ruff = { command = "ruff", args = ["server"] }
 ruby-lsp = { command = "ruby-lsp" }
 rshtml-analyzer = { command = "rshtml-analyzer", args = ["--stdio"] }
@@ -754,7 +756,7 @@ roots = ["*.slnx", "*.sln", "*.csproj"]
 comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
-language-servers = [ "omnisharp", "csharp-ls" ]
+language-servers = [ "roslyn-language-server", "omnisharp", "csharp-ls" ]
 
 [language.debugger]
 name = "netcoredbg"
@@ -1202,6 +1204,7 @@ file-types = [
   { glob = "Podfile" },
   { glob = "Vagrantfile" },
   { glob = "Brewfile" },
+  { glob = "*.Brewfile" },
   { glob = "Guardfile" },
   { glob = "Capfile" },
   { glob = "Cheffile" },
@@ -2159,6 +2162,7 @@ source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = 
 
 [[language]]
 name = "docker-compose"
+language-id = "dockercompose"
 scope = "source.yaml.docker-compose"
 roots = ["docker-compose.yaml", "docker-compose.yml", "compose.yaml", "compose.yml"]
 language-servers = [ "docker-compose-langserver", "yaml-language-server", "docker-language-server" ]
@@ -2238,7 +2242,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-regex", rev = "e1cf
 [[language]]
 name = "git-config"
 scope = "source.gitconfig"
-file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = "gitconfig" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
+file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = "gitconfig" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }, { glob = ".git/modules/*/config" }, { glob = "config.worktree" }]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -3900,7 +3904,7 @@ name = "jjconfig"
 scope = "source.jjconfig"
 injection-regex = "jjconfig"
 grammar = "toml"
-file-types = [{ glob = "jj/config.toml" }, { glob = "jj/conf.d/*.toml" }, { glob = ".jj/repo/*.toml" }]
+file-types = [{ glob = "jj/config.toml" }, { glob = "jj/**/*.toml" }, { glob = ".jj/repo/*.toml" }]
 comment-token = "#"
 language-servers = [ "taplo", "tombi" ]
 indent = { tab-width = 2, unit = "  " }
@@ -5082,6 +5086,7 @@ comment-token = ".."
 
 [[language]]
 name = "docker-bake"
+language-id = "dockerbake"
 scope = "source.docker-bake"
 injection-regex = "docker-bake"
 grammar = "hcl"

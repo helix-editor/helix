@@ -11,7 +11,9 @@
 (pair
   key: (_) @variable.other.member)
 
-"," @punctuation.delimiter
+(comment) @comment
+
+["," ":"] @punctuation.delimiter
 [
   "["
   "]"

@@ -89,6 +89,7 @@
 | `:set-register` | Set contents of the given register. |
 | `:redraw` | Clear and re-render the whole UI |
 | `:move`, `:mv` | Move the current buffer and its corresponding file to a different path |
+| `:move!`, `:mv!` | Move the current buffer and its corresponding file to a different path creating necessary subdirectories |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |

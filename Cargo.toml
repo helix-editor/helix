@@ -42,8 +42,8 @@ tree-house = { version = "0.3.0", default-features = false }
 nucleo = "0.5.0"
 slotmap = "1.1.1"
 thiserror = "2.0"
-tempfile = "3.24.0"
-bitflags = "2.10"
+tempfile = "3.25.0"
+bitflags = "2.11"
 unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 foldhash = "0.2"
@@ -51,11 +51,12 @@ parking_lot = "0.12"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 tokio-stream = "0.1.18"
-toml = "0.9"
+toml = "1.0"
 termina = "0.1"
 sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
+arc-swap = "1.8"
 
 [workspace.package]
 version = "25.7.1"
