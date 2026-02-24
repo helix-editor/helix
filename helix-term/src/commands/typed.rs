@@ -12,7 +12,7 @@ use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
-use helix_view::editor::{CloseError, ConfigEvent};
+use helix_view::editor::{CloseError, ConfigEvent, DefaultDirOpener};
 use helix_view::expansion;
 use serde_json::Value;
 use ui::completers::{self, Completer};
@@ -147,15 +147,26 @@ fn open_impl(cx: &mut compositor::Context, args: Args, action: Action) -> anyhow
     for arg in args {
         let (path, pos) = crate::args::parse_file(&arg);
         let path = helix_stdx::path::expand_tilde(path);
-        // If the path is a directory, open a file picker on that directory and update the status
-        // message
+        // If the path is a directory, open the default dir opener on that directory
+        // and update the status message
         if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
-                    move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker =
-                            ui::file_picker(editor, path.into_owned()).with_default_action(action);
-                        compositor.push(Box::new(overlaid(picker)));
+                    move |editor: &mut Editor, compositor: &mut Compositor| match editor
+                        .config()
+                        .default_directory_opener
+                    {
+                        DefaultDirOpener::FilePicker => {
+                            let picker = ui::file_picker(editor, path.into_owned())
+                                .with_default_action(action);
+                            compositor.push(Box::new(overlaid(picker)));
+                        }
+                        DefaultDirOpener::FileExplorer => {
+                            if let Ok(explorer) = ui::file_explorer(path.into_owned(), editor) {
+                                compositor
+                                    .push(Box::new(overlaid(explorer.with_default_action(action))));
+                            }
+                        }
                     },
                 ));
                 Ok(call)
