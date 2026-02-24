@@ -524,6 +524,8 @@ impl MappableCommand {
         rotate_selections_backward, "Rotate selections backward",
         rotate_selection_contents_forward, "Rotate selection contents forward",
         rotate_selection_contents_backward, "Rotate selections contents backward",
+        swap_selection_contents_forward, "Swap selection contents forward",
+        swap_selection_contents_backward, "Swap selections contents backward",
         reverse_selection_contents, "Reverse selections contents",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
@@ -5426,6 +5428,8 @@ fn rotate_selections_last(cx: &mut Context) {
 enum ReorderStrategy {
     RotateForward,
     RotateBackward,
+    SwapForward,
+    SwapBackward,
     Reverse,
 }
 
@@ -5453,6 +5457,24 @@ fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
             ranges.rotate_left(rotate_by);
             // Like `usize::wrapping_sub`, but provide a custom range from `0` to `ranges.len()`
             (selection.primary_index() + ranges.len() - rotate_by) % ranges.len()
+        }
+        ReorderStrategy::SwapForward | ReorderStrategy::SwapBackward => {
+            let old_idx = selection.primary_index();
+            let new_idx = match strategy {
+                ReorderStrategy::SwapForward => (old_idx + rotate_by) % ranges.len(),
+                ReorderStrategy::SwapBackward => {
+                    (old_idx + ranges.len() - rotate_by) % ranges.len()
+                }
+                _ => 0,
+            };
+
+            if old_idx < new_idx {
+                ranges[old_idx..new_idx + 1].rotate_left(1);
+            } else if old_idx > new_idx {
+                ranges[new_idx..old_idx + 1].rotate_right(1);
+            }
+
+            new_idx
         }
         ReorderStrategy::Reverse => {
             if rotate_by.is_multiple_of(2) {
@@ -5487,6 +5509,12 @@ fn rotate_selection_contents_forward(cx: &mut Context) {
 }
 fn rotate_selection_contents_backward(cx: &mut Context) {
     reorder_selection_contents(cx, ReorderStrategy::RotateBackward)
+}
+fn swap_selection_contents_forward(cx: &mut Context) {
+    reorder_selection_contents(cx, ReorderStrategy::SwapForward)
+}
+fn swap_selection_contents_backward(cx: &mut Context) {
+    reorder_selection_contents(cx, ReorderStrategy::SwapBackward)
 }
 fn reverse_selection_contents(cx: &mut Context) {
     reorder_selection_contents(cx, ReorderStrategy::Reverse)
