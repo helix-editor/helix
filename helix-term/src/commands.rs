@@ -466,6 +466,7 @@ impl MappableCommand {
         goto_previous_buffer, "Goto previous buffer",
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        delete_trailing_whitespace, "Delete trailing whitespace in document",
         trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
