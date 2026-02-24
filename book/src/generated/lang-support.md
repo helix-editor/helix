@@ -97,7 +97,7 @@
 | gjs | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | gleam | ✓ | ✓ |  |  | ✓ | `gleam` |
 | glimmer | ✓ |  |  |  |  | `ember-language-server` |
-| glsl | ✓ | ✓ | ✓ |  |  | `glsl_analyzer`, `glsld` |
+| glsl | ✓ | ✓ | ✓ | ✓ | ✓ | `glsl_analyzer`, `glsld` |
 | gn | ✓ |  |  |  |  |  |
 | gnuplot | ✓ |  |  |  |  |  |
 | go | ✓ | ✓ | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |

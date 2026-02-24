@@ -1874,7 +1874,7 @@ injection-regex = "glsl"
 
 [[grammar]]
 name = "glsl"
-source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "88408ffc5e27abcffced7010fc77396ae3636d7e" }
+source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "24a6c8ef698e4480fecf8340d771fbcb5de8fbb4" }
 
 [[language]]
 name = "penrose"
