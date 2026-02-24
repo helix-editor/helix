@@ -80,6 +80,7 @@ fn exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
             WriteOptions {
                 force: false,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+                code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             },
         )?;
     }
@@ -99,6 +100,7 @@ fn force_exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
             WriteOptions {
                 force: true,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+                code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             },
         )?;
     }
@@ -381,40 +383,55 @@ fn write_impl(
     options: WriteOptions,
 ) -> anyhow::Result<()> {
     let config = cx.editor.config();
-    let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
+    let doc_id = doc.id();
+    let view_id = view.id;
 
     if doc.trim_trailing_whitespace() {
-        trim_trailing_whitespace(doc, view.id);
+        trim_trailing_whitespace(doc, view_id);
     }
     if config.trim_final_newlines {
-        trim_final_newlines(doc, view.id);
+        trim_final_newlines(doc, view_id);
     }
     if doc.insert_final_newline() {
-        insert_final_newline(doc, view.id);
+        insert_final_newline(doc, view_id);
     }
 
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
-    let (view, doc) = current_ref!(cx.editor);
     let fmt = if config.auto_format && options.auto_format {
-        doc.auto_format(cx.editor).map(|fmt| {
-            let callback = make_format_callback(
-                doc.id(),
-                doc.version(),
-                view.id,
-                fmt,
-                Some((path.map(Into::into), options.force)),
-            );
+        let path = path.map(Into::into);
+        let write = Some((path.clone(), options.force));
+        let callback: job::Callback = Callback::Followup(Box::new(move |editor| {
+            let (view, doc) = current_ref!(editor);
+            let job = doc.auto_format(editor).map(|fmt| {
+                let call = make_format_callback(doc.id(), doc.version(), view.id, fmt, write);
+                Job::with_callback(call).wait_before_exiting()
+            });
+            if job.is_none() {
+                if let Err(err) = editor.save(doc.id(), path, options.force) {
+                    editor.set_error(format!("Error saving: {}", err));
+                }
+            };
+            job
+        }));
 
-            jobs.add(Job::with_callback(callback).wait_before_exiting());
-        })
+        Some(Job::with_callback(async { Ok(callback) }).wait_before_exiting())
     } else {
         None
     };
 
-    if fmt.is_none() {
+    let job = if options.code_actions {
+        code_actions_on_save(cx, doc_id, fmt)
+    } else {
+        fmt
+    };
+
+    if let Some(job) = job {
+        cx.jobs.add(job);
+    } else {
+        let (_, doc) = current!(cx.editor);
         let id = doc.id();
         cx.editor.save(id, path, options.force)?;
     }
@@ -485,6 +502,7 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
 pub struct WriteOptions {
     pub force: bool,
     pub auto_format: bool,
+    pub code_actions: bool,
 }
 
 fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -498,6 +516,7 @@ fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
         WriteOptions {
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )
 }
@@ -513,6 +532,7 @@ fn force_write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         WriteOptions {
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )
 }
@@ -532,6 +552,7 @@ fn write_buffer_close(
         WriteOptions {
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
 
@@ -554,6 +575,7 @@ fn force_write_buffer_close(
         WriteOptions {
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
 
@@ -742,6 +764,7 @@ fn write_quit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         WriteOptions {
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
     cx.block_try_flush_writes()?;
@@ -763,6 +786,7 @@ fn force_write_quit(
         WriteOptions {
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
     cx.block_try_flush_writes()?;
@@ -807,6 +831,7 @@ pub struct WriteAllOptions {
     pub force: bool,
     pub write_scratch: bool,
     pub auto_format: bool,
+    pub code_actions: bool,
 }
 
 pub fn write_all_impl(
@@ -815,7 +840,6 @@ pub fn write_all_impl(
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
-    let jobs = &mut cx.jobs;
     let saves: Vec<_> = cx
         .editor
         .documents
@@ -858,23 +882,38 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let fmt = if options.auto_format && config.auto_format {
-            let doc = doc!(cx.editor, &doc_id);
-            doc.auto_format(cx.editor).map(|fmt| {
-                let callback = make_format_callback(
-                    doc_id,
-                    doc.version(),
-                    target_view,
-                    fmt,
-                    Some((None, options.force)),
-                );
-                jobs.add(Job::with_callback(callback).wait_before_exiting());
-            })
+        let fmt = if config.auto_format && options.auto_format {
+            let path = doc.path().map(Into::into);
+            let write = Some((path.clone(), options.force));
+            let callback: job::Callback = Callback::Followup(Box::new(move |editor| {
+                let doc = doc!(editor, &doc_id);
+                let view = view!(editor, target_view);
+                let job = doc.auto_format(editor).map(|fmt| {
+                    let call = make_format_callback(doc.id(), doc.version(), view.id, fmt, write);
+                    Job::with_callback(call).wait_before_exiting()
+                });
+                if job.is_none() {
+                    if let Err(err) = editor.save::<PathBuf>(doc.id(), path, options.force) {
+                        editor.set_error(format!("Error saving: {}", err));
+                    }
+                };
+                job
+            }));
+
+            Some(Job::with_callback(async { Ok(callback) }).wait_before_exiting())
         } else {
             None
         };
 
-        if fmt.is_none() {
+        let job = if options.code_actions {
+            code_actions_on_save(cx, doc_id, fmt)
+        } else {
+            fmt
+        };
+
+        if let Some(job) = job {
+            cx.jobs.add(job);
+        } else {
             cx.editor.save::<PathBuf>(doc_id, None, options.force)?;
         }
     }
@@ -897,6 +936,7 @@ fn write_all(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> an
             force: false,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )
 }
@@ -916,6 +956,7 @@ fn force_write_all(
             force: true,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )
 }
@@ -934,6 +975,7 @@ fn write_all_quit(
             force: false,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     )?;
     quit_all_impl(cx, false)
@@ -953,6 +995,7 @@ fn force_write_all_quit(
             force: true,
             write_scratch: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
         },
     );
     quit_all_impl(cx, true)
@@ -1516,6 +1559,7 @@ fn update(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
             WriteOptions {
                 force: false,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+                code_actions: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             },
         )
     } else {
