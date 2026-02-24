@@ -403,11 +403,11 @@ const BASE_WIDTH: u16 = 30;
 impl Prompt {
     pub fn render_prompt(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
-        let prompt_color = theme.get("ui.text");
-        let completion_color = theme.get("ui.menu");
-        let selected_color = theme.get("ui.menu.selected");
-        let suggestion_color = theme.get("ui.text.inactive");
-        let background = theme.get("ui.background");
+        let prompt_color = theme.get(cx.editor.theme_context(), "ui.text");
+        let completion_color = theme.get(cx.editor.theme_context(), "ui.menu");
+        let selected_color = theme.get(cx.editor.theme_context(), "ui.menu.selected");
+        let suggestion_color = theme.get(cx.editor.theme_context(), "ui.text.inactive");
+        let background = theme.get(cx.editor.theme_context(), "ui.background");
         // completion
 
         let max_len = self
@@ -435,7 +435,7 @@ impl Prompt {
 
         if completion_area.height > 0 && !self.completion.is_empty() {
             let area = completion_area;
-            let background = theme.get("ui.menu");
+            let background = theme.get(cx.editor.theme_context(), "ui.menu");
 
             let items = height as usize * cols as usize;
 
@@ -493,7 +493,7 @@ impl Prompt {
                 height + padding * 2,
             ));
 
-            let background = theme.get("ui.help");
+            let background = theme.get(cx.editor.theme_context(), "ui.help");
             surface.clear_with(area, background);
 
             let block = Block::bordered()
@@ -531,7 +531,7 @@ impl Prompt {
             let mut text: ui::text::Text = crate::ui::markdown::highlighted_code_block(
                 &self.line,
                 language,
-                Some(&cx.editor.theme),
+                Some((&cx.editor.theme, cx.editor.theme_context())),
                 &loader.load(),
                 None,
             )

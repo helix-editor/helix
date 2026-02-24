@@ -332,9 +332,9 @@ impl<T: Item + 'static> Component for Menu<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let style = theme
-            .try_get("ui.menu")
-            .unwrap_or_else(|| theme.get("ui.text"));
-        let selected = theme.get("ui.menu.selected");
+            .try_get(cx.editor.theme_context(), "ui.menu")
+            .unwrap_or_else(|| theme.get(cx.editor.theme_context(), "ui.text"));
+        let selected = theme.get(cx.editor.theme_context(), "ui.menu.selected");
 
         surface.clear_with(area, style);
 
@@ -391,7 +391,7 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         let fits = len <= win_height;
 
-        let scroll_style = theme.get("ui.menu.scroll");
+        let scroll_style = theme.get(cx.editor.theme_context(), "ui.menu.scroll");
         if !fits {
             let scroll_height = win_height.pow(2).div_ceil(len).min(win_height);
             let scroll_line = (win_height - scroll_height) * scroll

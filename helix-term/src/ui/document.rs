@@ -11,7 +11,7 @@ use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
 use helix_view::theme::Style;
 use helix_view::view::ViewPosition;
-use helix_view::{Document, Theme};
+use helix_view::{Document, Editor, Theme};
 use tui::buffer::Buffer as Surface;
 
 use crate::ui::text_decorations::DecorationManager;
@@ -29,6 +29,7 @@ pub struct LinePos {
 
 #[allow(clippy::too_many_arguments)]
 pub fn render_document(
+    editor: &Editor,
     surface: &mut Surface,
     viewport: Rect,
     doc: &Document,
@@ -40,6 +41,7 @@ pub fn render_document(
     decorations: DecorationManager,
 ) {
     let mut renderer = TextRenderer::new(
+        editor,
         surface,
         doc,
         theme,
@@ -199,6 +201,7 @@ pub struct GraphemeStyle {
 
 impl<'a> TextRenderer<'a> {
     pub fn new(
+        editor: &Editor,
         surface: &'a mut Surface,
         doc: &Document,
         theme: &Theme,
@@ -242,7 +245,7 @@ impl<'a> TextRenderer<'a> {
             " ".to_owned()
         };
 
-        let text_style = theme.get("ui.text");
+        let text_style = theme.get(editor.theme_context(), "ui.text");
 
         let indent_width = doc.indent_style.indent_width(tab_width) as u16;
 
@@ -255,15 +258,15 @@ impl<'a> TextRenderer<'a> {
             space,
             tab,
             virtual_tab,
-            whitespace_style: theme.get("ui.virtual.whitespace"),
+            whitespace_style: theme.get(editor.theme_context(), "ui.virtual.whitespace"),
             indent_width,
             starting_indent: offset.col / indent_width as usize
                 + !offset.col.is_multiple_of(indent_width as usize) as usize
                 + editor_config.indent_guides.skip_levels as usize,
             indent_guide_style: text_style.patch(
                 theme
-                    .try_get("ui.virtual.indent-guide")
-                    .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
+                    .try_get(editor.theme_context(), "ui.virtual.indent-guide")
+                    .unwrap_or_else(|| theme.get(editor.theme_context(), "ui.virtual.whitespace")),
             ),
             text_style,
             draw_indent_guides: editor_config.indent_guides.render,
