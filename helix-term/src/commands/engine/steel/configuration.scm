@@ -1,5 +1,7 @@
 (require-builtin helix/core/configuration as helix.)
 
+(require-builtin helix/core/misc as misc.)
+
 ;;@doc
 ;; Set a configuration option by key name.
 (provide set-option!)
@@ -724,7 +726,7 @@
 ;; Mouse support. Defaults to true.
 (define (mouse opt)
   (helix.mouse opt)
-  (helix.#%update-configuration *helix.config*))
+  (misc.enqueue-thread-local-callback (lambda () (helix.#%update-configuration *helix.config*))))
 
 (provide shell)
 
