@@ -95,7 +95,7 @@ use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use helix_core::fuzzy::MATCHER;
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use nucleo::{
-    pattern::{Atom, AtomKind, CaseMatching, Normalization},
+    pattern::{CaseMatching, Normalization, Pattern as NucleoPattern},
     Utf32Str,
 };
 
@@ -2490,7 +2490,7 @@ fn global_search(cx: &mut Context) {
     fn fuzzy_search_rope(
         path: &Path,
         rope: &Rope,
-        atom: &Atom,
+        pattern: &NucleoPattern,
         matcher: &mut nucleo::Matcher,
         char_buf: &mut Vec<char>,
         injector: &ui::picker::Injector<FileResult, GlobalSearchConfig>,
@@ -2502,7 +2502,7 @@ fn global_search(cx: &mut Context) {
                 continue;
             }
             let haystack = Utf32Str::new(trimmed, char_buf);
-            if atom.score(haystack, matcher).is_some() {
+            if pattern.score(haystack, matcher).is_some() {
                 if injector
                     .push(FileResult::new(path, line_idx, trimmed))
                     .is_err()
@@ -2518,7 +2518,7 @@ fn global_search(cx: &mut Context) {
     /// Returns true if the injector is closed (caller should quit the walk).
     fn fuzzy_search_path(
         path: &Path,
-        atom: &Atom,
+        pattern: &NucleoPattern,
         matcher: &mut nucleo::Matcher,
         char_buf: &mut Vec<char>,
         injector: &ui::picker::Injector<FileResult, GlobalSearchConfig>,
@@ -2542,7 +2542,7 @@ fn global_search(cx: &mut Context) {
                 continue;
             }
             let haystack = Utf32Str::new(trimmed, char_buf);
-            if atom.score(haystack, matcher).is_some() {
+            if pattern.score(haystack, matcher).is_some() {
                 if injector
                     .push(FileResult::new(path, line_idx, trimmed))
                     .is_err()
@@ -2636,14 +2636,13 @@ fn global_search(cx: &mut Context) {
             None
         };
 
-        // For fuzzy mode, build a nucleo Atom
-        let fuzzy_atom = if config.fuzzy {
-            Some(Atom::new(
+        // For fuzzy mode, build a nucleo Pattern (consistent with picker's
+        // Pattern::reparse, which splits on spaces and respects special syntax)
+        let fuzzy_pattern = if config.fuzzy {
+            Some(NucleoPattern::parse(
                 query,
                 CaseMatching::Smart,
                 Normalization::Smart,
-                AtomKind::Fuzzy,
-                false,
             ))
         } else {
             None
@@ -2677,7 +2676,7 @@ fn global_search(cx: &mut Context) {
                 .run(|| {
                     let mut searcher = searcher.clone();
                     let regex_matcher = regex_matcher.clone();
-                    let fuzzy_atom = fuzzy_atom.clone();
+                    let fuzzy_pattern = fuzzy_pattern.clone();
                     let injector = injector.clone();
                     let documents = &documents;
                     // Per-thread nucleo state for fuzzy matching
@@ -2741,13 +2740,14 @@ fn global_search(cx: &mut Context) {
                             if stop {
                                 return WalkState::Quit;
                             }
-                        } else if let Some(ref fuzzy_atom) = fuzzy_atom {
-                            // Fuzzy: use nucleo Atom to score each line
+                        } else if let Some(ref fuzzy_pattern) = fuzzy_pattern {
+                            // Fuzzy: use nucleo Pattern to pre-filter lines;
+                            // the picker's nucleo instance handles final ranking by score
                             let stop = if let Some((_, rope)) = doc {
                                 fuzzy_search_rope(
                                     entry.path(),
                                     rope,
-                                    fuzzy_atom,
+                                    fuzzy_pattern,
                                     &mut nucleo_matcher,
                                     &mut char_buf,
                                     &injector,
@@ -2755,7 +2755,7 @@ fn global_search(cx: &mut Context) {
                             } else {
                                 fuzzy_search_path(
                                     entry.path(),
-                                    fuzzy_atom,
+                                    fuzzy_pattern,
                                     &mut nucleo_matcher,
                                     &mut char_buf,
                                     &injector,
@@ -2821,12 +2821,10 @@ fn global_search(cx: &mut Context) {
         let mut ranges = Vec::new();
 
         if search_fuzzy {
-            let atom = Atom::new(
+            let pattern = NucleoPattern::parse(
                 query,
                 CaseMatching::Smart,
                 Normalization::Smart,
-                AtomKind::Fuzzy,
-                false,
             );
             let mut matcher = MATCHER.lock();
             matcher.config = nucleo::Config::DEFAULT;
@@ -2842,7 +2840,7 @@ fn global_search(cx: &mut Context) {
 
                 indices.clear();
                 let haystack = Utf32Str::new(&line_text, &mut buf);
-                if atom.indices(haystack, &mut matcher, &mut indices).is_some() {
+                if pattern.indices(haystack, &mut matcher, &mut indices).is_some() {
                     indices.sort_unstable();
                     indices.dedup();
                     for &idx in &indices {
