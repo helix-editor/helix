@@ -1,5 +1,5 @@
 use helix_core::indent::IndentStyle;
-use helix_core::{coords_at_pos, encoding, unicode::width::UnicodeWidthStr, Position};
+use helix_core::{coords_at_pos, encoding, unicode, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
@@ -176,7 +176,7 @@ where
         format!(" {mode_str} ")
     } else {
         // If not focused, explicitly leave an empty space instead of returning None.
-        " ".repeat(mode_str.width() + 2)
+        " ".repeat(unicode::width(mode_str) + 2)
     };
     let style = if visible && config.color_modes {
         match context.editor.mode() {

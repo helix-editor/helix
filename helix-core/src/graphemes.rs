@@ -3,7 +3,6 @@
 //! Based on <https://github.com/cessen/led/blob/c4fa72405f510b7fd16052f90a598c429b3104a6/src/graphemes.rs>
 use ropey::{str_utils::byte_to_char_idx, RopeSlice};
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
-use unicode_width::UnicodeWidthStr;
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display};
@@ -13,7 +12,7 @@ use std::ptr::NonNull;
 use std::{slice, str};
 
 use crate::chars::{char_is_whitespace, char_is_word};
-use crate::LineEnding;
+use crate::{unicode, LineEnding};
 
 #[inline]
 pub fn tab_width_at(visual_x: usize, tab_width: u16) -> usize {
@@ -113,9 +112,7 @@ pub fn grapheme_width(g: &str) -> usize {
         // We use max(1) here because all grapeheme clusters--even illformed
         // ones--should have at least some width so they can be edited
         // properly.
-        // TODO properly handle unicode width for all codepoints
-        // example of where unicode width is currently wrong: 🤦🏼‍♂️ (taken from https://hsivonen.fi/string-length/)
-        UnicodeWidthStr::width(g).max(1)
+        unicode::width(g).max(1)
     }
 }
 
