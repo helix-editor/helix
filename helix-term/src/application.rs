@@ -1247,6 +1247,7 @@ impl Application {
             .backend_mut()
             .show_cursor(CursorKind::Block)
             .ok();
+
         self.terminal.restore()
     }
 
