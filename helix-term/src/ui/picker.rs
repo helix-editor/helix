@@ -699,12 +699,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);
 
-        const BLOCK: Block<'_> = Block::bordered();
+        let border_type = BorderType::new(cx.editor.config().rounded_corners);
+        let block: Block<'_> = Block::bordered().border_type(border_type);
 
         // calculate the inner area inside the box
-        let inner = BLOCK.inner(area);
+        let inner = block.inner(area);
 
-        BLOCK.render(area, surface);
+        block.render(area, surface);
 
         // -- Render the input bar:
 
@@ -888,14 +889,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let directory = cx.editor.theme.get("ui.text.directory");
         surface.clear_with(area, background);
 
-        const BLOCK: Block<'_> = Block::bordered();
+        let border_type = BorderType::new(cx.editor.config().rounded_corners);
+        let block: Block<'_> = Block::bordered().border_type(border_type);
 
         // calculate the inner area inside the box
-        let inner = BLOCK.inner(area);
+        let inner = block.inner(area);
         // 1 column gap on either side
         let margin = Margin::horizontal(1);
         let inner = inner.inner(margin);
-        BLOCK.render(area, surface);
+        block.render(area, surface);
 
         if let Some((preview, range)) = self.get_preview(cx.editor) {
             let doc = match preview.document() {
