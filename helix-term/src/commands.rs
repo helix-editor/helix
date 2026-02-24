@@ -1327,21 +1327,142 @@ fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
 }
 
-/// Goto files in selection.
+/// Request document links for the current document.
+fn request_document_links(doc: &Document) -> Vec<helix_view::document::DocumentLink> {
+    let text = doc.text().clone();
+    let mut seen_language_servers = HashSet::new();
+    let mut links = Vec::new();
+
+    for language_server in doc
+        .language_servers_with_feature(LanguageServerFeature::DocumentLinks)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
+    {
+        let offset_encoding = language_server.offset_encoding();
+        let language_server_id = language_server.id();
+        let Some(future) = language_server.text_document_document_link(doc.identifier(), None)
+        else {
+            continue;
+        };
+
+        match helix_lsp::block_on(future) {
+            Ok(Some(items)) => {
+                for link in items {
+                    let Some(start) =
+                        helix_lsp::util::lsp_pos_to_pos(&text, link.range.start, offset_encoding)
+                    else {
+                        continue;
+                    };
+                    let Some(end) =
+                        helix_lsp::util::lsp_pos_to_pos(&text, link.range.end, offset_encoding)
+                    else {
+                        continue;
+                    };
+                    if start > end {
+                        continue;
+                    }
+                    links.push(helix_view::document::DocumentLink {
+                        start,
+                        end,
+                        link,
+                        language_server_id,
+                    });
+                }
+            }
+            Ok(None) => {}
+            Err(err) => log::error!("document link request failed: {err}"),
+        }
+    }
+
+    links.sort_by_key(|link| (link.start, link.end));
+    links
+}
+
+/// Resolve a document link target, using the LSP resolve request when needed.
+fn resolve_document_link_target(
+    editor: &Editor,
+    link: &helix_view::document::DocumentLink,
+) -> Option<Url> {
+    if let Some(target) = link.link.target.clone() {
+        return Some(target);
+    }
+
+    let language_server = editor.language_server_by_id(link.language_server_id)?;
+    let supports_resolve = language_server
+        .capabilities()
+        .document_link_provider
+        .as_ref()?
+        .resolve_provider
+        .unwrap_or(false);
+
+    if !supports_resolve {
+        return None;
+    }
+
+    let future = language_server.resolve_document_link(link.link.clone())?;
+    helix_lsp::block_on(future).ok()?.target
+}
+
+/// Goto files/URLs in selection.
+///
+/// Prefers LSP document links when the cursor/selection overlaps a link range,
+/// falling back to the built-in path/URL detection otherwise.
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
-    let text = doc.text().slice(..);
-    let selections = doc.selection(view.id);
-    let primary = selections.primary();
+    let text = doc.text().clone();
+    let selections = doc.selection(view.id).ranges().to_vec();
     let rel_path = doc
         .relative_path()
         .map(|path| path.parent().unwrap().to_path_buf())
         .unwrap_or_default();
+    let text = text.slice(..);
 
-    let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
+    let mut lsp_targets = Vec::new();
+    let mut lsp_targets_seen = HashSet::new();
+    let mut fallback_ranges = Vec::new();
+
+    let document_links = request_document_links(doc);
+
+    if document_links.is_empty() {
+        fallback_ranges.extend_from_slice(&selections);
+    } else {
+        for selection in &selections {
+            let mut matched = false;
+            for link in &document_links {
+                let overlaps = if selection.is_empty() {
+                    let pos = selection.from();
+                    link.start <= pos && pos < link.end
+                } else {
+                    selection.from() < link.end && selection.to() > link.start
+                };
+                if !overlaps {
+                    continue;
+                }
+                matched = true;
+                if let Some(target) = resolve_document_link_target(cx.editor, link) {
+                    if lsp_targets_seen.insert(target.clone()) {
+                        lsp_targets.push(target);
+                    }
+                }
+            }
+            if !matched {
+                fallback_ranges.push(*selection);
+            }
+        }
+    }
+
+    for target in lsp_targets {
+        open_url(cx, target, action);
+    }
+
+    if fallback_ranges.is_empty() {
+        return;
+    }
+
+    let paths: Vec<_> = if fallback_ranges.len() == 1 && fallback_ranges[0].len() == 1 {
+        let selection = fallback_ranges[0];
         // Cap the search at roughly 1k bytes around the cursor.
         let lookaround = 1000;
-        let pos = text.char_to_byte(primary.cursor(text));
+        let pos = text.char_to_byte(selection.cursor(text));
         let search_start = text
             .line_to_byte(text.byte_to_line(pos))
             .max(text.floor_char_boundary(pos.saturating_sub(lookaround)));
@@ -1357,13 +1478,13 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .find(|range| pos <= search_start + range.end)
             .map(|range| Cow::from(search_range.byte_slice(range)));
         log::debug!("goto_file auto-detected path: {path:?}");
-        let path = path.unwrap_or_else(|| primary.fragment(text));
+        let path = path.unwrap_or_else(|| selection.fragment(text));
         vec![path.into_owned()]
     } else {
         // Otherwise use each selection, trimmed.
-        selections
-            .fragments(text)
-            .map(|sel| sel.trim().to_owned())
+        fallback_ranges
+            .iter()
+            .map(|range| range.fragment(text).trim().to_owned())
             .filter(|sel| !sel.is_empty())
             .collect()
     };

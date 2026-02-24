@@ -226,6 +226,15 @@ pub struct DocumentColorSwatches {
     pub color_swatches_padding: Vec<InlineAnnotation>,
 }
 
+#[derive(Debug, Clone)]
+pub struct DocumentLink {
+    /// Character offsets in the document for the link range.
+    pub start: usize,
+    pub end: usize,
+    pub link: lsp::DocumentLink,
+    pub language_server_id: LanguageServerId,
+}
+
 /// Inlay hints for a single `(Document, View)` combo.
 ///
 /// There are `*_inlay_hints` field for each kind of hints an LSP can send since we offer the

@@ -364,6 +364,7 @@ impl Client {
                         | CodeActionProviderCapability::Options(_),
                 )
             ),
+            LanguageServerFeature::DocumentLinks => capabilities.document_link_provider.is_some(),
             LanguageServerFeature::WorkspaceCommand => {
                 capabilities.execute_command_provider.is_some()
             }
@@ -705,6 +706,10 @@ impl Client {
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {
                         dynamic_registration: Some(false),
                         resolve_support: None,
+                    }),
+                    document_link: Some(lsp::DocumentLinkClientCapabilities {
+                        dynamic_registration: Some(false),
+                        tooltip_support: Some(false),
                     }),
                     ..Default::default()
                 }),
@@ -1162,6 +1167,35 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::DocumentColor>(params))
+    }
+
+    pub fn text_document_document_link(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::DocumentLink>>>>> {
+        if !self.supports_feature(LanguageServerFeature::DocumentLinks) {
+            return None;
+        }
+
+        let params = lsp::DocumentLinkParams {
+            text_document,
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::DocumentLinkRequest>(params))
+    }
+
+    pub fn resolve_document_link(
+        &self,
+        params: lsp::DocumentLink,
+    ) -> Option<impl Future<Output = Result<lsp::DocumentLink>>> {
+        if !self.supports_feature(LanguageServerFeature::DocumentLinks) {
+            return None;
+        }
+
+        Some(self.call::<lsp::request::DocumentLinkResolve>(params))
     }
 
     pub fn text_document_hover(
