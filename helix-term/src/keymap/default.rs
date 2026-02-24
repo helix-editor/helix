@@ -410,3 +410,21 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         Mode::Insert => insert,
     )
 }
+
+pub fn file_manager_default() -> KeyTrie {
+    keymap!({ "File manager"
+        "ret" => file_manager_select,
+        "C-s" => file_manager_select_vertical,
+        "C-h" => file_manager_select_horizontal,
+        "C-p" => file_manager_preview,
+        "C-l" => file_manager_refresh,
+        "-" => file_manager_parent,
+        "_" => file_manager_open_cwd,
+        "`" => file_manager_cd,
+        "g" => { "File manager"
+            "s" => file_manager_change_sort,
+            "." => file_manager_toggle_hidden,
+            "x" => file_manager_open_external,
+        },
+    })
+}

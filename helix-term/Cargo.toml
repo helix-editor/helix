@@ -71,6 +71,7 @@ log = "0.4"
 # File picker
 nucleo.workspace = true
 ignore = "0.4"
+imara-diff = "0.2.0"
 grep-regex = "0.1"
 grep-searcher = "0.1"
 grep-matcher = "0.1"
@@ -82,6 +83,7 @@ thiserror.workspace = true
 
 # opening URLs
 open = "5.3.3"
+trash = "5"
 url = "2.5.4"
 
 # config

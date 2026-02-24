@@ -103,6 +103,17 @@
 | `file_explorer` | Open file explorer in workspace root | normal: `` <space>e ``, select: `` <space>e `` |
 | `file_explorer_in_current_buffer_directory` | Open file explorer at current buffer's directory | normal: `` <space>E ``, select: `` <space>E `` |
 | `file_explorer_in_current_directory` | Open file explorer at current working directory |  |
+| `file_manager_select` | Open file or enter directory under cursor in file manager |  |
+| `file_manager_select_horizontal` | Open file or enter directory in a horizontal split in file manager |  |
+| `file_manager_select_vertical` | Open file or enter directory in a vertical split in file manager |  |
+| `file_manager_preview` | Preview file or directory in a vertical split in file manager |  |
+| `file_manager_refresh` | Refresh directory buffer |  |
+| `file_manager_parent` | Go to parent directory in file manager |  |
+| `file_manager_open_cwd` | Open current working directory in file manager |  |
+| `file_manager_cd` | Change working directory to entry under cursor in file manager |  |
+| `file_manager_change_sort` | Change sort order in file manager |  |
+| `file_manager_toggle_hidden` | Toggle hidden files in file manager |  |
+| `file_manager_open_external` | Open entry under cursor in external program |  |
 | `code_action` | Perform code action | normal: `` <space>a ``, select: `` <space>a `` |
 | `buffer_picker` | Open buffer picker | normal: `` <space>b ``, select: `` <space>b `` |
 | `jumplist_picker` | Open jumplist picker | normal: `` <space>j ``, select: `` <space>j `` |
