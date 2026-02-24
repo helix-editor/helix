@@ -49,6 +49,7 @@ use helix_core::{
         self,
         config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     },
+    time::now_timestamp,
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap::{self as dap, registry::DebugAdapterId};
@@ -428,6 +429,26 @@ pub struct Config {
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
     pub buffer_picker: BufferPickerConfig,
+    pub session: SessionConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct SessionConfig {
+    /// Restore cursor position when reopening files. Defaults to false.
+    pub restore_cursor: bool,
+    /// Maximum age in days for session entries before garbage collection removes them.
+    /// Set to 0 to disable GC. Defaults to 90.
+    pub gc_max_age: u64,
+}
+
+impl Default for SessionConfig {
+    fn default() -> Self {
+        Self {
+            restore_cursor: false,
+            gc_max_age: 90,
+        }
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1146,6 +1167,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
+            session: SessionConfig::default(),
         }
     }
 }
@@ -1247,6 +1269,7 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+    pub session_state: crate::session::SessionState,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1368,6 +1391,11 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            session_state: if conf.session.restore_cursor {
+                crate::session::SessionState::load()
+            } else {
+                crate::session::SessionState::default()
+            },
         }
     }
 
@@ -1903,6 +1931,7 @@ impl Editor {
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
         let id = self.document_id_by_path(&path);
+        let is_new_doc = id.is_none();
 
         let id = if let Some(id) = id {
             id
@@ -1937,16 +1966,153 @@ impl Editor {
 
         self.switch(id, action);
 
+        if is_new_doc && self.config().session.restore_cursor {
+            self.restore_doc_cursor_position(id, &path);
+        }
+
         Ok(id)
     }
 
     pub fn close(&mut self, id: ViewId) {
+        // Save cursor positions before removing view data, so session
+        // restore has them available.
+        if self.config().session.restore_cursor {
+            let doc_ids: Vec<_> = self
+                .documents()
+                .filter(|doc| doc.selections().contains_key(&id))
+                .map(|doc| doc.id())
+                .collect();
+            for doc_id in doc_ids {
+                self.save_doc_cursor_for_view(doc_id, id);
+            }
+        }
+
         // Remove selections for the closed view on all documents.
         for doc in self.documents_mut() {
             doc.remove_view(id);
         }
         self.tree.remove(id);
         self._refresh();
+    }
+
+    fn save_doc_cursor_for_view(&mut self, doc_id: DocumentId, view_id: ViewId) {
+        let doc = match self.documents.get(&doc_id) {
+            Some(doc) => doc,
+            None => return,
+        };
+        let path = match doc.path() {
+            Some(path) => path.clone(),
+            None => return, // scratch buffer
+        };
+
+        let text = doc.text().slice(..);
+        let selection = match doc.selections().get(&view_id) {
+            Some(sel) => sel.clone(),
+            None => return,
+        };
+        let primary = selection.primary();
+        let anchor_pos = helix_core::coords_at_pos(text, primary.anchor);
+        let head_pos = helix_core::coords_at_pos(text, primary.head);
+
+        let view_offset = doc.view_offset(view_id);
+        let view_anchor_pos = helix_core::coords_at_pos(text, view_offset.anchor);
+
+        self.session_state.set(
+            &path,
+            crate::session::FileState {
+                anchor_row: anchor_pos.row,
+                anchor_col: anchor_pos.col,
+                head_row: head_pos.row,
+                head_col: head_pos.col,
+                view_anchor_row: view_anchor_pos.row,
+                view_anchor_col: view_anchor_pos.col,
+                horizontal_offset: view_offset.horizontal_offset,
+                timestamp: now_timestamp(),
+            },
+        );
+    }
+
+    pub fn save_doc_cursor_position(&mut self, doc_id: DocumentId) {
+        // Find the best view: prefer focused view if it shows this doc
+        let focused = self.tree.focus;
+        let view_id = if self
+            .documents
+            .get(&doc_id)
+            .and_then(|d| d.selections().get(&focused))
+            .is_some()
+            && self.tree.try_get(focused).is_some_and(|v| v.doc == doc_id)
+        {
+            focused
+        } else {
+            // Fall back to any view showing this doc
+            match self
+                .tree
+                .views()
+                .find(|(v, _)| v.doc == doc_id)
+                .map(|(v, _)| v.id)
+            {
+                Some(id) => id,
+                None => return,
+            }
+        };
+
+        self.save_doc_cursor_for_view(doc_id, view_id);
+    }
+
+    fn restore_doc_cursor_position(&mut self, doc_id: DocumentId, path: &Path) {
+        let file_state = match self.session_state.get(path) {
+            Some(state) => state.clone(),
+            None => return,
+        };
+
+        let view_id = self.tree.focus;
+        let doc = match self.documents.get(&doc_id) {
+            Some(doc) => doc,
+            None => return,
+        };
+
+        let text = doc.text().slice(..);
+        let max_line = text.len_lines().saturating_sub(1);
+
+        // The moving end of the selection range.
+        let head = helix_core::pos_at_coords(
+            text,
+            Position::new(file_state.head_row.min(max_line), file_state.head_col),
+            true,
+        );
+
+        // The non-moving end of the selection range.
+        let anchor = helix_core::pos_at_coords(
+            text,
+            Position::new(file_state.anchor_row.min(max_line), file_state.anchor_col),
+            true,
+        );
+
+        // The top-left character position that determines which part of the document
+        // is visible in the view (i.e. the scroll position).
+        let view_anchor = helix_core::pos_at_coords(
+            text,
+            Position::new(
+                file_state.view_anchor_row.min(max_line),
+                file_state.view_anchor_col,
+            ),
+            true,
+        );
+
+        let doc = match self.documents.get_mut(&doc_id) {
+            Some(doc) => doc,
+            None => return,
+        };
+
+        doc.set_selection(view_id, Selection::single(anchor, head));
+        doc.set_view_offset(
+            view_id,
+            crate::view::ViewPosition {
+                anchor: view_anchor,
+                horizontal_offset: file_state.horizontal_offset,
+                vertical_offset: 0,
+            },
+        );
     }
 
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
@@ -1956,6 +2122,10 @@ impl Editor {
         };
         if !force && doc.is_modified() {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
+        }
+
+        if self.config().session.restore_cursor {
+            self.save_doc_cursor_position(doc_id);
         }
 
         // This will also disallow any follow-up writes

@@ -207,15 +207,18 @@ impl Application {
                         // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
-                        let view_id = editor.tree.focus;
-                        let doc = doc_mut!(editor, &doc_id);
-                        let selection = pos
-                            .into_iter()
-                            .map(|coords| {
-                                Range::point(pos_at_coords(doc.text().slice(..), coords, true))
-                            })
-                            .collect();
-                        doc.set_selection(view_id, selection);
+                        let has_explicit_pos = pos.iter().any(|p| !p.is_zero());
+                        if has_explicit_pos {
+                            let view_id = editor.tree.focus;
+                            let doc = doc_mut!(editor, &doc_id);
+                            let selection = pos
+                                .into_iter()
+                                .map(|coords| {
+                                    Range::point(pos_at_coords(doc.text().slice(..), coords, true))
+                                })
+                                .collect();
+                            doc.set_selection(view_id, selection);
+                        }
                     }
                 }
 
@@ -256,7 +259,7 @@ impl Application {
         ])
         .context("build signal handler")?;
 
-        let app = Self {
+        let mut app = Self {
             compositor,
             terminal,
             editor,
@@ -266,6 +269,18 @@ impl Application {
             lsp_progress: LspProgressMap::new(),
             theme_mode,
         };
+
+        let gc_max_age = app.editor.config().session.gc_max_age;
+        if app.editor.config().session.restore_cursor
+            && gc_max_age > 0
+            && app.editor.session_state.needs_gc()
+        {
+            app.jobs.callback(async move {
+                Ok(crate::job::Callback::Editor(Box::new(move |editor| {
+                    editor.session_state.gc(gc_max_age);
+                })))
+            });
+        }
 
         Ok(app)
     }
@@ -1315,6 +1330,14 @@ impl Application {
         //        want to try to run as much cleanup as we can, regardless of
         //        errors along the way
         let mut errs = Vec::new();
+
+        if self.editor.config().session.restore_cursor {
+            let doc_ids: Vec<_> = self.editor.documents().map(|d| d.id()).collect();
+            for doc_id in doc_ids {
+                self.editor.save_doc_cursor_position(doc_id);
+            }
+            self.editor.session_state.save();
+        }
 
         if let Err(err) = self
             .jobs
