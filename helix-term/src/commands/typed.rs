@@ -153,9 +153,10 @@ fn open_impl(cx: &mut compositor::Context, args: Args, action: Action) -> anyhow
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
+                        let layout = editor.config().picker.layout;
                         let picker =
                             ui::file_picker(editor, path.into_owned()).with_default_action(action);
-                        compositor.push(Box::new(overlaid(picker)));
+                        compositor.push(Box::new(overlaid_with_layout(picker, layout)));
                     },
                 ));
                 Ok(call)
@@ -1558,7 +1559,7 @@ fn lsp_workspace_command(
             .collect::<Vec<_>>();
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
-                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                move |editor: &mut Editor, compositor: &mut Compositor| {
                     let columns = [ui::PickerColumn::new(
                         "title",
                         |(_ls_id, command): &(_, helix_lsp::lsp::Command), _| {
@@ -1574,7 +1575,8 @@ fn lsp_workspace_command(
                             cx.editor.execute_lsp_command(command.clone(), *ls_id);
                         },
                     );
-                    compositor.push(Box::new(overlaid(picker)))
+                    let layout = editor.config().picker.layout;
+                    compositor.push(Box::new(overlaid_with_layout(picker, layout)))
                 },
             ));
             Ok(call)
