@@ -11,7 +11,7 @@
 use std::{
     collections::HashMap,
     fs,
-    num::{NonZeroU16, NonZeroU8},
+    num::{NonZeroU8, NonZeroU16},
     path::Path,
     str::FromStr,
 };
@@ -20,8 +20,8 @@ use encoding_rs::Encoding;
 use globset::{GlobBuilder, GlobMatcher};
 
 use crate::{
-    indent::{IndentStyle, MAX_INDENT},
     LineEnding,
+    indent::{IndentStyle, MAX_INDENT},
 };
 
 /// Configuration declared for a path in `.editorconfig` files.
@@ -52,7 +52,9 @@ impl EditorConfig {
             let ini = match contents.parse::<Ini>() {
                 Ok(ini) => ini,
                 Err(err) => {
-                    log::warn!("Ignoring EditorConfig file at '{editor_config_file:?}' because a glob failed to compile: {err}");
+                    log::warn!(
+                        "Ignoring EditorConfig file at '{editor_config_file:?}' because a glob failed to compile: {err}"
+                    );
                     continue;
                 }
             };

@@ -1023,7 +1023,9 @@ mod test {
     #[track_caller]
     fn assert_incomplete_tokens(input: &str, expected: &[&str]) {
         assert!(
-            Tokenizer::new(input, true).collect::<Result<Vec<_>, _>>().is_err(),
+            Tokenizer::new(input, true)
+                .collect::<Result<Vec<_>, _>>()
+                .is_err(),
             "`assert_incomplete_tokens` only accepts input that fails validation, consider using `assert_tokens` instead"
         );
 

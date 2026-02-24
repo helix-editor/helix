@@ -1,10 +1,10 @@
 use std::cell::Cell;
 use std::num::NonZeroUsize;
-use std::sync::atomic::{self, AtomicUsize};
 use std::sync::Arc;
+use std::sync::atomic::{self, AtomicUsize};
 use std::time::Duration;
 
-use helix_event::{request_redraw, send_blocking, AsyncHook};
+use helix_event::{AsyncHook, request_redraw, send_blocking};
 use tokio::sync::mpsc::Sender;
 use tokio::time::Instant;
 

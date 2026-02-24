@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{diagnostic::LanguageServerId, Transaction};
+use crate::{Transaction, diagnostic::LanguageServerId};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct CompletionItem {

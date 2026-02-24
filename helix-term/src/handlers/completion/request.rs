@@ -6,7 +6,7 @@ use arc_swap::ArcSwap;
 use futures_util::Future;
 use helix_core::completion::CompletionProvider;
 use helix_core::syntax::config::LanguageServerFeature;
-use helix_event::{cancelable_future, TaskController, TaskHandle};
+use helix_event::{TaskController, TaskHandle, cancelable_future};
 use helix_lsp::lsp;
 use helix_lsp::lsp::{CompletionContext, CompletionTriggerKind};
 use helix_lsp::util::pos_to_lsp_pos;
@@ -15,14 +15,14 @@ use helix_view::document::{Mode, SavePoint};
 use helix_view::handlers::completion::{CompletionEvent, ResponseContext};
 use helix_view::{Document, DocumentId, Editor, ViewId};
 use tokio::task::JoinSet;
-use tokio::time::{timeout_at, Instant};
+use tokio::time::{Instant, timeout_at};
 
 use crate::compositor::Compositor;
 use crate::config::Config;
 use crate::handlers::completion::item::CompletionResponse;
 use crate::handlers::completion::path::path_completion;
 use crate::handlers::completion::{
-    handle_response, replace_completions, show_completion, CompletionItems,
+    CompletionItems, handle_response, replace_completions, show_completion,
 };
 use crate::job::{dispatch, dispatch_blocking};
 use crate::ui;
@@ -296,7 +296,7 @@ fn request_completions_from_language_server(
     context: lsp::CompletionContext,
     priority: i8,
     savepoint: Arc<SavePoint>,
-) -> impl Future<Output = CompletionResponse> {
+) -> impl Future<Output = CompletionResponse> + use<> {
     let provider = ls.id();
     let offset_encoding = ls.offset_encoding();
     let text = doc.text();

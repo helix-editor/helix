@@ -4,15 +4,14 @@ use helix_stdx::rope::RopeSliceExt;
 use tree_house::TREE_SITTER_MATCH_LIMIT;
 
 use crate::{
+    Position, Rope, RopeSlice, Syntax, Tendril,
     chars::{char_is_line_ending, char_is_whitespace},
     graphemes::{grapheme_width, tab_width_at},
     syntax::{self, config::IndentationHeuristic},
     tree_sitter::{
-        self,
+        self, Capture, Grammar, InactiveQueryCursor, Node, Pattern, Query, QueryMatch, RopeInput,
         query::{InvalidPredicateError, UserPredicate},
-        Capture, Grammar, InactiveQueryCursor, Node, Pattern, Query, QueryMatch, RopeInput,
     },
-    Position, Rope, RopeSlice, Syntax, Tendril,
 };
 
 /// Enum representing indentation style.
@@ -384,7 +383,7 @@ impl IndentQuery {
                     Some("all") => IndentScope::All,
                     Some("tail") => IndentScope::Tail,
                     Some(other) => {
-                        return Err(format!("unknown scope (#set! scope \"{other}\")").into())
+                        return Err(format!("unknown scope (#set! scope \"{other}\")").into());
                     }
                     None => return Err("missing scope value (#set! scope ...)".into()),
                 };
@@ -675,7 +674,9 @@ fn query_indents<'a>(
                 IndentCaptureType::Align(RopeSlice::from(""))
             } else if capture == query.anchor_capture {
                 if anchor.is_some() {
-                    log::error!("Invalid indent query: Encountered more than one @anchor in the same match.")
+                    log::error!(
+                        "Invalid indent query: Encountered more than one @anchor in the same match."
+                    )
                 } else {
                     anchor = Some(&matched_node.node);
                 }

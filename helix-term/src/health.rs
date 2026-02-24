@@ -6,8 +6,8 @@ use std::{
     io::{IsTerminal, Write},
 };
 use termina::{
-    style::{ColorSpec, StyleExt as _, Stylized},
     Terminal as _,
+    style::{ColorSpec, StyleExt as _, Stylized},
 };
 
 #[derive(Copy, Clone)]

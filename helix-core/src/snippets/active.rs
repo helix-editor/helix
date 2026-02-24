@@ -1,13 +1,13 @@
 use std::ops::{Index, IndexMut};
 
 use foldhash::HashSet;
-use helix_stdx::range::{is_exact_subset, is_subset};
 use helix_stdx::Range;
+use helix_stdx::range::{is_exact_subset, is_subset};
 use ropey::Rope;
 
 use crate::movement::Direction;
-use crate::snippets::render::{RenderedSnippet, Tabstop};
 use crate::snippets::TabstopIdx;
+use crate::snippets::render::{RenderedSnippet, Tabstop};
 use crate::{Assoc, ChangeSet, Selection, Transaction};
 
 pub struct ActiveSnippet {

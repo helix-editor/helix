@@ -3,8 +3,8 @@ use std::iter;
 use crate::tree_sitter::Node;
 use ropey::RopeSlice;
 
-use crate::movement::Direction::{self, Backward, Forward};
 use crate::Syntax;
+use crate::movement::Direction::{self, Backward, Forward};
 
 const MAX_PLAINTEXT_SCAN: usize = 10000;
 const MATCH_LIMIT: usize = 16;
@@ -165,11 +165,7 @@ pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Opt
     let bracket = doc.get_char(cursor_pos)?;
     let matching_bracket = {
         let pair = get_pair(bracket);
-        if pair.0 == bracket {
-            pair.1
-        } else {
-            pair.0
-        }
+        if pair.0 == bracket { pair.1 } else { pair.0 }
     };
     // Don't do anything when the cursor is not on top of a bracket.
     if !is_valid_bracket(bracket) {

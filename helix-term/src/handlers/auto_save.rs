@@ -1,7 +1,7 @@
 use std::{
     sync::{
-        atomic::{self, AtomicBool},
         Arc,
+        atomic::{self, AtomicBool},
     },
     time::Duration,
 };
@@ -11,10 +11,10 @@ use arc_swap::access::Access;
 
 use helix_event::{register_hook, send_blocking};
 use helix_view::{
+    Editor,
     document::Mode,
     events::DocumentDidChange,
     handlers::{AutoSaveEvent, Handlers},
-    Editor,
 };
 use tokio::time::Instant;
 

@@ -1,7 +1,7 @@
 use std::mem;
 
 use helix_core::completion::CompletionProvider;
-use helix_lsp::{lsp, LanguageServerId};
+use helix_lsp::{LanguageServerId, lsp};
 use helix_view::handlers::completion::ResponseContext;
 
 pub struct CompletionResponse {

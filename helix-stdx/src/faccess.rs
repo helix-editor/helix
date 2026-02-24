@@ -32,7 +32,7 @@ mod imp {
         #[cfg(target_os = "linux")]
         {
             // If helix has ambient CAP_DAC_OVERRIDE, everything is accessible regardless of mode bits
-            use rustix::thread::{capability_is_in_ambient_set, CapabilitySet};
+            use rustix::thread::{CapabilitySet, capability_is_in_ambient_set};
             if capability_is_in_ambient_set(CapabilitySet::DAC_OVERRIDE).unwrap_or(false) {
                 return Ok(());
             }
@@ -105,22 +105,22 @@ mod imp {
 #[cfg(windows)]
 mod imp {
 
-    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE};
+    use windows_sys::Win32::Foundation::{CloseHandle, ERROR_SUCCESS, HANDLE, LocalFree};
     use windows_sys::Win32::Security::Authorization::{
-        GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
+        GetNamedSecurityInfoW, SE_FILE_OBJECT, SetNamedSecurityInfoW,
     };
     use windows_sys::Win32::Security::{
-        AccessCheck, AclSizeInformation, GetAce, GetAclInformation, GetSidIdentifierAuthority,
-        ImpersonateSelf, IsValidAcl, IsValidSid, MapGenericMask, RevertToSelf,
-        SecurityImpersonation, ACCESS_ALLOWED_CALLBACK_ACE, ACL, ACL_SIZE_INFORMATION,
-        DACL_SECURITY_INFORMATION, GENERIC_MAPPING, GROUP_SECURITY_INFORMATION, INHERITED_ACE,
-        LABEL_SECURITY_INFORMATION, OBJECT_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION,
-        PRIVILEGE_SET, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
-        SID_IDENTIFIER_AUTHORITY, TOKEN_DUPLICATE, TOKEN_QUERY,
+        ACCESS_ALLOWED_CALLBACK_ACE, ACL, ACL_SIZE_INFORMATION, AccessCheck, AclSizeInformation,
+        DACL_SECURITY_INFORMATION, GENERIC_MAPPING, GROUP_SECURITY_INFORMATION, GetAce,
+        GetAclInformation, GetSidIdentifierAuthority, INHERITED_ACE, ImpersonateSelf, IsValidAcl,
+        IsValidSid, LABEL_SECURITY_INFORMATION, MapGenericMask, OBJECT_SECURITY_INFORMATION,
+        OWNER_SECURITY_INFORMATION, PRIVILEGE_SET, PROTECTED_DACL_SECURITY_INFORMATION,
+        PSECURITY_DESCRIPTOR, PSID, RevertToSelf, SID_IDENTIFIER_AUTHORITY, SecurityImpersonation,
+        TOKEN_DUPLICATE, TOKEN_QUERY,
     };
     use windows_sys::Win32::Storage::FileSystem::{
-        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS,
-        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
+        BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE,
+        FILE_GENERIC_READ, FILE_GENERIC_WRITE, GetFileInformationByHandle,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
 
@@ -286,7 +286,7 @@ mod imp {
                             return Err(io::Error::new(
                                 io::ErrorKind::InvalidData,
                                 "File not executable",
-                            ))
+                            ));
                         }
                     }
                 }

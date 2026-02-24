@@ -2,13 +2,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use helix_core::syntax::config::LanguageServerFeature;
-use helix_event::{cancelable_future, register_hook, send_blocking, TaskController, TaskHandle};
+use helix_event::{TaskController, TaskHandle, cancelable_future, register_hook, send_blocking};
 use helix_lsp::lsp::{self, SignatureInformation};
 use helix_stdx::rope::RopeSliceExt;
+use helix_view::Editor;
 use helix_view::document::Mode;
 use helix_view::events::{DocumentDidChange, SelectionDidChange};
 use helix_view::handlers::lsp::{SignatureHelpEvent, SignatureHelpInvoked};
-use helix_view::Editor;
 use tokio::sync::mpsc::Sender;
 use tokio::time::Instant;
 
@@ -16,8 +16,8 @@ use crate::commands::Open;
 use crate::compositor::Compositor;
 use crate::events::{OnModeSwitch, PostInsertChar};
 use crate::handlers::Handlers;
-use crate::ui::lsp::signature_help::{Signature, SignatureHelp};
 use crate::ui::Popup;
+use crate::ui::lsp::signature_help::{Signature, SignatureHelp};
 use crate::{job, ui};
 
 #[derive(Debug, PartialEq, Eq)]

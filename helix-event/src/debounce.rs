@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use futures_executor::block_on;
-use tokio::sync::mpsc::{self, error::TrySendError, Sender};
+use tokio::sync::mpsc::{self, Sender, error::TrySendError};
 use tokio::time::Instant;
 
 /// Async hooks provide a convenient framework for implementing (debounced)

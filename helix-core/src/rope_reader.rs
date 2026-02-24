@@ -1,7 +1,7 @@
 use std::io;
 
-use ropey::iter::Chunks;
 use ropey::RopeSlice;
+use ropey::iter::Chunks;
 
 pub struct RopeReader<'a> {
     current_chunk: &'a [u8],

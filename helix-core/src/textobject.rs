@@ -2,13 +2,13 @@ use std::fmt::Display;
 
 use ropey::RopeSlice;
 
-use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
+use crate::Range;
+use crate::chars::{CharCategory, categorize_char, char_is_whitespace};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
 use crate::syntax;
-use crate::Range;
-use crate::{surround, Syntax};
+use crate::{Syntax, surround};
 
 fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
     use CharCategory::{Eol, Whitespace};

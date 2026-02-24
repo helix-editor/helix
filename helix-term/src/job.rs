@@ -7,7 +7,7 @@ use crate::compositor::Compositor;
 
 use futures_util::future::{BoxFuture, Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{Receiver, Sender, channel};
 
 pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
 pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
@@ -140,7 +140,7 @@ impl Jobs {
         log::debug!("waiting on jobs...");
         let mut wait_futures = std::mem::take(&mut self.wait_futures);
 
-        while let (Some(job), tail) = wait_futures.into_future().await {
+        while let (Some(job), tail) = StreamExt::into_future(wait_futures).await {
             match job {
                 Ok(callback) => {
                     wait_futures = tail;

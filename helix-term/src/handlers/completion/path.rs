@@ -6,20 +6,20 @@ use std::{
     sync::Arc,
 };
 
-use helix_core::{self as core, completion::CompletionProvider, Selection, Transaction};
+use helix_core::{self as core, Selection, Transaction, completion::CompletionProvider};
 use helix_event::TaskHandle;
 use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
-use helix_view::{document::SavePoint, handlers::completion::ResponseContext, Document};
+use helix_view::{Document, document::SavePoint, handlers::completion::ResponseContext};
 use url::Url;
 
-use crate::handlers::completion::{item::CompletionResponse, CompletionItem, CompletionItems};
+use crate::handlers::completion::{CompletionItem, CompletionItems, item::CompletionResponse};
 
 pub(crate) fn path_completion(
     selection: Selection,
     doc: &Document,
     handle: TaskHandle,
     savepoint: Arc<SavePoint>,
-) -> Option<impl FnOnce() -> CompletionResponse> {
+) -> Option<impl FnOnce() -> CompletionResponse + use<>> {
     if !doc.path_completion_enabled() {
         return None;
     }
