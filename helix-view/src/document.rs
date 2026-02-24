@@ -2264,10 +2264,6 @@ impl Document {
             .and_then(|soft_wrap| soft_wrap.max_indent_retain)
             .or(editor_soft_wrap.max_indent_retain)
             .unwrap_or(40);
-        let wrap_indicator = language_soft_wrap
-            .and_then(|soft_wrap| soft_wrap.wrap_indicator.clone())
-            .or_else(|| config.soft_wrap.wrap_indicator.clone())
-            .unwrap_or_else(|| "↪ ".into());
         let tab_width = self.tab_width() as u16;
         TextFormat {
             soft_wrap: enable_soft_wrap && viewport_width > 10,
@@ -2277,7 +2273,6 @@ impl Document {
             // avoid spinning forever when the window manager
             // sets the size to something tiny
             viewport_width,
-            wrap_indicator: wrap_indicator.into_boxed_str(),
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_highlight("ui.virtual.wrap")),
             soft_wrap_at_text_width,
