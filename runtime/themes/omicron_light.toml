@@ -14,6 +14,8 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 "ui.background" = { bg = "bg" }
 "ui.window" = { bg = "bg_ui" }
 "ui.gutter" = { bg = "bg_ui" }
+"ui.linenr" = "default_weak"
+"ui.linenr.selected" = "default"
 "ui.text" = "default"
 "ui.text.focus" = { bg = "sel" }
 # secondary
@@ -97,7 +99,7 @@ default_weak = "#666"
 ghost = "#999"
 code = "#363"
 code_unsafe = "#300"
-code_bg_unsafe = "#ede"
+code_bg_unsafe = "#edd"
 red = "#800"
 green = "#070"
 yellow = "#770"
