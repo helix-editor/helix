@@ -28,7 +28,7 @@ use tree_house::{
     Error, InjectionLanguageMarker, LanguageConfig as SyntaxConfig, Layer,
 };
 
-use crate::{indent::IndentQuery, tree_sitter, ChangeSet, Language};
+use crate::{auto_pairs::AutoPairsRegistry, indent::IndentQuery, tree_sitter, ChangeSet, Language};
 
 pub use tree_house::{
     highlighter::{Highlight, HighlightEvent},
@@ -231,6 +231,55 @@ impl LanguageData {
             .as_ref()
     }
 
+    /// Determine the bracket context at a position in the document.
+    pub fn bracket_context_at(
+        &self,
+        tree: &Tree,
+        source: RopeSlice,
+        pos_char: usize,
+        _loader: &Loader,
+    ) -> crate::auto_pairs::BracketContext {
+        use crate::auto_pairs::BracketContext;
+
+        let pos_byte = source.char_to_byte(pos_char) as u32;
+
+        let Some(mut node) = tree
+            .root_node()
+            .descendant_for_byte_range(pos_byte, pos_byte)
+        else {
+            return BracketContext::Unknown;
+        };
+
+        // Walk up tree-sitter nodes to detect string/comment/regex context
+        loop {
+            let kind = node.kind();
+
+            if kind.contains("string")
+                || kind.contains("char")
+                || kind == "interpreted_string_literal"
+                || kind == "raw_string_literal"
+            {
+                return BracketContext::String;
+            }
+
+            if kind.contains("comment") {
+                return BracketContext::Comment;
+            }
+
+            if kind == "regex" || kind == "regex_literal" || kind == "regex_pattern" {
+                return BracketContext::Regex;
+            }
+
+            if let Some(parent) = node.parent() {
+                node = parent;
+            } else {
+                break;
+            }
+        }
+
+        BracketContext::Code
+    }
+
     fn reconfigure(&self, scopes: &[String]) {
         if let Some(Some(config)) = self.syntax.get() {
             reconfigure_highlights(config, scopes);
@@ -279,12 +328,20 @@ pub struct Loader {
     languages_glob_matcher: FileTypeGlobMatcher,
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
     scopes: ArcSwap<Vec<String>>,
+    auto_pairs_registry: AutoPairsRegistry,
 }
 
 pub type LoaderError = globset::Error;
 
 impl Loader {
     pub fn new(config: Configuration) -> Result<Self, LoaderError> {
+        Self::new_with_auto_pairs(config, AutoPairsRegistry::new())
+    }
+
+    pub fn new_with_auto_pairs(
+        config: Configuration,
+        auto_pairs_registry: AutoPairsRegistry,
+    ) -> Result<Self, LoaderError> {
         let mut languages = Vec::with_capacity(config.language.len());
         let mut languages_by_extension = HashMap::new();
         let mut languages_by_shebang = HashMap::new();
@@ -293,6 +350,14 @@ impl Loader {
         for mut config in config.language {
             let language = Language(languages.len() as u32);
             config.language = Some(language);
+
+            // Explicit auto-pairs in languages.toml takes precedence over auto-pairs.toml
+            if let Some(ref apc) = config.auto_pair_config {
+                config.bracket_set = apc.into();
+            } else {
+                let bracket_set = auto_pairs_registry.get(&config.language_id).clone();
+                config.bracket_set = Some(bracket_set);
+            }
 
             for file_type in &config.file_types {
                 match file_type {
@@ -318,7 +383,12 @@ impl Loader {
             languages_glob_matcher: FileTypeGlobMatcher::new(file_type_globs)?,
             language_server_configs: config.language_server,
             scopes: ArcSwap::from_pointee(Vec::new()),
+            auto_pairs_registry,
         })
+    }
+
+    pub fn auto_pairs_registry(&self) -> &AutoPairsRegistry {
+        &self.auto_pairs_registry
     }
 
     pub fn languages(&self) -> impl ExactSizeIterator<Item = (Language, &LanguageData)> {
@@ -1387,6 +1457,295 @@ mod test {
             ),
             0,
             source.len(),
+        );
+    }
+
+    #[test]
+    fn test_hook_with_syntax_auto_computes_contexts() {
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        // Rust code with both code and string positions
+        let source = Rope::from_str("let s = \"hello\"; \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let lang_data = LOADER.language(language);
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("(", ")").with_contexts(ContextMask::CODE)
+        ]);
+
+        // Position 17 (space before newline) - CODE context
+        let selection = Selection::single(17, 18);
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '(',
+            &pairs,
+            Some(&syntax),
+            lang_data,
+            &LOADER,
+        );
+
+        assert!(result.is_some());
+        let mut doc = source.clone();
+        result.unwrap().apply(&mut doc);
+        assert_eq!(doc.to_string(), "let s = \"hello\"; ()\n");
+    }
+
+    #[test]
+    fn test_hook_with_syntax_blocks_in_string() {
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        let source = Rope::from_str("let s = \"hello \"; \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let lang_data = LOADER.language(language);
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("(", ")").with_contexts(ContextMask::CODE)
+        ]);
+
+        // Position 14 (space inside string) - STRING context
+        let selection = Selection::single(14, 15);
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '(',
+            &pairs,
+            Some(&syntax),
+            lang_data,
+            &LOADER,
+        );
+
+        assert!(result.is_some());
+        let mut doc = source.clone();
+        result.unwrap().apply(&mut doc);
+        // Should only insert '(' not '()' since we're in a string
+        assert_eq!(doc.to_string(), "let s = \"hello( \"; \n");
+    }
+
+    #[test]
+    fn test_hook_with_syntax_fallback_when_no_tree() {
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        let source = Rope::from_str("test \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let lang_data = LOADER.language(language);
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("(", ")").with_contexts(ContextMask::CODE)
+        ]);
+
+        // No syntax tree - should fall back to CODE context
+        let selection = Selection::single(5, 6);
+        let result = hook_with_syntax(
+            &source, &selection, '(', &pairs, None, // No syntax tree
+            lang_data, &LOADER,
+        );
+
+        assert!(result.is_some());
+        let mut doc = source.clone();
+        result.unwrap().apply(&mut doc);
+        // Should auto-pair since fallback is CODE context
+        assert_eq!(doc.to_string(), "test ()\n");
+    }
+
+    #[test]
+    fn test_hook_with_syntax_multi_cursor_mixed_contexts() {
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::{Range, Selection};
+
+        // "code \"str\" code\n"
+        let source = Rope::from_str("code \"str\" code\n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let lang_data = LOADER.language(language);
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("(", ")").with_contexts(ContextMask::CODE)
+        ]);
+
+        // Two cursors: one in code (pos 4 = space before "), one in string (pos 7 = 't')
+        let selection = Selection::new(smallvec::smallvec![Range::new(4, 5), Range::new(7, 8)], 0);
+
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '(',
+            &pairs,
+            Some(&syntax),
+            lang_data,
+            &LOADER,
+        );
+
+        assert!(result.is_some());
+        let mut doc = source.clone();
+        result.unwrap().apply(&mut doc);
+        // First cursor in CODE gets "()", second in STRING gets only "("
+        assert_eq!(doc.to_string(), "code() \"s(tr\" code\n");
+    }
+
+    #[test]
+    fn test_doc_comment_injection_layer_detection() {
+        // Test that we can detect injection layers in doc comments
+        // Using inner doc comment (//!) like the user's case
+        let source = Rope::from_str("//! Hello world\n//! \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+
+        // Position at end of second line (the empty doc comment line)
+        // "//! Hello world\n//! \n"
+        //  0123456789...   16 17 18 19 20
+        let pos = 20; // After "//! " on second line
+        let pos_byte = source.slice(..).char_to_byte(pos) as u32;
+
+        // Check the layer at this position
+        let layer = syntax.layer_for_byte_range(pos_byte, pos_byte);
+        let layer_data = syntax.layer(layer);
+        let layer_lang = LOADER.language(layer_data.language);
+
+        // The layer should be markdown-rustdoc
+        assert_eq!(layer_lang.config().language_id, "markdown-rustdoc");
+
+        // Check the tree at this position
+        let tree = syntax.tree_for_byte_range(pos_byte, pos_byte);
+        assert_eq!(tree.root_node().kind(), "document");
+
+        // Check context is Code (not Comment)
+        let context = layer_lang.bracket_context_at(&tree, source.slice(..), pos, &LOADER);
+        assert_eq!(context, crate::auto_pairs::BracketContext::Code);
+
+        // Test auto-pair with backtick
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("`", "`").with_contexts(ContextMask::CODE)
+        ]);
+
+        let selection = Selection::single(pos, pos + 1);
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '`',
+            &pairs,
+            Some(&syntax),
+            layer_lang,
+            &LOADER,
+        );
+
+        // Should produce backtick pair
+        assert!(result.is_some());
+        let mut test_doc = source.clone();
+        result.unwrap().apply(&mut test_doc);
+        assert!(test_doc.to_string().contains("``"));
+    }
+
+    #[test]
+    fn test_markdown_autopairs_in_doc_comments() {
+        // Test that markdown auto-pairs (*, _, etc.) work in doc comments
+        let source = Rope::from_str("/// Test \n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+
+        // Position at end of first line after "Test "
+        let pos = 9; // After "/// Test "
+        let pos_byte = source.slice(..).char_to_byte(pos) as u32;
+
+        // Check the layer at this position
+        let layer = syntax.layer_for_byte_range(pos_byte, pos_byte);
+        let layer_data = syntax.layer(layer);
+        let layer_lang = LOADER.language(layer_data.language);
+
+        // The layer should be markdown-rustdoc
+        assert_eq!(layer_lang.config().language_id, "markdown-rustdoc");
+
+        // Check the tree at this position
+        let tree = syntax.tree_for_byte_range(pos_byte, pos_byte);
+
+        // Check context is Code (not Comment)
+        let context = layer_lang.bracket_context_at(&tree, source.slice(..), pos, &LOADER);
+        assert_eq!(context, crate::auto_pairs::BracketContext::Code);
+
+        // Test auto-pair with asterisk
+        use crate::auto_pairs::{hook_with_syntax, BracketPair, BracketSet, ContextMask};
+        use crate::Selection;
+
+        let pairs = BracketSet::new(vec![
+            BracketPair::new("*", "*").with_contexts(ContextMask::CODE)
+        ]);
+
+        let selection = Selection::single(pos, pos + 1);
+        let result = hook_with_syntax(
+            &source,
+            &selection,
+            '*',
+            &pairs,
+            Some(&syntax),
+            layer_lang,
+            &LOADER,
+        );
+
+        // Should produce asterisk pair
+        assert!(
+            result.is_some(),
+            "Expected * to autopair in doc comment, but it didn't"
+        );
+        let mut test_doc = source.clone();
+        result.unwrap().apply(&mut test_doc);
+        assert!(
+            test_doc.to_string().contains("**"),
+            "Expected ** in doc, got: {}",
+            test_doc
+        );
+    }
+
+    #[test]
+    fn test_markdown_rustdoc_with_full_auto_pairs_registry() {
+        // Test with the full auto-pairs.toml registry to verify * pair is available
+        let registry =
+            crate::config::auto_pairs_registry().expect("Failed to load auto-pairs.toml");
+
+        // Check that markdown-rustdoc is in the registry
+        assert!(
+            registry.has_language("markdown-rustdoc"),
+            "markdown-rustdoc should be in registry"
+        );
+
+        // Get the bracket set for markdown-rustdoc
+        let bracket_set = registry.get("markdown-rustdoc");
+
+        // Verify it has the asterisk pair
+        let has_asterisk = bracket_set
+            .pairs()
+            .iter()
+            .any(|p| p.open == "*" && p.close == "*");
+        assert!(
+            has_asterisk,
+            "markdown-rustdoc should have * pair in auto-pairs.toml"
+        );
+
+        // Verify it has underscore pair
+        let has_underscore = bracket_set
+            .pairs()
+            .iter()
+            .any(|p| p.open == "_" && p.close == "_");
+        assert!(
+            has_underscore,
+            "markdown-rustdoc should have _ pair in auto-pairs.toml"
+        );
+
+        // Verify it has triple backtick pair
+        let has_triple_backtick = bracket_set
+            .pairs()
+            .iter()
+            .any(|p| p.open == "```" && p.close == "```");
+        assert!(
+            has_triple_backtick,
+            "markdown-rustdoc should have ``` pair in auto-pairs.toml"
         );
     }
 }
