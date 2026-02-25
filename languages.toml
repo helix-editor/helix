@@ -5235,6 +5235,28 @@ name = "scfg"
 source = { git = "https://github.com/rockorager/tree-sitter-scfg", rev = "d850fd470445d73de318a21d734d1e09e29b773c" }
 
 [[language]]
+name = "scdoc"
+scope = "text.scdoc"
+injection-regex = "scdoc"
+file-types = [
+  { glob = "*.1.scd" },
+  { glob = "*.2.scd" },
+  { glob = "*.3.scd" },
+  { glob = "*.4.scd" },
+  { glob = "*.5.scd" },
+  { glob = "*.6.scd" },
+  { glob = "*.7.scd" },
+  { glob = "*.8.scd" },
+]
+comment-token = "; "
+indent = { tab-width = 4, unit = "\t" }
+text-width = 80
+
+[[grammar]]
+name = "scdoc"
+source = { git = "https://github.com/EricGrill/tree-sitter-scdoc", rev = "51f6f0ab3bac372e95994d0e87bd73c0f3b7e486" }
+
+[[language]]
 name = "ripple"
 scope = "source.ripple"
 file-types = [ "ripple" ]
