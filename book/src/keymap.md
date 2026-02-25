@@ -302,7 +302,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                            |
 | `a`     | Apply code action (**LSP**)                                             | `code_action`                              |
 | `h`     | Select symbol references (**LSP**)                                      | `select_references_to_symbol_under_cursor` |
-| `'`     | Open last fuzzy picker                                                  | `last_picker`                              |
+| `'`     | Open last picker, preserving selected entry                             | `last_picker`                              |
 | `w`     | Enter [window mode](#window-mode)                                       | N/A                                        |
 | `c`     | Comment/uncomment selections                                            | `toggle_comments`                          |
 | `C`     | Block comment/uncomment selections                                      | `toggle_block_comments`                    |
