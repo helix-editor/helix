@@ -364,8 +364,11 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         use tui::widgets::TableState;
 
+        let render_borders = cx.editor.menu_border();
+        let padding = Self::LEFT_PADDING as u16 * !render_borders as u16;
+
         table.render_table(
-            area.clip_left(Self::LEFT_PADDING as u16).clip_right(1),
+            area.clip_left(padding).clip_right(padding),
             surface,
             &mut TableState {
                 offset: scroll,
@@ -373,8 +376,6 @@ impl<T: Item + 'static> Component for Menu<T> {
             },
             false,
         );
-
-        let render_borders = cx.editor.menu_border();
 
         if !render_borders {
             if let Some(cursor) = self.cursor {
@@ -399,7 +400,7 @@ impl<T: Item + 'static> Component for Menu<T> {
 
             let mut cell;
             for i in 0..win_height {
-                cell = &mut surface[(area.right() - 1, area.top() + i as u16)];
+                cell = &mut surface[(area.right() - padding, area.top() + i as u16)];
 
                 let half_block = if render_borders { "▌" } else { "▐" };
 
