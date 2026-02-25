@@ -531,6 +531,7 @@ impl MappableCommand {
         select_prev_sibling, "Select previous sibling the in syntax tree",
         select_all_siblings, "Select all siblings of the current node",
         select_all_children, "Select all children of the current node",
+        expand_selection_around, "Expand selection to parent syntax node, but exclude the selection you started with",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save current selection to jumplist",
@@ -4036,6 +4037,7 @@ fn goto_prev_diag(cx: &mut Context) {
         view.diagnostics_handler
             .immediately_show_diagnostic(doc, view.id);
     };
+
     cx.editor.apply_motion(motion)
 }
 
@@ -5494,6 +5496,10 @@ fn reverse_selection_contents(cx: &mut Context) {
 
 // tree sitter node selection
 
+const EXPAND_KEY: &str = "expand";
+const EXPAND_AROUND_BASE_KEY: &str = "expand_around_base";
+const PARENTS_KEY: &str = "parents";
+
 fn expand_selection(cx: &mut Context) {
     let motion = |editor: &mut Editor| {
         let (view, doc) = current!(editor);
@@ -5501,42 +5507,154 @@ fn expand_selection(cx: &mut Context) {
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
 
-            let current_selection = doc.selection(view.id);
+            let current_selection = doc.selection(view.id).clone();
             let selection = object::expand_selection(syntax, text, current_selection.clone());
 
             // check if selection is different from the last one
-            if *current_selection != selection {
-                // save current selection so it can be restored using shrink_selection
-                view.object_selections.push(current_selection.clone());
+            if current_selection != selection {
+                let prev_selections = doc
+                    .view_data_mut(view.id)
+                    .object_selections
+                    .entry(EXPAND_KEY)
+                    .or_default();
 
-                doc.set_selection(view.id, selection);
+                // save current selection so it can be restored using shrink_selection
+                prev_selections.push(current_selection);
+                doc.set_selection_clear(view.id, selection, false);
             }
         }
     };
+
     cx.editor.apply_motion(motion);
 }
 
 fn shrink_selection(cx: &mut Context) {
     let motion = |editor: &mut Editor| {
         let (view, doc) = current!(editor);
-        let current_selection = doc.selection(view.id);
+        let current_selection = doc.selection(view.id).clone();
+        let prev_expansions = doc
+            .view_data_mut(view.id)
+            .object_selections
+            .entry(EXPAND_KEY)
+            .or_default();
+
         // try to restore previous selection
-        if let Some(prev_selection) = view.object_selections.pop() {
-            if current_selection.contains(&prev_selection) {
-                doc.set_selection(view.id, prev_selection);
-                return;
-            } else {
-                // clear existing selection as they can't be shrunk to anyway
-                view.object_selections.clear();
+        if let Some(prev_selection) = prev_expansions.pop() {
+            // allow shrinking the selection only if current selection contains the previous object selection
+            doc.set_selection_clear(view.id, prev_selection, false);
+
+            // Do a corresponding pop of the parents from `expand_selection_around`
+            doc.view_data_mut(view.id)
+                .object_selections
+                .entry(PARENTS_KEY)
+                .and_modify(|parents| {
+                    parents.pop();
+                });
+
+            // need to do this again because borrowing
+            let prev_expansions = doc
+                .view_data_mut(view.id)
+                .object_selections
+                .entry(EXPAND_KEY)
+                .or_default();
+
+            // if we've emptied out the previous expansions, then clear out the
+            // base history as well so it doesn't get used again erroneously
+            if prev_expansions.is_empty() {
+                doc.view_data_mut(view.id)
+                    .object_selections
+                    .entry(EXPAND_AROUND_BASE_KEY)
+                    .and_modify(|base| {
+                        base.clear();
+                    });
             }
+
+            return;
         }
+
         // if not previous selection, shrink to first child
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let selection = object::shrink_selection(syntax, text, current_selection.clone());
-            doc.set_selection(view.id, selection);
+            let selection = object::shrink_selection(syntax, text, current_selection);
+            doc.set_selection_clear(view.id, selection, false);
         }
     };
+
+    cx.editor.apply_motion(motion);
+}
+
+fn expand_selection_around(cx: &mut Context) {
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        if doc.syntax().is_some() {
+            // [NOTE] we do this pop and push dance because if we don't take
+            //        ownership of the objects, then we require multiple
+            //        mutable references to the view's object selections
+            let mut parents_selection = doc
+                .view_data_mut(view.id)
+                .object_selections
+                .entry(PARENTS_KEY)
+                .or_default()
+                .pop();
+
+            let mut base_selection = doc
+                .view_data_mut(view.id)
+                .object_selections
+                .entry(EXPAND_AROUND_BASE_KEY)
+                .or_default()
+                .pop();
+
+            let current_selection = doc.selection(view.id).clone();
+
+            if parents_selection.is_none() || base_selection.is_none() {
+                parents_selection = Some(current_selection.clone());
+                base_selection = Some(current_selection.clone());
+            }
+
+            let text = doc.text().slice(..);
+            let syntax = doc.syntax().unwrap();
+
+            let outside_selection =
+                object::expand_selection(syntax, text, parents_selection.clone().unwrap());
+
+            let target_selection = match outside_selection
+                .clone()
+                .without(&base_selection.clone().unwrap())
+            {
+                Some(sel) => sel,
+                None => outside_selection.clone(),
+            };
+
+            // check if selection is different from the last one
+            if target_selection != current_selection {
+                // save current selection so it can be restored using shrink_selection
+                doc.view_data_mut(view.id)
+                    .object_selections
+                    .entry(EXPAND_KEY)
+                    .or_default()
+                    .push(current_selection);
+
+                doc.set_selection_clear(view.id, target_selection, false);
+            }
+
+            let parents = doc
+                .view_data_mut(view.id)
+                .object_selections
+                .entry(PARENTS_KEY)
+                .or_default();
+
+            parents.push(parents_selection.unwrap());
+            parents.push(outside_selection);
+
+            doc.view_data_mut(view.id)
+                .object_selections
+                .entry(EXPAND_AROUND_BASE_KEY)
+                .or_default()
+                .push(base_selection.unwrap());
+        }
+    };
+
     cx.editor.apply_motion(motion);
 }
 
@@ -5554,6 +5672,7 @@ where
             doc.set_selection(view.id, selection);
         }
     };
+
     cx.editor.apply_motion(motion);
 }
 
@@ -5654,8 +5773,6 @@ fn match_brackets(cx: &mut Context) {
 
     doc.set_selection(view.id, selection);
 }
-
-//
 
 fn jump_forward(cx: &mut Context) {
     cx.editor.jump_forward(cx.editor.tree.focus, cx.count());
