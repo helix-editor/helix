@@ -2110,22 +2110,21 @@ fn set_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
     let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
 
-    let mut config = serde_json::json!(&cx.editor.config().deref());
+    let config = serde_json::json!(&cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+    let value = config.pointer(&pointer).ok_or_else(key_error)?;
 
-    *value = if value.is_string() {
+    let value = if value.is_string() {
         // JSON strings require quotes, so we can't .parse() directly
         Value::String(arg.to_string())
     } else {
         arg.parse().map_err(field_error)?
     };
-    let config = serde_json::from_value(config).map_err(field_error)?;
 
     cx.editor
         .config_events
         .0
-        .send(ConfigEvent::Update(config))?;
+        .send(ConfigEvent::Update(pointer, value))?;
     Ok(())
 }
 
@@ -2145,11 +2144,11 @@ fn toggle_option(
 
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
 
-    let mut config = serde_json::json!(&cx.editor.config().deref());
+    let config = serde_json::json!(&cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+    let value = config.pointer(&pointer).ok_or_else(key_error)?;
 
-    *value = match value {
+    let value = match value {
         Value::Bool(ref value) => {
             ensure!(
                 args.len() == 1,
@@ -2199,7 +2198,7 @@ fn toggle_option(
 
             if let Some(wrongly_typed_value) = values
                 .iter()
-                .find(|v| std::mem::discriminant(*v) != std::mem::discriminant(&*value))
+                .find(|v| std::mem::discriminant(*v) != std::mem::discriminant(value))
             {
                 bail!("value '{wrongly_typed_value}' has a different type than '{value}'");
             }
@@ -2214,13 +2213,11 @@ fn toggle_option(
     };
 
     let status = format!("'{key}' is now set to {value}");
-    let config = serde_json::from_value(config)
-        .map_err(|err| anyhow::anyhow!("Failed to parse config: {err}"))?;
 
     cx.editor
         .config_events
         .0
-        .send(ConfigEvent::Update(config))?;
+        .send(ConfigEvent::Update(pointer, value))?;
     cx.editor.set_status(status);
     Ok(())
 }

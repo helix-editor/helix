@@ -378,6 +378,27 @@ impl Application {
         }
     }
 
+    fn update_config(
+        &mut self,
+        pointer: String,
+        new_value: serde_json::Value,
+    ) -> anyhow::Result<()> {
+        let mut app_config = (*self.config.load().clone()).clone();
+        let mut editor_config = serde_json::json!(app_config.editor);
+
+        let old_value = editor_config
+            .pointer_mut(&pointer)
+            .ok_or_else(|| anyhow::anyhow!("Unknown key `{}`", pointer))?;
+        *old_value = new_value;
+
+        app_config.editor = serde_json::from_value(editor_config)
+            .map_err(|_| anyhow::anyhow!("Could not parse field"))?;
+
+        self.terminal.reconfigure((&app_config.editor).into())?;
+        self.config.store(Arc::new(app_config));
+        Ok(())
+    }
+
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
         let old_editor_config = self.editor.config();
 
@@ -385,15 +406,13 @@ impl Application {
             ConfigEvent::Refresh => self.refresh_config(),
 
             // Since only the Application can make changes to Editor's config,
-            // the Editor must send up a new copy of a modified config so that
-            // the Application can apply it.
-            ConfigEvent::Update(editor_config) => {
-                let mut app_config = (*self.config.load().clone()).clone();
-                app_config.editor = *editor_config;
-                if let Err(err) = self.terminal.reconfigure((&app_config.editor).into()) {
+            // the Editor must send an update request so that the Application
+            // can apply it. Each update request includes a path to the field
+            // that should be updated and the new value for that field.
+            ConfigEvent::Update(pointer, new_value) => {
+                if let Err(err) = self.update_config(pointer, new_value) {
                     self.editor.set_error(err.to_string());
                 };
-                self.config.store(Arc::new(app_config));
             }
         }
 
