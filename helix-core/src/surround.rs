@@ -196,8 +196,8 @@ pub fn find_nth_pairs_pos(
                 .ok_or(Error::CursorOnAmbiguousPair)?
         } else {
             (
-                search::find_nth_prev(text, open, pos, n),
-                search::find_nth_next(text, close, pos, n),
+                search::find_nth_char(n, text, open, pos, Direction::Backward),
+                search::find_nth_char(n, text, close, pos, Direction::Forward),
             )
         }
     } else {
