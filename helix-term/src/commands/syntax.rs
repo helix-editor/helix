@@ -232,7 +232,8 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks))
         .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
-        .add_custom_ignore_filename(".helix/ignore");
+        .add_custom_ignore_filename(".helix/ignore")
+        .add_custom_ignore_filename(".config/helix/ignore");
 
     let mut regex_matcher_builder = RegexMatcherBuilder::new();
     regex_matcher_builder.case_smart(config.search.smart_case);
