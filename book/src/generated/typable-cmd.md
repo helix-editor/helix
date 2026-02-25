@@ -73,6 +73,7 @@
 | `:toggle-option`, `:toggle` | Toggle a config option at runtime.<br>For example to toggle smart case search, use `:toggle search.smart-case`. |
 | `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
+| `:index` | Inserts indexes into selections. |
 | `:reflow` | Hard-wrap the current selection of lines to a given width. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
