@@ -135,10 +135,24 @@ impl<'a> DecorationManager<'a> {
         renderer: &mut TextRenderer,
         pos: LinePos,
         line_width: usize,
+        indent_level: usize,
     ) {
         let mut virt_off = Position::new(1, line_width); // start at 1 so the line is never overwritten
         for (decoration, _) in &mut self.decorations {
             virt_off += decoration.render_virt_lines(renderer, pos, virt_off);
+        }
+
+        for row_offset in 1..virt_off.row {
+            let virtual_row = pos.visual_line + row_offset as u16;
+            renderer.draw_indent_guides(indent_level, virtual_row);
+            let virtual_pos = LinePos {
+                first_visual_line: false,
+                doc_line: pos.doc_line,
+                visual_line: virtual_row,
+            };
+            for (decoration, _) in &mut self.decorations {
+                decoration.decorate_line(renderer, virtual_pos);
+            }
         }
     }
 }
