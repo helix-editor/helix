@@ -163,7 +163,7 @@ fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let mut syn_loader_conf = match user_lang_config() {
+    let mut syn_loader_conf = match user_lang_config(false) {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -283,7 +283,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let syn_loader_conf = match user_lang_config() {
+    let syn_loader_conf = match user_lang_config(false) {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
