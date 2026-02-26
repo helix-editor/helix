@@ -566,6 +566,10 @@ impl MappableCommand {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
+        select_next_word, "Select next whole word",
+        select_next_long_word, "Select next whole long word",
+        select_prev_word, "Select previous whole word",
+        select_prev_long_word, "Select previous whole long word",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
         goto_next_class, "Goto next type definition",
@@ -6005,76 +6009,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
         if let Some(ch) = event.char() {
-            let textobject = move |editor: &mut Editor| {
-                let (view, doc) = current!(editor);
-                let loader = editor.syn_loader.load();
-                let text = doc.text().slice(..);
-
-                let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
-                    let Some(syntax) = doc.syntax() else {
-                        return range;
-                    };
-                    textobject::textobject_treesitter(
-                        text, range, objtype, obj_name, syntax, &loader, count,
-                    )
-                };
-
-                if ch == 'g' && doc.diff_handle().is_none() {
-                    editor.set_status("Diff is not available in current buffer");
-                    return;
-                }
-
-                let textobject_change = |range: Range| -> Range {
-                    let diff_handle = doc.diff_handle().unwrap();
-                    let diff = diff_handle.load();
-                    let line = range.cursor_line(text);
-                    let hunk_idx = if let Some(hunk_idx) = diff.hunk_at(line as u32, false) {
-                        hunk_idx
-                    } else {
-                        return range;
-                    };
-                    let hunk = diff.nth_hunk(hunk_idx).after;
-
-                    let start = text.line_to_char(hunk.start as usize);
-                    let end = text.line_to_char(hunk.end as usize);
-                    Range::new(start, end).with_direction(range.direction())
-                };
-
-                let selection = doc.selection(view.id).clone().transform(|range| {
-                    match ch {
-                        'w' => textobject::textobject_word(text, range, objtype, count, false),
-                        'W' => textobject::textobject_word(text, range, objtype, count, true),
-                        't' => textobject_treesitter("class", range),
-                        'f' => textobject_treesitter("function", range),
-                        'a' => textobject_treesitter("parameter", range),
-                        'c' => textobject_treesitter("comment", range),
-                        'T' => textobject_treesitter("test", range),
-                        'e' => textobject_treesitter("entry", range),
-                        'x' => textobject_treesitter("xml-element", range),
-                        'p' => textobject::textobject_paragraph(text, range, objtype, count),
-                        'm' => textobject::textobject_pair_surround_closest(
-                            doc.syntax(),
-                            text,
-                            range,
-                            objtype,
-                            count,
-                        ),
-                        'g' => textobject_change(range),
-                        // TODO: cancel new ranges if inconsistent surround matches across lines
-                        ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
-                            doc.syntax(),
-                            text,
-                            range,
-                            objtype,
-                            ch,
-                            count,
-                        ),
-                        _ => range,
-                    }
-                });
-                doc.set_selection(view.id, selection);
-            };
-            cx.editor.apply_motion(textobject);
+            select_textobject_for_char(cx, ch, objtype, count);
         }
     });
 
@@ -6100,6 +6035,133 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     ];
 
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
+}
+
+fn select_textobject_for_char(
+    cx: &mut Context,
+    ch: char,
+    objtype: textobject::TextObject,
+    count: usize,
+) {
+    let textobject = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let loader = editor.syn_loader.load();
+        let text = doc.text().slice(..);
+
+        let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
+            let Some(syntax) = doc.syntax() else {
+                return range;
+            };
+            textobject::textobject_treesitter(
+                text, range, objtype, obj_name, syntax, &loader, count,
+            )
+        };
+
+        if ch == 'g' && doc.diff_handle().is_none() {
+            editor.set_status("Diff is not available in current buffer");
+            return;
+        }
+
+        let textobject_change = |range: Range| -> Range {
+            let diff_handle = doc.diff_handle().unwrap();
+            let diff = diff_handle.load();
+            let line = range.cursor_line(text);
+            let hunk_idx = if let Some(hunk_idx) = diff.hunk_at(line as u32, false) {
+                hunk_idx
+            } else {
+                return range;
+            };
+            let hunk = diff.nth_hunk(hunk_idx).after;
+
+            let start = text.line_to_char(hunk.start as usize);
+            let end = text.line_to_char(hunk.end as usize);
+            Range::new(start, end).with_direction(range.direction())
+        };
+
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            match ch {
+                'w' => textobject::textobject_word(text, range, objtype, count, false),
+                'W' => textobject::textobject_word(text, range, objtype, count, true),
+                't' => textobject_treesitter("class", range),
+                'f' => textobject_treesitter("function", range),
+                'a' => textobject_treesitter("parameter", range),
+                'c' => textobject_treesitter("comment", range),
+                'T' => textobject_treesitter("test", range),
+                'e' => textobject_treesitter("entry", range),
+                'x' => textobject_treesitter("xml-element", range),
+                'p' => textobject::textobject_paragraph(text, range, objtype, count),
+                'm' => textobject::textobject_pair_surround_closest(
+                    doc.syntax(),
+                    text,
+                    range,
+                    objtype,
+                    count,
+                ),
+                'g' => textobject_change(range),
+                // TODO: cancel new ranges if inconsistent surround matches across lines
+                ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
+                    doc.syntax(),
+                    text,
+                    range,
+                    objtype,
+                    ch,
+                    count,
+                ),
+                _ => range,
+            }
+        });
+        doc.set_selection(view.id, selection);
+    };
+    cx.editor.apply_motion(textobject);
+}
+
+fn select_next_word(cx: &mut Context) {
+    let current_selection = get_current_selection(cx);
+    select_textobject_for_char(cx, 'w', textobject::TextObject::Inside, cx.count());
+    let new_selection = get_current_selection(cx);
+    if current_selection.visual_eq(new_selection) {
+        move_next_word_end(cx);
+        select_textobject_for_char(cx, 'w', textobject::TextObject::Inside, cx.count());
+    }
+}
+
+fn select_next_long_word(cx: &mut Context) {
+    let current_selection = get_current_selection(cx);
+    select_textobject_for_char(cx, 'W', textobject::TextObject::Inside, cx.count());
+    let new_selection = get_current_selection(cx);
+    if current_selection.visual_eq(new_selection) {
+        move_next_long_word_end(cx);
+        select_textobject_for_char(cx, 'W', textobject::TextObject::Inside, cx.count());
+    }
+}
+
+fn select_prev_word(cx: &mut Context) {
+    let current_selection = get_current_selection(cx);
+    select_textobject_for_char(cx, 'w', textobject::TextObject::Inside, cx.count());
+    flip_selections(cx);
+    let new_selection = get_current_selection(cx);
+    if current_selection.visual_eq(new_selection) {
+        move_prev_word_start(cx);
+        select_textobject_for_char(cx, 'w', textobject::TextObject::Inside, cx.count());
+        flip_selections(cx);
+    }
+}
+
+fn select_prev_long_word(cx: &mut Context) {
+    let current_selection = get_current_selection(cx);
+    select_textobject_for_char(cx, 'W', textobject::TextObject::Inside, cx.count());
+    flip_selections(cx);
+    let new_selection = get_current_selection(cx);
+    if current_selection.visual_eq(new_selection) {
+        move_prev_long_word_start(cx);
+        select_textobject_for_char(cx, 'W', textobject::TextObject::Inside, cx.count());
+        flip_selections(cx);
+    }
+}
+
+fn get_current_selection(cx: &mut Context) -> Selection {
+    let (view, doc) = current!(cx.editor);
+    doc.selection(view.id).clone()
 }
 
 static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
