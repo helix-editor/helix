@@ -2509,6 +2509,99 @@ fn run_shell_command(
     Ok(())
 }
 
+fn yank_hunk_before(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let reg = match args.first() {
+        Some(s) => {
+            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+            s.chars().next().unwrap()
+        }
+        None => cx.editor.config().default_yank_register,
+    };
+
+    let contents = {
+        let editor = &mut cx.editor;
+        let (view, doc) = current!(editor);
+        let handle = doc
+            .diff_handle()
+            .context("Diff is not available in the current buffer")?;
+
+        let diff = handle.load();
+        let text = doc.text().slice(..);
+        let current_line = doc.selection(view.id).primary().cursor_line(text);
+        let hunk_idx = diff
+            .hunk_at(current_line.try_into().unwrap(), true)
+            .context("No hunk at the current line")?;
+
+        let hunk = diff.nth_hunk(hunk_idx);
+        let diff_base = diff.diff_base();
+        let start = diff_base.line_to_char(hunk.before.start as usize);
+        let end = diff_base.line_to_char(hunk.before.end as usize);
+        diff_base.slice(start..end).chunks().collect()
+    };
+
+    match cx.editor.registers.write(reg, vec![contents]) {
+        Ok(_) => cx
+            .editor
+            .set_status(format!("Yanked hunk to register {reg}")),
+        Err(err) => cx.editor.set_error(err.to_string()),
+    }
+
+    Ok(())
+}
+
+fn show_diff_change(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let editor = &mut cx.editor;
+    let (view, doc) = current!(editor);
+    let handle = doc
+        .diff_handle()
+        .context("Diff is not available in the current buffer")?;
+
+    let diff = handle.load();
+    let text = doc.text().slice(..);
+    let current_line = doc.selection(view.id).primary().cursor_line(text);
+    let hunk_idx = diff
+        .hunk_at(current_line.try_into().unwrap(), true)
+        .context("No hunk at the current line")?;
+
+    let hunk = diff.nth_hunk(hunk_idx);
+    let diff_base = diff.diff_base();
+    let start = diff_base.line_to_char(hunk.before.start as usize);
+    let end = diff_base.line_to_char(hunk.before.end as usize);
+    let tendril: Tendril = diff_base.slice(start..end).chunks().collect();
+    let contents = format!("```\n{}```", tendril);
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let popup = Popup::new("show-diff-change", contents).position(Some(
+                    helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                ));
+                compositor.replace_or_push("show-diff-change", popup);
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn reset_diff_change(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3758,6 +3851,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: run_shell_command,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
+    },
+    TypableCommand {
+        name: "show-diff-change",
+        aliases: &["diffshow", "diffs"],
+        doc: "Show the diff change at the current position.",
+        fun: show_diff_change,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "yank-hunk-before",
+        aliases: &[],
+        doc: "Yank the diff change at the current position.",
+        fun: yank_hunk_before,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "reset-diff-change",
