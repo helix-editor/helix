@@ -3445,7 +3445,18 @@ pub fn command_palette(cx: &mut Context) {
 
             let columns = [
                 ui::PickerColumn::new("name", |item, _| match item {
-                    MappableCommand::Typable { name, .. } => format!(":{name}").into(),
+                    MappableCommand::Typable { name, .. } => {
+                        let aliases = typed::TYPABLE_COMMAND_MAP
+                            .get(name.as_str())
+                            .unwrap()
+                            .aliases
+                            .join(" ");
+                        if !aliases.is_empty() {
+                            format!(":{name} ({aliases})").into()
+                        } else {
+                            format!(":{name}").into()
+                        }
+                    }
                     MappableCommand::Static { name, .. } => (*name).into(),
                     MappableCommand::Macro { .. } => {
                         unreachable!("macros aren't included in the command palette")
