@@ -5328,3 +5328,17 @@ comment-token = "#"
 [[grammar]]
 name = "gnuplot"
 source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
+
+[[language]]
+name = "ptx"
+scope = "source.ptx"
+injection-regex = "ptx"
+file-types = ["ptx"]
+language-servers = []
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "ptx"
+source = { git = "https://codeberg.org/jer-gremlin/tree-sitter-ptx", rev = "3dfa6758d4c15832d051f933101992b9e01d6611" }
