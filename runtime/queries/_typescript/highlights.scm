@@ -118,6 +118,24 @@
   name: (type_identifier) @type.parameter)
 (predefined_type) @type.builtin
 
+; Type definitions
+; ----------------
+
+; Override ecma class patterns: TypeScript uses type_identifier, not identifier
+(class
+  name: (type_identifier) @type.definition)
+(class_declaration
+  name: (type_identifier) @type.definition)
+
+(interface_declaration
+  name: (type_identifier) @type.definition)
+(type_alias_declaration
+  name: (type_identifier) @type.definition)
+(enum_declaration
+  name: (identifier) @type.definition)
+(abstract_class_declaration
+  name: (type_identifier) @type.definition)
+
 ; Type arguments and parameters
 ; -----------------------------
 
