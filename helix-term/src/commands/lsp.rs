@@ -15,7 +15,7 @@ use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
-    text_annotations::InlineAnnotation, Selection, Uri,
+    text_annotations::InlineAnnotation, Rope, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -32,7 +32,9 @@ use crate::{
     ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
-use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
+use std::{
+    cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path, sync::Arc,
+};
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
@@ -1033,7 +1035,20 @@ pub fn signature_help(cx: &mut Context) {
         .trigger_signature_help(SignatureHelpInvoked::Manual, cx.editor)
 }
 
+enum HoverDisplay {
+    Popup,
+    File,
+}
+
 pub fn hover(cx: &mut Context) {
+    hover_impl(cx, HoverDisplay::Popup)
+}
+
+pub fn goto_hover(cx: &mut Context) {
+    hover_impl(cx, HoverDisplay::File)
+}
+
+fn hover_impl(cx: &mut Context, hover_action: HoverDisplay) {
     use ui::lsp::hover::Hover;
 
     let (view, doc) = current!(cx.editor);
@@ -1080,10 +1095,29 @@ pub fn hover(cx: &mut Context) {
                 return;
             }
 
-            // create new popup
-            let contents = Hover::new(hovers, editor.syn_loader.clone());
-            let popup = Popup::new(Hover::ID, contents).auto_close(true);
-            compositor.replace_or_push(Hover::ID, popup);
+            let hover = Hover::new(hovers, editor.syn_loader.clone());
+
+            match hover_action {
+                HoverDisplay::Popup => {
+                    let popup = Popup::new(Hover::ID, hover).auto_close(true);
+                    compositor.replace_or_push(Hover::ID, popup);
+                }
+                HoverDisplay::File => {
+                    editor.new_file_from_document(
+                        Action::Replace,
+                        Document::from(
+                            Rope::from(hover.content_string()),
+                            None,
+                            Arc::clone(&editor.config),
+                            Arc::clone(&editor.syn_loader),
+                        ),
+                    );
+                    let hover_doc = doc_mut!(editor);
+
+                    let _ = hover_doc
+                        .set_language_by_language_id("markdown", &editor.syn_loader.load());
+                }
+            }
         };
         Ok(Callback::EditorCompositor(Box::new(call)))
     });
