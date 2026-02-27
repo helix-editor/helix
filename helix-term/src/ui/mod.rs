@@ -233,6 +233,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .parents(config.file_picker.parents)
         .ignore(config.file_picker.ignore)
         .follow_links(config.file_picker.follow_symlinks)
+        .require_git(config.file_picker.require_git)
         .git_ignore(config.file_picker.git_ignore)
         .git_global(config.file_picker.git_global)
         .git_exclude(config.file_picker.git_exclude)
@@ -642,10 +643,12 @@ pub mod completers {
         };
 
         let end = input.len()..;
+        let require_git = editor.config().file_picker.require_git;
 
         let files = WalkBuilder::new(&dir)
             .hidden(false)
             .follow_links(false) // We're scanning over depth 1
+            .require_git(require_git)
             .git_ignore(git_ignore)
             .max_depth(Some(1))
             .build()
