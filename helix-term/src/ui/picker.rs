@@ -464,24 +464,44 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             return;
         }
 
+        let last = len - 1;
         match direction {
+            // Leave the cursor at the edge before and after looping
             Direction::Forward => {
-                self.cursor = self.cursor.saturating_add(amount) % len;
+                if self.cursor == last {
+                    self.cursor = 0
+                } else {
+                    self.cursor = self.cursor.saturating_add(amount).min(last);
+                }
             }
             Direction::Backward => {
-                self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
+                if self.cursor == 0 {
+                    self.cursor = last
+                } else {
+                    self.cursor = self.cursor.saturating_sub(amount);
+                }
             }
         }
     }
 
-    /// Move the cursor down by exactly one page. After the last page comes the first page.
+    /// Move the cursor up by exactly one page. After the first page comes the last page.
     pub fn page_up(&mut self) {
         self.move_by(self.completion_height as u32, Direction::Backward);
     }
 
-    /// Move the cursor up by exactly one page. After the first page comes the last page.
+    /// Move the cursor down by exactly one page. After the last page comes the first page.
     pub fn page_down(&mut self) {
         self.move_by(self.completion_height as u32, Direction::Forward);
+    }
+
+    /// Move the cursor up by half a page.
+    pub fn half_page_up(&mut self) {
+        self.move_by(self.completion_height as u32 / 2, Direction::Backward);
+    }
+
+    /// Move the cursor down by half a page.
+    pub fn half_page_down(&mut self) {
+        self.move_by(self.completion_height as u32 / 2, Direction::Forward);
     }
 
     /// Move the cursor to the first entry
@@ -1091,11 +1111,17 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             key!(Tab) | key!(Down) | ctrl!('n') => {
                 self.move_by(1, Direction::Forward);
             }
-            key!(PageDown) | ctrl!('d') => {
+            key!(PageDown) | ctrl!('f') => {
                 self.page_down();
             }
-            key!(PageUp) | ctrl!('u') => {
+            key!(PageUp) | ctrl!('b') => {
                 self.page_up();
+            }
+            ctrl!('d') => {
+                self.half_page_down();
+            }
+            ctrl!('u') => {
+                self.half_page_up();
             }
             key!(Home) => {
                 self.to_start();
