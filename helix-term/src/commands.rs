@@ -611,6 +611,14 @@ impl MappableCommand {
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
+        flash_forward, "Jump forward with a flash",
+        extend_flash_forward, "Extend forward with a flash",
+        flash_backward, "Jump backward with a flash",
+        extend_flash_backward, "Extend backward with a flash",
+        flash_forward_till, "Jump forward with a flash",
+        extend_flash_forward_till, "Extend forward with a flash",
+        flash_backward_till, "Jump backward with a flash",
+        extend_flash_backward_till, "Extend backward with a flash",
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
         goto_prev_tabstop, "Goto next snippet placeholder",
@@ -6932,6 +6940,355 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
         }
     }
     jump_to_label(cx, words, behaviour)
+}
+
+struct FlashMatch {
+    range: Range,
+    label: char,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn flash_chunks(editor: &mut Editor, input: &str, forward: bool) -> Option<Vec<FlashMatch>> {
+    // if no search string provided - return early
+    if input.is_empty() {
+        return None;
+    }
+
+    // Calculate the jump candidates: ranges for any visible words with two or
+    // more characters.
+    let alphabet = &editor.config().jump_label_alphabet; // TODO: alternatively default to ('a'..='z').chain('A'..='Z').collect()
+    if alphabet.is_empty() {
+        return None;
+    }
+
+    let jump_label_limit = alphabet.len() * alphabet.len();
+    let mut chunks = Vec::with_capacity(jump_label_limit);
+    let (view, doc) = current_ref!(editor);
+    let text = doc.text().slice(..);
+
+    // This is not necessarily exact if there is virtual text like soft wrap.
+    // It's ok though because the extra jump labels will not be rendered.
+    let primary_selection = doc.selection(view.id).primary();
+
+    if forward {
+        let search_range = (primary_selection.anchor + 1)
+            ..(text.line_to_char(view.estimate_last_doc_line(doc) + 1) - input.len());
+        for pos in search_range {
+            if text.slice(pos..(pos + input.len())).as_str().unwrap_or("") == input {
+                chunks.push(Range {
+                    anchor: pos,
+                    head: pos + input.len(),
+                    old_visual_position: None,
+                });
+            }
+        }
+    } else {
+        let search_range = (text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor))
+            ..(primary_selection.anchor - input.len() + 1))
+            .rev();
+        for pos in search_range {
+            if text.slice(pos..(pos + input.len())).as_str().unwrap_or("") == input {
+                chunks.push(Range {
+                    anchor: pos,
+                    head: pos + input.len(),
+                    old_visual_position: None,
+                });
+            }
+        }
+    }
+
+    let trailing_letters: Vec<char> = chunks
+        .iter()
+        .filter(|w| w.len() >= input.len())
+        .copied()
+        .map(|w| text.char(w.head))
+        .collect();
+
+    let labels: Vec<char> = alphabet
+        .iter()
+        .copied()
+        .filter(|l| !trailing_letters.contains(l))
+        .collect();
+
+    let results: Vec<FlashMatch> = chunks
+        .iter()
+        .zip(labels.iter())
+        .map(|(m, l)| FlashMatch {
+            range: *m,
+            label: *l, // rust nonsence, but arguably right thing? copying a value of **char** instead of **borrowing** it
+        })
+        .collect();
+
+    Some(results).filter(|ws| !ws.is_empty())
+}
+
+// fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
+fn flash_impl_rec(
+    cx: &mut Context,
+    movement: Movement,
+    search_str: &str,
+    possible_chunks: Option<Vec<FlashMatch>>,
+    is_first_call: bool,
+    forward: bool,
+    inclusive: bool,
+) {
+    if !is_first_call && (search_str.is_empty() || possible_chunks.is_none()) {
+        let (view, doc) = current!(cx.editor);
+        let doc_id = doc.id();
+        let view_id = view.id;
+
+        doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+
+        return;
+    }
+
+    let search_str = search_str.to_string();
+
+    // there are _some_ matches; we need to highlight them
+    if !is_first_call && possible_chunks.is_some() {
+        let (view, doc) = current!(cx.editor);
+        let doc_id = doc.id();
+        let view_id = view.id;
+
+        doc.remove_jump_labels(view_id);
+
+        if let Some(ref chunks) = possible_chunks {
+            // Add label for each jump candidate to the View as virtual text.
+            let mut overlays: Vec<_> = chunks
+                .iter()
+                .flat_map(|FlashMatch { range, label }| {
+                    let mut ch1 = Tendril::new();
+                    ch1.push(*label);
+
+                    [Overlay::new(range.from() + search_str.len() - 1, ch1)] // First candidate for 't' handling
+                })
+                .collect();
+
+            overlays.sort_unstable_by_key(|overlay| overlay.char_idx);
+
+            doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+            doc_mut!(cx.editor, &doc_id).set_jump_labels(view.id, overlays);
+        }
+    }
+
+    cx.on_next_key(move |cx, event| {
+        let (view, doc) = current!(cx.editor);
+        let doc_id = doc.id();
+        let view_id = view.id;
+
+        if event.code == KeyCode::Enter {
+            if movement == Movement::Extend {
+                if forward {
+                    if inclusive {
+                        extend_to_line_end_newline(cx);
+                    } else {
+                        extend_to_line_end(cx);
+                    }
+                } else if inclusive {
+                    extend_to_line_start(cx)
+                } else {
+                    extend_to_first_nonwhitespace(cx)
+                }
+            } else if forward {
+                if inclusive {
+                    goto_line_end_newline(cx);
+                } else {
+                    goto_line_end(cx);
+                }
+            } else if inclusive {
+                goto_line_start(cx)
+            } else {
+                goto_first_nonwhitespace(cx)
+            }
+
+            doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+            return;
+        }
+
+        if event.code == KeyCode::Esc {
+            doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+            return;
+        }
+
+        if event.code == KeyCode::Backspace {
+            if !search_str.is_empty() {
+                // recur with one character less
+                let mut new_search_str = search_str.to_string();
+                new_search_str.pop();
+                doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+                let new_chunks = flash_chunks(cx.editor, &new_search_str, forward);
+                flash_impl_rec(
+                    cx,
+                    movement,
+                    &new_search_str,
+                    new_chunks,
+                    false,
+                    forward,
+                    inclusive,
+                );
+            } else {
+                // if string is already empty - cancel flash
+                doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+            }
+
+            return;
+        }
+
+        // empty search_str and possible_chunks case should be handled before this line
+        // this is the first call scenario handling, when there are no matches yet
+        // ys: add input character to the search string and repeat search
+
+        let key_input = event.char().filter(|_| event.modifiers.is_empty()); // ys: apparently ignore some control char presses
+
+        if is_first_call && key_input.is_some() {
+            // ys: apparently ignore some control char presses and move on within the same first call of the function
+            doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+            let new_search_str = format!("{}{}", search_str, key_input.unwrap());
+            let new_chunks = flash_chunks(cx.editor, &new_search_str, forward);
+            flash_impl_rec(
+                cx,
+                movement,
+                &new_search_str,
+                new_chunks,
+                false,
+                forward,
+                inclusive,
+            );
+            return;
+        }
+
+        // used later, prevent borrow checker errors
+        let primary_selection = doc.selection(view.id).primary();
+
+        // check if we've hit a match; allow for search of length 1
+        if !is_first_call && !search_str.is_empty() && key_input.is_some() {
+            //ys: check the case where the input is a label
+            if let Some(ref chunks) = possible_chunks {
+                let key_char = key_input.unwrap();
+
+                let matched_chunk = chunks.iter().find(|w| w.label == key_char);
+
+                // we have a match, jump
+                if let Some(FlashMatch { range, .. }) = matched_chunk {
+                    //ys: handle the case where the input is a label
+                    let range = if movement == Movement::Extend {
+                        if forward {
+                            if inclusive {
+                                Range::new(primary_selection.anchor, range.head)
+                            } else {
+                                Range::new(primary_selection.anchor, range.anchor)
+                            }
+                        } else if inclusive {
+                            Range::new(primary_selection.anchor + 1, range.anchor)
+                        } else {
+                            Range::new(primary_selection.anchor + 1, range.head)
+                        }
+                    } else {
+                        // TODO: check if should move backward?
+                        // range.with_direction(Direction::Forward)
+                        Range::new(range.anchor, range.head)
+                    };
+
+                    doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+                    doc_mut!(cx.editor, &doc_id).set_selection(view_id, range.into());
+                } else {
+                    //ys: input is not a label but additional char to add to search str
+                    let new_search_str = format!("{}{}", search_str, key_input.unwrap());
+                    doc_mut!(cx.editor, &doc_id).remove_jump_labels(view_id);
+                    let new_words = flash_chunks(cx.editor, &new_search_str, forward);
+                    flash_impl_rec(
+                        cx,
+                        movement,
+                        &new_search_str,
+                        new_words,
+                        false,
+                        forward,
+                        inclusive,
+                    );
+                }
+            }
+        }
+    });
+}
+
+fn flash_forward(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    if doc.selection(view.id).ranges().len() > 1 {
+        find_next_char(cx);
+    } else {
+        flash_impl_rec(cx, Movement::Move, "", None, true, true, true);
+    }
+}
+
+fn extend_flash_forward(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    if doc.selection(view.id).ranges().len() > 1 {
+        extend_next_char(cx);
+    } else {
+        flash_impl_rec(cx, Movement::Extend, "", None, true, true, true);
+    }
+}
+
+fn flash_backward(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    if doc.selection(view.id).ranges().len() > 1 {
+        find_prev_char(cx);
+    } else {
+        flash_impl_rec(cx, Movement::Move, "", None, true, false, true);
+    }
+}
+
+fn extend_flash_backward(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    if doc.selection(view.id).ranges().len() > 1 {
+        extend_prev_char(cx);
+    } else {
+        flash_impl_rec(cx, Movement::Extend, "", None, true, false, true);
+    }
+}
+
+fn flash_forward_till(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    if doc.selection(view.id).ranges().len() > 1 {
+        find_till_char(cx);
+    } else {
+        flash_impl_rec(cx, Movement::Move, "", None, true, true, false);
+    }
+}
+
+fn extend_flash_forward_till(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    if doc.selection(view.id).ranges().len() > 1 {
+        extend_till_char(cx);
+    } else {
+        flash_impl_rec(cx, Movement::Extend, "", None, true, true, false);
+    }
+}
+
+fn flash_backward_till(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    if doc.selection(view.id).ranges().len() > 1 {
+        till_prev_char(cx);
+    } else {
+        flash_impl_rec(cx, Movement::Move, "", None, true, false, false);
+    }
+}
+
+fn extend_flash_backward_till(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    if doc.selection(view.id).ranges().len() > 1 {
+        extend_till_prev_char(cx);
+    } else {
+        flash_impl_rec(cx, Movement::Extend, "", None, true, false, false);
+    }
 }
 
 fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
