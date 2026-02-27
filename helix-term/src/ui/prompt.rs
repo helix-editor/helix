@@ -5,6 +5,7 @@ use helix_core::syntax;
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use std::borrow::Borrow;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
@@ -394,7 +395,11 @@ impl Prompt {
     }
 
     pub fn exit_selection(&mut self) {
-        self.selection = None;
+        self.selection = if !self.completion.is_empty() {
+            Some(0)
+        } else {
+            None
+        };
     }
 }
 
@@ -476,7 +481,12 @@ impl Prompt {
             }
         }
 
-        if let Some(doc) = (self.doc_fn)(&self.line) {
+        if let Some(doc) = self
+            .selection
+            .and_then(|i| self.completion.get(i))
+            .map(|(_, span)| span.content.borrow())
+            .and_then(&self.doc_fn)
+        {
             let mut text = ui::Text::new(doc.to_string());
 
             let max_width = BASE_WIDTH * 3;
@@ -670,8 +680,18 @@ impl Component for Prompt {
                 }
             }
             key!(Enter) => {
-                if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
-                    self.recalculate_completion(cx.editor);
+                if let Some(index) = self.selection {
+                    if self.line.ends_with(std::path::MAIN_SEPARATOR) {
+                        self.recalculate_completion(cx.editor);
+                    } else {
+                        // TODO: Save in history?
+                        (self.callback_fn)(
+                            cx,
+                            &self.completion[index].1.content,
+                            PromptEvent::Validate,
+                        );
+                        return close_fn;
+                    }
                 } else {
                     let last_item = self
                         .first_history_completion(cx.editor)
