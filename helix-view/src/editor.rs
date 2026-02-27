@@ -377,6 +377,9 @@ pub struct Config {
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
+    /// Whether to automatically hide rulers when no line in the viewport exceeds the ruler column.
+    /// Defaults to `false`.
+    pub rulers_auto_hide: bool,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
     /// Persistently display open buffers along the top
@@ -1118,6 +1121,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
+            rulers_auto_hide: false,
             whitespace: WhitespaceConfig::default(),
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),

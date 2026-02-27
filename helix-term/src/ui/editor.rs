@@ -245,7 +245,8 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
     ) {
-        let editor_rulers = &editor.config().rulers;
+        let config = editor.config();
+        let editor_rulers = &config.rulers;
         let ruler_theme = theme
             .try_get("ui.virtual.ruler")
             .unwrap_or_else(|| Style::default().bg(Color::Red));
@@ -255,16 +256,47 @@ impl EditorView {
             .and_then(|config| config.rulers.as_ref())
             .unwrap_or(editor_rulers);
 
+        if rulers.is_empty() {
+            return;
+        }
+
         let view_offset = doc.view_offset(view.id);
+
+        let max_line_width = config
+            .rulers_auto_hide
+            .then(|| Self::max_line_width_in_viewport(doc, view));
 
         rulers
             .iter()
+            .filter(|&&ruler| max_line_width.map_or(true, |max| ruler < max))
             // View might be horizontally scrolled, convert from absolute distance
             // from the 1st column to relative distance from left of viewport
             .filter_map(|ruler| ruler.checked_sub(1 + view_offset.horizontal_offset as u16))
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
             .for_each(|area| surface.set_style(area, ruler_theme))
+    }
+
+    /// Calculates the maximum visual line width among all lines in the current
+    /// viewport.
+    #[allow(deprecated)] // visual_coords_at_pos: we intentionally ignore softwrap/decorations for ruler logic
+    fn max_line_width_in_viewport(doc: &Document, view: &View) -> u16 {
+        use helix_core::{line_ending::line_end_char_index, visual_coords_at_pos};
+
+        let text = doc.text().slice(..);
+        let tab_width = doc.tab_width();
+
+        let view_offset = doc.view_offset(view.id);
+        let first_line = text.char_to_line(view_offset.anchor.min(text.len_chars()));
+        let last_line = view.estimate_last_doc_line(doc);
+
+        (first_line..=last_line)
+            .map(|line| {
+                let line_end = line_end_char_index(&text, line);
+                visual_coords_at_pos(text, line_end, tab_width).col as u16
+            })
+            .max()
+            .unwrap_or(0)
     }
 
     fn viewport_byte_range(
