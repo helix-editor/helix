@@ -548,7 +548,7 @@ pub struct LspConfig {
     /// Display docs under signature help popup
     pub display_signature_help_docs: bool,
     /// Display inlay hints
-    pub display_inlay_hints: bool,
+    pub display_inlay_hints: DisplayInlayHints,
     /// Maximum displayed length of inlay hints (excluding the added trailing `…`).
     /// If it's `None`, there's no limit
     pub inlay_hints_length_limit: Option<NonZeroU8>,
@@ -568,12 +568,26 @@ impl Default for LspConfig {
             display_messages: true,
             auto_signature_help: true,
             display_signature_help_docs: true,
-            display_inlay_hints: false,
+            display_inlay_hints: DisplayInlayHints::default(),
             inlay_hints_length_limit: None,
             snippets: true,
             goto_reference_include_declaration: true,
             display_color_swatches: true,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub enum DisplayInlayHints {
+    Off,
+    On,
+    Background,
+}
+
+impl Default for DisplayInlayHints {
+    fn default() -> Self {
+        Self::Off
     }
 }
 
@@ -1707,7 +1721,7 @@ impl Editor {
         // We can't simply check this config when rendering because inlay hints are only parts of
         // the possible annotations, and others could still be active, so we need to selectively
         // drop the inlay hints.
-        if !config.lsp.display_inlay_hints {
+        if config.lsp.display_inlay_hints != DisplayInlayHints::Off {
             for doc in self.documents_mut() {
                 doc.reset_all_inlay_hints();
             }
