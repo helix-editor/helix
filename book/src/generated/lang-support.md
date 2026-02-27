@@ -217,7 +217,7 @@
 | pkl | ✓ |  | ✓ |  |  | `pkl-lsp` |
 | po | ✓ | ✓ |  |  |  |  |
 | pod | ✓ |  |  |  |  |  |
-| ponylang | ✓ | ✓ | ✓ |  |  |  |
+| ponylang | ✓ | ✓ | ✓ |  |  | `pony-lsp` |
 | powershell | ✓ |  |  |  |  |  |
 | prisma | ✓ | ✓ |  |  |  | `prisma-language-server` |
 | prolog | ✓ |  | ✓ |  |  | `swipl` |
