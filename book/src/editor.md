@@ -211,6 +211,7 @@ All git related options are only enabled in a git repository.
 |`git-ignore` | Enables reading `.gitignore` files | `true`
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `true`
+|`git-hide-untracked` | List of pickers where untracked git files should be hidden. Values: `"changed"` (space+g), `"search"` (space+/), `"files"` (space+f) | `[]`
 |`max-depth` | Set with an integer value for maximum depth to recurse | Unset by default
 
 Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.

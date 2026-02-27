@@ -1,6 +1,7 @@
 use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
+use std::collections::HashSet;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
@@ -81,6 +82,34 @@ pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
 
 pub fn for_each_changed_file(cwd: &Path, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
     status(&open_repo(cwd)?.to_thread_local(), f)
+}
+
+/// Returns a set of all tracked file paths (absolute, canonicalized).
+pub fn get_tracked_files(cwd: &Path) -> Result<HashSet<std::path::PathBuf>> {
+    let repo = open_repo(cwd)?.to_thread_local();
+    let work_dir = repo
+        .workdir()
+        .ok_or_else(|| anyhow::anyhow!("working tree not found"))?;
+
+    // Canonicalize work_dir for consistent path comparison
+    let work_dir = work_dir
+        .canonicalize()
+        .unwrap_or_else(|_| work_dir.to_path_buf());
+
+    let index = repo.index_or_empty()?;
+    let mut tracked = HashSet::new();
+
+    for entry in index.entries() {
+        let path = entry.path(&index);
+        if let Ok(path_str) = path.to_str() {
+            let full_path = work_dir.join(path_str);
+            // Canonicalize if the file exists, otherwise use joined path
+            let canonical = full_path.canonicalize().unwrap_or(full_path);
+            tracked.insert(canonical);
+        }
+    }
+
+    Ok(tracked)
 }
 
 fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
