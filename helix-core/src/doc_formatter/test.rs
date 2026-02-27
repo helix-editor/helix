@@ -80,6 +80,10 @@ fn softwrap_indentation() {
         softwrap_text("\t\t\tfoo1 foo2 foo3 foo4 foo5 foo6\n"),
         "      foo1 foo2 \n.foo3 foo4 foo5 \n.foo6 \n "
     );
+    assert_eq!(
+        softwrap_text("\t\tfoo1\n\t\tfoo2\n\t\tfoo3\n"),
+        "    foo1 \n    foo2 \n    foo3 \n "
+    );
 }
 
 #[test]
@@ -108,6 +112,18 @@ fn softwrap_multichar_grapheme() {
         softwrap_text("xxxx xxxx xxx a\u{0301}bc\n"),
         "xxxx xxxx xxx \n.ábc \n "
     )
+}
+
+#[test]
+fn softwrap_punctuation() {
+    assert_eq!(
+        softwrap_text("asdfasdfasdfasd ...\n"),
+        "asdfasdfasdfasd \n.... \n "
+    );
+    assert_eq!(
+        softwrap_text("asdfasdfasdf a(bc)\n"),
+        "asdfasdfasdf a(\n.bc) \n "
+    );
 }
 
 fn softwrap_text_at_text_width(text: &str) -> String {
