@@ -4157,13 +4157,11 @@ pub mod insert {
     }
 
     // The default insert hook: simply insert the character
-    #[allow(clippy::unnecessary_wraps)] // need to use Option<> because of the Hook signature
-    fn insert(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
+    fn insert(doc: &Rope, selection: &Selection, ch: char) -> Transaction {
         let cursors = selection.clone().cursors(doc.slice(..));
         let mut t = Tendril::new();
         t.push(ch);
-        let transaction = Transaction::insert(doc, &cursors, t);
-        Some(transaction)
+        Transaction::insert(doc, &cursors, t)
     }
 
     use helix_core::auto_pairs;
@@ -4180,12 +4178,10 @@ pub mod insert {
         let transaction = auto_pairs
             .as_ref()
             .and_then(|ap| auto_pairs::hook(text, selection, c, ap))
-            .or_else(|| insert(text, selection, c));
+            .unwrap_or_else(|| insert(text, selection, c));
 
         let (view, doc) = current!(cx.editor);
-        if let Some(t) = transaction {
-            doc.apply(&t, view.id);
-        }
+        doc.apply(&transaction, view.id);
 
         helix_event::dispatch(PostInsertChar { c, cx });
     }
@@ -4308,13 +4304,6 @@ pub mod insert {
             let mut chars_deleted = 0;
             let pos = range.cursor(text);
 
-            let prev = if pos == 0 {
-                ' '
-            } else {
-                contents.char(pos - 1)
-            };
-            let curr = contents.get_char(pos).unwrap_or(' ');
-
             let current_line = text.char_to_line(pos);
             let line_start = text.line_to_char(current_line);
 
@@ -4349,8 +4338,19 @@ pub mod insert {
                 // more and place the cursor there
                 let on_auto_pair = doc
                     .auto_pairs(cx.editor, loader, view)
-                    .and_then(|pairs| pairs.get(prev))
-                    .is_some_and(|pair| pair.open == prev && pair.close == curr);
+                    .and_then(|pairs| {
+                        contents
+                            .get_char(pos - 1)
+                            .and_then(|ch| pairs.get(contents, pos - 1, ch))
+                    })
+                    .is_some_and(|pair| {
+                        contents.get_char(pos - 1).is_some_and(|prev| {
+                            let open_match =
+                                pair.is_open_match_extending_with_char(contents, pos - 1, prev);
+                            let close_match = pair.is_close_next_match(contents, pos);
+                            open_match && close_match
+                        })
+                    });
 
                 let local_offs = if let Some(token) = continue_comment_token {
                     new_text.reserve_exact(line_ending.len() + indent.len() + token.len() + 1);
@@ -4488,10 +4488,15 @@ pub mod insert {
                         auto_pairs,
                     ) {
                         (Some(_x), Some(_y), Some(ap))
-                            if range.is_single_grapheme(text)
-                                && ap.get(_x).is_some()
-                                && ap.get(_x).unwrap().open == _x
-                                && ap.get(_x).unwrap().close == _y =>
+                            if range.is_single_grapheme(text) && {
+                                let doc = doc.text();
+                                let _x_pos = pos.saturating_sub(1);
+                                let _y_pos = pos;
+                                let pair = ap.get(doc, _x_pos, _x);
+                                pair.is_some_and(|pair| {
+                                    pair.is_open_match_extending_with_char(doc, _x_pos, _x)
+                                }) && pair.is_some_and(|pair| pair.is_close_next_match(doc, _y_pos))
+                            } =>
                         // delete both autopaired characters
                         {
                             (
