@@ -864,6 +864,158 @@ async fn test_hardlink_write() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_reload_no_force() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("hello#[ |]#")
+        .build()?;
+
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("athere<esc>"), None),
+            (
+                Some(":reload<ret>"),
+                Some(&|app| {
+                    assert!(app.editor.is_err());
+
+                    let doc = app.editor.documents().next().unwrap();
+                    assert!(doc.is_modified());
+                    assert_eq!(doc.text(), &LineFeedHandling::Native.apply("hello there"));
+                }),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    helpers::assert_file_has_content(&mut file, "")?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_reload_force() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("hello#[ |]#")
+        .build()?;
+
+    file.as_file_mut().write_all(b"goodbye!")?;
+
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("athere<esc>"), None),
+            (
+                Some(":reload!<ret>"),
+                Some(&|app| {
+                    assert!(!app.editor.is_err());
+
+                    let doc = app.editor.documents().next().unwrap();
+                    assert!(!doc.is_modified());
+                    assert_eq!(doc.text(), "goodbye!");
+                }),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    helpers::assert_file_has_content(&mut file, "goodbye!")?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_reload_all_no_force() -> anyhow::Result<()> {
+    let file1 = tempfile::NamedTempFile::new()?;
+    let mut file2 = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file1.path(), None)
+        .with_file(file2.path(), None)
+        .with_input_text("#[c|]#hange1")
+        .build()?;
+
+    file2.as_file_mut().write_all(b"change2")?;
+
+    test_key_sequence(
+        &mut app,
+        Some(":reload-all<ret>"),
+        Some(&|app| {
+            assert!(app.editor.is_err());
+
+            let (mut doc1_visited, mut doc2_visited) = (false, false);
+            for doc in app.editor.documents() {
+                if same_file::is_same_file(doc.path().unwrap(), file1.path()).unwrap_or(false) {
+                    assert!(doc.is_modified());
+                    assert_eq!(doc.text(), "change1");
+                    doc1_visited = true;
+                } else if same_file::is_same_file(doc.path().unwrap(), file2.path())
+                    .unwrap_or(false)
+                {
+                    assert!(!doc.is_modified());
+                    assert_eq!(doc.text(), "change2");
+                    doc2_visited = true;
+                }
+            }
+            assert!(doc1_visited);
+            assert!(doc2_visited);
+            assert_eq!(app.editor.documents().count(), 2);
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_reload_all_force() -> anyhow::Result<()> {
+    let file1 = tempfile::NamedTempFile::new()?;
+    let mut file2 = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file1.path(), None)
+        .with_file(file2.path(), None)
+        .with_input_text("#[c|]#hange1")
+        .build()?;
+
+    file2.as_file_mut().write_all(b"change2")?;
+
+    test_key_sequence(
+        &mut app,
+        Some(":reload-all!<ret>"),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+
+            let (mut doc1_visited, mut doc2_visited) = (false, false);
+            for doc in app.editor.documents() {
+                if same_file::is_same_file(doc.path().unwrap(), file1.path()).unwrap_or(false) {
+                    assert!(!doc.is_modified());
+                    assert_eq!(doc.text(), "");
+                    doc1_visited = true;
+                } else if same_file::is_same_file(doc.path().unwrap(), file2.path())
+                    .unwrap_or(false)
+                {
+                    assert!(!doc.is_modified());
+                    assert_eq!(doc.text(), "change2");
+                    doc2_visited = true;
+                }
+            }
+            assert!(doc1_visited);
+            assert!(doc2_visited);
+            assert_eq!(app.editor.documents().count(), 2);
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
