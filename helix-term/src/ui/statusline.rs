@@ -549,8 +549,21 @@ fn render_register<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    if let Some(reg) = context.editor.selected_register {
-        write(context, format!(" reg={} ", reg).into())
+    let nb_values = context
+        .editor
+        .registers
+        .read(
+            context.editor.selected_register.unwrap_or('"'),
+            context.editor,
+        )
+        .map(|values| values.count())
+        .take_if(|count| *count > 1);
+
+    match (context.editor.selected_register, nb_values) {
+        (Some(reg), Some(nb)) => write(context, format!(" {} sels in reg={}", nb, reg).into()),
+        (Some(reg), None) => write(context, format!(" reg={}", reg).into()),
+        (None, Some(nb)) => write(context, format!(" {} sels in reg=\"", nb).into()),
+        _ => (),
     }
 }
 
