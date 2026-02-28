@@ -223,6 +223,7 @@
 | prolog | ✓ |  | ✓ |  |  | `swipl` |
 | properties | ✓ | ✓ |  |  |  |  |
 | protobuf | ✓ | ✓ | ✓ | ✓ |  | `buf`, `pb`, `protols` |
+| proverif | ✓ |  |  |  |  |  |
 | prql | ✓ |  |  |  |  |  |
 | pug | ✓ |  |  |  |  |  |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
