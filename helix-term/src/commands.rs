@@ -3355,6 +3355,7 @@ fn changed_file_picker(cx: &mut Context) {
     let columns = [
         PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
             match change {
+                FileChange::Added { .. } => Span::styled("+ added", data.style_untracked),
                 FileChange::Untracked { .. } => Span::styled("+ untracked", data.style_untracked),
                 FileChange::Modified { .. } => Span::styled("~ modified", data.style_modified),
                 FileChange::Conflict { .. } => Span::styled("x conflict", data.style_conflict),
@@ -3371,6 +3372,7 @@ fn changed_file_picker(cx: &mut Context) {
                     .to_string()
             };
             match change {
+                FileChange::Added { path } => display_path(path),
                 FileChange::Untracked { path } => display_path(path),
                 FileChange::Modified { path } => display_path(path),
                 FileChange::Conflict { path } => display_path(path),
@@ -3407,7 +3409,26 @@ fn changed_file_picker(cx: &mut Context) {
             }
         },
     )
-    .with_preview(|_editor, meta| Some((meta.path().into(), None)));
+    .with_preview(|_editor, meta| Some((meta.path().into(), None)))
+    .with_range(|_editor, doc| {
+        let path = match doc.path() {
+            None => {
+                return None;
+            }
+            Some(path) => path,
+        };
+        let mut range: Option<(usize, usize)> = None;
+        if let Some(diff_handle) = doc.diff_handle() {
+            let diff = diff_handle.load();
+
+            if let Some(n) = diff.next_hunk(0) {
+                let hunk = diff.nth_hunk(n);
+                let hrange = hunk_range(hunk, doc.text().slice(..));
+                range = Some(hrange.line_range(doc.text().slice(..)));
+            }
+        }
+        Some((path.as_path().into(), range))
+    });
     let injector = picker.injector();
 
     cx.editor

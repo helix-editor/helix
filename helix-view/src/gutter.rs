@@ -94,6 +94,9 @@ pub fn diff<'doc>(
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
+    diff_style(doc, theme)
+}
+pub fn diff_style<'doc>(doc: &'doc Document, theme: &Theme) -> GutterFn<'doc> {
     let added = theme.get("diff.plus.gutter");
     let deleted = theme.get("diff.minus.gutter");
     let modified = theme.get("diff.delta.gutter");
