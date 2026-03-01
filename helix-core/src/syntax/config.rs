@@ -359,15 +359,40 @@ enum LanguageServerFeatureConfiguration {
         #[serde(default, skip_serializing_if = "HashSet::is_empty")]
         except_features: HashSet<LanguageServerFeature>,
         name: String,
+        #[serde(default = "default_true", skip_serializing_if = "is_true")]
+        start: bool,
     },
     Simple(String),
 }
 
-#[derive(Debug, Default)]
+fn default_true() -> bool {
+    true
+}
+
+fn is_true(b: &bool) -> bool {
+    *b
+}
+
+#[derive(Debug)]
 pub struct LanguageServerFeatures {
     pub name: String,
     pub only: HashSet<LanguageServerFeature>,
     pub excluded: HashSet<LanguageServerFeature>,
+    /// Whether this server should be started automatically when the file is opened.
+    /// Set to `false` to keep the server stopped by default; use `:lsp-start` to start it on
+    /// demand.
+    pub start: bool,
+}
+
+impl Default for LanguageServerFeatures {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            only: HashSet::new(),
+            excluded: HashSet::new(),
+            start: true,
+        }
+    }
 }
 
 impl LanguageServerFeatures {
@@ -394,10 +419,12 @@ where
                 only_features,
                 except_features,
                 name,
+                start,
             } => LanguageServerFeatures {
                 name,
                 only: only_features,
                 excluded: except_features,
+                start,
             },
         })
         .collect();
@@ -412,13 +439,15 @@ where
 {
     let mut serializer = serializer.serialize_seq(Some(map.len()))?;
     for features in map {
-        let features = if features.only.is_empty() && features.excluded.is_empty() {
+        let features = if features.only.is_empty() && features.excluded.is_empty() && features.start
+        {
             LanguageServerFeatureConfiguration::Simple(features.name.to_owned())
         } else {
             LanguageServerFeatureConfiguration::Features {
                 only_features: features.only.clone(),
                 except_features: features.excluded.clone(),
                 name: features.name.to_owned(),
+                start: features.start,
             }
         };
         serializer.serialize_element(&features)?;
