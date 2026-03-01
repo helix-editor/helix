@@ -21,6 +21,7 @@ use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
+use helix_view::icons::ICONS;
 use helix_view::theme::Style;
 pub use markdown::Markdown;
 pub use menu::Menu;
@@ -32,8 +33,10 @@ pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_view::Editor;
-use tui::text::{Span, Spans};
+use tui::text::{Span, Spans, ToSpan};
+use tui::widgets::Cell;
 
+use std::borrow::Cow;
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
@@ -256,7 +259,14 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         "path",
         |item: &PathBuf, data: &FilePickerData| {
             let path = item.strip_prefix(&data.root).unwrap_or(item);
-            let mut spans = Vec::with_capacity(3);
+            let mut spans = Vec::with_capacity(4);
+
+            let icons = ICONS.load();
+
+            if let Some(icon) = icons.fs().from_path(path) {
+                spans.push(icon.to_span_with(|icon| format!("{icon} ")));
+            }
+
             if let Some(dirs) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
                 spans.extend([
                     Span::styled(dirs.to_string_lossy(), data.directory_style),
@@ -315,10 +325,30 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
 
     let columns = [PickerColumn::new(
         "path",
-        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
-            let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
+        |(path, is_dir): &(PathBuf, bool), (_root, directory_style): &(PathBuf, Style)| {
+            let icons = ICONS.load();
+
+            let name = path.file_name();
+            // If path is `..` then this will be `None` and signifies being the
+            // previous directory, which said another way, is the currently open
+            // directory we are viewing.
+            let is_open = name.is_none() && *is_dir;
+
+            // Path `..` does not have a name, and so will become `..` as a string.
+            let name = name.map_or_else(|| Cow::Borrowed(".."), |dir| dir.to_string_lossy());
+
             if *is_dir {
-                Span::styled(format!("{}/", name), *directory_style).into()
+                match icons.fs().directory(is_open) {
+                    Some(icon) => Span::styled(format!("{icon} {name}/"), *directory_style).into(),
+                    None => Span::styled(format!("{name}/"), *directory_style).into(),
+                }
+            } else if let Some(icon) = icons.fs().from_path(path) {
+                let mut spans = Vec::with_capacity(2);
+
+                spans.push(icon.to_span_with(|icon| format!("{icon} ")));
+                spans.push(Span::raw(name));
+
+                Cell::from(Spans::from(spans))
             } else {
                 name.into()
             }
@@ -343,10 +373,9 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                 });
                 cx.jobs.callback(callback);
             } else if let Err(e) = cx.editor.open(path, action) {
-                let err = if let Some(err) = e.source() {
-                    format!("{}", err)
-                } else {
-                    format!("unable to open \"{}\"", path.display())
+                let err = match e.source() {
+                    Some(err) => format!("{}", err),
+                    None => format!("unable to open \"{}\"", path.display()),
                 };
                 cx.editor.set_error(err);
             }
