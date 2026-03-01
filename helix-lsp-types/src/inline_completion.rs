@@ -55,7 +55,7 @@ pub struct InlineCompletionParams {
     pub context: InlineCompletionContext,
 }
 
-/// Describes how an [`InlineCompletionItemProvider`] was triggered.
+/// Describes how an `InlineCompletionItemProvider` was triggered.
 ///
 /// @since 3.18.0
 #[derive(Eq, PartialEq, Clone, Copy, Deserialize, Serialize)]
@@ -137,7 +137,7 @@ pub struct InlineCompletionItem {
     /// Is used both for the preview and the accept operation.
     pub insert_text: String,
     /// A text that is used to decide if this inline completion should be
-    /// shown. When `falsy` the [`InlineCompletionItem::insertText`] is
+    /// shown. When `falsy` the [`InlineCompletionItem::insert_text`] is
     /// used.
     ///
     /// An inline completion is shown if the text to replace is a prefix of the

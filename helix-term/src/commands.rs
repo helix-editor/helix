@@ -516,6 +516,11 @@ impl MappableCommand {
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
+        inline_completion_accept, "Accept inline completion",
+        inline_completion_dismiss, "Dismiss inline completion",
+        inline_completion_next, "Cycle to next inline completion",
+        inline_completion_prev, "Cycle to previous inline completion",
+        inline_completion_trigger, "Trigger inline completion",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
         toggle_line_comments, "Line comment/uncomment selections",
@@ -5267,6 +5272,54 @@ pub fn completion(cx: &mut Context) {
     cx.editor
         .handlers
         .trigger_completions(cursor, doc.id(), view.id);
+}
+
+pub fn inline_completion_accept(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    if let Some(c) = doc.inline_completions.take_and_clear() {
+        let text = doc.text();
+        let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+        let new_cursor = cursor + c.ghost_text.chars().count();
+        let t = Transaction::change(
+            text,
+            std::iter::once((cursor, c.replace_range.to(), Some(c.ghost_text.into()))),
+        )
+        .with_selection(Selection::point(new_cursor));
+        doc.apply(&t, view.id);
+    }
+}
+
+pub fn inline_completion_dismiss(cx: &mut Context) {
+    if doc_mut!(cx.editor)
+        .inline_completions
+        .take_and_clear()
+        .is_none()
+    {
+        normal_mode(cx);
+    }
+}
+
+pub fn inline_completion_next(cx: &mut Context) {
+    use helix_core::movement::Direction;
+    let doc = doc_mut!(cx.editor);
+    doc.inline_completions.cycle(Direction::Forward);
+    doc.inline_completions
+        .rebuild_overlays(&mut doc.inline_completion_overlays);
+}
+
+pub fn inline_completion_prev(cx: &mut Context) {
+    use helix_core::movement::Direction;
+    let doc = doc_mut!(cx.editor);
+    doc.inline_completions.cycle(Direction::Backward);
+    doc.inline_completions
+        .rebuild_overlays(&mut doc.inline_completion_overlays);
+}
+
+pub fn inline_completion_trigger(_cx: &mut Context) {
+    use helix_lsp::lsp;
+    crate::handlers::inline_completion::trigger_inline_completion(
+        lsp::InlineCompletionTriggerKind::Invoked,
+    );
 }
 
 // comments
