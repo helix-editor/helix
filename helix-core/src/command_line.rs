@@ -766,6 +766,13 @@ impl<'a> Args<'a> {
         }
     }
 
+    pub fn raw(positionals: Vec<Cow<'a, str>>) -> Self {
+        Self {
+            positionals,
+            ..Self::default()
+        }
+    }
+
     /// Reads the next token out of the given parser.
     ///
     /// If the command's signature sets a maximum number of positionals (via `raw_after`) then
@@ -872,7 +879,7 @@ impl<'a> Args<'a> {
 
     /// Performs any validations that must be done after the input args are finished being pushed
     /// with `Self::push`.
-    fn finish(&self) -> Result<(), ParseArgsError<'a>> {
+    pub fn finish(&self) -> Result<(), ParseArgsError<'a>> {
         if !self.validate {
             return Ok(());
         };
@@ -1123,7 +1130,7 @@ mod test {
         assert_incomplete_tokens(r#"echo %{hello {{} world}"#, &["echo", "hello {{} world}"]);
     }
 
-    fn parse_signature<'a>(
+    pub fn parse_signature<'a>(
         input: &'a str,
         signature: Signature,
     ) -> Result<Args<'a>, Box<dyn std::error::Error + 'a>> {

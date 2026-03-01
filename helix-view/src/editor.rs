@@ -4,7 +4,7 @@ use crate::{
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
-    events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost},
+    events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost, DocumentSaved},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -427,7 +427,12 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+
     pub buffer_picker: BufferPickerConfig,
+
+    /// Whether or not to use steel for configuration. Defaults to `true`. If set to `false`,
+    /// the steel engine will not be initialized.
+    pub enable_steel: bool,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -723,6 +728,10 @@ pub enum StatusLineElement {
 pub struct CursorShapeConfig([CursorKind; 3]);
 
 impl CursorShapeConfig {
+    pub fn update(&mut self, mode: Mode, kind: CursorKind) {
+        self.0[mode as usize] = kind;
+    }
+
     pub fn from_mode(&self, mode: Mode) -> CursorKind {
         self.get(mode as usize).copied().unwrap_or_default()
     }
@@ -1146,6 +1155,10 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
+            #[cfg(feature = "steel")]
+            enable_steel: true,
+            #[cfg(not(feature = "steel"))]
+            enable_steel: false,
         }
     }
 }
@@ -1247,6 +1260,16 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    pub editor_clipping: ClippingConfiguration,
+}
+
+#[derive(Default)]
+pub struct ClippingConfiguration {
+    pub top: Option<u16>,
+    pub bottom: Option<u16>,
+    pub left: Option<u16>,
+    pub right: Option<u16>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1265,6 +1288,7 @@ pub enum EditorEvent {
 pub enum ConfigEvent {
     Refresh,
     Update(Box<Config>),
+    Change,
 }
 
 enum ThemeAction {
@@ -1368,6 +1392,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            editor_clipping: ClippingConfiguration::default(),
         }
     }
 
@@ -1738,6 +1763,8 @@ impl Editor {
     pub fn switch(&mut self, id: DocumentId, action: Action) {
         use crate::tree::Layout;
 
+        log::info!("Switching view: {:?}", id);
+
         if !self.documents.contains_key(&id) {
             log::error!("cannot switch to document that does not exist (anymore)");
             return;
@@ -2061,6 +2088,11 @@ impl Editor {
             .map_err(|err| anyhow!("failed to send save event: {}", err))?;
 
         self.write_count += 1;
+
+        dispatch(DocumentSaved {
+            editor: self,
+            doc: doc_id,
+        });
 
         Ok(())
     }

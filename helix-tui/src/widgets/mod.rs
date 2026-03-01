@@ -10,13 +10,13 @@
 //! - [`Paragraph`]
 
 mod block;
-// mod list;
+mod list;
 mod paragraph;
 mod reflow;
 mod table;
 
 pub use self::block::{Block, BorderType};
-// pub use self::list::{List, ListItem, ListState};
+pub use self::list::{List, ListItem, ListState};
 pub use self::paragraph::{Paragraph, Wrap};
 pub use self::table::{Cell, Row, Table, TableState};
 

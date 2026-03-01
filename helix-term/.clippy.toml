@@ -1,0 +1,3 @@
+# the parts of SteelVal, that are internally mutable are either not
+# hashed or not allowed to be in a HashMap.
+ignore-interior-mutability = ["steel::SteelVal"]

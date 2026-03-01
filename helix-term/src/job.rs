@@ -5,12 +5,18 @@ use once_cell::sync::OnceCell;
 
 use crate::compositor::Compositor;
 
+use futures_util::future::LocalBoxFuture;
 use futures_util::future::{BoxFuture, Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
+pub type EditorCompositorJobsCallback =
+    Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut Jobs) + Send>;
 pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
 pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
+
+pub type ThreadLocalEditorCompositorCallback =
+    Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut Jobs)>;
 
 runtime_local! {
     static JOB_QUEUE: OnceCell<Sender<Callback>> = OnceCell::new();
@@ -32,7 +38,15 @@ pub fn dispatch_blocking(job: impl FnOnce(&mut Editor, &mut Compositor) + Send +
     send_blocking(jobs, Callback::EditorCompositor(Box::new(job)))
 }
 
+pub fn dispatch_blocking_jobs(
+    job: impl FnOnce(&mut Editor, &mut Compositor, &mut Jobs) + Send + 'static,
+) {
+    let jobs = JOB_QUEUE.wait();
+    send_blocking(jobs, Callback::EditorCompositorJobs(Box::new(job)))
+}
+
 pub enum Callback {
+    EditorCompositorJobs(EditorCompositorJobsCallback),
     EditorCompositor(EditorCompositorCallback),
     Editor(EditorCallback),
 }
@@ -45,9 +59,13 @@ pub struct Job {
     pub wait: bool,
 }
 
+pub type ThreadLocalJob =
+    LocalBoxFuture<'static, anyhow::Result<Option<ThreadLocalEditorCompositorCallback>>>;
+
 pub struct Jobs {
-    /// jobs that need to complete before we exit.
+    /// jobs the ones that need to complete before we exit.
     pub wait_futures: FuturesUnordered<JobFuture>,
+    pub local_futures: FuturesUnordered<ThreadLocalJob>,
     pub callbacks: Receiver<Callback>,
     pub status_messages: Receiver<StatusMessage>,
 }
@@ -83,6 +101,7 @@ impl Jobs {
         let status_messages = helix_event::status::setup();
         Self {
             wait_futures: FuturesUnordered::new(),
+            local_futures: FuturesUnordered::new(),
             callbacks: rx,
             status_messages,
         }
@@ -99,8 +118,18 @@ impl Jobs {
         self.add(Job::with_callback(f));
     }
 
+    pub fn local_callback<
+        F: Future<Output = anyhow::Result<ThreadLocalEditorCompositorCallback>> + 'static,
+    >(
+        &mut self,
+        f: F,
+    ) {
+        self.local_futures
+            .push(f.map(|r| r.map(Some)).boxed_local());
+    }
+
     pub fn handle_callback(
-        &self,
+        &mut self,
         editor: &mut Editor,
         compositor: &mut Compositor,
         call: anyhow::Result<Option<Callback>>,
@@ -108,11 +137,27 @@ impl Jobs {
         match call {
             Ok(None) => {}
             Ok(Some(call)) => match call {
+                Callback::EditorCompositorJobs(call) => call(editor, compositor, self),
                 Callback::EditorCompositor(call) => call(editor, compositor),
                 Callback::Editor(call) => call(editor),
             },
             Err(e) => {
                 editor.set_error(format!("Async job failed: {}", e));
+            }
+        }
+    }
+
+    pub fn handle_local_callback(
+        &mut self,
+        editor: &mut Editor,
+        compositor: &mut Compositor,
+        call: anyhow::Result<Option<ThreadLocalEditorCompositorCallback>>,
+    ) {
+        match call {
+            Ok(None) => {}
+            Ok(Some(call)) => call(editor, compositor, self),
+            Err(e) => {
+                editor.set_error(format!("Sync job failed: {}", e));
             }
         }
     }
