@@ -27,6 +27,7 @@
 
 | Key | Description | Default |
 |--|--|---------|
+| `title_format` | Format to use for window title. Supports [expansions](./command-line.md#expansions). | None |
 | `scrolloff` | Number of lines of padding around the edge of the screen when scrolling | `5` |
 | `mouse` | Enable mouse mode | `true` |
 | `default-yank-register` | Default register used for yank/paste | `'"'` |

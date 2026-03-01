@@ -234,6 +234,10 @@ where
         self.backend.set_cursor(x, y)
     }
 
+    pub fn set_title(&mut self, title: &str) -> io::Result<()> {
+        self.backend.set_title(title)
+    }
+
     /// Clear the terminal and force a full redraw on the next draw call.
     pub fn clear(&mut self) -> io::Result<()> {
         self.backend.clear()?;

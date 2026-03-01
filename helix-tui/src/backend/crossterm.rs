@@ -308,6 +308,10 @@ where
         execute!(self.buffer, MoveTo(x, y))
     }
 
+    fn set_title(&mut self, title: &str) -> io::Result<()> {
+        execute!(self.buffer, terminal::SetTitle(title))
+    }
+
     fn clear(&mut self) -> io::Result<()> {
         execute!(self.buffer, Clear(ClearType::All))
     }
