@@ -9,7 +9,7 @@
 ; This is only a partial implementation, which covers only
 ; block comments. For line comments (which are more common),
 ; upstream changes to the grammar are required.
-(
+(source_file
   (comment) @injection.content . (comment)* . [
     (package_clause) ; `package`
     (type_declaration) ; `type`
@@ -21,12 +21,12 @@
     ; 	A = 1
     ; 	B = 2
     ; )
-    (const_spec)
+    (var_spec)
     ; const (
     ; 	A = 1
     ; 	B = 2
     ; )
-    (var_spec)
+    (const_spec)
   ]
   (#set! injection.language "markdown"))
 
