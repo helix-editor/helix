@@ -23,6 +23,7 @@
 ;; * 'document-opened
 ;; * 'document-saved
 ;; * 'document-changed
+;; * 'document-closed
 ;;
 ;; Each of these expects a function with a slightly different signature to accept
 ;; the event payload.
@@ -73,8 +74,34 @@
 ;; ## document-changed
 ;;
 ;; Expects a function with two arguments to accept the doc id of the docuoment that was just saved and the old text of the document before the change.
+;; ## document-closed
+;;
+;; Expects a function with one argument to accept the `OnDocClosedEvent`
+;; ### Example:
+;; ```scheme
+;; (register-hook 'document-closed (lambda (closed-event) (log::info! (doc-closed-id closed-event))))
 (define (register-hook event-kind callback-fn)
   (helix.register-hook event-kind callback-fn))
+
+;;@doc
+;; Get the ID of the closed document
+(provide doc-closed-id)
+(define doc-closed-id (helix.doc-closed-id))
+
+;;@doc
+;; Get the language of the closed document
+(provide doc-closed-language)
+(define doc-closed-language (helix.doc-closed-language))
+
+;;@doc
+;; Get the text of the closed document
+(provide doc-closed-text)
+(define doc-closed-text (helix.doc-closed-text))
+
+;;@doc
+;; Get the path of the closed document
+(provide doc-closed-path)
+(define doc-closed-path (helix.doc-closed-path))
 
 (provide editor-focus)
 ;;@doc

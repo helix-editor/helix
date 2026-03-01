@@ -32,7 +32,8 @@ use helix_view::{
         WhitespaceRender, WhitespaceRenderValue,
     },
     events::{
-        DocumentDidChange, DocumentDidOpen, DocumentFocusLost, DocumentSaved, SelectionDidChange,
+        DocumentDidChange, DocumentDidClose, DocumentDidOpen, DocumentFocusLost, DocumentSaved,
+        SelectionDidChange,
     },
     extension::document_id_to_usize,
     graphics::CursorKind,
@@ -1516,6 +1517,14 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
                 ctx.count = ctx.editor.count;
             },
         );
+
+    module
+        .register_fn("doc-closed-id", |info: OnDocClosedEvent| info.id)
+        .register_fn("doc-closed-language", |info: OnDocClosedEvent| {
+            info.language
+        })
+        .register_fn("doc-closed-text", |info: OnDocClosedEvent| info.text)
+        .register_fn("doc-closed-path", |info: OnDocClosedEvent| info.path);
 
     if generate_sources {
         generate_module("editor.scm", &builtin_editor_command_module);
@@ -3259,6 +3268,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
         "document-opened" => register_document_opened(generation, rooted),
         "document-saved" => register_document_saved(generation, rooted),
         "document-changed" => register_document_changed(generation, rooted),
+        "document-closed" => register_document_closed(generation, rooted),
         _ => steelerr!(Generic => "Unable to register hook: Unknown event type: {}", event_kind)
             .into(),
     }
@@ -3326,6 +3336,46 @@ fn register_document_changed(
                     .unwrap(),
             ],
         );
+        job::dispatch_blocking_jobs(callback);
+
+        Ok(())
+    });
+    Ok(SteelVal::Void).into()
+}
+
+#[derive(Clone)]
+struct OnDocClosedEvent {
+    id: DocumentId,
+    language: String,
+    text: SteelRopeSlice,
+    path: String,
+}
+
+impl Custom for OnDocClosedEvent {}
+
+impl OnDocClosedEvent {
+    fn new(d: &helix_view::Document) -> Self {
+        Self {
+            id: d.id(),
+            language: d.language_name().unwrap_or("").to_string(),
+            text: SteelRopeSlice::new(d.text().clone()),
+            path: d
+                .path()
+                .map(|e| e.to_str().unwrap_or(""))
+                .unwrap_or("")
+                .to_string(),
+        }
+    }
+}
+
+fn register_document_closed(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    register_hook!(move |event: &mut DocumentDidClose<'_>| {
+        let cloned_func = rooted.value().clone();
+        let info = OnDocClosedEvent::new(&event.doc);
+        let callback = construct_callback(generation, cloned_func, [info.into_steelval().unwrap()]);
         job::dispatch_blocking_jobs(callback);
 
         Ok(())
