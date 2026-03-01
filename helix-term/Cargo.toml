@@ -93,7 +93,7 @@ serde = { version = "1.0", features = ["derive"] }
 
 # plugin support
 steel-core = { workspace = true, optional = true }
-steel-doc = { git = "https://github.com/mattwparas/steel.git", rev = "f911d37fe13f0d7de0785e8139f85e84af5cadc2", optional = true }
+steel-doc = { git = "https://github.com/mattwparas/steel.git", optional = true }
 
 globset = "0.4.16"
 dashmap = "6.0"
