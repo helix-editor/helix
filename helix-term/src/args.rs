@@ -17,6 +17,7 @@ pub struct Args {
     pub verbosity: u64,
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
+    pub default: bool,
     pub files: IndexMap<PathBuf, Vec<Position>>,
     pub working_directory: Option<PathBuf>,
 }
@@ -70,6 +71,7 @@ impl Args {
                     Some(path) => args.config_file = Some(path.into()),
                     None => anyhow::bail!("--config must specify a path to read"),
                 },
+                "-d" | "--default" => args.default = true,
                 "--log" => match argv.next().as_deref() {
                     Some(path) => args.log_file = Some(path.into()),
                     None => anyhow::bail!("--log must specify a path to write"),
