@@ -88,7 +88,7 @@ fn find_pair(
             if let (Some((start_pos, open)), Some((end_pos, close))) =
                 (as_char(doc, &open), as_char(doc, &close))
             {
-                if PAIRS.contains(&(open, close)) {
+                if PAIRS.contains(&(open, close)) && start_pos <= pos_ && pos_ <= end_pos {
                     if end_pos == pos_ {
                         return Some(start_pos);
                     }
