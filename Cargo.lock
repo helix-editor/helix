@@ -1578,6 +1578,7 @@ dependencies = [
 name = "helix-tui"
 version = "25.7.1"
 dependencies = [
+ "arrayvec",
  "bitflags",
  "cassowary",
  "crossterm",

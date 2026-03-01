@@ -56,6 +56,7 @@ termina = "0.1"
 sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
+arrayvec = "0.7"
 arc-swap = "1.8"
 
 [workspace.package]
