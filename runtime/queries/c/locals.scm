@@ -1,5 +1,6 @@
 ;; Scopes
 (function_definition) @local.scope
+(declaration) @local.scope
 
 ;; Definitions
 
