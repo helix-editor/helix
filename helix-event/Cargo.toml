@@ -23,7 +23,7 @@ once_cell = "1.21"
 
 anyhow = "1"
 log = "0.4"
-futures-executor = "0.3.31"
+futures-executor = "0.3.32"
 
 [features]
 integration_test = []
