@@ -3706,6 +3706,18 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
         let continue_comment_token = continue_comment_tokens
             .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num));
 
+        // Check if this is an empty comment line (just the token with optional whitespace).
+        // If so, we clear the comment token instead of continuing it.
+        let is_empty_comment = continue_comment_token
+            .is_some_and(|token| comment::is_empty_comment_line(text, token, curr_line_num));
+
+        // If empty comment, don't continue the comment
+        let continue_comment_token = if is_empty_comment {
+            None
+        } else {
+            continue_comment_token
+        };
+
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
         let (above_next_line_end_index, above_next_line_end_width) = if next_new_line_num == 0 {
@@ -3755,30 +3767,95 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
         let text = text.repeat(count);
 
-        // calculate new selection ranges
-        let pos = offs + above_next_line_end_index + above_next_line_end_width;
-        let comment_len = continue_comment_token
-            .map(|token| token.len() + 1) // `+ 1` for the extra space added
-            .unwrap_or_default();
-        for i in 0..count {
-            // pos                     -> beginning of reference line,
-            // + (i * (line_ending_len + indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
-            // + indent_len + comment_len ->        -> indent for i'th line
-            ranges.push(Range::point(
-                pos + (i * (doc.line_ending.len_chars() + indent_len + comment_len))
-                    + indent_len
-                    + comment_len,
-            ));
+        // calculate new selection ranges and return the change
+        if is_empty_comment {
+            // For empty comment lines, delete the token from the current line
+            // and insert just the newline with indentation
+            let curr_line_start = contents.line_to_char(curr_line_num);
+            let indent_end_pos = curr_line_start + line.first_non_whitespace_char().unwrap_or(0);
+            let curr_line_end = line_end_char_index(&contents.slice(..), curr_line_num);
+
+            if open == Open::Above {
+                // For O (open above), we need to insert a new line above while clearing
+                // the token from the current line. We expand the replacement range to
+                // include the end of the previous line (or start of file).
+                let (replace_from, replacement_text) = if curr_line_num == 0 {
+                    // First line: replace from start of file
+                    // Replace "    - " with "    \n    " (indent + newline + indent)
+                    let mut replacement = String::with_capacity(indent_len * 2 + doc.line_ending.len_chars());
+                    replacement.push_str(&indent);
+                    replacement.push_str(doc.line_ending.as_str());
+                    replacement.push_str(&indent);
+                    (0, replacement)
+                } else {
+                    // Not first line: replace from end of previous line
+                    // Replace "\n    - " with "\n    \n    " (newline + indent + newline + indent)
+                    let mut replacement = String::with_capacity(indent_len * 2 + doc.line_ending.len_chars() * 2);
+                    replacement.push_str(doc.line_ending.as_str());
+                    replacement.push_str(&indent);
+                    replacement.push_str(doc.line_ending.as_str());
+                    replacement.push_str(&indent);
+                    (above_next_line_end_index, replacement)
+                };
+
+                let replacement_text = replacement_text.repeat(count);
+                let chars_deleted = curr_line_end - replace_from;
+
+                // Cursor should be on the new line (which is above the cleared line)
+                for i in 0..count {
+                    let cursor_pos = if curr_line_num == 0 {
+                        // On first line, cursor at end of first indent
+                        offs + indent_len + i * (doc.line_ending.len_chars() + indent_len)
+                    } else {
+                        // Not first line, cursor after first newline + indent
+                        offs + replace_from + doc.line_ending.len_chars() + indent_len
+                            + i * (doc.line_ending.len_chars() + indent_len)
+                    };
+                    ranges.push(Range::point(cursor_pos));
+                }
+
+                offs += replacement_text.chars().count() - chars_deleted;
+                (replace_from, curr_line_end, Some(replacement_text.into()))
+            } else {
+                // For o (open below), replace the token with newline + indent
+                let chars_deleted = curr_line_end - indent_end_pos;
+
+                // Calculate cursor position on the new line
+                for i in 0..count {
+                    ranges.push(Range::point(
+                        offs + indent_end_pos
+                            + (i + 1) * (doc.line_ending.len_chars() + indent_len),
+                    ));
+                }
+
+                offs += text.chars().count() - chars_deleted;
+                (indent_end_pos, curr_line_end, Some(text.into()))
+            }
+        } else {
+            let pos = offs + above_next_line_end_index + above_next_line_end_width;
+            let comment_len = continue_comment_token
+                .map(|token| token.len() + 1) // `+ 1` for the extra space added
+                .unwrap_or_default();
+            for i in 0..count {
+                // pos                     -> beginning of reference line,
+                // + (i * (line_ending_len + indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
+                // + indent_len + comment_len ->        -> indent for i'th line
+                ranges.push(Range::point(
+                    pos + (i * (doc.line_ending.len_chars() + indent_len + comment_len))
+                        + indent_len
+                        + comment_len,
+                ));
+            }
+
+            // update the offset for the next range
+            offs += text.chars().count();
+
+            (
+                above_next_line_end_index,
+                above_next_line_end_index,
+                Some(text.into()),
+            )
         }
-
-        // update the offset for the next range
-        offs += text.chars().count();
-
-        (
-            above_next_line_end_index,
-            above_next_line_end_index,
-            Some(text.into()),
-        )
     });
 
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
@@ -4321,7 +4398,31 @@ pub mod insert {
             let continue_comment_token = continue_comment_tokens
                 .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
 
-            let (from, to, local_offs) = if let Some(idx) =
+            // Check if this is an empty comment line (just the token with optional whitespace).
+            // If so, we clear the comment token instead of continuing it.
+            let is_empty_comment = continue_comment_token
+                .is_some_and(|token| comment::is_empty_comment_line(text, token, current_line));
+
+            let (from, to, local_offs) = if is_empty_comment {
+                // Clear the empty comment token and insert a plain newline with just indentation
+                let line = text.line(current_line);
+                let indent_end = line.first_non_whitespace_char().unwrap_or(0);
+                let indent = line.slice(..indent_end).to_string();
+
+                new_text.reserve_exact(line_ending.len() + indent.len());
+                new_text.push_str(line_ending);
+                new_text.push_str(&indent);
+
+                let delete_from = line_start + indent_end;
+                chars_deleted = pos - delete_from;
+                last_pos = pos;
+
+                (
+                    delete_from,
+                    pos,
+                    new_text.chars().count() as isize - chars_deleted as isize,
+                )
+            } else if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_char()
             {
                 let first_trailing_whitespace_char = (line_start + idx + 1).clamp(last_pos, pos);
