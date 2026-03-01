@@ -9,6 +9,7 @@
   - [Flatpak](#flatpak)
   - [Snap](#snap)
   - [AppImage](#appimage)
+  - [Linux Homebrew Core](#linux-homebrew-core)
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
   - [MacPorts](#macports)
@@ -117,12 +118,24 @@ mv helix-*.AppImage "$HOME/.local/bin/hx"
 
 and make sure `~/.local/bin` is in your `PATH`.
 
+### Linux Homebrew Core
+
+Checkout the [macOS](#homebrew-core) instructions below.
+
 ## macOS
 
 ### Homebrew Core
 
+Install the latest release:
+
 ```sh
 brew install helix
+```
+
+Or, install the latest nightly version:
+
+```sh
+brew install --HEAD helix
 ```
 
 ### MacPorts

@@ -60,7 +60,7 @@ termina = { workspace = true, features = ["event-stream"] }
 signal-hook = "0.4"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-arc-swap = { version = "1.8.1" }
+arc-swap.workspace = true
 termini = "1"
 indexmap = "2.13"
 
@@ -93,7 +93,7 @@ serde = { version = "1.0", features = ["derive"] }
 
 # plugin support
 steel-core = { workspace = true, optional = true }
-steel-doc = { git = "https://github.com/mattwparas/steel.git", version = "0.8.2", optional = true }
+steel-doc = { git = "https://github.com/mattwparas/steel.git", rev = "f911d37fe13f0d7de0785e8139f85e84af5cadc2", optional = true }
 
 globset = "0.4.16"
 dashmap = "6.0"
@@ -103,7 +103,7 @@ crossterm = { version = "0.28", features = ["event-stream"] }
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.4", features = ["futures-v0_3"] }
-libc = "0.2.180"
+libc = "0.2.182"
 
 [build-dependencies]
 helix-loader = { path = "../helix-loader" }
