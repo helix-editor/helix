@@ -7,8 +7,8 @@ inherits = "modus_vivendi"
 
 "constant.character.escape" = "magenta"
 "comment" = "yellow-cooler"
-"function" = "magenta"
-"tag" = "magenta"
+"function" = "yellow-warmer"
+"tag" = "blue-cooler"
 
 "ui.cursor" = { fg = "bg-main", bg = "blue-intense" }
 "ui.cursor.primary.normal" = { fg = "bg-main", bg = "blue-intense" }
@@ -100,14 +100,14 @@ bg-magenta-nuanced = "#2f0c3f"
 bg-cyan-nuanced = "#042837"
 
 # Uncommon accent backgrounds
-bg-ochre = "#442c2f"
+bg-ochre = "#462f20"
 bg-lavender = "#38325c"
-bg-sage = "#0f3d30"
+bg-sage = "#143e32"
 
 # Special purpose
 bg-completion = "#2f447f"
 bg-hover = "#45605e"
-bg-hover-secondary = "#654a39"
+bg-hover-secondary = "#604c30"
 bg-hl-line = "#2f3849"
 bg-region = "#5a5a5a"
 fg-region = "#ffffff"

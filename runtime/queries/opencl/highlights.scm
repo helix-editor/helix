@@ -116,7 +116,7 @@
 (string_literal) @string
 (system_lib_string) @string
 
-(null) @constant
+(null) @constant.builtin
 (number_literal) @constant.numeric
 (char_literal) @constant.character
 

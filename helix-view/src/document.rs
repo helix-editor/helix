@@ -1035,6 +1035,12 @@ impl Document {
 
             // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
             let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
+            let is_symlink = match tokio::fs::symlink_metadata(&write_path).await {
+                Ok(meta) => meta.is_symlink(),
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
+                Err(err) => return Err(err.into()),
+            };
+            let must_copy = is_hardlink || is_symlink;
             let backup = if path.exists() && atomic_save {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
@@ -1046,7 +1052,7 @@ impl Document {
                     let mut builder = tempfile::Builder::new();
                     builder.prefix(path_.file_name()?).suffix(".bck");
 
-                    let backup_path = if is_hardlink {
+                    let backup_path = if must_copy {
                         builder
                             .make_in(path_.parent()?, |backup| std::fs::copy(&path_, backup))
                             .ok()?
@@ -1081,7 +1087,7 @@ impl Document {
             };
 
             if let Some(backup) = backup {
-                if is_hardlink {
+                if must_copy {
                     let mut delete = true;
                     if write_result.is_err() {
                         // Restore backup

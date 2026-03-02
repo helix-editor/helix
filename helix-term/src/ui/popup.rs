@@ -279,34 +279,39 @@ impl<T: Component> Component for Popup<T> {
             compositor.remove(self.id.as_ref());
         });
 
-        match key {
-            // esc or ctrl-c aborts the completion and closes the menu
-            key!(Esc) | ctrl!('c') => {
-                let _ = self.contents.handle_event(event, cx);
-                EventResult::Consumed(Some(close_fn))
-            }
-            ctrl!('d') => {
-                self.scroll_half_page_down();
-                EventResult::Consumed(None)
-            }
-            ctrl!('u') => {
-                self.scroll_half_page_up();
-                EventResult::Consumed(None)
-            }
-            _ => {
-                let contents_event_result = self.contents.handle_event(event, cx);
+        // Code completion handles arrows and page up/down itself,
+        // but code lens does not. First check whether content knows
+        // about the key event. When not, check the default keys.
+        match self.contents.handle_event(event, cx) {
+            EventResult::Ignored(fn_once) => {
+                match key {
+                    // esc or ctrl-c aborts the completion and closes the menu
+                    key!(Esc) | ctrl!('c') => {
+                        let _ = self.contents.handle_event(event, cx);
+                        EventResult::Consumed(Some(close_fn))
+                    }
+                    key!(PageDown) | ctrl!('d') => {
+                        self.scroll_half_page_down();
+                        EventResult::Consumed(None)
+                    }
+                    key!(PageUp) | ctrl!('u') => {
+                        self.scroll_half_page_up();
+                        EventResult::Consumed(None)
+                    }
+                    _ => {
+                        // for some events, we want to process them but send ignore, specifically all input except
+                        // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
 
-                if self.auto_close {
-                    if let EventResult::Ignored(None) = contents_event_result {
-                        return EventResult::Ignored(Some(close_fn));
+                        if self.auto_close {
+                            EventResult::Ignored(Some(close_fn))
+                        } else {
+                            EventResult::Ignored(fn_once)
+                        }
                     }
                 }
-
-                contents_event_result
             }
+            ev => ev,
         }
-        // for some events, we want to process them but send ignore, specifically all input except
-        // tab/enter/ctrl-k or whatever will confirm the selection/ ctrl-n/ctrl-p for scroll.
     }
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {

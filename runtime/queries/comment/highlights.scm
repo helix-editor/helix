@@ -4,10 +4,10 @@
 
 ; Hint level tags
 ((tag (name) @hint)
- (#any-of? @hint "HINT" "MARK" "PASSED" "STUB" "MOCK"))
+ (#any-of? @hint "HINT" "MARK" "PASSED" "STUB" "MOCK" "TIP"))
 
 ("text" @hint
- (#any-of? @hint "HINT" "MARK" "PASSED" "STUB" "MOCK"))
+ (#any-of? @hint "HINT" "MARK" "PASSED" "STUB" "MOCK" "TIP"))
 
 ; Info level tags
 ((tag (name) @info)

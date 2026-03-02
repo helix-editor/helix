@@ -632,9 +632,9 @@
   | Oranges | 3      |
      | Donuts  | 4      |
 
-
-
-
+ Note: On macOS, you may need to configure your terminal to use
+       Option as Alt (e.g. macos-option-as-alt = left).
+       This is also true for future Alt- commands.
 
 =================================================================
 =                        CHAPTER 5 RECAP                        =
@@ -820,9 +820,9 @@ lines.
  Press Ctrl-x to decrement the number under selection.
 
  1. Move the cursor to the third line marked '-->' below.
- 2. Press Ctrl-a to increment the second point marked 2.
- 3. Repeat for the point marked 3.
- 4. Move to the last point and press Ctrl-x to decrement the 6.
+ 2. Move the cursor onto the number 2, then press Ctrl-a.
+ 3. Move onto the number 3 on the next line and press Ctrl-a.
+ 4. Move onto the number 6 on the last line and press Ctrl-x.
 
  --> 1) First point.
  --> 2) Added point.
@@ -1051,8 +1051,8 @@ lines.
  --> How much would would a wouldchuck chuck
  --> if a wouldchuck could chuck would?
 
-
-
+ Note: The primary selection can be hard to see in some themes.
+       Check the status bar (bottom right) for the active index.
 
 =================================================================
 =             10.2 CYCLING THE CONTENT OF SELECTIONS            =

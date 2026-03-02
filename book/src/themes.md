@@ -240,7 +240,8 @@ We use a similar set of scopes as
 
 - `namespace`
 
-- `special` - `derive` in Rust, etc.
+- `special` - `derive` in Rust, bolded query-match in pickers (includes file explorer), etc.
+See also [#2380]
 
 - `markup`
   - `heading`
@@ -330,6 +331,7 @@ These scopes are used for theming the editor interface:
 | `ui.text.inactive`                | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`                    | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.text.directory`               | Directory names in prompt completion                                                           |
+| `ui.text.symlink`                 | Symlink names in prompt completion                                                             |
 | `ui.virtual.ruler`                | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
 | `ui.virtual.whitespace`           | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`         | Vertical indent width guides                                                                   |
@@ -363,3 +365,4 @@ These scopes are used for theming the editor interface:
 | `tabstop`                         | Snippet placeholder                                                                            |
 
 [editor-section]: ./configuration.md#editor-section
+[#2380]: https://github.com/helix-editor/helix/issues/2380

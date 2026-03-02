@@ -18,7 +18,8 @@
 | blueprint | ✓ |  |  |  |  | `blueprint-compiler` |
 | bovex | ✓ |  |  |  | ✓ |  |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
-| c-sharp | ✓ | ✓ |  | ✓ |  | `OmniSharp`, `csharp-ls` |
+| c-sharp | ✓ | ✓ |  | ✓ |  | `roslyn-language-server`, `OmniSharp`, `csharp-ls` |
+| c3 | ✓ |  |  |  |  | `c3-lsp` |
 | cabal |  |  |  |  |  | `haskell-language-server-wrapper` |
 | caddyfile | ✓ | ✓ | ✓ |  |  |  |
 | cairo | ✓ | ✓ | ✓ |  |  | `cairo-language-server` |
@@ -87,7 +88,7 @@
 | git-attributes | ✓ |  |  |  |  |  |
 | git-cliff-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
 | git-commit | ✓ | ✓ |  |  |  | `commit-lsp` |
-| git-config | ✓ | ✓ |  |  |  |  |
+| git-config | ✓ | ✓ |  | ✓ |  |  |
 | git-ignore | ✓ |  |  |  |  |  |
 | git-notes | ✓ |  |  |  |  |  |
 | git-rebase | ✓ |  |  |  |  |  |
@@ -98,6 +99,7 @@
 | glimmer | ✓ |  |  |  |  | `ember-language-server` |
 | glsl | ✓ | ✓ | ✓ |  |  | `glsl_analyzer`, `glsld` |
 | gn | ✓ |  |  |  |  |  |
+| gnuplot | ✓ |  |  |  |  |  |
 | go | ✓ | ✓ | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | go-format-string | ✓ |  |  |  | ✓ |  |
 | godot-resource | ✓ | ✓ |  |  |  |  |
@@ -125,10 +127,10 @@
 | htmldjango | ✓ |  |  |  |  | `djlsp`, `vscode-html-language-server`, `superhtml` |
 | hurl | ✓ | ✓ | ✓ |  |  |  |
 | hy | ✓ |  |  |  |  | `hyuga` |
-| hyprlang | ✓ |  | ✓ |  |  | `hyprls` |
+| hyprlang | ✓ |  | ✓ | ✓ |  | `hyprls` |
 | idris |  |  |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |  |  |
-| ini | ✓ |  |  |  |  |  |
+| ini | ✓ |  |  | ✓ |  |  |
 | ink | ✓ |  |  |  |  |  |
 | inko | ✓ | ✓ | ✓ | ✓ |  |  |
 | janet | ✓ |  | ✓ |  | ✓ |  |
@@ -142,9 +144,9 @@
 | jq | ✓ | ✓ |  |  |  | `jq-lsp` |
 | jsdoc | ✓ |  |  |  |  |  |
 | json | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
-| json-ld | ✓ | ✓ | ✓ |  |  | `vscode-json-language-server` |
-| json5 | ✓ |  |  |  |  |  |
-| jsonc | ✓ |  | ✓ |  | ✓ | `vscode-json-language-server` |
+| json-ld | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
+| json5 | ✓ | ✓ | ✓ |  | ✓ |  |
+| jsonc | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ |  |  | `julia` |
@@ -204,10 +206,12 @@
 | pascal | ✓ | ✓ |  |  |  | `pasls` |
 | passwd | ✓ |  |  |  |  |  |
 | pem | ✓ |  |  |  |  |  |
+| penrose | ✓ | ✓ |  |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |  | `perlnavigator` |
 | pest | ✓ | ✓ | ✓ |  |  | `pest-language-server` |
 | php | ✓ | ✓ | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  | ✓ |  |  |
+| picat | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | pip-requirements | ✓ |  |  |  |  |  |
 | pkgbuild | ✓ | ✓ | ✓ |  |  | `termux-language-server`, `bash-language-server` |
 | pkl | ✓ |  | ✓ |  |  | `pkl-lsp` |
@@ -234,12 +238,12 @@
 | rescript | ✓ | ✓ |  |  |  | `rescript-language-server` |
 | ripple | ✓ |  |  | ✓ | ✓ | `ripple-language-server` |
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
-| robot | ✓ |  |  |  |  | `robotframework_ls` |
+| robot | ✓ |  |  |  |  | `robotcode`, `robotframework_ls` |
 | robots.txt | ✓ | ✓ |  | ✓ |  |  |
 | ron | ✓ |  | ✓ | ✓ | ✓ | `ron-lsp` |
 | rpmspec | ✓ |  |  |  |  |  |
 | rshtml | ✓ | ✓ |  |  |  | `rshtml-analyzer`, `vscode-html-language-server`, `superhtml` |
-| rst | ✓ |  |  |  |  |  |
+| rst | ✓ |  |  | ✓ |  |  |
 | ruby | ✓ | ✓ | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
 | rust | ✓ | ✓ | ✓ | ✓ | ✓ | `rust-analyzer` |
 | rust-format-args | ✓ |  |  |  |  |  |
@@ -270,7 +274,7 @@
 | svelte | ✓ |  | ✓ |  |  | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
 | swift | ✓ | ✓ | ✓ |  | ✓ | `sourcekit-lsp` |
-| systemd | ✓ |  |  |  |  | `systemd-lsp` |
+| systemd | ✓ |  |  | ✓ |  | `systemd-lsp` |
 | systemverilog | ✓ |  |  |  |  | `svlangserver`, `verible-verilog-ls` |
 | t32 | ✓ |  |  |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |  |  |
@@ -283,9 +287,10 @@
 | textproto | ✓ | ✓ | ✓ |  |  |  |
 | tfvars | ✓ |  | ✓ |  |  | `terraform-ls` |
 | thrift | ✓ |  |  |  |  |  |
+| tilt | ✓ | ✓ | ✓ |  | ✓ | `tilt` |
 | tlaplus | ✓ |  |  |  |  |  |
 | todotxt | ✓ |  |  |  |  |  |
-| toml | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
+| toml | ✓ | ✓ |  | ✓ | ✓ | `taplo`, `tombi` |
 | tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |  |  |
