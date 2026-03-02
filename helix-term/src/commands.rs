@@ -3162,6 +3162,7 @@ fn buffer_picker(cx: &mut Context) {
     struct BufferMeta {
         id: DocumentId,
         path: Option<PathBuf>,
+        display_name: String,
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
@@ -3170,6 +3171,7 @@ fn buffer_picker(cx: &mut Context) {
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
         path: doc.path().cloned(),
+        display_name: doc.display_name().to_string(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
@@ -3198,15 +3200,7 @@ fn buffer_picker(cx: &mut Context) {
             flags.into()
         }),
         PickerColumn::new("path", |meta: &BufferMeta, _| {
-            let path = meta
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
-                .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+            meta.display_name.as_str().into()
         }),
     ];
 
@@ -3242,6 +3236,7 @@ fn jumplist_picker(cx: &mut Context) {
     struct JumpMeta {
         id: DocumentId,
         path: Option<PathBuf>,
+        display_name: String,
         selection: Selection,
         text: String,
         is_current: bool,
@@ -3267,6 +3262,7 @@ fn jumplist_picker(cx: &mut Context) {
         JumpMeta {
             id: doc_id,
             path: doc.and_then(|d| d.path().cloned()),
+            display_name: doc.map_or_else(|| SCRATCH_BUFFER_NAME.to_string(), |d| d.display_name().to_string()),
             selection,
             text,
             is_current: view.doc == doc_id,
@@ -3276,15 +3272,7 @@ fn jumplist_picker(cx: &mut Context) {
     let columns = [
         ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
         ui::PickerColumn::new("path", |item: &JumpMeta, _| {
-            let path = item
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
-                .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+            item.display_name.as_str().into()
         }),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
