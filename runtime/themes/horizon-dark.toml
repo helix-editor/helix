@@ -46,7 +46,9 @@ tag = "red"
 "ui.bufferline.active" = { bg = "dark-bg", fg = "orange" }
 "ui.virtual.jump-label" = { fg = "pink", modifiers = ["bold"] }
 "ui.picker.header.column" = { fg = "orange", underline.style = "line" }
-"ui.picker.header.column.active" = { fg = "purple", modifiers = ["bold"], underline.style = "line" }
+"ui.picker.header.column.active" = { fg = "purple", modifiers = [
+  "bold",
+], underline.style = "line" }
 
 # Diagnostics
 "diagnostic" = { underline = { style = "curl" } }
@@ -78,6 +80,8 @@ hint = { fg = "green", modifiers = ["bold"] }
 "diff.minus" = "red"
 "diff.delta" = "orange"
 
+rainbow = ["yellow", "pink", "blue"]
+
 [palette]
 white = "#D5D8DA"
 gray = "#2E303E"
@@ -92,3 +96,4 @@ brown = "#F09383"
 purple = "#B877DB"
 red = "#E95678"
 blue = "#25B2BC"
+yellow = "#EFB41B"
