@@ -561,6 +561,50 @@ fn force_write_buffer_close(
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
+fn write_buffer_close_all(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(
+        cx,
+        args.first(),
+        WriteOptions {
+            force: false,
+            auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+        },
+    )?;
+
+    let document_ids = buffer_gather_all_impl(cx.editor);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn force_write_buffer_close_all(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(
+        cx,
+        args.first(),
+        WriteOptions {
+            force: true,
+            auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+        },
+    )?;
+
+    let document_ids = buffer_gather_all_impl(cx.editor);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
 fn new_file(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -3005,6 +3049,31 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::positional(&[completers::filename]),
         signature: Signature {
             positionals: (0, Some(1)),
+            flags: &[WRITE_NO_FORMAT_FLAG],
+            ..Signature::DEFAULT
+        },
+    },
+
+    TypableCommand {
+        name: "write-buffer-close-all",
+        aliases: &["wbca"],
+        doc: "Write all changes to disk and closes all open buffers.",
+        fun: write_buffer_close_all,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            flags: &[WRITE_NO_FORMAT_FLAG],
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "write-buffer-close-all!",
+        aliases: &["wbca!"],
+        doc: "Force write all changes to disk and closes all open buffers.",
+        fun: force_write_buffer_close_all,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
             flags: &[WRITE_NO_FORMAT_FLAG],
             ..Signature::DEFAULT
         },
