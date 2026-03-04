@@ -2455,15 +2455,18 @@ fn global_search(cx: &mut Context) {
     #[derive(Debug)]
     struct FileResult {
         path: PathBuf,
-        /// 0 indexed lines
-        line_num: usize,
+        /// 0 indexed line start
+        line_start: usize,
+        /// 0 indexed line end
+        line_end: usize,
     }
 
     impl FileResult {
-        fn new(path: &Path, line_num: usize) -> Self {
+        fn new(path: &Path, line_start: usize, line_end: usize) -> Self {
             Self {
                 path: path.to_path_buf(),
-                line_num,
+                line_start,
+                line_end,
             }
         }
     }
@@ -2505,7 +2508,7 @@ fn global_search(cx: &mut Context) {
                 Span::styled(directories, config.directory_style),
                 Span::raw(filename),
                 Span::styled(":", config.colon_style),
-                Span::styled((item.line_num + 1).to_string(), config.number_style),
+                Span::styled((item.line_start + 1).to_string(), config.number_style),
             ]))
         }),
         PickerColumn::hidden("contents"),
@@ -2532,6 +2535,7 @@ fn global_search(cx: &mut Context) {
 
         let matcher = match RegexMatcherBuilder::new()
             .case_smart(config.smart_case)
+            .multi_line(true)
             .build(query)
         {
             Ok(matcher) => {
@@ -2554,6 +2558,7 @@ fn global_search(cx: &mut Context) {
         async move {
             let searcher = SearcherBuilder::new()
                 .binary_detection(BinaryDetection::quit(b'\x00'))
+                .multi_line(true)
                 .build();
             WalkBuilder::new(search_root)
                 .hidden(config.file_picker_config.hidden)
@@ -2586,9 +2591,11 @@ fn global_search(cx: &mut Context) {
                         }
 
                         let mut stop = false;
-                        let sink = sinks::UTF8(|line_num, _line_content| {
+                        let sink = sinks::UTF8(|line_start, line_content| {
+                            let line_start = line_start as usize - 1;
+                            let line_end = line_start + line_content.lines().count() - 1;
                             stop = injector
-                                .push(FileResult::new(entry.path(), line_num as usize - 1))
+                                .push(FileResult::new(entry.path(), line_start, line_end))
                                 .is_err();
 
                             Ok(!stop)
@@ -2642,7 +2649,14 @@ fn global_search(cx: &mut Context) {
         1, // contents
         [],
         config,
-        move |cx, FileResult { path, line_num, .. }, action| {
+        move |cx,
+              FileResult {
+                  path,
+                  line_start,
+                  line_end,
+                  ..
+              },
+              action| {
             let doc = match cx.editor.open(path, action) {
                 Ok(id) => doc_mut!(cx.editor, &id),
                 Err(e) => {
@@ -2652,17 +2666,18 @@ fn global_search(cx: &mut Context) {
                 }
             };
 
-            let line_num = *line_num;
+            let line_start = *line_start;
+            let line_end = *line_end;
             let view = view_mut!(cx.editor);
             let text = doc.text();
-            if line_num >= text.len_lines() {
+            if line_start >= text.len_lines() {
                 cx.editor.set_error(
                     "The line you jumped to does not exist anymore because the file has changed.",
                 );
                 return;
             }
-            let start = text.line_to_char(line_num);
-            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+            let start = text.line_to_char(line_start);
+            let end = text.line_to_char((line_end + 1).min(text.len_lines()));
 
             doc.set_selection(view.id, Selection::single(start, end));
             if action.align_view(view, doc.id()) {
@@ -2670,9 +2685,15 @@ fn global_search(cx: &mut Context) {
             }
         },
     )
-    .with_preview(|_editor, FileResult { path, line_num, .. }| {
-        Some((path.as_path().into(), Some((*line_num, *line_num))))
-    })
+    .with_preview(
+        |_editor,
+         FileResult {
+             path,
+             line_start,
+             line_end,
+             ..
+         }| { Some((path.as_path().into(), Some((*line_start, *line_end)))) },
+    )
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
 
