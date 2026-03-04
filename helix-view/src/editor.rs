@@ -11,7 +11,7 @@ use crate::{
     input::KeyEvent,
     register::Registers,
     theme::{self, Theme},
-    tree::{self, Tree},
+    tree::{self, Dimension, Resize, Tree},
     Document, DocumentId, View, ViewId,
 };
 use helix_event::dispatch;
@@ -2118,6 +2118,10 @@ impl Editor {
 
     pub fn transpose_view(&mut self) {
         self.tree.transpose();
+    }
+
+    pub fn resize_view(&mut self, resize_type: Resize, dimension: Dimension, count: usize) {
+        self.tree.resize_view(resize_type, dimension, count);
     }
 
     pub fn should_close(&self) -> bool {
