@@ -5328,3 +5328,19 @@ comment-token = "#"
 [[grammar]]
 name = "gnuplot"
 source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
+
+[[language]]
+name = "proverif"
+scope = "source.proverif"
+file-types = [ "pv" ]
+injection-regex = "proverif"
+indent = { tab-width = 8, unit="        "}
+block-comment-tokens = { start = "(*", end = "*)" }
+[language.auto-pairs]
+'(' = ')'
+'"' = '"'
+"'" = "'"
+
+[[grammar]]
+name = "proverif"
+source = { git = "https://codeberg.org/maribu/tree-sitter-proverif", rev = "7741807092c4009c1fe4c3648da60ca72b1b80f1" }
