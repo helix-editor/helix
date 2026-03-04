@@ -903,10 +903,9 @@ fn start_client(
         workspace_is_cwd,
     );
 
-    // `root_uri` and `workspace_folder` can be empty in case there is no workspace
-    // `root_url` can not, use `workspace` as a fallback
+    // in case there is no root use `workspace` as a fallback
     let root_path = root.clone().unwrap_or_else(|| workspace.clone());
-    let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
+    let root_uri = lsp::Url::from_file_path(&root_path).ok();
 
     if let Some(globset) = &ls_config.required_root_patterns {
         if !root_path
