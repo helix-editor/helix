@@ -46,7 +46,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::Action,
+    editor::{Action, RelativePosition},
     expansion,
     info::Info,
     input::KeyEvent,
@@ -3658,6 +3658,15 @@ async fn make_format_callback(
 pub enum Open {
     Below,
     Above,
+}
+
+impl Open {
+    pub fn from_relative_position(pos: &RelativePosition) -> Self {
+        match pos {
+            RelativePosition::Above => Self::Above,
+            RelativePosition::Below => Self::Below,
+        }
+    }
 }
 
 #[derive(PartialEq)]
