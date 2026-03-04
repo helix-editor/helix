@@ -212,6 +212,7 @@ All git related options are only enabled in a git repository.
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `true`
 |`max-depth` | Set with an integer value for maximum depth to recurse | Unset by default
+|`sort` | Enables sorting of file picker results | `true`
 
 Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.
 

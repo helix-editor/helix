@@ -203,6 +203,8 @@ pub struct FilePickerConfig {
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
+    /// Enables sorting of file picker results. Defaults to true.
+    pub sort: bool,
 }
 
 impl Default for FilePickerConfig {
@@ -217,6 +219,7 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            sort: true,
         }
     }
 }

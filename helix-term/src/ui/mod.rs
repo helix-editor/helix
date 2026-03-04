@@ -228,7 +228,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 
     let mut walk_builder = WalkBuilder::new(&root);
 
-    let mut files = walk_builder
+    walk_builder
         .hidden(config.file_picker.hidden)
         .parents(config.file_picker.parents)
         .ignore(config.file_picker.ignore)
@@ -236,12 +236,17 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .git_ignore(config.file_picker.git_ignore)
         .git_global(config.file_picker.git_global)
         .git_exclude(config.file_picker.git_exclude)
-        .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks))
         .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
         .add_custom_ignore_filename(".helix/ignore")
-        .types(get_excluded_types())
+        .types(get_excluded_types());
+
+    if config.file_picker.sort {
+        walk_builder.sort_by_file_name(|name1, name2| name1.cmp(name2));
+    }
+
+    let mut files = walk_builder
         .build()
         .filter_map(|entry| {
             let entry = entry.ok()?;
