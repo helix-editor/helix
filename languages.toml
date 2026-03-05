@@ -3027,14 +3027,14 @@ source = { git = "https://github.com/synaptiko/tree-sitter-xit", rev = "7d790245
 name = "esdl"
 scope = "source.esdl"
 injection-regex = "esdl"
-file-types = ["esdl"]
+file-types = ["gel", "esdl"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-roots = ["edgedb.toml"]
+roots = ["gel.toml", "edgedb.toml"]
 
 [[grammar]]
 name ="esdl"
-source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "df83acc8cacd0cfb139eecee0e718dc32c4f92e2" }
+source = { git = "https://github.com/hongquan/tree-sitter-esdl.git", rev = "c824fe2bbbed6b29e50c694420aa2b377782f80a" }
 
 [[language]]
 name = "pascal"
