@@ -6970,7 +6970,7 @@ fn move_current_file(cx: &mut Context) {
     let doc = doc!(cx.editor);
     let current_path = match doc.path() {
         Some(p) => {
-            let cwd = std::env::current_dir().unwrap_or_default();
+            let cwd = helix_stdx::env::current_working_dir();
             p.strip_prefix(&cwd)
                 .unwrap_or(p)
                 .to_string_lossy()
