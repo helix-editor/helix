@@ -679,6 +679,25 @@ impl Registry {
         Some(Ok(client))
     }
 
+    /// Removes the tombstone left by `stop` for the given language server name, allowing it to be
+    /// automatically started again by `get`. If no tombstone exists (i.e., the server was not
+    /// previously stopped with `:lsp-stop`), this is a no-op.
+    pub fn start(&mut self, name: &str) {
+        if let Some(clients) = self.inner_by_name.get(name) {
+            if clients.is_empty() {
+                self.inner_by_name.remove(name);
+            }
+        }
+    }
+
+    /// Returns `true` if the given language server was manually stopped with `:lsp-stop` and
+    /// has not been restarted since (i.e., its tombstone is present in the registry).
+    pub fn is_stopped(&self, name: &str) -> bool {
+        self.inner_by_name
+            .get(name)
+            .map_or(false, |clients| clients.is_empty())
+    }
+
     pub fn stop(&mut self, name: &str) {
         if let Some(clients) = self.inner_by_name.get_mut(name) {
             // Drain the clients vec so that the entry in `inner_by_name` remains
@@ -704,7 +723,7 @@ impl Registry {
         enable_snippets: bool,
     ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
         language_config.language_servers.iter().filter_map(
-            move |LanguageServerFeatures { name, .. }| {
+            move |LanguageServerFeatures { name, start, .. }| {
                 if let Some(clients) = self.inner_by_name.get(name) {
                     // If the clients vec is empty, do not automatically start a client
                     // for this server. The empty vec is a tombstone left to mean that a
@@ -723,6 +742,12 @@ impl Registry {
                     }) {
                         return Some((name.to_owned(), Ok(client.clone())));
                     }
+                } else if !start {
+                    // The server is configured with `start = false`, meaning it should not be
+                    // started automatically. Insert a tombstone so that subsequent calls to `get`
+                    // also skip it, and so that `:lsp-start` can later remove it.
+                    self.inner_by_name.insert(name.to_owned(), Vec::new());
+                    return None;
                 }
                 match self.start_client(
                     name.clone(),
