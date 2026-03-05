@@ -55,6 +55,7 @@
 | dockerfile | ✓ | ✓ |  |  |  | `docker-langserver`, `docker-language-server` |
 | dot | ✓ |  |  |  |  | `dot-language-server` |
 | doxyfile | ✓ | ✓ | ✓ | ✓ |  |  |
+| drools | ✓ |  |  |  |  | `drools-lsp` |
 | dtd | ✓ |  |  |  |  |  |
 | dune | ✓ |  |  |  |  |  |
 | dunstrc | ✓ |  |  |  |  |  |
