@@ -102,7 +102,7 @@ impl Registers {
         }
     }
 
-    pub fn push(&mut self, name: char, mut value: String) -> Result<()> {
+    fn push_impl(&mut self, name: char, mut value: String, unique: bool) -> Result<()> {
         match name {
             '_' => Ok(()),
             '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
@@ -122,6 +122,9 @@ impl Registers {
                     anyhow::bail!("Failed to push to register {name}: clipboard does not match register contents");
                 }
 
+                if unique {
+                    saved_values.retain(|the| the != &value);
+                }
                 saved_values.push(value.clone());
                 if !contents.is_empty() {
                     value.push_str(NATIVE_LINE_ENDING.as_str());
@@ -134,10 +137,22 @@ impl Registers {
                 Ok(())
             }
             _ => {
-                self.inner.entry(name).or_default().push(value);
+                let the = self.inner.entry(name).or_default();
+                if unique {
+                    the.retain(|the| the != &value);
+                }
+                the.push(value);
                 Ok(())
             }
         }
+    }
+
+    pub fn push_unique(&mut self, name: char, value: String) -> Result<()> {
+        self.push_impl(name, value, true)
+    }
+
+    pub fn push(&mut self, name: char, value: String) -> Result<()> {
+        self.push_impl(name, value, false)
     }
 
     pub fn first<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
