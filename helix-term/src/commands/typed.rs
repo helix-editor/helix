@@ -2655,7 +2655,7 @@ fn force_move_buffer(
     move_buffer_impl(cx, new_path, MoveBufferOptions { force: true })
 }
 
-fn move_buffer_impl(
+pub fn move_buffer_impl(
     cx: &mut compositor::Context,
     new_path: PathBuf,
     options: MoveBufferOptions,
