@@ -4,12 +4,6 @@
   (line_comment)
 ] @comment)
 
-; Embedded Perl content
-[
-  (tag_content)
-  (line_content)
-] @embedded
-
 ; Tag and line directive delimiters
 (code_tag "<%" @keyword.directive)
 (expression_tag "<%=" @keyword.directive)
