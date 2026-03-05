@@ -422,6 +422,12 @@ fn write_impl(
     Ok(())
 }
 
+// Wrapper for trim_trailing_whitespace().
+pub fn delete_trailing_whitespace(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    trim_trailing_whitespace(doc, view.id);
+}
+
 /// Trim all whitespace preceding line-endings in a document.
 fn trim_trailing_whitespace(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
