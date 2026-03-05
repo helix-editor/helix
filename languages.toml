@@ -5328,3 +5328,15 @@ comment-token = "#"
 [[grammar]]
 name = "gnuplot"
 source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
+
+[[language]]
+name = "tql"
+scope = "source.tql"
+file-types = [ "tql" ]
+injection-regex = "tql"
+indent = {tab-width = 2, unit = "  "}
+comment-token = "//"
+
+[[grammar]]
+name = "tql"
+source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "07b81210b36bdcf1c1ae2037758f761a4046d0dc" }
