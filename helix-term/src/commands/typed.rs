@@ -271,6 +271,48 @@ fn force_buffer_close(
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
+fn buffer_close_then_quit_if_last(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let count = cx.editor.documents().count();
+    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    buffer_close_by_ids_impl(cx, &document_ids, false)?;
+
+    if count == 1 {
+        cx.block_try_flush_writes()?;
+        quit(cx, Args::default(), event)?;
+    }
+
+    Ok(())
+}
+
+fn force_buffer_close_then_quit_if_last(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let count = cx.editor.documents().count();
+    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    buffer_close_by_ids_impl(cx, &document_ids, true)?;
+
+    if count == 1 {
+        cx.block_try_flush_writes()?;
+        quit(cx, Args::default(), event)?;
+    }
+
+    Ok(())
+}
+
 fn buffer_gather_others_impl(editor: &mut Editor, skip_visible: bool) -> Vec<DocumentId> {
     if skip_visible {
         let visible_document_ids = editor
@@ -2895,6 +2937,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bc!", "bclose!"],
         doc: "Close the current buffer forcefully, ignoring unsaved changes.",
         fun: force_buffer_close,
+        completer: CommandCompleter::all(completers::buffer),
+        signature: Signature {
+            positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-then-quit-if-last",
+        aliases: &["bcq", "bclosequit"],
+        doc: "Close the current buffer and quit if it was the last.",
+        fun: buffer_close_then_quit_if_last,
+        completer: CommandCompleter::all(completers::buffer),
+        signature: Signature {
+            positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "buffer-close-then-quit-if-last!",
+        aliases: &["bcq!", "bclosequit!"],
+        doc: "Close the current buffer forcefully, ignoring unsaved changes and quit if it was the last.",
+        fun: force_buffer_close_then_quit_if_last,
         completer: CommandCompleter::all(completers::buffer),
         signature: Signature {
             positionals: (0, None),
