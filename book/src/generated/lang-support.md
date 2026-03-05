@@ -43,7 +43,7 @@
 | cylc | ✓ | ✓ | ✓ |  |  |  |
 | cython | ✓ |  | ✓ | ✓ |  |  |
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
-| dart | ✓ | ✓ | ✓ |  |  | `dart` |
+| dart | ✓ | ✓ | ✓ |  | ✓ | `dart` |
 | dbml | ✓ |  |  |  |  |  |
 | debian | ✓ |  |  |  |  |  |
 | devicetree | ✓ |  |  |  |  | `dts-lsp` |
@@ -81,7 +81,7 @@
 | freebasic | ✓ | ✓ | ✓ | ✓ |  |  |
 | fsharp | ✓ |  |  |  |  | `fsautocomplete` |
 | gas | ✓ | ✓ |  |  |  | `asm-lsp` |
-| gdscript | ✓ | ✓ | ✓ | ✓ |  |  |
+| gdscript | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | gemini | ✓ |  |  |  |  |  |
 | gherkin | ✓ |  |  |  |  |  |
 | ghostty | ✓ |  |  |  |  |  |
@@ -102,7 +102,7 @@
 | gnuplot | ✓ |  |  |  |  |  |
 | go | ✓ | ✓ | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | go-format-string | ✓ |  |  |  | ✓ |  |
-| godot-resource | ✓ | ✓ |  |  |  |  |
+| godot-resource | ✓ | ✓ |  | ✓ |  |  |
 | gomod | ✓ |  |  |  |  | `gopls` |
 | gotmpl | ✓ |  |  |  |  | `gopls` |
 | gowork | ✓ |  |  |  |  | `gopls` |
@@ -153,7 +153,7 @@
 | just | ✓ | ✓ | ✓ | ✓ |  | `just-lsp` |
 | kcl | ✓ |  |  |  |  | `kcl-language-server` |
 | kconfig | ✓ |  | ✓ |  |  |  |
-| kdl | ✓ | ✓ | ✓ | ✓ |  |  |
+| kdl | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | klog | ✓ |  |  |  |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ | ✓ |  | `kotlin-language-server` |
@@ -323,5 +323,5 @@
 | xtc | ✓ |  |  |  |  |  |
 | yaml | ✓ | ✓ | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yara | ✓ |  |  |  |  | `yls` |
-| yuck | ✓ |  |  |  |  |  |
+| yuck | ✓ |  | ✓ |  | ✓ |  |
 | zig | ✓ | ✓ | ✓ |  |  | `zls` |
