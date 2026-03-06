@@ -1926,7 +1926,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "embedded-perl"
-source = { git = "https://github.com/jobindex-open/tree-sitter-embedded-perl", rev = "249ad4223a60109a1d579f47302b8a9b50f3e33d" }
+source = { git = "https://github.com/jobindex-open/tree-sitter-embedded-perl", rev = "14b9a948030edd99c132b78a3d3dc2c7537a061b" }
 
 [[language]]
 name = "pod"
