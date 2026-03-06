@@ -67,7 +67,7 @@
 | elixir | ✓ | ✓ | ✓ | ✓ | ✓ | `elixir-ls`, `expert` |
 | elm | ✓ | ✓ |  | ✓ |  | `elm-language-server` |
 | elvish | ✓ |  |  |  |  | `elvish` |
-| embedded-perl | ✓ |  | ✓ |  |  |  |
+| embedded-perl | ✓ |  |  |  |  |  |
 | env | ✓ | ✓ |  |  |  |  |
 | erb | ✓ |  |  |  |  |  |
 | erlang | ✓ | ✓ |  | ✓ | ✓ | `erlang_ls`, `elp` |
