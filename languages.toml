@@ -1141,6 +1141,15 @@ language-servers = ["ty", "ruff", "jedi", "pylsp"]
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
+[language.auto-pairs]
+"(" = ")"
+"{" = "}"
+"[" = "]"
+"'" = "'"
+'"' = '"'
+'"""' = '"""'
+"`" = "`"
+
 [[grammar]]
 name = "python"
 source = { git = "https://github.com/tree-sitter/tree-sitter-python", rev = "293fdc02038ee2bf0e2e206711b69c90ac0d413f" }
@@ -1379,6 +1388,14 @@ file-types = ["tex", "sty", "cls", "Rd", "bbx", "cbx"]
 comment-token = "%"
 language-servers = [ "texlab" ]
 indent = { tab-width = 4, unit = "\t" }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'``' = "''"
+'\(' = '\)'
+'\[' = '\]'
 
 [[grammar]]
 name = "latex"
