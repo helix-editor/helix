@@ -1642,10 +1642,13 @@ impl Component for EditorView {
 
 fn canonicalize_key(key: &mut KeyEvent) {
     if let KeyEvent {
-        code: KeyCode::Char(_),
+        code: KeyCode::Char(char),
         modifiers: _,
     } = key
     {
-        key.modifiers.remove(KeyModifiers::SHIFT)
+        if key.modifiers.contains(KeyModifiers::SHIFT) {
+            key.modifiers.remove(KeyModifiers::SHIFT);
+            char.make_ascii_uppercase();
+        }
     }
 }
