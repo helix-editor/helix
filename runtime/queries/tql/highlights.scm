@@ -36,14 +36,30 @@
 [
   "?"
   "..."
-] @operator
-
-[
   "+"
   "-"
   "*"
   "/"
+  "="
+  "=>"
+  "|"
+  "::"
+  "=="
+  "!="
+  ">"
+  ">="
+  "<"
+  "<="
 ] @operator
+
+[
+  "("
+  ")"
+] @punctuation.bracket
+
+[
+  ","
+] @punctuation.delimiter
 
 "_" @variable.builtin
 
@@ -55,8 +71,8 @@
 ] @constant.builtin.boolean
 
 (dollar_var) @variable
-(global_sigil) @keyword
-(metadata_sigil) @keyword
+(global_sigil)
+(metadata_sigil)
 (meta_selector) @attribute
 (number) @constant.numeric
 (string) @string
@@ -76,25 +92,3 @@
 (call_expression
   method: (entity) @function.method)
 (identifier) @variable
-
-[
-  "("
-  ")"
-] @punctuation.bracket
-
-[
-  ","
-] @punctuation.delimiter
-
-[
-  "="
-  "=>"
-  "|"
-  "::"
-  "=="
-  "!="
-  ">"
-  ">="
-  "<"
-  "<="
-] @operator
