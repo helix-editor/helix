@@ -100,9 +100,9 @@ pub mod steel_implementations {
             };
             // arity *must* be one
             if func.get_arity().unwrap_or(1) == 1 {
-                return Ok(TreeSitterQueryLoader { fun });
+                Ok(TreeSitterQueryLoader { fun })
             } else {
-                return Err(format!("Bad Arity: {}", func.arity.unwrap()));
+                Err(format!("Bad Arity: {}", func.arity.unwrap()))
             }
         }
 
@@ -115,10 +115,7 @@ pub mod steel_implementations {
                 ));
             };
 
-            let val = match (func.function)(&vec![lang.clone()]) {
-                Ok(f) => f,
-                Err(e) => return Err(e),
-            };
+            let val = (func.function)(&[lang.clone()])?;
 
             let SteelVal::Custom(custom) = val else {
                 return Ok(None);
@@ -126,9 +123,9 @@ pub mod steel_implementations {
 
             let tsquery =
                 steel::rvals::as_underlying_type::<TreeSitterQuery>(custom.write().as_ref())
-                    .map(|t| t.clone());
+                    .cloned();
 
-            return Ok(tsquery);
+            Ok(tsquery)
         }
     }
 
@@ -198,20 +195,15 @@ pub mod steel_implementations {
                 let val = SteelVal::StringV(SteelString::from(
                     loader.language(lang).config().language_id.clone(),
                 ));
-                let loaded = match query_loader.load(&val) {
-                    Ok(l) => l,
-                    Err(e) => return Err(e),
-                };
 
-                if loaded.is_some() {
-                    query_map.insert(lang, loaded.unwrap());
+                let loaded = query_loader.load(&val)?;
+                if let Some(loaded) = loaded {
+                    query_map.insert(lang, loaded);
                 }
             }
             let mut captures: BTreeMap<String, Vec<TreeSitterNode>> = BTreeMap::new();
             let mut layers: Vec<(Layer, TreeSitterTree)> = vec![];
-            let load = |lang| {
-                return query_map.get(&lang).map(|q| q.get_inner().as_ref());
-            };
+            let load = |lang| query_map.get(&lang).map(|q| q.get_inner().as_ref());
 
             for event in syn.query_iter::<_, (), _>(source, load, lower..upper) {
                 let QueryIterEvent::Match(m) = event else {
@@ -274,7 +266,7 @@ pub mod steel_implementations {
         }
         pub fn get_root(&self) -> TreeSitterNode {
             let node = self.inner.root_node();
-            let extended = unsafe { std::mem::transmute::<_, Node<'static>>(node) };
+            let extended = unsafe { std::mem::transmute::<Node<'_>, Node<'static>>(node) };
             TreeSitterNode::new(extended, self)
         }
 
@@ -329,7 +321,7 @@ pub mod steel_implementations {
         pub fn print_tree(&self) -> String {
             let mut output = String::new();
             let _ = pretty_print_tree(&mut output, self.inner.clone());
-            return output;
+            output
         }
         pub fn new(node: Node<'_>, t: &TreeSitterTree) -> TreeSitterNode {
             // rely on the fact that when copying the treesitter tree, there is refcounting (we keep it alive :D): https://github.com/tree-sitter/tree-sitter/blob/630fa52717f2c575a53e21b1d324ade8e528b0bd/lib/src/tree.c#L24
@@ -348,11 +340,11 @@ pub mod steel_implementations {
                 r.tree = root.tree;
                 std::mem::transmute(r)
             };
-            return TreeSitterNode {
+            TreeSitterNode {
                 inner: extended,
                 _tree: Arc::clone(t.get_inner()),
                 _lang: t.get_language(),
-            };
+            }
         }
 
         fn new_internal(&self, node: Node<'static>) -> TreeSitterNode {
@@ -1149,7 +1141,7 @@ Returns a new rope value.
             .register_fn(
                 "tssyntax->layers-byte-range",
                 |syn: TreeSitterSyntax, lower: u32, upper: u32| -> Vec<TreeSitterTree> {
-                    TreeSitterSyntax::get_trees_byte_range(&syn.get_inner(), lower, upper)
+                    TreeSitterSyntax::get_trees_byte_range(syn.get_inner(), lower, upper)
                 },
             )
             .register_fn("tssyntax->tree", TreeSitterSyntax::get_tree);
