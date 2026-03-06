@@ -13,13 +13,13 @@ homepage.workspace = true
 
 [dependencies]
 dunce = "1.0"
-etcetera = "0.10"
+etcetera.workspace = true
 ropey.workspace = true
 which = "8.0"
 regex-cursor = "0.1.5"
 bitflags.workspace = true
 once_cell = "1.21"
-regex-automata = "0.4.10"
+regex-automata = "0.4.14"
 unicode-segmentation.workspace = true
 
 [target.'cfg(windows)'.dependencies]

@@ -1,0 +1,195 @@
+; Comments
+(comment) @comment
+
+; Literals
+(number) @constant.numeric
+(string) @string
+(latex) @string.special
+(boolean) @constant.builtin.boolean
+
+; Identifiers
+((identifier) @keyword
+  (#match? @keyword "^(encourage|ensure|constraint|layer|Layer|in|In|canvas|global|colors)$"))
+((identifier) @function
+  (#match? @function "^norm$"))
+((identifier) @variable
+  (#not-match? @variable "^(encourage|ensure|constraint|layer|Layer|in|In|norm|canvas|global|colors)$"))
+(escaped_identifier) @variable.special
+
+; Domain keywords
+(type_decl "type" @keyword)
+(subtype_decl "type" @keyword)
+(subtype_decl "<:" @operator)
+(constructor_decl "constructor" @keyword)
+(function_decl "function" @keyword)
+(predicate_decl "predicate" @keyword)
+(notation_stmt "notation" @keyword)
+(value_decl "value" @keyword)
+
+(type_decl names: (identifier_list (identifier) @type))
+(type_decl names: (identifier_list (escaped_identifier) @type))
+(subtype_decl subtype: (identifier) @type)
+(subtype_decl subtype: (escaped_identifier) @type)
+(subtype_decl supertype: (identifier) @type)
+(subtype_decl supertype: (escaped_identifier) @type)
+(constructor_decl name: (identifier) @function)
+(constructor_decl name: (escaped_identifier) @function)
+(constructor_decl parameters: (parameter_list (parameter type: (identifier) @type)))
+(constructor_decl parameters: (parameter_list (parameter type: (escaped_identifier) @type)))
+(constructor_decl result_type: (identifier) @type)
+(constructor_decl result_type: (escaped_identifier) @type)
+(function_decl name: (identifier) @function)
+(function_decl name: (escaped_identifier) @function)
+(function_decl parameters: (parameter_list (parameter type: (identifier) @type)))
+(function_decl parameters: (parameter_list (parameter type: (escaped_identifier) @type)))
+(function_decl result_type: (identifier) @type)
+(function_decl result_type: (escaped_identifier) @type)
+(predicate_decl name: (identifier) @function)
+(predicate_decl name: (escaped_identifier) @function)
+(predicate_decl parameters: (parameter_list (parameter type: (identifier) @type)))
+(predicate_decl parameters: (parameter_list (parameter type: (escaped_identifier) @type)))
+(value_decl name: (identifier) @variable)
+(value_decl name: (escaped_identifier) @variable)
+(value_decl type: (identifier) @type)
+(value_decl type: (escaped_identifier) @type)
+
+(predicate_modifier) @keyword.modifier
+(arrow) @operator
+(tilde) @operator
+
+; Substance keywords
+(substance_type_decl (identifier_list) @variable)
+(substance_type_decl type: (identifier) @type)
+(substance_type_decl type: (escaped_identifier) @type)
+(assignment_stmt ":=" @operator)
+(predicate_stmt (argument_list) @punctuation.bracket)
+(label_stmt "Label" @keyword)
+(autolabel_stmt "AutoLabel" @keyword)
+(nolabel_stmt "NoLabel" @keyword)
+(let_stmt "Let" @keyword)
+(indexed_statement "for" @keyword)
+(indexing_clause "in" @keyword)
+(index_where_clause "where" @keyword)
+
+(typed_assignment_stmt type: (identifier) @type)
+(typed_assignment_stmt type: (escaped_identifier) @type)
+(typed_assignment_stmt name: (identifier) @variable)
+(typed_assignment_stmt name: (escaped_identifier) @variable)
+
+(predicate_stmt name: (identifier) @function)
+(predicate_stmt name: (escaped_identifier) @function)
+
+; Style keywords
+(forall_block "forall" @keyword)
+(where_clause "where" @keyword)
+(has_condition "has" @keyword)
+(with_clause "with" @keyword)
+(collect_block "collect" @keyword)
+(collect_block "into" @keyword)
+(foreach_clause "foreach" @keyword)
+(foreach_clause "foreach" @keyword)
+(with_clause "with" @keyword)
+((named_block (identifier) @attribute)
+  (#match? @attribute "^(canvas|global|colors)$"))
+((named_block (identifier) @namespace)
+  (#not-match? @namespace "^(canvas|global|colors)$"))
+
+(typed_binding type: (identifier) @type)
+(typed_binding type: (escaped_identifier) @type)
+(typed_binding names: (identifier_list (identifier) @variable))
+(typed_binding names: (identifier_list (escaped_identifier) @variable))
+(binding_modifier) @keyword.modifier
+(single_binding type: (identifier) @type)
+(single_binding type: (escaped_identifier) @type)
+(single_binding name: (identifier) @variable)
+(single_binding name: (escaped_identifier) @variable)
+
+(style_typed_assignment type: (identifier) @type)
+(style_typed_assignment type: (escaped_identifier) @type)
+(shape_literal name: (identifier) @type)
+(shape_literal name: (escaped_identifier) @type)
+(style_typed_assignment target: (property (identifier) @attribute))
+(style_typed_assignment target: (property (escaped_identifier) @attribute))
+(style_assignment target: (property (identifier) @attribute))
+(style_assignment target: (property (escaped_identifier) @attribute))
+(style_assignment target: (property (path (identifier) @attribute)))
+(style_assignment target: (property (path (escaped_identifier) @attribute)))
+(override_stmt target: (property (identifier) @attribute))
+(override_stmt target: (property (escaped_identifier) @attribute))
+(delete_stmt target: (property (identifier) @attribute))
+(delete_stmt target: (property (escaped_identifier) @attribute))
+(constraint_stmt target: (property (identifier) @attribute))
+(constraint_stmt target: (property (escaped_identifier) @attribute))
+(layer_stmt first: (property (identifier) @attribute))
+(layer_stmt first: (property (escaped_identifier) @attribute))
+(layer_stmt second: (property (identifier) @attribute))
+(layer_stmt second: (property (escaped_identifier) @attribute))
+(stack_stmt first: (property (identifier) @attribute))
+(stack_stmt first: (property (escaped_identifier) @attribute))
+(stack_stmt second: (property (identifier) @attribute))
+(stack_stmt second: (property (escaped_identifier) @attribute))
+
+(override_stmt "override" @keyword)
+(delete_stmt "delete" @keyword)
+(ensure_stmt "ensure" @keyword)
+(encourage_stmt "encourage" @keyword)
+(constraint_stmt "constraint" @keyword)
+(layer_stmt "layer" @keyword)
+(layer_stmt "above" @keyword.operator)
+(layer_stmt "below" @keyword.operator)
+(stack_stmt "above" @keyword.operator)
+(stack_stmt "below" @keyword.operator)
+(ensure_stmt "in" @keyword)
+(encourage_stmt "in" @keyword)
+(style_assignment ":" @operator)
+(style_typed_assignment ":" @operator)
+
+; Operators and punctuation
+(wildcard "?" @operator)
+(binary_expression ("+" @operator))
+(binary_expression ("-" @operator))
+(binary_expression ("*" @operator))
+(binary_expression ("/" @operator))
+(binary_expression ("%" @operator))
+(binary_expression ("mod" @operator))
+(binary_expression ("^" @operator))
+(binary_expression (".*" @operator))
+(binary_expression ("./" @operator))
+(binary_expression ("then" @keyword.operator))
+(binary_expression ("==" @operator))
+(binary_expression ("!=" @operator))
+(binary_expression ("<" @operator))
+(binary_expression (">" @operator))
+(binary_expression ("<=" @operator))
+(binary_expression (">=" @operator))
+(binary_expression ("&&" @operator))
+(binary_expression ("||" @operator))
+(unary_expression ("-" @operator))
+(unary_expression ("+" @operator))
+(unary_expression ("not" @keyword.operator))
+(unary_expression ("!" @keyword.operator))
+(transpose_expression ("'" @operator))
+
+(argument_list "(" @punctuation.bracket)
+(argument_list ")" @punctuation.bracket)
+(parameter_list "(" @punctuation.bracket)
+(parameter_list ")" @punctuation.bracket)
+(list "[" @punctuation.bracket)
+(list "]" @punctuation.bracket)
+(vector "(" @punctuation.bracket)
+(vector ")" @punctuation.bracket)
+(tuple "{" @punctuation.bracket)
+(tuple "}" @punctuation.bracket)
+(block "{" @punctuation.bracket)
+(block "}" @punctuation.bracket)
+
+; Paths and properties
+(path (identifier) @variable.other.member)
+(path (escaped_identifier) @variable.other.member)
+
+; Functions and calls
+(call_expression (identifier) @function)
+(call_expression (path) @function)
+(numberof_expression "numberof" @function)
+(listof_expression "listof" @function)
+(nameof_expression "nameof" @function)

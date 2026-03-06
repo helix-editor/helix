@@ -162,10 +162,8 @@
 
 (character_literal) @constant.character
 
-[
-	(null_literal) ; should be highlighted the same as booleans
-	(boolean_literal)
-] @constant.builtin.boolean
+(boolean_literal) @constant.builtin.boolean
+(null_literal) @constant.builtin
 
 (real_literal) @constant.numeric.float
 [

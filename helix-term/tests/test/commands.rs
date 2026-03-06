@@ -431,6 +431,30 @@ async fn test_delete_char_backward() -> anyhow::Result<()> {
     Ok(())
 }
 
+// Cursor behavior is different when the text is created in the buffer vs loaded from a file.
+// This test will not work for reproducing the crash or verifying the result after the fix.
+// // #[tokio::test(flavor = "multi_thread")]
+// async fn test_try_restore_indent() -> anyhow::Result<()> {
+//     test((" #[ |]#foo\na#( |)#bar\n", "o<C-u><esc>", " foo\n#[\n|]#a bar\n#(\n|)#")).await?;
+//     Ok(())
+// }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_try_restore_indent() -> anyhow::Result<()> {
+    // Bug: 15228 try_restore_indent uses primary cursor position for all selections,
+    // causing invalid range errors when multiple cursors are on different lines
+    let file = temp_file_with_contents("  foo\na bar\n")?;
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("jl<A-C>o<C-u><esc>"),
+        None,
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_word_backward() -> anyhow::Result<()> {
     // don't panic when deleting overlapping ranges

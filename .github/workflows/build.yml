@@ -9,7 +9,7 @@ on:
     - cron: "00 01 * * *"
 
 env:
-  MSRV: "1.82"
+  MSRV: "1.87"
   # This key can be changed to bust the cache of tree-sitter grammars.
   GRAMMAR_CACHE_VERSION: ""
 

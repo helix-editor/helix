@@ -1,3 +1,5 @@
+# Author: Ricardo Fernández Serrata <rudxain@gmail.com>
+
 error = "err"
 warning = "warn"
 hint = "diag"
@@ -15,15 +17,15 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 "ui.text" = "default"
 "ui.text.focus" = { bg = "sel" }
 # secondary
-"ui.cursor" = { fg = "#eeeeee", bg = "#333333" }
+"ui.cursor" = { fg = "#eee", bg = "#333" }
 # it only uses 1 cell, and it must be skimmable,
 # so force max contrast
-"ui.cursor.primary" = { fg = "#ffffff", bg = "#000000" }
-"ui.cursor.match" = { bg = "#cccccc" }
+"ui.cursor.primary" = { fg = "#fff", bg = "#000" }
+"ui.cursor.match" = { bg = "#ccc" }
 "ui.debug" = "default"
 # it feels questionable, but it's more consistent and clean than `reversed`;
 # some web-browsers do the same
-"ui.selection" = { fg = "#dddddd", bg = "#555555" }
+"ui.selection" = { fg = "#ddd", bg = "#555" }
 "ui.cursorline" = { bg = "sel_weak" }
 "ui.cursorcolumn" = { bg = "sel_weak" }
 "ui.virtual" = "ghost"
@@ -34,7 +36,7 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 # should be skimmable,
 # so override FG & BG to guarantee contrast
 # while also signaling that they are special text
-"ui.virtual.jump-label" = { fg = "#000000", bg = "sym" }
+"ui.virtual.jump-label" = { fg = "#000", bg = "sym" }
 "ui.statusline" = { fg = "default", bg = "bg_ui" }
 "ui.bufferline" = { fg = "default", bg = "bg_ui" }
 "ui.bufferline.active" = { bg = "sel", modifiers = ["bold"] }
@@ -42,7 +44,7 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 "ui.highlight" = { bg = "sel" }
 "ui.menu" = { fg = "code", bg = "bg_ui" }
 "ui.menu.selected" = { bg = "sel" }
-"ui.popup" = { fg = "#000000", bg = "#cccccc" }
+"ui.popup" = { fg = "#000", bg = "#ccc" }
 "ui.picker.header" = { modifiers = ["bold", "underlined"] }
 
 
@@ -88,24 +90,24 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 "diff.delta.conflict" = "err" # ❌
 
 [palette]
-bg = "#eeeeee"
-bg_ui = "#dddddd"
-default = "#333333"
-default_weak = "#666666"
-ghost = "#999999"
-code = "#336633"
-code_unsafe = "#330000"
-code_bg_unsafe = "#eeddee"
-red = "#880000"
-green = "#007700"
-yellow = "#777700"
-sel = "#cccccc"
+bg = "#eee"
+bg_ui = "#ddd"
+default = "#333"
+default_weak = "#666"
+ghost = "#999"
+code = "#363"
+code_unsafe = "#300"
+code_bg_unsafe = "#ede"
+red = "#800"
+green = "#070"
+yellow = "#770"
+sel = "#ccc"
 sel_weak = "#e7e7e7"
-err = "#ff0000"
-warn = "#bbaa00"
-diag = "#0066aa"
-literal = "#009933"
-literal_unsafe = "#441100"
-literal_bg_unsafe = "#eeccaa"
-sym = "#00aaff"
-doc = "#770077"
+err = "#f00"
+warn = "#ba0"
+diag = "#06a"
+literal = "#093"
+literal_unsafe = "#410"
+literal_bg_unsafe = "#eca"
+sym = "#0af"
+doc = "#707"
