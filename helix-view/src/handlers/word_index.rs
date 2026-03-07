@@ -6,16 +6,16 @@
 use std::{borrow::Cow, collections::HashMap, iter, mem, sync::Arc, time::Duration};
 
 use helix_core::{
-    chars::char_is_word, fuzzy::fuzzy_match, movement, ChangeSet, Range, Rope, RopeSlice,
+    ChangeSet, Range, Rope, RopeSlice, chars::char_is_word, fuzzy::fuzzy_match, movement,
 };
-use helix_event::{register_hook, AsyncHook};
+use helix_event::{AsyncHook, register_hook};
 use helix_stdx::rope::RopeSliceExt as _;
 use parking_lot::RwLock;
 use tokio::{sync::mpsc, time::Instant};
 
 use crate::{
-    events::{ConfigDidChange, DocumentDidChange, DocumentDidClose, DocumentDidOpen},
     DocumentId,
+    events::{ConfigDidChange, DocumentDidChange, DocumentDidClose, DocumentDidOpen},
 };
 
 use super::Handlers;
@@ -321,40 +321,44 @@ fn changed_windows<'a>(
     let mut operations = changes.changes().iter().peekable();
     let mut old_pos = 0;
     let mut new_pos = 0;
-    iter::from_fn(move || loop {
-        let operation = operations.next()?;
-        let old_start = old_pos;
-        let new_start = new_pos;
-        let len = operation.len_chars();
-        match operation {
-            Retain(_) => {
-                old_pos += len;
-                new_pos += len;
-                continue;
-            }
-            Insert(_) => new_pos += len,
-            Delete(_) => old_pos += len,
-        }
-
-        // Scan ahead until a `Retain` is found which would end a window.
-        while let Some(o) = operations.next_if(|op| !matches!(op, Retain(n) if *n > MAX_WORD_LEN)) {
-            let len = o.len_chars();
-            match o {
+    iter::from_fn(move || {
+        loop {
+            let operation = operations.next()?;
+            let old_start = old_pos;
+            let new_start = new_pos;
+            let len = operation.len_chars();
+            match operation {
                 Retain(_) => {
                     old_pos += len;
                     new_pos += len;
+                    continue;
                 }
-                Delete(_) => old_pos += len,
                 Insert(_) => new_pos += len,
+                Delete(_) => old_pos += len,
             }
+
+            // Scan ahead until a `Retain` is found which would end a window.
+            while let Some(o) =
+                operations.next_if(|op| !matches!(op, Retain(n) if *n > MAX_WORD_LEN))
+            {
+                let len = o.len_chars();
+                match o {
+                    Retain(_) => {
+                        old_pos += len;
+                        new_pos += len;
+                    }
+                    Delete(_) => old_pos += len,
+                    Insert(_) => new_pos += len,
+                }
+            }
+
+            let old_window = old_start.saturating_sub(MAX_WORD_LEN)
+                ..(old_pos + MAX_WORD_LEN).min(old_text.len_chars());
+            let new_window = new_start.saturating_sub(MAX_WORD_LEN)
+                ..(new_pos + MAX_WORD_LEN).min(new_text.len_chars());
+
+            return Some((old_text.slice(old_window), new_text.slice(new_window)));
         }
-
-        let old_window = old_start.saturating_sub(MAX_WORD_LEN)
-            ..(old_pos + MAX_WORD_LEN).min(old_text.len_chars());
-        let new_window = new_start.saturating_sub(MAX_WORD_LEN)
-            ..(new_pos + MAX_WORD_LEN).min(new_text.len_chars());
-
-        return Some((old_text.slice(old_window), new_text.slice(new_window)));
     })
 }
 

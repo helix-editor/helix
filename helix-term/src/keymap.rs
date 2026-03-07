@@ -3,8 +3,8 @@ pub mod macros;
 
 pub use crate::commands::MappableCommand;
 use arc_swap::{
-    access::{DynAccess, DynGuard},
     ArcSwap,
+    access::{DynAccess, DynGuard},
 };
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
@@ -349,10 +349,10 @@ impl Keymaps {
         };
 
         let trie = match trie_node.search(&[*first]) {
-            Some(KeyTrie::MappableCommand(ref cmd)) => {
+            Some(KeyTrie::MappableCommand(cmd)) => {
                 return KeymapResult::Matched(cmd.clone());
             }
-            Some(KeyTrie::Sequence(ref cmds)) => {
+            Some(KeyTrie::Sequence(cmds)) => {
                 return KeymapResult::MatchedSequence(cmds.clone());
             }
             None => return KeymapResult::NotFound,
@@ -483,11 +483,13 @@ mod tests {
                 .len()
                 > 1
         );
-        assert!(!merged_keyamp
-            .get(&Mode::Insert)
-            .and_then(|key_trie| key_trie.node())
-            .unwrap()
-            .is_empty());
+        assert!(
+            !merged_keyamp
+                .get(&Mode::Insert)
+                .and_then(|key_trie| key_trie.node())
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]

@@ -5,8 +5,8 @@ use std::ops::{Bound, RangeBounds};
 pub use regex_cursor::engines::meta::{Builder as RegexBuilder, Regex};
 pub use regex_cursor::regex_automata::util::syntax::Config;
 use regex_cursor::{Input as RegexInput, RopeyCursor};
-use ropey::iter::Chunks;
 use ropey::RopeSlice;
+use ropey::iter::Chunks;
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 
 /// Additional utility functions for [RopeSlice]

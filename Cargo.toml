@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
   "helix-core",
   "helix-view",
@@ -60,7 +60,7 @@ arc-swap = "1.8"
 
 [workspace.package]
 version = "25.7.1"
-edition = "2021"
+edition = "2024"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"

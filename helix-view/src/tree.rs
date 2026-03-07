@@ -1,4 +1,4 @@
-use crate::{graphics::Rect, View, ViewId};
+use crate::{View, ViewId, graphics::Rect};
 use slotmap::SlotMap;
 
 // the dimensions are recomputed on window resize/tree change.
@@ -725,8 +725,8 @@ impl DoubleEndedIterator for Traverse<'_> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::editor::GutterConfig;
     use crate::DocumentId;
+    use crate::editor::GutterConfig;
 
     #[test]
     fn find_split_in_direction() {

@@ -7,12 +7,12 @@ use std::{
 use helix_stdx::rope::RopeSliceExt;
 
 use crate::{
+    RopeSlice,
     chars::char_is_line_ending,
     doc_formatter::{DocumentFormatter, TextFormat},
     graphemes::{ensure_grapheme_boundary_prev, grapheme_width},
     line_ending::line_end_char_index,
     text_annotations::TextAnnotations,
-    RopeSlice,
 };
 
 /// Represents a single point in a text buffer. Zero indexed.
@@ -452,8 +452,8 @@ pub fn char_idx_at_visual_block_offset(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::text_annotations::InlineAnnotation;
     use crate::Rope;
+    use crate::text_annotations::InlineAnnotation;
 
     #[test]
     fn test_ordering() {

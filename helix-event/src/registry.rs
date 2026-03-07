@@ -5,9 +5,9 @@
 
 use std::any::TypeId;
 
-use anyhow::{bail, Result};
-use hashbrown::hash_map::Entry;
+use anyhow::{Result, bail};
 use hashbrown::HashMap;
+use hashbrown::hash_map::Entry;
 use parking_lot::RwLock;
 
 use crate::hook::ErasedHook;
