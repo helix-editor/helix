@@ -208,10 +208,13 @@ pub struct Document {
 
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
+    /// Cached LSP document links for navigation (e.g. goto_file).
+    pub document_links: Vec<DocumentLink>,
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
     pub pull_diagnostic_controller: TaskController,
+    pub document_link_controller: TaskController,
 
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
@@ -224,6 +227,15 @@ pub struct DocumentColorSwatches {
     pub color_swatches: Vec<InlineAnnotation>,
     pub colors: Vec<syntax::Highlight>,
     pub color_swatches_padding: Vec<InlineAnnotation>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DocumentLink {
+    /// Character offsets in the document for the link range.
+    pub start: usize,
+    pub end: usize,
+    pub link: lsp::DocumentLink,
+    pub language_server_id: LanguageServerId,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -729,10 +741,12 @@ impl Document {
             readonly: false,
             jump_labels: HashMap::new(),
             color_swatches: None,
+            document_links: Vec::new(),
             color_swatch_controller: TaskController::new(),
             syn_loader,
             previous_diagnostic_id: None,
             pull_diagnostic_controller: TaskController::new(),
+            document_link_controller: TaskController::new(),
         }
     }
 
