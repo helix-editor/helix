@@ -213,6 +213,11 @@ command = "golangci-lint-langserver"
 [language-server.golangci-lint-lsp.config]
 command = ["golangci-lint", "run", "--output.json.path=stdout", "--show-stats=false", "--issues-exit-code=1"]
 
+[language-server.regal]
+command = "regal"
+args = ["language-server"]
+config = { provideFormatter = true }
+
 [language-server.rust-analyzer]
 command = "rust-analyzer"
 
@@ -3687,9 +3692,10 @@ name = "rego"
 scope = "source.rego"
 injection-regex = "rego"
 file-types = ["rego"]
+roots = [".regal/config.yaml", ".regal.yaml"]
 auto-format = true
 comment-token = "#"
-language-servers = [ "regols" ]
+language-servers = [ "regols", "regal" ]
 grammar = "rego"
 
 [[grammar]]
