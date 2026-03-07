@@ -204,8 +204,7 @@
 (provide set-editor-count!)
 ;;@doc
 ;;Sets the editor count.
-(define (set-editor-count! arg)
-  (helix.set-editor-count! *helix.cx* arg))
+(define set-editor-count! helix.set-editor-count!)
 
 (provide string->editor-mode)
 ;;@doc
