@@ -141,7 +141,14 @@ pub fn log_file() -> PathBuf {
 }
 
 pub fn workspace_config_file() -> PathBuf {
-    find_workspace().0.join(".helix").join("config.toml")
+    let root = find_workspace().0;
+    let dot_config_path = root.join(".config").join("helix").join("config.toml");
+
+    if dot_config_path.exists() {
+        dot_config_path
+    } else {
+        root.join(".helix").join("config.toml")
+    }
 }
 
 pub fn lang_config_file() -> PathBuf {
@@ -254,6 +261,7 @@ pub fn find_workspace_in(dir: impl AsRef<Path>) -> (PathBuf, bool) {
             || ancestor.join(".svn").exists()
             || ancestor.join(".jj").exists()
             || ancestor.join(".helix").exists()
+            || ancestor.join(".config").join("helix").exists()
         {
             return (ancestor.to_owned(), false);
         }
