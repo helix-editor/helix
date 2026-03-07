@@ -106,7 +106,19 @@ fn location_to_file_location(location: &Location) -> Option<FileLocation<'_>> {
         location.range.start.line as usize,
         location.range.end.line as usize,
     ));
-    Some((path.into(), line))
+    Some((path.into(), line, None))
+}
+
+fn location_to_file_location_with_notes(
+    location: &Location,
+    notes: String,
+) -> Option<FileLocation<'_>> {
+    let path = location.uri.as_path()?;
+    let line = Some((
+        location.range.start.line as usize,
+        location.range.end.line as usize,
+    ));
+    Some((path.into(), line, Some(notes)))
 }
 
 fn jump_to_location(editor: &mut Editor, location: &Location, action: Action) {
@@ -305,7 +317,20 @@ fn diag_picker(
                 .immediately_show_diagnostic(doc, view.id);
         },
     )
-    .with_preview(move |_editor, diag| location_to_file_location(&diag.location))
+    .with_preview(move |_editor, diag| match diag.diag.data {
+        Some(ref data) => {
+            if let Some(error_string) = data
+                .as_object()
+                .and_then(|object| object.get("rendered"))
+                .and_then(|rendered| rendered.as_str())
+            {
+                location_to_file_location_with_notes(&diag.location, error_string.to_string())
+            } else {
+                location_to_file_location(&diag.location)
+            }
+        }
+        None => location_to_file_location(&diag.location),
+    })
     .truncate_start(false)
 }
 
