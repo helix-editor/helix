@@ -65,11 +65,6 @@ to be used as typed commands. For example:
 (define (git-add)
   (shell "git" "add" "%"))
 
-(define (current-path)
-  (let* ([focus (editor-focus)]
-         [focus-doc-id (editor->doc-id focus)])
-    (editor-document->path focus-doc-id)))
-
 ;;@doc
 ;; Open the helix.scm file
 (define (open-helix-scm)
