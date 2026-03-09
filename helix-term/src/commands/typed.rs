@@ -319,6 +319,104 @@ fn force_buffer_close_others(
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
+fn buffer_gather_prev_next_impl(
+    editor: &mut Editor,
+    direction: Direction,
+    skip_visible: bool,
+) -> Vec<DocumentId> {
+    let current_document_id = &doc!(editor).id();
+
+    let visible_document_ids = if skip_visible {
+        editor
+            .tree
+            .views()
+            .map(|view| &view.0.doc)
+            .collect::<HashSet<_>>()
+    } else {
+        HashSet::from([current_document_id])
+    };
+
+    let filter_visible = |doc_id: &DocumentId| !visible_document_ids.contains(doc_id);
+
+    if direction == Direction::Forward {
+        editor
+            .documents()
+            .map(|doc| doc.id())
+            .skip_while(|doc_id| *doc_id != *current_document_id)
+            .filter(filter_visible)
+            .collect()
+    } else {
+        editor
+            .documents()
+            .map(|doc| doc.id())
+            .take_while(|doc_id| *doc_id != *current_document_id)
+            .filter(filter_visible)
+            .collect()
+    }
+}
+
+fn buffer_close_next(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids =
+        buffer_gather_prev_next_impl(cx.editor, Direction::Forward, args.has_flag("skip-visible"));
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn force_buffer_close_next(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids =
+        buffer_gather_prev_next_impl(cx.editor, Direction::Forward, args.has_flag("skip-visible"));
+    buffer_close_by_ids_impl(cx, &document_ids, true)
+}
+
+fn buffer_close_previous(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_prev_next_impl(
+        cx.editor,
+        Direction::Backward,
+        args.has_flag("skip-visible"),
+    );
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn force_buffer_close_previous(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let document_ids = buffer_gather_prev_next_impl(
+        cx.editor,
+        Direction::Backward,
+        args.has_flag("skip-visible"),
+    );
+    buffer_close_by_ids_impl(cx, &document_ids, true)
+}
+
 fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
     editor.documents().map(|doc| doc.id()).collect()
 }
@@ -2914,6 +3012,38 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bco!", "bcloseother!"],
         doc: "Force close all buffers but the currently focused one.",
         fun: force_buffer_close_others,
+        completer: CommandCompleter::none(),
+        signature: BUFFER_CLOSE_OTHERS_SIGNATURE,
+    },
+    TypableCommand {
+        name: "buffer-close-next",
+        aliases: &["bcn", "bclosenext"],
+        doc: "Close all buffers after the currently focused one.",
+        fun: buffer_close_next,
+        completer: CommandCompleter::none(),
+        signature: BUFFER_CLOSE_OTHERS_SIGNATURE,
+    },
+    TypableCommand {
+        name: "buffer-close-next!",
+        aliases: &["bcn!", "bclosenext!"],
+        doc: "Force close all buffers after the currently focused one.",
+        fun: force_buffer_close_next,
+        completer: CommandCompleter::none(),
+        signature: BUFFER_CLOSE_OTHERS_SIGNATURE,
+    },
+    TypableCommand {
+        name: "buffer-close-previous",
+        aliases: &["bcp", "bcloseprevious"],
+        doc: "Close all buffers before the currently focused one.",
+        fun: buffer_close_previous,
+        completer: CommandCompleter::none(),
+        signature: BUFFER_CLOSE_OTHERS_SIGNATURE,
+    },
+    TypableCommand {
+        name: "buffer-close-previous!",
+        aliases: &["bcp!", "bcloseprevious!"],
+        doc: "Force close all buffers before the currently focused one.",
+        fun: force_buffer_close_previous,
         completer: CommandCompleter::none(),
         signature: BUFFER_CLOSE_OTHERS_SIGNATURE,
     },
