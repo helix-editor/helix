@@ -2043,7 +2043,7 @@ injection-regex = "mail|eml|email"
 
 [[grammar]]
 name = "mail"
-source = { git = "https://codeberg.org/ficd/tree-sitter-mail", rev = "8e60f38efbae1cc5f22833ae13c5500dd0f3b12f" }
+source = { git = "https://codeberg.org/ficd/tree-sitter-mail", rev = "5eddbfdbec4c893182c79047499901c196332e78" }
 
 [[language]]
 name = "markdown"
