@@ -4246,6 +4246,9 @@ pub fn complete_command_args(
             complete_variable_expansion(&token.content, offset + token.content_start)
         }
         TokenKind::Expansion(ExpansionKind::Unicode) => Vec::new(),
+        TokenKind::Expansion(ExpansionKind::Register) => {
+            complete_register_expansion(editor, &token.content, offset + token.content_start)
+        }
         TokenKind::ExpansionKind => {
             complete_expansion_kind(&token.content, offset + token.content_start)
         }
@@ -4369,6 +4372,22 @@ fn complete_variable_expansion(content: &str, offset: usize) -> Vec<ui::prompt::
     .into_iter()
     .map(|(name, _)| (offset.., (*name).into()))
     .collect()
+}
+
+fn complete_register_expansion(
+    editor: &Editor,
+    content: &str,
+    offset: usize,
+) -> Vec<ui::prompt::Completion> {
+    let register_names: Vec<String> = editor
+        .registers
+        .iter_preview()
+        .map(|(ch, _)| ch.to_string())
+        .collect();
+    fuzzy_match(content, register_names, false)
+        .into_iter()
+        .map(|(name, _)| (offset.., name.to_string().into()))
+        .collect()
 }
 
 fn complete_expansion_kind(content: &str, offset: usize) -> Vec<ui::prompt::Completion> {
