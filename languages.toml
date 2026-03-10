@@ -5181,10 +5181,6 @@ indent = {tab-width = 2, unit = "  "}
 '“' = '”'
 '‘' = '’'
 
-[[grammar]]
-name = "bovex"
-source = { git = "https://github.com/mi2ebi/tree-sitter-bovex", rev = "de7657a9cc3525b9b77c6d268da09dad5b1346b0" }
-
 [[language]]
 name = "haxe"
 scope = "source.haxe"
