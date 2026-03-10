@@ -175,6 +175,7 @@ teal-language-server = { command = "teal-language-server" }
 wasm-language-tools = { command = "wat_server" }
 sourcepawn-studio = { command = "sourcepawn-studio" }
 luau = { command = "luau-lsp", args = ["lsp"] }
+zizmor = { command = "zizmor", args = ["--lsp"]}
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
