@@ -2200,7 +2200,7 @@ grammar = "gitcommit"
 [[language]]
 name = "github-action"
 scope = "source.yaml.github-action"
-language-servers = [ "actions-language-server", "yaml-language-server" ]
+language-servers = [ "actions-language-server", "yaml-language-server", "zizmor" ]
 file-types = [{ glob = ".github/workflows/*.yaml" }, { glob = ".github/workflows/*.yml" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
