@@ -8,7 +8,7 @@ pub mod steel_implementations {
     use ropey::RopeSlice;
     use steel::{
         gc::ShareableMut,
-        rvals::{as_underlying_type, AsRefSteelVal, Custom, SteelString},
+        rvals::{as_underlying_type, AsRefSteelVal, Custom, IntoSteelVal, SteelString},
         steel_vm::{
             builtin::{BuiltInModule, MarkdownDoc},
             register_fn::RegisterFn,
@@ -106,7 +106,7 @@ pub mod steel_implementations {
             }
         }
 
-        pub fn load(&self, lang: &SteelVal) -> Result<Option<TreeSitterQuery>, SteelErr> {
+        pub fn load(&self, lang: &str) -> Result<Option<TreeSitterQuery>, SteelErr> {
             let fun = self.fun.clone();
             let SteelVal::BoxedFunction(func) = &fun else {
                 return Err(SteelErr::new(
@@ -115,7 +115,7 @@ pub mod steel_implementations {
                 ));
             };
 
-            let val = (func.function)(&[lang.clone()])?;
+            let val = (func.function)(&[lang.into_steelval().unwrap()])?;
 
             let SteelVal::Custom(custom) = val else {
                 return Ok(None);
@@ -190,17 +190,28 @@ pub mod steel_implementations {
             upper: u32,
         ) -> Result<TreeSitterMatch, SteelErr> {
             let mut query_map = BTreeMap::new();
-            for layer in syn.layers_for_byte_range(lower, upper) {
-                let lang = syn.layer(layer).language;
-                let val = SteelVal::StringV(SteelString::from(
-                    loader.language(lang).config().language_id.clone(),
-                ));
 
-                let loaded = query_loader.load(&val)?;
-                if let Some(loaded) = loaded {
-                    query_map.insert(lang, loaded);
+            // iterate and collect all of the layers contained within the given ranged
+            let mut stack = vec![syn.root_layer()];
+
+            while let Some(layer) = stack.pop() {
+                let layer_data = syn.layer(layer);
+                let lang = layer_data.language;
+                let lang_str = &loader.language(lang).config().language_id;
+                match query_loader.load(lang_str) {
+                    Ok(Some(loaded)) => query_map.insert(lang, loaded),
+                    Ok(None) => continue,
+                    Err(e) => return Err(e),
+                };
+
+                for inj in layer_data.injections_at_byte_idx(lower) {
+                    if inj.range.start >= upper {
+                        break;
+                    }
+                    stack.push(inj.layer);
                 }
             }
+
             let mut captures: BTreeMap<String, Vec<TreeSitterNode>> = BTreeMap::new();
             let mut layers: Vec<(Layer, TreeSitterTree)> = vec![];
             let load = |lang| query_map.get(&lang).map(|q| q.get_inner().as_ref());
