@@ -375,6 +375,21 @@ fn buffer_previous(
     Ok(())
 }
 
+fn buffer_reopen(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if let Some(last_closed_doc_path) = cx.editor.closed_document_paths.pop() {
+        cx.editor.open(&last_closed_doc_path, Action::Replace)?;
+    }
+    Ok(())
+}
+
 fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&str>,
@@ -2961,6 +2976,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             ..Signature::DEFAULT
         },
     },
+    TypableCommand {
+        name: "buffer-reopen",
+        aliases: &["br", "breopen"],
+        doc: "Re-open the most previously closed buffer.",
+        fun: buffer_reopen,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },    
     TypableCommand {
         name: "write",
         aliases: &["w"],
