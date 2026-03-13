@@ -85,6 +85,8 @@
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh`, `:!` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
+| `:show-selection-diff-popup`, `:diffshow` | Show a popup with the unsaved diff hunks intersecting the primary selection. |
+| `:yank-selection-diff`, `:diffyank` | Yank the unsaved diff hunks intersecting the primary selection. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
 | `:set-register` | Set contents of the given register. |
 | `:redraw` | Clear and re-render the whole UI |
