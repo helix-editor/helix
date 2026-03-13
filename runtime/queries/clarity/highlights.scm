@@ -7,10 +7,8 @@
   (uint_lit)
 ] @constant.numeric.integer
 
-[
-  (bool_lit)
-  (none_lit)
-] @constant.builtin
+(bool_lit) @constant.builtin.boolean
+(none_lit) @constant.builtin
 
 [
   (ascii_string_lit)
@@ -69,16 +67,22 @@
 [
   "impl-trait"
   "use-trait"
-  "define-trait"
+] @keyword.control.import
+
+[
   "define-read-only"
   "define-private"
   "define-public"
+] @keyword.function
+
+[
+  "define-trait"
+  "define-constant"
   "define-data-var"
+  "define-map"
   "define-fungible-token"
   "define-non-fungible-token"
-  "define-constant"
-  "define-map"
-] @function.special
+] @keyword.storage.type
 
 ; Variables and parameters
 (function_parameter) @variable.parameter
