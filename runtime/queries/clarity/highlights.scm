@@ -95,9 +95,8 @@
 (function_parameter) @variable.parameter
 (trait_usage trait_alias: (identifier) @type.parameter)
 
-(tuple_lit key: (identifier) @variable)
-(tuple_type key: (identifier) @variable)
-(tuple_type_for_trait key: (identifier) @variable)
+(tuple_lit key: (identifier) @variable.other.member)
+(tuple_type key: (identifier) @variable.other.member)
+(tuple_type_for_trait key: (identifier) @variable.other.member)
 
 (global) @variable.builtin
-
