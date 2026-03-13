@@ -5,6 +5,7 @@
 - [`[editor.statusline]` Section](#editorstatusline-section)
 - [`[editor.lsp]` Section](#editorlsp-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
+- [`[editor.picker]` Section](#editorpicker-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
 - [`[editor.file-explorer]` Section](#editorfile-explorer-section)
 - [`[editor.buffer-picker]` Section](#editorbuffer-picker-section)
@@ -193,6 +194,14 @@ Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 [normal mode]: ./keymap.md#normal-mode
 [insert mode]: ./keymap.md#insert-mode
 [select mode]: ./keymap.md#select--extend-mode
+
+### `[editor.picker]` Section
+
+General options for pickers (will apply to file pickers, open buffers pickers, etc.).
+
+| Key         | Description                                                                                      | Default |
+| ----------- | ------------------------------------------------------------------------------------------------ | ------- |
+| `scrolloff` | Padding to keep between the vertical edges of the picker and the selected element when scrolling | `3`     |
 
 ### `[editor.file-picker]` Section
 
