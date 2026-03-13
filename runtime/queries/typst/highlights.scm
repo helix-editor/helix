@@ -12,7 +12,7 @@
 (flow ["break" "continue"] @keyword.control)
 
 ; OPERATOR
-(equals "=" @operator)
+(let "=" @operator)
 (lambda "=>" @operator)
 (in ["in" "not"] @keyword.operator)
 (context "context" @keyword.control)
