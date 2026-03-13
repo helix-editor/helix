@@ -2,7 +2,7 @@ use super::{Context, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
-    ui::{self, overlay::overlaid, Picker, Popup, Prompt, PromptEvent, Text},
+    ui::{self, Picker, Popup, Prompt, PromptEvent, Text, overlay::overlaid},
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::config::{DebugConfigCompletion, DebugTemplate};
@@ -10,7 +10,7 @@ use helix_dap::{self as dap, requests::TerminateArguments};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
 
-use serde_json::{to_value, Value};
+use serde_json::{Value, to_value};
 use tui::text::Spans;
 
 use std::collections::HashMap;

@@ -3,12 +3,12 @@ use std::sync::Arc;
 use helix_core::{Rope, RopeSlice};
 use imara_diff::{IndentHeuristic, IndentLevel, InternedInput};
 use parking_lot::RwLock;
-use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::Notify;
-use tokio::time::{timeout, timeout_at, Duration};
+use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::time::{Duration, timeout, timeout_at};
 
 use crate::diff::{
-    DiffInner, Event, RenderLock, ALGORITHM, DIFF_DEBOUNCE_TIME_ASYNC, DIFF_DEBOUNCE_TIME_SYNC,
+    ALGORITHM, DIFF_DEBOUNCE_TIME_ASYNC, DIFF_DEBOUNCE_TIME_SYNC, DiffInner, Event, RenderLock,
 };
 
 use super::line_cache::InternedRopeLines;

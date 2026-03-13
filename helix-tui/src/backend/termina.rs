@@ -6,12 +6,12 @@ use helix_view::{
     theme::{self, Color, Modifier},
 };
 use termina::{
+    Event, OneBased, PlatformTerminal, Terminal as _, WindowSize,
     escape::{
         csi::{self, Csi, SgrAttributes, SgrModifiers},
         dcs::{self, Dcs},
     },
     style::{CursorStyle, RgbColor},
-    Event, OneBased, PlatformTerminal, Terminal as _, WindowSize,
 };
 
 use crate::{buffer::Cell, terminal::Config};
@@ -209,7 +209,9 @@ impl TerminaBackend {
                 end.duration_since(start)
             );
         } else {
-            log::debug!("Failed to detect terminal capabilities within {poll_duration:?}. Using default capabilities only");
+            log::debug!(
+                "Failed to detect terminal capabilities within {poll_duration:?}. Using default capabilities only"
+            );
         }
 
         capabilities.extended_underlines |= config.force_enable_extended_underlines;
@@ -234,7 +236,9 @@ impl TerminaBackend {
                 "Cursor reset escape sequence detected from terminfo: {reset_cursor_command:?}"
             );
         } else {
-            log::debug!("terminfo could not be read, using default cursor reset escape sequence: {reset_cursor_command:?}");
+            log::debug!(
+                "terminfo could not be read, using default cursor reset escape sequence: {reset_cursor_command:?}"
+            );
         }
         reset_cursor_command
             .push_str(&Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string());
@@ -310,7 +314,9 @@ impl TerminaBackend {
                     unreachable!();
                 };
                 if flags != KEYBOARD_FLAGS {
-                    log::info!("Turning off enhanced keyboard support because the terminal enabled different flags. Requested {KEYBOARD_FLAGS:?} but got {flags:?}");
+                    log::info!(
+                        "Turning off enhanced keyboard support because the terminal enabled different flags. Requested {KEYBOARD_FLAGS:?} but got {flags:?}"
+                    );
                     write!(
                         self.terminal,
                         "{}",

@@ -4,7 +4,7 @@ use helix_lsp::lsp;
 use tokio::sync::mpsc::Sender;
 use tokio::time::{Duration, Instant};
 
-use helix_event::{send_blocking, AsyncHook, TaskController, TaskHandle};
+use helix_event::{AsyncHook, TaskController, TaskHandle, send_blocking};
 use helix_view::Editor;
 
 use super::LspCompletionItem;

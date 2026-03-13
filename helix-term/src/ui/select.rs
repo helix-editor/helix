@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use helix_view::{graphics::Rect, Editor};
+use helix_view::{Editor, graphics::Rect};
 use tui::{
     buffer::Buffer as Surface,
     widgets::{Block, Widget as _},
@@ -8,7 +8,7 @@ use tui::{
 
 use crate::compositor::{Component, Context, Event, EventResult};
 
-use super::{menu::Item, Menu, PromptEvent, Text};
+use super::{Menu, PromptEvent, Text, menu::Item};
 
 pub struct Select<T: Item> {
     message: Text,
