@@ -90,7 +90,7 @@
 =                         1.3 DELETION                          =
 =================================================================
 
- Type the d key to delete the character under the cursor.
+ Typing the d key deletes the character under the cursor.
 
  1. Move the cursor to the line marked '-->' below.
  2. Move the cursor to each extra character, and type d to
@@ -112,7 +112,7 @@
 =                       1.4 INSERT MODE                         =
 =================================================================
 
- Type the i key to enter Insert mode.
+ Typing the i key enters Insert mode.
 
  1. Move the cursor to the line marked '-->' below.
  2. Move to a place in the line which is missing text and type
@@ -134,7 +134,7 @@
 =                      1.5 SAVING A FILE                        =
 =================================================================
 
- Type :w / :write to save a file.
+ Typing :w / :write saves a file.
 
  1. Exit Helix using :q! as explained before, or open a new
     terminal.
@@ -200,8 +200,8 @@
 =                      2.2 OPENING LINES                        =
 =================================================================
 
- Type o to add a newline and insert below the cursor.
- Type O to add a newline and insert above the cursor.
+ Typing o adds a newline and starts inserting below the cursor.
+ Typing O adds a newline and starts inserting above the cursor.
 
  1. Move the cursor to the line marked '-->' below.
  2. Type o to open a line below and type your answer.
@@ -244,7 +244,7 @@
 =                  3.1 MOTIONS AND SELECTIONS                   =
 =================================================================
 
- Type w to select forward until the next word.
+ Typing w selects forward until the next word.
 
  The d key doesn't actually delete the character at the cursor,
  it deletes all selected text. Your cursor is like a
@@ -310,7 +310,7 @@
 =                    3.4 THE CHANGE COMMAND                     =
 =================================================================
 
- Type c to change the current selection.
+ Typing c changes the current selection.
 
  The change command deletes the current selection and enters
  Insert mode, so it is a very common shorthand for di.
@@ -332,7 +332,7 @@
 =                   3.5 COUNTS WITH MOTIONS                     =
 =================================================================
 
- Type a number before a motion to repeat it that many times.
+ Typing a number before a motion repeats it that many times.
 
  1. Move the cursor to the line marked '-->' below.
  2. Type 2w to move 2 words forward.
@@ -354,8 +354,8 @@
 =                    3.6 SELECT / EXTEND MODE                   =
 =================================================================
 
- Type v to enter Select mode.
- Type v again or Escape to return to Normal mode
+ Typing v enters Select mode.
+ Typing v again or Escape returns to Normal mode
  In Select mode every movement will extend the selection, as
  opposed to replacing it.
 
@@ -376,7 +376,7 @@
 =                     3.7 SELECTING LINES                       =
 =================================================================
 
- Type x to select a whole line. Type x again to select the next.
+ Typing x selects a whole line. Typing x again selects the next.
 
  1. Move the cursor to the second line marked '-->' below.
  2. Type x to select the line, and d to delete it.
@@ -398,7 +398,7 @@
 =                   3.8 COLLAPSING SELECTIONS                   =
 =================================================================
 
- Type ; to collapse selections to single cursors.
+ Typing ; collapses selections to single cursors.
 
  Sometimes, you want to deselect without having to move the
  cursor(s). This can be done using the ; key.
@@ -464,9 +464,9 @@
 =                 4.2 COPYING AND PASTING TEXT                  =
 =================================================================
 
- Type y to yank (copy) the selection.
- Type p to paste the yanked selection after the cursor.
- Type P to paste the yanked text before the cursor.
+ Typing y yanks (copies) the selection.
+ Typing p pastes the yanked selection after the cursor.
+ Typing P pastes the yanked text before the cursor.
 
  1. Move the cursor to the line marked '-->' below.
     Make sure your cursor is on the "b" of banana.
@@ -486,9 +486,9 @@
 =                     4.3 SEARCHING IN FILE                     =
 =================================================================
 
- Type / to search forward in file, Enter to confirm search.
- Type n to go to the next search match.
- Type N to go to the previous search match.
+ Typing / searches forward in file, and Enter confirms the search.
+ Typing n goes to the next search match.
+ Typing N goes to the previous search match.
 
  1. Type / and type in a common word, like 'banana'.
  2. Press Enter to confirm the search.
@@ -530,7 +530,7 @@
 =                     5.1 MULTIPLE CURSORS                      =
 =================================================================
 
- Type C to duplicate the cursor to the next suitable line.
+ Typing C duplicates the cursor to the next suitable line.
 
  1. Move the cursor to the first line marked '-->' below. Place
     the cursor somewhere past the '-->'.
@@ -552,7 +552,7 @@
 =                    5.2 THE SELECT COMMAND                     =
 =================================================================
 
- Type s to select matches in the selection.
+ Typing s selects matches in the selection.
 
  1. Move the cursor to the line marked '-->' below.
  2. Type x to select the line.
@@ -596,7 +596,7 @@
 =                      5.4 ALIGN SELECTIONS                     =
 =================================================================
 
- Type & to align the contents of the selections.
+ Typing & aligns the contents of the selections.
 
  1. Move the cursor to the first line marked '-->' below. Place
     the cursor on the whitespace just after the arrow.
@@ -618,7 +618,7 @@
 =                 5.5 SPLIT SELECTION INTO LINES                =
 =================================================================
 
- Press Alt-s to split the selection(s) on newlines.
+ Pressing Alt-s splits the selection(s) on newlines.
 
  1. Move the cursor to the first row of the table below.
  2. Select the entire table with 6x.
@@ -662,9 +662,9 @@
 =                 6.1 SELECTING TO A CHARACTER                  =
 =================================================================
 
- Type f<ch> to select up to and including (find) a character.
- Type t<ch> to do the same, but not including (till) a character.
- Type uppercase F / T to do the same backwards.
+ Typing f<ch> (find) selects up to and including a character.
+ Typing t<ch> (till) does the same, but not including a character.
+ Typing uppercase F / T does the same backwards.
 
  1. Move the cursor to the line marked '-->' below. Place the
     cursor on the first dash.
@@ -684,7 +684,7 @@
 =                    6.2 THE REPLACE COMMAND                    =
 =================================================================
 
- Type r<ch> to replace all selected characters with <ch>.
+ Typing r<ch> replaces all selected characters with <ch>.
 
  1. Move to the second line of the table, place the cursor on the
     first =.
@@ -706,8 +706,8 @@
 =                         6.3 REPETITION                        =
 =================================================================
 
- Type . to repeat the last insert command.
- Press Alt-. to repeat the last f / t selection.
+ Typing . repeats the last insert command.
+ Pressing Alt-. repeats the last f / t selection.
 
  1. Move the cursor to the line marked '-->' below.
  2. Make a change, insertion or appendage and repeat it with . .
@@ -750,7 +750,7 @@
 =                  7.1 REPLACE WITH YANKED TEXT                 =
 =================================================================
 
- Type R to replace the selection with previously yanked text.
+ Typing R replaces the selection with previously yanked text.
 
  1. Move the cursor to the line marked '-->' below.
  2. Type w to select "watermelons" and then y to yank it.
@@ -772,7 +772,7 @@
 =                       7.2 JOINING LINES                       =
 =================================================================
 
- Type J to join together lines in selection.
+ Typing J joins together lines in selection.
 
  1. Move the cursor to the line marked '-->' below.
  2. Type x four times or 4x to select all four lines.
@@ -794,7 +794,7 @@ lines.
 =                      7.3 INDENTING LINES                      =
 =================================================================
 
- Type > to indent a line and < to unindent it.
+ Typing > indents a line, and < unindents it.
 
  1. Move the cursor to the line marked '-->' below.
  2. Move down to the second line and type > to indent it.
@@ -816,8 +816,8 @@ lines.
 =               7.4 INCREMENTING AND DECREMENTING               =
 =================================================================
 
- Press Ctrl-a to increment the number under selection.
- Press Ctrl-x to decrement the number under selection.
+ Pressing Ctrl-a increments the number under selection.
+ Pressing Ctrl-x decrements the number under selection.
 
  1. Move the cursor to the third line marked '-->' below.
  2. Move the cursor onto the number 2, then press Ctrl-a.
@@ -865,7 +865,7 @@ lines.
  most recent search term as well as macros, which you'll learn
  about in the next section.
 
- Type "<ch> to select register <ch>.
+ Typing "<ch> selects register <ch>.
 
  1. Move the cursor to the line marked '-->' below.
  2. Type w to select "watermelons" and yank with y.
@@ -884,9 +884,9 @@ lines.
 
  Macros are a way to record a set of actions you want to repeat.
  You can also record macros to a specific register (default @).
- Type Q to start recording a macro - you should see a popup at
- the bottom of your screen. Type Q again to stop recording.
- Type q to repeat the macro from register @ (the default).
+ Typing Q starts recording a macro - you should see a popup at
+ the bottom of your screen. Typing Q again stops recording.
+ Typing q repeats the macro from register @ (the default).
 
  1. Move the cursor to the first line marked '-->' below.
     Ensure your cursor is on the '>' of the arrow.
@@ -930,7 +930,7 @@ lines.
  n and N both refer to register /, this means we can set that
  register without having to type in a search.
 
- Type * to copy the selection into register /, setting the search
+ Typing * copies the selection into register /, setting the search
  term to the selection. This copies the primary selection, which
  you will learn about in the section on cycling selections.
 
@@ -974,10 +974,10 @@ lines.
  searching or jumping to the definition of a function in code. It
  stores these in what's called the jumplist.
 
- Press Ctrl-s to manually save your current position to
+ Pressing Ctrl-s manually saves your current position to
  the jumplist.
 
- Press Ctrl-i ("in") and Ctrl-o ("out") to move forward and
+ Pressing Ctrl-i ("in") and Ctrl-o ("out") moves forward and
  backwards in the jumplist respectively.
 
  1. Press Ctrl-s somewhere.
@@ -992,10 +992,10 @@ lines.
 =             9.4 JUMP WITH TWO-CHARACTER LABELS                =
 =================================================================
 
- Type gw to enable the 2-character labels. The start of each word
- will be replaced by 2 highlighted characters. Type any sequence
- of 2 highlighted characters to jump to the corresponding label,
- or use ESC to drop the labels.
+ Typing gw enables the 2-character labels. The start of each word
+ will be replaced by 2 highlighted characters. You can then type
+ any sequence of 2 highlighted characters to jump to the
+ corresponding label, or use ESC to drop the labels.
 
  The 2-character labels allow you to quickly jump to any location
  in the viewable selection.
@@ -1036,10 +1036,10 @@ lines.
 =             10.1 CYCLING AND REMOVING SELECTIONS              =
 =================================================================
 
- Type ) and ( to cycle the primary selection forward and backward
+ Typing ) and ( cycles the primary selection forward and backward
  through selections respectively.
 
- Press Alt-, to remove the primary selection.
+ Pressing Alt-, removes the primary selection.
 
  1. Move the cursor to the line marked '-->' below.
  2. Select both lines with xx or 2x.
@@ -1058,7 +1058,7 @@ lines.
 =             10.2 CYCLING THE CONTENT OF SELECTIONS            =
 =================================================================
 
- Press Alt-) and Alt-( to cycle the content of the selections
+ Pressing Alt-) and Alt-( cycles the content of the selections
  forward and backward respectively.
 
  1. Move the cursor to the line marked '-->' below.
@@ -1080,9 +1080,9 @@ lines.
 =                     10.3 CHANGING CASE                        =
 =================================================================
 
- Type ~ to switch the case of all selected letters.
- Type ` to set all selected letters to lowercase.
- Press Alt-` to set all selected letters to uppercase.
+ Typing ~ switches the case of all selected letters.
+ Typing ` sets all selected letters to lowercase.
+ Pressing Alt-` sets all selected letters to uppercase.
 
  1. Move the cursor to the first line marked '-->' below.
  2. Select each wrongly capitalised or lowercase letter
@@ -1102,7 +1102,7 @@ lines.
 =                   10.4 SPLITTING SELECTIONS                   =
 =================================================================
 
- Type S to split each selection on a regex pattern.
+ Typing S splits each selection on a regex pattern.
 
  1. Move the cursor to the line under ---.
  2. Type xx / 2x to select the lines.
@@ -1146,7 +1146,7 @@ letters! that is not good grammar. you can fix this.
 =                     11.1 COMMENTING A LINE                    =
 =================================================================
 
- Press Ctrl-c to comment the line under your cursor.
+ Pressing Ctrl-c comments the line under your cursor.
  To uncomment the line, press Ctrl-c again.
 
  1. Move your cursor to the line marked '-->' below.
