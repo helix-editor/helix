@@ -65,7 +65,7 @@ impl From<sonic_rs::Error> for Error {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum OffsetEncoding {
     /// UTF-8 code units aka bytes
     Utf8,
