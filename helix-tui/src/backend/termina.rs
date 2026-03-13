@@ -260,7 +260,10 @@ impl TerminaBackend {
     }
 
     fn disable_mouse_capture(&mut self) -> io::Result<()> {
-        if self.config.enable_mouse_capture {
+        // If we don't do this, then disabling mouse support
+        // at runtime fails, since mouse capture is now "disabled",
+        // and then on exit the terminal is still capturing things.
+        if self.config.enable_mouse_capture || cfg!(feature = "steel") {
             write!(
                 self.terminal,
                 "{}{}{}{}{}",

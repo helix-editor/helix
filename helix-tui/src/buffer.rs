@@ -591,7 +591,11 @@ impl Buffer {
     pub fn set_style(&mut self, area: Rect, style: Style) {
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
-                self[(x, y)].set_style(style);
+                if cfg!(feature = "steel") {
+                    self.get_mut(x, y).map(|x| x.set_style(style));
+                } else {
+                    self[(x, y)].set_style(style);
+                }
             }
         }
     }
