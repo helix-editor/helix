@@ -5,7 +5,6 @@ use-grammars = { except = [ "wren", "gemini" ] }
 
 [language-server]
 
-actions-language-server = {command = "actions-languageserver", args = ["--stdio"]}
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
 ada-language-server = { command = "ada_language_server" }
 als = { command = "als" }
@@ -175,6 +174,13 @@ teal-language-server = { command = "teal-language-server" }
 wasm-language-tools = { command = "wat_server" }
 sourcepawn-studio = { command = "sourcepawn-studio" }
 luau = { command = "luau-lsp", args = ["lsp"] }
+
+[language-server.actions-language-server]
+command = "actions-languageserver"
+args = ["--stdio"]
+
+[language-server.actions-language-server.config.actions-language-server]
+sessionToken = ""
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -5174,10 +5180,6 @@ indent = {tab-width = 2, unit = "  "}
 '"' = '"'
 '“' = '”'
 '‘' = '’'
-
-[[grammar]]
-name = "bovex"
-source = { git = "https://github.com/mi2ebi/tree-sitter-bovex", rev = "de7657a9cc3525b9b77c6d268da09dad5b1346b0" }
 
 [[language]]
 name = "haxe"
