@@ -1075,7 +1075,7 @@ impl Default for WhitespaceCharacters {
 impl WhitespaceCharacters {
     pub fn generate_tab(&self, width: usize) -> String {
         std::iter::once(self.tab)
-            .chain(std::iter::repeat(self.tabpad).take(width - 1))
+            .chain(std::iter::repeat_n(self.tabpad, width - 1))
             .collect()
     }
 }
