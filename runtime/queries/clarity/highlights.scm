@@ -65,6 +65,12 @@
 (basic_native_form operator: (native_identifier) @function.builtin)
 (basic_native_form operator: (native_identifier) @keyword.operator
   (#match? @keyword.operator "^([+\\-*/<>]|<=|>=|mod|pow|and|or|xor|not)$"))
+(basic_native_form operator: (native_identifier) @keyword.control.conditional
+  (#match? @keyword.control.conditional "^(if|match)$"))
+(basic_native_form operator: (native_identifier) @keyword.control
+  (#match? @keyword.control "^begin$"))
+(basic_native_form operator: (native_identifier) @keyword.control.exception
+  (#match? @keyword.control.exception "^(try!|unwrap!|unwrap-err!|unwrap-panic|unwrap-err-panic|asserts!)$"))
 [
   "let"
 ] @function.builtin
