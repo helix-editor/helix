@@ -19,6 +19,16 @@ pub enum Operation {
     Insert(Tendril),
 }
 
+impl Operation {
+    /// The number of characters affected by the operation.
+    pub fn len_chars(&self) -> usize {
+        match self {
+            Self::Retain(n) | Self::Delete(n) => *n,
+            Self::Insert(s) => s.chars().count(),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Assoc {
     Before,
@@ -510,7 +520,7 @@ impl ChangeSet {
         pos
     }
 
-    pub fn changes_iter(&self) -> ChangeIterator {
+    pub fn changes_iter(&self) -> ChangeIterator<'_> {
         ChangeIterator::new(self)
     }
 }
@@ -743,7 +753,7 @@ impl Transaction {
         })
     }
 
-    pub fn changes_iter(&self) -> ChangeIterator {
+    pub fn changes_iter(&self) -> ChangeIterator<'_> {
         self.changes.changes_iter()
     }
 }
@@ -769,7 +779,7 @@ impl<'a> ChangeIterator<'a> {
     }
 }
 
-impl<'a> Iterator for ChangeIterator<'a> {
+impl Iterator for ChangeIterator<'_> {
     type Item = Change;
 
     fn next(&mut self) -> Option<Self::Item> {

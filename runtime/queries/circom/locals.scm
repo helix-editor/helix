@@ -3,7 +3,7 @@
 (main_component_definition) @local.scope
 (block_statement) @local.scope
 
-(parameter name: (identifier) @local.definition) @local.definition
+(parameter name: (identifier) @local.definition.variable.parameter)
 
 
 (identifier) @local.reference

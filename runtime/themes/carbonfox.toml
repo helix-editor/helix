@@ -1,0 +1,50 @@
+# Author: github.com/ETCaton
+# License: MIT License
+# Carbonfox
+#
+# Based on Helix's Nightfox port with changes to align it to Nightfox's Carbonfox theme
+# Any 'custom' colors are replicating the result of the linear color blending done in the original
+# Neovim theme.
+# https://github.com/EdenEast/nightfox.nvim/blob/d3e8b1acc095baf57af81bb5e89fe7c4359eb619/lua/nightfox/lib/color.lua#L236-L247
+
+inherits = 'nightfox'
+
+# DIAGNOSTICS
+# For brevity: All blends here are a blend between bg1 and the fg value with factor of 0.15
+"warning"  = { fg = "magenta", bg = "#2f2939" }
+"error.bg" = "#361f29"
+"info.bg"  = "#252c39"
+"hint"     = { fg = "orange", bg = "#1c3433" }
+
+[palette]
+black          = "#282828"
+red            = "#ee5396"
+red-dim        = "#ca4780"
+green          = "#25be6a"
+green-dim      = "#1fa25a"
+yellow         = "#08bdba"
+yellow-bright  = "#2dc7c4"
+blue           = "#78a9ff"
+blue-bright    = "#8cb6ff"
+blue-dim       = "#6690d9"
+magenta        = "#be95ff"
+magenta-bright = "#c8a5ff"
+cyan           = "#33b1ff"
+cyan-bright    = "#52bdff"
+cyan-dim       = "#2b96d9"
+orange         = "#3ddbd9"
+orange-bright  = "#5ae0df"
+pink           = "#ff7eb6"
+pink-bright    = "#ff91c1"
+# spec
+bg0            = "#0c0c0c"
+bg1            = "#161616"
+bg2            = "#252525"
+bg3            = "#353535"
+bg4            = "#535353"
+fg0            = "#f9fbff"
+fg1            = "#f2f4f8"
+fg2            = "#b6b8bb"
+fg3            = "#7b7c7e"
+sel0           = "#2a2a2a"
+sel1           = "#525253"

@@ -1,0 +1,181 @@
+## Author: mesmere <95945959+mesmere@users.noreply.github.com>
+## Original design by Ian Joyner
+
+"attribute" = { fg = "markup", modifiers = ["italic"] }
+"comment" = "comments"
+"comment.block" = "comments"
+"comment.block.documentation" = "comments"
+"comment.line" = "comments"
+"comment.line.documentation" = "comments"
+#"constant" = ""
+"constant.builtin" = { fg = "builtins", modifiers = ["italic"] }
+"constant.character" = "strings"
+"constant.character.escape" = "symbols"
+"constant.numeric" = { fg = "constants_numeric", modifiers = ["italic"] }
+"constructor" = { modifiers = ["italic"] }
+"function" = { fg = "members" }
+"function.builtin" = "builtins"
+"function.macro" = "preprocessor"
+"function.method" = { fg = "members", modifiers = ["italic"] }
+#"function.method.private" = ""
+"function.special" = "preprocessor"
+"keyword" = { fg = "ui_text" }
+"keyword.control" = { fg = "keywords", modifiers = ["bold"] }
+"keyword.directive" = { fg = "preprocessor", modifiers = ["bold"] }
+#"keyword.function" = ""
+"keyword.operator" = { fg = "operators", modifiers = ["italic"] }
+#"keyword.storage" = ""
+#"label" = ""
+#"namespace" = ""
+"operator" = { fg = "operators", modifiers = ["bold"] }
+#"punctuation" = ""
+#"punctuation.bracket" = ""
+#"punctuation.delimiter" = ""
+"punctuation.special" = "strings"
+#"special" = ""
+"string" = "strings"
+"string.regexp" = "symbols"
+"string.special" = "symbols"
+"tag" = "markup"
+"type" = { modifiers = ["italic"] }
+#"type.builtin" = ""
+#"type.enum" = ""
+#"type.parameter" = ""
+#"variable" = ""
+"variable.builtin" = "builtins"
+"variable.other.member" = { fg = "members", modifiers = ["italic"] }
+#"variable.other.member.private" = ""
+#"variable.parameter" = ""
+"markup" = "markup"
+"markup.heading" = { fg = "markup_headings", modifiers = ["bold"] }
+#"markup.heading.marker" = ""
+"markup.list" = "markup_lists"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "strings", underline.style = "line" } # Match HTML href/src attributes.
+#"markup.link.label" = ""
+"markup.link.text" = "ui_text"
+"markup.quote" = { fg = "black", modifiers = ["italic"] }
+"markup.raw" = "strings"
+#"markup.raw.inline" = ""
+#"markup.raw.block" = ""
+
+"diff.delta" = "diff_delta"
+"diff.minus" = "diff_minus"
+"diff.plus" = "diff_plus"
+
+"ui.background" = { bg = "ui_background" }
+#"ui.background.separator" = ""
+"ui.bufferline" = { fg = "ui_text_dim", bg = "ui_background_accent" }
+"ui.bufferline.active" = { fg = "ui_text", bg = "ui_background_accent" }
+"ui.bufferline.background" = { bg = "ui_background_accent" }
+#"ui.cursor" = { modifiers = ['reversed'] }
+"ui.cursor.insert" = { bg = "ui_mode_insert_accent" }
+"ui.cursor.match" = { modifiers = ['reversed'] }
+"ui.cursor.normal" = { bg = "ui_mode_normal_accent" }
+"ui.cursor.select" = { bg = "ui_mode_select_accent" }
+#"ui.cursor.primary" = ""
+"ui.cursor.primary.insert" = { bg = "ui_mode_insert" }
+#"ui.cursor.primary.match" = ""
+"ui.cursor.primary.normal" = { bg = "ui_mode_normal" }
+"ui.cursor.primary.select" = { bg = "ui_mode_select" }
+"ui.cursorcolumn.primary" = { bg = "ui_background_accent" }
+#"ui.cursorcolumn.secondary" = ""
+"ui.cursorline.primary" = { bg = "ui_background_accent" }
+#"ui.cursorline.secondary" = ""
+"ui.debug.active" = { fg = "ui_debug_breakpoint" }
+"ui.debug.breakpoint" = { fg = "ui_debug_breakpoint" }
+"ui.gutter" = { bg = "ui_background" }
+"ui.gutter.selected" = { bg = "ui_background_accent" }
+"ui.help" = { fg = "ui_text", bg = "ui_menu" }
+"ui.highlight" = { fg = "ui_highlight_line_text", bg = "ui_highlight_line" } # fg is not respected https://github.com/helix-editor/helix/issues/11141 
+"ui.highlight.frameline" = { fg = "ui_highlight_line_text", bg = "ui_highlight_line" }
+"ui.linenr" = "ui_text_dim"
+"ui.linenr.selected" = { fg = "ui_text_dim", bg = "ui_background_accent" }
+"ui.menu" = { fg = "ui_menu_text", bg = "ui_menu" }
+"ui.menu.scroll" = { fg = "ui_menu_handle", bg = "ui_menu_selected" }
+"ui.menu.selected" = { fg = "ui_text", bg = "ui_menu_selected" }
+#"ui.picker" = { fg = "ui_text", bg = "ui_menu" } # Styling the picker is currently unsupported.
+"ui.picker.header" = { bg = "ui_background_accent" }
+"ui.picker.header.column" = "ui_text"
+"ui.picker.header.column.active" = { fg = "ui_text", modifiers = ["bold"], underline = { style = "line" } }
+"ui.popup" = { fg = "ui_text", bg = "ui_background_accent" }
+"ui.popup.info" = { fg = "ui_text", bg = "ui_menu" }
+"ui.selection" = { bg = "ui_selection" }
+#"ui.selection.primary" = { bg = "ui_selection", underline.style = "line" }
+"ui.statusline" = { fg = "ui_text", bg = "ui_background_accent" }
+#"ui.statusline.inactive" = { fg = "", bg = "" }
+"ui.statusline.insert" = { fg = "ui_mode_insert_text", bg = "ui_mode_insert", modifiers = ["bold"] } 
+"ui.statusline.normal" = { fg = "ui_mode_normal_text", bg = "ui_mode_normal", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "ui_mode_select_text", bg = "ui_mode_select", modifiers = ["bold"] }
+"ui.text" = "ui_text"
+"ui.text.focus" = { fg = "ui_text", modifiers = ["bold"] }
+"ui.text.inactive" = "ui_text_dim"
+#"ui.text.info" = ""
+"ui.virtual.indent-guide" = "ui_text_dim"
+"ui.virtual.inlay-hint" = "ui_text_dim"
+#"ui.virtual.inlay-hint.parameter" = ""
+#"ui.virtual.inlay-hint.type" = ""
+"ui.virtual.jump-label" = { fg = "white", bg = "ui_jumplabel", modifiers = ["bold"] }
+"ui.virtual.ruler" = { bg = "ui_background_accent" }
+"ui.virtual.whitespace" = "ui_text_dim"
+"ui.virtual.wrap" = "ui_text_dim"
+"ui.window" = "ui_split_line"
+
+info = { fg = 'ui_diagnostic_info' }
+hint = { fg = 'ui_diagnostic_hint', modifiers = ['bold'] }
+warning = { fg = 'ui_diagnostic_warning', modifiers = ['bold'] }
+error = { fg = 'ui_diagnostic_error', modifiers = ['bold'] }
+
+"diagnostic.info" = { fg = "ui_diagnostic_info", underline = { style = "curl", color = "ui_diagnostic_info" } }
+"diagnostic.hint" = { fg = "ui_diagnostic_hint", underline = { style = "curl", color = "ui_diagnostic_hint" } }
+"diagnostic.warning" = { fg = "ui_diagnostic_warning", underline = { style = "curl", color = "ui_diagnostic_warning" } }
+"diagnostic.error" = { fg = "ui_diagnostic_error", underline = { style = "curl", color = "ui_diagnostic_error" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+builtins = "#585cf6"
+comments = "#00b418"
+constants_numeric = "#cd0000"
+diff_delta = "#0000a2"
+diff_minus = "#990000"
+diff_plus = "#00b418"
+keywords = "#0100b6"
+markup = "#1c02ff"
+markup_headings = "#0c07ff"
+markup_lists = "#b90690"
+members = "#0206ff"
+operators = "#0100b6"
+preprocessor = "#0c450d"
+strings = "#d80800"
+symbols = "#26b31a"
+ui_background = "#ffffff"
+ui_background_accent = "#ededed"
+ui_highlight_line = "#0100b6"
+ui_highlight_line_text = "#ffffff"
+ui_debug_breakpoint = "#990000"
+ui_diagnostic_error = "#990000"
+ui_diagnostic_hint = "#06960e"
+ui_diagnostic_info = "#808080"
+ui_diagnostic_warning = "#fafa28"
+ui_jumplabel = "#990000"
+ui_menu = "#c3dcff"
+ui_menu_selected = "#a3bcdf"
+ui_menu_handle = "#839cbf"
+ui_menu_text = "#000000"
+ui_mode_insert = "#009608"
+ui_mode_insert_accent = "#73e678"
+ui_mode_insert_text = "#ffffff"
+ui_mode_normal = "#444444" 
+ui_mode_normal_accent = "#cccccc"
+ui_mode_normal_text = "#ffffff"
+ui_mode_select = "#000096" 
+ui_mode_select_accent = "#7373e6"
+ui_mode_select_text = "#ffffff"
+ui_selection = "#c3dcff"
+ui_split_line = "#000000"
+ui_statusline = "#000000"
+ui_text = "#000000"
+ui_text_dim = "#808080"

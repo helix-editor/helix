@@ -16,8 +16,8 @@ able to parse any URI, such as `urn:isbn:0451450523`.
 */
 #![allow(non_upper_case_globals)]
 #![forbid(unsafe_code)]
-#[macro_use]
-extern crate bitflags;
+
+use bitflags::bitflags;
 
 use std::{collections::HashMap, fmt::Debug};
 
@@ -2568,9 +2568,9 @@ pub enum Documentation {
 ///
 /// The pair of a language and a value is an equivalent to markdown:
 ///
-/// ```${language}
+/// <pre><code>```${language}
 /// ${value}
-/// ```
+/// ```</code></pre>
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum MarkedString {

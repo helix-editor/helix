@@ -1,0 +1,136 @@
+# Author : tangowithfoxtrot
+# Author : neonvoidx
+# Eldritch - a theme for the Ancient Ones
+
+"annotation"                      = { fg = "foreground"                                                     }
+"attribute"                       = { fg = "green",              modifiers = ["italic"]                     }
+"comment"                         = { fg = "comment"                                                        }
+"comment.block.documentation"     = { fg = "comment"                                                        }
+"comment.block"                   = { fg = "comment"                                                        }
+"comment.line"                    = { fg = "comment"                                                        }
+"constant"                        = { fg = "purple"                                                         }
+"constant.numeric"                = { fg = "purple"                                                         }
+"constant.builtin"                = { fg = "purple"                                                         }
+"constant.builtin.boolean"        = { fg = "purple"                                                         }
+"constant.character"              = { fg = "cyan"                                                           }
+"constant.character.escape"       = { fg = "pink"                                                           }
+"constant.macro"                  = { fg = "purple"                                                         }
+"constructor"                     = { fg = "purple"                                                         }
+"function"                        = { fg = "green"                                                          }
+"function.builtin"                = { fg = "green"                                                          }
+"function.method"                 = { fg = "green"                                                          }
+"function.macro"                  = { fg = "purple"                                                         }
+"function.call"                   = { fg = "green"                                                          }
+"keyword"                         = { fg = "pink"                                                           }
+"keyword.operator"                = { fg = "pink"                                                           }
+"keyword.function"                = { fg = "pink"                                                           }
+"keyword.return"                  = { fg = "pink"                                                           }
+"keyword.control.import"          = { fg = "pink"                                                           }
+"keyword.directive"               = { fg = "green"                                                          }
+"keyword.control.repeat"          = { fg = "pink"                                                           }
+"keyword.control.conditional"     = { fg = "pink"                                                           }
+"keyword.control.exception"       = { fg = "purple"                                                         }
+"keyword.storage"                 = { fg = "pink"                                                           }
+"keyword.storage.type"            = { fg = "cyan",               modifiers = ["italic"]                     }
+"keyword.storage.modifier"        = { fg = "pink"                                                           }
+"tag"                             = { fg = "pink"                                                           }
+"tag.attribute"                   = { fg = "purple"                                                         }
+"tag.delimiter"                   = { fg = "foreground"                                                     }
+"label"                           = { fg = "cyan"                                                           }
+"punctuation"                     = { fg = "foreground"                                                     }
+"punctuation.bracket"             = { fg = "foreground"                                                     }
+"punctuation.delimiter"           = { fg = "foreground"                                                     }
+"punctuation.special"             = { fg = "pink"                                                           }
+"special"                         = { fg = "pink"                                                           }
+"string"                          = { fg = "yellow"                                                         }
+"string.special"                  = { fg = "orange"                                                         }
+"string.symbol"                   = { fg = "yellow"                                                         }
+"string.regexp"                   = { fg = "red"                                                            }
+"type.builtin"                    = { fg = "cyan"                                                           }
+"type"                            = { fg = "cyan",               modifiers = ["italic"]                     }
+"type.enum.variant"               = { fg = "foreground",         modifiers = ["italic"]                     }
+"variable"                        = { fg = "foreground"                                                     }
+"variable.builtin"                = { fg = "purple",             modifiers = ["italic"]                     }
+"variable.parameter"              = { fg = "orange",             modifiers = ["italic"]                     }
+"variable.other"                  = { fg = "foreground"                                                     }
+"variable.other.member"           = { fg = "foreground"                                                     }
+"diff.plus"                       = { fg = "green"                                                          }
+"diff.delta"                      = { fg = "orange"                                                         }
+"diff.minus"                      = { fg = "red"                                                            }
+"ui.background"                   = { fg = "foreground",         bg = "background"                          }
+"ui.cursor.match"                 = { fg = "foreground",         bg = "grey",          modifiers = ["bold"] }
+"ui.cursor"                       = { fg = "background",         bg = "purple",        modifiers = ["dim"]  }
+"ui.cursor.normal"                = { fg = "background",         bg = "cyan",          modifiers = ["dim"]  }	
+"ui.cursor.insert"                = { fg = "background",         bg = "green",         modifiers = ["dim"]  }	
+"ui.cursor.select"                = { fg = "background",         bg = "yellow",        modifiers = ["dim"]  }
+"ui.cursor.primary.normal"        = { fg = "background",         bg = "cyan"                                }	
+"ui.cursor.primary.insert"        = { fg = "background",         bg = "green"                               }	
+"ui.cursor.primary.select"        = { fg = "background",         bg = "yellow"                              }
+"ui.cursorline.primary"           = {                            bg = "cursorline"                          }
+"ui.help"                         = { fg = "foreground",         bg = "background"                          }
+"ui.debug"                        = { fg = "red"                                                            }
+"ui.highlight.frameline"          = { fg = "background",         bg = "red"                                 }
+"ui.linenr"                       = { fg = "comment"                                                        }
+"ui.linenr.selected"              = { fg = "foreground"                                                     }
+"ui.menu"                         = { fg = "foreground",         bg = "current_line"                        }
+"ui.menu.selected"                = { fg = "current_line",       bg = "purple",        modifiers = ["dim"]  }
+"ui.menu.scroll"                  = { fg = "foreground",         bg = "current_line"                        }
+"ui.popup"                        = { fg = "foreground",         bg = "background_dark"                     }
+"ui.selection.primary"            = {                            bg = "current_line"                        }
+"ui.selection"                    = {                            bg = "selection"                           }
+"ui.statusline"                   = { fg = "foreground",         bg = "darker"                              }
+"ui.statusline.inactive"          = { fg = "comment",            bg = "darker"                              }
+"ui.statusline.normal"            = { fg = "black",              bg = "cyan",          modifiers = ["bold"] }
+"ui.statusline.insert"            = { fg = "black",              bg = "green",         modifiers = ["bold"] }
+"ui.statusline.select"            = { fg = "black",              bg = "yellow",        modifiers = ["bold"] }
+"ui.text"                         = { fg = "foreground"                                                     }
+"ui.text.directory"               = { fg = "blue"                                                           }
+"ui.text.focus"                   = { fg = "cyan"                                                           }
+"ui.window"                       = { fg = "foreground"                                                     }
+"ui.virtual.whitespace"           = { fg = "current_line"                                                   }
+"ui.virtual.wrap"                 = { fg = "current_line"                                                   }
+"ui.virtual.ruler"                = {                            bg = "black"                               }
+"ui.virtual.indent-guide"         = { fg = "indent"                                                         }
+"ui.virtual.inlay-hint"           = { fg = "cyan"                                                           }
+"ui.virtual.inlay-hint.parameter" = { fg = "cyan",               modifiers = ["italic", "dim"]              }
+"ui.virtual.inlay-hint.type"      = { fg = "cyan",               modifiers = ["italic", "dim"]              }
+"hint"                            = { fg = "purple",             bg = "darker"                              }
+"error"                           = { fg = "red",                bg = "darker"                              }
+"warning"                         = { fg = "yellow",             bg = "darker"                              }
+"info"                            = { fg = "cyan",               bg = "darker"                              }
+"markup.heading"                  = { fg = "purple",             modifiers = ["bold"]                       }
+"markup.list"                     = { fg = "cyan"                                                           }
+"markup.bold"                     = { fg = "orange",             modifiers = ["bold"]                       }
+"markup.italic"                   = { fg = "yellow",             modifiers = ["italic"]                     }
+"markup.strikethrough"            = {                            modifiers = ["crossed_out"]                }
+"markup.link.url"                 = { fg = "cyan"                                                           }
+"markup.link.text"                = { fg = "pink"                                                           }
+"markup.quote"                    = { fg = "yellow",             modifiers = ["italic"]                     }
+"markup.raw"                      = { fg = "foreground"                                                     }
+
+"diagnostic"                      = { underline = { color = "orange", style = "curl" } }
+"diagnostic.hint"                 = { underline = { color = "purple", style = "curl" } }
+"diagnostic.warning"              = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error"                = { underline = { color = "red",    style = "curl" } }
+"diagnostic.info"                 = { underline = { color = "cyan",   style = "curl" } }
+"definition"                      = { underline = { color = "cyan"                   } }
+
+[palette]
+background      = "#323449"
+background_dark = "#212337"
+foreground      = "#ebfafa"
+comment         = "#7081d0"
+cursorline      = "#323449"
+current_line    = "#3b4261"
+indent          = "#6ce9ff"
+selection       = "#323449"
+darker          = "#212337"
+black           = "#171928"
+grey            = "#7081d0"
+red             = "#f16c75"
+orange          = "#ffb86c"
+yellow          = "#f7c67f"
+green           = "#37f499"
+purple          = "#a48cf2"
+cyan            = "#04d1f9"
+pink            = "#f265b5"

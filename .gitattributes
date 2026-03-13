@@ -8,4 +8,5 @@
 *.md       text diff=markdown
 
 book/theme/highlight.js linguist-vendored
+runtime/queries/**/*.scm linguist-language=Tree-sitter-Query
 Cargo.lock text

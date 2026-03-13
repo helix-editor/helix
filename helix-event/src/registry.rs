@@ -14,8 +14,8 @@ use crate::hook::ErasedHook;
 use crate::runtime_local;
 
 pub struct Registry {
-    events: HashMap<&'static str, TypeId, ahash::RandomState>,
-    handlers: HashMap<&'static str, Vec<ErasedHook>, ahash::RandomState>,
+    events: HashMap<&'static str, TypeId, foldhash::fast::FixedState>,
+    handlers: HashMap<&'static str, Vec<ErasedHook>, foldhash::fast::FixedState>,
 }
 
 impl Registry {
@@ -105,8 +105,8 @@ runtime_local! {
     static REGISTRY: RwLock<Registry> = RwLock::new(Registry {
         // hardcoded random number is good enough here we don't care about DOS resistance
         // and avoids the additional complexity of `Option<Registry>`
-        events: HashMap::with_hasher(ahash::RandomState::with_seeds(423, 9978, 38322, 3280080)),
-        handlers: HashMap::with_hasher(ahash::RandomState::with_seeds(423, 99078, 382322, 3282938)),
+        events: HashMap::with_hasher(foldhash::fast::FixedState::with_seed(72536814787)),
+        handlers: HashMap::with_hasher(foldhash::fast::FixedState::with_seed(72536814787)),
     });
 }
 

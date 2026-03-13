@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 use crate::{
-    FullDocumentDiagnosticReport, PartialResultParams, UnchangedDocumentDiagnosticReport,
+    FullDocumentDiagnosticReport, PartialResultParams, UnchangedDocumentDiagnosticReport, Url,
     WorkDoneProgressParams,
 };
 

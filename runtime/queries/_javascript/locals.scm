@@ -6,9 +6,9 @@
 
 ; (i)
 (formal_parameters 
-  (identifier) @local.definition)
+  (identifier) @local.definition.variable.parameter)
 
 ; (i = 1)
 (formal_parameters 
   (assignment_pattern
-    left: (identifier) @local.definition))
+    left: (identifier) @local.definition.variable.parameter))

@@ -1,18 +1,16 @@
 use std::path::{Path, PathBuf};
 
+/// States for a file having been changed.
 pub enum FileChange {
-    Untracked {
-        path: PathBuf,
-    },
-    Modified {
-        path: PathBuf,
-    },
-    Conflict {
-        path: PathBuf,
-    },
-    Deleted {
-        path: PathBuf,
-    },
+    /// Not tracked by the VCS.
+    Untracked { path: PathBuf },
+    /// File has been modified.
+    Modified { path: PathBuf },
+    /// File modification is in conflict with a different update.
+    Conflict { path: PathBuf },
+    /// File has been deleted.
+    Deleted { path: PathBuf },
+    /// File has been renamed.
     Renamed {
         from_path: PathBuf,
         to_path: PathBuf,

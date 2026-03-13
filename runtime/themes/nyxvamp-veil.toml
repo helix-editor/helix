@@ -1,0 +1,86 @@
+# nyxvamp: veil variant
+# author: zoedsoupe <zoey.spessanha@zeetech.io>
+
+inherits = "nyxvamp-radiance"
+
+# Rainbow parentheses colors
+rainbow = ["keyword_fg", "function_fg", "string_fg", "number_fg"]
+
+# Override specific styles for veil variant
+"function" = { fg = "function_fg", modifiers = ["bold"] }
+"function.builtin" = { fg = "function_builtin_fg", modifiers = ["bold"] }
+"ui.match_paren" = { fg = "match_paren_fg", bg = "match_paren_bg", modifiers = ["bold"] }
+
+# Palette overrides
+[palette]
+# Dark theme colors - only override what's different from the base theme
+background = "#1E1E2E"  # Dark purple background
+foreground = "#D9E0EE"  # Light lavender foreground
+cursor_fg = "#1E1E2E"
+cursor_bg = "#F5C2E7"  # Soft pink cursor
+cursorline = "#2E2E3E"  # Slightly lighter background
+selection = "#494D64"  # Grayish selection
+line_nr = "#6E6A86"  # Medium gray for line numbers
+line_nr_selected = "#D9E0EE"  # Foreground color for selected line number
+
+# Status line colors
+status_fg = "#D9E0EE"
+status_bg = "#2E2E3E"
+status_inactive_fg = "#6E6A86"
+status_inactive_bg = "#1E1E2E"
+
+# Menu colors
+menu_fg = "#D9E0EE"
+menu_bg = "#1E1E2E"
+menu_sel_fg = "#D9E0EE"
+menu_sel_bg = "#494D64"
+menu_scroll_fg = "#6E6A86"
+menu_scroll_bg = "#1E1E2E"
+popup_fg = "#D9E0EE"
+popup_bg = "#1E1E2E"
+
+# UI virtual
+virtual_ruler_bg = "#2A2A3C"  # Slightly lighter than background, close to comment color
+
+# Syntax highlighting
+match_paren_fg = "#F28FAD"
+match_paren_bg = "#1E1E2E"
+comment_fg = "#6E6A86"  # Gray comments
+string_fg = "#ABE9B3"  # Green strings
+string_special_fg = "#F28FAD"  # Pink special strings
+constant_fg = "#F28FAD"  # Pink constants
+constant_builtin_fg = "#F28FAD"  # Pink built-in constants
+number_fg = "#F8BD96"  # Peach numbers
+boolean_fg = "#F28FAD"  # Pink booleans
+function_fg = "#96CDFB"  # Blue functions
+function_builtin_fg = "#96CDFB"  # Blue built-in functions
+keyword_fg = "#F5C2E7"  # Pink keywords
+keyword_control_fg = "#F5C2E7"  # Pink control keywords
+operator_fg = "#D9E0EE"  # Foreground color for operators
+variable_fg = "#D9E0EE"  # Foreground color for variables
+variable_builtin_fg = "#F28FAD"  # Pink built-in variables
+type_fg = "#C9CBFF"  # Lavender types
+type_builtin_fg = "#C9CBFF"  # Lavender built-in types
+attribute_fg = "#F5C2E7"  # Pink attributes
+namespace_fg = "#C9CBFF"  # Lavender namespaces (Base16 base0E)
+punctuation_fg = "#D9E0EE"  # Foreground color for punctuation
+symbol_fg = "#F28FAD"  # Pink symbols (e.g., Elixir atoms)
+
+# Diagnostics
+error_fg = "#F28FAD"  # Base16 base08 - red errors
+warning_fg = "#F8BD96"  # Base16 base09 - orange warnings
+info_fg = "#96CDFB"  # Base16 base0B - blue info
+hint_fg = "#8BD5CA"  # Base16 base0C - cyan hints
+
+# Diff colors
+diff_add_fg = "#A6DA95"  # Green additions
+diff_delete_fg = "#E78284"  # Red deletions
+diff_change_fg = "#E5C890"  # Yellow changes
+
+# Markup colors
+markup_heading_fg = "#F5C2E7"  # Pink headings
+markup_bold_fg = "#F5C2E7"  # Pink bold text
+markup_italic_fg = "#F5C2E7"  # Pink italic text
+markup_link_url_fg = "#96CDFB"  # Blue links
+markup_link_text_fg = "#F5C2E7"  # Pink link text
+markup_quote_fg = "#6E6A86"  # Gray quotes

@@ -90,7 +90,7 @@ macro_rules! keymap {
     };
 
     (@trie [$($cmd:ident),* $(,)?]) => {
-        $crate::keymap::KeyTrie::Sequence(vec![$($crate::commands::Command::$cmd),*])
+        $crate::keymap::KeyTrie::Sequence(vec![$($crate::commands::MappableCommand::$cmd),*])
     };
 
     (

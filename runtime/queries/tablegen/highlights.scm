@@ -68,7 +68,9 @@
   "def"
   "defset"
   "defvar"
+  "deftype"
   "assert"
+  "dump"
 ] @keyword
 
 [
@@ -86,5 +88,3 @@
   "multiclass"
   "defm"
 ] @namespace
-
-(ERROR) @error

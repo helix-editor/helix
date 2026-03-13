@@ -40,7 +40,8 @@
 "ui.menu" = { bg = "popupmenu_bg", fg = "foreground" }
 "ui.menu.selected" = { bg = "selection_bg", fg = "selection_fg" }
 
-"warning" = "bright5"
+"warning" = "bright4"
+"hint" = "bright6"
 "error" = { bg = "error_bg", fg = "error_fg" }
 "info" = "todo_fg"
 
@@ -76,6 +77,7 @@
 
 "comment" = { fg = "regular5", modifiers = ["italic"] }
 "comment.line" = { fg = "regular5", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "regular5", modifiers = ["bold"] }
 "comment.block" = { fg = "regular5", modifiers = ["italic"] }
 "comment.block.documentation" = { fg = "regular5", modifiers = ["bold"] }
 

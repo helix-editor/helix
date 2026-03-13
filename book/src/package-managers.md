@@ -1,13 +1,15 @@
 ## Package managers
 
 - [Linux](#linux)
-  - [Ubuntu](#ubuntu)
+  - [Debian](#debian)
+  - [Ubuntu/Mint](#ubuntumint)
   - [Fedora/RHEL](#fedorarhel)
   - [Arch Linux extra](#arch-linux-extra)
   - [NixOS](#nixos)
   - [Flatpak](#flatpak)
   - [Snap](#snap)
   - [AppImage](#appimage)
+  - [Linux Homebrew Core](#linux-homebrew-core)
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
   - [MacPorts](#macports)
@@ -17,21 +19,27 @@
   - [Chocolatey](#chocolatey)
   - [MSYS2](#msys2)
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg)](https://repology.org/project/helix-editor/versions)
 
 ## Linux
 
 The following third party repositories are available:
 
-### Ubuntu
-
-Add the `PPA` for Helix:
+### Debian
 
 ```sh
-sudo add-apt-repository ppa:maveonair/helix-editor
-sudo apt update
-sudo apt install helix
+sudo apt install hx
 ```
+
+If you are running a system older than Debian 13, follow the steps for
+[Ubuntu/Mint](#ubuntumint).
+
+### Ubuntu/Mint
+
+Install the Debian package [from the release page](https://github.com/helix-editor/helix/releases/latest).
+
+If you are running a system older than Ubuntu 22.04, Mint 21, or Debian 12, you can build the `.deb` file locally
+[from source](./building-from-source.md#building-the-debian-package).
 
 ### Fedora/RHEL
 
@@ -101,19 +109,39 @@ Download the official Helix AppImage from the [latest releases](https://github.c
 chmod +x helix-*.AppImage # change permission for executable mode
 ./helix-*.AppImage # run helix
 ```
- 
+
+You can optionally [add the `.desktop` file](./building-from-source.md#configure-the-desktop-shortcut). Helix must be installed in `PATH` with the name `hx`. For example:
+```sh
+mkdir -p "$HOME/.local/bin"
+mv helix-*.AppImage "$HOME/.local/bin/hx"
+```
+
+and make sure `~/.local/bin` is in your `PATH`.
+
+### Linux Homebrew Core
+
+Checkout the [macOS](#homebrew-core) instructions below.
+
 ## macOS
 
 ### Homebrew Core
+
+Install the latest release:
 
 ```sh
 brew install helix
 ```
 
+Or, install the latest nightly version:
+
+```sh
+brew install --HEAD helix
+```
+
 ### MacPorts
 
 ```sh
-port install helix
+sudo port install helix
 ```
 
 ## Windows

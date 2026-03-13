@@ -316,7 +316,7 @@
  Insert mode, so it is a very common shorthand for di.
 
  1. Move the cursor to the line marked '-->' below.
- 2. Move to the start of an incorrect word and type w to
+ 2. Move to the start of an incorrect word and type e to
     select it.
  3. Type c to delete the word and enter Insert mode.
  4. Type the correct word.
@@ -337,7 +337,7 @@
  1. Move the cursor to the line marked '-->' below.
  2. Type 2w to move 2 words forward.
  3. Type 3e to move to the end of the third word forward.
- 4. Type 2b to move 2 words backwards
+ 4. Type 2b to move 2 words backwards.
  5. Try the above with different numbers.
 
  --> This is just a line with words you can move around in.
@@ -391,8 +391,8 @@
  --> 6) Sugar is sweet,
  --> 7) And so are you.
 
- Note : X works similarly to x although it doesn't extend to
-      subsequent lines. X on an empty line does nothing.
+ Note: X works similarly to x although it doesn't extend to
+       subsequent lines. X on an empty line does nothing.
 
 =================================================================
 =                   3.8 COLLAPSING SELECTIONS                   =
@@ -411,8 +411,8 @@
  --> This is an error-free line with words to move around in.
 
  Note: This works the same in Select mode.
- Note: Another related command is Alt-; which flips selections.
-
+ Note: Another related command is Alt-; which flips the direction
+       of the selection (flips the selection's cursor and anchor).
 
 
 
@@ -632,9 +632,9 @@
   | Oranges | 3      |
      | Donuts  | 4      |
 
-
-
-
+ Note: On macOS, you may need to configure your terminal to use
+       Option as Alt (e.g. macos-option-as-alt = left).
+       This is also true for future Alt- commands.
 
 =================================================================
 =                        CHAPTER 5 RECAP                        =
@@ -755,7 +755,7 @@
  1. Move the cursor to the line marked '-->' below.
  2. Type w to select "watermelons" and then y to yank it.
  3. Select "oranges" with w.
- 4. Type R to replace "oranges" with "watermelons"
+ 4. Type R to replace "oranges" with "watermelons".
 
 
  --> I like watermelons because oranges are refreshing.
@@ -820,9 +820,9 @@ lines.
  Press Ctrl-x to decrement the number under selection.
 
  1. Move the cursor to the third line marked '-->' below.
- 2. Press Ctrl-a to increment the second point marked 2.
- 3. Repeat for the point marked 3.
- 4. Move to the last point and press Ctrl-x to decrement the 6.
+ 2. Move the cursor onto the number 2, then press Ctrl-a.
+ 3. Move onto the number 3 on the next line and press Ctrl-a.
+ 4. Move onto the number 6 on the last line and press Ctrl-x.
 
  --> 1) First point.
  --> 2) Added point.
@@ -956,12 +956,12 @@ lines.
  2. Select the first "bat" and type * to set it to search.
  3. Type v to enter Select mode.
  4. Type n to select the other "bat".
- 5. Use c or r to change the "bat"s to "cat".
+ 5. Use c (or r after selecting the "b"s) to change the "bat"s to
+    "cat".
 
  --> Everybody wants to be a bat,
  --> because a cat's the only bat
  --> who knows where it's at.
-
 
 
 
@@ -1002,8 +1002,8 @@ lines.
 
  1. Move the cursor to the start of the line marked '-->' below.
  2. Press gw to enable the 2-character labels, and then the two
-    characters that replace the two letters he at the start of
-    here to jump to the corresponding word.
+    characters that replace the two letters 'he' at the start of
+    'here' to jump to the corresponding word.
 
  --> This is just a simple line of text.
      There may be many such lines
@@ -1051,8 +1051,8 @@ lines.
  --> How much would would a wouldchuck chuck
  --> if a wouldchuck could chuck would?
 
-
-
+ Note: The primary selection can be hard to see in some themes.
+       Check the status bar (bottom right) for the active index.
 
 =================================================================
 =             10.2 CYCLING THE CONTENT OF SELECTIONS            =
@@ -1169,21 +1169,21 @@ letters! that is not good grammar. you can fix this.
 =================================================================
 
  Using the selections and multi-cursor functionality, you can
- comment multiple lines as long as it is under the selection or
- cursors.
+ comment multiple lines as long as they are under the selection or
+ cursors. To uncomment the lines, press Ctrl-c again.
 
  1. Move your cursor to the line marked with '-->' below.
- 2. Now try to select or add more cursors the other lines marked
+ 2. Now try to select or add more cursors to the other lines marked
     with '-->'.
  3. Comment those lines.
+ 4. Uncomment those lines.
 
- --> How many are you going to comment?
- --> Is this enough for a comment?
  --> What are you doing?!
  --> Stop commenting me!
  --> AAAAaargh!!!
+ --> Enough! Uncomment me now!
 
- Note: If there are already commented lines under selections or
+ Note: If there are only some commented lines under selections or
  multiple cursors, they won't be uncommented but commented again.
 
 =================================================================
@@ -1192,9 +1192,9 @@ letters! that is not good grammar. you can fix this.
 
  * Use Ctrl-c to comment a line under your cursor. Press Ctrl-c
    again to uncomment.
- * To comment multiple lines, use the selections
-   and multi-cursors before typing Ctrl-c.
-   * Commented lines cannot be uncommented but commented again.
+ * To comment multiple lines, use the selections or multi-cursors
+   before typing Ctrl-c. Press Ctrl-c again to uncomment.
+
 
 
 
@@ -1223,7 +1223,7 @@ letters! that is not good grammar. you can fix this.
  to the matching ). You can do the same on the line below: for example
  move to ], and press mm to jump to [ .
 
- --> you can (jump between matching parenthesis)
+ --> you can (jump between matching parentheses)
  --> or between matching [ square brackets ]
  --> now { you know the drill: this works with brackets too }
 
@@ -1238,19 +1238,19 @@ letters! that is not good grammar. you can fix this.
  pair of brackets or other delimiters. In the lines below:
 
  - move to the --> line, put your cursor in normal mode at any
- location between the parenthesis, for example at 'x', and press
- mi( or mi) to select the whole content inside the parenthesis
- (parenthesis excluded). As usual, you can then do anything you want
+ location between the parentheses, for example at 'x', and press
+ mi( or mi) to select the whole content inside the parentheses
+ (parentheses excluded). As usual, you can then do anything you want
  with the selection (for example, press c to change it)
 
- --> outside and (inside x parenthesis) - and outside again
+ --> outside and (inside x parentheses) - and outside again
 
  Test below that you can do the same with [], or {}, or with
  nested combinations of these (this will act on the immediately
  surrounding matching pair). This also works with "" and similar
 
  --> test [ with square brackets ] !
- --> try ( with nested [ pairs of ( parenthesis) and "brackets" ])
+ --> try ( with nested [ pairs of ( parentheses) and "brackets" ])
 
 =================================================================
 =               12.3 USING MATCH MODE SELECT AROUND             =
@@ -1284,7 +1284,7 @@ letters! that is not good grammar. you can fix this.
  move in normal mode the cursor to the start of select, then enter
  selection mode with v , then select the 4 next words with 4e ),
   * ii) press ms( or ms) to surround the selection with a pair of
- parenthesis.
+ parentheses.
 
  --> so, select all of this, and surround it with ()
 
@@ -1304,9 +1304,9 @@ letters! that is not good grammar. you can fix this.
  command. On the line below, move the cursor anywhere
  within the pair of (), for example to the 'x', then from there,
  in normal mode, press md( or md) to delete the surrounding
- pair of parenthesis.
+ pair of parentheses.
 
- --> delete (the x pair of parenthesis) from within!
+ --> delete (the x pair of parentheses) from within!
 
  You can naturally delete other kinds of surroundings:
 
@@ -1315,7 +1315,7 @@ letters! that is not good grammar. you can fix this.
  --> delete "layers "of" quote marks" too: this will delete the
  nearest previous and following quote marks
 
- Trying to delete unexisting surrounding delimiters print an error
+ Trying to delete nonexistent surrounding delimiters prints an error
  at the bottom bar and does nothing.
 
 =================================================================
@@ -1336,7 +1336,7 @@ letters! that is not good grammar. you can fix this.
  --> some (nested surroundings [can be replaced])
  --> this "works with 'other surroundings' too"
 
- You can try to replace a non existing pair: this will show
+ You can try to replace a nonexistent pair: this will show
  an error warning at the bottom bar and do nothing.
 
 
@@ -1454,7 +1454,7 @@ letters! that is not good grammar. you can fix this.
 =                  CHAPTER 13.5 SWAPPING SPLITS                 =
 =================================================================
 
- Open a split on the left with :vs hello1 and then a split below
+ Open a split on the right with :vs hello1 and then a split below
  with :hs hello2.
 
  From hello2, press Ctrl-w K to swap it with the split above. Now
@@ -1476,7 +1476,7 @@ letters! that is not good grammar. you can fix this.
 =                CHAPTER 13.6 TRANSPOSE SPLITS                  =
 =================================================================
 
- Open a split on the left with :vs hello1 and then a split below
+ Open a split on the right with :vs hello1 and then a split below
  with :hs hello2.
 
  Move to the tutor split, then press Ctrl-w t to transpose the

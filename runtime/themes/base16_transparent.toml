@@ -8,7 +8,7 @@
 "ui.menu" = { fg = "white" }
 "ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.menu.scroll" = { fg = "light-gray" }
-"ui.linenr" = { fg = "light-gray" }
+"ui.linenr" = { modifiers = ["dim"] }
 "ui.linenr.selected" = { fg = "white",  modifiers = ["bold"] }
 "ui.popup" = { fg = "white" }
 "ui.window" = { fg = "gray" }

@@ -86,6 +86,7 @@
 "ui.bufferline.background" = { bg = "light-black" }
 
 "ui.text" = { fg = "white" }
+"ui.text.directory" = { fg = "blue" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
 "ui.help" = { fg = "white", bg = "gray" }

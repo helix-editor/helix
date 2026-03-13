@@ -8,7 +8,7 @@
 ;; For navigations using textobjects, check link below:
 ;; https://docs.helix-editor.com/master/usage.html#navigating-using-tree-sitter-textobjects
 ;;
-;; For Textobject queries explaination, check out link below:
+;; For Textobject queries explanation, check out link below:
 ;; https://docs.helix-editor.com/master/guides/textobject.html
 
 (subprogram_body) @function.around
