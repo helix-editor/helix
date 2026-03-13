@@ -35,9 +35,10 @@
   ")"
   "{"
   "}"
-  "<"
-  ">"
 ] @punctuation.bracket
+
+(trait_type "<" @punctuation.bracket)
+(trait_type ">" @punctuation.bracket)
 
 [
   ","
@@ -51,21 +52,7 @@
   "err"
 ] @keyword)
 
-[
-  "+"
-  "-"
-  "*"
-  "/"
-  "mod"
-  "pow"
-  "<"
-  "<="
-  ">"
-  ">="
-  "and"
-  "or"
-  "xor"
-] @keyword.operator
+(int_lit "-" @constant.numeric.integer)
 
 ; Functions
 (function_signature (identifier) @function)
@@ -73,6 +60,8 @@
 (contract_function_call operator: (identifier) @function)
 
 (basic_native_form operator: (native_identifier) @function.builtin)
+(basic_native_form operator: (native_identifier) @keyword.operator
+  (#match? @keyword.operator "^([+\\-*/<>]|<=|>=|mod|pow|and|or|xor|not)$"))
 [
   "let"
 ] @function.builtin
