@@ -42,6 +42,11 @@
   ","
 ] @punctuation.delimiter
 
+(tuple_lit ":" @punctuation.delimiter)
+(tuple_type ":" @punctuation.delimiter)
+(trait_implementation "." @punctuation.delimiter)
+(trait_usage "." @punctuation.delimiter)
+
 ; Keywords
 (list_lit_token) @keyword
 (some_lit ("some") @keyword)
