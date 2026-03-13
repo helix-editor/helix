@@ -241,6 +241,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks))
         .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
         .add_custom_ignore_filename(".helix/ignore")
+        .add_custom_ignore_filename(".config/helix/ignore")
         .types(get_excluded_types())
         .build()
         .filter_map(|entry| {
@@ -375,6 +376,7 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
         .max_depth(Some(1))
         .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
         .add_custom_ignore_filename(".helix/ignore")
+        .add_custom_ignore_filename(".config/helix/ignore")
         .types(get_excluded_types())
         .build()
         .filter_map(|entry| {
