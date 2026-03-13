@@ -3,8 +3,67 @@ use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
+use std::path::Path;
+
+/// Cleanup old log backup files, keeping only the most recent 5
+fn cleanup_old_log_backups(log_dir: &Path) -> Result<()> {
+    let mut backup_files = Vec::new();
+    
+    if let Ok(entries) = std::fs::read_dir(log_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if name.starts_with("helix.log.") {
+                    if let Ok(metadata) = entry.metadata() {
+                        backup_files.push((path, metadata.modified().unwrap_or_else(|_| std::time::SystemTime::UNIX_EPOCH)));
+                    }
+                }
+            }
+        }
+    }
+    
+    // Sort by modification time (newest first)
+    backup_files.sort_by(|a, b| b.1.cmp(&a.1));
+    
+    // Remove all but the 5 most recent backups
+    for (path, _) in backup_files.into_iter().skip(5) {
+        let _ = std::fs::remove_file(path);
+    }
+    
+    Ok(())
+}
 
 fn setup_logging(verbosity: u64) -> Result<()> {
+    // Log rotation: check file size before setting up logging
+    const MAX_LOG_SIZE: u64 = 20_000_000; // 20MB
+    
+    let log_file = helix_loader::log_file();
+    
+    // Check if log file exists and is too large
+    if let Ok(metadata) = std::fs::metadata(&log_file) {
+        if metadata.len() >= MAX_LOG_SIZE {
+            // Create backup filename with timestamp
+            let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+            let mut backup_path = log_file.clone();
+            backup_path.set_extension(format!("log.{}", timestamp));
+            
+            // Rename current log to backup
+            if let Err(err) = std::fs::rename(&log_file, &backup_path) {
+                eprintln!("Warning: Failed to rotate log file: {}", err);
+            } else {
+                // Asynchronously remove old backup files in background
+                let log_dir = log_file.parent().map(|p| p.to_path_buf());
+                if let Some(dir) = log_dir {
+                    std::thread::spawn(move || {
+                        if let Err(err) = cleanup_old_log_backups(&dir) {
+                            eprintln!("Warning: Failed to cleanup old log backups: {}", err);
+                        }
+                    });
+                }
+            }
+        }
+    }
+    
     let mut base_config = fern::Dispatch::new();
 
     base_config = match verbosity {
