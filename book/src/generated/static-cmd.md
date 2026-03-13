@@ -56,14 +56,22 @@
 | `switch_case` | Switch (toggle) case | normal: `` ~ ``, select: `` ~ `` |
 | `switch_to_uppercase` | Switch to uppercase | normal: `` <A-`> ``, select: `` <A-`> `` |
 | `switch_to_lowercase` | Switch to lowercase | normal: `` ` ``, select: `` ` `` |
-| `page_up` | Move page up | normal: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> ``, select: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> ``, insert: `` <pageup> `` |
-| `page_down` | Move page down | normal: `` <C-f> ``, `` Z<C-f> ``, `` z<C-f> ``, `` <pagedown> ``, `` Z<pagedown> ``, `` z<pagedown> ``, select: `` <C-f> ``, `` Z<C-f> ``, `` z<C-f> ``, `` <pagedown> ``, `` Z<pagedown> ``, `` z<pagedown> ``, insert: `` <pagedown> `` |
+| `page_up` | Move page up | normal: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> ``, insert: `` <pageup> `` |
+| `extend_page_up` | Move page up, extending the selection | select: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> `` |
+| `page_down` | Move page down | normal: `` <C-f> ``, `` Z<C-f> ``, `` z<C-f> ``, `` <pagedown> ``, `` Z<pagedown> ``, `` z<pagedown> ``, insert: `` <pagedown> `` |
+| `extend_page_down` | Move page down, extending the selection | select: `` <C-f> ``, `` Z<C-f> ``, `` z<C-f> ``, `` <pagedown> ``, `` Z<pagedown> ``, `` z<pagedown> `` |
 | `half_page_up` | Move half page up |  |
+| `extend_half_page_up` | Move half page up, extending the selection |  |
 | `half_page_down` | Move half page down |  |
+| `extend_half_page_down` | Move half page down, extending the selection |  |
 | `page_cursor_up` | Move page and cursor up |  |
+| `extend_page_cursor_up` | Move page and cursor up, extending the selection |  |
 | `page_cursor_down` | Move page and cursor down |  |
-| `page_cursor_half_up` | Move page and cursor half up | normal: `` <C-u> ``, `` Z<C-u> ``, `` z<C-u> ``, `` Z<backspace> ``, `` z<backspace> ``, select: `` <C-u> ``, `` Z<C-u> ``, `` z<C-u> ``, `` Z<backspace> ``, `` z<backspace> `` |
-| `page_cursor_half_down` | Move page and cursor half down | normal: `` <C-d> ``, `` Z<C-d> ``, `` z<C-d> ``, `` Z<space> ``, `` z<space> ``, select: `` <C-d> ``, `` Z<C-d> ``, `` z<C-d> ``, `` Z<space> ``, `` z<space> `` |
+| `extend_page_cursor_down` | Move page and cursor down, extending the selection |  |
+| `page_cursor_half_up` | Move page and cursor half up | normal: `` <C-u> ``, `` Z<C-u> ``, `` z<C-u> ``, `` Z<backspace> ``, `` z<backspace> `` |
+| `extend_page_cursor_half_up` | Move page and cursor half up, extending the selection | select: `` <C-u> ``, `` Z<C-u> ``, `` z<C-u> ``, `` Z<backspace> ``, `` z<backspace> `` |
+| `page_cursor_half_down` | Move page and cursor half down | normal: `` <C-d> ``, `` Z<C-d> ``, `` z<C-d> ``, `` Z<space> ``, `` z<space> `` |
+| `extend_page_cursor_half_down` | Move page and cursor half down, extending the selection | select: `` <C-d> ``, `` Z<C-d> ``, `` z<C-d> ``, `` Z<space> ``, `` z<space> `` |
 | `select_all` | Select whole document | normal: `` % ``, select: `` % `` |
 | `select_regex` | Select all regex matches inside selections | normal: `` s ``, select: `` s `` |
 | `split_selection` | Split selections on regex matches | normal: `` S ``, select: `` S `` |
