@@ -4,6 +4,7 @@ use crate::{
     transport::{Payload, Transport},
     Call, Error, LanguageServerId, OffsetEncoding, Result,
 };
+use log::info;
 
 use crate::lsp::{
     self, notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
@@ -219,6 +220,7 @@ impl Client {
         UnboundedReceiver<(LanguageServerId, Call)>,
         Arc<Notify>,
     )> {
+        info!("Starting lsp {name:?} in root {root_path:?}");
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
 
