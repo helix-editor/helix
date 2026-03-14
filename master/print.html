@@ -2657,11 +2657,17 @@ and cannot be overridden by user-defined themes.</p>
 </code></pre>
 <p>Where <code>key</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, <code>underline</code> the underline <code>style</code>/<code>color</code>, and <code>modifiers</code> is a list of style modifiers. <code>bg</code>, <code>underline</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
 <p>To specify only the foreground color:</p>
-<pre><code class="language-toml">key = "#ffffff"
+<pre><code class="language-toml"># Valid hex-color format is `#RGB` or `#RRGGBB`
+# (each letter is a nibble)
+key = "#ffffff"
 </code></pre>
 <p>If the key contains a dot <code>'.'</code>, it must be quoted to prevent it being parsed as a <a href="https://toml.io/en/v1.0.0#keys">dotted key</a>.</p>
-<pre><code class="language-toml">"key.key" = "#ffffff"
+<pre><code class="language-toml">"key.key" = "#fff"
 </code></pre>
+<p>Color values must be either a <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/hex-color">CSS hex RGB string</a> or a name declared in the <a href="themes.html#color-palettes"><code>palette</code></a>.</p>
+<blockquote>
+<p>💡 Note that Helix doesn't support transparency (alpha channel).</p>
+</blockquote>
 <p>For inspiration, you can find the default <code>theme.toml</code>
 <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a> and
 user-submitted themes
