@@ -52,7 +52,7 @@ futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 tokio-stream = "0.1.18"
 toml = "1.0"
-termina = "0.1"
+termina = "0.2"
 sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
