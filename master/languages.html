@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-fb370be5.js";
+            window.path_to_searchindex_js = "searchindex-a2719a57.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c295f344.js"></script>
@@ -240,7 +240,7 @@ language-servers = [ "mylang-lsp" ]
 <tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">language injection</a> site.</td></tr>
 <tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>["yml", "yaml"]</code>. See the file-type detection section below.</td></tr>
 <tr><td><code>shebangs</code></td><td>The interpreters from the shebang line, for example <code>["sh", "bash"]</code></td></tr>
-<tr><td><code>roots</code></td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code>, <code>*.csproj</code></td></tr>
+<tr><td><code>roots</code></td><td>A set of marker files used for LSP working directory selection. Helix starts at the file, walks upward, and remembers the <em>topmost</em> i.e. <em>last</em> directory that contains a marker file. For example Cargo.lock, yarn.lock</td></tr>
 <tr><td><code>auto-format</code></td><td>Whether to autoformat this language when saving</td></tr>
 <tr><td><code>diagnostic-severity</code></td><td>Minimal severity of diagnostic for it to be displayed. (Allowed values: <code>error</code>, <code>warning</code>, <code>info</code>, <code>hint</code>)</td></tr>
 <tr><td><code>comment-tokens</code></td><td>The tokens to use as a comment token, either a single token <code>"//"</code> or an array <code>["//", "///", "//!"]</code> (the first token will be used for commenting). Also configurable as <code>comment-token</code> for backwards compatibility</td></tr>
@@ -254,12 +254,36 @@ language-servers = [ "mylang-lsp" ]
 <tr><td><code>rulers</code></td><td>Overrides the <code>editor.rulers</code> config key for the language.</td></tr>
 <tr><td><code>path-completion</code></td><td>Overrides the <code>editor.path-completion</code> config key for the language.</td></tr>
 <tr><td><code>word-completion</code></td><td>Overrides the <a href="./editor.html#editorword-completion-section"><code>editor.word-completion</code></a> configuration for the language.</td></tr>
-<tr><td><code>workspace-lsp-roots</code></td><td>Directories relative to the workspace root that are treated as LSP roots. Should only be set in <code>.helix/config.toml</code>. Overwrites the setting of the same name in <code>config.toml</code> if set.</td></tr>
+<tr><td><code>workspace-lsp-roots</code></td><td>Directories (relative to the workspace root) that stop the upward root search early. Meant for project-specific hard overrides in a local <code>.helix/config.toml</code>;</td></tr>
 <tr><td><code>persistent-diagnostic-sources</code></td><td>An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.</td></tr>
 <tr><td><code>rainbow-brackets</code></td><td>Overrides the <code>editor.rainbow-brackets</code> config key for the language</td></tr>
 </tbody>
 </table>
 </div>
+<h2 id="project-and-lsp-root-selection"><a class="header" href="#project-and-lsp-root-selection">Project and LSP root selection</a></h2>
+<p>This is the model Helix uses:</p>
+<ul>
+<li>The <strong>workspace root</strong> is found once by walking upward from the current
+working directory and picking the first directory that contains <code>.git</code>, <code>.svn</code>,
+<code>.jj</code>, or <code>.helix</code>. If none are found, the current working directory is the
+workspace root.</li>
+<li>Root markers (<code>roots</code>) are used only for LSP root selection and are found by
+starting at the <strong>file</strong>, not the folder Helix was opened in.</li>
+<li>We use the <strong>topmost</strong> directory that has a root marker (we stop the search at
+the workspace root).</li>
+<li>In most cases, root markers are enough. In some repos there are multiple
+nested root markers and whether you want the inner or outer one is project
+specific. For these situations, use <code>workspace-lsp-roots</code> to stop the search
+early in a particular directory.</li>
+<li><code>workspace-lsp-roots</code> is meant to be set in the <strong>project-specific</strong> config:
+<code>$PROJECT/.helix/config.toml</code>.</li>
+</ul>
+<p>Interaction with <code>required-root-patterns</code> (a language_server configuration key):</p>
+<ul>
+<li>After the LSP root is selected, Helix checks for <code>required-root-patterns</code> in
+that directory. If none match, the server is not started.</li>
+<li>This is validation, not root detection.</li>
+</ul>
 <h3 id="file-type-detection-and-the-file-types-key"><a class="header" href="#file-type-detection-and-the-file-types-key">File-type detection and the <code>file-types</code> key</a></h3>
 <p>Helix determines which language configuration to use based on the <code>file-types</code> key
 from the above section. <code>file-types</code> is a list of strings or tables, for
@@ -318,7 +342,7 @@ languages = { typescript = [ { formatCommand ="prettier --stdin-filepath ${INPUT
 <tr><td><code>config</code></td><td>Language server initialization options</td></tr>
 <tr><td><code>timeout</code></td><td>The maximum time a request to the language server may take, in seconds. Defaults to <code>20</code></td></tr>
 <tr><td><code>environment</code></td><td>Any environment variables that will be used when starting the language server <code>{ "KEY1" = "Value1", "KEY2" = "Value2" }</code></td></tr>
-<tr><td><code>required-root-patterns</code></td><td>A list of <code>glob</code> patterns to look for in the working directory. The language server is started if at least one of them is found.</td></tr>
+<tr><td><code>required-root-patterns</code></td><td>A list of <code>glob</code> patterns to look for in the working directory of the lsp. The language server is only started if at least one of them is found.</td></tr>
 </tbody>
 </table>
 </div>
