@@ -1068,9 +1068,13 @@ fn align_selections(cx: &mut Context) {
     let selection = doc.selection(view.id);
 
     let tab_width = doc.tab_width();
-    let mut column_widths: Vec<Vec<_>> = Vec::new();
-    let mut last_line = text.len_lines() + 1;
-    let mut col = 0;
+
+    let mut column_widths: Vec<usize> = Vec::new();
+    let mut coordinates = Vec::with_capacity(selection.len());
+
+    let mut previous_line = usize::MAX;
+    let mut col_idx = 0;
+    let mut running_offset = 0;
 
     for range in selection {
         let coords = visual_coords_at_pos(text, range.head, tab_width);
@@ -1081,48 +1085,58 @@ fn align_selections(cx: &mut Context) {
                 .set_error("align cannot work with multi line selections");
             return;
         }
-
-        col = if coords.row == last_line { col + 1 } else { 0 };
-
-        if col >= column_widths.len() {
-            column_widths.push(Vec::new());
+        if coords.row != previous_line {
+            col_idx = 0;
+            running_offset = 0;
+            previous_line = coords.row;
         }
-        column_widths[col].push((range.from(), coords.col));
 
-        last_line = coords.row;
+        let width = coords.col - running_offset;
+
+        match column_widths.get_mut(col_idx) {
+            Some(n) => *n = (*n).max(width),
+            None => column_widths.push(width),
+        }
+
+        coordinates.push(coords);
+
+        running_offset += width;
+        col_idx += 1;
     }
 
-    let mut changes = Vec::with_capacity(selection.len());
+    let column_positions: Vec<_> = column_widths
+        .into_iter()
+        .scan(0, |sum, n| {
+            *sum += n;
+            Some(*sum)
+        })
+        .collect();
 
-    // Account for changes on each row
-    let len = column_widths.first().map(|cols| cols.len()).unwrap_or(0);
-    let mut offs = vec![0; len];
+    previous_line = usize::MAX;
 
-    for col in column_widths {
-        let max_col = col
-            .iter()
-            .enumerate()
-            .map(|(row, (_, cursor))| *cursor + offs[row])
-            .max()
-            .unwrap_or(0);
-
-        for (row, (insert_pos, last_col)) in col.into_iter().enumerate() {
-            let ins_count = max_col - (last_col + offs[row]);
-
-            if ins_count == 0 {
-                continue;
+    let changes = coordinates
+        .into_iter()
+        .zip(selection)
+        .map(|(coords, range)| {
+            if coords.row != previous_line {
+                col_idx = 0;
+                running_offset = 0;
+                previous_line = coords.row;
             }
+            let current_inserts = column_positions[col_idx] - coords.col - running_offset;
+            let insert_pos = range.from();
 
-            offs[row] += ins_count;
+            col_idx += 1;
+            running_offset += current_inserts;
 
-            changes.push((insert_pos, insert_pos, Some(" ".repeat(ins_count).into())));
-        }
-    }
+            (
+                insert_pos,
+                insert_pos,
+                Some(" ".repeat(current_inserts).into()),
+            )
+        });
 
-    // The changeset has to be sorted
-    changes.sort_unstable_by_key(|(from, _, _)| *from);
-
-    let transaction = Transaction::change(doc.text(), changes.into_iter());
+    let transaction = Transaction::change(doc.text(), changes);
     doc.apply(&transaction, view.id);
     exit_select_mode(cx);
 }
