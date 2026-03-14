@@ -142,6 +142,11 @@ impl EditorView {
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
 
         if is_focused {
+            if config.lsp.auto_document_highlight {
+                if let Some(overlay) = Self::doc_document_highlights(doc, view, theme) {
+                    overlays.push(overlay);
+                }
+            }
             if let Some(tabstops) = Self::tabstop_highlights(doc, theme) {
                 overlays.push(tabstops);
             }
@@ -457,6 +462,27 @@ impl EditorView {
                 ranges: error_vec,
             },
         ]);
+    }
+
+    pub fn doc_document_highlights(
+        doc: &Document,
+        view: &View,
+        theme: &Theme,
+    ) -> Option<OverlayHighlights> {
+        let ranges = doc.document_highlights(view.id)?;
+        if ranges.is_empty() {
+            return None;
+        }
+
+        let highlight = theme
+            .find_highlight_exact("ui.highlight")
+            .or_else(|| theme.find_highlight_exact("ui.selection"))
+            .or_else(|| theme.find_highlight_exact("ui.cursor"))?;
+
+        Some(OverlayHighlights::Homogeneous {
+            highlight,
+            ranges: ranges.to_vec(),
+        })
     }
 
     /// Get highlight spans for selections in a document view.
