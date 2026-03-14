@@ -196,8 +196,8 @@ If a language server itself doesn't support a feature, the next language server 
 The list of supported features is:
 
 - `format`
-- `goto-definition`
 - `goto-declaration`
+- `goto-definition`
 - `goto-type-definition`
 - `goto-reference`
 - `goto-implementation`
@@ -206,12 +206,16 @@ The list of supported features is:
 - `document-highlight`
 - `completion`
 - `code-action`
+- `document-links`
 - `workspace-command`
 - `document-symbols`
 - `workspace-symbols`
 - `diagnostics`
+- `pull-diagnostics`
 - `rename-symbol`
 - `inlay-hints`
+- `document-colors`
+- `call-hierarchy`
 
 ## Tree-sitter grammar configuration
 

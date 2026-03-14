@@ -201,7 +201,7 @@ impl ActiveSnippet {
     }
 
     pub fn insert_subsnippet(mut self, snippet: RenderedSnippet) -> Option<Self> {
-        if snippet.ranges.len() % self.ranges.len() != 0
+        if !snippet.ranges.len().is_multiple_of(self.ranges.len())
             || !is_exact_subset(self.ranges.iter().copied(), snippet.ranges.iter().copied())
         {
             log::warn!("number of subsnippets did not match, discarding outer snippet");
