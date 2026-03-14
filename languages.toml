@@ -1496,7 +1496,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "smali"
-source = { git = "https://github.com/amaanq/tree-sitter-smali", rev = "5ae51e15c4d1ac93cba6127caf3d1f0a072c140c" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-smali", rev = "fdfa6a1febc43c7467aa7e937b87b607956f2346" }
 
 [[language]]
 name = "ledger"
