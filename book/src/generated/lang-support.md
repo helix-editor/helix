@@ -16,7 +16,7 @@
 | bitbake | ✓ |  |  |  |  | `bitbake-language-server` |
 | blade | ✓ | ✓ |  |  | ✓ |  |
 | blueprint | ✓ |  |  |  |  | `blueprint-compiler` |
-| bovex | ✓ |  |  |  | ✓ |  |
+| bovex |  |  |  |  |  |  |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | ✓ |  | `roslyn-language-server`, `OmniSharp`, `csharp-ls` |
 | c3 | ✓ |  |  |  |  | `c3-lsp` |
@@ -43,7 +43,7 @@
 | cylc | ✓ | ✓ | ✓ |  |  |  |
 | cython | ✓ |  | ✓ | ✓ |  |  |
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
-| dart | ✓ | ✓ | ✓ |  |  | `dart` |
+| dart | ✓ | ✓ | ✓ |  | ✓ | `dart` |
 | dbml | ✓ |  |  |  |  |  |
 | debian | ✓ |  |  |  |  |  |
 | devicetree | ✓ |  |  |  |  | `dts-lsp` |
@@ -67,6 +67,7 @@
 | elixir | ✓ | ✓ | ✓ | ✓ | ✓ | `elixir-ls`, `expert` |
 | elm | ✓ | ✓ |  | ✓ |  | `elm-language-server` |
 | elvish | ✓ |  |  |  |  | `elvish` |
+| embedded-perl | ✓ |  |  |  |  |  |
 | env | ✓ | ✓ |  |  |  |  |
 | erb | ✓ |  |  |  |  |  |
 | erlang | ✓ | ✓ |  | ✓ | ✓ | `erlang_ls`, `elp` |
@@ -81,7 +82,7 @@
 | freebasic | ✓ | ✓ | ✓ | ✓ |  |  |
 | fsharp | ✓ |  |  |  |  | `fsautocomplete` |
 | gas | ✓ | ✓ |  |  |  | `asm-lsp` |
-| gdscript | ✓ | ✓ | ✓ | ✓ |  |  |
+| gdscript | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | gemini | ✓ |  |  |  |  |  |
 | gherkin | ✓ |  |  |  |  |  |
 | ghostty | ✓ |  |  |  |  |  |
@@ -92,17 +93,17 @@
 | git-ignore | ✓ |  |  |  |  |  |
 | git-notes | ✓ |  |  |  |  |  |
 | git-rebase | ✓ |  |  |  |  |  |
-| github-action | ✓ | ✓ | ✓ |  | ✓ | `actions-languageserver`, `yaml-language-server` |
+| github-action | ✓ | ✓ | ✓ |  | ✓ | `actions-languageserver`, `yaml-language-server`, `zizmor` |
 | gitlab-ci | ✓ | ✓ | ✓ | ✓ | ✓ | `yaml-language-server`, `gitlab-ci-ls` |
 | gjs | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | gleam | ✓ | ✓ |  |  | ✓ | `gleam` |
 | glimmer | ✓ |  |  |  |  | `ember-language-server` |
-| glsl | ✓ | ✓ | ✓ |  |  | `glsl_analyzer`, `glsld` |
+| glsl | ✓ | ✓ | ✓ | ✓ | ✓ | `glsl_analyzer`, `glsld` |
 | gn | ✓ |  |  |  |  |  |
 | gnuplot | ✓ |  |  |  |  |  |
 | go | ✓ | ✓ | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | go-format-string | ✓ |  |  |  | ✓ |  |
-| godot-resource | ✓ | ✓ |  |  |  |  |
+| godot-resource | ✓ | ✓ |  | ✓ |  |  |
 | gomod | ✓ |  |  |  |  | `gopls` |
 | gotmpl | ✓ |  |  |  |  | `gopls` |
 | gowork | ✓ |  |  |  |  | `gopls` |
@@ -153,7 +154,7 @@
 | just | ✓ | ✓ | ✓ | ✓ |  | `just-lsp` |
 | kcl | ✓ |  |  |  |  | `kcl-language-server` |
 | kconfig | ✓ |  | ✓ |  |  |  |
-| kdl | ✓ | ✓ | ✓ | ✓ |  |  |
+| kdl | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | klog | ✓ |  |  |  |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ | ✓ |  | `kotlin-language-server` |
@@ -173,7 +174,7 @@
 | lua-format-string | ✓ |  |  |  |  |  |
 | luap | ✓ |  |  |  |  |  |
 | luau | ✓ | ✓ | ✓ |  |  | `luau-lsp` |
-| mail | ✓ | ✓ |  |  |  |  |
+| mail | ✓ | ✓ |  |  | ✓ |  |
 | make | ✓ |  | ✓ |  |  |  |
 | markdoc | ✓ |  |  |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | ✓ |  | `marksman`, `markdown-oxide`, `rumdl` |
@@ -217,7 +218,7 @@
 | pkl | ✓ |  | ✓ |  |  | `pkl-lsp` |
 | po | ✓ | ✓ |  |  |  |  |
 | pod | ✓ |  |  |  |  |  |
-| ponylang | ✓ | ✓ | ✓ |  |  |  |
+| ponylang | ✓ | ✓ | ✓ |  |  | `pony-lsp` |
 | powershell | ✓ |  |  |  |  |  |
 | prisma | ✓ | ✓ |  |  |  | `prisma-language-server` |
 | prolog | ✓ |  | ✓ |  |  | `swipl` |
@@ -225,6 +226,7 @@
 | protobuf | ✓ | ✓ | ✓ | ✓ |  | `buf`, `pb`, `protols` |
 | proverif | ✓ |  |  |  |  |  |
 | prql | ✓ |  |  |  |  |  |
+| ptx | ✓ |  | ✓ |  |  |  |
 | pug | ✓ |  |  |  |  |  |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
@@ -272,7 +274,7 @@
 | strace | ✓ |  |  |  |  |  |
 | strictdoc | ✓ |  |  | ✓ |  |  |
 | supercollider | ✓ |  |  |  |  |  |
-| svelte | ✓ |  | ✓ |  |  | `svelteserver` |
+| svelte | ✓ | ✓ | ✓ |  | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
 | swift | ✓ | ✓ | ✓ |  | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  | ✓ |  | `systemd-lsp` |
@@ -324,5 +326,5 @@
 | xtc | ✓ |  |  |  |  |  |
 | yaml | ✓ | ✓ | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yara | ✓ |  |  |  |  | `yls` |
-| yuck | ✓ |  |  |  |  |  |
+| yuck | ✓ |  | ✓ |  | ✓ |  |
 | zig | ✓ | ✓ | ✓ |  |  | `zls` |
