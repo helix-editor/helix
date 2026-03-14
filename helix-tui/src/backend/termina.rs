@@ -9,6 +9,7 @@ use termina::{
     escape::{
         csi::{self, Csi, SgrAttributes, SgrModifiers},
         dcs::{self, Dcs},
+        osc::Osc,
     },
     style::{CursorStyle, RgbColor},
     Event, OneBased, PlatformTerminal, Terminal as _, WindowSize,
@@ -542,6 +543,11 @@ impl Backend for TerminaBackend {
             "{}",
             Csi::Cursor(csi::Cursor::Position { line, col })
         )?;
+        self.flush()
+    }
+
+    fn set_title(&mut self, title: &str) -> io::Result<()> {
+        write!(self.terminal, "{}", Osc::SetWindowTitle(title))?;
         self.flush()
     }
 
