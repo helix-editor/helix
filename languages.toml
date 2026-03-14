@@ -2149,7 +2149,7 @@ language-servers = [ "metals" ]
 
 [[grammar]]
 name = "scala"
-source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "7891815f42dca9ed6aeb464c2edc39d479ab965c" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "2d55e74b0485fe05058ffe5e8155506c9710c767" }
 
 [[language]]
 name = "dockerfile"
