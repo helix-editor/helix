@@ -394,6 +394,13 @@ impl Client {
                         | ColorProviderCapability::Options(_)
                 )
             ),
+            LanguageServerFeature::CallHierarchy => matches!(
+                capabilities.call_hierarchy_provider,
+                Some(
+                    CallHierarchyServerCapability::Simple(true)
+                        | CallHierarchyServerCapability::Options(_)
+                )
+            ),
         }
     }
 
@@ -710,6 +717,9 @@ impl Client {
                     document_link: Some(lsp::DocumentLinkClientCapabilities {
                         dynamic_registration: Some(false),
                         tooltip_support: Some(false),
+                    }),
+                    call_hierarchy: Some(lsp::DynamicRegistrationClientCapabilities {
+                        dynamic_registration: Some(false),
                     }),
                     ..Default::default()
                 }),
@@ -1505,6 +1515,78 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::DocumentSymbolRequest>(params))
+    }
+
+    pub fn prepare_call_hierarchy(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyItem>>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.call_hierarchy_provider {
+            Some(
+                lsp::CallHierarchyServerCapability::Simple(true)
+                | lsp::CallHierarchyServerCapability::Options(_),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::CallHierarchyPrepareParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+        };
+
+        Some(self.call::<lsp::request::CallHierarchyPrepare>(params))
+    }
+
+    pub fn call_hierarchy_incoming(
+        &self,
+        item: lsp::CallHierarchyItem,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyIncomingCall>>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.call_hierarchy_provider {
+            Some(
+                lsp::CallHierarchyServerCapability::Simple(true)
+                | lsp::CallHierarchyServerCapability::Options(_),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::CallHierarchyIncomingCallsParams {
+            item,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::CallHierarchyIncomingCalls>(params))
+    }
+
+    pub fn call_hierarchy_outgoing(
+        &self,
+        item: lsp::CallHierarchyItem,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyOutgoingCall>>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.call_hierarchy_provider {
+            Some(
+                lsp::CallHierarchyServerCapability::Simple(true)
+                | lsp::CallHierarchyServerCapability::Options(_),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::CallHierarchyOutgoingCallsParams {
+            item,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::CallHierarchyOutgoingCalls>(params))
     }
 
     pub fn prepare_rename(

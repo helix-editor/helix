@@ -298,6 +298,8 @@ pub struct Config {
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Which register to use for mouse yank.
+    pub mouse_yank_register: char,
     /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
     pub shell: Vec<String>,
     /// Line number mode.
@@ -549,6 +551,8 @@ pub struct LspConfig {
     pub display_signature_help_docs: bool,
     /// Display inlay hints
     pub display_inlay_hints: bool,
+    /// Automatically highlight symbol references at the cursor.
+    pub auto_document_highlight: bool,
     /// Maximum displayed length of inlay hints (excluding the added trailing `…`).
     /// If it's `None`, there's no limit
     pub inlay_hints_length_limit: Option<NonZeroU8>,
@@ -569,6 +573,7 @@ impl Default for LspConfig {
             auto_signature_help: true,
             display_signature_help_docs: true,
             display_inlay_hints: false,
+            auto_document_highlight: false,
             inlay_hints_length_limit: None,
             snippets: true,
             goto_reference_include_declaration: true,
@@ -1086,6 +1091,7 @@ impl Default for Config {
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
+            mouse_yank_register: '*',
             shell: if cfg!(windows) {
                 vec!["cmd".to_owned(), "/C".to_owned()]
             } else {
@@ -2386,6 +2392,43 @@ impl Editor {
     pub fn get_last_cwd(&mut self) -> Option<&Path> {
         self.last_cwd.as_deref()
     }
+
+    pub fn jump_forward(&mut self, view_id: ViewId, count: usize) {
+        if let Some((doc_id, selection)) = view_mut!(self, view_id).jumps.forward(count).cloned() {
+            self.jump_to(view_id, doc_id, selection);
+        }
+    }
+
+    pub fn jump_backward(&mut self, view_id: ViewId, count: usize) {
+        let view = view_mut!(self, view_id);
+        if let Some((doc_id, selection)) = view
+            .jumps
+            .backward(view_id, doc_mut!(self, &view.doc), count)
+            .cloned()
+        {
+            self.jump_to(view_id, doc_id, selection);
+        }
+    }
+
+    fn jump_to(&mut self, view_id: ViewId, dest_doc_id: DocumentId, mut selection: Selection) {
+        let view = view_mut!(self, view_id);
+        let old_doc_id = view.doc;
+        if old_doc_id != dest_doc_id {
+            let new_doc = doc_mut!(self, &dest_doc_id);
+            if let Some(transaction) = view.changes_to_sync(new_doc) {
+                let text = new_doc.text().slice(..);
+                selection = selection.map(transaction.changes()).ensure_invariants(text);
+            }
+            self.replace_document_in_view(view_id, dest_doc_id);
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: old_doc_id,
+            });
+        }
+        let (view, doc) = current!(self);
+        doc.set_selection(view_id, selection);
+        view.ensure_cursor_in_view_center(doc, self.config.load().scrolloff);
+    }
 }
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
@@ -2417,12 +2460,10 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
     let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
 
     if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
-        // Removes tailing whitespaces.
+        // Removes tailing whitespaces for the primary selection only, preserving existing behavior
+        let line_start_pos = text.line_to_char(range.cursor_line(text));
         let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let line_start_pos = text.line_to_char(range.cursor_line(text));
-                (line_start_pos, pos, None)
-            });
+            Transaction::change(doc.text(), [(line_start_pos, pos, None)].into_iter());
         doc.apply(&transaction, view.id);
     }
 }
