@@ -1,9 +1,9 @@
 /* CSS for UI elements (a.k.a. chrome) */
 
 html {
-    scrollbar-color: var(--scrollbar) var(--bg);
+    scrollbar-color: var(--scrollbar) transparent;
 }
-#searchresults a,
+#mdbook-searchresults a,
 .content a:link,
 a:visited,
 a > .hljs {
@@ -11,10 +11,10 @@ a > .hljs {
 }
 
 /*
-    body-container is necessary because mobile browsers don't seem to like
+    mdbook-body-container is necessary because mobile browsers don't seem to like
     overflow-x on the body tag when there is a <meta name="viewport"> tag.
 */
-#body-container {
+#mdbook-body-container {
     /*
         This is used when the sidebar pushes the body content off the side of
         the screen on small screens. Without it, dragging on mobile Safari
@@ -25,12 +25,12 @@ a > .hljs {
 
 /* Menu Bar */
 
-#menu-bar,
-#menu-bar-hover-placeholder {
+#mdbook-menu-bar,
+#mdbook-menu-bar-hover-placeholder {
     z-index: 101;
     margin: auto calc(0px - var(--page-padding));
 }
-#menu-bar {
+#mdbook-menu-bar {
     position: relative;
     display: flex;
     flex-wrap: wrap;
@@ -39,24 +39,24 @@ a > .hljs {
     border-block-end-width: 1px;
     border-block-end-style: solid;
 }
-#menu-bar.sticky,
-#menu-bar-hover-placeholder:hover + #menu-bar,
-#menu-bar:hover,
-html.sidebar-visible #menu-bar {
+#mdbook-menu-bar.sticky,
+#mdbook-menu-bar-hover-placeholder:hover + #mdbook-menu-bar,
+#mdbook-menu-bar:hover,
+html.sidebar-visible #mdbook-menu-bar {
     position: -webkit-sticky;
     position: sticky;
     top: 0 !important;
 }
-#menu-bar-hover-placeholder {
+#mdbook-menu-bar-hover-placeholder {
     position: sticky;
     position: -webkit-sticky;
     top: 0;
     height: var(--menu-bar-height);
 }
-#menu-bar.bordered {
+#mdbook-menu-bar.bordered {
     border-block-end-color: var(--table-border-color);
 }
-#menu-bar i, #menu-bar .icon-button {
+#mdbook-menu-bar .fa-svg, #mdbook-menu-bar .icon-button {
     position: relative;
     padding: 0 8px;
     z-index: 10;
@@ -65,7 +65,7 @@ html.sidebar-visible #menu-bar {
     transition: color 0.5s;
 }
 @media only screen and (max-width: 420px) {
-    #menu-bar i, #menu-bar .icon-button {
+    #mdbook-menu-bar .fa-svg, #mdbook-menu-bar .icon-button {
         padding: 0 5px;
     }
 }
@@ -76,7 +76,7 @@ html.sidebar-visible #menu-bar {
     padding: 0;
     color: inherit;
 }
-.icon-button i {
+.icon-button .fa-svg {
     margin: 0;
 }
 
@@ -118,14 +118,14 @@ html:not(.js) .left-buttons button {
 .mobile-nav-chapters,
 .mobile-nav-chapters:visited,
 .menu-bar .icon-button,
-.menu-bar a i {
+.menu-bar a .fa-svg {
     color: var(--icons);
 }
 
-.menu-bar i:hover,
+.menu-bar .fa-svg:hover,
 .menu-bar .icon-button:hover,
 .nav-chapters:hover,
-.mobile-nav-chapters i:hover {
+.mobile-nav-chapters .fa-svg:hover {
     color: var(--icons-hover);
 }
 
@@ -186,10 +186,6 @@ html:not(.js) .left-buttons button {
     left: var(--page-padding);
 }
 
-/* Use the correct buttons for RTL layouts*/
-[dir=rtl] .previous i.fa-angle-left:before {content:"\f105";}
-[dir=rtl] .next i.fa-angle-right:before { content:"\f104"; }
-
 @media only screen and (max-width: 1080px) {
     .nav-wide-wrapper { display: none; }
     .nav-wrapper { display: block; }
@@ -197,8 +193,8 @@ html:not(.js) .left-buttons button {
 
 /* sidebar-visible */
 @media only screen and (max-width: 1380px) {
-    #sidebar-toggle-anchor:checked ~ .page-wrapper .nav-wide-wrapper { display: none; }
-    #sidebar-toggle-anchor:checked ~ .page-wrapper .nav-wrapper { display: block; }
+    #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper .nav-wide-wrapper { display: none; }
+    #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper .nav-wrapper { display: block; }
 }
 
 /* Inline code */
@@ -244,13 +240,10 @@ pre > .buttons :hover {
     border-color: var(--icons-hover);
     background-color: var(--theme-hover);
 }
-pre > .buttons i {
-    margin-inline-start: 8px;
-}
 pre > .buttons button {
     cursor: inherit;
     margin: 0px 5px;
-    padding: 4px 4px 3px 5px;
+    padding: 2px 3px 0px 4px;
     font-size: 23px;
 
     border-style: solid;
@@ -314,7 +307,7 @@ pre > .result {
 
 /* Search */
 
-#searchresults a {
+#mdbook-searchresults a {
     text-decoration: none;
 }
 
@@ -344,9 +337,48 @@ mark.fade-out {
     max-width: var(--content-max-width);
 }
 
-#searchbar {
+#mdbook-searchbar-outer.searching #mdbook-searchbar {
+    padding-right: 30px;
+}
+#mdbook-searchbar-outer .spinner-wrapper {
+    display: none;
+}
+#mdbook-searchbar-outer.searching .spinner-wrapper {
+    display: block;
+}
+
+.search-wrapper {
+    position: relative;
+}
+
+.spinner-wrapper {
+    --spinner-margin: 2px;
+    position: absolute;
+    margin-block-start: calc(var(--searchbar-margin-block-start) + var(--spinner-margin));
+    right: var(--spinner-margin);
+    top: 0;
+    bottom: var(--spinner-margin);
+    padding: 6px;
+    background-color: var(--bg);
+}
+
+#fa-spin {
+    animation: rotating 2s linear infinite;
+    display: inline-block;
+}
+
+@keyframes rotating {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+#mdbook-searchbar {
     width: 100%;
-    margin-block-start: 5px;
+    margin-block-start: var(--searchbar-margin-block-start);
     margin-block-end: 0;
     margin-inline-start: auto;
     margin-inline-end: auto;
@@ -357,8 +389,8 @@ mark.fade-out {
     background-color: var(--searchbar-bg);
     color: var(--searchbar-fg);
 }
-#searchbar:focus,
-#searchbar.active {
+#mdbook-searchbar:focus,
+#mdbook-searchbar.active {
     box-shadow: 0 0 3px var(--searchbar-shadow-color);
 }
 
@@ -379,19 +411,19 @@ mark.fade-out {
     border-block-end: 1px dashed var(--searchresults-border-color);
 }
 
-ul#searchresults {
+ul#mdbook-searchresults {
     list-style: none;
     padding-inline-start: 20px;
 }
-ul#searchresults li {
+ul#mdbook-searchresults li {
     margin: 10px 0px;
     padding: 2px;
     border-radius: 2px;
 }
-ul#searchresults li.focus {
+ul#mdbook-searchresults li.focus {
     background-color: var(--searchresults-li-bg);
 }
-ul#searchresults span.teaser {
+ul#mdbook-searchresults span.teaser {
     display: block;
     clear: both;
     margin-block-start: 5px;
@@ -400,7 +432,7 @@ ul#searchresults span.teaser {
     margin-inline-end: 0;
     font-size: 0.8em;
 }
-ul#searchresults span.teaser em {
+ul#mdbook-searchresults span.teaser em {
     font-weight: bold;
     font-style: normal;
 }
@@ -421,11 +453,14 @@ ul#searchresults span.teaser em {
     color: var(--sidebar-fg);
 }
 .sidebar-iframe-inner {
+    --padding: 10px;
+
     background-color: var(--sidebar-bg);
-    color: var(--sidebar-fg);
-    padding: 10px 10px;
+    padding: var(--padding);
     margin: 0;
     font-size: 1.4rem;
+    color: var(--sidebar-fg);
+    min-height: calc(100vh - var(--padding) * 2);
 }
 .sidebar-iframe-outer {
     border: none;
@@ -471,9 +506,24 @@ html:not(.sidebar-resizing) .sidebar {
 
 .sidebar-resize-handle .sidebar-resize-indicator {
     width: 100%;
-    height: 12px;
-    background-color: var(--icons);
+    height: 16px;
+    color: var(--icons);
     margin-inline-start: var(--sidebar-resize-indicator-space);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+.sidebar-resize-handle .sidebar-resize-indicator::before {
+    content: "";
+    width: 2px;
+    height: 12px;
+    border-left: dotted 2px currentColor;
+}
+.sidebar-resize-handle .sidebar-resize-indicator::after {
+    content: "";
+    width: 2px;
+    height: 16px;
+    border-left: dotted 2px currentColor;
 }
 
 [dir=rtl] .sidebar .sidebar-resize-handle {
@@ -484,12 +534,16 @@ html:not(.sidebar-resizing) .sidebar {
     cursor: col-resize;
     width: calc(var(--sidebar-resize-indicator-width) - var(--sidebar-resize-indicator-space));
 }
-/* sidebar-hidden */
-#sidebar-toggle-anchor:not(:checked) ~ .sidebar {
-    transform: translateX(calc(0px - var(--sidebar-width) - var(--sidebar-resize-indicator-width)));
-    z-index: -1;
+
+html:not(.js) .sidebar-resize-handle {
+    display: none;
 }
-[dir=rtl] #sidebar-toggle-anchor:not(:checked) ~ .sidebar {
+
+/* sidebar-hidden */
+#mdbook-sidebar-toggle-anchor:not(:checked) ~ .sidebar {
+    transform: translateX(calc(0px - var(--sidebar-width) - var(--sidebar-resize-indicator-width)));
+}
+[dir=rtl] #mdbook-sidebar-toggle-anchor:not(:checked) ~ .sidebar {
     transform: translateX(calc(var(--sidebar-width) + var(--sidebar-resize-indicator-width)));
 }
 .sidebar::-webkit-scrollbar {
@@ -500,18 +554,18 @@ html:not(.sidebar-resizing) .sidebar {
 }
 
 /* sidebar-visible */
-#sidebar-toggle-anchor:checked ~ .page-wrapper {
+#mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper {
     transform: translateX(calc(var(--sidebar-width) + var(--sidebar-resize-indicator-width)));
 }
-[dir=rtl] #sidebar-toggle-anchor:checked ~ .page-wrapper {
+[dir=rtl] #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper {
     transform: translateX(calc(0px - var(--sidebar-width) - var(--sidebar-resize-indicator-width)));
 }
 @media only screen and (min-width: 620px) {
-    #sidebar-toggle-anchor:checked ~ .page-wrapper {
+    #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper {
         transform: none;
         margin-inline-start: calc(var(--sidebar-width) + var(--sidebar-resize-indicator-width));
     }
-    [dir=rtl] #sidebar-toggle-anchor:checked ~ .page-wrapper {
+    [dir=rtl] #mdbook-sidebar-toggle-anchor:checked ~ .page-wrapper {
         transform: none;
     }
 }
@@ -522,17 +576,18 @@ html:not(.sidebar-resizing) .sidebar {
     line-height: 2.2em;
 }
 
-.chapter ol {
-    width: 100%;
-}
-
 .chapter li {
-    display: flex;
     color: var(--sidebar-non-existant);
 }
+
+/* This is a span wrapping the chapter link and the fold chevron. */
+.chapter-link-wrapper {
+    /* Used to position the chevron to the right, allowing the text to wrap before it. */
+    display: flex;
+}
+
 .chapter li a {
-    display: block;
-    padding: 0;
+    /* Remove underlines. */
     text-decoration: none;
     color: var(--sidebar-fg);
 }
@@ -545,21 +600,22 @@ html:not(.sidebar-resizing) .sidebar {
     color: var(--sidebar-active);
 }
 
-.chapter li > a.toggle {
+/* This is the toggle chevron. */
+.chapter-fold-toggle {
     cursor: pointer;
-    display: block;
+    /* Positions the chevron to the side. */
     margin-inline-start: auto;
     padding: 0 10px;
     user-select: none;
     opacity: 0.68;
 }
 
-.chapter li > a.toggle div {
+.chapter-fold-toggle div {
     transition: transform 0.5s;
 }
 
 /* collapse the section */
-.chapter li:not(.expanded) + li > ol {
+.chapter li:not(.expanded) > ol {
     display: none;
 }
 
@@ -568,10 +624,26 @@ html:not(.sidebar-resizing) .sidebar {
     margin-block-start: 0.6em;
 }
 
-.chapter li.expanded > a.toggle div {
+/* When expanded, rotate the chevron to point down. */
+.chapter li.expanded > span > .chapter-fold-toggle div {
     transform: rotate(90deg);
 }
 
+.chapter a.current-header {
+    color: var(--sidebar-active);
+}
+
+.on-this-page {
+    margin-left: 22px;
+    border-inline-start: 4px solid var(--sidebar-header-border-color);
+    padding-left: 8px;
+}
+
+.on-this-page > ol {
+    padding-left: 0;
+}
+
+/* Horizontal line in chapter list. */
 .spacer {
     width: 100%;
     height: 3px;
@@ -581,6 +653,7 @@ html:not(.sidebar-resizing) .sidebar {
     background-color: var(--sidebar-spacer);
 }
 
+/* On touch devices, add more vertical spacing to make it easier to tap links. */
 @media (-moz-touch-enabled: 1), (pointer: coarse) {
     .chapter li a { padding: 5px 0; }
     .spacer { margin: 10px 0; }
@@ -637,4 +710,47 @@ html:not(.sidebar-resizing) .sidebar {
     content: "✓";
     margin-inline-start: -14px;
     width: 14px;
+}
+
+/* The container for the help popup that covers the whole window. */
+#mdbook-help-container {
+    /* Position and size for the whole window. */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* This uses flex layout (which is set in book.js), and centers the popup
+       in the window.*/
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    /* Dim out the book while the popup is visible. */
+    background: var(--overlay-bg);
+}
+
+/* The popup help box. */
+#mdbook-help-popup {
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    min-width: 300px;
+    max-width: 500px;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: var(--bg);
+    color: var(--fg);
+    border-width: 1px;
+    border-color: var(--theme-popup-border);
+    border-style: solid;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.mdbook-help-title {
+    text-align: center;
+    /* mdbook's margin for h2 is way too large. */
+    margin: 10px;
 }
