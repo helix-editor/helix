@@ -1228,26 +1228,20 @@ fn show_clipboard_provider(
     Ok(())
 }
 
-fn change_current_directory(
-    cx: &mut compositor::Context,
-    args: Args,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+/// Helper function to parse the first argument as a directory
+#[inline]
+fn parse_first_arg_as_dir(args: &Args, last_cwd: Option<PathBuf>) -> anyhow::Result<PathBuf> {
+    match args.first().map(AsRef::as_ref) {
+        Some("-") => last_cwd.ok_or_else(|| anyhow!("No previous working directory")),
+        Some(path) => Ok(helix_stdx::path::expand_tilde(Path::new(path)).into_owned()),
+        None => Ok(home_dir()?),
     }
+}
 
-    let dir = match args.first().map(AsRef::as_ref) {
-        Some("-") => cx
-            .editor
-            .get_last_cwd()
-            .map(|path| Cow::Owned(path.to_path_buf()))
-            .ok_or_else(|| anyhow!("No previous working directory"))?,
-        Some(path) => helix_stdx::path::expand_tilde(Path::new(path)),
-        None => Cow::Owned(home_dir()?),
-    };
-
-    cx.editor.set_cwd(&dir).map_err(|err| {
+/// Helper function to apply a directory change for an already-parsed Path ref
+#[inline]
+fn apply_directory_change(cx: &mut compositor::Context, dir: &Path) -> anyhow::Result<()> {
+    cx.editor.set_cwd(dir).map_err(|err| {
         anyhow!(
             "Could not change working directory to '{}': {err}",
             dir.display()
@@ -1258,6 +1252,85 @@ fn change_current_directory(
         "Current working directory is now {}",
         helix_stdx::env::current_working_dir().display()
     ));
+
+    Ok(())
+}
+
+fn change_current_directory(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let dir = parse_first_arg_as_dir(&args, cx.editor.get_last_cwd().map(|p| p.to_path_buf()))?;
+
+    apply_directory_change(cx, &dir)
+}
+
+fn show_directory_stack(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let serialized_stack = cx
+        .editor
+        .dir_stack
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if !serialized_stack.is_empty() {
+        cx.editor.set_status(serialized_stack);
+    } else {
+        cx.editor.set_error("Stack is empty");
+    }
+
+    Ok(())
+}
+
+fn push_directory(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    // avoid an unbounded directory stack and reallocs for perf
+    if cx.editor.dir_stack.len() == cx.editor.dir_stack.capacity() {
+        cx.editor.dir_stack.pop_back();
+    }
+
+    cx.editor
+        .dir_stack
+        .push_front(helix_stdx::env::current_working_dir());
+
+    change_current_directory(cx, args, event)
+}
+
+fn pop_directory(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if let Some(dir) = cx.editor.dir_stack.pop_front() {
+        apply_directory_change(cx, &dir)?;
+    } else {
+        cx.editor.set_error("Stack is empty");
+    }
 
     Ok(())
 }
@@ -3345,6 +3418,39 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::positional(&[completers::directory]),
         signature: Signature {
             positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "show-directory-stack",
+        aliases: &[],
+        doc: "Show the directory stack as a <space> delimited string.",
+        fun: show_directory_stack,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "push-directory",
+        aliases: &["pushd"],
+        doc: "Save and then change the current directory.",
+        fun: push_directory,
+        completer: CommandCompleter::positional(&[completers::directory]),
+        signature: Signature {
+            positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "pop-directory",
+        aliases: &["popd"],
+        doc: "Remove the top entry from the directory stack, and cd to the new top directory..",
+        fun: pop_directory,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
     },
