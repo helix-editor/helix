@@ -211,6 +211,12 @@ pub struct FilePickerData {
 }
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
+fn file_picker_initial_cursor(files: &[PathBuf], selected_path: Option<&Path>) -> u32 {
+    selected_path
+        .and_then(|selected_path| files.iter().position(|path| path == selected_path))
+        .map_or(0, |index| index as u32)
+}
+
 pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     use ignore::WalkBuilder;
     use std::time::Instant;
@@ -228,7 +234,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 
     let mut walk_builder = WalkBuilder::new(&root);
 
-    let mut files = walk_builder
+    let files = walk_builder
         .hidden(config.file_picker.hidden)
         .parents(config.file_picker.parents)
         .ignore(config.file_picker.ignore)
@@ -249,7 +255,20 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
                 return None;
             }
             Some(entry.into_path())
-        });
+        })
+        .collect::<Vec<_>>();
+
+    let initial_cursor = if config.file_picker.preselect_current_file {
+        let selected_path = editor
+            .tree
+            .try_get(editor.tree.focus)
+            .and_then(|view| editor.document(view.doc))
+            .and_then(|doc| doc.path())
+            .map(PathBuf::as_path);
+        file_picker_initial_cursor(&files, selected_path)
+    } else {
+        0
+    };
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
     let columns = [PickerColumn::new(
@@ -281,10 +300,12 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
             cx.editor.set_error(err);
         }
     })
+    .with_initial_cursor(initial_cursor)
     .with_preview(|_editor, path| Some((path.as_path().into(), None)));
     let injector = picker.injector();
     let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
 
+    let mut files = files.into_iter();
     let mut hit_timeout = false;
     for file in &mut files {
         if injector.push(file).is_err() {
@@ -795,6 +816,7 @@ pub mod completers {
 #[cfg(test)]
 mod tests {
     use std::fs::{create_dir, File};
+    use std::path::PathBuf;
 
     use super::*;
 
@@ -813,5 +835,23 @@ mod tests {
         File::create(file).unwrap();
 
         assert_eq!(get_child_if_single_dir(root.path()), None);
+    }
+
+    #[test]
+    fn test_file_picker_initial_cursor_for_selected_file() {
+        let files = vec![
+            PathBuf::from("/workspace/src/a.rs"),
+            PathBuf::from("/workspace/src/b.rs"),
+        ];
+
+        assert_eq!(
+            file_picker_initial_cursor(&files, Some(Path::new("/workspace/src/b.rs"))),
+            1
+        );
+        assert_eq!(
+            file_picker_initial_cursor(&files, Some(Path::new("/workspace/src/missing.rs"))),
+            0
+        );
+        assert_eq!(file_picker_initial_cursor(&files, None), 0);
     }
 }
