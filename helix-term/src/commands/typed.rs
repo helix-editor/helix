@@ -1051,6 +1051,7 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
                     bail!("Unsupported theme: theme requires true color support");
                 }
                 cx.editor.set_theme(theme);
+                cx.editor.config_events.0.send(ConfigEvent::ThemeChanged)?;
             } else {
                 let name = cx.editor.theme.name().to_string();
 
