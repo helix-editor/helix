@@ -224,6 +224,7 @@
 | prolog | ✓ |  | ✓ |  |  | `swipl` |
 | properties | ✓ | ✓ |  |  |  |  |
 | protobuf | ✓ | ✓ | ✓ | ✓ |  | `buf`, `pb`, `protols` |
+| proverif | ✓ |  |  |  |  |  |
 | prql | ✓ |  |  |  |  |  |
 | ptx | ✓ |  | ✓ |  |  |  |
 | pug | ✓ |  |  |  |  |  |
