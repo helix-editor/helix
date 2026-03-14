@@ -206,6 +206,7 @@ The list of supported features is:
 - `document-highlight`
 - `completion`
 - `code-action`
+- `document-links`
 - `workspace-command`
 - `document-symbols`
 - `workspace-symbols`
