@@ -92,7 +92,7 @@
 | git-ignore | ✓ |  |  |  |  |  |
 | git-notes | ✓ |  |  |  |  |  |
 | git-rebase | ✓ |  |  |  |  |  |
-| github-action | ✓ | ✓ | ✓ |  | ✓ | `actions-languageserver`, `yaml-language-server` |
+| github-action | ✓ | ✓ | ✓ |  | ✓ | `actions-languageserver`, `yaml-language-server`, `zizmor` |
 | gitlab-ci | ✓ | ✓ | ✓ | ✓ | ✓ | `yaml-language-server`, `gitlab-ci-ls` |
 | gjs | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | gleam | ✓ | ✓ |  |  | ✓ | `gleam` |
