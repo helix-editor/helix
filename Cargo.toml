@@ -42,7 +42,7 @@ tree-house = { version = "0.3.0", default-features = false }
 nucleo = "0.5.0"
 slotmap = "1.1.1"
 thiserror = "2.0"
-tempfile = "3.25.0"
+tempfile = "3.26.0"
 bitflags = "2.11"
 unicode-segmentation = "1.2"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }

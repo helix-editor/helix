@@ -207,30 +207,25 @@
 ] @constant.builtin
 
 ; Comments
-
 (comment) @comment
 
 ; Doc Comments
 (source_file
-  .
-  (comment)+ @comment.block.documentation)
-
-(source_file
-  (comment)+ @comment.block.documentation
-  .
-  (const_declaration))
-
-(source_file
-  (comment)+ @comment.block.documentation
-  .
-  (function_declaration))
-
-(source_file
-  (comment)+ @comment.block.documentation
-  .
-  (type_declaration))
-
-(source_file
-  (comment)+ @comment.block.documentation
-  .
-  (var_declaration))
+  (comment) @comment.block.documentation . (comment)* . [
+    (package_clause) ; `package`
+    (type_declaration) ; `type`
+    (function_declaration) ; `func`
+    (method_declaration) ; `func`
+    (var_declaration) ; `var`
+    (const_declaration) ; `const`
+    ; var (
+    ; 	A = 1
+    ; 	B = 2
+    ; )
+    (var_spec)
+    ; const (
+    ; 	A = 1
+    ; 	B = 2
+    ; )
+    (const_spec)
+  ])
