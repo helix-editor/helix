@@ -313,6 +313,9 @@ args = ["start", "--stdio"]
 command = "kcl-language-server"
 args = ["server", "--stdio"]
 
+[language-server.drools-lsp]
+command = "drools-lsp"
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -5366,6 +5369,19 @@ comment-token = "#"
 [[grammar]]
 name = "gnuplot"
 source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
+
+[[language]]
+name = "drools"
+scope = "source.drools"
+file-types = ["drl"]
+roots = ["pom.xml", ".git"]
+comment-tokens = "//"
+language-servers = [ "drools-lsp" ]
+formatter = { command = "drools-fmt" }
+
+[[grammar]]
+name = "drools"
+source = { git = "https://github.com/iByteABit256/tree-sitter-drools", rev = "f1404d2a3974dfcfd4193246e763edeeb4b399c1" }
 
 [[language]]
 name = "proverif"
