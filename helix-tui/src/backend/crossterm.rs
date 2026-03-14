@@ -33,7 +33,7 @@ fn vte_version() -> Option<usize> {
     std::env::var("VTE_VERSION").ok()?.parse().ok()
 }
 fn reset_cursor_approach(terminfo: TermInfo) -> String {
-    let mut reset_str = "\x1B[0 q".to_string();
+    let mut reset_str = String::new();
 
     if let Some(termini::Value::Utf8String(se_str)) = terminfo.extended_cap("Se") {
         reset_str.push_str(se_str);
@@ -44,6 +44,8 @@ fn reset_cursor_approach(terminfo: TermInfo) -> String {
             .utf8_string_cap(termini::StringCapability::CursorNormal)
             .unwrap_or(""),
     );
+
+    reset_str.push_str("\x1B[0 q");
 
     reset_str
 }

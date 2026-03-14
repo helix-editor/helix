@@ -14,7 +14,7 @@
     && builtins.hasAttr "rev" grammar.source;
   isGitHubGrammar = grammar: lib.hasPrefix "https://github.com" grammar.source.git;
   toGitHubFetcher = url: let
-    match = builtins.match "https://github\.com/([^/]*)/([^/]*)/?" url;
+    match = builtins.match "https://github\\.com/([^/]*)/([^/]*)/?" url;
   in {
     owner = builtins.elemAt match 0;
     repo = builtins.elemAt match 1;

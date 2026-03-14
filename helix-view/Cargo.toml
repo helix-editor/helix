@@ -34,7 +34,7 @@ tempfile.workspace = true
 once_cell = "1.21"
 url = "2.5.4"
 
-arc-swap = { version = "1.8.1" }
+arc-swap.workspace = true
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
 tokio-stream = "0.1"

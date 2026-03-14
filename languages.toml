@@ -5,7 +5,6 @@ use-grammars = { except = [ "wren", "gemini" ] }
 
 [language-server]
 
-actions-language-server = {command = "actions-languageserver", args = ["--stdio"]}
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
 ada-language-server = { command = "ada_language_server" }
 als = { command = "als" }
@@ -124,6 +123,7 @@ ripple-lsp = { command = "ripple-language-server", args = ["--stdio"] }
 robotcode = { command = "robotcode", args = ["language-server", "--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
 ron-lsp = { command = "ron-lsp" }
+roslyn-language-server = { command = "roslyn-language-server", args = ["--stdio", "--autoLoadProjects"] }
 ruff = { command = "ruff", args = ["server"] }
 ruby-lsp = { command = "ruby-lsp" }
 rshtml-analyzer = { command = "rshtml-analyzer", args = ["--stdio"] }
@@ -174,6 +174,13 @@ teal-language-server = { command = "teal-language-server" }
 wasm-language-tools = { command = "wat_server" }
 sourcepawn-studio = { command = "sourcepawn-studio" }
 luau = { command = "luau-lsp", args = ["lsp"] }
+
+[language-server.actions-language-server]
+command = "actions-languageserver"
+args = ["--stdio"]
+
+[language-server.actions-language-server.config.actions-language-server]
+sessionToken = ""
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -755,7 +762,7 @@ roots = ["*.slnx", "*.sln", "*.csproj"]
 comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
-language-servers = [ "omnisharp", "csharp-ls" ]
+language-servers = [ "roslyn-language-server", "omnisharp", "csharp-ls" ]
 
 [language.debugger]
 name = "netcoredbg"
@@ -1203,6 +1210,7 @@ file-types = [
   { glob = "Podfile" },
   { glob = "Vagrantfile" },
   { glob = "Brewfile" },
+  { glob = "*.Brewfile" },
   { glob = "Guardfile" },
   { glob = "Capfile" },
   { glob = "Cheffile" },
@@ -2240,7 +2248,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-regex", rev = "e1cf
 [[language]]
 name = "git-config"
 scope = "source.gitconfig"
-file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = "gitconfig" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }]
+file-types = ["gitconfig", { glob = ".gitmodules" }, { glob = "gitconfig" }, { glob = ".gitconfig" }, { glob = ".git/config" }, { glob = ".config/git/config" }, { glob = ".git/modules/*/config" }, { glob = "config.worktree" }]
 injection-regex = "git-config"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -3902,7 +3910,7 @@ name = "jjconfig"
 scope = "source.jjconfig"
 injection-regex = "jjconfig"
 grammar = "toml"
-file-types = [{ glob = "jj/config.toml" }, { glob = "jj/conf.d/*.toml" }, { glob = ".jj/repo/*.toml" }]
+file-types = [{ glob = "jj/config.toml" }, { glob = "jj/**/*.toml" }, { glob = ".jj/repo/*.toml" }]
 comment-token = "#"
 language-servers = [ "taplo", "tombi" ]
 indent = { tab-width = 2, unit = "  " }
@@ -5172,10 +5180,6 @@ indent = {tab-width = 2, unit = "  "}
 '"' = '"'
 '“' = '”'
 '‘' = '’'
-
-[[grammar]]
-name = "bovex"
-source = { git = "https://github.com/mi2ebi/tree-sitter-bovex", rev = "de7657a9cc3525b9b77c6d268da09dad5b1346b0" }
 
 [[language]]
 name = "haxe"
