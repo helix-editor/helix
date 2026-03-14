@@ -1,10 +1,9 @@
 use crate::{
-    PartialResultParams, Range, TextDocumentIdentifier, WorkDoneProgressOptions,
+    PartialResultParams, Range, TextDocumentIdentifier, Url, WorkDoneProgressOptions,
     WorkDoneProgressParams,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use url::Url;
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

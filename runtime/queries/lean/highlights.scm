@@ -1,3 +1,8 @@
+; Variables
+(identifier) @variable
+
+; Namespaces
+
 (open
   namespace: (identifier) @namespace)
 (namespace
@@ -209,9 +214,3 @@
 ["|" "," "." ":" ";"] @punctuation.delimiter
 
 (sorry) @error
-
-;; Error
-(ERROR) @error
-
-; Variables
-(identifier) @variable

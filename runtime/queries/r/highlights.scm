@@ -1,13 +1,28 @@
 ; highlights.scm
 
+(identifier) @variable
 
 ; Literals
 
-(integer) @constant.numeric.integer
+[
+  (integer)
+  (complex)
+] @constant.numeric.integer
 
-(float) @constant.numeric.float
+[
+  (float)
+  (nan)
+] @constant.numeric.float
 
-(complex) @constant.numeric.integer
+[
+  (true)
+  (false)
+] @constant.builtin.boolean
+
+[
+  (na)
+  (null)
+] @constant.builtin
 
 (string) @string
 (string (escape_sequence) @constant.character.escape)
@@ -86,12 +101,6 @@
 ] @keyword
 
 [
-  (nan)
-  (na)
-  (null)
-] @type.builtin
-
-[
   "if"
   "else"
   "switch"
@@ -102,11 +111,6 @@
   "repeat"
   "for"
 ] @keyword.control.repeat
-
-[
-  (true)
-  (false)
-] @constant.builtin.boolean
 
 "function" @keyword.function
 
@@ -121,8 +125,3 @@
 
 (namespace_get function: (identifier) @function.method)
 (namespace_get_internal function: (identifier) @function.method)
-
-(identifier) @variable
-
-; Error
-(ERROR) @error

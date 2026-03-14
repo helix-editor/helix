@@ -15,6 +15,7 @@
 "keyword.control" = { fg = "purple" }
 "keyword.control.import" = { fg = "red" }
 "keyword.directive" = { fg = "purple" }
+"keyword.storage" = { fg = "purple" }
 "label" = { fg = "purple" }
 "namespace" = { fg = "blue" }
 "operator" = { fg = "purple" }
@@ -65,7 +66,7 @@
 "ui.cursor.match" = { fg = "blue", modifiers = ["underlined"]}
 
 "ui.selection" = { bg = "faint-gray" }
-"ui.selection.primary" = { bg = "gray" }
+"ui.selection.primary" = { bg = "light-gray" }
 "ui.cursorline.primary" = { bg = "light-black" }
 
 "ui.highlight" = { bg = "gray" }
@@ -85,6 +86,7 @@
 "ui.bufferline.background" = { bg = "light-black" }
 
 "ui.text" = { fg = "white" }
+"ui.text.directory" = { fg = "blue" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
 "ui.help" = { fg = "white", bg = "gray" }

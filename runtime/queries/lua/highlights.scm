@@ -53,6 +53,7 @@
 [
  "in"
  "local"
+ "global"
  (break_statement)
  "goto"
 ] @keyword
@@ -114,6 +115,18 @@
  "{"
  "}"
 ] @punctuation.bracket
+
+;; Variables
+(identifier) @variable
+
+((identifier) @variable.builtin
+ (#eq? @variable.builtin "self"))
+
+(variable_list
+  (attribute
+    "<" @punctuation.bracket
+    (identifier) @attribute
+    ">" @punctuation.bracket))
 
 ; ;; Constants
 [
@@ -177,6 +190,9 @@
     name: (identifier) @function
     value: (function_definition)))
 
+;; Property
+(dot_index_expression field: (identifier) @variable.other.member)
+
 (function_call
   name: [
     (identifier) @function.call
@@ -204,21 +220,3 @@
 ; A bit of a tricky one, this will only match field names
 (field . (identifier) @variable.other.member (_))
 (hash_bang_line) @comment
-
-;; Property
-(dot_index_expression field: (identifier) @variable.other.member)
-
-;; Variables
-((identifier) @variable.builtin
- (#eq? @variable.builtin "self"))
-
-(variable_list
-  (attribute
-    "<" @punctuation.bracket
-    (identifier) @attribute
-    ">" @punctuation.bracket))
-
-(identifier) @variable
-
-;; Error
-(ERROR) @error

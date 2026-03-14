@@ -4,6 +4,7 @@
 inherits = "poimandres"
 
 "ui.cursorline" = { bg = "#303747" }
+"ui.help" = { bg = "#2a303c" }
 "ui.popup" = { bg = "#2a303c" }
 "ui.virtual.indent-guide" = "#3a4151"
 

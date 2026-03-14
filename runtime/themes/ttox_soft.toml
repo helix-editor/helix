@@ -1,0 +1,37 @@
+# Author : Samuel Guyah <ssguyah@gmail.com>
+
+"ui.selection" = { fg = "white", bg = "gray" }
+"ui.cursor" = { fg = "black", bg = "light-gray" }
+"ui.cursor.primary" = { fg = "black", bg = "light-gray" }
+"ui.cursor.match" = { modifiers = ["underlined"] }
+"ui.background.separator" = "gray"
+"ui.linenr" = "gray"
+"ui.linenr.selected" = { fg = "white", bg = "gray" }
+"ui.statusline" = { bg = "black", fg = "white" }
+"ui.menu" = { fg = "white", bg = "black" }
+"ui.menu.selected" = { bg = "light-gray", fg = "black" }
+"ui.popup" = { fg = "white", bg = "black" }
+"ui.help" = { fg = "white", bg = "black" }
+"ui.virtual.ruler" = { underline = { style = "line" } }
+"ui.bufferline" = { fg = "white", bg = "black" }
+"ui.bufferline.active" = { fg = "black", bg = "white" }
+"ui.bufferline.background" = { bg = "black" }
+
+
+"string" = { fg = "light-green" }
+"constant" = { fg = "light-cyan" }
+"comment" = { fg = "light-magenta" }
+
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "gray"
+
+"warning" = { fg = "light-yellow" }
+"error" = { fg = "light-red" }
+"hint" = { fg = "light-blue" }
+
+"diagnostic.warning" = { fg = "light-yellow" }
+"diagnostic.error" = { fg = "light-red" }
+"diagnostic.hint" = { fg = "light-blue" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }

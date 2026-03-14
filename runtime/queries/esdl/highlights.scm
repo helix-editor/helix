@@ -18,6 +18,8 @@
   "function"
 ] @keyword
 
+(identifier) @variable
+
 (modifier) @keyword
 (extending) @keyword
 
@@ -26,16 +28,13 @@
 
 (comment) @comment
 
-; Properties
+; Properties (includes both property and link declarations, since link keyword is optional)
 (property) @variable.other.member
-(link) @variable.other.member
-(annotation) @variable.other.member
 
-(identifier) @variable
 (string) @string
 (edgeql_fragment) @string
-; Builtins
 
+; Builtins
 (type) @type
 [
   "str"
@@ -56,8 +55,8 @@
   "anytype"
 ] @type.builtin
 
-(true) @constant.builtin
-(false) @constant.builtin
+(true) @constant.builtin.boolean
+(false) @constant.builtin.boolean
 (null) @constant.builtin
 
 ; Delimiters
@@ -71,4 +70,3 @@
   "->"
   ":="
 ] @operator
-

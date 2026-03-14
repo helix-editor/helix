@@ -1,3 +1,4 @@
+//! Functions for managine file metadata.
 //! From <https://github.com/Freaky/faccess>
 
 use std::io;
@@ -28,6 +29,15 @@ mod imp {
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
+        #[cfg(target_os = "linux")]
+        {
+            // If helix has ambient CAP_DAC_OVERRIDE, everything is accessible regardless of mode bits
+            use rustix::thread::{capability_is_in_ambient_set, CapabilitySet};
+            if capability_is_in_ambient_set(CapabilitySet::DAC_OVERRIDE).unwrap_or(false) {
+                return Ok(());
+            }
+        }
+
         let mut imode = Access::empty();
 
         if mode.contains(AccessMode::EXISTS) {
@@ -51,8 +61,8 @@ mod imp {
     }
 
     fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
-        let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
-        let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+        let uid = uid.map(rustix::fs::Uid::from_raw);
+        let gid = gid.map(rustix::fs::Gid::from_raw);
         rustix::fs::chown(p, uid, gid)?;
         Ok(())
     }
@@ -70,6 +80,16 @@ mod imp {
             perms.set_mode(new_perms);
         }
 
+        #[cfg(target_os = "macos")]
+        {
+            use std::fs::{File, FileTimes};
+            use std::os::macos::fs::FileTimesExt;
+
+            let to_file = File::options().write(true).open(to)?;
+            let times = FileTimes::new().set_created(from_meta.created()?);
+            to_file.set_times(times)?;
+        }
+
         std::fs::set_permissions(to, perms)?;
 
         Ok(())
@@ -85,7 +105,7 @@ mod imp {
 #[cfg(windows)]
 mod imp {
 
-    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE, PSID};
+    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE};
     use windows_sys::Win32::Security::Authorization::{
         GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
     };
@@ -95,7 +115,7 @@ mod imp {
         SecurityImpersonation, ACCESS_ALLOWED_CALLBACK_ACE, ACL, ACL_SIZE_INFORMATION,
         DACL_SECURITY_INFORMATION, GENERIC_MAPPING, GROUP_SECURITY_INFORMATION, INHERITED_ACE,
         LABEL_SECURITY_INFORMATION, OBJECT_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION,
-        PRIVILEGE_SET, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
+        PRIVILEGE_SET, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
         SID_IDENTIFIER_AUTHORITY, TOKEN_DUPLICATE, TOKEN_QUERY,
     };
     use windows_sys::Win32::Storage::FileSystem::{
@@ -108,7 +128,13 @@ mod imp {
 
     use std::ffi::c_void;
 
-    use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
+    use std::os::windows::{
+        ffi::OsStrExt,
+        fs::{FileTimesExt, OpenOptionsExt},
+        io::AsRawHandle,
+    };
+
+    use std::fs::{File, FileTimes};
 
     struct SecurityDescriptor {
         sd: PSECURITY_DESCRIPTOR,
@@ -412,6 +438,10 @@ mod imp {
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
 
+        let to_file = File::options().write(true).open(to)?;
+        let times = FileTimes::new().set_created(meta.created()?);
+        to_file.set_times(times)?;
+
         std::fs::set_permissions(to, perms)?;
 
         Ok(())
@@ -419,7 +449,7 @@ mod imp {
 
     pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
         let file = std::fs::File::open(p)?;
-        let handle = file.as_raw_handle() as isize;
+        let handle = file.as_raw_handle();
         let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
 
         if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {

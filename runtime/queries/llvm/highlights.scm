@@ -17,9 +17,11 @@
 
 [
   "to"
+  "nneg"
   "nuw"
   "nsw"
   "exact"
+  "disjoint"
   "unwind"
   "from"
   "cleanup"
@@ -154,5 +156,3 @@
   "none"
   "zeroinitializer"
 ] @constant.builtin
-
-(ERROR) @error

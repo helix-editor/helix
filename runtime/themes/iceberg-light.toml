@@ -1,0 +1,39 @@
+# Author : Chromo-residuum-opec <development.0extl@simplelogin.com>
+
+inherits = "iceberg-dark"
+"ui.menu.selected" = { fg = "background_fg", bg = "menusel_bg" }
+
+[palette]
+
+orange = "#c67439"
+pale = "#505695"
+purple = "#785ab5"
+
+black = "#dcdfe7"
+gray = "#8389a3"
+red = "#cd517a"
+light-red = "#cc3768"
+green = "#668f3d"
+light-green = "#598030"
+yellow = "#c57339"
+light-yellow = "#b6662d"
+blue = "#2e539e"
+light-blue = "#22478e"
+magenta = "#7759b4"
+light-magenta = "#6845ad"
+cyan = "#3f84a6"
+light-cyan = "#327698"
+white = "#33374c"
+light-gray = "#262a3f"
+
+background_bg = "#e9e9ed"
+background_fg = "#33374d"
+comment_fg = "#8489a4"
+cursorlinenr_bg = "#cccfe0"
+linenr_bg = "#dddfe9"
+linenr_fg = "#a0a5c0"
+matchparen_bg = "#bec0ca"
+menusel_bg = "#a9afd1"
+sel_bg = "#cacdd8"
+statusline_bg = "#cad0de"
+statusline_fg = "#757da3"

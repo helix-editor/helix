@@ -123,7 +123,7 @@ impl<'a> Block<'a> {
     }
 }
 
-impl<'a> Widget for Block<'a> {
+impl Widget for Block<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.area() == 0 {
             return;

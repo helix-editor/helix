@@ -1,4 +1,4 @@
-(comment) @comment
+[(line_comment) (block_comment)] @comment
 
 (module_clause
  (identifier) @namespace)
@@ -84,9 +84,9 @@
 ] @string
 
 (string_interpolation
- (braced_interpolation_opening) @punctuation.bracket
- (interpolated_expression) @embedded
- (braced_interpolation_closing) @punctuation.bracket)
+ (interpolation_opening) @punctuation.bracket
+ (interpolation_expression) @embedded
+ (interpolation_closing) @punctuation.bracket)
 
 (attribute) @attribute
 
@@ -98,6 +98,7 @@
  (true)
  (false)
 ] @constant.builtin.boolean
+(nil) @constant.builtin
 
 [
   "pub"
@@ -106,7 +107,6 @@
   "defer"
   "unsafe"
   "sql"
-  (nil)
   (none)
 ] @keyword
 

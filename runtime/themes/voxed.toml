@@ -1,3 +1,9 @@
+# Voxed theme for the Helix Editor
+# Author: rojebd<roniellberrios@gmail.com>
+# Repo: https://github.com/rojebd/voxed
+# Version: 1.0
+# Info: This is a theme I made one afternoon because I was bored
+
 attribute = "buff"
 keyword = "sglow"
 "keyword.directive" = "defineish" 
@@ -43,6 +49,7 @@ label = "yellow"
 "ui.background.separator" = { fg = "sglow" }
 "ui.linenr" = { fg = "light-grey", modifiers = ["italic"] }
 "ui.linenr.selected" = { fg = "bpink", modifiers = ["bold"] }
+
 "ui.statusline" = { fg = "black", bg = "light-grey", modifiers = ["bold"] }
 "ui.statusline.inactive" = { fg = "black", bg = "bgrey-two" }
 "ui.popup" = { fg = "bgrey", bg = "#25262B" }
@@ -54,7 +61,8 @@ label = "yellow"
 "ui.text.inactive" = "bgrey"
 "ui.virtual" = { fg = "blue" }
 "ui.virtual.ruler" = { bg = "bgrey-two" }
-"ui.virtual.indent-guide" = { fg = "bpink" }
+"ui.virtual.indent-guide" = { fg = "gray" }
+
 
 "ui.selection" = { bg = "maize" }
 "ui.selection.primary" = { fg = "white", bg = "bgrey" }
@@ -62,7 +70,8 @@ label = "yellow"
 "ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { bg = "bgrey-two", modifiers = ["reversed"] }
-"ui.cursorline.primary" = { bg = "white" }
+"ui.cursorline.primary" = { bg = "#44414c" }
+
 "ui.highlight" = { bg = "white" }
 "ui.highlight.frameline" = { bg = "#634450" }
 "ui.debug" = { fg = "#634450" }
@@ -75,8 +84,6 @@ label = "yellow"
 "diagnostic.info" = { underline = { color = "sglow", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "redish", style = "curl" } }
 "diagnostic.error" = { underline = { color = "bpink", style = "curl" } }
-"diagnostic.unnecessary" = { modifiers = ["dim"] }
-"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 warning = "bpink"
 error = "bsienna"

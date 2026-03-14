@@ -1,14 +1,14 @@
 # Author: Matous Dzivjak <matousdzivjak@gmail.com>
 # Adapted from https://protesilaos.com/emacs/modus-themes, by Protesilaos Stavrou
 # Source: https://github.com/protesilaos/modus-themes/blob/main/modus-vivendi-deuteranopia-theme.el
-# Version 4.3.0
+# Version 4.6.0
 
 inherits = "modus_vivendi"
 
 "constant.character.escape" = "magenta"
 "comment" = "yellow-cooler"
-"function" = "magenta"
-"tag" = "magenta"
+"function" = "yellow-warmer"
+"tag" = "blue-cooler"
 
 "ui.cursor" = { fg = "bg-main", bg = "blue-intense" }
 "ui.cursor.primary.normal" = { fg = "bg-main", bg = "blue-intense" }
@@ -22,6 +22,8 @@ error = "yellow-intense"
 warning = "magenta-faint"
 info = "cyan"
 hint = "blue"
+
+rainbow = ["red", "yellow-intense", "green-intense", "cyan", "blue", "magenta-intense"]
 
 [palette]
 # Basic values
@@ -37,7 +39,7 @@ border = "#646464"
 # Common accent foregrounds
 red = "#ff5f59"
 red-warmer = "#ff6b55"
-red-cooler = "#ff7f9f"
+red-cooler = "#ff7f86"
 red-faint = "#ff9580"
 red-intense = "#ff5f5f"
 green = "#44bc44"
@@ -98,14 +100,14 @@ bg-magenta-nuanced = "#2f0c3f"
 bg-cyan-nuanced = "#042837"
 
 # Uncommon accent backgrounds
-bg-ochre = "#442c2f"
+bg-ochre = "#462f20"
 bg-lavender = "#38325c"
-bg-sage = "#0f3d30"
+bg-sage = "#143e32"
 
 # Special purpose
 bg-completion = "#2f447f"
 bg-hover = "#45605e"
-bg-hover-secondary = "#654a39"
+bg-hover-secondary = "#604c30"
 bg-hl-line = "#2f3849"
 bg-region = "#5a5a5a"
 fg-region = "#ffffff"

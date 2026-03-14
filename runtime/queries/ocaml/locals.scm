@@ -16,7 +16,7 @@
 ; Definitions
 ;------------
 
-(value_pattern) @local.definition
+(value_pattern) @local.definition.variable.parameter
 
 ; References
 ;-----------

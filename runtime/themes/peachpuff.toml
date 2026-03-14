@@ -1,0 +1,66 @@
+# Author : geonove <andre.novellini@gmail.com>
+# License : Vim License
+
+"ui.menu" = { fg = "light-gray", bg = "gray" }
+"ui.menu.selected" = { modifiers = ["reversed"] }
+"ui.linenr" = "yellow"
+"ui.popup" = { bg = "black" }
+"ui.window" = { bg = "black" }
+"ui.linenr.selected" = "light-yellow"
+"ui.selection" = { fg = "gray", modifiers = ["reversed"] }
+"ui.text.focus" = { fg = "black", bg = "white" }
+"comment" = "light-green"
+"comment.line" = "light-green"
+"comment.line.documentation" = "light-green"
+"comment.block" = "red"
+"comment.block.documentation" = "red"
+"ui.statusline" = { fg = "black", bg = "light-cyan" }
+"ui.statusline.inactive" = { fg = "gray", bg = "black" }
+"ui.help" = { fg = "white", bg = "black" }
+"ui.cursor" = { fg = "light-gray", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "light-gray", modifiers = ["reversed"] }
+"ui.virtual.whitespace" = "light-gray"
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
+"ui.virtual.ruler" = { bg = "black" }
+"variable" = "white"
+"constant.numeric" = "red"
+"constant" = "white"
+"constant.builtin" = "red"
+"attribute" = "yellow"
+"type" = "green"
+"type.builtin" = "cyan"
+"ui.cursor.match" = { fg = "light-gray", modifiers = ["reversed"] }
+"string"  = "red"
+"variable.other.member" = "white"
+"constant.character.escape" = "light-cyan"
+#"function.builtin" = "cyan"
+#"function.method" = "cyan"
+#"function.method.private" = "cyan"
+"function" = "cyan"
+"constructor" = "cyan"
+"special" = "light-blue"
+"keyword" = "yellow"
+"keyword.control.import" = "magenta"
+"label" = "white"
+"namespace" = "white"
+
+"markup.heading" = "light-magenta"
+"markup.list" = "light-red"
+"markup.bold" = { fg = "light-yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "light-magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "light-red"
+"markup.quote" = "light-cyan"
+"markup.raw" = "light-green"
+
+"diff.plus" = "light-green"
+"diff.delta" = "yellow"
+"diff.minus" = "light-red"
+
+"diagnostic" = { modifiers = ["underlined"] }
+"info" = "light-blue"
+"hint" = "gray"
+"debug" = "gray"
+"warning" = "yellow"
+"error" = "light-red"

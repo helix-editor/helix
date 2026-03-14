@@ -54,6 +54,7 @@
 "ui.window" = { fg = "bg1" }
 "ui.help" = { bg = "bg1", fg = "fg0" }
 "ui.text" = { fg = "fg0" }
+"ui.text.directory" = { fg = "niagara0", modifiers = ["bold"] }
 "ui.text.focus" = { bg = "bg5", modifiers = ["bold"] }
 "ui.selection" = { bg = "bg2" }
 "ui.selection.primary" = { bg = "bg5" }
@@ -67,6 +68,7 @@
 "ui.virtual.ruler" = { bg = "bg1" }
 "ui.virtual.inlay-hint" = { fg = "bg7" }
 "ui.virtual.wrap" = { fg = "bg2" }
+"ui.virtual.jump-label" = { fg = "red3", modifiers = ["bold"] }
 
 "diagnostic.warning" = { underline = { color = "orange1", style = "dashed" } }
 "diagnostic.error" = { underline = { color = "red3", style = "dashed" } }

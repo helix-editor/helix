@@ -126,7 +126,7 @@
 (slStringLiteral) @string
 (mlStringLiteral) @string
 
-(escapeSequence) @constent.character.escape
+(escapeSequence) @constant.character.escape
 
 (intLiteral) @constant.numeric.integer
 (floatLiteral) @constant.numeric.float
@@ -149,13 +149,13 @@
 
 ; Identifiers
 
+(identifier) @variable
+
 (classProperty (identifier) @variable.other.member)
 (objectProperty (identifier) @variable.other.member)
 
 (parameterList (typedIdentifier (identifier) @variable.parameter))
 (objectBodyParameters (typedIdentifier (identifier) @variable.parameter))
-
-(identifier) @variable
 
 ; Method definitions
 

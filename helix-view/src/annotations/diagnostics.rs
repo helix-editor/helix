@@ -109,7 +109,7 @@ impl InlineDiagnosticsConfig {
 impl Default for InlineDiagnosticsConfig {
     fn default() -> Self {
         InlineDiagnosticsConfig {
-            cursor_line: DiagnosticFilter::Disable,
+            cursor_line: DiagnosticFilter::Enable(Severity::Warning),
             other_lines: DiagnosticFilter::Disable,
             min_diagnostic_width: 40,
             prefix_len: 1,
@@ -178,7 +178,7 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
         horizontal_off: usize,
     ) -> bool {
         // TODO: doing the cursor tracking here works well but is somewhat
-        // duplicate effort/tedious maybe centralize this somehwere?
+        // duplicate effort/tedious maybe centralize this somewhere?
         // In the DocFormatter?
         if grapheme.char_idx == self.cursor {
             self.cursor_line = true;
@@ -186,7 +186,7 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
                 .doc
                 .diagnostics
                 .get(self.idx)
-                .map_or(true, |diag| diag.range.start != grapheme.char_idx)
+                .is_none_or(|diag| diag.range.start != grapheme.char_idx)
             {
                 return false;
             }
@@ -248,9 +248,9 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
     }
 
     pub fn has_multi(&self, width: u16) -> bool {
-        self.stack.last().map_or(false, |&(_, anchor)| {
-            anchor > self.config.max_diagnostic_start(width)
-        })
+        self.stack
+            .last()
+            .is_some_and(|&(_, anchor)| anchor > self.config.max_diagnostic_start(width))
     }
 }
 

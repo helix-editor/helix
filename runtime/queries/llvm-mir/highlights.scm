@@ -75,11 +75,16 @@
   "pre-instr-symbol"
   "post-instr-symbol"
   "heap-alloc-marker"
+  "pcsections"
+  "mmra"
+  "cfi-type"
   "debug-instr-number"
   "debug-location"
+  "dbg-instr-ref"
   "mcsymbol"
   "tied-def"
   "target-flags"
+  "vscale"
   "CustomRegMask"
   "same_value"
   "def_cfa_register"
@@ -118,11 +123,16 @@
   "got"
   "jump-table"
   "syncscope"
-  "address-taken"
+  "machine-block-address-taken"
+  "ir-block-address-taken"
   "landing-pad"
   "inlineasm-br-indirect-target"
   "ehfunclet-entry"
+  "bb_id"
+  "call-frame-size"
   "bbsections"
+  "Exception"
+  "Cold"
 
   (intpred)
   (floatpred)
@@ -132,5 +142,3 @@
   (instruction_flag)
   (float_keyword)
 ] @keyword
-
-(ERROR) @error

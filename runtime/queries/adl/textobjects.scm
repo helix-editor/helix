@@ -1,1 +1,1 @@
-(struct (_) @function.inside) @funtion.around
+(struct (_) @function.inside) @function.around

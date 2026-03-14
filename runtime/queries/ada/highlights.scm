@@ -1,9 +1,3 @@
-;; highlight queries.
-;; See the syntax at https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries
-;; See also https://github.com/nvim-treesitter/nvim-treesitter/blob/master/CONTRIBUTING.md#parser-configurations
-;; for a list of recommended @ tags, though not all of them have matching
-;; highlights in neovim.
-
 [
    "abort"
    "abs"
@@ -81,7 +75,7 @@
    "parallel"
    "reverse"
    "some"
-] @kewyord.control.repeat
+] @keyword.control.repeat
 [
    "return"
 ] @keyword.control.return
@@ -119,7 +113,6 @@
 
 (loop_statement "end" @keyword.control.repeat)
 (if_statement "end" @keyword.control.conditional)
-(loop_parameter_specification "in" @keyword.control.repeat)
 (loop_parameter_specification "in" @keyword.control.repeat)
 (iterator_specification ["in" "of"] @keyword.control.repeat)
 (range_attribute_designator "range" @keyword.control.repeat)

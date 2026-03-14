@@ -12,6 +12,9 @@ pub mod job;
 pub mod keymap;
 pub mod ui;
 
+#[cfg(not(windows))]
+use std::env::var_os;
+
 use std::path::Path;
 
 use futures_util::Future;
@@ -27,10 +30,9 @@ fn true_color() -> bool {
 
 #[cfg(not(windows))]
 fn true_color() -> bool {
-    if matches!(
-        std::env::var("COLORTERM").map(|v| matches!(v.as_str(), "truecolor" | "24bit")),
-        Ok(true)
-    ) {
+    if var_os("COLORTERM").is_some_and(|v| v == "truecolor" || v == "24bit")
+        || var_os("WSL_DISTRO_NAME").is_some()
+    {
         return true;
     }
 
@@ -63,7 +65,7 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
             .path()
             .canonicalize()
             .ok()
-            .map_or(false, |path| !path.starts_with(root));
+            .is_some_and(|path| !path.starts_with(root));
     }
 
     true
@@ -76,8 +78,7 @@ fn open_external_url_callback(
     let commands = open::commands(url.as_str());
     async {
         for cmd in commands {
-            let mut command = tokio::process::Command::new(cmd.get_program());
-            command.args(cmd.get_args());
+            let mut command: tokio::process::Command = cmd.into();
             if command.output().await.is_ok() {
                 return Ok(job::Callback::Editor(Box::new(|_| {})));
             }

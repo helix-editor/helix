@@ -195,3 +195,22 @@ async fn test_changes_in_splits_apply_to_all_views() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_changes_in_splits_jumplist_sync() -> anyhow::Result<()> {
+    // See <https://github.com/helix-editor/helix/issues/9833>
+    // When jumping backwards (<C-o>) switches between two documents, we need to
+    // ensure that the current view has been synced with all changes to the
+    // document that occurred since the last time the view focused this document.
+    // If the view isn't synced then this case panics since we try to form a
+    // selection on "test" (which was deleted in the other view).
+    test((
+        "#[test|]#",
+        "<C-w>sgf<C-w>wd<C-w>w<C-o><C-w>qd",
+        "#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    Ok(())
+}

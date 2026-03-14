@@ -90,14 +90,15 @@ impl Transport {
     async fn recv_server_message(
         reader: &mut (impl AsyncBufRead + Unpin + Send),
         buffer: &mut String,
+        content: &mut Vec<u8>,
         language_server_name: &str,
     ) -> Result<ServerMessage> {
         let mut content_length = None;
         loop {
-            buffer.truncate(0);
+            buffer.clear();
             if reader.read_line(buffer).await? == 0 {
                 return Err(Error::StreamClosed);
-            };
+            }
 
             // debug!("<- header {:?}", buffer);
 
@@ -126,18 +127,20 @@ impl Transport {
         }
 
         let content_length = content_length.context("missing content length")?;
-
-        //TODO: reuse vector
-        let mut content = vec![0; content_length];
-        reader.read_exact(&mut content).await?;
-        let msg = std::str::from_utf8(&content).context("invalid utf8 from server")?;
+        content.resize(content_length, 0);
+        reader.read_exact(content).await?;
+        let msg = std::str::from_utf8(content).context("invalid utf8 from server")?;
 
         info!("{language_server_name} <- {msg}");
 
-        // try parsing as output (server response) or call (server request)
-        let output: serde_json::Result<ServerMessage> = serde_json::from_str(msg);
+        // NOTE: We avoid using `?` here, since it would return early on error
+        // and skip clearing `content`. By returning the result directly instead,
+        // we ensure `content.clear()` is always called.
+        let output = sonic_rs::from_slice(content).map_err(Into::into);
 
-        Ok(output?)
+        content.clear();
+
+        output
     }
 
     async fn recv_server_error(
@@ -223,10 +226,7 @@ impl Transport {
         language_server_name: &str,
     ) -> Result<()> {
         let (id, result) = match output {
-            jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
-                info!("{language_server_name} <- {}", result);
-                (id, Ok(result))
-            }
+            jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => (id, Ok(result)),
             jsonrpc::Output::Failure(jsonrpc::Failure { id, error, .. }) => {
                 error!("{language_server_name} <- {error}");
                 (id, Err(error.into()))
@@ -258,9 +258,15 @@ impl Transport {
         client_tx: UnboundedSender<(LanguageServerId, jsonrpc::Call)>,
     ) {
         let mut recv_buffer = String::new();
+        let mut content_buffer = Vec::new();
         loop {
-            match Self::recv_server_message(&mut server_stdout, &mut recv_buffer, &transport.name)
-                .await
+            match Self::recv_server_message(
+                &mut server_stdout,
+                &mut recv_buffer,
+                &mut content_buffer,
+                &transport.name,
+            )
+            .await
             {
                 Ok(msg) => {
                     match transport
