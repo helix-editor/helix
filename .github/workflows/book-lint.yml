@@ -35,7 +35,7 @@ jobs:
           shared-key: "book-lint"
 
       - name: Install rumdl
-        run: cargo install --locked rumdl
+        run: cargo +stable install --locked rumdl
 
       - name: Run rumdl
         run: rumdl check book

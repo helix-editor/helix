@@ -33,10 +33,10 @@ cargo xtask docgen
 
 inside the project. We use [xtask][xtask] as an ad-hoc task runner.
 
-Book markdown is linted with [`rumdl`](https://github.com/rvben/rumdl). To install it locally, run:
+Book markdown is linted with [`rumdl`](https://github.com/rvben/rumdl). Helix pins its MSRV in [`rust-toolchain.toml`](../rust-toolchain.toml), while `rumdl` may require a newer compiler than the repo itself. To install it locally from the repository root, run:
 
 ```shell
-cargo install --locked rumdl
+cargo +stable install --locked rumdl
 ```
 
 Then run the linter from the repository root:
