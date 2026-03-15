@@ -729,11 +729,12 @@ impl Application {
             }) => false,
             #[cfg(not(windows))]
             termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
+                self.theme_mode = Some(mode.into());
                 Self::load_configured_theme(
                     &mut self.editor,
                     &self.config.load(),
                     &mut self.terminal,
-                    Some(mode.into()),
+                    self.theme_mode,
                 );
                 true
             }
