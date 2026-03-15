@@ -4193,7 +4193,7 @@ source = { git = "https://github.com/tact-lang/tree-sitter-tact", rev = "ec57ab2
 name = "pkl"
 scope = "source.pkl"
 injection-regex = "pkl"
-file-types = ["pkl", "pcf"]
+file-types = ["pkl", "pcf", { glob = "PklProject" }]
 comment-token = "//"
 language-servers = ["pkl-lsp"]
 indent = { tab-width = 2, unit = "  " }
