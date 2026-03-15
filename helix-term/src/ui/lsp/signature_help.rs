@@ -119,7 +119,7 @@ impl Component for SignatureHelp {
         let sig_text = crate::ui::markdown::highlighted_code_block(
             signature.signature.as_str(),
             &self.language,
-            Some(&cx.editor.theme),
+            Some((&cx.editor.theme, cx.editor.theme_context())),
             &self.config_loader.load(),
             active_param_span,
         );
@@ -155,7 +155,7 @@ impl Component for SignatureHelp {
             None => return,
             Some(doc) => Markdown::new(doc.clone(), Arc::clone(&self.config_loader)),
         };
-        let sig_doc = sig_doc.parse(Some(&cx.editor.theme));
+        let sig_doc = sig_doc.parse(Some((&cx.editor.theme, cx.editor.theme_context())));
         let sig_doc_area = area
             .clip_top(sig_text_area.height + 2)
             .clip_bottom(u16::from(cx.editor.popup_border()));
