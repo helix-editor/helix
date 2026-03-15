@@ -320,6 +320,7 @@
 ;;
 (define remove-inlay-hint-by-id helix.remove-inlay-hint-by-id)
 
+(provide fuzzy-match)
 ;;@doc
 ;; Convenience function to easily fuzzy match
 ;; on a (relatively small list of inputs). This is not recommended for building a full tui
