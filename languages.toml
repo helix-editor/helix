@@ -104,6 +104,7 @@ pbkit = { command = "pb", args = [ "lsp" ] }
 perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
 pest-language-server = { command = "pest-language-server" }
 pkl-lsp = { command = "pkl-lsp" }
+pony-lsp = { command = "pony-lsp", args = ["--stdio"], config = {defines = [], ponypath = []}}
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"], config.prisma.enableDiagnostics = true }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
@@ -138,6 +139,7 @@ solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
 spade-language-server = {command = "spade-language-server"}
 starpls = {command = "starpls"}
+styx = { command = "styx", args = ["lsp"] }
 svlangserver = { command = "svlangserver", args = [], config.systemverilog.includeIndexing = ["*.{v,vh,sv,svh}", "**/*.{v,vh,sv,svh}"] }
 swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
 superhtml = {  command = "superhtml", args = ["lsp"]}
@@ -174,6 +176,7 @@ teal-language-server = { command = "teal-language-server" }
 wasm-language-tools = { command = "wat_server" }
 sourcepawn-studio = { command = "sourcepawn-studio" }
 luau = { command = "luau-lsp", args = ["lsp"] }
+zizmor = { command = "zizmor", args = ["--lsp"]}
 
 [language-server.actions-language-server]
 command = "actions-languageserver"
@@ -309,6 +312,9 @@ args = ["start", "--stdio"]
 [language-server.kcl-lsp]
 command = "kcl-language-server"
 args = ["server", "--stdio"]
+
+[language-server.drools-lsp]
+command = "drools-lsp"
 
 [[language]]
 name = "rust"
@@ -1494,7 +1500,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "smali"
-source = { git = "https://github.com/amaanq/tree-sitter-smali", rev = "5ae51e15c4d1ac93cba6127caf3d1f0a072c140c" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-smali", rev = "fdfa6a1febc43c7467aa7e937b87b607956f2346" }
 
 [[language]]
 name = "ledger"
@@ -1880,7 +1886,7 @@ injection-regex = "glsl"
 
 [[grammar]]
 name = "glsl"
-source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "88408ffc5e27abcffced7010fc77396ae3636d7e" }
+source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "24a6c8ef698e4480fecf8340d771fbcb5de8fbb4" }
 
 [[language]]
 name = "penrose"
@@ -1921,6 +1927,18 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "perl"
 source = { git = "https://github.com/tree-sitter-perl/tree-sitter-perl", rev = "72a08a496a23212f23802490ef6f4700d68cfd0e" }
+
+[[language]]
+name = "embedded-perl"
+scope = "text.html.ep"
+injection-regex = "embedded-perl"
+file-types = ["ep", { glob = "*.html.ep" }]
+comment-token = "%#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "embedded-perl"
+source = { git = "https://github.com/jobindex-open/tree-sitter-embedded-perl", rev = "14b9a948030edd99c132b78a3d3dc2c7537a061b" }
 
 [[language]]
 name = "pod"
@@ -2049,7 +2067,7 @@ injection-regex = "mail|eml|email"
 
 [[grammar]]
 name = "mail"
-source = { git = "https://codeberg.org/ficd/tree-sitter-mail", rev = "8e60f38efbae1cc5f22833ae13c5500dd0f3b12f" }
+source = { git = "https://codeberg.org/ficd/tree-sitter-mail", rev = "5eddbfdbec4c893182c79047499901c196332e78" }
 
 [[language]]
 name = "markdown"
@@ -2136,7 +2154,7 @@ language-servers = [ "metals" ]
 
 [[grammar]]
 name = "scala"
-source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "7891815f42dca9ed6aeb464c2edc39d479ab965c" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "2d55e74b0485fe05058ffe5e8155506c9710c767" }
 
 [[language]]
 name = "dockerfile"
@@ -2205,7 +2223,7 @@ grammar = "gitcommit"
 [[language]]
 name = "github-action"
 scope = "source.yaml.github-action"
-language-servers = [ "actions-language-server", "yaml-language-server" ]
+language-servers = [ "actions-language-server", "yaml-language-server", "zizmor" ]
 file-types = [{ glob = ".github/workflows/*.yaml" }, { glob = ".github/workflows/*.yml" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -2934,7 +2952,7 @@ language-servers = [ "fortls" ]
 
 [[grammar]]
 name = "fortran"
-source = { git = "https://github.com/stadelmanma/tree-sitter-fortran", rev = "8334abca785db3a041292e3b3b818a82a55b238f" }
+source = { git = "https://github.com/stadelmanma/tree-sitter-fortran", rev = "2880b7aab4fb7cc618de1ef3d4c6d93b2396c031" }
 
 [[language]]
 name = "ungrammar"
@@ -3033,14 +3051,14 @@ source = { git = "https://github.com/synaptiko/tree-sitter-xit", rev = "7d790245
 name = "esdl"
 scope = "source.esdl"
 injection-regex = "esdl"
-file-types = ["esdl"]
+file-types = ["gel", "esdl"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-roots = ["edgedb.toml"]
+roots = ["gel.toml", "edgedb.toml"]
 
 [[grammar]]
 name ="esdl"
-source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "df83acc8cacd0cfb139eecee0e718dc32c4f92e2" }
+source = { git = "https://github.com/hongquan/tree-sitter-esdl", rev = "c824fe2bbbed6b29e50c694420aa2b377782f80a" }
 
 [[language]]
 name = "pascal"
@@ -3479,6 +3497,7 @@ roots = ["corral.json", "lock.json"]
 indent = { tab-width = 2, unit = "  " }
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
+language-servers = [ "pony-lsp" ]
 
 [[grammar]]
 name = "ponylang"
@@ -3700,7 +3719,7 @@ grammar = "rego"
 
 [[grammar]]
 name = "rego"
-source = { git = "https://github.com/FallenAngel97/tree-sitter-rego", rev = "9ac75e71b2d791e0aadeef68098319d86a2a14cf" }
+source = { git = "https://github.com/FallenAngel97/tree-sitter-rego", rev = "ddd39af81fe8b0288102a7cb97959dfce723e0f3" }
 
 [[language]]
 name = "nim"
@@ -4632,7 +4651,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "spade"
-source = { git = "https://gitlab.com/spade-lang/tree-sitter-spade", rev = "6569cd11cc9362e277845ce24111735059b145ee" }
+source = { git = "https://codeberg.org/spade-lang/tree-sitter-spade", rev = "996aaabea9a9fbe498ae0876356028a78e6ef8db" }
 
 [[language]]
 name = "amber"
@@ -5017,7 +5036,7 @@ source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-requiremen
 
 [[language]]
 name = "kconfig"
-file-types = ["kconfig", { glob = "kconfig.*" }]
+file-types = ["Kconfig", { glob = "Kconfig.*" }]
 scope = "source.kconfig"
 
 [[grammar]]
@@ -5302,6 +5321,26 @@ indent = { tab-width = 4, unit="    "}
 name = "klog"
 source = { git = "https://github.com/Ansimorph/tree-sitter-klog/", rev = "0b215fe75bdeb8368546e3cee36aca8c19212d06" }
 
+[[language]]
+name = "styx"
+scope = "source.styx"
+injection-regex = "styx"
+file-types = ["styx"]
+comment-tokens = ["//", "///"]
+language-servers = ["styx"]
+indent = { tab-width = 2, unit = "  " }
+auto-format = true
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'"' = '"'
+"'" = "'"
+
+[[grammar]]
+name = "styx"
+source = { git = "https://github.com/bearcove/styx", subpath = "crates/tree-sitter-styx" , rev = "ff7f49629a20a308111810a0c5e6228617133ea7" }
+
 # https://docs.tilt.dev/editor.html
 [[language]]
 name = "tilt"
@@ -5330,3 +5369,46 @@ comment-token = "#"
 [[grammar]]
 name = "gnuplot"
 source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
+
+[[language]]
+name = "drools"
+scope = "source.drools"
+file-types = ["drl"]
+roots = ["pom.xml", ".git"]
+comment-tokens = "//"
+language-servers = [ "drools-lsp" ]
+formatter = { command = "drools-fmt" }
+
+[[grammar]]
+name = "drools"
+source = { git = "https://github.com/iByteABit256/tree-sitter-drools", rev = "f1404d2a3974dfcfd4193246e763edeeb4b399c1" }
+
+[[language]]
+name = "proverif"
+scope = "source.proverif"
+file-types = [ "pv" ]
+injection-regex = "proverif"
+indent = { tab-width = 8, unit="        "}
+block-comment-tokens = { start = "(*", end = "*)" }
+[language.auto-pairs]
+'(' = ')'
+'"' = '"'
+"'" = "'"
+
+[[grammar]]
+name = "proverif"
+source = { git = "https://codeberg.org/maribu/tree-sitter-proverif", rev = "7741807092c4009c1fe4c3648da60ca72b1b80f1" }
+
+[[language]]
+name = "ptx"
+scope = "source.ptx"
+injection-regex = "ptx"
+file-types = ["ptx"]
+language-servers = []
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "ptx"
+source = { git = "https://codeberg.org/jer-gremlin/tree-sitter-ptx", rev = "3dfa6758d4c15832d051f933101992b9e01d6611" }
