@@ -4945,7 +4945,7 @@ language-servers = [ "clarinet" ]
 
 [[grammar]]
 name = "clarity"
-source = { git = "https://github.com/xlittlerag/tree-sitter-clarity", rev = "7fa54825fdd971a1a676f885384f024fe2b7384a" }
+source = { git = "https://github.com/xlittlerag/tree-sitter-clarity", rev = "1436da3946359fcd7ac2d81917aaa78ef1e01755" }
 
 [[language]]
 name = "alloy"
