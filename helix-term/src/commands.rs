@@ -1340,15 +1340,16 @@ fn selection_overlaps_document_link(
     }
 }
 
-/// Resolve a document link target, using the LSP resolve request when needed.
-fn resolve_document_link_target(
+/// Create a document link resolve request when the target isn't already present.
+///
+/// This only builds the LSP request. The request is awaited from a background
+/// job so `goto_file_impl` does not block the UI thread while the language
+/// server resolves the target.
+fn resolve_document_link_request(
     editor: &Editor,
     link: &helix_view::document::DocumentLink,
-) -> Option<Url> {
-    if let Some(target) = link.link.target.clone() {
-        return Some(target);
-    }
-
+) -> Option<impl Future<Output = helix_lsp::Result<helix_lsp::lsp::DocumentLink>> + Send + 'static>
+{
     let language_server = editor.language_server_by_id(link.language_server_id)?;
     let supports_resolve = language_server
         .capabilities()
@@ -1361,8 +1362,7 @@ fn resolve_document_link_target(
         return None;
     }
 
-    let future = language_server.resolve_document_link(link.link.clone())?;
-    helix_lsp::block_on(future).ok()?.target
+    language_server.resolve_document_link(link.link.clone())
 }
 
 /// Goto files/URLs in selection.
@@ -1381,6 +1381,8 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
     let mut lsp_targets = Vec::new();
     let mut lsp_targets_seen = HashSet::new();
+    let mut unresolved_links = HashSet::new();
+    let mut resolve_requests = Vec::new();
     let mut fallback_ranges = Vec::new();
 
     if doc.document_links.is_empty() {
@@ -1393,9 +1395,13 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
                     continue;
                 }
                 matched = true;
-                if let Some(target) = resolve_document_link_target(cx.editor, link) {
+                if let Some(target) = link.link.target.clone() {
                     if lsp_targets_seen.insert(target.clone()) {
                         lsp_targets.push(target);
+                    }
+                } else if unresolved_links.insert((link.start, link.end, link.language_server_id)) {
+                    if let Some(request) = resolve_document_link_request(cx.editor, link) {
+                        resolve_requests.push(request);
                     }
                 }
             }
@@ -1407,6 +1413,37 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
     for target in lsp_targets {
         open_url(cx, target, action);
+    }
+
+    if !resolve_requests.is_empty() {
+        let rel_path = rel_path.clone();
+        cx.jobs.callback(async move {
+            let mut targets = Vec::new();
+            let mut seen = HashSet::new();
+
+            // Resolve links off the main thread, then hand the resulting URLs
+            // back to the editor/compositor callback once all requests finish.
+            for request in resolve_requests {
+                match request.await {
+                    Ok(link) => {
+                        if let Some(target) = link.target {
+                            if seen.insert(target.clone()) {
+                                targets.push(target);
+                            }
+                        }
+                    }
+                    Err(err) => log::warn!("Failed to resolve document link: {err}"),
+                }
+            }
+
+            Ok(Callback::EditorCompositor(Box::new(
+                move |editor, compositor| {
+                    for target in targets {
+                        open_url_in_callback(editor, compositor, target, action, &rel_path);
+                    }
+                },
+            )))
+        });
     }
 
     if fallback_ranges.is_empty() {
@@ -1462,7 +1499,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 }
 
 /// Opens the given url. If the URL points to a valid textual file it is open in helix.
-//  Otherwise, the file is open using external program.
+/// Otherwise, the file is open using external program.
 fn open_url(cx: &mut Context, url: Url, action: Action) {
     let doc = doc!(cx.editor);
     let rel_path = doc
@@ -1470,8 +1507,58 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         .map(|path| path.parent().unwrap().to_path_buf())
         .unwrap_or_default();
 
-    if url.scheme() != "file" {
+    if should_open_url_externally(&url) {
         return cx.jobs.callback(crate::open_external_url_callback(url));
+    }
+
+    let path = &rel_path.join(url.path());
+    if path.is_dir() {
+        let picker = ui::file_picker(cx.editor, path.into());
+        cx.push_layer(Box::new(overlaid(picker)));
+    } else if let Err(e) = cx.editor.open(path, action) {
+        cx.editor.set_error(format!("Open file failed: {:?}", e));
+    }
+}
+
+/// Open a URL from an editor/compositor callback.
+///
+/// This mirrors `open_url` but does not require a full `Context`, which makes
+/// it usable from async job completions such as deferred document link
+/// resolves.
+fn open_url_in_callback(
+    editor: &mut Editor,
+    compositor: &mut Compositor,
+    url: Url,
+    action: Action,
+    rel_path: &Path,
+) {
+    if should_open_url_externally(&url) {
+        tokio::spawn(async move {
+            match crate::open_external_url_callback(url).await {
+                Ok(callback) => job::dispatch_callback(callback).await,
+                Err(err) => status::report(err).await,
+            }
+        });
+        return;
+    }
+
+    let path = &rel_path.join(url.path());
+    if path.is_dir() {
+        let picker = ui::file_picker(editor, path.into());
+        compositor.push(Box::new(overlaid(picker)));
+    } else if let Err(e) = editor.open(path, action) {
+        editor.set_error(format!("Open file failed: {:?}", e));
+    }
+}
+
+/// Returns whether a URL should opened externally.
+///
+/// Non-`file` URLs always open externally. `file` URLs are opened externally
+/// only when the target looks like a binary file (a non-textual file that can't
+/// be viewed in helix).
+fn should_open_url_externally(url: &Url) -> bool {
+    if url.scheme() != "file" {
+        return true;
     }
 
     let content_type = std::fs::File::open(url.path()).and_then(|file| {
@@ -1481,22 +1568,7 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         Ok(content_inspector::inspect(&read_buffer[..n]))
     });
 
-    // we attempt to open binary files - files that can't be open in helix - using external
-    // program as well, e.g. pdf files or images
-    match content_type {
-        Ok(content_inspector::ContentType::BINARY) => {
-            cx.jobs.callback(crate::open_external_url_callback(url))
-        }
-        Ok(_) | Err(_) => {
-            let path = &rel_path.join(url.path());
-            if path.is_dir() {
-                let picker = ui::file_picker(cx.editor, path.into());
-                cx.push_layer(Box::new(overlaid(picker)));
-            } else if let Err(e) = cx.editor.open(path, action) {
-                cx.editor.set_error(format!("Open file failed: {:?}", e));
-            }
-        }
-    }
+    matches!(content_type, Ok(content_inspector::ContentType::BINARY))
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
