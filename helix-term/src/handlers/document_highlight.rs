@@ -184,11 +184,24 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
     });
 
     register_hook!(move |event: &mut ConfigDidChange<'_>| {
-        if event.new.lsp.auto_document_highlight {
+        // When auto document highlight is turned on, request highlights immediately
+        // for the focused view instead of waiting for the next selection change.
+        if !event.old.lsp.auto_document_highlight && event.new.lsp.auto_document_highlight {
+            let view_id = event.editor.tree.focus;
+            let Some(view) = event.editor.tree.try_get(view_id) else {
+                return Ok(());
+            };
+
+            request_document_highlights(event.editor, view.doc, view_id);
             return Ok(());
         }
-        for doc in event.editor.documents_mut() {
-            doc.clear_all_document_highlights();
+
+        // When auto document highlight is turned off, clear any highlights that were
+        // previously rendered across open documents.
+        if event.old.lsp.auto_document_highlight && !event.new.lsp.auto_document_highlight {
+            for doc in event.editor.documents_mut() {
+                doc.clear_all_document_highlights();
+            }
         }
         Ok(())
     });
