@@ -1,4 +1,4 @@
-## Adding indent queries
+# Adding indent queries
 
 Helix uses tree-sitter to correctly indent new lines. This requires a
 tree-sitter grammar and an `indent.scm` query file placed in
@@ -66,7 +66,7 @@ Each indent capture is collected along the way, and then combined according to
 their [capture types](#capture-types) and [scopes](#scopes) to a final indent
 level for the line.
 
-### Capture types
+## Capture types
 
 - `@indent` (default scope `tail`):
   Increase the indent level by 1. Multiple occurrences in the same line *do not*
@@ -100,7 +100,7 @@ level for the line.
   ancestors are unaffected (regardless of whether the innermost ancestor would
   actually have been extended).
 
-#### `@indent` / `@outdent`
+### `@indent` / `@outdent`
 
 Consider this example:
 
@@ -133,7 +133,7 @@ result in a net increase of 1. Also note that the closing `}`s are part of the
 `@indent` captures, but the 3 `@outdent`s also combine into 1 and result in that
 line losing one indent level.
 
-#### `@extend` / `@extend.prevent-once`
+### `@extend` / `@extend.prevent-once`
 
 For an example of where `@extend` can be useful, consider Python, which is
 whitespace-sensitive.
@@ -251,7 +251,7 @@ To help, we need to signal an end to the extension. We can do this with
 (return_statement) @extend.prevent-once
 ```
 
-#### `@indent.always` / `@outdent.always`
+### `@indent.always` / `@outdent.always`
 
 As mentioned before, normally if there is more than one `@indent` or `@outdent`
 capture on the same line, they are combined.
@@ -332,7 +332,7 @@ The captures given by the 2 arguments must/must not start on the same line.
 - `#one-line?`/`#not-one-line?`:
 The captures given by the fist argument must/must span a total of one line.
 
-### Scopes
+## Scopes
 
 Added indents don't always apply to the whole node. For example, in most
 cases when a node should be indented, we actually only want everything

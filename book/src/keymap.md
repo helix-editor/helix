@@ -1,4 +1,4 @@
-## Keymap
+# Keymap
 
 - [Normal mode](#normal-mode)
   - [Movement](#movement)
@@ -22,19 +22,19 @@
 - [Prompt](#prompt)
 
 > 💡 Mappings marked (**LSP**) require an active language server for the file.
-
+>
 > 💡 Mappings marked (**TS**) require a tree-sitter grammar for the file type.
-
+>
 > ⚠️ Some terminals' default key mappings conflict with Helix's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the [wiki](https://github.com/helix-editor/helix/wiki/Terminal-Support) for known conflicts.
 
 ## Normal mode
 
 Normal mode is the default mode when you launch helix. You can return to it from other modes by pressing the `Escape` key.
 
-### Movement
+## Movement
 
 > NOTE: Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
-
+>
 > Hereafter, `<n>` represents an integer by typing a sequence of digits.
 
 | Key                   | Description                                        | Command                     |
@@ -65,7 +65,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Ctrl-o`              | Jump backward on the jumplist                      | `jump_backward`             |
 | `Ctrl-s`              | Save the current selection to the jumplist         | `save_selection`            |
 
-### Changes
+## Changes
 
 | Key         | Description                                                          | Command                   |
 | -----       | -----------                                                          | -------                   |
@@ -101,18 +101,17 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Q`         | Start/stop macro recording to the selected register (experimental)   | `record_macro`            |
 | `q`         | Play back a recorded macro from the selected register (experimental) | `replay_macro`            |
 
-#### Shell
+### Shell
 
-| Key     | Description                                                                      | Command               |
-| ------  | -----------                                                                      | -------               |
+| Key                     | Description                                                                      | Command               |
+| ----------------------- | -------------------------------------------------------------------------------- | --------------------- |
 | <code>&#124;</code>     | Pipe each selection through shell command, replacing with output                 | `shell_pipe`          |
 | <code>Alt-&#124;</code> | Pipe each selection into shell command, ignoring output                          | `shell_pipe_to`       |
-| `!`     | Run shell command, inserting output before each selection                        | `shell_insert_output` |
-| `Alt-!` | Run shell command, appending output after each selection                         | `shell_append_output` |
-| `$`     | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
+| `!`                     | Run shell command, inserting output before each selection                        | `shell_insert_output` |
+| `Alt-!`                 | Run shell command, appending output after each selection                         | `shell_append_output` |
+| `$`                     | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
 
-
-### Selection manipulation
+## Selection manipulation
 
 | Key                      | Description                                                       | Command                              |
 | -----                    | -----------                                                       | -------                              |
@@ -152,20 +151,20 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Alt-e`                  | Move to end of parent node in syntax tree (**TS**)                | `move_parent_node_end`               |
 | `Alt-b`                  | Move to start of parent node in syntax tree (**TS**)              | `move_parent_node_start`             |
 
-### Search
+## Search
 
 Search commands all operate on the `/` register by default. To use a different register, use `"<char>`.
 
-| Key   | Description                                 | Command              |
-| ----- | -----------                                 | -------              |
-| `/`   | Search for regex pattern                    | `search`             |
-| `?`   | Search for previous pattern                 | `rsearch`            |
-| `n`   | Select next search match                    | `search_next`        |
-| `N`   | Select previous search match                | `search_prev`        |
-| `*`   | Use current selection as the search pattern, automatically wrapping with `\b` on word boundaries | `search_selection_detect_word_boundaries` |
-| `Alt-*` | Use current selection as the search pattern | `search_selection` |
+| Key     | Description                                                                                      | Command                                   |
+| ------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| `/`     | Search for regex pattern                                                                         | `search`                                  |
+| `?`     | Search for previous pattern                                                                      | `rsearch`                                 |
+| `n`     | Select next search match                                                                         | `search_next`                             |
+| `N`     | Select previous search match                                                                     | `search_prev`                             |
+| `*`     | Use current selection as the search pattern, automatically wrapping with `\b` on word boundaries | `search_selection_detect_word_boundaries` |
+| `Alt-*` | Use current selection as the search pattern                                                      | `search_selection`                        |
 
-### Minor modes
+## Minor modes
 
 These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.
 
@@ -180,18 +179,13 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 | `Ctrl-w` | Enter [window mode](#window-mode)                  | N/A            |
 | `Space`  | Enter [space mode](#space-mode)                    | N/A            |
 
-These modes (except command mode) can be configured by
-[remapping keys](https://docs.helix-editor.com/remapping.html#minor-modes).
+These modes (except command mode) can be configured by [remapping keys](https://docs.helix-editor.com/remapping.html#minor-modes).
 
-#### View mode
+### View mode
 
 Accessed by typing `z` in [normal mode](#normal-mode).
 
-View mode is intended for scrolling and manipulating the view without changing
-the selection. The "sticky" variant of this mode (accessed by typing `Z` in
-normal mode) is persistent and can be exited using the escape key. This is
-useful when you're simply looking over text and not actively editing it.
-
+View mode is intended for scrolling and manipulating the view without changing the selection. The "sticky" variant of this mode (accessed by typing `Z` in normal mode) is persistent and can be exited using the escape key. This is useful when you're simply looking over text and not actively editing it.
 
 | Key                  | Description                                               | Command                 |
 | -----                | -----------                                               | -------                 |
@@ -206,40 +200,40 @@ useful when you're simply looking over text and not actively editing it.
 | `Ctrl-u`             | Move cursor and page half page up                         | `page_cursor_half_up`   |
 | `Ctrl-d`             | Move cursor and page half page down                       | `page_cursor_half_down` |
 
-#### Goto mode
+### Goto mode
 
 Accessed by typing `g` in [normal mode](#normal-mode).
 
 Jumps to various locations.
 
-| Key   | Description                                      | Command                    |
-| ----- | -----------                                      | -------                    |
-| `<n>g`| Go to line number `<n>`                          | `goto_file_start`          |
-| `g`   | Go to the start of the file                      | `goto_file_start`          |
-| <code>&lt;n&gt;&#124;</code>  | Go to column number `<n>`      | `goto_column`              |
-| <code>&#124;</code>     | Go to the start of line        | `goto_column`              |
-| `e`   | Go to the end of the file                        | `goto_last_line`           |
-| `f`   | Go to files/URLs in selections                   | `goto_file`                |
-| `h`   | Go to the start of the line                      | `goto_line_start`          |
-| `l`   | Go to the end of the line                        | `goto_line_end`            |
-| `s`   | Go to first non-whitespace character of the line | `goto_first_nonwhitespace` |
-| `t`   | Go to the top of the screen                      | `goto_window_top`          |
-| `c`   | Go to the middle of the screen                   | `goto_window_center`       |
-| `b`   | Go to the bottom of the screen                   | `goto_window_bottom`       |
-| `d`   | Go to definition (**LSP**)                       | `goto_definition`          |
-| `y`   | Go to type definition (**LSP**)                  | `goto_type_definition`     |
-| `r`   | Go to references (**LSP**)                       | `goto_reference`           |
-| `i`   | Go to implementation (**LSP**)                   | `goto_implementation`      |
-| `a`   | Go to the last accessed/alternate file           | `goto_last_accessed_file`  |
-| `m`   | Go to the last modified/alternate file           | `goto_last_modified_file`  |
-| `n`   | Go to next buffer                                | `goto_next_buffer`         |
-| `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
-| `.`   | Go to last modification in current file          | `goto_last_modification`   |
-| `j`   | Move down textual (instead of visual) line       | `move_line_down`           |
-| `k`   | Move up textual (instead of visual) line         | `move_line_up`             |
-| `w`   | Show labels at each word and select the word that belongs to the entered labels | `goto_word` |
+| Key                          | Description                                                                     | Command                    |
+| ---------------------------- | ------------------------------------------------------------------------------- | -------------------------- |
+| `<n>g`                       | Go to line number `<n>`                                                         | `goto_file_start`          |
+| `g`                          | Go to the start of the file                                                     | `goto_file_start`          |
+| <code>&lt;n&gt;&#124;</code> | Go to column number `<n>`                                                       | `goto_column`              |
+| <code>&#124;</code>          | Go to the start of line                                                         | `goto_column`              |
+| `e`                          | Go to the end of the file                                                       | `goto_last_line`           |
+| `f`                          | Go to files/URLs in selections                                                  | `goto_file`                |
+| `h`                          | Go to the start of the line                                                     | `goto_line_start`          |
+| `l`                          | Go to the end of the line                                                       | `goto_line_end`            |
+| `s`                          | Go to first non-whitespace character of the line                                | `goto_first_nonwhitespace` |
+| `t`                          | Go to the top of the screen                                                     | `goto_window_top`          |
+| `c`                          | Go to the middle of the screen                                                  | `goto_window_center`       |
+| `b`                          | Go to the bottom of the screen                                                  | `goto_window_bottom`       |
+| `d`                          | Go to definition (**LSP**)                                                      | `goto_definition`          |
+| `y`                          | Go to type definition (**LSP**)                                                 | `goto_type_definition`     |
+| `r`                          | Go to references (**LSP**)                                                      | `goto_reference`           |
+| `i`                          | Go to implementation (**LSP**)                                                  | `goto_implementation`      |
+| `a`                          | Go to the last accessed/alternate file                                          | `goto_last_accessed_file`  |
+| `m`                          | Go to the last modified/alternate file                                          | `goto_last_modified_file`  |
+| `n`                          | Go to next buffer                                                               | `goto_next_buffer`         |
+| `p`                          | Go to previous buffer                                                           | `goto_previous_buffer`     |
+| `.`                          | Go to last modification in current file                                         | `goto_last_modification`   |
+| `j`                          | Move down textual (instead of visual) line                                      | `move_line_down`           |
+| `k`                          | Move up textual (instead of visual) line                                        | `move_line_up`             |
+| `w`                          | Show labels at each word and select the word that belongs to the entered labels | `goto_word`                |
 
-#### Match mode
+### Match mode
 
 Accessed by typing `m` in [normal mode](#normal-mode).
 
@@ -256,7 +250,7 @@ Please refer to the relevant sections for detailed explanations about [surround]
 
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
-#### Window mode
+### Window mode
 
 Accessed by typing `Ctrl-w` in [normal mode](#normal-mode).
 
@@ -280,7 +274,7 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 | `K`                    | Swap window upwards                                  | `swap_view_up`    |
 | `L`                    | Swap window to the right                             | `swap_view_right` |
 
-#### Space mode
+### Space mode
 
 Accessed by typing `Space` in [normal mode](#normal-mode).
 
@@ -317,7 +311,7 @@ This layer is a kludge of mappings, mostly pickers.
 
 > 💡 Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
 
-##### Popup
+#### Popup
 
 Displays documentation for item under cursor. Remapping currently not supported.
 
@@ -326,7 +320,7 @@ Displays documentation for item under cursor. Remapping currently not supported.
 | `Ctrl-u` | Scroll up   |
 | `Ctrl-d` | Scroll down |
 
-##### Completion Menu
+#### Completion Menu
 
 Displays documentation for the selected completion item. Remapping currently not supported.
 
@@ -339,7 +333,7 @@ Displays documentation for the selected completion item. Remapping currently not
 
 Any other keypresses result in the completion being accepted.
 
-##### Signature-help Popup
+#### Signature-help Popup
 
 Displays the signature of the selected completion item. Remapping currently not supported.
 
@@ -348,7 +342,7 @@ Displays the signature of the selected completion item. Remapping currently not 
 | `Alt-p` | Previous signature |
 | `Alt-n` | Next signature     |
 
-#### Unimpaired
+### Unimpaired
 
 These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
@@ -383,13 +377,9 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 
 Accessed by typing `i` in [normal mode](#normal-mode).
 
-Insert mode bindings are minimal by default. Helix is designed to
-be a modal editor, and this is reflected in the user experience and internal
-mechanics. Changes to the text are only saved for undos when
-escaping from insert mode to normal mode.
+Insert mode bindings are minimal by default. Helix is designed to be a modal editor, and this is reflected in the user experience and internal mechanics. Changes to the text are only saved for undos when escaping from insert mode to normal mode.
 
-> 💡 New users are strongly encouraged to learn the modal editing paradigm
-> to get the smoothest experience.
+> 💡 New users are strongly encouraged to learn the modal editing paradigm to get the smoothest experience.
 
 | Key                                         | Description                 | Command                  |
 | -----                                       | -----------                 | -------                  |
@@ -405,8 +395,7 @@ escaping from insert mode to normal mode.
 | `Ctrl-d`, `Delete`                          | Delete next char            | `delete_char_forward`    |
 | `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`         |
 
-These keys are not recommended, but are included for new users less familiar
-with modal editors.
+These keys are not recommended, but are included for new users less familiar with modal editors.
 
 | Key                                         | Description                 | Command                  |
 | -----                                       | -----------                 | -------                  |
@@ -419,8 +408,7 @@ with modal editors.
 | `Home`                                      | Move to line start          | `goto_line_start`        |
 | `End`                                       | Move to line end            | `goto_line_end_newline`  |
 
-As you become more comfortable with modal editing, you may want to disable some
-insert mode bindings. You can do this by editing your `config.toml` file.
+As you become more comfortable with modal editing, you may want to disable some insert mode bindings. You can do this by editing your `config.toml` file.
 
 ```toml
 [keys.insert]
@@ -438,22 +426,13 @@ end = "no_op"
 
 Accessed by typing `v` in [normal mode](#normal-mode).
 
-Select mode echoes Normal mode, but changes any movements to extend
-selections rather than replace them. Goto motions are also changed to
-extend, so that `vgl`, for example, extends the selection to the end of
-the line.
+Select mode echoes Normal mode, but changes any movements to extend selections rather than replace them. Goto motions are also changed to extend, so that `vgl`, for example, extends the selection to the end of the line.
 
-Search is also affected. By default, `n` and `N` will remove the current
-selection and select the next instance of the search term. Toggling this
-mode before pressing `n` or `N` makes it possible to keep the current
-selection. Toggling it on and off during your iterative searching allows
-you to selectively add search terms to your selections.
+Search is also affected. By default, `n` and `N` will remove the current selection and select the next instance of the search term. Toggling this mode before pressing `n` or `N` makes it possible to keep the current selection. Toggling it on and off during your iterative searching allows you to selectively add search terms to your selections.
 
 ## Picker
 
-Keys to use within picker. Remapping currently not supported.
-See the documentation page on [pickers](./pickers.md) for more info.
-[Prompt](#prompt) keybinds also work in pickers, except where they conflict with picker keybinds.
+Keys to use within picker. Remapping currently not supported. See the documentation page on [pickers](./pickers.md) for more info. [Prompt](#prompt) keybinds also work in pickers, except where they conflict with picker keybinds.
 
 | Key                          | Description                                                |
 | -----                        | -------------                                              |

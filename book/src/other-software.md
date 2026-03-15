@@ -6,30 +6,29 @@ Helix' keymap and interaction model ([Using Helix](#usage.md)) is easier to adop
 
 ## Other editors
 
-| Editor | Plugin or feature providing Helix editing | Comments
-| --- | --- | --- |
-| [Vim](https://www.vim.org/) | [helix.vim](https://github.com/chtenb/helix.vim) config |
-| [IntelliJ IDEA](https://www.jetbrains.com/idea/) / [Android Studio](https://developer.android.com/studio)| [IdeaVim](https://plugins.jetbrains.com/plugin/164-ideavim) plugin + [helix.idea.vim](https://github.com/chtenb/helix.vim) config | Minimum recommended version is IdeaVim 2.19.0.
-| [Visual Studio](https://visualstudio.microsoft.com/) | [VsVim](https://marketplace.visualstudio.com/items?itemName=JaredParMSFT.VsVim) plugin + [helix.vs.vim](https://github.com/chtenb/helix.vim) config | 
-| [Visual Studio Code](https://code.visualstudio.com/) | [Dance](https://marketplace.visualstudio.com/items?itemName=gregoire.dance) extension, or its [Helix fork](https://marketplace.visualstudio.com/items?itemName=kend.dancehelixkey) | The Helix fork has diverged. You can also use the original Dance and tweak its keybindings directly (try [this config](https://github.com/71/dance/issues/299#issuecomment-1655509531)).
-| [Visual Studio Code](https://code.visualstudio.com/) | [Helix for VS Code](https://marketplace.visualstudio.com/items?itemName=jasew.vscode-helix-emulation) extension|
-| [Zed](https://zed.dev/) | native via keybindings ([Bug](https://github.com/zed-industries/zed/issues/4642)) |
-| [CodeMirror](https://codemirror.net/) | [codemirror-helix](https://gitlab.com/_rvidal/codemirror-helix) |
-| [Lite XL](https://lite-xl.com/) | [lite-modal-hx](https://codeberg.org/Mandarancio/lite-modal-hx) |
-| [Lapce](https://lap.dev/lapce/) | | Requested: https://github.com/lapce/lapce/issues/281 |
-
+| Editor                                                                                                    | Plugin or feature providing Helix editing                                                                                                                                          | Comments                                                                                                                                                                                 |
+| --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Vim](https://www.vim.org/)                                                                               | [helix.vim](https://github.com/chtenb/helix.vim) config                                                                                                                            |                                                                                                                                                                                          |
+| [IntelliJ IDEA](https://www.jetbrains.com/idea/) / [Android Studio](https://developer.android.com/studio) | [IdeaVim](https://plugins.jetbrains.com/plugin/164-ideavim) plugin + [helix.idea.vim](https://github.com/chtenb/helix.vim) config                                                  | Minimum recommended version is IdeaVim 2.19.0.                                                                                                                                           |
+| [Visual Studio](https://visualstudio.microsoft.com/)                                                      | [VsVim](https://marketplace.visualstudio.com/items?itemName=JaredParMSFT.VsVim) plugin + [helix.vs.vim](https://github.com/chtenb/helix.vim) config                                |                                                                                                                                                                                          |
+| [Visual Studio Code](https://code.visualstudio.com/)                                                      | [Dance](https://marketplace.visualstudio.com/items?itemName=gregoire.dance) extension, or its [Helix fork](https://marketplace.visualstudio.com/items?itemName=kend.dancehelixkey) | The Helix fork has diverged. You can also use the original Dance and tweak its keybindings directly (try [this config](https://github.com/71/dance/issues/299#issuecomment-1655509531)). |
+| [Visual Studio Code](https://code.visualstudio.com/)                                                      | [Helix for VS Code](https://marketplace.visualstudio.com/items?itemName=jasew.vscode-helix-emulation) extension                                                                    |                                                                                                                                                                                          |
+| [Zed](https://zed.dev/)                                                                                   | native via keybindings ([Bug](https://github.com/zed-industries/zed/issues/4642))                                                                                                  |                                                                                                                                                                                          |
+| [CodeMirror](https://codemirror.net/)                                                                     | [codemirror-helix](https://gitlab.com/_rvidal/codemirror-helix)                                                                                                                    |                                                                                                                                                                                          |
+| [Lite XL](https://lite-xl.com/)                                                                           | [lite-modal-hx](https://codeberg.org/Mandarancio/lite-modal-hx)                                                                                                                    |                                                                                                                                                                                          |
+| [Lapce](https://lap.dev/lapce/)                                                                           |                                                                                                                                                                                    | Requested: [Lapce Helix support issue](https://github.com/lapce/lapce/issues/281)                                                                                                        |
 
 ## Shells
 
-| Shell | Plugin or feature providing Helix editing 
-| --- | --- 
-| Fish | [Feature Request](https://github.com/fish-shell/fish-shell/issues/7748) 
-| Fish | [fish-helix](https://github.com/sshilovsky/fish-helix/tree/main) 
-| Zsh | [helix-zsh](https://github.com/john-h-k/helix-zsh) or [zsh-helix-mode](https://github.com/Multirious/zsh-helix-mode)
-| Nushell | [Feature Request](https://github.com/nushell/reedline/issues/639) 
+| Shell   | Plugin or feature providing Helix editing                                                                            |
+| ------- | -------------------------------------------------------------------------------------------------------------------- |
+| Fish    | [Feature Request](https://github.com/fish-shell/fish-shell/issues/7748)                                              |
+| Fish    | [fish-helix](https://github.com/sshilovsky/fish-helix/tree/main)                                                     |
+| Zsh     | [helix-zsh](https://github.com/john-h-k/helix-zsh) or [zsh-helix-mode](https://github.com/Multirious/zsh-helix-mode) |
+| Nushell | [Feature Request](https://github.com/nushell/reedline/issues/639)                                                    |
 
 ## Other software
 
-| Software | Plugin or feature providing Helix editing. | Comments
-| --- | --- | --- |
-| [Obsidian](https://obsidian.md/) | [Obsidian-Helix](https://github.com/Sinono3/obsidian-helix) | Uses `codemirror-helix` listed above.
+| Software                         | Plugin or feature providing Helix editing.                  | Comments                              |
+| -------------------------------- | ----------------------------------------------------------- | ------------------------------------- |
+| [Obsidian](https://obsidian.md/) | [Obsidian-Helix](https://github.com/Sinono3/obsidian-helix) | Uses `codemirror-helix` listed above. |

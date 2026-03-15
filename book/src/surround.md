@@ -1,7 +1,6 @@
-## Surround
+# Surround
 
-Helix includes built-in functionality similar to [vim-surround](https://github.com/tpope/vim-surround).
-The keymappings have been inspired from [vim-sandwich](https://github.com/machakann/vim-sandwich):
+Helix includes built-in functionality similar to [vim-surround](https://github.com/tpope/vim-surround). The keymappings have been inspired from [vim-sandwich](https://github.com/machakann/vim-sandwich):
 
 ![Surround demo](https://user-images.githubusercontent.com/23398472/122865801-97073180-d344-11eb-8142-8f43809982c6.gif)
 
@@ -21,4 +20,3 @@ Surround can also act on multiple selections. For example, to change every occur
 4. `mr([` to replace the parentheses with square brackets
 
 Multiple characters are currently not supported, but planned for future release.
-

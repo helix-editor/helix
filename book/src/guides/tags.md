@@ -1,4 +1,4 @@
-## Adding tags queries
+# Adding tags queries
 
 See tree-sitter's documentation on [Code Navigation Systems] for more
 background on tags queries.
@@ -16,7 +16,7 @@ testing.
 The following [captures][tree-sitter-captures] are recognized:
 
 | Capture name           |
-|---                     |
+| ---------------------- |
 | `definition.class`     |
 | `definition.constant`  |
 | `definition.enum`      |

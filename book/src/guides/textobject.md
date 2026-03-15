@@ -1,4 +1,4 @@
-## Adding textobject queries
+# Adding textobject queries
 
 Helix supports textobjects that are language specific, such as functions, classes, etc.
 These textobjects require an accompanying tree-sitter grammar and a `textobjects.scm` query file
@@ -14,20 +14,20 @@ for example).
 
 The following [captures][tree-sitter-captures] are recognized:
 
-| Capture Name       |
-| ---                |
-| `function.inside`  |
-| `function.around`  |
-| `class.inside`     |
-| `class.around`     |
-| `test.inside`      |
-| `test.around`      |
-| `parameter.inside` |
-| `parameter.around` |
-| `comment.inside`   |
-| `comment.around`   |
-| `entry.inside`     |
-| `entry.around`     |
+| Capture Name         |
+| -------------------- |
+| `function.inside`    |
+| `function.around`    |
+| `class.inside`       |
+| `class.around`       |
+| `test.inside`        |
+| `test.around`        |
+| `parameter.inside`   |
+| `parameter.around`   |
+| `comment.inside`     |
+| `comment.around`     |
+| `entry.inside`       |
+| `entry.around`       |
 | `xml-element.inside` |
 | `xml-element.around` |
 
