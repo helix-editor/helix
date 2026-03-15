@@ -526,6 +526,228 @@ async fn test_open_above_with_comments() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn insert_newline_clear_empty_comment() -> anyhow::Result<()> {
+    // Pressing Enter on an empty comment line should clear the comment token
+    // and insert a plain newline (the "press Enter twice to end list" behavior).
+    test((
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
+        ":lang rust<ret>i<ret>",
+        indoc! {"\
+            // Hello world!
+
+            #[|
+            ]#
+            "},
+    ))
+    .await?;
+
+    // Also works with trailing space after comment token
+    test((
+        indoc! {"\
+            // First line
+            //·#[|
+            ]#
+            "}
+        .replace('·', " "),
+        ":lang rust<ret>i<ret>",
+        indoc! {"\
+            // First line
+
+            #[|
+            ]#
+            "},
+    ))
+    .await?;
+
+    // Works with indentation preserved
+    test((
+        indoc! {"\
+            fn main() {
+                // Comment
+                //·#[|
+            ]#}
+            "}
+        .replace('·', " "),
+        ":lang rust<ret>i<ret>",
+        indoc! {"\
+            fn main() {
+                // Comment
+
+                #[|
+            ]#}
+            "},
+    ))
+    .await?;
+
+    // Works with markdown list markers (using `-` as comment token)
+    test((
+        indoc! {"\
+            - Item 1
+            - Item 2
+            -·#[|
+            ]#
+            "}
+        .replace('·', " "),
+        ":lang markdown<ret>i<ret>",
+        indoc! {"\
+            - Item 1
+            - Item 2
+
+            #[|
+            ]#
+            "},
+    ))
+    .await?;
+
+    // Non-empty comment lines should still continue normally
+    test((
+        indoc! {"\
+            // Hello#[|
+            ]#
+            "},
+        ":lang rust<ret>i<ret>",
+        indoc! {"\
+            // Hello
+            // #[|
+            ]#
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn open_below_empty_comment_no_continue() -> anyhow::Result<()> {
+    // Using `o` on an empty comment line should clear the token and not continue the comment
+    test((
+        indoc! {"\
+            // Hello world!
+            //#[·|]#
+            "}
+        .replace('·', " "),
+        ":lang rust<ret>o",
+        indoc! {"\
+            // Hello world!
+
+            #[\n|]#
+            "},
+    ))
+    .await?;
+
+    // With indentation, the indent should be preserved but token cleared
+    test((
+        indoc! {"\
+            fn main() {
+                // Comment
+                //#[·|]#
+            }
+            "}
+        .replace('·', " "),
+        ":lang rust<ret>o",
+        indoc! {"\
+            fn main() {
+                // Comment
+
+                #[\n|]#
+            }
+            "},
+    ))
+    .await?;
+
+    // Non-empty comment lines should still continue with `o`
+    test((
+        indoc! {"\
+            // Hel#[l|]#o
+            "},
+        ":lang rust<ret>o",
+        indoc! {"\
+            // Hello
+            // #[\n|]#
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn open_above_empty_comment_no_continue() -> anyhow::Result<()> {
+    // Using `O` on an empty comment line should clear the token and not continue the comment
+    test((
+        indoc! {"\
+            // Hello world!
+            //#[·|]#
+            "}
+        .replace('·', " "),
+        ":lang rust<ret>O",
+        indoc! {"\
+            // Hello world!
+            #[\n|]#
+
+            "},
+    ))
+    .await?;
+
+    // With indentation, the indent should be preserved but token cleared
+    test((
+        indoc! {"\
+            fn main() {
+                // Comment
+                //#[·|]#
+            }
+            "}
+        .replace('·', " "),
+        ":lang rust<ret>O",
+        indoc! {"\
+            fn main() {
+                // Comment
+                #[\n|]#
+
+            }
+            "},
+    ))
+    .await?;
+
+    // O on first line with empty comment
+    test((
+        indoc! {"\
+            //#[·|]#
+            // Hello
+            "}
+        .replace('·', " "),
+        ":lang rust<ret>O",
+        indoc! {"\
+            #[\n|]#
+
+            // Hello
+            "},
+    ))
+    .await?;
+
+    // Non-empty comment lines should still continue with `O`
+    test((
+        indoc! {"\
+            fn main() {}
+            // Hel#[l|]#o
+            "},
+        ":lang rust<ret>O",
+        indoc! {"\
+            fn main() {}
+            // #[\n|]#
+            // Hello
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn try_restore_indent() -> anyhow::Result<()> {
     // Assert that `helix_view::editor::try_restore_indent` handles line endings correctly
     // endings.
