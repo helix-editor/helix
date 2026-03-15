@@ -3871,7 +3871,8 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn_with_ctx(CTX, "await-callback", await_value)
         .register_fn_with_ctx(CTX, "add-inlay-hint", add_inlay_hint)
         .register_fn_with_ctx(CTX, "remove-inlay-hint", remove_inlay_hint)
-        .register_fn_with_ctx(CTX, "remove-inlay-hint-by-id", remove_inlay_hint_by_id);
+        .register_fn_with_ctx(CTX, "remove-inlay-hint-by-id", remove_inlay_hint_by_id)
+        .register_fn("fuzzy-match", fuzzy_match);
 
     if generate_sources {
         generate_module("misc.scm", &builtin_misc_module);
@@ -4038,6 +4039,23 @@ fn acquire_context_lock(
     Ok(())
 }
 
+fn fuzzy_match(pattern: SteelString, items: SteelVal) -> Vec<SteelVal> {
+    if let SteelVal::ListV(l) = items {
+        let res = helix_core::fuzzy::fuzzy_match(
+            pattern.as_str(),
+            l.iter().filter_map(|x| x.as_string().map(|x| x.as_str())),
+            false,
+        );
+
+        return res
+            .into_iter()
+            .map(|x| x.0.to_string().into())
+            .collect::<Vec<SteelVal>>();
+    }
+
+    Vec::new()
+}
+
 fn configure_engine_impl(mut engine: Engine) -> Engine {
     log::info!("Loading engine!");
 
@@ -4123,22 +4141,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
         }
     });
 
-    engine.register_fn("fuzzy-match", |pattern: SteelString, items: SteelVal| {
-        if let SteelVal::ListV(l) = items {
-            let res = helix_core::fuzzy::fuzzy_match(
-                pattern.as_str(),
-                l.iter().filter_map(|x| x.as_string().map(|x| x.as_str())),
-                false,
-            );
-
-            return res
-                .into_iter()
-                .map(|x| x.0.to_string().into())
-                .collect::<Vec<SteelVal>>();
-        }
-
-        Vec::new()
-    });
+    engine.register_fn("fuzzy-match", fuzzy_match);
 
     // Find the workspace
     engine.register_fn("helix-find-workspace", || {

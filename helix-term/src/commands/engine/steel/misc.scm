@@ -319,3 +319,15 @@
 ;;last-line : int?
 ;;
 (define remove-inlay-hint-by-id helix.remove-inlay-hint-by-id)
+
+;;@doc
+;; Convenience function to easily fuzzy match
+;; on a (relatively small list of inputs). This is not recommended for building a full tui
+;; application that can match large numbers of matches as all matching is done on the current
+;; thread, effectively blocking the UI.
+;; ```scheme
+;; (fuzzy-match pattern input-list) -> (list? string?)
+;; ```
+;; pattern : string?
+;; input-list : (list? string?)
+(define fuzzy-match helix.fuzzy-match)
