@@ -1700,10 +1700,13 @@ impl Component for EditorView {
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         match editor.cursor() {
-            // all block cursors are drawn manually
+            // Keep the terminal cursor visible at the correct position even for
+            // block cursors so that terminal emulators (e.g. Ghostty) can track
+            // cursor movement for shader effects like cursor trails.
+            // The manually-drawn theme overlay still provides the visual styling.
             (pos, CursorKind::Block) => {
                 if self.terminal_focused {
-                    (pos, CursorKind::Hidden)
+                    (pos, CursorKind::Block)
                 } else {
                     // use terminal cursor when terminal loses focus
                     (pos, CursorKind::Underline)
