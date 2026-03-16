@@ -3829,7 +3829,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "blueprint"
-source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "863cea9f83ad5637300478e0559262f1e791684b" }
+source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "355ef84ef8a958ac822117b652cf4d49bac16c79" }
 
 [[language]]
 name = "forth"
