@@ -5412,3 +5412,15 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "ptx"
 source = { git = "https://codeberg.org/jer-gremlin/tree-sitter-ptx", rev = "3dfa6758d4c15832d051f933101992b9e01d6611" }
+
+[[language]]
+name = "tql"
+scope = "source.tql"
+file-types = [ "tql" ]
+injection-regex = "tql"
+indent = {tab-width = 2, unit = "  "}
+comment-token = "//"
+
+[[grammar]]
+name = "tql"
+source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "d3b3b2699bc09fd0c63e2c13f15f6e474665c62e" }
