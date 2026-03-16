@@ -303,12 +303,15 @@ impl Application {
         self.editor.cursor_cache.reset();
 
         if let Some(title_format) = &self.editor.config().title_format {
-            match expansion::expand(&self.editor, Token::expand(title_format)) {
-                Ok(title) => self.terminal.set_title(&title).unwrap(),
+            let title_result = match expansion::expand(&self.editor, Token::expand(title_format)) {
+                Ok(title) => self.terminal.set_title(&title),
                 Err(err) => {
                     log::error!("Failed to expand title args: {err}");
-                    self.terminal.set_title(&err.to_string()).unwrap();
+                    self.terminal.set_title(&err.to_string())
                 }
+            };
+            if let Err(err) = title_result {
+                log::error!("Failed to set terminal title {err}");
             }
         }
 
