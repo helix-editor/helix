@@ -11,6 +11,7 @@ pub mod popup;
 pub mod prompt;
 mod select;
 mod spinner;
+mod splash;
 mod statusline;
 mod text;
 mod text_decorations;
@@ -29,6 +30,7 @@ pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use select::Select;
 pub use spinner::{ProgressSpinners, Spinner};
+pub use splash::Splash;
 pub use text::Text;
 
 use helix_view::Editor;
