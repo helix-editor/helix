@@ -33,14 +33,20 @@ Where `key` represents what you want to style, `fg` specifies the foreground col
 To specify only the foreground color:
 
 ```toml
+# Valid hex-color format is `#RGB` or `#RRGGBB`
+# (each letter is a nibble)
 key = "#ffffff"
 ```
 
 If the key contains a dot `'.'`, it must be quoted to prevent it being parsed as a [dotted key](https://toml.io/en/v1.0.0#keys).
 
 ```toml
-"key.key" = "#ffffff"
+"key.key" = "#fff"
 ```
+
+Color values must be either a [CSS hex RGB string](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/hex-color) or a name declared in the [`palette`](#color-palettes).
+
+> 💡 Note that Helix doesn't support transparency (alpha channel).
 
 For inspiration, you can find the default `theme.toml`
 [here](https://github.com/helix-editor/helix/blob/master/theme.toml) and
@@ -199,8 +205,11 @@ We use a similar set of scopes as
   - `unused` - Unused variables and patterns, e.g. `_` and `_foo`
 
 - `variable` - Variables
+  - `mutable` - Mutable variables (e.g. marked with `mut` in Rust)
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
+    - `mutable` - Mutable language varaibles (e.g. `mut self` in Rust)
   - `parameter` - Function parameters
+    - `mutable` - Mutable function parameters (e.g. marked with `mut` in Rust)
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
       - `private` - Private fields that use a unique syntax (currently just ECMAScript-based languages)

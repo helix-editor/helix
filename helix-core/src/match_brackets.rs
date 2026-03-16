@@ -24,8 +24,8 @@ pub const BRACKETS: [(char, char); 9] = [
 // The difference between BRACKETS and PAIRS is that we can find matching
 // BRACKETS in a plain text file, but we can't do the same for PAIRs.
 // PAIRS also contains all BRACKETS.
-pub const PAIRS: [(char, char); BRACKETS.len() + 3] = {
-    let mut pairs = [(' ', ' '); BRACKETS.len() + 3];
+pub const PAIRS: [(char, char); BRACKETS.len() + 4] = {
+    let mut pairs = [(' ', ' '); BRACKETS.len() + 4];
     let mut idx = 0;
     while idx < BRACKETS.len() {
         pairs[idx] = BRACKETS[idx];
@@ -34,6 +34,11 @@ pub const PAIRS: [(char, char); BRACKETS.len() + 3] = {
     pairs[idx] = ('"', '"');
     pairs[idx + 1] = ('\'', '\'');
     pairs[idx + 2] = ('`', '`');
+    // Rust closure parameters use `|...|` delimiters. Tree-sitter exposes
+    // them as a `closure_parameters` node whose first and last children are
+    // both `|`, so the tree-sitter path in `find_pair` matches them
+    // correctly without any false positives for bitwise-OR operators.
+    pairs[idx + 3] = ('|', '|');
     pairs
 };
 
@@ -88,7 +93,7 @@ fn find_pair(
             if let (Some((start_pos, open)), Some((end_pos, close))) =
                 (as_char(doc, &open), as_char(doc, &close))
             {
-                if PAIRS.contains(&(open, close)) {
+                if PAIRS.contains(&(open, close)) && start_pos <= pos_ && pos_ <= end_pos {
                     if end_pos == pos_ {
                         return Some(start_pos);
                     }

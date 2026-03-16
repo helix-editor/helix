@@ -9,6 +9,7 @@ use termina::{
     escape::{
         csi::{self, Csi, SgrAttributes, SgrModifiers},
         dcs::{self, Dcs},
+        osc::{self, Osc},
     },
     style::{CursorStyle, RgbColor},
     Event, OneBased, PlatformTerminal, Terminal as _, WindowSize,
@@ -91,7 +92,7 @@ impl TerminaBackend {
         terminal.set_panic_hook(move |term| {
             let _ = write!(
                 term,
-                "{}{}{}{}{}{}{}{}{}{}{}",
+                "{}{}{}{}{}{}{}{}{}{}{}{}",
                 Csi::Keyboard(csi::Keyboard::PopFlags(1)),
                 decreset!(MouseTracking),
                 decreset!(ButtonEventMouse),
@@ -101,6 +102,7 @@ impl TerminaBackend {
                 &hook_reset_cursor_command,
                 decreset!(BracketedPaste),
                 decreset!(FocusTracking),
+                Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
                 Csi::Edit(csi::Edit::EraseInDisplay(csi::EraseInDisplay::EraseDisplay)),
                 decreset!(ClearAndEnableAlternateScreen),
             );
@@ -571,6 +573,20 @@ impl Backend for TerminaBackend {
     fn get_theme_mode(&self) -> Option<theme::Mode> {
         self.capabilities.theme_mode
     }
+
+    fn set_background_color(&mut self, color: Option<Color>) -> io::Result<()> {
+        write!(
+            self.terminal,
+            "{}",
+            match color {
+                Some(Color::Rgb(r, g, b)) => Osc::ChangeDynamicColors(
+                    osc::DynamicColorNumber::TextBackgroundColor,
+                    vec![RgbColor::new(r, g, b).into()]
+                ),
+                _ => Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
+            }
+        )
+    }
 }
 
 impl Drop for TerminaBackend {
@@ -582,10 +598,11 @@ impl Drop for TerminaBackend {
             let _ = self.disable_mouse_capture();
             let _ = write!(
                 self.terminal,
-                "{}{}{}{}",
+                "{}{}{}{}{}",
                 &self.reset_cursor_command,
                 decreset!(BracketedPaste),
                 decreset!(FocusTracking),
+                Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
                 decreset!(ClearAndEnableAlternateScreen),
             );
             // NOTE: Drop for Platform terminal resets the mode and flushes the buffer when not
