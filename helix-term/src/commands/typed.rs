@@ -6,7 +6,8 @@ use crate::job::Job;
 
 use super::*;
 
-use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
+use crate::commands::args::{Args, Flag, Signature};
+use helix_core::command_line::{Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
@@ -29,7 +30,7 @@ pub struct TypableCommand {
     pub signature: Signature,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct CommandCompleter {
     // Arguments with specific completion methods based on their position.
     positional_args: &'static [Completer],
@@ -4152,7 +4153,8 @@ pub fn complete_command_args(
     input: &str,
     offset: usize,
 ) -> Vec<ui::prompt::Completion> {
-    use command_line::{CompletionState, ExpansionKind, Tokenizer};
+    use args::CompletionState;
+    use command_line::{ExpansionKind, Tokenizer};
 
     // TODO: completion should depend on the location of the cursor instead of the end of the
     // string. This refactor is left for the future but the below completion code should respect
