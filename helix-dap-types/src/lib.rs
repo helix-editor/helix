@@ -831,7 +831,7 @@ pub mod events {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub all_threads_stopped: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub hit_breakpoint_ids: Option<Vec<usize>>,
+        pub hit_breakpoint_ids: Option<Vec<i32>>,
     }
 
     #[derive(Debug)]
