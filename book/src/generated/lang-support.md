@@ -32,7 +32,7 @@
 | cmake | ✓ | ✓ | ✓ |  |  | `neocmakelsp`, `cmake-language-server` |
 | codeql | ✓ | ✓ |  |  |  | `codeql` |
 | comment | ✓ |  |  |  |  |  |
-| common-lisp | ✓ |  | ✓ |  | ✓ | `cl-lsp` |
+| common-lisp | ✓ | ✓ |  | ✓ | ✓ | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | cross-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |

@@ -1963,13 +1963,17 @@ grammar = "scheme"
 
 [[language]]
 name = "common-lisp"
-scope = "source.lisp"
+scope = "source.commonlisp"
 file-types = ["lisp", "asd", "cl", "l", "lsp", "ny", "podsl", "ros", "sexp"]
 shebangs = ["lisp", "sbcl", "ccl", "clisp", "ecl"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "cl-lsp" ]
-grammar = "scheme"
+grammar = "commonlisp"
+
+[[grammar]]
+name = "commonlisp"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-commonlisp", rev = "32323509b3d9fe96607d151c2da2c9009eb13a2f" }
 
 [language.auto-pairs]
 '(' = ')'
