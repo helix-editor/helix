@@ -23,6 +23,8 @@ use std::{borrow::Cow, collections::HashMap, error::Error, fmt, ops, slice, vec}
 
 use helix_core::command_line::{Token, TokenizeError, Tokenizer};
 
+use crate::commands::CommandCompleter;
+
 /// A Unix-like flag that a command may accept.
 ///
 /// For example the `:sort` command accepts a `--reverse` (or `-r` for shorthand) boolean flag
@@ -49,7 +51,7 @@ pub struct Flag {
     ///
     /// This should be set to `None` for boolean flags
     /// For args with completer, refer to `CommandCompleter` docs.
-    pub completions: Option<&'static [&'static str]>,
+    pub completer: Option<CommandCompleter>,
 }
 
 impl Flag {
@@ -59,7 +61,7 @@ impl Flag {
         name: "",
         doc: "",
         alias: None,
-        completions: None,
+        completer: None,
     };
 }
 
@@ -391,7 +393,7 @@ impl<'a> Args<'a> {
 
     fn flag_awaiting_argument(&self) -> Option<Flag> {
         match self.state {
-            CompletionState::Flag(flag) => flag.filter(|f| f.completions.is_some()),
+            CompletionState::Flag(flag) => flag.filter(|f| f.completer.is_some()),
             _ => None,
         }
     }
@@ -452,7 +454,7 @@ impl<'a> Args<'a> {
             self.signature
                 .flags
                 .iter()
-                .any(|flag| flag.name == name && flag.completions.is_some()),
+                .any(|flag| flag.name == name && flag.completer.is_some()),
             "Args::get_flag was used for '--{name}' but should only be used for flags with arguments, use Args::has_flag instead"
         );
 
@@ -472,7 +474,7 @@ impl<'a> Args<'a> {
             self.signature
                 .flags
                 .iter()
-                .any(|flag| flag.name == name && flag.completions.is_none()),
+                .any(|flag| flag.name == name && flag.completer.is_none()),
             "Args::has_flag was used for '--{name}' but should only be used for flags without arguments, use Args::get_flag instead"
         );
 
@@ -553,13 +555,13 @@ mod test {
                 name: "foo",
                 alias: Some('f'),
                 doc: "",
-                completions: None,
+                completer: None,
             },
             Flag {
                 name: "bar",
                 alias: Some('b'),
                 doc: "",
-                completions: Some(&[]),
+                completer: Some(CommandCompleter::none()),
             },
         ];
 

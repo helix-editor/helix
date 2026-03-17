@@ -40,21 +40,21 @@ pub struct CommandCompleter {
 }
 
 impl CommandCompleter {
-    const fn none() -> Self {
+    pub const fn none() -> Self {
         Self {
             positional_args: &[],
             var_args: completers::none,
         }
     }
 
-    const fn positional(completers: &'static [Completer]) -> Self {
+    pub const fn positional(completers: &'static [Completer]) -> Self {
         Self {
             positional_args: completers,
             var_args: completers::none,
         }
     }
 
-    const fn all(completer: Completer) -> Self {
+    pub const fn all(completer: Completer) -> Self {
         Self {
             positional_args: &[],
             var_args: completer,
@@ -4076,7 +4076,7 @@ fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
             } else {
                 0
             };
-            let arg_len = if flag.completions.is_some() {
+            let arg_len = if flag.completer.is_some() {
                 ARG_PLACEHOLDER.len()
             } else {
                 0
@@ -4110,7 +4110,7 @@ fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
                     } else {
                         ""
                     },
-                    if flag.completions.is_some() {
+                    if flag.completer.is_some() {
                         ARG_PLACEHOLDER
                     } else {
                         ""
@@ -4221,15 +4221,16 @@ pub fn complete_command_args(
                 .into_iter()
                 .map(|(name, _)| ((offset + token.content_start).., format!("--{name}").into()))
                 .collect(),
-                CompletionState::FlagArgument(flag) => fuzzy_match(
-                    &token.content,
-                    flag.completions
-                        .expect("flags in FlagArgument always have completions"),
-                    false,
-                )
-                .into_iter()
-                .map(|(value, _)| ((offset + token.content_start).., (*value).into()))
-                .collect(),
+                CompletionState::FlagArgument(flag) => {
+                    let flag_completer = flag
+                        .completer
+                        .expect("flags in FlagArgument always have completions");
+                    let completer = flag_completer.for_argument_number(0);
+                    completer(editor, &token.content)
+                        .into_iter()
+                        .map(|(range, span)| ((offset + token.content_start + range.start).., span))
+                        .collect()
+                }
             }
         }
         TokenKind::Expand | TokenKind::Expansion(ExpansionKind::Shell) => {
