@@ -253,6 +253,14 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
             Self::Typable { name, args, doc: _ } => {
+                // Check the engine first to see if there has been any shadowing of built ins
+                if ScriptingEngine::function_exists(name) {
+                    let scripting_args = args.split_whitespace().map(Cow::from).collect();
+                    if ScriptingEngine::call_function_by_name(cx, name, scripting_args) {
+                        return;
+                    }
+                }
+
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
@@ -265,10 +273,7 @@ impl MappableCommand {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {
-                    let args = args.split_whitespace().map(Cow::from).collect();
-                    if !ScriptingEngine::call_function_by_name(cx, name, args) {
-                        cx.editor.set_error(format!("no such command: '{name}'"));
-                    }
+                    cx.editor.set_error(format!("no such command: '{name}'"));
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),

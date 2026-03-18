@@ -1874,6 +1874,10 @@ impl super::PluginSystem for SteelScriptingEngine {
             }
         }
     }
+
+    fn function_exists(&self, ident: &str) -> bool {
+        enter_engine(|engine| engine.global_exists(ident))
+    }
 }
 
 fn patch_callbacks(ctx: &mut Context<'_>) {
