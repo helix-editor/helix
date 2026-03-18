@@ -1,13 +1,12 @@
 ; inherits: html
 
 [
-  (if_statement)
-  (else_if_block)
-  (else_block)
-  (each_statement)
-  (await_statement)
-  (then_block)
-  (catch_block)
-  (key_statement)
-  (snippet_statement)
+  (if_block)
+  (else_if_clause)
+  (else_clause)
+  (each_block)
+  (await_block)
+  (await_branch)
+  (key_block)
+  (snippet_block)
 ] @fold

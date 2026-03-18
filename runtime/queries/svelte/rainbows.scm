@@ -1,25 +1,23 @@
 ; inherits: html
 
 [
-  (if_start)
-  (else_if_start)
-  (else_start)
-  (if_end)
-  (each_start)
-  (each_end)
-  (await_start)
-  (then_start)
-  (catch_start)
-  (await_end)
-  (key_start)
-  (key_end)
-  (snippet_start)
-  (snippet_end)
+  (if_block)
+  (else_if_clause)
+  (else_clause)
+  (each_block)
+  (await_block)
+  (await_branch)
   (expression)
+  (attach_tag)
   (html_tag)
   (const_tag)
   (debug_tag)
   (render_tag)
+  (key_block)
+  (snippet_block)
 ] @rainbow.scope
 
-["{" "}"] @rainbow.bracket
+[
+  (block_open)
+  (block_close)
+] @rainbow.bracket
