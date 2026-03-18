@@ -237,6 +237,12 @@ impl ScriptingEngine {
 
         false
     }
+
+    pub fn shutdown() {
+        for kind in plugins() {
+            manual_dispatch!(kind, shutdown());
+        }
+    }
 }
 
 impl PluginSystem for NoEngine {
@@ -336,4 +342,6 @@ pub trait PluginSystem {
     fn function_exists(&self, _: &str) -> bool {
         false
     }
+
+    fn shutdown(&self) {}
 }

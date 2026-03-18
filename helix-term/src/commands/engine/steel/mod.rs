@@ -1878,6 +1878,10 @@ impl super::PluginSystem for SteelScriptingEngine {
     fn function_exists(&self, ident: &str) -> bool {
         enter_engine(|engine| engine.global_exists(ident))
     }
+
+    fn shutdown(&self) {
+        enter_engine(|engine| *engine = Engine::new_raw_no_kernel());
+    }
 }
 
 fn patch_callbacks(ctx: &mut Context<'_>) {
