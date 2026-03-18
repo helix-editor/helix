@@ -1646,7 +1646,7 @@ language-servers = [ "svelteserver" ]
 
 [[grammar]]
 name = "svelte"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-svelte", rev = "ae5199db47757f785e43a14b332118a5474de1a2" }
+source = { git = "https://github.com/themixednuts/tree-sitter-htmlx", rev = "3be6db3dc94478b089a64e59e4d855fc3041a7be", subpath = "crates/tree-sitter-svelte" }
 
 [[language]]
 name = "vue"
