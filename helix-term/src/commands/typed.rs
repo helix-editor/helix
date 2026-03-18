@@ -1051,6 +1051,7 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
                     bail!("Unsupported theme: theme requires true color support");
                 }
                 cx.editor.set_theme(theme);
+                cx.editor.config_events.0.send(ConfigEvent::ThemeChanged)?;
             } else {
                 let name = cx.editor.theme.name().to_string();
 
@@ -1071,7 +1072,7 @@ fn yank_main_selection_to_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '+');
+    yank_main_selection_to_register(cx.editor, '+');
     Ok(())
 }
 
@@ -1116,7 +1117,7 @@ fn yank_main_selection_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '*');
+    yank_main_selection_to_register(cx.editor, '*');
     Ok(())
 }
 
@@ -1197,7 +1198,7 @@ fn replace_selections_with_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '+', 1);
+    replace_selections_with_register(cx.editor, '+', 1);
     Ok(())
 }
 
@@ -1210,7 +1211,7 @@ fn replace_selections_with_primary_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '*', 1);
+    replace_selections_with_register(cx.editor, '*', 1);
     Ok(())
 }
 
@@ -1228,26 +1229,20 @@ fn show_clipboard_provider(
     Ok(())
 }
 
-fn change_current_directory(
-    cx: &mut compositor::Context,
-    args: Args,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+/// Helper function to parse the first argument as a directory
+#[inline]
+fn parse_first_arg_as_dir(args: &Args, last_cwd: Option<PathBuf>) -> anyhow::Result<PathBuf> {
+    match args.first().map(AsRef::as_ref) {
+        Some("-") => last_cwd.ok_or_else(|| anyhow!("No previous working directory")),
+        Some(path) => Ok(helix_stdx::path::expand_tilde(Path::new(path)).into_owned()),
+        None => Ok(home_dir()?),
     }
+}
 
-    let dir = match args.first().map(AsRef::as_ref) {
-        Some("-") => cx
-            .editor
-            .get_last_cwd()
-            .map(|path| Cow::Owned(path.to_path_buf()))
-            .ok_or_else(|| anyhow!("No previous working directory"))?,
-        Some(path) => helix_stdx::path::expand_tilde(Path::new(path)),
-        None => Cow::Owned(home_dir()?),
-    };
-
-    cx.editor.set_cwd(&dir).map_err(|err| {
+/// Helper function to apply a directory change for an already-parsed Path ref
+#[inline]
+fn apply_directory_change(cx: &mut compositor::Context, dir: &Path) -> anyhow::Result<()> {
+    cx.editor.set_cwd(dir).map_err(|err| {
         anyhow!(
             "Could not change working directory to '{}': {err}",
             dir.display()
@@ -1258,6 +1253,85 @@ fn change_current_directory(
         "Current working directory is now {}",
         helix_stdx::env::current_working_dir().display()
     ));
+
+    Ok(())
+}
+
+fn change_current_directory(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let dir = parse_first_arg_as_dir(&args, cx.editor.get_last_cwd().map(|p| p.to_path_buf()))?;
+
+    apply_directory_change(cx, &dir)
+}
+
+fn show_directory_stack(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let serialized_stack = cx
+        .editor
+        .dir_stack
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if !serialized_stack.is_empty() {
+        cx.editor.set_status(serialized_stack);
+    } else {
+        cx.editor.set_error("Stack is empty");
+    }
+
+    Ok(())
+}
+
+fn push_directory(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    // avoid an unbounded directory stack and reallocs for perf
+    if cx.editor.dir_stack.len() == cx.editor.dir_stack.capacity() {
+        cx.editor.dir_stack.pop_back();
+    }
+
+    cx.editor
+        .dir_stack
+        .push_front(helix_stdx::env::current_working_dir());
+
+    change_current_directory(cx, args, event)
+}
+
+fn pop_directory(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if let Some(dir) = cx.editor.dir_stack.pop_front() {
+        apply_directory_change(cx, &dir)?;
+    } else {
+        cx.editor.set_error("Stack is empty");
+    }
 
     Ok(())
 }
@@ -2628,17 +2702,43 @@ fn redraw(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct MoveBufferOptions {
+    pub force: bool,
+}
+
 fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
+    let new_path: PathBuf = args.first().unwrap().into();
+    move_buffer_impl(cx, new_path, MoveBufferOptions { force: false })
+}
+
+fn force_move_buffer(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let new_path: PathBuf = args.first().unwrap().into();
+    move_buffer_impl(cx, new_path, MoveBufferOptions { force: true })
+}
+
+fn move_buffer_impl(
+    cx: &mut compositor::Context,
+    new_path: PathBuf,
+    options: MoveBufferOptions,
+) -> anyhow::Result<()> {
     let doc = doc!(cx.editor);
     let old_path = doc
         .path()
         .context("Scratch buffer cannot be moved. Use :write instead")?
         .clone();
-    let new_path: PathBuf = args.first().unwrap().into();
 
     // if new_path is a directory, append the original file name
     // to move the file into that directory.
@@ -2647,6 +2747,20 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         .filter(|_| new_path.is_dir())
         .map(|old_file_name| new_path.join(old_file_name))
         .unwrap_or(new_path);
+
+    if old_path.exists() {
+        if let Some(parent) = new_path.parent() {
+            if !parent.exists() {
+                if options.force {
+                    std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                } else {
+                    bail!(
+                        "can't move file, parent directory does not exist (use :mv! to create it)"
+                    )
+                }
+            }
+        }
+    }
 
     if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
         bail!("Could not move file: {err}");
@@ -3309,6 +3423,39 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
+        name: "show-directory-stack",
+        aliases: &[],
+        doc: "Show the directory stack as a <space> delimited string.",
+        fun: show_directory_stack,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "push-directory",
+        aliases: &["pushd"],
+        doc: "Save and then change the current directory.",
+        fun: push_directory,
+        completer: CommandCompleter::positional(&[completers::directory]),
+        signature: Signature {
+            positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "pop-directory",
+        aliases: &["popd"],
+        doc: "Remove the top entry from the directory stack, and cd to the new top directory..",
+        fun: pop_directory,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
         name: "show-directory",
         aliases: &["pwd"],
         doc: "Show the current working directory.",
@@ -3769,6 +3916,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["mv"],
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "move!",
+        aliases: &["mv!"],
+        doc: "Move the current buffer and its corresponding file to a different path creating necessary subdirectories",
+        fun: force_move_buffer,
         completer: CommandCompleter::positional(&[completers::filename]),
         signature: Signature {
             positionals: (1, Some(1)),

@@ -4,7 +4,10 @@ use std::io;
 
 use crate::{buffer::Cell, terminal::Config};
 
-use helix_view::graphics::{CursorKind, Rect};
+use helix_view::{
+    graphics::{CursorKind, Rect},
+    theme::Color,
+};
 
 #[cfg(all(feature = "termina", not(windows)))]
 mod termina;
@@ -45,4 +48,5 @@ pub trait Backend {
     fn flush(&mut self) -> Result<(), io::Error>;
     fn supports_true_color(&self) -> bool;
     fn get_theme_mode(&self) -> Option<helix_view::theme::Mode>;
+    fn set_background_color(&mut self, color: Option<Color>) -> io::Result<()>;
 }

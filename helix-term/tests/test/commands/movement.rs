@@ -437,7 +437,7 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                     let result = if true {
                             #[|\"yes\"\n]#
                     } else {
-                        \"no    #(|\"\n)#
+                        \"no #(|\"\n)#
                     }
                 }
             "},

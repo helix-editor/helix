@@ -16,7 +16,7 @@ inherits = "modus_operandi"
 "keyword" = "red-cooler"
 "keyword.directive" = "red-warmer"
 "function" = "cyan-warmer"
-"function.macro" = "magenta"
+"function.macro" = "red-warmer"
 "tag" = "red-cooler"
 
 "markup.heading.2" = { fg = "red-faint", modifiers = ["bold"] }
@@ -52,7 +52,7 @@ cyan-faint = "#004f5f"
 # Special purpose
 bg-completion = "#afdfef"
 bg-hover = "#ffafbc"
-bg-hover-secondary = "#9fdfff"
+bg-hover-secondary = "#abdfdd"
 bg-hl-line = "#dfeaec"
 
 bg-char-0 = "#ff908f"

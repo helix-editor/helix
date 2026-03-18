@@ -9,6 +9,7 @@ use termina::{
     escape::{
         csi::{self, Csi, SgrAttributes, SgrModifiers},
         dcs::{self, Dcs},
+        osc::{self, Osc},
     },
     style::{CursorStyle, RgbColor},
     Event, OneBased, PlatformTerminal, Terminal as _, WindowSize,
@@ -91,7 +92,7 @@ impl TerminaBackend {
         terminal.set_panic_hook(move |term| {
             let _ = write!(
                 term,
-                "{}{}{}{}{}{}{}{}{}{}{}",
+                "{}{}{}{}{}{}{}{}{}{}{}{}",
                 Csi::Keyboard(csi::Keyboard::PopFlags(1)),
                 decreset!(MouseTracking),
                 decreset!(ButtonEventMouse),
@@ -101,6 +102,7 @@ impl TerminaBackend {
                 &hook_reset_cursor_command,
                 decreset!(BracketedPaste),
                 decreset!(FocusTracking),
+                Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
                 Csi::Edit(csi::Edit::EraseInDisplay(csi::EraseInDisplay::EraseDisplay)),
                 decreset!(ClearAndEnableAlternateScreen),
             );
@@ -214,8 +216,7 @@ impl TerminaBackend {
 
         capabilities.extended_underlines |= config.force_enable_extended_underlines;
 
-        let mut reset_cursor_command =
-            Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string();
+        let mut reset_cursor_command = String::new();
         if let Ok(t) = termini::TermInfo::from_env() {
             capabilities.extended_underlines |= t.extended_cap("Smulx").is_some()
                 || t.extended_cap("Su").is_some()
@@ -237,6 +238,8 @@ impl TerminaBackend {
         } else {
             log::debug!("terminfo could not be read, using default cursor reset escape sequence: {reset_cursor_command:?}");
         }
+        reset_cursor_command
+            .push_str(&Csi::Cursor(csi::Cursor::CursorStyle(CursorStyle::Default)).to_string());
 
         terminal.enter_cooked_mode()?;
 
@@ -570,6 +573,20 @@ impl Backend for TerminaBackend {
     fn get_theme_mode(&self) -> Option<theme::Mode> {
         self.capabilities.theme_mode
     }
+
+    fn set_background_color(&mut self, color: Option<Color>) -> io::Result<()> {
+        write!(
+            self.terminal,
+            "{}",
+            match color {
+                Some(Color::Rgb(r, g, b)) => Osc::ChangeDynamicColors(
+                    osc::DynamicColorNumber::TextBackgroundColor,
+                    vec![RgbColor::new(r, g, b).into()]
+                ),
+                _ => Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
+            }
+        )
+    }
 }
 
 impl Drop for TerminaBackend {
@@ -581,10 +598,11 @@ impl Drop for TerminaBackend {
             let _ = self.disable_mouse_capture();
             let _ = write!(
                 self.terminal,
-                "{}{}{}{}",
+                "{}{}{}{}{}",
                 &self.reset_cursor_command,
                 decreset!(BracketedPaste),
                 decreset!(FocusTracking),
+                Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
                 decreset!(ClearAndEnableAlternateScreen),
             );
             // NOTE: Drop for Platform terminal resets the mode and flushes the buffer when not
