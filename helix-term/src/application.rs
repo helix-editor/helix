@@ -7,6 +7,7 @@ use helix_lsp::{
     LanguageServerId, LspProgressMap,
 };
 use helix_stdx::path::get_relative_path;
+use crossterm::tty::IsTty;
 use helix_view::{
     align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
