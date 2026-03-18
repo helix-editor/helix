@@ -3,13 +3,10 @@
   (start_tag
     (tag_name) @_tag
     (attribute
-      (attribute_name) @_lang)
-    (attribute
       (quoted_attribute_value
         (attribute_value) @_value)))
   (raw_text) @injection.content)
   (#match? @_tag "^[Ss][Cc][Rr][Ii][Pp][Tt]$")
-  (#eq? @_lang "lang")
   (#any-of? @_value "ts" "typescript" "text/typescript")
   (#set! injection.language "typescript"))
 
@@ -38,13 +35,10 @@
   (start_tag
     (tag_name) @_tag
     (attribute
-      (attribute_name) @_lang)
-    (attribute
       (quoted_attribute_value
         (attribute_value) @_scss)))
   (raw_text) @injection.content)
   (#eq? @_tag "style")
-  (#eq? @_lang "lang")
   (#eq? @_scss "scss")
   (#set! injection.language "scss"))
 
@@ -53,13 +47,10 @@
   (start_tag
     (tag_name) @_tag
     (attribute
-      (attribute_name) @_lang)
-    (attribute
       (quoted_attribute_value
         (attribute_value) @_sass)))
   (raw_text) @injection.content)
   (#eq? @_tag "style")
-  (#eq? @_lang "lang")
   (#eq? @_sass "sass")
   (#set! injection.language "sass"))
 
@@ -68,13 +59,10 @@
   (start_tag
     (tag_name) @_tag
     (attribute
-      (attribute_name) @_lang)
-    (attribute
       (quoted_attribute_value
         (attribute_value) @_less)))
   (raw_text) @injection.content)
   (#eq? @_tag "style")
-  (#eq? @_lang "lang")
   (#eq? @_less "less")
   (#set! injection.language "less"))
 
