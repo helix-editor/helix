@@ -1,6 +1,5 @@
 [
   (element)
-  (start_tag)
   (if_block)
   (else_if_clause)
   (else_clause)

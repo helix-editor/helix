@@ -1,6 +1,5 @@
-; inherits: html
-
 [
+  (element)
   (if_block)
   (else_if_clause)
   (else_clause)
