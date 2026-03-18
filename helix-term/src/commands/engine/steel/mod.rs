@@ -1876,7 +1876,20 @@ impl super::PluginSystem for SteelScriptingEngine {
     }
 
     fn function_exists(&self, ident: &str) -> bool {
-        enter_engine(|engine| engine.global_exists(ident))
+        enter_engine(|engine| {
+            if engine.global_exists(ident) {
+                if crate::commands::typed::TYPABLE_COMMAND_MAP.contains_key(ident) {
+                    let should_prefer_builtin = identifier_available_at_startup(ident);
+                    if should_prefer_builtin {
+                        return false;
+                    }
+                }
+
+                true
+            } else {
+                false
+            }
+        })
     }
 
     fn shutdown(&self) {
