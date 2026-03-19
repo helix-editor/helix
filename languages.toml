@@ -4787,13 +4787,13 @@ source = { git = "https://github.com/uncenter/tree-sitter-tera", rev = "e8d679a2
 name = "fga"
 scope = "source.fga"
 injection-regex = "fga"
-file-types = ["fga"]
+file-types = ["fga", { glob = "fga.mod" } ]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "fga"
-source = { git = "https://github.com/matoous/tree-sitter-fga", rev = "5005e8dd976e1f67beb3d23204580eb6f8b4c965" }
+source = { git = "https://github.com/matoous/tree-sitter-fga", rev = "ce72d1c484ba133a18e966d67be66bce85695451" }
 
 [[language]]
 name = "csv"
