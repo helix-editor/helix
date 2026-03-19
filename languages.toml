@@ -5428,3 +5428,16 @@ comment-token = "//"
 [[grammar]]
 name = "tql"
 source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "d3b3b2699bc09fd0c63e2c13f15f6e474665c62e" }
+
+[[language]]
+name = "concerto"
+scope = "source.concerto"
+injection-regex = "concerto"
+file-types = ["cto"]
+comment-tokens = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "concerto"
+source = { git = "https://github.com/accordproject/concerto-tree-sitter", rev = "77ae6b94eb0e249d1e5738c60eceed790c27563b" }
