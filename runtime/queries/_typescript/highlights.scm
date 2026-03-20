@@ -88,7 +88,6 @@
   "abstract"
   "declare"
   "module"
-  "export"
   "infer"
   "implements"
   "keyof"
@@ -96,6 +95,11 @@
   "override"
   "satisfies"
 ] @keyword
+
+[
+  "export"
+  "from"
+] @keyword.control.import
 
 [
   "type"
