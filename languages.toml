@@ -3387,6 +3387,13 @@ file-types = [
   "swap",
   "target",
   "timer",
+  "container",
+  "pod",
+  "volume",
+  "network",
+  "kube",
+  "image",
+  "build",
   { glob = "systemd/**/*.conf" },
 ]
 injection-regex = "systemd"
