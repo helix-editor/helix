@@ -148,6 +148,7 @@ impl TerminaBackend {
         capabilities.kitty_multi_cursor = match config.kitty_multi_cursor {
             KittyMultiCursorConfig::Disabled => false,
             KittyMultiCursorConfig::Enabled => true,
+            KittyMultiCursorConfig::Auto => super::probe_multi_cursor_support(),
         };
 
         // Many terminal extensions can be detected by querying the terminal for the state of the
@@ -353,7 +354,7 @@ impl TerminaBackend {
         }
 
         if self.capabilities.kitty_multi_cursor {
-            self.write_raw(b"\x1b[>0;4 q")?;
+            self.write_raw(b"\x1b[>0 q")?;
         }
 
         if self.capabilities.theme_mode.is_some() {
@@ -418,8 +419,11 @@ impl Backend for TerminaBackend {
             }
         }
         self.capabilities.extended_underlines |= self.config.force_enable_extended_underlines;
-        self.capabilities.kitty_multi_cursor =
-            self.config.kitty_multi_cursor == KittyMultiCursorConfig::Enabled;
+        self.capabilities.kitty_multi_cursor = match self.config.kitty_multi_cursor {
+            KittyMultiCursorConfig::Disabled => false,
+            KittyMultiCursorConfig::Enabled => true,
+            KittyMultiCursorConfig::Auto => self.capabilities.kitty_multi_cursor,
+        };
         Ok(())
     }
 

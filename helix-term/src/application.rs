@@ -79,6 +79,7 @@ pub struct Application {
     lsp_progress: LspProgressMap,
 
     theme_mode: Option<theme::Mode>,
+    had_extra_cursors: bool,
 }
 
 #[cfg(feature = "integration")]
@@ -260,6 +261,7 @@ impl Application {
             jobs,
             lsp_progress: LspProgressMap::new(),
             theme_mode,
+            had_extra_cursors: false,
         };
 
         Ok(app)
@@ -303,17 +305,18 @@ impl Application {
         // cursor effects may render beneath the overlay -- acceptable since the
         // overlay fully covers them visually.
         if self.editor.config().kitty_multi_cursor != KittyMultiCursorConfig::Disabled {
-            // When collect returns empty (single-cursor insert mode), emit_extra_cursors
-            // sends a clear sequence. This is redundant per-frame but avoids needing
-            // state tracking for the some→none transition. The overhead is trivial
-            // (8 bytes on an already-flushing write path).
             let extra = self.collect_extra_cursor_positions(kind);
-            if let Err(e) = self.terminal.backend_mut().emit_extra_cursors(&extra) {
-                debug!("Failed to emit extra cursors: {}", e);
+            let has_extra = !extra.is_empty();
+            // Only emit when state changes or cursors are active.
+            if has_extra || self.had_extra_cursors {
+                if let Err(e) = self.terminal.backend_mut().emit_extra_cursors(&extra) {
+                    debug!("Failed to emit extra cursors: {}", e);
+                }
+                if let Err(e) = self.terminal.backend_mut().flush() {
+                    debug!("Failed to flush extra cursors: {}", e);
+                }
             }
-            if let Err(e) = self.terminal.backend_mut().flush() {
-                debug!("Failed to flush extra cursors: {}", e);
-            }
+            self.had_extra_cursors = has_extra;
         }
     }
 

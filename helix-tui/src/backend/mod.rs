@@ -64,7 +64,7 @@ pub trait Backend {
 /// with 1-indexed point coordinates.
 fn build_multi_cursor_sequence(cursors: &[(u16, u16)]) -> Vec<u8> {
     if cursors.is_empty() {
-        return b"\x1b[>0;4 q".to_vec();
+        return b"\x1b[>0 q".to_vec();
     }
     let mut buf = Vec::with_capacity(8 + cursors.len() * 12);
     buf.extend_from_slice(b"\x1b[>29");
@@ -73,4 +73,88 @@ fn build_multi_cursor_sequence(cursors: &[(u16, u16)]) -> Vec<u8> {
     }
     buf.extend_from_slice(b" q");
     buf
+}
+
+/// Probe terminal for kitty multi-cursor protocol support.
+///
+/// Sends the support detection query (CSI > SP q) and checks for a
+/// response within a short timeout. Uses /dev/tty directly to avoid
+/// interfering with the backend's event system.
+///
+/// Must be called while the terminal is in raw mode and before the
+/// backend's event reader is active.
+#[cfg(unix)]
+pub(super) fn probe_multi_cursor_support() -> bool {
+    use std::io::{Read, Write};
+    use std::os::unix::io::AsRawFd;
+
+    let Ok(mut tty) = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("/dev/tty")
+    else {
+        log::debug!("Failed to open /dev/tty for multi-cursor probe");
+        return false;
+    };
+
+    let fd = tty.as_raw_fd();
+
+    // Drain any pending input.
+    loop {
+        let mut pfd = libc::pollfd {
+            fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        if unsafe { libc::poll(&mut pfd, 1, 0) } <= 0 {
+            break;
+        }
+        let mut drain = [0u8; 256];
+        if tty.read(&mut drain).unwrap_or(0) == 0 {
+            break;
+        }
+    }
+
+    // Send support detection query.
+    if tty.write_all(b"\x1b[> q").is_err() || tty.flush().is_err() {
+        log::debug!("Failed to write multi-cursor probe query");
+        return false;
+    }
+
+    // Wait for response with 100ms timeout.
+    let mut pfd = libc::pollfd {
+        fd,
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    if unsafe { libc::poll(&mut pfd, 1, 100) } <= 0 {
+        log::debug!("No response to multi-cursor probe (timeout)");
+        return false;
+    }
+
+    // Read response.
+    let mut buf = [0u8; 128];
+    let n = tty.read(&mut buf).unwrap_or(0);
+    if n == 0 {
+        return false;
+    }
+    let response = &buf[..n];
+
+    // Valid response: CSI > N;N;... SP q
+    let supported =
+        response.starts_with(b"\x1b[>") && response.windows(2).any(|w| w == b" q");
+
+    log::debug!(
+        "Kitty multi-cursor protocol {}detected (response: {:?})",
+        if supported { "" } else { "not " },
+        std::str::from_utf8(response).unwrap_or("<binary>"),
+    );
+
+    supported
+}
+
+#[cfg(not(unix))]
+pub(super) fn probe_multi_cursor_support() -> bool {
+    log::debug!("Multi-cursor probe not supported on this platform");
+    false
 }

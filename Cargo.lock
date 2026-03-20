@@ -1582,6 +1582,7 @@ dependencies = [
  "crossterm",
  "helix-core",
  "helix-view",
+ "libc",
  "log",
  "once_cell",
  "termina",

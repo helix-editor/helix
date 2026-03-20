@@ -101,6 +101,7 @@ pub struct CrosstermBackend<W: Write> {
     config: Config,
     capabilities: Capabilities,
     supports_keyboard_enhancement_protocol: OnceCell<bool>,
+    supports_multi_cursor_protocol: OnceCell<bool>,
     mouse_capture_enabled: bool,
     supports_bracketed_paste: bool,
 }
@@ -119,6 +120,7 @@ where
             capabilities: Capabilities::from_env_or_default(&config),
             config,
             supports_keyboard_enhancement_protocol: OnceCell::new(),
+            supports_multi_cursor_protocol: OnceCell::new(),
             mouse_capture_enabled: false,
             supports_bracketed_paste: true,
         }
@@ -139,6 +141,28 @@ where
                 );
                 supported
             })
+    }
+
+    #[inline]
+    fn supports_multi_cursor_protocol(&self) -> bool {
+        match self.config.kitty_multi_cursor {
+            KittyMultiCursorConfig::Disabled => false,
+            KittyMultiCursorConfig::Enabled => true,
+            KittyMultiCursorConfig::Auto => *self
+                .supports_multi_cursor_protocol
+                .get_or_init(|| {
+                    use std::time::Instant;
+
+                    let now = Instant::now();
+                    let supported = super::probe_multi_cursor_support();
+                    log::debug!(
+                        "The multi-cursor protocol is {}supported in this terminal (checked in {:?})",
+                        if supported { "" } else { "not " },
+                        Instant::now().duration_since(now)
+                    );
+                    supported
+                }),
+        }
     }
 }
 
@@ -207,8 +231,8 @@ where
 
     fn restore(&mut self) -> io::Result<()> {
         // Clear kitty multi-cursor protocol state (harmless on unsupported terminals).
-        if self.config.kitty_multi_cursor != KittyMultiCursorConfig::Disabled {
-            self.write_raw(b"\x1b[>0;4 q")?;
+        if self.supports_multi_cursor_protocol() {
+            self.write_raw(b"\x1b[>0 q")?;
         }
         // reset cursor shape
         self.buffer
@@ -345,7 +369,7 @@ where
     }
 
     fn emit_extra_cursors(&mut self, cursors: &[(u16, u16)]) -> io::Result<()> {
-        if self.config.kitty_multi_cursor == KittyMultiCursorConfig::Disabled {
+        if !self.supports_multi_cursor_protocol() {
             return Ok(());
         }
         self.write_raw(&super::build_multi_cursor_sequence(cursors))
