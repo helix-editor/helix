@@ -77,6 +77,7 @@ pub struct TerminaBackend {
     capabilities: Capabilities,
     reset_cursor_command: String,
     is_synchronized_output_set: bool,
+    background_color: Option<RgbColor>,
 }
 
 impl TerminaBackend {
@@ -114,6 +115,7 @@ impl TerminaBackend {
             capabilities,
             reset_cursor_command,
             is_synchronized_output_set: false,
+            background_color: None,
         })
     }
 
@@ -392,6 +394,16 @@ impl Backend for TerminaBackend {
             // things like mosh are buggy. See <https://github.com/helix-editor/helix/pull/1944>.
             Csi::Edit(csi::Edit::EraseInDisplay(csi::EraseInDisplay::EraseDisplay)),
         )?;
+        if let Some(color) = self.background_color {
+            write!(
+                self.terminal,
+                "{}",
+                Osc::ChangeDynamicColors(
+                    osc::DynamicColorNumber::TextBackgroundColor,
+                    vec![color.into()]
+                )
+            )?;
+        }
         self.enable_mouse_capture()?;
         self.enable_extensions()?;
 
@@ -422,6 +434,13 @@ impl Backend for TerminaBackend {
             decreset!(FocusTracking),
             decreset!(ClearAndEnableAlternateScreen),
         )?;
+        if self.background_color.is_some() {
+            write!(
+                self.terminal,
+                "{}",
+                Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor)
+            )?;
+        }
         self.terminal.flush()?;
         self.terminal.enter_cooked_mode()?;
         Ok(())
@@ -575,13 +594,17 @@ impl Backend for TerminaBackend {
     }
 
     fn set_background_color(&mut self, color: Option<Color>) -> io::Result<()> {
+        self.background_color = match color {
+            Some(Color::Rgb(r, g, b)) => Some(RgbColor::new(r, g, b)),
+            _ => None,
+        };
         write!(
             self.terminal,
             "{}",
-            match color {
-                Some(Color::Rgb(r, g, b)) => Osc::ChangeDynamicColors(
+            match self.background_color {
+                Some(color) => Osc::ChangeDynamicColors(
                     osc::DynamicColorNumber::TextBackgroundColor,
-                    vec![RgbColor::new(r, g, b).into()]
+                    vec![color.into()]
                 ),
                 _ => Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
             }
