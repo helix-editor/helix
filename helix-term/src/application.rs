@@ -496,13 +496,7 @@ impl Application {
                     })
             })
             .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
-        let background_color = theme
-            .try_get_exact("ui.background")
-            .and_then(|style| style.bg);
-        editor.set_theme(theme);
-        let _ = terminal
-            .backend_mut()
-            .set_background_color(background_color);
+        let _ = editor.set_theme(theme);
     }
 
     #[cfg(windows)]
